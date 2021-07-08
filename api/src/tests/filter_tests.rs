@@ -1,5 +1,5 @@
 use crate::ApiEvent;
-use apimodel::{BlockInfo, HashSlot};
+use apimodel::{BlockInfo, HashSlot, NetworkInfo};
 use storage::{start_storage_controller, StorageConfig};
 
 use super::tools::*;
@@ -1200,10 +1200,14 @@ async fn test_network_info() {
             .await;
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-        let expected: serde_json::Value = json!({
-            "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            "peers": HashMap::<IpAddr, String>::new(),
-        });
+        let expected: serde_json::Value = serde_json::from_str(
+            &serde_json::to_string(&NetworkInfo {
+                our_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+                peers: Vec::<PeerInfo>::new(),
+            })
+            .unwrap(),
+        )
+        .unwrap();
         assert_eq!(obtained, expected);
         handle.await.unwrap();
 
@@ -1254,10 +1258,14 @@ async fn test_network_info() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value = json!({
-        "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-        "peers": peers,
-    });
+    let expected: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(&NetworkInfo {
+            our_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            peers: peers.iter().map(|(_ip, p)| p.clone()).collect(),
+        })
+        .unwrap(),
+    )
+    .unwrap();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
     drop(filter);
@@ -1460,7 +1468,11 @@ async fn test_last_stale() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![(get_another_test_hash(), Slot::new(2, 0))]).unwrap(),
+        &serde_json::to_string(&vec![HashSlot {
+            hash: get_another_test_hash(),
+            slot: Slot::new(2, 0),
+        }])
+        .unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -1552,7 +1564,11 @@ async fn test_last_invalid() {
     handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected = serde_json::to_value(&vec![(get_test_hash(), Slot::new(1, 1))]).unwrap();
+    let expected = serde_json::to_value(&vec![HashSlot {
+        hash: get_test_hash(),
+        slot: Slot::new(1, 1),
+    }])
+    .unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
