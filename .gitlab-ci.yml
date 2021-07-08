@@ -30,7 +30,7 @@ clippy:
 # Use cargo to test the project
 test:
   stage: test
-  image: "demilletech/rust"
+  image: "xd009642/tarpaulin"
   script:
     - cargo tarpaulin -v
   coverage: /([\d\.]+)\% coverage/
