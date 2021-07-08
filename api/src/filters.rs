@@ -158,6 +158,7 @@ use consensus::{
     ConsensusConfig, ConsensusError, DiscardReason,
 };
 use crypto::{hash::Hash, signature::PublicKey};
+use log::trace;
 use models::{Block, BlockHeader, Slot};
 use serde::Deserialize;
 use serde_json::json;
@@ -391,7 +392,8 @@ pub fn get_filter(
 /// # Argument
 /// * event_tx : Sender used to send the event out
 async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
-    match evt_tx.send(ApiEvent::AskStop).await {
+    trace!("before sending ask stop to mpsc api event sender in stop_node in filters");
+    let res = match evt_tx.send(ApiEvent::AskStop).await {
         Ok(_) => Ok(warp::reply().into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
@@ -400,7 +402,9 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
-    }
+    };
+    trace!("after sending ask stop to mpsc api event sender in stop_node in filters");
+    res
 }
 
 /// Returns block with given hash as a reply
@@ -464,15 +468,21 @@ async fn retrieve_graph_export(
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<BlockGraphExport, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
+    trace!("before sending GetBlockGraphStatus to mpsc api event sender in retrieve_graph_export in filters");
     event_tx
         .send(ApiEvent::GetBlockGraphStatus(response_tx))
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!("Could not send api event get block graph : {0}", e))
         })?;
-    response_rx.await.map_err(|e| {
+    trace!("after sending GetBlockGraphStatus to mpsc api event sender in retrieve_graph_export in filters");
+
+    trace!("before receiving BlockGraphExport from oneshot response_rx in retrieve_graph_export in filters");
+    let res = response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve block graph: {0}", e))
-    })
+    });
+    trace!("after receiving BlockGraphExport from oneshot response_rx in retrieve_graph_export in filters");
+    res
 }
 
 async fn retrieve_block(
@@ -480,30 +490,40 @@ async fn retrieve_block(
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Option<Block>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
+    trace!("before sending GetActiveBlock to mpsc api event sender in retrieve_block in filters");
     event_tx
         .send(ApiEvent::GetActiveBlock { hash, response_tx })
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!("Could not send api event get block : {0}", e))
         })?;
-    response_rx
+    trace!("after sending GetActiveBlock to mpsc api event sender in retrieve_block in filters");
+    trace!("before receiving Block from oneshot response_rx in retrieve_block in filters");
+    let res = response_rx
         .await
-        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)));
+    trace!("after receiving Block from oneshot response_rx in retrieve_block in filters");
+    res
 }
 
 async fn retrieve_peers(
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
+    trace!("before sending GetPeers to mpsc api event sender in retrieve_peers in filters");
     event_tx
         .send(ApiEvent::GetPeers(response_tx))
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!("Could not send api event get peers : {0}", e))
         })?;
-    response_rx.await.map_err(|e| {
+    trace!("after sending GetPeers to mpsc api event sender in retrieve_peers in filters");
+    trace!("before receiving Peers from oneshot response_rx in retrieve_peers in filters");
+    let res = response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve block peers: {0}", e))
-    })
+    });
+    trace!("after receiving Peers from oneshot response_rx in retrieve_peers in filters");
+    res
 }
 
 async fn retrieve_selection_draw(
@@ -512,6 +532,7 @@ async fn retrieve_selection_draw(
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Vec<(Slot, PublicKey)>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
+    trace!("before sending GetSelectionDraw to mpsc api event sender in retrieve_selection_draw in filters");
     event_tx
         .send(ApiEvent::GetSelectionDraw {
             start,
@@ -525,14 +546,18 @@ async fn retrieve_selection_draw(
                 e
             ))
         })?;
-    response_rx
+    trace!("after sending GetSelectionDraw to mpsc api event sender in retrieve_selection_draw in filters");
+    trace!("before receiving selection draw from oneshot response_rx in retrieve_selection_draw in filters");
+    let res = response_rx
         .await
         .map_err(|e| {
             ApiError::ReceiveChannelError(format!("Could not retrieve selection draws: {0}", e))
         })?
         .map_err(|e| {
             ApiError::ReceiveChannelError(format!("Could not retrieve selection draws: {0}", e))
-        })
+        });
+    trace!("after receiving selection draw from oneshot response_rx in retrieve_selection_draw in filters");
+    res
 }
 
 /// Returns best parents as a Vec<Hash, Slot> wrapped in a reply.

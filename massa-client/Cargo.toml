@@ -18,6 +18,7 @@ bs58 = { version = "0.4", features = ["check"] }
 bitcoin_hashes = "0.9"
 serde_json = { version = "1.0" }
 chrono = "0.4.19"
+log = { version = "0.4" }
 
 time = { path = "../time" }
 models = {path = "../models"}

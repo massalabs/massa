@@ -195,44 +195,63 @@ impl NetworkWorker {
                 }
             }
 
+            trace!("before select! in network_worker run_loop");
             tokio::select! {
                 // listen to manager commands
-                cmd = self.controller_manager_rx.recv() => match cmd {
-                    None => break,
-                    Some(_) => {}
-                },
+                cmd = self.controller_manager_rx.recv() => {
+                    trace!("after receiving cmd from controller_manager_rx in network_worker run_loop");
+                        match cmd {
+                            None => break,
+                            Some(_) => {}
+                        }
+                    },
 
                 // wake up interval
-                _ = wakeup_interval.tick() => {},
+                _ = wakeup_interval.tick() => {trace!("after receiving tick from wakeup_interval in network_worker run_loop");},
 
                 // wait for a handshake future to complete
                 Some(res) = self.handshake_futures.next() => {
+                    trace!("after receiving res from handshake_futures in network_worker run_loop");
                     let (conn_id, outcome) = res?;
                     self.on_handshake_finished(conn_id, outcome).await?;
                 },
 
                 // event received from a node
-                evt = self.node_event_rx.recv() => self.on_node_event(
-                    evt.ok_or(CommunicationError::ChannelError("node event rx failed".into()))?
-                ).await?,
+                evt = self.node_event_rx.recv() => {
+                    trace!("after receiving event from node_event_rx in network_worker run_loop");
+                    self.on_node_event(
+                        evt.ok_or(CommunicationError::ChannelError("node event rx failed".into()))?
+                    ).await?
+                },
 
                 // peer feedback event
-                Some(cmd) = self.controller_command_rx.recv() => self.manage_network_command(
-                    cmd,
-                ).await?,
+                Some(cmd) =
+                    self.controller_command_rx.recv() => {
+                        trace!("after receiving cmd from controller_command_rx in network_worker run_loop");
+                        self.manage_network_command(
+                            cmd,
+                        ).await?
+                    }
+                ,
 
                 // out-connector event
-                Some((ip_addr, res)) = out_connecting_futures.next() => self.manage_out_connections(
-                    res,
-                    ip_addr,
-                    &mut cur_connection_id,
-                ).await?,
+                Some((ip_addr, res)) = out_connecting_futures.next() => {
+                    trace!("after receiving connection from out_connecting_futures in network_worker run_loop");
+                    self.manage_out_connections(
+                        res,
+                        ip_addr,
+                        &mut cur_connection_id,
+                    ).await?
+                },
 
                 // listener socket received
-                res = self.listener.accept() => self.manage_in_connections(
-                    res,
-                    &mut cur_connection_id,
-                ).await?
+                res = self.listener.accept() => {
+                    trace!("after receiving listener from listener.accept() in network_worker run_loop");
+                    self.manage_in_connections(
+                        res,
+                        &mut cur_connection_id,
+                    ).await?
+                }
             }
         }
 
@@ -250,18 +269,21 @@ impl NetworkWorker {
             // gather active node handles
             for (_, (_, node_tx, handle)) in self.active_nodes.drain() {
                 //close opened connection.
+                trace!("before sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
                 node_tx
                     .send(NodeCommand::Close(ConnectionClosureReason::Normal))
                     .await
                     .map_err(|_| {
                         CommunicationError::ChannelError("node close command send failed".into())
                     })?;
+                trace!("after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
                 node_handle_set.push(handle);
             }
             // drain incoming node events
             while let Some(_) = self.node_event_rx.recv().await {}
             // wait for node join handles
             while let Some(res) = node_handle_set.next().await {
+                trace!("after receiving  res from node_handle_set in network_worker run_loop");
                 match res {
                     Ok(Ok(_)) => (),
                     Ok(Err(err)) => return Err(err),
@@ -363,6 +385,8 @@ impl NetworkWorker {
                             .await
                         });
                         entry.insert((new_connection_id, node_command_tx, node_fn_handle));
+
+                        trace!("before sending  NetworkEvent::NewConnection from controller_event_tx in network_worker on_handshake_finished");
                         self.controller_event_tx
                             .send(NetworkEvent::NewConnection(new_node_id))
                             .await
@@ -371,6 +395,7 @@ impl NetworkWorker {
                                     "could not send new connection notification upstream".into(),
                                 )
                             })?;
+                        trace!("after sending  NetworkEvent::NewConnection from controller_event_tx in network_worker on_handshake_finished");
                     }
                 }
             }
@@ -501,54 +526,75 @@ impl NetworkWorker {
                 }
                 for (conn_id, node_command_tx, _) in self.active_nodes.values() {
                     if ban_connection_ids.contains(conn_id) {
-                        node_command_tx
+                        trace!("before sending NodeCommand::Close from node_command_tx in network_worker manage_network_command");
+                        let res = node_command_tx
                             .send(NodeCommand::Close(ConnectionClosureReason::Banned))
-                            .await
-                            .map_err(|_| {
+                            .await;
+                        if res.is_err() {
+                            warn!(
+                                "{}",
                                 CommunicationError::ChannelError(
                                     "close node command send failed".into(),
                                 )
-                            })?;
-                    }
+                            );
+                        }
+                        trace!("after sending NodeCommand::Close from node_command_tx in network_worker manage_network_command");
+                    };
                 }
             }
             NetworkCommand::SendBlockHeader { node, header } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
+                    trace!("before sending NodeCommand::SendBlockHeader from node_command_tx in network_worker manage_network_command");
+                    let res = node_command_tx
                         .send(NodeCommand::SendBlockHeader(header))
-                        .await
-                        .map_err(|_| {
+                        .await;
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "send block header node command send failed".into(),
                             )
-                        })?;
+                        );
+                    }
+                    trace!("after sending NodeCommand::SendBlockHeader from node_command_tx in network_worker manage_network_command");
                 }
             }
             NetworkCommand::AskForBlock { node, hash } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
-                        .send(NodeCommand::AskForBlock(hash))
-                        .await
-                        .map_err(|_| {
+                    trace!("before sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
+
+                    let res = node_command_tx.send(NodeCommand::AskForBlock(hash)).await;
+
+                    trace!("after sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "ask for block node command send failed".into(),
                             )
-                        })?;
+                        );
+                    };
                 }
             }
             NetworkCommand::SendBlock { node, block } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
-                        .send(NodeCommand::SendBlock(block))
-                        .await
-                        .map_err(|_| {
+                    trace!("before sending NodeCommand::SendBlock from node_command_tx in network_worker manage_network_command");
+
+                    let res = node_command_tx.send(NodeCommand::SendBlock(block)).await;
+
+                    trace!("after sending NodeCommand::SendBlock from node_command_tx in network_worker manage_network_command");
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "send block node command send failed".into(),
                             )
-                        })?;
+                        )
+                    };
                 }
             }
             NetworkCommand::GetPeers(response_tx) => {
+                trace!("before sending self.peer_info_db.get_peers() from node_command_tx in network_worker manage_network_command");
                 response_tx
                     .send(self.peer_info_db.get_peers().clone())
                     .map_err(|_| {
@@ -556,17 +602,23 @@ impl NetworkWorker {
                             "could not send GetPeersChannelError upstream".into(),
                         )
                     })?;
+                trace!("after sending self.peer_info_db.get_peers() from node_command_tx in network_worker manage_network_command");
             }
             NetworkCommand::BlockNotFound { node, hash } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
-                        .send(NodeCommand::BlockNotFound(hash))
-                        .await
-                        .map_err(|_| {
+                    trace!("before sending NodeCommand::BlockNotFound from node_command_tx in network_worker manage_network_command");
+
+                    let res = node_command_tx.send(NodeCommand::BlockNotFound(hash)).await;
+
+                    trace!("after sending NodeCommand::BlockNotFound from node_command_tx in network_worker manage_network_command");
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "send block not found node command send failed".into(),
                             )
-                        })?;
+                        )
+                    };
                 }
             }
         }
@@ -690,40 +742,50 @@ impl NetworkWorker {
                 massa_trace!("merge_incoming_peer_list", { "ips": lst });
                 self.peer_info_db.merge_candidate_peers(&lst)?;
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => self
-                .controller_event_tx
-                .send(NetworkEvent::ReceivedBlock {
-                    node: from_node_id,
-                    block: data,
-                })
-                .await
-                .map_err(|_| {
-                    CommunicationError::ChannelError("receive block event send failed".into())
-                })?,
-            NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlock(data)) => self
-                .controller_event_tx
-                .send(NetworkEvent::AskedForBlock {
-                    node: from_node_id,
-                    hash: data,
-                })
-                .await
-                .map_err(|_| {
-                    CommunicationError::ChannelError(
-                        "receive asked for block event send failed".into(),
-                    )
-                })?,
-            NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => self
-                .controller_event_tx
-                .send(NetworkEvent::ReceivedBlockHeader {
-                    source_node_id,
-                    header,
-                })
-                .await
-                .map_err(|_| {
-                    CommunicationError::ChannelError("receive block event send failed".into())
-                })?,
+            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
+                trace!("before sending NetworkEvent::ReceivedBlock from controller_event_tx in network_worker on_node_event");
+                self.controller_event_tx
+                    .send(NetworkEvent::ReceivedBlock {
+                        node: from_node_id,
+                        block: data,
+                    })
+                    .await
+                    .map_err(|_| {
+                        CommunicationError::ChannelError("receive block event send failed".into())
+                    })?;
+                trace!("after sending NetworkEvent::ReceivedBlock from controller_event_tx in network_worker on_node_event");
+            }
+            NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlock(data)) => {
+                trace!("before sending NetworkEvent::AskedForBlock from controller_event_tx in network_worker on_node_event");
+                self.controller_event_tx
+                    .send(NetworkEvent::AskedForBlock {
+                        node: from_node_id,
+                        hash: data,
+                    })
+                    .await
+                    .map_err(|_| {
+                        CommunicationError::ChannelError(
+                            "receive asked for block event send failed".into(),
+                        )
+                    })?;
+                trace!("after sending NetworkEvent::AskedForBlock from controller_event_tx in network_worker on_node_event");
+            }
+            NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
+                trace!("before sending NetworkEvent::ReceivedBlockHeader from controller_event_tx in network_worker on_node_event");
+                self.controller_event_tx
+                    .send(NetworkEvent::ReceivedBlockHeader {
+                        source_node_id,
+                        header,
+                    })
+                    .await
+                    .map_err(|_| {
+                        CommunicationError::ChannelError("receive block event send failed".into())
+                    })?;
+                trace!("after sending NetworkEvent::ReceivedBlockHeader from controller_event_tx in network_worker on_node_event");
+            }
             // connection closed
             NodeEvent(from_node_id, NodeEventType::Closed(reason)) => {
+                trace!("before sending NetworkEvent::ConnectionClosed from controller_event_tx in network_worker on_node_event");
                 self.controller_event_tx
                     .send(NetworkEvent::ConnectionClosed(from_node_id))
                     .await
@@ -732,6 +794,7 @@ impl NetworkWorker {
                             "connection closed event send failed".into(),
                         )
                     })?;
+                trace!("after sending NetworkEvent::ConnectionClosed from controller_event_tx in network_worker on_node_event");
                 let (connection_id, _, handle) = self
                     .active_nodes
                     .remove(&from_node_id)
@@ -753,23 +816,31 @@ impl NetworkWorker {
                     .active_nodes
                     .get(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;
-                node_command_tx
+                trace!("before sending NetworkEvent::SendPeerList from controller_event_tx in network_worker on_node_event");
+                let res = node_command_tx
                     .send(NodeCommand::SendPeerList(peer_list))
-                    .await
-                    .map_err(|_| {
+                    .await;
+                if res.is_err() {
+                    warn!(
+                        "{}",
                         CommunicationError::ChannelError(
                             "node command send send_peer_list failed".into(),
                         )
-                    })?
+                    );
+                }
+                trace!("after sending NetworkEvent::SendPeerList from controller_event_tx in network_worker on_node_event");
             }
 
-            NodeEvent(node, NodeEventType::BlockNotFound(hash)) => self
-                .controller_event_tx
-                .send(NetworkEvent::BlockNotFound { node, hash })
-                .await
-                .map_err(|_| {
-                    CommunicationError::ChannelError("receive block event send failed".into())
-                })?,
+            NodeEvent(node, NodeEventType::BlockNotFound(hash)) => {
+                trace!("before sending NetworkEvent::BlockNotFound from controller_event_tx in network_worker on_node_event");
+                self.controller_event_tx
+                    .send(NetworkEvent::BlockNotFound { node, hash })
+                    .await
+                    .map_err(|_| {
+                        CommunicationError::ChannelError("receive block event send failed".into())
+                    })?;
+                trace!("after sending NetworkEvent::BlockNotFound from controller_event_tx in network_worker on_node_event");
+            }
         }
         Ok(())
     }

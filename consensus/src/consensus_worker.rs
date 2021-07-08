@@ -33,11 +33,15 @@ pub enum ConsensusCommand {
 
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
-pub enum ConsensusEvent {}
+pub enum ConsensusEvent {
+    dummyevent,
+}
 
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
-pub enum ConsensusManagementCommand {}
+pub enum ConsensusManagementCommand {
+    dummycommand,
+}
 
 /// Manages consensus.
 pub struct ConsensusWorker {
@@ -135,24 +139,32 @@ impl ConsensusWorker {
         );
         tokio::pin!(next_slot_timer);
         loop {
+            trace!("waiting on select in run_loop in consensus_worker");
             tokio::select! {
                 // slot timer
-                _ = &mut next_slot_timer => self.slot_tick(&mut next_slot_timer).await?,
+                _ = &mut next_slot_timer => {                    trace!("entered next_slot_timer branch of the select in run_loop in consensus_worker");
+                self.slot_tick(&mut next_slot_timer).await?},
 
                 // listen consensus commands
-                Some(cmd) = self.controller_command_rx.recv() => self.process_consensus_command(cmd).await?,
+                Some(cmd) = self.controller_command_rx.recv() => {
+                    trace!("entered self.controller_command_rx.recv() branch of the select in run_loop in consensus_worker");
+                    self.process_consensus_command(cmd).await?},
 
                 // receive protocol controller events
-                evt = self.protocol_event_receiver.wait_event() => match evt {
+                evt = self.protocol_event_receiver.wait_event() =>{
+                    trace!("entered self.protocol_event_receiver.wait_event() branch of the select in run_loop in consensus_worker");
+                     match evt {
                     Ok(event) => self.process_protocol_event(event).await?,
                     Err(err) => return Err(ConsensusError::CommunicationError(err))
-                },
+                }},
 
                 // listen to manager commands
-                cmd = self.controller_manager_rx.recv() => match cmd {
+                cmd = self.controller_manager_rx.recv() => {
+                    trace!("entered self.controller_manager_rx.recv() branch of the select in run_loop in consensus_worker");
+                    match cmd {
                     None => break,
                     Some(_) => {}
-                }
+                }}
             }
         }
         // end loop
@@ -209,23 +221,33 @@ impl ConsensusWorker {
         cmd: ConsensusCommand,
     ) -> Result<(), ConsensusError> {
         match cmd {
-            ConsensusCommand::GetBlockGraphStatus(response_tx) => response_tx
-                .send(BlockGraphExport::from(&self.block_db))
-                .map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetBlockGraphStatus answer:{:?}",
-                        err
-                    ))
-                }),
+            ConsensusCommand::GetBlockGraphStatus(response_tx) => {
+                trace!("before sending block graph export to oneshot sender in process_consensus_command in consensus_worker");
+                let res = response_tx
+                    .send(BlockGraphExport::from(&self.block_db))
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetBlockGraphStatus answer:{:?}",
+                            err
+                        ))
+                    });
+                trace!("after sending block graph export to oneshot sender in process_consensus_command in consensus_worker");
+                res
+            }
             //return full block with specified hash
-            ConsensusCommand::GetActiveBlock { hash, response_tx } => response_tx
-                .send(self.block_db.get_active_block(hash).cloned())
-                .map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetBlock answer:{:?}",
-                        err
-                    ))
-                }),
+            ConsensusCommand::GetActiveBlock { hash, response_tx } => {
+                trace!("before sending block to oneshot sender in process_consensus_command in consensus_worker");
+                let res = response_tx
+                    .send(self.block_db.get_active_block(hash).cloned())
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetBlock answer:{:?}",
+                            err
+                        ))
+                    });
+                trace!("after sending block to oneshot sender in process_consensus_command in consensus_worker");
+                res
+            }
             ConsensusCommand::GetSelectionDraws {
                 start,
                 end,
@@ -253,21 +275,29 @@ impl ConsensusWorker {
                         }
                     }
                 };
-                response_tx.send(result).map_err(|err| {
+                trace!("before sending slots and pub keys to oneshot sender in process_consensus_command in consensus_worker");
+                let res = response_tx.send(result).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send GetSelectionDraws response: {:?}",
                         err
                     ))
-                })
+                });
+                trace!("after sending slots and pub keys to oneshot sender in process_consensus_command in consensus_worker");
+                res
             }
-            ConsensusCommand::GetBootGraph(response_tx) => response_tx
-                .send(BoostrapableGraph::from(&self.block_db))
-                .map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetBootGraph answer:{:?}",
-                        err
-                    ))
-                }),
+            ConsensusCommand::GetBootGraph(response_tx) => {
+                trace!("before sending bootgraph to oneshot sender in process_consensus_command in consensus_worker");
+                let res = response_tx
+                    .send(BoostrapableGraph::from(&self.block_db))
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetBootGraph answer:{:?}",
+                            err
+                        ))
+                    });
+                trace!("after sending slots and pub keys to oneshot sender in process_consensus_command in consensus_worker");
+                res
+            }
         }
     }
 

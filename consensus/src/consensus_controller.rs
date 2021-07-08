@@ -107,15 +107,20 @@ impl ConsensusCommandSender {
     /// Gets all the aviable information on the block graph returning a Blockgraphexport.
     pub async fn get_block_graph_status(&self) -> Result<BlockGraphExport, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<BlockGraphExport>();
+        trace!("before sending get_block_graph_status command to consensus command sender in get_block_graph_status in consensus_controller");
         self.0
             .send(ConsensusCommand::GetBlockGraphStatus(response_tx))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))
             })?;
-        response_rx.await.map_err(|_| {
+        trace!("after sending get_block_graph_status command to consensus command sender in get_block_graph_status in consensus_controller");
+        trace!("before receiving block_graph export from oneshot response_rx in get_block_graph_status in consensus_controller");
+        let res = response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
-        })
+        });
+        trace!("after receiving block_graph export from oneshot response_rx in get_block_graph_status in consensus_controller");
+        res
     }
 
     /// Gets the whole block corresponding to given hash.
@@ -127,15 +132,20 @@ impl ConsensusCommandSender {
         hash: crypto::hash::Hash,
     ) -> Result<Option<Block>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<Option<Block>>();
+        trace!("before sending get_active_block command to consensus command sender in get_active_block in consensus_controller");
         self.0
             .send(ConsensusCommand::GetActiveBlock { hash, response_tx })
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))
             })?;
-        response_rx.await.map_err(|_| {
+        trace!("after sending get_active_block command to consensus command sender in get_active_block in consensus_controller");
+        trace!("before receiving block from oneshot response_rx in get_active_block in consensus_controller");
+        let res = response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
-        })
+        });
+        trace!("after receiving block from oneshot response_rx in get_active_block in consensus_controller");
+        res
     }
 
     /// Gets (slot, public_key) were the staker with public_key was selected for slot, between start_slot and end_slot.
@@ -150,6 +160,7 @@ impl ConsensusCommandSender {
     ) -> Result<Vec<(Slot, PublicKey)>, ConsensusError> {
         let (response_tx, response_rx) =
             oneshot::channel::<Result<Vec<(Slot, PublicKey)>, ConsensusError>>();
+        trace!("before sending get_selection_draws command to consensus command sender in get_selection_draws in consensus_controller");
         self.0
             .send(ConsensusCommand::GetSelectionDraws {
                 start,
@@ -158,20 +169,31 @@ impl ConsensusCommandSender {
             })
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
-        response_rx.await.map_err(|_| {
+        trace!("after sending get_selection_draws command to consensus command sender in get_selection_draws in consensus_controller");
+        trace!("before receiving slots and pub keys from oneshot response_rx in get_selection_draws in consensus_controller");
+        let res = response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
-        })?
+        })?;
+        trace!("after receiving slots and pub keys from oneshot response_rx in get_selection_draws in consensus_controller");
+        res
     }
 
     pub async fn get_bootstrap_graph(&self) -> Result<BoostrapableGraph, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<BoostrapableGraph>();
+        trace!("before sending get_bootstrap_graph command to consensus command sender in get_bootstrap_graph in consensus_controller");
         self.0
             .send(ConsensusCommand::GetBootGraph(response_tx))
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
-        response_rx.await.map_err(|_| {
+
+        trace!("after sending get_bootstrap_graph command to consensus command sender in get_bootstrap_graph in consensus_controller");
+        trace!("before receiving boot graph from oneshot response_rx in get_bootstrap_graph in consensus_controller");
+        let res = response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
-        })
+        });
+
+        trace!("after receiving boot graph from oneshot response_rx in get_bootstrap_graph in consensus_controller");
+        res
     }
 }
 
@@ -179,18 +201,26 @@ pub struct ConsensusEventReceiver(pub mpsc::Receiver<ConsensusEvent>);
 
 impl ConsensusEventReceiver {
     pub async fn wait_event(&mut self) -> Result<ConsensusEvent, ConsensusError> {
-        self.0
+        trace!("before receiving next event from consensus event receiver in wait_event in consensus_controller");
+        let evt = self
+            .0
             .recv()
             .await
-            .ok_or(ConsensusError::ControllerEventError)
+            .ok_or(ConsensusError::ControllerEventError);
+        trace!("after receiving next event from consensus event receiver in wait_event in consensus_controller");
+        evt
     }
 
     /// drains remaining events and returns them in a VecDeque
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<ConsensusEvent> {
         let mut remaining_events: VecDeque<ConsensusEvent> = VecDeque::new();
+
+        trace!("before receiving next event from consensus event receiver in drain in consensus_controller");
         while let Some(evt) = self.0.recv().await {
+            trace!("after receiving next event from consensus event receiver in drain in consensus_controller");
             remaining_events.push_back(evt);
+            // should i add a before receiving next event here ?
         }
         remaining_events
     }
