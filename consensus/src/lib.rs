@@ -1,6 +1,7 @@
 #![feature(vecdeque_binary_search)]
 #![feature(bool_to_option)]
 #![feature(hash_drain_filter)]
+#![feature(map_first_last)]
 
 #[macro_use]
 extern crate logging;
@@ -10,7 +11,6 @@ mod config;
 mod consensus_controller;
 mod consensus_worker;
 mod error;
-mod misc_collections;
 mod random_selector;
 mod timeslots;
 pub use block_graph::{
