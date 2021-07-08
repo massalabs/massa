@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 #[derive(Debug)]
 enum ConsensusBlock {
     AwaitingAck(AwaitingAckBlock),
-    Active(ExportCompiledBlock),
+    Active(CompiledBlock),
     Discarded(BlockHeader, u64),
 }
 
@@ -25,8 +25,7 @@ enum AwaitingAckBlock {
 struct QueueInfo {
     slot: Slot,
     position: u64,
-    dep_to_blocked: HashSet<Hash>,
-    blocked_to_dep: HashSet<Hash>,
+    missing_dependencies: HashSet<Hash>,
 }
 
 impl QueueInfo {
@@ -34,9 +33,12 @@ impl QueueInfo {
         QueueInfo {
             slot,
             position,
-            dep_to_blocked: Default::default(),
-            blocked_to_dep: missing_dependencies,
+            missing_dependencies,
         }
+    }
+
+    fn got_dependency(&mut self, hash: &Hash) {
+        self.missing_dependencies.remove(hash);
     }
 }
 
@@ -45,6 +47,7 @@ struct Blocks {
     counter: u64,
     blocks: HashMap<Hash, ConsensusBlock>,
     max_discarded_blocks: usize,
+    dep_to_blocked: HashMap<Hash, HashSet<Hash>>,
 }
 
 impl Blocks {
@@ -53,6 +56,7 @@ impl Blocks {
             counter: 0,
             blocks: Default::default(),
             max_discarded_blocks,
+            dep_to_blocked: Default::default(),
         }
     }
 
@@ -81,6 +85,38 @@ impl Blocks {
         }
     }
 
+    pub fn get_all_active(&self) -> HashMap<Hash, CompiledBlock> {
+        let mut active = HashMap::new();
+        for (hash, block) in self.blocks.iter() {
+            let compiled = match block {
+                ConsensusBlock::Active(compiled) => compiled.clone(),
+                _ => continue,
+            };
+            active.insert(hash.clone(), compiled);
+        }
+        active
+    }
+
+    pub fn insert_active(&mut self, hash: Hash, block: Block, thread_count: usize) {
+        for parent_h in block.header.content.parents.iter() {
+            match self.blocks.get_mut(parent_h) {
+                Some(ConsensusBlock::Active(compiled)) => {
+                    compiled.children[block.header.content.slot.thread as usize].insert(hash);
+                }
+                _ => {
+                    // Missing parent.
+                    return;
+                }
+            }
+        }
+
+        let compiled = CompiledBlock {
+            block,
+            children: vec![HashSet::new(); thread_count],
+        };
+        self.blocks.insert(hash, ConsensusBlock::Active(compiled));
+    }
+
     pub fn insert_header_only(
         &mut self,
         hash: Hash,
@@ -90,6 +126,14 @@ impl Blocks {
     ) {
         let position = self.counter;
         self.counter += 1;
+
+        for dep in missing_dependencies.iter() {
+            let set = self
+                .dep_to_blocked
+                .entry(dep.clone())
+                .or_insert_with(|| HashSet::new());
+            set.insert(hash.clone());
+        }
 
         let queue_info = QueueInfo::new(position, current_slot, missing_dependencies);
         let block = AwaitingAckBlock::HeaderOnly(header, queue_info);
@@ -112,7 +156,7 @@ impl Blocks {
     }
 
     pub fn upgrade_to_full(&mut self, hash: Hash, block: Block) {
-        match self.blocks.entry(hash) {
+        match self.blocks.entry(hash.clone()) {
             Entry::Vacant(entry) => {
                 // TODO: handle block we didn't see a header for.
             }
@@ -127,10 +171,27 @@ impl Blocks {
                         return;
                     }
                 };
-                // TODO: update dependencies of block waiting on this one.
                 entry.insert(ConsensusBlock::AwaitingAck(AwaitingAckBlock::FullBlock(
                     block, queue_info,
                 )));
+            }
+        }
+
+        // Update dependencies of blocks waiting on this one.
+        if let Some(blocked_on) = self.dep_to_blocked.remove(&hash) {
+            for block in blocked_on.iter() {
+                let queue_info = match self.blocks.get_mut(block) {
+                    Some(ConsensusBlock::AwaitingAck(AwaitingAckBlock::HeaderOnly(
+                        _,
+                        queue_info,
+                    ))) => queue_info,
+                    Some(ConsensusBlock::AwaitingAck(AwaitingAckBlock::FullBlock(
+                        _,
+                        queue_info,
+                    ))) => queue_info,
+                    _ => return,
+                };
+                queue_info.got_dependency(&hash);
             }
         }
     }
@@ -150,6 +211,36 @@ impl Blocks {
         self.counter += 1;
         self.blocks
             .insert(hash, ConsensusBlock::Discarded(header, position));
+    }
+
+    fn prune_active(&mut self, retain: HashSet<Hash>, genesis_blocks: &Vec<Hash>) {
+        let mut removed: HashMap<Hash, Block> = self
+            .blocks
+            .drain_filter(|h, _| !retain.contains(h))
+            .map(|(k, v)| {
+                let compiled = match v {
+                    ConsensusBlock::Active(compiled) => compiled,
+                    _ => panic!("Only active blocks should be pruned."),
+                };
+                (k, compiled.block)
+            })
+            .collect();
+
+        for (hash, block) in removed.iter() {
+            for parent_hash in block.header.content.parents.iter() {
+                if let Some(ConsensusBlock::Active(parent)) = self.blocks.get_mut(parent_hash) {
+                    parent.children[block.header.content.slot.thread as usize].remove(hash);
+                }
+            }
+        }
+        // retain only non-genesis removed blocks
+        removed.retain(|h, _| !genesis_blocks.contains(h));
+
+        // add removed to discarded
+        removed.iter().for_each(|(h, block)| {
+            // TODO: appropriate reason.
+            self.insert_discarded(h.clone(), block.header.clone(), DiscardReason::Final);
+        });
     }
 
     fn prune(&mut self) {
@@ -818,7 +909,7 @@ impl BlockGraph {
         block: Block,
         selector: &mut RandomSelector,
         current_slot: Slot,
-    ) -> Result<UpdateConsensusReturn, BlockAcknowledgeError> {
+    ) -> Result<(), BlockAcknowledgeError> {
         massa_trace!("start_ack_new_block", {
             "block": hash,
             "thread": block.header.content.slot.thread,
@@ -830,10 +921,10 @@ impl BlockGraph {
 
         // note: here we know that the block is valid
 
-        let res = self.update_consensus_with_new_block(hash, block)?;
+        self.update_consensus_with_new_block(hash, block)?;
 
         massa_trace!("acknowledged", { "block": hash });
-        Ok(res)
+        Ok(())
     }
 
     /// Gets a block and all its desencants
@@ -915,7 +1006,7 @@ impl BlockGraph {
         &mut self,
         hash: Hash,
         block: Block,
-    ) -> Result<UpdateConsensusReturn, ConsensusError> {
+    ) -> Result<(), ConsensusError> {
         // basic checks
         if block.header.content.parents.len() != self.cfg.thread_count as usize
             || block.header.content.slot.period == 0
@@ -923,6 +1014,9 @@ impl BlockGraph {
         {
             return Err(ConsensusError::InvalidBlock);
         }
+
+        // Get all active blocks.
+        let active_blocks = self.blocks.get_all_active();
 
         // list of incompatibilities
         let mut incomp: HashSet<Hash> = HashSet::new();
@@ -937,7 +1031,7 @@ impl BlockGraph {
         let inherited_incomp_count = incomp.len();
 
         // thread incompatibility test
-        self.active_blocks
+        active_blocks
             .get(&block.header.content.parents[block.header.content.slot.thread as usize])
             .ok_or(ConsensusError::MissingBlock)?
             .children[block.header.content.slot.thread as usize]
@@ -949,8 +1043,7 @@ impl BlockGraph {
             })?;
 
         // grandpa incompatibility test
-        let parent_period_in_own_thread = self
-            .active_blocks
+        let parent_period_in_own_thread = active_blocks
             .get(&block.header.content.parents[block.header.content.slot.thread as usize])
             .ok_or(ConsensusError::MissingBlock)?
             .block
@@ -964,8 +1057,7 @@ impl BlockGraph {
             // traverse parent's descendance in tau
             let mut to_explore = vec![(0usize, block.header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
-                let cur_b = self
-                    .active_blocks
+                let cur_b = active_blocks
                     .get(&cur_h)
                     .ok_or(ConsensusError::MissingBlock)?;
                 // traverse but do not check up to generation 1
@@ -979,8 +1071,7 @@ impl BlockGraph {
                 }
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
                 // note: cur_b cannot be genesis at gen > 1
-                if self
-                    .active_blocks
+                if active_blocks
                     .get(
                         &cur_b.block.header.content.parents
                             [block.header.content.slot.thread as usize],
@@ -1005,29 +1096,18 @@ impl BlockGraph {
         //       (stale blocks are completely discarded)
         if !incomp.is_subset(&self.gi_head.keys().cloned().collect()) {
             // block is incompatible with some final blocks
-            let mut pruned = HashSet::with_capacity(1);
-            pruned.insert(hash);
-            return Ok(UpdateConsensusReturn {
-                pruned,
-                finals: HashMap::new(),
-            });
+            self.blocks.insert_discarded(
+                hash.clone(),
+                block.header.clone(),
+                DiscardReason::Invalid,
+            );
+            return Ok(());
         }
 
         // add block to structure
-        self.active_blocks.insert(
-            hash,
-            CompiledBlock {
-                block: block.clone(),
-                children: vec![HashSet::new(); self.cfg.thread_count as usize],
-            },
-        );
-        for parent_h in block.header.content.parents.iter() {
-            self.active_blocks
-                .get_mut(parent_h)
-                .ok_or(ConsensusError::MissingBlock)?
-                .children[block.header.content.slot.thread as usize]
-                .insert(hash);
-        }
+        self.blocks
+            .insert_active(hash, block, self.cfg.thread_count as usize);
+
         // add incompatibilities to gi_head
         for incomp_h in incomp.iter() {
             self.gi_head
@@ -1081,8 +1161,7 @@ impl BlockGraph {
             let blockclique = &self.max_cliques[blockclique_i];
             let mut parents_updated = 0u8;
             for block_h in blockclique.iter() {
-                let block_c = self
-                    .active_blocks
+                let block_c = active_blocks
                     .get(block_h)
                     .ok_or(ConsensusError::MissingBlock)?;
                 if block_c.children[block_c.block.header.content.slot.thread as usize]
@@ -1138,11 +1217,7 @@ impl BlockGraph {
         info!("stale_blocks:{:?}", stale_blocks);
 
         // prune stale blocks
-        let mut pruned_blocks: HashSet<Hash> = self
-            .prune_blocks(stale_blocks, false, true)?
-            .keys()
-            .copied()
-            .collect();
+        self.prune_blocks(stale_blocks, false, true)?;
 
         // list final blocks
         let final_blocks = {
@@ -1179,10 +1254,7 @@ impl BlockGraph {
                             // lazy boolean evaluation
                             continue; // already visited
                         }
-                        let b = self
-                            .active_blocks
-                            .get(&h)
-                            .ok_or(ConsensusError::MissingBlock)?;
+                        let b = active_blocks.get(&h).ok_or(ConsensusError::MissingBlock)?;
                         b.children
                             .iter()
                             .for_each(|c_set| stack.extend(c_set.intersection(clique)));
@@ -1204,8 +1276,7 @@ impl BlockGraph {
 
         // find latest final blocks
         for final_block_h in final_blocks.iter() {
-            let final_block = self
-                .active_blocks
+            let final_block = active_blocks
                 .get(final_block_h)
                 .ok_or(ConsensusError::MissingBlock)?;
             if final_block.block.header.content.slot.period
@@ -1219,14 +1290,9 @@ impl BlockGraph {
             }
         }
 
-        let removed_finals = self.prune_blocks(final_blocks.clone(), true, false)?;
-        // prune final blocks
-        pruned_blocks.extend(removed_finals.keys());
+        self.prune_blocks(final_blocks.clone(), true, false);
 
-        Ok(UpdateConsensusReturn {
-            pruned: pruned_blocks,
-            finals: removed_finals,
-        })
+        Ok(())
     }
 
     /// Prunes blocks from graph.
@@ -1240,7 +1306,10 @@ impl BlockGraph {
         prune_set: HashSet<Hash>,
         prune_from_cliques: bool,
         are_blocks_stale: bool,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    ) -> Result<(), ConsensusError> {
+        // Get all active blocks.
+        let active_blocks = self.blocks.get_all_active();
+
         // pruning
         for discard_h in prune_set.iter() {
             // remove from cliques
@@ -1288,7 +1357,7 @@ impl BlockGraph {
             let retain_clone = retain_active.clone();
             for retain_h in retain_clone.into_iter() {
                 retain_active.extend(
-                    self.active_blocks
+                    active_blocks
                         .get(&retain_h)
                         .ok_or(ConsensusError::ContainerInconsistency)?
                         .block
@@ -1307,8 +1376,7 @@ impl BlockGraph {
                 .map(|(_, p)| *p)
                 .collect();
             for retain_h in retain_active.iter() {
-                let header = &self
-                    .active_blocks
+                let header = &active_blocks
                     .get(retain_h)
                     .ok_or(ConsensusError::ContainerInconsistency)?
                     .block
@@ -1322,7 +1390,7 @@ impl BlockGraph {
             // fill up from the latest final block back to the earliest for each thread
             for thread in 0..self.cfg.thread_count {
                 let mut cursor = self.latest_final_blocks_periods[thread as usize].0;
-                while let Some(c_block) = self.active_blocks.get(&cursor) {
+                while let Some(c_block) = active_blocks.get(&cursor) {
                     if c_block.block.header.content.slot.period
                         < earliest_retained_periods[thread as usize]
                     {
@@ -1341,37 +1409,10 @@ impl BlockGraph {
         // TODO keep enough blocks in each thread to test for still-valid, non-reusable transactions
         // see issue #98
         // remove non-kept from active_blocks and add to discard list
-        let mut removed: HashMap<Hash, Block> = self
-            .active_blocks
-            .drain_filter(|h, _| !retain_active.contains(h))
-            .map(|(k, v)| (k, v.block))
-            .collect();
-        for (hash, block) in removed.iter() {
-            for parent_hash in block.header.content.parents.iter() {
-                if let Some(parent) = self.active_blocks.get_mut(parent_hash) {
-                    parent.children[block.header.content.slot.thread as usize].remove(hash);
-                }
-            }
-        }
-        // retain only non-genesis removed blocks
-        removed.retain(|h, _| !self.genesis_blocks.contains(h));
-        // add removed to discarded
-        removed.iter().try_for_each(|(h, block)| {
-            let reason = if are_blocks_stale {
-                if prune_set.contains(h) {
-                    DiscardReason::Stale
-                } else {
-                    DiscardReason::Final
-                }
-            } else {
-                DiscardReason::Final
-            };
-            self.discarded_blocks
-                .insert(h.clone(), block.header.clone(), reason)
-                .map(|_| ())
-        })?;
+        self.blocks
+            .prune_active(retain_active, &self.genesis_blocks);
 
-        Ok(removed)
+        Ok(())
     }
 }
 

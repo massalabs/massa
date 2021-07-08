@@ -294,11 +294,7 @@ impl ConsensusWorker {
     /// # Arguments
     /// * hash: block's header hash
     /// * block: block to acknowledge
-    async fn acknowledge_block(
-        &mut self,
-        hash: Hash,
-        block: Block,
-    ) -> Result<AcknowledgeBlockReturn, ConsensusError> {
+    async fn acknowledge_block(&mut self, hash: Hash, block: Block) -> Result<(), ConsensusError> {
         // if already in waiting structures, promote them if possible and quit
         {
             let (in_future, waiting_deps) = (
@@ -315,133 +311,9 @@ impl ConsensusWorker {
 
         info!("Add block hash:{}", hash);
         let header = block.header.clone();
-        let res =
-            self.block_db
-                .acknowledge_block(hash, block, &mut self.selector, self.current_slot);
-        if let Err(ref err) = res {
-            let reason_str: String = err.to_string();
-            massa_trace!(" consensus worker acknowledge_incoming_block error:", {
-                "block hash ": hash,
-                "error ": reason_str
-            });
-        }
-
-        match res {
-            // block is valid and was acknowledged
-            Ok(UpdateConsensusReturn {
-                pruned: discarded,
-                finals: final_blocks,
-            }) => {
-                // cancel discarded dependencies
-                self.dependency_waiting_blocks.cancel(discarded)?;
-                // cancel dependency_waiting_blocks for which the slot number is now inferior or equal to the latest final block in their thread
-                let last_finals = self
-                    .block_db
-                    .get_latest_final_blocks_periods()
-                    .iter()
-                    .map(|(_hash, slot)| *slot)
-                    .collect();
-                let too_old = self.dependency_waiting_blocks.get_old(last_finals);
-                self.dependency_waiting_blocks.cancel(too_old)?;
-
-                // get block (if not discarded)
-                if self.block_db.get_active_block(hash).is_some() {
-                    // propagate block
-                    self.protocol_command_sender
-                        .propagate_block_header(hash, header)
-                        .await?;
-
-                    // unlock dependencies
-                    let res = self
-                        .dependency_waiting_blocks
-                        .valid_block_obtained(&hash)?
-                        .1
-                        .into_iter()
-                        .map(|h| {
-                            Ok((
-                                h,
-                                self.dependency_waiting_blocks
-                                    .get(&h)
-                                    .ok_or(ConsensusError::ContainerInconsistency)?
-                                    .clone(),
-                            ))
-                        })
-                        .collect::<Result<HashMap<Hash, Block>, ConsensusError>>()?;
-                    Ok(AcknowledgeBlockReturn {
-                        to_retry: res,
-                        finals: final_blocks,
-                    })
-                } else {
-                    Ok(AcknowledgeBlockReturn {
-                        to_retry: HashMap::new(),
-                        finals: final_blocks,
-                    })
-                }
-            }
-            // block is in the future: queue it
-            Err(BlockAcknowledgeError::InTheFuture(block)) => {
-                if let Some((discarded_hash, _)) =
-                    self.future_incoming_blocks.insert(hash, block)?
-                {
-                    // cancel dependency wait of canceled timeslot wait
-                    self.dependency_waiting_blocks
-                        .cancel(vec![discarded_hash].into_iter().collect())?;
-                }
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::MissingDependencies(block, dependencies)) => {
-                self.dependency_waiting_blocks
-                    .insert(hash, block, dependencies)?;
-                // TODO ask for dependencies that have not been asked yet
-                //      but only if the dependency is not already in timeslot waiting line
-                // (see issue #105)
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::TooMuchInTheFuture) => {
-                // do nothing (DO NO DISCARD OR IT COULD BE USED TO PERFORM A FINALITY FORK)
-                self.dependency_waiting_blocks
-                    .cancel([hash].iter().copied().collect())?;
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::AlreadyAcknowledged) => {
-                // do nothing: we already have this block
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::AlreadyDiscarded) => {
-                //  do nothing: we already have discarded this block
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::InvalidFields) => {
-                // do nothing: block is invalid
-                self.dependency_waiting_blocks
-                    .cancel([hash].iter().copied().collect())?;
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::DrawMismatch) => {
-                // do nothing: wrong draw number
-                self.dependency_waiting_blocks
-                    .cancel([hash].iter().copied().collect())?;
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::InvalidParents(_)) => {
-                // do nothing: invalid choice of parents
-                self.dependency_waiting_blocks
-                    .cancel([hash].iter().copied().collect())?;
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::TooOld) => {
-                // do nothing: we already have discarded this block
-                self.dependency_waiting_blocks
-                    .cancel([hash].iter().copied().collect())?;
-                Ok(Default::default())
-            }
-            Err(BlockAcknowledgeError::CryptoError(e)) => Err(ConsensusError::CryptoError(e)),
-            Err(BlockAcknowledgeError::TimeError(e)) => Err(ConsensusError::TimeError(e)),
-            Err(BlockAcknowledgeError::ConsensusError(e)) => Err(e),
-            Err(BlockAcknowledgeError::ContainerInconsistency) => {
-                Err(ConsensusError::ContainerInconsistency)
-            }
-        }
+        self.block_db
+            .acknowledge_block(hash, block, &mut self.selector, self.current_slot);
+        Ok(())
     }
 
     /// Recursively acknowledges blocks while some are available.
@@ -457,14 +329,7 @@ impl ConsensusWorker {
         // acknowledge incoming block
         let mut ack_map: HashMap<Hash, Block> = HashMap::new();
         let mut finals = HashMap::new();
-        ack_map.insert(hash, block);
-        while let Some(bh) = ack_map.keys().next().cloned() {
-            if let Some(b) = ack_map.remove(&bh) {
-                let ack_out = self.acknowledge_block(bh, b).await?;
-                ack_map.extend(ack_out.to_retry);
-                finals.extend(ack_out.finals);
-            }
-        }
+        self.acknowledge_block(hash, block).await?;
         if let Some(cmd_tx) = &self.opt_storage_command_sender {
             cmd_tx.add_block_batch(finals).await?
         }
