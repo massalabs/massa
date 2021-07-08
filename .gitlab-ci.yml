@@ -1,5 +1,3 @@
-image: "rust:latest"
-
 # Optional: Install a C compiler, cmake and git into the container.
 # You will often need this when you (or any of your dependencies) depends on C code.
 # before_script:
@@ -12,34 +10,35 @@ stages:
   - build
 
 cache:
-  key: sameforall  # "$CI_BUILD_STAGE-$CI_BUILD_REF_NAME"
+  key: "$CI_BUILD_STAGE-$CI_BUILD_REF_NAME"
   untracked: true
 
 # Use rustfmt to check code formatting
 rustfmt:
   stage: sanity
+  image: "guangie88/rustfmt-clippy"
   script:
-    - rustup component add rustfmt
     - cargo fmt -- --check
 
 # Use clippy to detect code problems
 clippy:
   stage: sanity
+  image: "guangie88/rustfmt-clippy"
   script:
-    - rustup component add clippy
     - cargo clippy -- -D warnings
 
 # Use cargo to test the project
 test:
   stage: test
+  image: "xd009642/tarpaulin"
   script:
-    - cargo install cargo-tarpaulin
     - cargo tarpaulin -v
   coverage: /([\d\.]+)\% coverage/
 
 # Use cargo to build the project
 build:
   stage: build
+  image: "rust:latest"
   script:
     - cargo build
 
