@@ -974,7 +974,7 @@ impl BlockGraph {
     /// # Arguments
     /// * prune_set: Hash of blocks to prune
     /// * prune_from_cliques if we want to prune blocks from cliques
-    /// * are_blocks_stale: blocks are either stale or final. Used to set discard reason
+    /// * are_blocks_stale: prune_set blocks are either stale or final. Used to set discard reason
     fn prune_blocks(
         &mut self,
         prune_set: HashSet<Hash>,
@@ -982,7 +982,7 @@ impl BlockGraph {
         are_blocks_stale: bool,
     ) -> Result<HashMap<Hash, Block>, ConsensusError> {
         // pruning
-        for discard_h in prune_set.into_iter() {
+        for discard_h in prune_set.iter() {
             // remove from cliques
             if prune_from_cliques {
                 self.max_cliques
@@ -1097,7 +1097,11 @@ impl BlockGraph {
         // add removed to discarded
         removed.iter().try_for_each(|(h, block)| {
             let reason = if are_blocks_stale {
-                DiscardReason::Stale
+                if prune_set.contains(h) {
+                    DiscardReason::Stale
+                } else {
+                    DiscardReason::Final
+                }
             } else {
                 DiscardReason::Final
             };
