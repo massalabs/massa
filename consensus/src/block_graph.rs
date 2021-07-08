@@ -908,6 +908,10 @@ impl BlockGraph {
         }
     }
 
+    pub fn get_best_parents(&self) -> Vec<BlockId> {
+        self.best_parents.clone()
+    }
+
     /// Returns hash and resulting discarded blocks
     ///
     /// # Arguments
@@ -1976,7 +1980,7 @@ impl BlockGraph {
         })
     }
 
-    fn get_ledger_at_parents(
+    pub fn get_ledger_at_parents(
         &self,
         parents: &Vec<BlockId>,
         query_addrs: &HashSet<Address>,

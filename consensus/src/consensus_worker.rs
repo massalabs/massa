@@ -214,29 +214,76 @@ impl ConsensusWorker {
         &mut self,
         cur_slot: Slot,
     ) -> Result<Vec<Operation>, ConsensusError> {
-        let ops = Vec::new();
-        let exclude: Vec<OperationId> = Vec::new();
+        let mut ops = Vec::new();
+        let mut exclude: Vec<OperationId> = Vec::new();
+
+        let fee_target = Address::from_public_key(
+            &self
+                .cfg
+                .nodes
+                .get(self.cfg.current_node_index as usize)
+                .and_then(|(public_key, private_key)| {
+                    Some((public_key.clone(), private_key.clone()))
+                })
+                .ok_or(ConsensusError::KeyError)?
+                .0,
+        )?;
 
         let context = self.serialization_context.clone();
         let get_ids = |op: &Operation| op.get_operation_id(&context);
+
+        let mut ledger = self
+            .block_db
+            .get_ledger_at_parents(&self.block_db.get_best_parents(), &HashSet::new())?;
         while ops.len() < self.cfg.max_operations_per_block as usize {
             let op_ids: Vec<OperationId> = ops
                 .iter()
                 .map(get_ids)
                 .collect::<Result<Vec<OperationId>, _>>()?;
             let to_exclude = exclude.iter().cloned().chain(op_ids).collect();
+            let asked_nb = self.cfg.max_operations_per_block as usize - ops.len();
             let (response_tx, response_rx) = oneshot::channel();
             self.pool_command_sender
-                .get_operation_batch(
-                    cur_slot,
-                    to_exclude,
-                    self.cfg.max_operations_per_block as usize - ops.len(),
-                    response_tx,
-                )
+                .get_operation_batch(cur_slot, to_exclude, asked_nb, response_tx)
                 .await?;
 
             let candidates = response_rx.await?;
-            // todo update ops
+
+            // operations are already sorted by interest
+            let involved_addresses: HashSet<Address> = candidates
+                .iter()
+                .map(|(_, op)| op.get_involved_addresses(&fee_target))
+                .flatten()
+                .flatten()
+                .collect();
+
+            // if new addresses are needed, update ledger
+            ledger.merge(
+                self.block_db.get_ledger_at_parents(
+                    &self.block_db.get_best_parents(),
+                    &involved_addresses,
+                )?,
+            );
+
+            for (id, op) in candidates.iter() {
+                let changes = op.get_changes(&fee_target, self.cfg.thread_count)?;
+                match ledger.try_apply_changes(changes) {
+                    Ok(_) => {
+                        // that operation can be included
+                        ops.push(op.clone());
+                    }
+                    Err(e) => {
+                        // Something went wrong with that op, exclude it
+                        info!("operation {:?} was rejected due to", id, e);
+                        exclude.push(*id);
+                    }
+                }
+            }
+
+            // no operations left to select
+            if candidates.len() < asked_nb {
+                break;
+            }
         }
 
         Ok(ops)
