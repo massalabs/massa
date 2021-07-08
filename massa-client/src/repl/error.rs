@@ -18,4 +18,8 @@ pub enum ReplError {
     UnreconnizedKeyError,
     #[error("Error can't create address from specifed hash cause:: {0}")]
     AddressCreationError(String),
+    #[error("IO error err:{0}")]
+    IOError(#[from] std::io::Error),
+    #[error("JSON error err:{0}")]
+    JSONError(#[from] serde_json::Error),
 }

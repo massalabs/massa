@@ -164,6 +164,7 @@ use models::Operation;
 use models::OperationId;
 use models::SerializationContext;
 use models::{Block, BlockHeader, BlockId, Slot};
+use pool::PoolConfig;
 use serde::Deserialize;
 use serde_json::json;
 use std::{
@@ -215,6 +216,7 @@ pub fn get_filter(
     consensus_config: ConsensusConfig,
     _protocol_config: ProtocolConfig,
     network_config: NetworkConfig,
+    pool_config: PoolConfig,
     event_tx: mpsc::Sender<ApiEvent>,
     opt_storage_command_sender: Option<StorageAccess>,
     clock_compensation: i64,
@@ -326,6 +328,14 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || get_node_config(context_cfg.clone()));
 
+    let pool_cfg = pool_config.clone();
+    let pool_config = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("pool_config"))
+        .and(warp::path::end())
+        .and_then(move || get_pool_config(pool_cfg.clone()));
+
     let consensus_cfg = consensus_config.clone();
     let get_consensus_cfg = warp::get()
         .and(warp::path("api"))
@@ -434,8 +444,17 @@ pub fn get_filter(
         .or(stop_node)
         .or(send_operations)
         .or(node_config)
+        .or(pool_config)
         .or(get_consensus_cfg)
         .boxed()
+}
+
+async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_pool_config", {});
+    Ok(warp::reply::json(&json!({
+        "max_pool_size_per_thread": config.max_pool_size_per_thread,
+        "max_operation_future_validity_start_periods": config.max_operation_future_validity_start_periods,
+    })))
 }
 
 /// Returns our ip adress
@@ -512,8 +531,13 @@ async fn send_operations(
         Ok(to_send) => to_send,
     };
 
+    let opid_list = to_send
+        .iter()
+        .map(|(opid, _)| *opid)
+        .collect::<Vec<OperationId>>();
+
     match evt_tx.send(ApiEvent::AddOperations(to_send)).await {
-        Ok(_) => Ok(warp::reply().into_response()),
+        Ok(_) => Ok(warp::reply::json(&opid_list).into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
                 "message": format!("error during sending operation : {:?}", err)

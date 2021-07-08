@@ -30,6 +30,15 @@ pub struct ErrorMessage {
     pub message: String,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct ConsensusConfig {
+    pub t0: UTime,
+    pub thread_count: u8,
+    pub genesis_timestamp: UTime,
+    pub delta_f0: u64,
+    pub max_block_size: u32,
+}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct WrappedSlot(Slot);
 
@@ -230,6 +239,7 @@ pub struct StakerInfo {
     staker_discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,
     staker_next_draws: Vec<Slot>,
 }
+
 impl std::fmt::Display for StakerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "  active blocks:")?;

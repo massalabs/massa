@@ -12,6 +12,7 @@ use consensus::ConsensusConfig;
 use filters::get_filter;
 use logging::massa_trace;
 use models::SerializationContext;
+use pool::PoolConfig;
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::sync::mpsc;
@@ -33,6 +34,7 @@ pub async fn start_api_controller(
     consensus_config: ConsensusConfig,
     protocol_config: ProtocolConfig,
     network_config: NetworkConfig,
+    pool_config: PoolConfig,
     opt_storage_command_sender: Option<StorageAccess>,
     clock_compensation: i64,
     context: SerializationContext,
@@ -46,6 +48,7 @@ pub async fn start_api_controller(
         consensus_config,
         protocol_config,
         network_config,
+        pool_config,
         event_tx,
         opt_storage_command_sender,
         clock_compensation,

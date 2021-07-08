@@ -111,6 +111,7 @@ async fn run(cfg: config::Config) {
         cfg.consensus.clone(),
         cfg.protocol.clone(),
         cfg.network.clone(),
+        cfg.pool.clone(),
         Some(storage_command_sender),
         clock_compensation,
         serialization_context.clone(),

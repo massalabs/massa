@@ -4,6 +4,7 @@
 //! repl API register all elements in Rustyline and Claps.
 
 use crate::repl::helper::HISTORY_FILE;
+use crate::wallet::Wallet;
 use core::convert::TryFrom;
 use rustyline::error::ReadlineError;
 use rustyline::Helper;
@@ -16,12 +17,14 @@ mod helper;
 pub struct ReplData {
     pub node_ip: SocketAddr,
     pub cli: bool,
+    pub wallet: Option<Wallet>,
 }
 impl Default for ReplData {
     fn default() -> Self {
         ReplData {
             node_ip: "0.0.0.0:3030".parse().unwrap(),
             cli: false,
+            wallet: None,
         }
     }
 }
@@ -42,6 +45,7 @@ pub struct Command {
     max_nb_param: usize,
     min_nb_param: usize,
     help: String,
+    active: bool,
     func: CmdFn,
 }
 
@@ -79,12 +83,12 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
         (self.repl, self.app)
     }
 
-    pub fn new_command_noargs<S, F>(self, name: S, help: S, func: F) -> Self
+    pub fn new_command_noargs<S, F>(self, name: S, help: S, active: bool, func: F) -> Self
     where
         S: ToString,
         F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
     {
-        self.new_command(name, help, 0, 0, func)
+        self.new_command(name, help, 0, 0, active, func)
     }
 
     pub fn new_command<S, F>(
@@ -93,6 +97,7 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
         help: S,
         min_nb_param: usize,
         max_nb_param: usize,
+        active: bool,
         func: F,
     ) -> Self
     where
@@ -104,6 +109,7 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
             max_nb_param,
             min_nb_param,
             help: help.to_string(),
+            active,
             func: Box::new(func),
         });
 
@@ -174,6 +180,7 @@ impl Repl {
             max_nb_param: 0,
             min_nb_param: 0,
             help: "quit Massa client".to_string(),
+            active: true,
             func: Box::new(quit_func),
         });
         repl.cmd_list.push(Command {
@@ -181,6 +188,7 @@ impl Repl {
             max_nb_param: 0,
             min_nb_param: 0,
             help: "this help".to_string(),
+            active: true,
             func: Box::new(help_func),
         });
         repl.cmd_list.push(Command {
@@ -188,6 +196,7 @@ impl Repl {
             max_nb_param: 0,
             min_nb_param: 0,
             help: "".to_string(),
+            active: true,
             func: Box::new(empty_cmd_func),
         });
 
@@ -218,13 +227,29 @@ impl Repl {
         min_nb_param: usize,
         max_nb_param: usize,
         func: F,
+        active: bool,
         app: clap::App<'a, 'b>,
     ) -> BuilderRepl<'a, 'b>
     where
         S: ToString,
         F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
     {
-        BuilderRepl::new(self, app).new_command(name, help, min_nb_param, max_nb_param, func)
+        BuilderRepl::new(self, app).new_command(
+            name,
+            help,
+            min_nb_param,
+            max_nb_param,
+            active,
+            func,
+        )
+    }
+
+    pub fn activate_command(&mut self, name: &str) {
+        self.cmd_list
+            .iter_mut()
+            .filter(|cmd| !cmd.active)
+            .find(|cmd| cmd.name == name)
+            .map(|cmd| cmd.active = true);
     }
 
     pub fn run(mut self) {
@@ -237,6 +262,7 @@ impl Repl {
         //declare all cmd
         self.cmd_list
             .iter()
+            .filter(|cmd| cmd.active)
             .for_each(|cmd| helper.add_cmd(cmd.name.clone(), cmd.min_nb_param, cmd.max_nb_param));
 
         let mut rl = Editor::with_config(config);
@@ -285,6 +311,7 @@ impl Repl {
         //declare all cmd
         self.cmd_list
             .iter()
+            .filter(|cmd| cmd.active)
             .for_each(|cmd| helper.add_cmd(cmd.name.clone(), cmd.min_nb_param, cmd.max_nb_param));
 
         let mut rl = Editor::<helper::ReplHelper>::with_config(config);
@@ -325,7 +352,7 @@ impl Repl {
             println!("Massa client help:");
             self.cmd_list
                 .iter()
-                .filter(|cmd| cmd.name.len() > 0)
+                .filter(|cmd| cmd.active && cmd.name.len() > 0)
                 .for_each(|cmd| println!(" - {}  :  {}", cmd.name, cmd.help));
         }
         Ok(false)

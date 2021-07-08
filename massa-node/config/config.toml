@@ -33,6 +33,7 @@
     ledger_reset_at_startup = true
     block_reward = 1
     initial_ledger_path = "config/initial_ledger.json"
+    operation_batch_size = 10
 
 
 [protocol]

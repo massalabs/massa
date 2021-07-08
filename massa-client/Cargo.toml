@@ -24,6 +24,7 @@ time = { path = "../time" }
 models = {path = "../models"}
 consensus = {path = "../consensus"}
 communication = {path = "../communication"}
+pool = {path = "../pool"}
 
 
 
