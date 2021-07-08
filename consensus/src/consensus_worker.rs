@@ -369,7 +369,7 @@ impl ConsensusWorker {
                     .send_get_blocks_results(results)
                     .await?;
             }
-            ProtocolEvent::ReceivedOperation(operation) => todo!("add operation to pool"),
+            ProtocolEvent::ReceivedOperation(_operation) => todo!("add operation to pool"),
         }
         Ok(())
     }

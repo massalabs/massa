@@ -904,6 +904,7 @@ dependencies = [
  "log",
  "logging",
  "models",
+ "pool",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -1301,6 +1302,28 @@ name = "pkg-config"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
+
+[[package]]
+name = "pool"
+version = "0.1.0"
+dependencies = [
+ "api",
+ "bootstrap",
+ "communication",
+ "futures",
+ "log",
+ "logging",
+ "models",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "stderrlog",
+ "storage",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "toml",
+]
 
 [[package]]
 name = "ppv-lite86"

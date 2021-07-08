@@ -1,5 +1,5 @@
 [package]
-name = "massa-node"
+name = "pool"
 version = "0.1.0"
 authors = ["Massa Labs <contact@massa.network>"]
 edition = "2018"
@@ -16,10 +16,9 @@ toml = { version = "0.5" }
 stderrlog = { version = "0.5" }
 logging = { path = "../logging" }
 communication = { path = "../communication" }
-consensus = { path = "../consensus" }
 api = { path = "../api" }
-pool = { path = "../pool" }
 storage = { path = "../storage" }
+thiserror = "1.0"
 models = { path = "../models" }
 bootstrap = { path = "../bootstrap" }
 serde_json = { version = "1.0" }
