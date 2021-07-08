@@ -4,6 +4,7 @@ use super::super::{
     messages::Message,
     protocol_controller::NodeId,
 };
+use crate::error::CommunicationError;
 use crate::network::network_controller::ConnectionClosureReason;
 use futures::{future::FusedFuture, FutureExt, StreamExt};
 use models::block::Block;
@@ -78,14 +79,16 @@ where
     /// - writer_evt_tx already closed
     /// - node_writer_handle already closed
     /// - node_event_tx already closed
-    pub async fn run_loop(mut self) {
+    pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(1024);
         let (writer_event_tx, writer_event_rx) = oneshot::channel::<bool>(); // true = OK, false = ERROR
         let mut fused_writer_event_rx = writer_event_rx.fuse();
-        let mut socket_writer = self
-            .socket_writer_opt
-            .take()
-            .expect("socket_writer disappeared");
+        let mut socket_writer =
+            self.socket_writer_opt
+                .take()
+                .ok_or(CommunicationError::GeneralProtocolError(
+                    "NodeWorker call run_loop more than once".to_string(),
+                ))?;
         let write_timeout = self.cfg.message_timeout;
         let node_writer_handle = tokio::spawn(async move {
             let mut clean_exit = true;
@@ -102,7 +105,7 @@ where
             }
             writer_event_tx
                 .send(clean_exit)
-                .expect("writer_evt_tx died");
+                .expect("writer_evt_tx died"); //in a spawned task
         });
 
         let mut ask_peer_list_interval = tokio::time::interval(self.cfg.ask_peer_list_interval);
@@ -115,16 +118,16 @@ where
                         match msg {
                             Message::Block(block) => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))
-                                ).await.expect("node_event_tx died"),
+                                ).await?,
                             Message::Transaction(tr) =>  self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedTransaction(tr))
-                                ).await.expect("node_event_tx died"),
+                                ).await?,
                             Message::PeerList(pl) =>  self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))
-                                ).await.expect("node_event_tx died"),
+                                ).await?,
                             Message::AskPeerList => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::AskedPeerList)
-                                ).await.expect("node_event_tx died"),
+                                ).await?,
                             _ => {  // wrong message
                                 exit_reason = ConnectionClosureReason::Failed;
                                 break;
@@ -142,25 +145,22 @@ where
                 cmd = self.node_command_rx.next() => match cmd {
                     Some(NodeCommand::Close) => break,
                     Some(NodeCommand::SendPeerList(ip_vec)) => {
-                        writer_command_tx.send(Message::PeerList(ip_vec)).await.expect("writer disappeared");
+                        writer_command_tx.send(Message::PeerList(ip_vec)).await?;
                     }
                     Some(NodeCommand::SendBlock(block)) => {
-                        writer_command_tx.send(Message::Block(block)).await.expect("writer disappeared");
+                        writer_command_tx.send(Message::Block(block)).await?;
                     }
                     Some(NodeCommand::SendTransaction(transaction)) => {
-                        writer_command_tx.send(Message::Transaction(transaction)).await.expect("writer disappeared");
+                        writer_command_tx.send(Message::Transaction(transaction)).await?;
                     }
-                    /*Some(_) => {
-                        panic!("unknown protocol command")
-                    },*/
                     None => {
-                        panic!("the protocol controller should have close everything before shuting down")
+                        return Err(CommunicationError::UnexpectedProtocolControllerClosureError);
                     },
                 },
 
                 // writer event
                 evt = &mut fused_writer_event_rx => {
-                    if !evt.expect("writer_evt_rx died") {
+                    if !evt? {
                         exit_reason = ConnectionClosureReason::Failed;
                     }
                     break;
@@ -169,7 +169,7 @@ where
                 _ = ask_peer_list_interval.tick() => {
                     debug!("timer-based asking node_id={:?} for peer list", self.node_id);
                     massa_trace!("timer_ask_peer_list", {"node_id": self.node_id});
-                    writer_command_tx.send(Message::AskPeerList).await.expect("writer disappeared");
+                    writer_command_tx.send(Message::AskPeerList).await?;
                 }
             }
         }
@@ -177,18 +177,19 @@ where
         // close writer
         drop(writer_command_tx);
         if !fused_writer_event_rx.is_terminated() {
-            fused_writer_event_rx
-                .await
-                .expect("writer_evt_tx already closed");
+            fused_writer_event_rx.await.map_err(|err| {
+                CommunicationError::GeneralProtocolError(format!(
+                    "fused_writer_event_rx read faild err:{}",
+                    err
+                ))
+            })?;
         }
-        node_writer_handle
-            .await
-            .expect("node_writer_handle already closed");
+        node_writer_handle.await?;
 
         // notify protocol controller of closure
         self.node_event_tx
             .send(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason)))
-            .await
-            .expect("node_event_tx already closed");
+            .await?;
+        Ok(())
     }
 }

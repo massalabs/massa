@@ -109,11 +109,13 @@ async fn test_multiple_connections_to_controller() {
     // 5) close connections and stop
     network
         .connection_closed(conn1_id, ConnectionClosureReason::Normal)
-        .await;
+        .await
+        .expect("Error while closing connection");
     network
         .connection_closed(conn2_id, ConnectionClosureReason::Normal)
-        .await;
-    network.stop().await;
+        .await
+        .expect("Error while closing connection");
+    network.stop().await.expect("error while stoppinf network");
     temp_peers_file.close().unwrap();
 }
 
@@ -152,7 +154,8 @@ async fn test_peer_ban() {
     // add advertised peer to controller
     network
         .merge_advertised_peer_list(vec![mock_addr.ip()])
-        .await;
+        .await
+        .expect("Error while merging peer list");
 
     // accept connection from controller to peer
     let conn1_id = tools::full_connection_from_controller(
@@ -179,11 +182,14 @@ async fn test_peer_ban() {
     // signal the controller that conn1 is closed + banned
     network
         .connection_closed(conn1_id, ConnectionClosureReason::Banned)
-        .await;
+        .await
+        .expect("Error while closing connection");
 
     // wait for controller to signal that conn2 is banned as well. Close conn2.
     if let Ok(NetworkEvent::ConnectionBanned(ban_id)) =
-        timeout(Duration::from_millis(1000), network.wait_event()).await
+        timeout(Duration::from_millis(1000), network.wait_event())
+            .await
+            .expect("error while wainting event")
     {
         assert_eq!(
             ban_id, conn2_id,
@@ -194,7 +200,8 @@ async fn test_peer_ban() {
     }
     network
         .connection_closed(conn2_id, ConnectionClosureReason::Normal)
-        .await;
+        .await
+        .expect("Error while closing connection");
 
     // attempt a new connection from peer to controller
     let _ = mock_interface
@@ -208,7 +215,7 @@ async fn test_peer_ban() {
     }
 
     // close
-    network.stop().await;
+    network.stop().await.expect("error while stopping network");
     temp_peers_file.close().unwrap();
 }
 
@@ -257,7 +264,8 @@ async fn test_advertised_and_wakeup_interval() {
     // 1) advertise a peer and wait a bit for connection attempts to start
     network
         .merge_advertised_peer_list(vec![mock_addr.ip()])
-        .await;
+        .await
+        .expect("error while merging peer list");
     sleep(Duration::from_millis(500)).await;
 
     // 2) refuse the first connection attempt coming from controller towards advertised peer
@@ -301,7 +309,11 @@ async fn test_advertised_and_wakeup_interval() {
     // 5) close connection
     network
         .connection_closed(conn_id, ConnectionClosureReason::Normal)
-        .await;
-    network.stop().await;
+        .await
+        .expect("Error while closing connection");
+    network
+        .stop()
+        .await
+        .expect("error while closing connection");
     temp_peers_file.close().unwrap();
 }

@@ -1,21 +1,6 @@
+use crate::error::CryptoError;
 use bitcoin_hashes;
-
 pub const HASH_SIZE_BYTES: usize = 32;
-
-#[derive(Debug)]
-pub enum HashError {
-    ParseError,
-}
-
-impl std::error::Error for HashError {}
-
-impl std::fmt::Display for HashError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            HashError::ParseError => write!(f, "parse error"),
-        }
-    }
-}
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
@@ -93,11 +78,12 @@ impl Hash {
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Hash, HashError> {
-        match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(Hash::from_bytes(&s)?),
-            _ => Err(HashError::ParseError),
-        }
+    pub fn from_bs58_check(data: &str) -> Result<Hash, CryptoError> {
+        bs58::decode(data)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| CryptoError::HashParseError(format!("{:?}", err)))
+            .and_then(|s| Hash::from_bytes(&s))
     }
 
     /// Deserialize a Hash as bytes.
@@ -110,14 +96,13 @@ impl Hash {
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<Hash, HashError> {
+    pub fn from_bytes(data: &[u8]) -> Result<Hash, CryptoError> {
         use bitcoin_hashes::Hash;
         use std::convert::TryInto;
         let res_inner: Result<<bitcoin_hashes::sha256::Hash as Hash>::Inner, _> = data.try_into();
-        match res_inner {
-            Ok(inner) => Ok(Hash(bitcoin_hashes::sha256::Hash::from_inner(inner))),
-            Err(_) => Err(HashError::ParseError),
-        }
+        res_inner
+            .map(|inner| Hash(bitcoin_hashes::sha256::Hash::from_inner(inner)))
+            .map_err(|err| CryptoError::HashParseError(format!("{:?}", err)))
     }
 }
 

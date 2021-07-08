@@ -7,3 +7,5 @@ mod peer_info_database;
 
 #[cfg(test)]
 pub mod tests;
+
+pub use peer_info_database::PeerInfo;

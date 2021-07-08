@@ -104,6 +104,7 @@ pub async fn full_connection_to_controller<NetworkControllerT: NetworkController
         network_controller.wait_event(),
     )
     .await
+    .expect("Failed waiting for a network event")
     {
         Ok(NetworkEvent::NewConnection((c_id, mut controller_reader, mut controller_writer))) => {
             expect_reader_writer_communication(
@@ -125,7 +126,10 @@ pub async fn full_connection_to_controller<NetworkControllerT: NetworkController
     };
 
     // notify the controller that the connection is alive
-    network_controller.connection_alive(conn_id).await;
+    network_controller
+        .connection_alive(conn_id)
+        .await
+        .expect("Error while connection alive");
 
     conn_id
 }
@@ -158,6 +162,7 @@ pub async fn full_connection_from_controller<NetworkControllerT: NetworkControll
         network_controller.wait_event(),
     )
     .await
+    .expect("Failed waiting for a network event")
     {
         Ok(NetworkEvent::NewConnection((c_id, mut controller_reader, mut controller_writer))) => {
             expect_reader_writer_communication(
@@ -179,7 +184,10 @@ pub async fn full_connection_from_controller<NetworkControllerT: NetworkControll
     };
 
     // notify the controller that the connection is alive
-    network_controller.connection_alive(conn_id).await;
+    network_controller
+        .connection_alive(conn_id)
+        .await
+        .expect("Error while connection alive");
 
     conn_id
 }

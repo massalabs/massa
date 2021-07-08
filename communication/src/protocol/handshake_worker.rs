@@ -3,21 +3,24 @@ use super::{
     messages::Message,
     protocol_controller::NodeId,
 };
-use crate::network::network_controller::NetworkController;
+use crate::{network::network_controller::NetworkController, CommunicationError};
 use crypto::{
     signature::PrivateKey,
     {hash::Hash, signature::SignatureEngine},
 };
 use futures::future::try_join;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
-use std::io;
+
 use tokio::time::{timeout, Duration};
 
-pub type HandshakeReturnType<NetworkControllerT> = io::Result<(
-    NodeId,
-    ReadBinder<<NetworkControllerT as NetworkController>::ReaderT>,
-    WriteBinder<<NetworkControllerT as NetworkController>::WriterT>,
-)>;
+pub type HandshakeReturnType<NetworkControllerT> = Result<
+    (
+        NodeId,
+        ReadBinder<<NetworkControllerT as NetworkController>::ReaderT>,
+        WriteBinder<<NetworkControllerT as NetworkController>::WriterT>,
+    ),
+    CommunicationError,
+>;
 
 pub struct HandshakeWorker<NetworkControllerT: NetworkController> {
     reader: ReadBinder<NetworkControllerT::ReaderT>,
@@ -71,50 +74,27 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
         )
         .await
         {
-            Err(_) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "handhsake init timed out".to_string(),
-                ))
-            }
-            Ok(Err(e)) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::BrokenPipe,
-                    format!("handshake init r/w failed: {:?}", e).to_string(),
-                ))
-            }
-            Ok(Ok((_, None))) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    "handshake init interrupted".to_string(),
-                ))
-            }
+            Err(_) => return Err(CommunicationError::HandshakeTimeoutError),
+            Ok(Err(e)) => return Err(e),
+            Ok(Ok((_, None))) => return Err(CommunicationError::HandshakeInterruptionError),
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeInitiation {
                     public_key: pk,
                     random_bytes: rb,
                 } => (NodeId(pk), rb),
-                _ => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "handshake init wrong message".to_string(),
-                    ))
-                }
+                _ => return Err(CommunicationError::HandshakeWrongMessageError),
             },
         };
 
         // check if remote node ID is the same as ours
         if other_node_id == self.self_node_id {
-            return Err(io::Error::new(
-                io::ErrorKind::AlreadyExists,
-                "handshake announced own public key".to_string(),
-            ));
+            return Err(CommunicationError::HandshakeKeyError);
         }
 
         // sign their random bytes
         let signature_engine = SignatureEngine::new();
         let other_random_hash = Hash::hash(&other_random_bytes);
-        let self_signature = signature_engine.sign(&other_random_hash, &self.private_key);
+        let self_signature = signature_engine.sign(&other_random_hash, &self.private_key)?;
 
         // send handshake reply future
         let send_reply_msg = Message::HandshakeReply {
@@ -132,41 +112,18 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
         )
         .await
         {
-            Err(_) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "handhsake reply timed out".to_string(),
-                ))
-            }
-            Ok(Err(e)) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::BrokenPipe,
-                    format!("handshake reply r/w failed: {:?}", e).to_string(),
-                ))
-            }
-            Ok(Ok((_, None))) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    "handshake reply interrupted".to_string(),
-                ))
-            }
+            Err(_) => return Err(CommunicationError::HandshakeTimeoutError),
+            Ok(Err(e)) => return Err(e),
+            Ok(Ok((_, None))) => return Err(CommunicationError::HandshakeInterruptionError),
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeReply { signature: sig } => sig,
-                _ => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "handshake reply wrong message".to_string(),
-                    ))
-                }
+                _ => return Err(CommunicationError::HandshakeWrongMessageError),
             },
         };
 
         // check their signature
-        if !signature_engine.verify(&self_random_hash, &other_signature, &other_node_id.0) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "handshake remote signature invalid".to_string(),
-            ));
+        if !signature_engine.verify(&self_random_hash, &other_signature, &other_node_id.0)? {
+            return Err(CommunicationError::HandshakeInvalidSignatureError);
         }
 
         Ok((other_node_id, self.reader, self.writer))

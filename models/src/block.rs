@@ -1,3 +1,4 @@
+use super::error::ModelsError;
 use super::operation::Operation;
 use crypto::signature::Signature;
 use crypto::{hash::Hash, signature::PublicKey};
@@ -20,4 +21,13 @@ pub struct BlockHeader {
     pub endorsements: Vec<Option<Signature>>,
     pub out_ledger_hash: Hash,
     pub operation_merkle_root: Hash, // all operations hash
+}
+
+impl BlockHeader {
+    pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
+        let mut serializer = flexbuffers::FlexbufferSerializer::new();
+        self.serialize(&mut serializer)
+            .map_err(|_| ModelsError::HeaderhashError)?;
+        Ok(Hash::hash(&serializer.take_buffer()))
+    }
 }

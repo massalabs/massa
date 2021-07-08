@@ -1,18 +1,17 @@
 mod network_worker;
 
+use crate::CommunicationError;
+
 use super::config::NetworkConfig;
 use super::establisher::Establisher;
 use super::network_controller::*;
 use super::peer_info_database::*;
 use async_trait::async_trait;
 use futures::StreamExt;
-use network_worker::{NetworkCommand, NetworkWorker};
-use std::error::Error;
+pub use network_worker::{NetworkCommand, NetworkWorker};
 use std::net::IpAddr;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug)]
 pub struct DefaultNetworkController<EstablisherT: Establisher> {
@@ -25,14 +24,17 @@ impl<EstablisherT: Establisher + 'static> DefaultNetworkController<EstablisherT>
     /// Starts a new NetworkController from NetworkConfig
     /// can panic if :
     /// - config routable_ip IP is not routable
-    pub async fn new(cfg: &NetworkConfig, mut establisher: EstablisherT) -> BoxResult<Self> {
+    pub async fn new(
+        cfg: &NetworkConfig,
+        mut establisher: EstablisherT,
+    ) -> Result<Self, CommunicationError> {
         debug!("starting network controller");
         massa_trace!("start", {});
 
         // check that local IP is routable
         if let Some(self_ip) = cfg.routable_ip {
             if !self_ip.is_global() {
-                panic!("config routable_ip IP is not routable");
+                return Err(CommunicationError::ConfigRoutableIpError);
             }
         }
 
@@ -58,6 +60,7 @@ impl<EstablisherT: Establisher + 'static> DefaultNetworkController<EstablisherT>
             )
             .run_loop()
             .await
+            .expect("Error while running networkworker loop") // in a spawned task
         });
 
         debug!("network controller started");
@@ -79,52 +82,60 @@ impl<EstablisherT: Establisher> NetworkController for DefaultNetworkController<E
 
     /// Stops the NetworkController properly
     /// can panic if network controller is not reachable
-    async fn stop(mut self) {
+    async fn stop(mut self) -> Result<(), CommunicationError> {
         debug!("stopping network controller");
         massa_trace!("begin", {});
         drop(self.network_command_tx);
         while let Some(_) = self.network_event_rx.next().await {}
-        self.controller_fn_handle
-            .await
-            .expect("failed joining network controller");
+        self.controller_fn_handle.await?;
         debug!("network controller stopped");
         massa_trace!("end", {});
+        Ok(())
     }
 
-    async fn wait_event(&mut self) -> NetworkEvent<EstablisherT::ReaderT, EstablisherT::WriterT> {
+    async fn wait_event(
+        &mut self,
+    ) -> Result<NetworkEvent<EstablisherT::ReaderT, EstablisherT::WriterT>, CommunicationError>
+    {
         self.network_event_rx
             .recv()
             .await
-            .expect("failed retrieving network controller event")
+            .ok_or(CommunicationError::NetworkControllerEventError)
     }
 
-    async fn merge_advertised_peer_list(&mut self, ips: Vec<IpAddr>) {
+    async fn merge_advertised_peer_list(
+        &mut self,
+        ips: Vec<IpAddr>,
+    ) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(NetworkCommand::MergeAdvertisedPeerList(ips))
-            .await
-            .expect("network controller disappeared");
+            .await?;
+        Ok(())
     }
 
-    async fn get_advertisable_peer_list(&mut self) -> Vec<IpAddr> {
+    async fn get_advertisable_peer_list(&mut self) -> Result<Vec<IpAddr>, CommunicationError> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<IpAddr>>();
         self.network_command_tx
             .send(NetworkCommand::GetAdvertisablePeerList(response_tx))
-            .await
-            .expect("network controller disappeared");
-        response_rx.await.expect("network controller disappeared")
+            .await?;
+        Ok(response_rx.await?)
     }
 
-    async fn connection_closed(&mut self, id: ConnectionId, reason: ConnectionClosureReason) {
+    async fn connection_closed(
+        &mut self,
+        id: ConnectionId,
+        reason: ConnectionClosureReason,
+    ) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(NetworkCommand::ConnectionClosed((id, reason)))
-            .await
-            .expect("network controller disappeared");
+            .await?;
+        Ok(())
     }
 
-    async fn connection_alive(&mut self, id: ConnectionId) {
+    async fn connection_alive(&mut self, id: ConnectionId) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(NetworkCommand::ConnectionAlive(id))
-            .await
-            .expect("network controller disappeared");
+            .await?;
+        Ok(())
     }
 }

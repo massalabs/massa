@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use communication::protocol::protocol_controller::ProtocolController;
 
+use crate::error::ConsensusError;
+
 #[derive(Clone, Debug)]
 pub enum ConsensusEvent {}
 
@@ -10,6 +12,5 @@ where
     Self: Send + Sync + Unpin + std::fmt::Debug,
 {
     type ProtocolControllerT: ProtocolController;
-    async fn wait_event(&mut self) -> ConsensusEvent;
-    async fn generate_random_block(&self);
+    async fn wait_event(&mut self) -> Result<ConsensusEvent, ConsensusError>;
 }

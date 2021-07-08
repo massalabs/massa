@@ -1,13 +1,18 @@
 use async_trait::async_trait;
-use communication::network::establisher::{Connector, Establisher, Listener};
 use communication::network::network_controller::NetworkController;
 use communication::protocol::protocol_controller::{
     NodeId, ProtocolController, ProtocolEvent, ProtocolEventType,
+};
+use communication::{
+    network::establisher::{Connector, Establisher, Listener},
+    CommunicationError,
 };
 use crypto::hash::Hash;
 use models::block::Block;
 use tokio::io::DuplexStream;
 use tokio::sync::mpsc::{self, Receiver, Sender};
+
+use crate::error::ConsensusError;
 
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
@@ -69,22 +74,29 @@ impl NetworkController for BlankNetworkController {
     type ReaderT = ReadHalf;
     type WriterT = WriteHalf;
 
-    async fn stop(mut self) {
+    async fn stop(mut self) -> Result<(), CommunicationError> {
         unreachable!();
     }
 
     async fn wait_event(
         &mut self,
-    ) -> communication::network::network_controller::NetworkEvent<Self::ReaderT, Self::WriterT>
-    {
+    ) -> Result<
+        communication::network::network_controller::NetworkEvent<Self::ReaderT, Self::WriterT>,
+        CommunicationError,
+    > {
         unreachable!();
     }
 
-    async fn merge_advertised_peer_list(&mut self, _ips: Vec<std::net::IpAddr>) {
+    async fn merge_advertised_peer_list(
+        &mut self,
+        _ips: Vec<std::net::IpAddr>,
+    ) -> Result<(), CommunicationError> {
         unreachable!();
     }
 
-    async fn get_advertisable_peer_list(&mut self) -> Vec<std::net::IpAddr> {
+    async fn get_advertisable_peer_list(
+        &mut self,
+    ) -> Result<Vec<std::net::IpAddr>, CommunicationError> {
         unreachable!();
     }
 
@@ -92,14 +104,14 @@ impl NetworkController for BlankNetworkController {
         &mut self,
         _id: communication::network::network_controller::ConnectionId,
         _reason: communication::network::network_controller::ConnectionClosureReason,
-    ) {
+    ) -> Result<(), CommunicationError> {
         unreachable!();
     }
 
     async fn connection_alive(
         &mut self,
         _id: communication::network::network_controller::ConnectionId,
-    ) {
+    ) -> Result<(), CommunicationError> {
         unreachable!();
     }
 }
@@ -138,21 +150,28 @@ pub struct MockProtocolController {
 impl ProtocolController for MockProtocolController {
     type NetworkControllerT = BlankNetworkController;
 
-    async fn wait_event(&mut self) -> communication::protocol::protocol_controller::ProtocolEvent {
+    async fn wait_event(
+        &mut self,
+    ) -> Result<communication::protocol::protocol_controller::ProtocolEvent, CommunicationError>
+    {
         self.protocol_event_rx
             .recv()
             .await
-            .expect("failed retrieving protocol controller event")
+            .ok_or(CommunicationError::ReceiveProtocolEventError(format!(
+                "failed retrieving protocol controller event in mock protocol controller"
+            )))
     }
 
-    async fn stop(mut self) {}
+    async fn stop(mut self) -> Result<(), CommunicationError> {
+        Ok(())
+    }
 
     async fn propagate_block(
         &mut self,
         block: &models::block::Block,
         exclude_node: Option<communication::protocol::protocol_controller::NodeId>,
         restrict_to_node: Option<communication::protocol::protocol_controller::NodeId>,
-    ) {
+    ) -> Result<(), CommunicationError> {
         self.protocol_command_tx
             .send(MockProtocolCommand::PropagateBlock {
                 block: block.clone(),
@@ -161,6 +180,7 @@ impl ProtocolController for MockProtocolController {
             })
             .await
             .expect("could not send mock protocol command");
+        Ok(())
     }
 }
 

@@ -1,18 +1,20 @@
 mod node_worker;
 mod protocol_worker;
-use super::{config::ProtocolConfig, protocol_controller::*};
+use super::config::ProtocolConfig;
+pub use super::protocol_controller::ProtocolEvent;
+use super::protocol_controller::{NodeId, ProtocolController};
+use crate::error::CommunicationError;
 use crate::network::network_controller::NetworkController;
 use async_trait::async_trait;
 use crypto::signature::SignatureEngine;
 use futures::StreamExt;
 use models::block::Block;
-use protocol_worker::{ProtocolCommand, ProtocolWorker};
-use std::error::Error;
+pub use node_worker::{NodeCommand, NodeEvent};
+pub use protocol_worker::ProtocolCommand;
+use protocol_worker::ProtocolWorker;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
-
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug)]
 pub struct DefaultProtocolController<NetworkControllerT: NetworkController> {
@@ -29,11 +31,7 @@ impl<NetworkControllerT: NetworkController + 'static>
     /// - generate public / private key
     /// - create protocol_command/protocol_event channels
     /// - lauch protocol_controller_fn in an other task
-    /// returns the ProtocolController in a BoxResult once it is ready
-    pub async fn new(
-        cfg: ProtocolConfig,
-        network_controller: NetworkControllerT,
-    ) -> BoxResult<Self> {
+    pub async fn new(cfg: ProtocolConfig, network_controller: NetworkControllerT) -> Self {
         debug!("starting protocol controller");
         massa_trace!("start", {});
 
@@ -58,18 +56,19 @@ impl<NetworkControllerT: NetworkController + 'static>
                 protocol_command_rx,
             )
             .run_loop()
-            .await;
+            .await
+            .expect("ProtocolWorker loop crash"); //in a spawned task
         });
 
         debug!("protocol controller ready");
         massa_trace!("ready", {});
 
-        Ok(DefaultProtocolController::<NetworkControllerT> {
+        DefaultProtocolController::<NetworkControllerT> {
             protocol_event_rx,
             protocol_command_tx,
             protocol_controller_handle,
             _network_controller_t: std::marker::PhantomData,
-        })
+        }
     }
 }
 
@@ -83,25 +82,26 @@ impl<NetworkControllerT: NetworkController> ProtocolController
     /// None is returned when all Sender halves have dropped,
     /// indicating that no further values can be sent on the channel
     /// panics if the protocol controller event can't be retrieved
-    async fn wait_event(&mut self) -> ProtocolEvent {
+    async fn wait_event(&mut self) -> Result<ProtocolEvent, CommunicationError> {
         self.protocol_event_rx
             .recv()
             .await
-            .expect("failed retrieving protocol controller event")
+            .ok_or(CommunicationError::ReceiveProtocolEventError(
+                "DefaultProtocolController wait_event channel dropped".to_string(),
+            ))
     }
 
     /// Stop the protocol controller
     /// panices if the protocol controller is not reachable
-    async fn stop(mut self) {
+    async fn stop(mut self) -> Result<(), CommunicationError> {
         debug!("stopping protocol controller");
         massa_trace!("begin", {});
         drop(self.protocol_command_tx);
         while let Some(_) = self.protocol_event_rx.next().await {}
-        self.protocol_controller_handle
-            .await
-            .expect("failed joining protocol controller");
+        self.protocol_controller_handle.await?;
         debug!("protocol controller stopped");
         massa_trace!("end", {});
+        Ok(())
     }
 
     async fn propagate_block(
@@ -109,7 +109,7 @@ impl<NetworkControllerT: NetworkController> ProtocolController
         block: &Block,
         exclude_node: Option<NodeId>,
         restrict_to_node: Option<NodeId>,
-    ) {
+    ) -> Result<(), CommunicationError> {
         massa_trace!("block_propagation_order", {"block": &block, "excluding": &exclude_node, "including": &restrict_to_node});
         self.protocol_command_tx
             .send(ProtocolCommand::PropagateBlock {
@@ -118,6 +118,6 @@ impl<NetworkControllerT: NetworkController> ProtocolController
                 restrict_to_node,
             })
             .await
-            .expect("protcol_command channel disappeared");
+            .map_err(|err| err.into())
     }
 }

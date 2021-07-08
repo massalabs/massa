@@ -1,16 +1,15 @@
 mod consensus_worker;
+use crate::error::ConsensusError;
+
 use super::{block_database::*, config::ConsensusConfig, consensus_controller::*};
 use async_trait::async_trait;
 use communication::protocol::protocol_controller::ProtocolController;
 use consensus_worker::{ConsensusCommand, ConsensusWorker};
 use logging::debug;
-use std::error::Error;
 use tokio::stream::StreamExt;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
-
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug)]
 pub struct DefaultConsensusController<ProtocolControllerT: ProtocolController> {
@@ -26,23 +25,29 @@ impl<ProtocolControllerT: ProtocolController + 'static>
     pub async fn new(
         cfg: &ConsensusConfig,
         protocol_controller: ProtocolControllerT,
-    ) -> BoxResult<Self> {
+    ) -> Result<Self, ConsensusError> {
         debug!("starting consensus controller");
         massa_trace!("start", {});
 
         // ensure that the parameters are sane
         if cfg.thread_count == 0 {
-            panic!("config thread_count shoud be strictly more than 0");
+            return Err(ConsensusError::ConfigError(format!(
+                "thread_count shoud be strictly more than 0"
+            )));
         }
         if cfg.t0_millis == 0 {
-            panic!("config t0_millis shoud be strictly more than 0");
+            return Err(ConsensusError::ConfigError(format!(
+                "t0_millis shoud be strictly more than 0"
+            )));
         }
         if cfg.t0_millis % (cfg.thread_count as u64) != 0 {
-            panic!("config thread_count should divide t0_millis");
+            return Err(ConsensusError::ConfigError(format!(
+                "thread_count should divide t0_millis"
+            )));
         }
 
         // start worker
-        let block_db = BlockDatabase::new(cfg);
+        let block_db = BlockDatabase::new(cfg)?;
         let (consensus_command_tx, consensus_command_rx) = mpsc::channel::<ConsensusCommand>(1024);
         let (consensus_event_tx, consensus_event_rx) = mpsc::channel::<ConsensusEvent>(1024);
         let cfg_copy = cfg.clone();
@@ -54,8 +59,10 @@ impl<ProtocolControllerT: ProtocolController + 'static>
                 consensus_command_rx,
                 consensus_event_tx,
             )
+            .expect("Could not start consensus worker") // in a spawned task
             .run_loop()
             .await
+            .expect("error while running consensus worker") // in a spawned task
         });
 
         Ok(DefaultConsensusController::<ProtocolControllerT> {
@@ -68,16 +75,15 @@ impl<ProtocolControllerT: ProtocolController + 'static>
 
     /// Stop the consensus controller
     /// panices if the consensus controller is not reachable
-    async fn stop(mut self) {
+    async fn stop(mut self) -> Result<(), ConsensusError> {
         debug!("stopping consensus controller");
         massa_trace!("begin", {});
         drop(self.consensus_command_tx);
         while let Some(_) = self.consensus_event_rx.next().await {}
-        self.consensus_controller_handle
-            .await
-            .expect("failed joining consensus controller");
+        self.consensus_controller_handle.await?;
         debug!("consensus controller stopped");
         massa_trace!("end", {});
+        Ok(())
     }
 }
 
@@ -87,24 +93,10 @@ impl<ProtocolControllerT: ProtocolController> ConsensusController
 {
     type ProtocolControllerT = ProtocolControllerT;
 
-    async fn wait_event(&mut self) -> ConsensusEvent {
+    async fn wait_event(&mut self) -> Result<ConsensusEvent, ConsensusError> {
         self.consensus_event_rx
             .recv()
             .await
-            .expect("failed retrieving consensus controller event")
-    }
-
-    async fn generate_random_block(&self) {
-        use rand::distributions::Alphanumeric;
-        use rand::Rng;
-
-        let block = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(10)
-            .collect::<String>();
-        self.consensus_command_tx
-            .send(ConsensusCommand::CreateBlock(block))
-            .await
-            .expect("could not send consensus command");
+            .ok_or(ConsensusError::ControllerEventError)
     }
 }
