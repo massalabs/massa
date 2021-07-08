@@ -67,3 +67,5 @@ Here is a set of tutorials:
 * link:docs/wallet.adoc[creating a wallet]
 * link:docs/staking.adoc[staking]
 * link:docs/transaction.adoc[sending transactions]
+
+* Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
