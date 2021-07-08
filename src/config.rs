@@ -1,21 +1,21 @@
-use toml;
 use serde::Deserialize;
+use toml;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub logging: LoggingConfig,
-    pub network: NetworkConfig
+    pub network: NetworkConfig,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct LoggingConfig {
-    pub level: String
+    pub level: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct NetworkConfig {
     pub bind: String,
-    pub node_key_file: String
+    pub node_key_file: String,
 }
 
 impl Config {

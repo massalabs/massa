@@ -1,11 +1,10 @@
-use failure::Error;
 use crate::config;
-use crate::crypto::{B58able, SecretKey, PublicKey};
-use tokio::prelude::*;
-use std::path::Path;
-use std::fs;
+use crate::crypto::{B58able, PublicKey, SecretKey};
+use failure::Error;
 use rand::rngs::OsRng;
-
+use std::fs;
+use std::path::Path;
+use tokio::prelude::*;
 
 async fn listen(bind: &String) -> Result<(), Error> {
     let mut listener = tokio::net::TcpListener::bind(bind).await?;
@@ -16,7 +15,7 @@ async fn listen(bind: &String) -> Result<(), Error> {
             loop {
                 // TODO here perform Receive handshake
                 // ---
-                
+
                 let n = match socket.read(&mut buf).await {
                     // socket closed
                     Ok(0) => return,
@@ -34,7 +33,6 @@ async fn listen(bind: &String) -> Result<(), Error> {
                 }
             }
         });
-        
     }
 }
 
@@ -57,14 +55,9 @@ pub async fn initialize(network_config: &config::NetworkConfig) -> Result<(), Er
         fs::write(&network_config.node_key_file, secret_key.into_b58check())?;
     }
     let _public_key = PublicKey::from_secret_key(&secret_key);
-    
 
     // launch connection handler
     handle_connections(network_config).await?;
 
     Ok(())
 }
-
-
-
-
