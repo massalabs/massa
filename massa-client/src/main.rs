@@ -190,7 +190,6 @@ fn cmd_create_transaction(data: &mut ReplData, _params: &[&str]) -> Result<(), R
         "4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb",
     )
     .unwrap();
-
     let recipient_address: Address = Address::from_public_key(&public_key).unwrap();
     let operation_type = OperationType::Transaction {
         recipient_address,

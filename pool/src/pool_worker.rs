@@ -51,6 +51,7 @@ impl PoolWorker {
     /// # Arguments
     /// * cfg: pool configuration.
     /// * thread_count: number of threads
+    /// * operation_validity_periods : operation validity period
     /// * protocol_command_sender: associated protocol controller
     /// * protocol_command_sender protocol pool event receiver
     /// * controller_command_rx: Channel receiving pool commands.
@@ -58,6 +59,7 @@ impl PoolWorker {
     pub fn new(
         cfg: PoolConfig,
         thread_count: u8,
+        operation_validity_periods: u64,
         protocol_command_sender: ProtocolCommandSender,
         protocol_pool_event_receiver: ProtocolPoolEventReceiver,
         controller_command_rx: mpsc::Receiver<PoolCommand>,
@@ -70,7 +72,7 @@ impl PoolWorker {
             protocol_pool_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_pool: OperationPool::new(cfg, thread_count),
+            operation_pool: OperationPool::new(cfg, thread_count, operation_validity_periods),
             context,
         })
     }
