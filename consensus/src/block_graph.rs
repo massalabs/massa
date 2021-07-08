@@ -66,6 +66,7 @@ pub struct ExportActiveBlock {
     children: Vec<Vec<(BlockId, u64)>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
     dependencies: Vec<BlockId>,         // dependencies required for validity check
     is_final: bool,
+    block_ledger_change: Vec<Vec<(Address, LedgerChange)>>,
 }
 
 impl From<ActiveBlock> for ExportActiveBlock {
@@ -80,6 +81,11 @@ impl From<ActiveBlock> for ExportActiveBlock {
                 .collect(),
             dependencies: block.dependencies.into_iter().collect(),
             is_final: block.is_final,
+            block_ledger_change: block
+                .block_ledger_change
+                .into_iter()
+                .map(|map| map.into_iter().collect())
+                .collect(),
         }
     }
 }
@@ -97,7 +103,11 @@ impl<'a> From<ExportActiveBlock> for ActiveBlock {
             dependencies: block.dependencies.into_iter().collect(),
             descendants: HashSet::new(),
             is_final: block.is_final,
-            block_ledger_change: Vec::new(), //todo update see #310
+            block_ledger_change: block
+                .block_ledger_change
+                .into_iter()
+                .map(|map| map.into_iter().collect())
+                .collect(),
         }
     }
 }
@@ -158,6 +168,30 @@ impl SerializeCompact for ExportActiveBlock {
         for dep in self.dependencies.iter() {
             res.extend(&dep.to_bytes());
         }
+
+        //block_ledger_change
+        let block_ledger_change_count: u32 =
+            self.block_ledger_change.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!(
+                    "too many block_ledger_change in ActiveBlock: {:?}",
+                    err
+                ))
+            })?;
+        res.extend(u32::from(block_ledger_change_count).to_varint_bytes());
+        for map in self.block_ledger_change.iter() {
+            let map_count: u32 = map.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!(
+                    "too many entry in block_ledger_change map in ActiveBlock: {:?}",
+                    err
+                ))
+            })?;
+            res.extend(u32::from(map_count).to_varint_bytes());
+            for (address, ledger) in map {
+                res.extend(&address.to_bytes());
+                res.extend(ledger.to_bytes_compact(&context)?);
+            }
+        }
+
         Ok(res)
     }
 }
@@ -244,6 +278,36 @@ impl DeserializeCompact for ExportActiveBlock {
             dependencies.push(dep);
         }
 
+        //block_ledger_change
+        let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        if block_ledger_change_count > context.parent_count.into() {
+            return Err(ModelsError::DeserializeError(
+                "too much threads with block_ledger_change to deserialize".to_string(),
+            ));
+        }
+        cursor += delta;
+        let mut block_ledger_change: Vec<Vec<(Address, LedgerChange)>> =
+            Vec::with_capacity(block_ledger_change_count as usize);
+        for _ in 0..(block_ledger_change_count as usize) {
+            let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            if map_count > context.max_bootstrap_children {
+                return Err(ModelsError::DeserializeError(
+                    "too much block_ledger_change to deserialize".to_string(),
+                ));
+            }
+            cursor += delta;
+            let mut map: Vec<(Address, LedgerChange)> = Vec::with_capacity(map_count as usize);
+            for _ in 0..(map_count as usize) {
+                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+                let (ledger, delta) =
+                    LedgerChange::from_bytes_compact(&buffer[cursor..], &context)?;
+                cursor += delta;
+                map.push((address, ledger));
+            }
+            block_ledger_change.push(map);
+        }
+
         Ok((
             ExportActiveBlock {
                 is_final,
@@ -251,6 +315,7 @@ impl DeserializeCompact for ExportActiveBlock {
                 parents,
                 children,
                 dependencies,
+                block_ledger_change,
             },
             cursor,
         ))
@@ -2572,6 +2637,31 @@ mod tests {
             .into_iter()
             .collect()],
             is_final: true,
+            block_ledger_change: vec![
+                vec![
+                    (
+                        Address::from_bytes(&Hash::hash("addr01".as_bytes()).into_bytes()).unwrap(),
+                        LedgerChange {
+                            balance_delta: 1,
+                            balance_increment: true, // wether to increment or decrement balance of delta
+                        },
+                    ),
+                    (
+                        Address::from_bytes(&Hash::hash("addr02".as_bytes()).into_bytes()).unwrap(),
+                        LedgerChange {
+                            balance_delta: 2,
+                            balance_increment: false, // wether to increment or decrement balance of delta
+                        },
+                    ),
+                ],
+                vec![(
+                    Address::from_bytes(&Hash::hash("addr11".as_bytes()).into_bytes()).unwrap(),
+                    LedgerChange {
+                        balance_delta: 3,
+                        balance_increment: false, // wether to increment or decrement balance of delta
+                    },
+                )],
+            ],
         }
     }
 
