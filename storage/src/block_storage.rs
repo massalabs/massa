@@ -3,8 +3,9 @@ use crate::{
     error::{InternalError, StorageError},
 };
 use models::{
-    array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
-    OperationSearchResult, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
+    array_from_slice, Address, Block, BlockId, DeserializeCompact, DeserializeVarInt, OperationId,
+    OperationSearchResult, SerializeCompact, SerializeVarInt, Slot, BLOCK_ID_SIZE_BYTES,
+    OPERATION_ID_SIZE_BYTES, SLOT_KEY_SIZE,
 };
 use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{
@@ -185,6 +186,58 @@ impl StorageCleaner {
 
         Ok(())
     }
+}
+
+fn hash_to_block_from_ivec(buffer: IVec) -> Result<HashMap<BlockId, Block>, StorageError> {
+    let mut cursor = 0usize;
+    let (block_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+    cursor += delta;
+    let mut hash_to_block = HashMap::with_capacity(block_count as usize);
+    for _ in 0..(block_count as usize) {
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += BLOCK_ID_SIZE_BYTES;
+        let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
+        cursor += delta;
+        hash_to_block.insert(block_id, block);
+    }
+    Ok(hash_to_block)
+}
+
+fn hash_to_block_to_ivec(hash_to_block: &HashMap<BlockId, Block>) -> Result<IVec, StorageError> {
+    let mut res: Vec<u8> = Vec::new();
+    let block_count: u32 = hash_to_block.len().try_into().map_err(|err| {
+        StorageError::SerializeError(format!("too many block in hash_to_block: {:?}", err))
+    })?;
+    res.extend(u32::from(block_count).to_varint_bytes());
+    for (block_id, block) in hash_to_block.iter() {
+        res.extend(block_id.to_bytes());
+        res.extend(block.to_bytes_compact()?);
+    }
+    Ok(res[..].into())
+}
+
+fn slot_to_hash_from_ivec(buffer: IVec) -> Result<HashMap<Slot, BlockId>, StorageError> {
+    let entry_size = SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES;
+    let entry_count = buffer.len() / entry_size;
+    let mut slot_to_hash = HashMap::with_capacity(entry_size as usize);
+    for index in 0..entry_count {
+        let mut cursor = entry_size * index;
+        let slot = Slot::from_bytes_key(&array_from_slice(&buffer[cursor..])?);
+        cursor += SLOT_KEY_SIZE;
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        slot_to_hash.insert(slot, block_id);
+    }
+    Ok(slot_to_hash)
+}
+
+fn slot_to_hash_to_ivec(slot_to_hash: &HashMap<Slot, BlockId>) -> Result<IVec, StorageError> {
+    let entry_size = SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES;
+    let mut res: Vec<u8> = Vec::with_capacity(entry_size * slot_to_hash.len());
+    for (slot, block_id) in slot_to_hash.iter() {
+        res.extend(slot.to_bytes_key());
+        res.extend(block_id.to_bytes());
+    }
+    Ok(res[..].into())
 }
 
 fn op_to_block_from_ivec(

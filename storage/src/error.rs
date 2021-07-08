@@ -28,6 +28,10 @@ pub enum StorageError {
     OperationError(String),
     #[error("clear error: {0}")]
     ClearError(String),
+    #[error("Derialization error:{0}")]
+    SerializeError(String),
+    #[error("Derialization error:{0}")]
+    DeserializeError(String),
 }
 
 #[derive(Error, Debug)]
