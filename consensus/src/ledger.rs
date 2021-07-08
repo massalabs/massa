@@ -680,8 +680,8 @@ impl LedgerExport {
     /// Empty ledger export used for tests
     pub fn new(thread_count: u8) -> Self {
         LedgerExport {
-            ledger_per_thread: Vec::new(),
-            latest_final_periods: Vec::new(),
+            ledger_per_thread: vec![Vec::new(); thread_count as usize],
+            latest_final_periods: vec![0u64; thread_count as usize],
         }
     }
 }

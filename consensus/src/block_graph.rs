@@ -10,8 +10,8 @@ use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationId,
-    SerializationContext, SerializeCompact, SerializeVarInt, Slot,
+    DeserializeCompact, DeserializeVarInt, ModelsError, OperationId, SerializationContext,
+    SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -2770,9 +2770,13 @@ impl BlockGraph {
                     None => break,
                 };
 
+                // retain block
+                retain_active.insert(current_block_id);
+
                 // stop traversing when reaching a block with period number low enough
                 // so that any of its operations will have their validity period expired at the latest final block in thread
-                if current_block.header.content.slot.period
+                // note: one more is kept because of the way we iterate
+                if current_block.block.header.content.slot.period
                     < self.latest_final_blocks_periods[thread]
                         .1
                         .saturating_sub(self.cfg.operation_validity_periods)
@@ -2780,14 +2784,12 @@ impl BlockGraph {
                     break;
                 }
 
-                // retain block
-                retain_active.insert(current_block_id);
-
                 // if not genesis, traverse parent
-                if current_block.header.content.parents.is_empty() {
+                if current_block.block.header.content.parents.is_empty() {
                     break;
                 }
-                current_block_id = current_block.header.content.parents[thread as usize];
+
+                current_block_id = current_block.block.header.content.parents[thread as usize];
             }
         }
 
