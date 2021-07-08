@@ -274,7 +274,7 @@ impl ConsensusWorker {
                     }
                     Err(e) => {
                         // Something went wrong with that op, exclude it
-                        info!("operation {:?} was rejected due to", id, e);
+                        info!("operation {:?} was rejected due to {:?}", id, e);
                         exclude.push(*id);
                     }
                 }
