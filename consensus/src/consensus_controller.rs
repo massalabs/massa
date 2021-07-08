@@ -9,9 +9,9 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
-use models::{Address, Block, BlockId, SerializationContext, Slot};
+use models::{Address, Block, BlockId, Operation, OperationId, SerializationContext, Slot};
 use pool::PoolCommandSender;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -182,6 +182,21 @@ impl ConsensusCommandSender {
         massa_trace!("consensus.consensus_controller.get_bootstrap_graph", {});
         self.0
             .send(ConsensusCommand::GetBootGraph(response_tx))
+            .await
+            .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+        })
+    }
+
+    pub async fn get_operation(
+        &self,
+        id: OperationId,
+    ) -> Result<Option<(Operation, bool, HashMap<BlockId, bool>)>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_operation", { "id": id });
+        self.0
+            .send(ConsensusCommand::GetOperation { id, response_tx })
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
         response_rx.await.map_err(|_| {
