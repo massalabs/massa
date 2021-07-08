@@ -13,7 +13,7 @@ use std::iter::FromIterator;
 #[tokio::test]
 async fn test_wishlist_delta_with_empty_remove() {
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
-    cfg.t0 = 1000.into();
+    cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
@@ -79,7 +79,7 @@ async fn test_wishlist_delta_with_empty_remove() {
 #[tokio::test]
 async fn test_wishlist_delta_remove() {
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
-    cfg.t0 = 1000.into();
+    cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
