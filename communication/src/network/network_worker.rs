@@ -457,9 +457,10 @@ impl NetworkWorker {
                 let mut ban_connection_ids: HashSet<ConnectionId> = HashSet::new();
                 if let Some((orig_conn_id, _, _)) = self.active_nodes.get(&node) {
                     if let Some((orig_ip, _)) = self.active_connections.get(orig_conn_id) {
+                        self.peer_info_db.peer_banned(orig_ip)?;
                         for (target_conn_id, (target_ip, _)) in self.active_connections.iter() {
                             if target_ip == orig_ip {
-                                ban_connection_ids.insert(*orig_conn_id);
+                                ban_connection_ids.insert(*target_conn_id);
                             }
                         }
                     }
