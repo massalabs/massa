@@ -40,8 +40,7 @@ where
     async fn stop(mut self) -> Result<(), CommunicationError>;
     async fn propagate_block(
         &mut self,
+        hash: Hash,
         block: &Block,
-        exclude_node: Option<NodeId>,
-        restrict_to_node: Option<NodeId>,
     ) -> Result<(), CommunicationError>;
 }

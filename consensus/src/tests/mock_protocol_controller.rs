@@ -119,11 +119,7 @@ impl NetworkController for BlankNetworkController {
 
 #[derive(Clone, Debug)]
 pub enum MockProtocolCommand {
-    PropagateBlock {
-        block: Block,
-        restrict_to_node: Option<NodeId>,
-        exclude_node: Option<NodeId>,
-    },
+    PropagateBlock { hash: Hash, block: Block },
 }
 
 pub fn new() -> (MockProtocolController, MockProtocolControllerInterface) {
@@ -169,15 +165,13 @@ impl ProtocolController for MockProtocolController {
 
     async fn propagate_block(
         &mut self,
+        hash: Hash,
         block: &models::block::Block,
-        exclude_node: Option<communication::protocol::protocol_controller::NodeId>,
-        restrict_to_node: Option<communication::protocol::protocol_controller::NodeId>,
     ) -> Result<(), CommunicationError> {
         self.protocol_command_tx
             .send(MockProtocolCommand::PropagateBlock {
+                hash,
                 block: block.clone(),
-                exclude_node,
-                restrict_to_node,
             })
             .await
             .expect("could not send mock protocol command");

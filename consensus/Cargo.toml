@@ -11,15 +11,21 @@ tokio = { version = "0.3", features = ["full"] }
 tokio-util = { version = "0.5", features = ["codec"] }
 futures = { version = "0.3" }
 async-trait = "0.1.42"
-rand_xoshiro = "0.4.0"
+rand_xoshiro = "0.6"
 crypto = {path = "../crypto"}
 communication = {path = "../communication"}
 logging = { path = "../logging" }
-rand = { version = "0.7.3"}  # force old version for compatibility
+rand = { version = "0.8"}
 serde = { version = "1.0", features = ["derive"] }
 models = {path = "../models"}
 flexbuffers = { version = "0.2" }
 serde_json = { version = "1.0" }
 log = { version = "0.4" }
 thiserror = "1.0"
+num = "0.3.1"
 time= { path = "../time"}
+
+[dev-dependencies]
+stderrlog = { version = "0.5" }
+pretty_assertions = "0.6"
+tempfile = "3.2"

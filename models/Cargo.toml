@@ -11,3 +11,7 @@ serde = { version = "1.0", features = ["derive"] }
 crypto = {path = "../crypto"}
 flexbuffers = { version = "0.2" }
 thiserror = "1.0"
+
+[dev-dependencies]
+stderrlog = { version = "0.5" }
+pretty_assertions = "0.6"

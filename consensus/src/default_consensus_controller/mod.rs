@@ -1,15 +1,19 @@
 mod consensus_worker;
+mod misc_collections;
 use crate::error::ConsensusError;
 
-use super::{block_database::*, config::ConsensusConfig, consensus_controller::*};
+pub use consensus_worker::ConsensusCommand;
+use models::block::Block;
+
+use super::{block_graph::*, config::ConsensusConfig, consensus_controller::*};
 use async_trait::async_trait;
 use communication::protocol::protocol_controller::ProtocolController;
-use consensus_worker::{ConsensusCommand, ConsensusWorker};
+use consensus_worker::ConsensusWorker;
 use logging::debug;
-use tokio::stream::StreamExt;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
+use tokio::{stream::StreamExt, sync::oneshot};
 
 #[derive(Debug)]
 pub struct DefaultConsensusController<ProtocolControllerT: ProtocolController> {
@@ -40,14 +44,14 @@ impl<ProtocolControllerT: ProtocolController + 'static>
                 "t0 shoud be strictly more than 0"
             )));
         }
-        if cfg.t0.checked_rem((cfg.thread_count as u64).into())? != 0.into() {
+        if cfg.t0.checked_rem_u64(cfg.thread_count as u64)? != 0.into() {
             return Err(ConsensusError::ConfigError(format!(
                 "thread_count should divide t0"
             )));
         }
 
         // start worker
-        let block_db = BlockDatabase::new(cfg)?;
+        let block_db = BlockGraph::new(cfg)?;
         let (consensus_command_tx, consensus_command_rx) = mpsc::channel::<ConsensusCommand>(1024);
         let (consensus_event_tx, consensus_event_rx) = mpsc::channel::<ConsensusEvent>(1024);
         let cfg_copy = cfg.clone();
@@ -71,6 +75,22 @@ impl<ProtocolControllerT: ProtocolController + 'static>
             consensus_event_rx,
             _protocol_controller_t: std::marker::PhantomData,
         })
+    }
+
+    pub async fn send_consensus_command(
+        &self,
+        command: ConsensusCommand,
+    ) -> Result<(), ConsensusError> {
+        Ok(self
+            .consensus_command_tx
+            .send(command)
+            .await
+            .map_err(|err| {
+                ConsensusError::SendChannelError(format!(
+                    "could not send GetBlockGraphStatus answer:{:?}",
+                    err
+                ))
+            })?)
     }
 
     /// Stop the consensus controller
@@ -98,5 +118,34 @@ impl<ProtocolControllerT: ProtocolController> ConsensusController
             .recv()
             .await
             .ok_or(ConsensusError::ControllerEventError)
+    }
+
+    async fn get_block_graph_status(&self) -> Result<BlockGraphExport, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<BlockGraphExport>();
+        self.consensus_command_tx
+            .send(ConsensusCommand::GetBlockGraphStatus(response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        Ok(response_rx
+            .await
+            .map_err(|_| ConsensusError::ReceiveChannelError(format!("receive error")))?)
+    }
+
+    async fn get_active_block(
+        &self,
+        hash: crypto::hash::Hash,
+    ) -> Result<Option<Block>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<Option<Block>>();
+        self.consensus_command_tx
+            .send(ConsensusCommand::GetActiveBlock(hash, response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        Ok(response_rx
+            .await
+            .map_err(|_| ConsensusError::ReceiveChannelError(format!("receive error")))?)
     }
 }
