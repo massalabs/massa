@@ -38,7 +38,7 @@ pub enum ConnectionClosureReason {
 }
 
 #[derive(Debug)]
-pub enum ConnectionCommand {
+enum ConnectionCommand {
     MergeAdvertisedPeerList(Vec<IpAddr>),
     GetAdvertisablePeerList(oneshot::Sender<Vec<IpAddr>>),
     ConnectionClosed((ConnectionId, ConnectionClosureReason)),
@@ -380,7 +380,7 @@ async fn connection_controller_fn(
     peer_info_db.stop().await;
 }
 
-pub async fn out_connector_fn(
+async fn out_connector_fn(
     addr: SocketAddr,
     timeout_duration: Duration,
 ) -> (IpAddr, Result<TcpStream, String>) {

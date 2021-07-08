@@ -5,18 +5,20 @@ level = 4
     message_timeout = {secs = 5, nanos = 0}
     ask_peer_list_interval = {secs = 50, nanos = 0}
     [protocol.network]
-    bind = "0.0.0.0:50000"
-    routable_ip = "200.200.200.200"
-    protocol_port = 50000
-    connect_timeout = {secs = 5, nanos = 0}
-    wakeup_interval = {secs = 10, nanos = 0}
-    peers_file = "config/peers.json"
-    target_out_connections = 20
-    max_in_connections = 100
-    max_in_connections_per_ip = 5
-    max_out_connnection_attempts = 10
-    max_idle_peers = 1000
-    max_banned_peers = 1000
-    max_advertise_length = 100000
-    peers_file_dump_interval = {secs = 30, nanos = 0}
+        bind = "0.0.0.0:50000"
+        routable_ip = "200.200.200.200"
+        protocol_port = 50000
+        connect_timeout = {secs = 5, nanos = 0}
+        wakeup_interval = {secs = 10, nanos = 0}
+        peers_file = "config/peers.json"
+        target_out_connections = 20
+        max_in_connections = 100
+        max_in_connections_per_ip = 5
+        max_out_connnection_attempts = 10
+        max_idle_peers = 1000
+        max_banned_peers = 1000
+        max_advertise_length = 100000
+        peers_file_dump_interval = {secs = 30, nanos = 0}
+
+[consensus]
     
