@@ -14,7 +14,7 @@ use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
 use consensus::DiscardReason;
-use consensus::{AddressState, ExportBlockStatus, LedgerData};
+use consensus::{ExportBlockStatus, LedgerData};
 use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{
@@ -179,50 +179,61 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
     list.into_iter().map(|v| from_hash_slot(*v)).collect()
 }
 
-/// Wrapps a ledger data export
-pub fn extract_addresses_from_ledger<'a>(
-    ledger: &'a HashMap<Address, AddressState>,
-    ordered_addrs: Option<Vec<Address>>,
-) -> Vec<WrapperAddressLedgerDataExport<'a>> {
-    //extract address from final_data
-    let mut base_ledger_map: HashMap<&Address, WrapperAddressLedger<'a>> = ledger
-        .iter()
-        .map(|(addr, state)| {
-            (
-                addr,
-                WrapperAddressLedger {
-                    final_balance: Some(&state.final_ledger_data),
-                    candidate_balance: None,
-                },
-            )
-        })
-        .collect();
-    //get balance at best parents.
-    ledger.iter().for_each(|(addr, state)| {
-        let mut data = base_ledger_map
-            .entry(addr)
-            .or_insert_with(|| WrapperAddressLedger {
-                final_balance: None,
-                candidate_balance: None,
-            });
-        data.candidate_balance = Some(&state.candidate_ledger_data);
-    });
+#[derive(Clone, Debug, Deserialize)]
+pub struct WrappedAddressState {
+    pub final_rolls: u64,
+    pub active_rolls: Option<u64>,
+    pub candidate_rolls: u64,
+    pub locked_balance: u64,
+    pub candidate_ledger_data: LedgerData,
+    pub final_ledger_data: LedgerData,
+}
 
-    if let Some(ord) = ordered_addrs.clone() {
-        ord.into_iter()
-            .map(|address| WrapperAddressLedgerDataExport {
-                address: address,
-                balances: base_ledger_map.get(&address).unwrap().clone(),
-            })
-            .collect()
-    } else {
-        base_ledger_map
-            .into_iter()
-            .map(|(address, balances)| WrapperAddressLedgerDataExport {
-                address: *address,
-                balances,
-            })
-            .collect()
+impl<'a> std::fmt::Display for WrappedAddressState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "    final_roll {}\n", self.final_rolls)?;
+        if let Some(active) = self.active_rolls {
+            write!(f, "    active_rolls {}\n", active)?;
+        } else {
+            write!(f, "    No active rolls")?;
+        }
+        write!(f, "    candidate_rolls {}\n", self.candidate_rolls)?;
+        write!(f, "    locked_balance {}\n", self.locked_balance)?;
+        write!(
+            f,
+            "    candidate_ledger_data : balance:{}\n",
+            self.candidate_ledger_data.balance
+        )?;
+        write!(
+            f,
+            "    final_ledger_data : balance {}\n",
+            self.final_ledger_data.balance
+        )?;
+        Ok(())
+    }
+}
+
+pub struct AddressStates {
+    pub map: HashMap<Address, WrappedAddressState>,
+    pub order: Option<Vec<Address>>,
+}
+
+impl<'a> std::fmt::Display for AddressStates {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let order = if let Some(order) = self.order.clone() {
+            order
+        } else {
+            self.map.keys().cloned().collect()
+        };
+        for addr in order {
+            write!(f, "Address: {}", addr)?;
+            if let Some(state) = self.map.get(&addr) {
+                write!(f, "State: \n{}", state)?;
+            } else {
+                write!(f, "missing state\n")?;
+            }
+        }
+        Ok(())
     }
 }
 
