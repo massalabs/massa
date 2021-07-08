@@ -289,12 +289,17 @@ impl ConsensusWorker {
             let creator_info = match self.pos.draw(cur_slot) {
                 Ok(addr) => {
                     if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
+                        massa_trace!("consensus.consensus_worker.slot_tick.block_crezator_addr", { "addr": addr, "unlocked": true });
                         Some((addr.clone(), pub_k.clone(), priv_k.clone()))
                     } else {
+                        massa_trace!("consensus.consensus_worker.slot_tick.block_crezator_addr", { "addr": addr, "unlocked": false });
                         None
                     }
                 }
-                Err(ConsensusError::PosCycleUnavailable(_)) => None,
+                Err(ConsensusError::PosCycleUnavailable(_)) =>  {
+                    massa_trace!("consensus.consensus_worker.slot_tick.block_crezator_addr.unavailable", {});
+                    None
+                }
                 Err(err) => return Err(err),
             };
             if let Some((addr, pub_k, priv_k)) = creator_info {
