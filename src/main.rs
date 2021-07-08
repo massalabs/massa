@@ -45,6 +45,7 @@ async fn main() {
     stderrlog::new()
         .module(module_path!())
         .verbosity(cfg.logging.level)
+        .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
         .unwrap();
 
