@@ -74,8 +74,8 @@ pub struct StakerInfo {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct HashSlot {
-    hash: Hash,
-    slot: Slot,
+    pub hash: Hash,
+    pub slot: Slot,
 }
 impl std::fmt::Display for HashSlot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -103,14 +103,15 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<HashSlot> {
 ///
 ///The input parameter list is a collection of tuple (Hash, Slot)
 /// return a list of string the display.
-fn format_hash_slot_list(hash_slots: &[HashSlot]) -> Vec<String> {
+/*fn format_hash_slot_list(hash_slots: &[HashSlot]) -> Vec<String> {
     let mut list: Vec<&HashSlot> = hash_slots.iter().collect();
     list.sort_unstable_by(|a, b| a.slot.cmp(&b.slot));
     list.iter()
         .map(|hash_slot| format!("({})", hash_slot))
         .collect()
-}
+}*/
 
+/*
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Parents {
     content: Vec<HashSlot>,
@@ -124,58 +125,57 @@ impl std::fmt::Display for Parents {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Invalids {
-    content: Vec<HashSlot>,
+    pub content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Finals {
-    content: Vec<HashSlot>,
+    pub content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Stales {
-    content: Vec<HashSlot>,
+    pub content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockInterval {
-    content: Vec<HashSlot>,
-}
+    pub content: Vec<HashSlot>,
+}*/
 
 #[derive(Debug, Serialize, Deserialize)]
-struct BlockInfo {
-    hash_slot: HashSlot,
-    status: String,
-    parents: Vec<Hash>,
+pub struct BlockInfo {
+    pub hash_slot: HashSlot,
+    pub status: String,
+    pub parents: Vec<Hash>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GraphInterval {
-    content: Vec<BlockInfo>,
+    pub content: Vec<BlockInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cliques {
-    number: u64,
-    content: Vec<HashSet<HashSlot>>,
+    pub number: u64,
+    pub content: Vec<HashSet<HashSlot>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NetworkInfo {
-    our_ip: Option<IpAddr>,
-    peers: HashMap<IpAddr, PeerInfo>,
+    pub our_ip: Option<IpAddr>,
+    pub peers: HashMap<IpAddr, PeerInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Peers {
-    content: HashMap<IpAddr, PeerInfo>,
+    pub content: Vec<PeerInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 struct HashSlotTime {
-    hash: Hash,
-    slot: Slot,
-    time: UTime,
+    pub hash_slot: HashSlot,
+    pub time: UTime,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
