@@ -218,10 +218,11 @@ impl ConsensusWorker {
     async fn get_best_operations(
         &mut self,
         cur_slot: Slot,
-        left_size: u64,
+        mut left_size: u64,
     ) -> Result<Vec<Operation>, ConsensusError> {
         let mut ops = Vec::new();
-        let mut exclude: Vec<OperationId> = Vec::new();
+        let mut excluded: Vec<OperationId> = Vec::new();
+        let mut ids_to_keep: Vec<OperationId> = Vec::new();
 
         let fee_target = Address::from_public_key(
             &self
@@ -235,24 +236,25 @@ impl ConsensusWorker {
                 .0,
         )?;
 
-        let context = self.serialization_context.clone();
-        let get_ids = |op: &Operation| op.get_operation_id(&context);
+        // todo exclude operations in ancestry
 
+        let asked_nb = self.cfg.operation_batch_size;
         let mut ledger = self
             .block_db
             .get_ledger_at_parents(&self.block_db.get_best_parents(), &HashSet::new())?;
 
         // todo apply block creation fee
         while ops.len() < self.cfg.max_operations_per_block as usize {
-            let op_ids: Vec<OperationId> = ops
-                .iter()
-                .map(get_ids)
-                .collect::<Result<Vec<OperationId>, _>>()?;
-            let to_exclude = exclude.iter().cloned().chain(op_ids).collect();
-            let asked_nb = self.cfg.max_operations_per_block as usize - ops.len();
+            let to_exclude = [excluded.clone(), ids_to_keep.clone()].concat();
             let (response_tx, response_rx) = oneshot::channel();
             self.pool_command_sender
-                .get_operation_batch(cur_slot, to_exclude, asked_nb, 1000, response_tx) // todo add real left size
+                .get_operation_batch(
+                    cur_slot,
+                    to_exclude.iter().cloned().collect(),
+                    asked_nb,
+                    left_size,
+                    response_tx,
+                ) // todo add real left size
                 .await?;
 
             let candidates = response_rx.await?;
@@ -263,6 +265,7 @@ impl ConsensusWorker {
                 .map(|(_, op, size)| op.get_involved_addresses(&fee_target))
                 .flatten()
                 .flatten()
+                .filter(|a| a.get_thread(self.cfg.thread_count) == cur_slot.thread)
                 .collect();
 
             // if new addresses are needed, update ledger
@@ -273,19 +276,30 @@ impl ConsensusWorker {
                 )?,
             );
 
+            let mut cpt = 0;
             for (id, op, size) in candidates.iter() {
+                if *size > left_size {
+                    cpt += 1;
+                    continue;
+                }
                 let changes = op.get_changes(&fee_target, self.cfg.thread_count)?;
                 match ledger.try_apply_changes(changes) {
                     Ok(_) => {
                         // that operation can be included
                         ops.push(op.clone());
+                        ids_to_keep.push(*id);
+                        left_size = left_size - size;
                     }
                     Err(e) => {
                         // Something went wrong with that op, exclude it
                         info!("operation {:?} was rejected due to {:?}", id, e);
-                        exclude.push(*id);
+                        excluded.push(*id);
                     }
                 }
+            }
+            // break if every operation was rejected due to size
+            if cpt == candidates.len() {
+                break;
             }
 
             // no operations left to select
