@@ -1823,7 +1823,8 @@ impl BlockGraph {
                     if let Some(BlockStatus::Active(ActiveBlock { children, .. })) =
                         self.block_statuses.get_mut(parent_h)
                     {
-                        children[block.header.content.slot.thread as usize].remove(&hash);
+                        children[active_block.block.header.content.slot.thread as usize]
+                            .remove(&stale_block_hash);
                     }
                 }
 
