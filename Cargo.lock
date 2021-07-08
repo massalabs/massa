@@ -1311,6 +1311,7 @@ version = "0.1.0"
 dependencies = [
  "communication",
  "crypto",
+ "futures",
  "log",
  "logging",
  "models",

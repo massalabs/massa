@@ -16,6 +16,7 @@ time= { path = "../time"}
 serde_json = { version = "1.0" }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
+futures = { version = "0.3" }
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }
