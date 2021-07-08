@@ -91,11 +91,9 @@ impl ProofOfStake {
     }
 
     pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&FinalRollThreadData> {
-        for data in self.final_roll_data[thread as usize].iter() {
-            if data.cycle == cycle {
-                return Some(data);
-            }
-        }
-        None
+        self.final_roll_data[thread as usize]
+            .iter()
+            .filter(|data| data.cycle == cycle)
+            .next()
     }
 }
