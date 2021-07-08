@@ -45,6 +45,8 @@ pub struct ConsensusConfig {
     pub pos_lookback_cycles: u64,
     /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
     pub pos_lock_cycles: u64,
+    // number of cached draw cycles for PoS
+    pub pos_draw_cached_cycles: usize,
     /// path to ledger db
     pub ledger_path: PathBuf,
     pub ledger_cache_capacity: u64,

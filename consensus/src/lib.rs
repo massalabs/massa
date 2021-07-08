@@ -1,4 +1,3 @@
-#![feature(vecdeque_binary_search)]
 #![feature(bool_to_option)]
 #![feature(hash_drain_filter)]
 #![feature(map_first_last)]

@@ -2,8 +2,13 @@ use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
 use models::{Address, Block, BlockId, Operation, Slot};
+use rand::distributions::Uniform;
+use rand::Rng;
+use rand_xoshiro::rand_core::SeedableRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::convert::TryInto;
 
 pub trait OperationPosInterface {
     /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
@@ -71,8 +76,11 @@ pub struct ProofOfStake {
     cfg: ConsensusConfig,
     /// Index by thread and cycle number
     final_roll_data: Vec<VecDeque<FinalRollThreadData>>,
+    /// Cycle draw cache: cycle_number => (counter, map(slot => address))
+    draw_cache: HashMap<u64, (usize, HashMap<Slot, Address>)>,
+    draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
-    initial_rolls: Vec<Option<BTreeMap<Address, u64>>>,
+    initial_rolls: Option<Vec<BTreeMap<Address, u64>>>,
     // Initial seeds: they are lightweight, we always keep them
     // the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed
     // the seeds are indexed from -1 to -N
@@ -104,12 +112,8 @@ pub struct ExportFinalRollThreadData {
 impl ProofOfStake {
     pub async fn new(cfg: ConsensusConfig) -> Result<ProofOfStake, ConsensusError> {
         let mut final_roll_data = Vec::with_capacity(cfg.thread_count as usize);
-        let mut initial_rolls: Vec<Option<BTreeMap<Address, u64>>> =
-            Vec::with_capacity(cfg.thread_count as usize);
         let initial_roll_count = ProofOfStake::get_initial_rolls(&cfg).await?;
-        for (thread, thread_rolls) in initial_roll_count.into_iter().enumerate() {
-            // initial rolls
-            initial_rolls.push(Some(thread_rolls.clone()));
+        for (thread, thread_rolls) in initial_roll_count.iter().enumerate() {
             // init thread history with one cycle
             // note that the genesis blocks are not taken into account in the rng_seed
             let mut history = VecDeque::with_capacity(
@@ -118,7 +122,7 @@ impl ProofOfStake {
             let frtd = FinalRollThreadData {
                 cycle: 0,
                 last_final_slot: Slot::new(0, thread as u8),
-                roll_count: thread_rolls,
+                roll_count: thread_rolls.clone(),
                 cycle_purchases: HashMap::new(),
                 cycle_sales: HashMap::new(),
                 rng_seed: BitVec::new(),
@@ -129,9 +133,11 @@ impl ProofOfStake {
         // generate object
         Ok(ProofOfStake {
             final_roll_data,
-            initial_rolls,
+            initial_rolls: Some(initial_roll_count),
             initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
+            draw_cache: HashMap::with_capacity(cfg.pos_draw_cached_cycles),
             cfg,
+            draw_cache_counter: 0,
         })
     }
 
@@ -183,32 +189,176 @@ impl ProofOfStake {
             .collect();
 
         // if initial rolls are still needed for some threads, load them
-        let needed_initial_rolls: Vec<bool> = final_roll_data
+        let initial_rolls = if final_roll_data
             .iter()
-            .map(|v| v[0].cycle < cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1)
-            .collect();
-        let mut initial_rolls = vec![None; cfg.thread_count as usize];
-        if needed_initial_rolls.iter().any(|v| *v) {
-            let initial_roll_count = ProofOfStake::get_initial_rolls(&cfg).await?;
-            for (thread, rolls) in initial_roll_count.into_iter().enumerate() {
-                if needed_initial_rolls[thread as usize] {
-                    initial_rolls[thread as usize] = Some(rolls);
-                }
-            }
-        }
+            .any(|v| v[0].cycle < cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1)
+        {
+            Some(ProofOfStake::get_initial_rolls(&cfg).await?)
+        } else {
+            None
+        };
 
         // generate object
         Ok(ProofOfStake {
             final_roll_data,
             initial_rolls,
             initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
+            draw_cache: HashMap::with_capacity(cfg.pos_draw_cached_cycles),
             cfg,
+            draw_cache_counter: 0,
         })
     }
 
-    pub fn draw(&self, slot: Slot) -> Result<Address, ConsensusError> {
-        // the current random_selector.rs should be fused inside, by adding a draw(slot) -> Result<Address, Error> method to the ProofOfStake struct. Add an internal cache.
-        todo!()
+    fn get_cycle_draws(&mut self, cycle: u64) -> Result<&HashMap<Slot, Address>, ConsensusError> {
+        self.draw_cache_counter += 1;
+
+        // check if cycle is already in cache
+        if let Some((r_cnt, _r_map)) = self.draw_cache.get_mut(&cycle) {
+            // increment counter
+            *r_cnt = self.draw_cache_counter;
+            return Ok(&self.draw_cache[&cycle].1);
+        }
+
+        // truncate cache to keep only the desired number of elements
+        // we do it first to free memory space
+        while self.draw_cache.len() >= self.cfg.pos_draw_cached_cycles {
+            if let Some(slot_to_remove) = self
+                .draw_cache
+                .iter()
+                .min_by_key(|(_slot, (c_cnt, _map))| c_cnt)
+                .map(|(slt, _)| *slt)
+            {
+                self.draw_cache.remove(&slot_to_remove.clone());
+            } else {
+                break;
+            }
+        }
+
+        // get rolls and seed
+        let blocks_in_cycle = self.cfg.periods_per_cycle as usize * self.cfg.thread_count as usize;
+        let (cum_sum, rng_seed) = if cycle >= self.cfg.pos_lookback_cycles + 1 {
+            // nominal case: lookback after or at cycle 0
+            let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
+
+            // get final data for all threads
+            let mut rng_seed_bits = BitVec::<Lsb0, u8>::with_capacity(blocks_in_cycle);
+            let target_cycle_last_period = (target_cycle + 1) * self.cfg.periods_per_cycle - 1;
+            let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
+            let mut cum_sum_cursor = 0u64;
+            for scan_thread in 0..self.cfg.thread_count {
+                let final_data = self.get_final_roll_data(target_cycle, scan_thread).ok_or(
+                    ConsensusError::PosCycleUnavailable(format!(
+                    "trying to get PoS draw rolls/seed for cycle {} thread {} which is unavailable",
+                    target_cycle, scan_thread
+                )),
+                )?;
+                if final_data.last_final_slot.period != target_cycle_last_period {
+                    // the target cycle is not final yet
+                    return Err(ConsensusError::PosCycleUnavailable(format!("tryign to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
+                }
+                rng_seed_bits.extend(&final_data.rng_seed);
+                for (addr, &n_rolls) in final_data.roll_count.iter() {
+                    if n_rolls == 0 {
+                        continue;
+                    }
+                    cum_sum_cursor += n_rolls;
+                    cum_sum.push((cum_sum_cursor, addr.clone()));
+                }
+            }
+            // compute the RNG seed from the seed bits
+            let rng_seed = Hash::hash(&rng_seed_bits.into_vec()).to_bytes().to_vec();
+
+            (cum_sum, rng_seed)
+        } else {
+            // special case: lookback before cycle 0
+
+            // get initial rolls
+            let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
+            let mut cum_sum_cursor = 0u64;
+            for scan_thread in 0..self.cfg.thread_count {
+                let init_rolls = &self.initial_rolls.as_ref().ok_or(
+                    ConsensusError::PosCycleUnavailable(format!(
+                    "trying to get PoS initial draw rolls/seed for negative cycle at thread {}, which is unavailable",
+                    scan_thread
+                )))?[scan_thread as usize];
+                for (addr, &n_rolls) in init_rolls.iter() {
+                    if n_rolls == 0 {
+                        continue;
+                    }
+                    cum_sum_cursor += n_rolls;
+                    cum_sum.push((cum_sum_cursor, addr.clone()));
+                }
+            }
+
+            // get RNG seed
+            let seed_idx = self.cfg.pos_lookback_cycles - cycle;
+            let rng_seed = self.initial_seeds[seed_idx as usize].clone();
+
+            (cum_sum, rng_seed)
+        };
+        let cum_sum_max = cum_sum
+            .last()
+            .ok_or(ConsensusError::ContainerInconsistency(
+                "draw cum_sum is empty".into(),
+            ))?
+            .0;
+
+        // init RNG
+        let mut rng = Xoshiro256PlusPlus::from_seed(rng_seed.try_into().map_err(|_| {
+            ConsensusError::ContainerInconsistency("could not seed RNG with computed seed".into())
+        })?);
+
+        // perform draws
+        let distribution = Uniform::new(0, cum_sum_max);
+        let mut draws: HashMap<Slot, Address> = HashMap::with_capacity(blocks_in_cycle);
+        let cycle_first_period = cycle * self.cfg.periods_per_cycle;
+        let cycle_last_period = (cycle + 1) * self.cfg.periods_per_cycle - 1;
+        if cycle_first_period == 0 {
+            // genesis slots: force creator address draw
+            let genesis_addr = Address::from_public_key(&crypto::signature::derive_public_key(
+                &self.cfg.genesis_key,
+            ))?;
+            for draw_thread in 0..self.cfg.thread_count {
+                draws.insert(Slot::new(0, draw_thread), genesis_addr);
+            }
+        }
+        for draw_period in cycle_first_period..=cycle_last_period {
+            if draw_period == 0 {
+                // do not draw genesis again
+                continue;
+            }
+            for draw_thread in 0..self.cfg.thread_count {
+                let sample = rng.sample(&distribution);
+
+                // locate the draw in the cum_sum through binary search
+                let found_index = match cum_sum.binary_search_by_key(&sample, |(c_sum, _)| *c_sum) {
+                    Ok(idx) => idx + 1,
+                    Err(idx) => idx,
+                };
+                let (_sum, found_addr) = cum_sum[found_index];
+
+                draws.insert(Slot::new(draw_period, draw_thread), found_addr);
+            }
+        }
+
+        // add new cache element
+        Ok(&self
+            .draw_cache
+            .entry(cycle)
+            .or_insert((self.draw_cache_counter, draws))
+            .1)
+    }
+
+    pub fn draw(&mut self, slot: Slot) -> Result<Address, ConsensusError> {
+        let cycle = slot.period / self.cfg.periods_per_cycle;
+        let cycle_draws = self.get_cycle_draws(cycle)?;
+        Ok(cycle_draws
+            .get(&slot)
+            .ok_or(ConsensusError::ContainerInconsistency(format!(
+                "draw cycle computed for cycle {} but slot {} absent",
+                cycle, slot
+            )))?
+            .clone())
     }
 
     /// Update internal states after a set of blocks become final
@@ -285,10 +435,14 @@ impl ProofOfStake {
             }
         }
 
-        // if initial rolls are not needed in some threads, remove them to free memory
-        for (thread, final_rolls) in self.final_roll_data.iter().enumerate() {
-            if final_rolls[0].cycle >= self.cfg.pos_lock_cycles + self.cfg.pos_lock_cycles + 1 {
-                self.initial_rolls[thread] = None;
+        // if initial rolls are not needed, remove them to free memory
+        if self.initial_rolls.is_some() {
+            if !self
+                .final_roll_data
+                .iter()
+                .any(|v| v[0].cycle < self.cfg.pos_lock_cycles + self.cfg.pos_lock_cycles + 1)
+            {
+                self.initial_rolls = None;
             }
         }
     }
