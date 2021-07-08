@@ -9,6 +9,7 @@ use std::{
 use tokio::time::Instant;
 
 use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UTime(u64);
 
@@ -143,9 +144,9 @@ impl UTime {
     pub fn estimate_instant(self) -> Result<Instant, TimeError> {
         let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now()?, Instant::now());
         Ok(cur_instant
-            .checked_sub(cur_timestamp.to_duration())
-            .ok_or(TimeError::TimeOverflowError)?
             .checked_add(self.to_duration())
+            .ok_or(TimeError::TimeOverflowError)?
+            .checked_sub(cur_timestamp.to_duration())
             .ok_or(TimeError::TimeOverflowError)?)
     }
 
