@@ -222,7 +222,21 @@ async fn test_get_graph_interval() {
         .matches(&filter)
         .await;
 
-    assert!(!matches);
+    assert!(matches);
+    let (filter, mut rx_api) = mock_filter(None);
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+
+            _ => {}
+        }
+    });
 
     // block not found
     let start: UTime = 0.into();
@@ -509,8 +523,22 @@ async fn test_get_block_interval() {
         .matches(&filter)
         .await;
     println!(" filter{:?}", filter);
-    //    assert!(!matches);
+    assert!(matches);
 
+    let (filter, mut rx_api) = mock_filter(None);
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+
+            _ => {}
+        }
+    });
     // block not found
     let start: UTime = 0.into();
     let end: UTime = 0.into();
