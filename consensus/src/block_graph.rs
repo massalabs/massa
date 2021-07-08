@@ -34,7 +34,7 @@ struct ActiveBlock {
     dependencies: HashSet<Hash>,       // dependencies required for validity check
     is_final: bool,                    // true if final
     fitness: u64,                      // block fitness
-    finality_depth: Option<u64>,       // largest in-clique descendant depth  (0 = not final, +delta_f0 = almost final)
+    finality_depth: Option<u64>, // largest in-clique descendant depth  (0 = not final, +delta_f0 = almost final)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1575,16 +1575,18 @@ impl BlockGraph {
             .block_statuses
             .iter()
             .filter_map(|(hash, block_status)| {
-                if let BlockStatus::WaitingForSlot(header_or_block) = block_status
-                {
+                if let BlockStatus::WaitingForSlot(header_or_block) = block_status {
                     return Some((header_or_block.get_slot(), *hash));
                 }
                 None
             })
             .collect();
         slot_waiting.sort_unstable();
-        slot_waiting.truncate(self.cfg.max_future_processing_blocks);
-        let retained: HashSet<Hash> = slot_waiting.into_iter().map(|(s, h)| h).collect();
+        let retained: HashSet<Hash> = slot_waiting
+            .into_iter()
+            .take(self.cfg.max_future_processing_blocks)
+            .map(|(s, h)| h)
+            .collect();
         self.block_statuses.retain(|hash, block_status| {
             if let BlockStatus::WaitingForSlot(_) = block_status {
                 return retained.contains(hash);
@@ -1628,7 +1630,7 @@ impl BlockGraph {
     ) -> Result<HashMap<Hash, Block>, ConsensusError> {
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active(current_slot)?;
-        
+
         // step 2: prune slot waiting blocks
         self.prune_slot_waiting()?;
 
