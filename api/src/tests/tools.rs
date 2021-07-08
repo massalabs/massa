@@ -14,6 +14,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     vec,
 };
+use storage::storage_controller::StorageCommandSender;
 use time::UTime;
 use tokio::sync::mpsc::{self, Receiver};
 use warp::{filters::BoxedFilter, reply::Reply};
@@ -100,7 +101,9 @@ pub fn get_header(slot: Slot, creator: Option<PublicKey>) -> BlockHeader {
     }
 }
 
-pub fn mock_filter() -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
+pub fn mock_filter(
+    storage_cmd: Option<StorageCommandSender>,
+) -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
     let (evt_tx, evt_rx) = mpsc::channel(1);
     (
         get_filter(
@@ -109,7 +112,7 @@ pub fn mock_filter() -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
             get_protocol_config(),
             get_network_config(),
             evt_tx,
-            None,
+            storage_cmd,
         ),
         evt_rx,
     )

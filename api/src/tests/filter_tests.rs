@@ -1,5 +1,6 @@
 use crate::ApiEvent;
 use models::slot::Slot;
+use storage::{config::StorageConfig, storage_controller::start_storage_controller};
 
 use super::tools::*;
 use communication::network::PeerInfo;
@@ -17,7 +18,7 @@ use time::UTime;
 async fn test_cliques() {
     {
         //test with no cliques
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
 
@@ -63,7 +64,7 @@ async fn test_cliques() {
     graph.active_blocks = active_blocks;
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
 
@@ -112,7 +113,7 @@ async fn test_cliques() {
 async fn test_current_parents() {
     //test with empty parents
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
 
@@ -156,7 +157,7 @@ async fn test_current_parents() {
     graph.active_blocks = active_blocks;
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -200,7 +201,7 @@ async fn test_current_parents() {
 
 #[tokio::test]
 async fn test_get_graph_interval() {
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -249,7 +250,7 @@ async fn test_get_graph_interval() {
     );
     let cloned = expected.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -294,7 +295,7 @@ async fn test_get_graph_interval() {
 async fn test_last_final() {
     //test with empty final block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -328,7 +329,7 @@ async fn test_last_final() {
     expected.latest_final_blocks_periods = vec![(get_test_hash(), 10), (get_test_hash(), 21)];
     let cloned_expected = expected.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -381,7 +382,7 @@ async fn test_last_final() {
 async fn test_peers() {
     //test with empty final peers
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -433,7 +434,7 @@ async fn test_peers() {
         .collect::<HashMap<IpAddr, PeerInfo>>();
     let cloned = peers.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -487,7 +488,7 @@ async fn test_get_block_interval() {
     );
     graph.active_blocks = active_blocks;
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -528,7 +529,7 @@ async fn test_get_block_interval() {
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -566,7 +567,7 @@ async fn test_get_block_interval() {
 
 #[tokio::test]
 async fn test_get_block() {
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -597,7 +598,7 @@ async fn test_get_block() {
     assert_eq!(res.status(), 404);
     handle.await.unwrap();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -630,7 +631,7 @@ async fn test_get_block() {
 async fn test_network_info() {
     //test with empty peer list
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
 
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
@@ -682,7 +683,7 @@ async fn test_network_info() {
         })
         .collect::<HashMap<IpAddr, PeerInfo>>();
     let cloned = peers.clone();
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -718,7 +719,7 @@ async fn test_network_info() {
 async fn test_state() {
     //test with empty final peers
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
 
         let handle = tokio::spawn(async move {
             loop {
@@ -784,7 +785,7 @@ async fn test_state() {
         .collect::<HashMap<IpAddr, PeerInfo>>();
     let cloned = peers.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         loop {
@@ -830,7 +831,7 @@ async fn test_state() {
 async fn test_last_stale() {
     //test with empty stale block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -873,7 +874,7 @@ async fn test_last_stale() {
     ]);
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -909,7 +910,7 @@ async fn test_last_stale() {
 async fn test_last_invalid() {
     //test with empty final block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -952,7 +953,7 @@ async fn test_last_invalid() {
     ]);
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -987,7 +988,7 @@ async fn test_staker_info() {
     let cloned_staker = staker.clone();
     //test with empty final block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
 
         let handle = tokio::spawn(async move {
             loop {
@@ -1056,7 +1057,7 @@ async fn test_staker_info() {
 
     let cloned_staker = staker.clone();
     let cloned_graph = graph.clone();
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         loop {
