@@ -11,7 +11,7 @@ use communication::{
 };
 use consensus::start_consensus_controller;
 use log::{error, info, trace};
-use logging::massa_trace;
+use logging::{massa_trace, warn};
 use models::SerializationContext;
 use storage::start_storage;
 use tokio::{
@@ -132,39 +132,47 @@ async fn run(cfg: config::Config) {
                 },
                 Ok(ApiEvent::GetActiveBlock{hash, response_tx}) => {
                     massa_trace!("massa-node.main.run.select.api_event.get_active_block", {"hash": hash});
-                    response_tx.send(
+                    if response_tx.send(
                         consensus_command_sender
                         .get_active_block(hash)
                             .await
-                            .expect("could not retrieve block")
-                        ).expect("could not send block");
+                            .expect("get_active_block failed in api_event_receiver.wait_event")
+                        ).is_err() {
+                            warn!("could not send get_active_block response in api_event_receiver.wait_event");
+                        }
                 },
                 Ok(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
                     massa_trace!("massa-node.main.run.select.api_event.get_block_graph_status", {});
-                    response_sender_tx.send(
+                    if response_sender_tx.send(
                         consensus_command_sender
                         .get_block_graph_status()
                             .await
-                            .expect("could not retrive graph status")
-                        ).expect("could not send graph status");
+                            .expect("get_block_graph_status failed in api_event_receiver.wait_event")
+                        ).is_err() {
+                            warn!("could not send get_block_graph_status response in api_event_receiver.wait_event");
+                        }
                         trace!("after sending block graph to response_tx sender in loop in massa-node main");
                 },
                 Ok(ApiEvent::GetPeers(response_sender_tx)) => {
                     massa_trace!("massa-node.main.run.select.api_event.get_peers", {});
-                    response_sender_tx.send(
+                    if response_sender_tx.send(
                         network_command_sender
                             .get_peers()
                             .await
-                            .expect("could not retrive peers")
-                        ).expect("could not send peers");
+                            .expect("get_peers failed in api_event_receiver.wait_event")
+                        ).is_err() {
+                            warn!("could not send get_peers response in api_event_receiver.wait_event");
+                        }
                     },
                 Ok(ApiEvent::GetSelectionDraw { start, end, response_tx}) => {
                     massa_trace!("massa-node.main.run.select.api_event.get_selection_draws", {});
-                    response_tx.send(
+                    if response_tx.send(
                         consensus_command_sender
                             .get_selection_draws(start, end )
                             .await
-                        ).expect("could not send selection draws");
+                        ).is_err() {
+                            warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
+                        }
                     },
 
                 Err(err) => {
