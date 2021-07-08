@@ -161,7 +161,7 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to ask for a block.
-    pub async fn ask_for_block(
+    pub async fn ask_for_block_list(
         &mut self,
         list: HashMap<NodeId, HashSet<Hash>>,
     ) -> Result<(), CommunicationError> {

@@ -361,12 +361,13 @@ impl ProtocolWorker {
             .checked_add(self.cfg.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)?;
 
+        // list blocks to re-ask and gather candidate nodes to ask from
+        let mut candidate_nodes: HashMap<Hash, Vec<_>> = HashMap::new();
         let mut ask_block_list: HashMap<NodeId, HashSet<Hash>> = HashMap::new();
 
         // list blocks to re-ask and from whom
         for hash in self.block_wishlist.iter() {
             let mut needs_ask = true;
-            let mut best_candidate = None;
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
                 //map to remove the borrow on asked_blocks. Otherwise can't call insert_known_block
@@ -446,29 +447,61 @@ impl ProtocolWorker {
                     }
                 };
 
-                // update candidate node
-                if best_candidate.is_none()
-                    || Some((candidate, node_info.connection_instant, *node_id)) < best_candidate
-                {
-                    best_candidate = Some((candidate, node_info.connection_instant, *node_id));
-                }
+                // add candidate node
+                candidate_nodes
+                    .entry(*hash)
+                    .or_insert_with(|| Vec::new())
+                    .push((candidate, *node_id));
             }
 
-            // skip if doesn't need to be asked
+            // remove if doesn't need to be asked
             if !needs_ask {
-                continue;
+                candidate_nodes.remove(hash);
             }
+        }
 
-            // ask the best node, if there is one and update timeout
-            if let Some((_, _, node_id)) = best_candidate.take() {
-                self.active_nodes
-                    .get_mut(&node_id)
-                    .unwrap()
-                    .asked_blocks
-                    .insert(*hash, now); // will not panic, already checked
+        // count active block requests per node
+        let mut active_block_req_count: HashMap<NodeId, usize> = self
+            .active_nodes
+            .iter()
+            .map(|(node_id, node_info)| {
+                (
+                    *node_id,
+                    node_info
+                        .asked_blocks
+                        .iter()
+                        .filter(|(_h, ask_t)| {
+                            ask_t
+                                .checked_add(self.cfg.ask_block_timeout.into())
+                                .map_or(false, |timeout_t| timeout_t > now)
+                        })
+                        .count(),
+                )
+            })
+            .collect();
 
-                let hash_list = ask_block_list.entry(node_id).or_insert(HashSet::new());
-                hash_list.insert(*hash);
+        for (hash, criteria) in candidate_nodes.into_iter() {
+            // find the best node
+            if let Some((_knowledge, best_node)) =
+                criteria.into_iter().min_by_key(|(knowledge, node_id)| {
+                    (
+                        *active_block_req_count.get(node_id).unwrap_or(&0), // active requests
+                        *knowledge,                                         // block knowledge
+                        self.active_nodes.get(node_id).unwrap().connection_instant, // node age (will not panic, already checked)
+                        *node_id,                                                   // node ID
+                    )
+                })
+            {
+                let info = self.active_nodes.get_mut(&best_node).unwrap(); // will not panic, already checked
+                info.asked_blocks.insert(hash, now);
+                if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
+                    *cnt += 1; // increase the number of actively asked blocks
+                }
+
+                ask_block_list
+                    .entry(best_node)
+                    .or_insert(HashSet::new())
+                    .insert(hash);
 
                 let timeout_at = now
                     .checked_add(self.cfg.ask_block_timeout.into())
@@ -480,7 +513,7 @@ impl ProtocolWorker {
         //send AskBlockEvents
         if !ask_block_list.is_empty() {
             self.network_command_sender
-                .ask_for_block(ask_block_list)
+                .ask_for_block_list(ask_block_list)
                 .await
                 .map_err(|_| {
                     CommunicationError::ChannelError(
