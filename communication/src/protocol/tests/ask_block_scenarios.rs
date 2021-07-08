@@ -67,14 +67,7 @@ async fn test_without_a_priori() {
     // node B replied with the block
     network_controller.send_block(node_b.id, block).await;
 
-    // Close everything
-    protocol_manager
-        .stop(protocol_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
-
-    // 7. Make sure protocol did not send additional network commands.
-
+    // 7. Make sure protocol did not send additional ask for block commands.
     let ask_for_block_cmd_filter = |cmd| match cmd {
         cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
@@ -88,6 +81,12 @@ async fn test_without_a_priori() {
         "unexpected command {:?}",
         got_more_commands
     );
+
+    // Close everything
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
 }
 
 #[tokio::test]
@@ -159,13 +158,7 @@ async fn test_someone_knows_it() {
     // node C replied with the block
     network_controller.send_block(node_c.id, block).await;
 
-    // Close everything
-    protocol_manager
-        .stop(protocol_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
-
-    // 7. Make sure protocol did not send additional network commands.
+    // 7. Make sure protocol did not send additional ask for block commands.
     let ask_for_block_cmd_filter = |cmd| match cmd {
         cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
@@ -179,6 +172,12 @@ async fn test_someone_knows_it() {
         "unexpected command {:?}",
         got_more_commands
     );
+
+    // Close everything
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
 }
 
 #[tokio::test]
@@ -244,13 +243,7 @@ async fn test_dont_want_it_anymore() {
         .await
         .unwrap();
 
-    // Close everything
-    protocol_manager
-        .stop(protocol_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
-
-    // 7. Make sure protocol did not send additional network commands.
+    // 7. Make sure protocol did not send additional ask for block commands.
     let ask_for_block_cmd_filter = |cmd| match cmd {
         cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
@@ -264,6 +257,12 @@ async fn test_dont_want_it_anymore() {
         "unexpected command {:?}",
         got_more_commands
     );
+
+    // Close everything
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
 }
 
 #[tokio::test]
@@ -334,13 +333,7 @@ async fn test_no_one_has_it() {
     assert_hash_asked_to_node(hash_1, node_b.id, &mut network_controller).await;
     assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
-    // Close everything
-    protocol_manager
-        .stop(protocol_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
-
-    // 7. Make sure protocol did not send additional network commands.
+    // 7. Make sure protocol did not send additional ask for block commands.
     let ask_for_block_cmd_filter = |cmd| match cmd {
         cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
@@ -354,4 +347,10 @@ async fn test_no_one_has_it() {
         "unexpected command {:?}",
         got_more_commands
     );
+
+    // Close everything
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
 }

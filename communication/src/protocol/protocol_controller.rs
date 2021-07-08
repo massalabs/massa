@@ -85,6 +85,17 @@ impl ProtocolCommandSender {
             })
     }
 
+    /// Notify to protocol an attack attempt.
+    pub async fn notify_block_attack(&mut self, hash: Hash) -> Result<(), CommunicationError> {
+        massa_trace!("notify_block_attack_order", { "object": hash });
+        self.0
+            .send(ProtocolCommand::AttackBlockDetected(hash))
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("notify_block_attack command send error".into())
+            })
+    }
+
     /// Sends a block to a peer.
     ///
     /// # Arguments

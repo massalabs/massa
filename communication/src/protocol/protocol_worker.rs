@@ -33,6 +33,8 @@ pub enum ProtocolCommand {
         hash: Hash,
         block: Block,
     },
+    /// A block, or it's header, amounted to an attempted attack.
+    AttackBlockDetected(Hash),
     /// Send a block to peers who asked for it.
     FoundBlock {
         hash: Hash,
@@ -264,6 +266,20 @@ impl ProtocolWorker {
                     }
                 }
             }
+            ProtocolCommand::AttackBlockDetected(hash) => {
+                // Ban all the nodes that sent us this object.
+                let to_ban: Vec<NodeId> = self
+                    .active_nodes
+                    .iter()
+                    .filter_map(|(id, info)| match info.get_known_block(&hash) {
+                        Some((true, _)) => Some(id.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                for id in to_ban.iter() {
+                    self.ban_node(id).await?;
+                }
+            }
             ProtocolCommand::FoundBlock { hash, block } => {
                 massa_trace!("send_block", { "block": block });
                 // Send the block once to all nodes who asked for it.
@@ -452,8 +468,18 @@ impl ProtocolWorker {
         Ok(())
     }
 
+    // Ban a node.
+    async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), CommunicationError> {
+        self.active_nodes.remove(node_id);
+        self.network_command_sender
+            .ban(node_id.clone())
+            .await
+            .map_err(|_| CommunicationError::ChannelError("Ban node command send failed".into()))?;
+        Ok(())
+    }
+
     /// Check a header's signature, and if valid note the node knows the block.
-    fn note_header_from_node(
+    async fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
         source_node_id: &NodeId,
@@ -461,24 +487,20 @@ impl ProtocolWorker {
         if let Ok(hash) = header.content.compute_hash(&self.serialization_context) {
             // check signature
             if let Err(_err) = header.verify_signature(&hash, &SignatureEngine::new()) {
-                return Ok(None);
+                return self.ban_node(source_node_id).await.map(|_| None);
             }
 
-            let node_info = self
-                .active_nodes
-                .get_mut(source_node_id)
-                .ok_or(CommunicationError::MissingNodeError)?;
-            node_info.insert_known_block(
-                hash,
-                true,
-                Instant::now(),
-                self.cfg.max_node_known_blocks_size,
-            );
-
-            Ok(Some(hash))
-        } else {
-            Ok(None)
+            if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+                node_info.insert_known_block(
+                    hash,
+                    true,
+                    Instant::now(),
+                    self.cfg.max_node_known_blocks_size,
+                );
+                return Ok(Some(hash));
+            }
         }
+        Ok(None)
     }
 
     /// Manages network event
@@ -504,7 +526,10 @@ impl ProtocolWorker {
                 node: from_node_id,
                 block,
             } => {
-                if let Some(hash) = self.note_header_from_node(&block.header, &from_node_id)? {
+                if let Some(hash) = self
+                    .note_header_from_node(&block.header, &from_node_id)
+                    .await?
+                {
                     self.stop_asking_blocks(HashSet::from(vec![hash].into_iter().collect()))?;
                     self.controller_event_tx
                         .send(ProtocolEvent::ReceivedBlock { hash, block })
@@ -526,25 +551,23 @@ impl ProtocolWorker {
                 node: from_node_id,
                 hash: data,
             } => {
-                let node_info = self
-                    .active_nodes
-                    .get_mut(&from_node_id)
-                    .ok_or(CommunicationError::MissingNodeError)?;
-                node_info.insert_wanted_blocks(data, self.cfg.max_node_wanted_blocks_size);
-                self.controller_event_tx
-                    .send(ProtocolEvent::GetBlock(data))
-                    .await
-                    .map_err(|_| {
-                        CommunicationError::ChannelError(
-                            "receive asked for block event send failed".into(),
-                        )
-                    })?;
+                if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
+                    node_info.insert_wanted_blocks(data, self.cfg.max_node_wanted_blocks_size);
+                    self.controller_event_tx
+                        .send(ProtocolEvent::GetBlock(data))
+                        .await
+                        .map_err(|_| {
+                            CommunicationError::ChannelError(
+                                "receive asked for block event send failed".into(),
+                            )
+                        })?;
+                }
             }
             NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
                 header,
             } => {
-                if let Some(hash) = self.note_header_from_node(&header, &source_node_id)? {
+                if let Some(hash) = self.note_header_from_node(&header, &source_node_id).await? {
                     self.controller_event_tx
                         .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
                         .await

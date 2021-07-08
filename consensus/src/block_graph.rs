@@ -170,6 +170,7 @@ pub struct BlockGraph {
     gi_head: HashMap<Hash, HashSet<Hash>>,
     max_cliques: Vec<HashSet<Hash>>,
     to_propagate: HashMap<Hash, Block>,
+    attack_attempts: Vec<Hash>,
 }
 
 #[derive(Debug)]
@@ -260,6 +261,7 @@ impl BlockGraph {
             gi_head: HashMap::new(),
             max_cliques: vec![HashSet::new()],
             to_propagate: Default::default(),
+            attack_attempts: Default::default(),
         })
     }
 
@@ -539,6 +541,8 @@ impl BlockGraph {
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::Discard(reason) => {
+                        self.maybe_note_attack_attempt(&reason, &hash);
+
                         // discard
                         self.block_statuses.insert(
                             hash,
@@ -604,6 +608,8 @@ impl BlockGraph {
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::Discard(reason) => {
+                        self.maybe_note_attack_attempt(&reason, &hash);
+
                         // add to discard
                         self.block_statuses.insert(
                             hash,
@@ -691,6 +697,17 @@ impl BlockGraph {
         }
 
         Ok(reprocess)
+    }
+
+    /// Note an attack attempt if the discard reason indicates one.
+    fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &Hash) {
+        // If invalid, note the attack attempt.
+        match reason {
+            &DiscardReason::Invalid => {
+                self.attack_attempts.push(hash.clone());
+            }
+            _ => {}
+        }
     }
 
     /// Gets whole ActiveBlock corresponding to given hash
@@ -1765,7 +1782,13 @@ impl BlockGraph {
     // Get the headers to be propagated.
     // Must be called by the consensus worker within `block_db_changed`.
     pub fn get_blocks_to_propagate(&mut self) -> HashMap<Hash, Block> {
-        mem::replace(&mut self.to_propagate, Default::default())
+        mem::take(&mut self.to_propagate)
+    }
+
+    // Get the hashes of objects that were attack attempts.
+    // Must be called by the consensus worker within `block_db_changed`.
+    pub fn get_attack_attempts(&mut self) -> Vec<Hash> {
+        mem::take(&mut self.attack_attempts)
     }
 }
 

@@ -325,6 +325,13 @@ impl ConsensusWorker {
                 .await?;
         }
 
+        // Notify protocol of attack attempts.
+        for hash in self.block_db.get_attack_attempts().into_iter() {
+            self.protocol_command_sender
+                .notify_block_attack(hash)
+                .await?;
+        }
+
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks = &new_wishlist - &self.wishlist;
         let remove_blocks = &new_wishlist - &self.wishlist;

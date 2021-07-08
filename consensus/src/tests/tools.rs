@@ -127,6 +127,23 @@ pub async fn validate_propagate_block(
     }
 }
 
+pub async fn validate_notify_block_attack_attempt(
+    protocol_controller: &mut MockProtocolController,
+    valid_hash: Hash,
+    timeout_ms: u64,
+) {
+    let param = protocol_controller
+        .wait_command(timeout_ms.into(), |cmd| match cmd {
+            ProtocolCommand::AttackBlockDetected(hash) => return Some(hash),
+            _ => None,
+        })
+        .await;
+    match param {
+        Some(hash) => assert_eq!(valid_hash, hash, "Attack attempt notified for wrong hash."),
+        None => panic!("Attack attempt not notified before timeout."),
+    }
+}
+
 pub fn start_storage(serialization_context: &SerializationContext) -> StorageAccess {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     let storage_config = StorageConfig {
