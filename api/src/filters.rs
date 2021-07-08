@@ -190,8 +190,8 @@ pub enum ApiManagementCommand {}
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 struct TimeInterval {
-    start: UTime,
-    end: UTime,
+    start: Option<UTime>,
+    end: Option<UTime>,
 }
 
 /// This function sets up all the routes that can be used
@@ -591,10 +591,12 @@ async fn get_last_final(
 async fn get_block_interval(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
-    start: UTime,
-    end: UTime,
+    start_opt: Option<UTime>,
+    end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    let start = start_opt.unwrap_or(UTime::from(0));
+    let end = end_opt.unwrap_or(UTime::from(u64::MAX));
     match get_block_interval_process(
         event_tx,
         consensus_cfg,
@@ -620,29 +622,32 @@ async fn get_block_interval_process(
     end: UTime,
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<Vec<(Hash, Slot)>, String> {
-    let mut res = Vec::new();
-
     //filter block from graph_export
-    retrieve_graph_export(&event_tx)
+    let mut res = retrieve_graph_export(&event_tx)
         .await
         .map_err(|err| (format!("error retrieving graph : {:?}", err)))
         .and_then(|graph| {
-            for (hash, exported_block) in graph.active_blocks {
-                let header = exported_block.block;
-                get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    header.slot,
-                )
-                .map_err(|err| (format!("error getting time : {:?}", err)))
-                .map(|time| {
-                    if start <= time && time < end {
-                        res.push((hash, header.slot));
-                    }
-                })?;
-            }
-            Ok(())
+            graph
+                .active_blocks
+                .iter()
+                .filter_map(|(hash, exported_block)| {
+                    get_block_slot_timestamp(
+                        consensus_cfg.thread_count,
+                        consensus_cfg.t0,
+                        consensus_cfg.genesis_timestamp,
+                        exported_block.block.slot,
+                    )
+                    .map_err(|err| (format!("error getting time : {:?}", err)))
+                    .map(|time| {
+                        if start <= time && time < end {
+                            Some((*hash, exported_block.block.slot))
+                        } else {
+                            None
+                        }
+                    })
+                    .transpose()
+                })
+                .collect::<Result<Vec<(Hash, Slot)>, String>>()
         })?;
 
     if let Some(ref storage) = opt_storage_command_sender {
@@ -697,7 +702,7 @@ async fn get_block_interval_process(
                     )
                     .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
                     .and_then(|end_time| {
-                        if end_time == start {
+                        if end_time == end {
                             Ok(slot)
                         } else {
                             slot.get_next_slot(consensus_cfg.thread_count)
@@ -903,10 +908,12 @@ async fn get_block_interval_process(
 async fn get_graph_interval(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
-    start: UTime,
-    end: UTime,
+    start_opt: Option<UTime>,
+    end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    let start = start_opt.unwrap_or(UTime::from(0));
+    let end = end_opt.unwrap_or(UTime::from(u64::MAX));
     let mut res = HashMap::new();
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
