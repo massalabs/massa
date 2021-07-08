@@ -162,6 +162,7 @@ use models::Address;
 use models::ModelsError;
 use models::Operation;
 use models::OperationId;
+use models::OperationSearchResult;
 use models::SerializationContext;
 use models::{Block, BlockHeader, BlockId, Slot};
 use pool::PoolConfig;
@@ -198,6 +199,11 @@ pub enum ApiEvent {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<Result<LedgerDataExport, ConsensusError>>,
     },
+    GetOperations {
+        operation_ids: HashSet<OperationId>,
+        /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
+        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+    },
 }
 
 pub enum ApiManagementCommand {}
@@ -206,6 +212,11 @@ pub enum ApiManagementCommand {}
 struct TimeInterval {
     start: Option<UTime>,
     end: Option<UTime>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct OperationIds {
+    operation_ids: HashSet<OperationId>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -236,6 +247,17 @@ pub fn get_filter(
         .and(warp::path::param::<BlockId>()) //block id
         .and(warp::path::end())
         .and_then(move |hash| get_block(evt_tx.clone(), hash, storage.clone()));
+
+    let evt_tx = event_tx.clone();
+    let operations = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("operations"))
+        .and(warp::path::end())
+        .and(warp::query::<OperationIds>())
+        .and_then(move |OperationIds { operation_ids }| {
+            get_operations(evt_tx.clone(), operation_ids)
+        });
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
@@ -450,6 +472,7 @@ pub fn get_filter(
         .or(node_config)
         .or(pool_config)
         .or(get_consensus_cfg)
+        .or(operations)
         .boxed()
 }
 
@@ -482,7 +505,8 @@ async fn get_consensus_config(
         "thread_count": consensus_cfg.thread_count,
         "genesis_timestamp": consensus_cfg.genesis_timestamp,
         "delta_f0": consensus_cfg.delta_f0,
-        "max_block_size": consensus_cfg.max_block_size
+        "max_block_size": consensus_cfg.max_block_size,
+        "operation_validity_periods": consensus_cfg.operation_validity_periods
     })))
 }
 
@@ -601,6 +625,28 @@ async fn get_block(
     }
 }
 
+async fn get_operations(
+    event_tx: mpsc::Sender<ApiEvent>,
+    operation_ids: HashSet<OperationId>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.get_operations", {
+        "operation_ids": operation_ids
+    });
+    match retrieve_operations(operation_ids, &event_tx).await {
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error retrieving operation : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+        Ok(ops) => Ok(warp::reply::json(&json!({
+            "operations": ops,
+        }))
+        .into_response()),
+    }
+}
+
 /// Returns our ip adress
 ///
 /// Note: as our ip adress is in the config,
@@ -645,6 +691,28 @@ async fn retrieve_block(
     response_rx
         .await
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
+}
+
+async fn retrieve_operations(
+    operation_ids: HashSet<OperationId>,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<HashMap<OperationId, OperationSearchResult>, ApiError> {
+    massa_trace!("api.filters.retrieve_operations", {
+        "operation_ids": operation_ids
+    });
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetOperations {
+            operation_ids,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!("Could not send api event get operation : {0}", e))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve operation : {0}", e))
+    })
 }
 
 async fn retrieve_peers(

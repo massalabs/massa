@@ -1,5 +1,5 @@
 use crate::ReplError;
-use crypto::signature::PrivateKey;
+use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
 use serde::{Deserialize, Serialize};
 
@@ -59,7 +59,9 @@ impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Wallet private key list:")?;
         for key in &self.keys {
-            writeln!(f, "key:{}", key.to_bs58_check())?;
+            let public_key = derive_public_key(&key);
+            let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
+            writeln!(f, "key:{} public:{} addr:{}", key, public_key, addr)?;
         }
         Ok(())
     }

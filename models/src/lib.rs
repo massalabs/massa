@@ -1,5 +1,6 @@
 mod address;
 mod block;
+mod composite;
 mod context;
 mod error;
 mod operation;
@@ -8,6 +9,7 @@ mod slot;
 
 pub use address::{Address, ADDRESS_SIZE_BYTES};
 pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId, BLOCK_ID_SIZE_BYTES};
+pub use composite::OperationSearchResult;
 pub use context::SerializationContext;
 pub use error::ModelsError;
 pub use operation::{Operation, OperationContent, OperationId, OperationType};

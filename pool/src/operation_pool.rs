@@ -75,8 +75,11 @@ impl OperationPool {
         let mut newly_added = HashSet::new();
 
         for (op_id, operation) in operations.into_iter() {
+            massa_trace!("pool add_operations op", { "op": operation });
+
             // Already present
             if self.ops.contains_key(&op_id) {
+                massa_trace!("pool add_operations  op already present.)", {});
                 continue;
             }
 
@@ -99,6 +102,10 @@ impl OperationPool {
                 if validity_start_period.saturating_sub(cur_period_in_thread)
                     > self.cfg.max_operation_future_validity_start_periods
                 {
+                    massa_trace!("pool add_operations validity_start_period >  self.cfg.max_operation_future_validity_start_periods", {
+                        "range": validity_start_period.saturating_sub(cur_period_in_thread),
+                        "max_operation_future_validity_start_periods": self.cfg.max_operation_future_validity_start_periods
+                    });
                     continue;
                 }
             }
@@ -107,6 +114,10 @@ impl OperationPool {
             if wrapped_op.op.content.expire_period
                 <= self.last_final_periods[wrapped_op.thread as usize]
             {
+                massa_trace!("pool add_operations wrapped_op.op.content.expire_period <= self.last_final_periods[wrapped_op.thread as usize]", {
+                    "expire_period": wrapped_op.op.content.expire_period,
+                    "self.last_final_periods[wrapped_op.thread as usize]": self.last_final_periods[wrapped_op.thread as usize]
+                });
                 continue;
             }
 
@@ -187,6 +198,10 @@ impl OperationPool {
                 if let Some(w_op) = self.ops.get(id) {
                     if !w_op.op.get_validity_range(self.operation_validity_periods)
                         .contains(&block_slot.period) || w_op.byte_count > max_size {
+                            massa_trace!("pool get_operation_batch not added to batch w_op.op.get_validity_range incorrect not added", { 
+                                "range": w_op.op.get_validity_range(self.operation_validity_periods),
+                                "block_slot.period": block_slot.period
+                            });
                         return None;
                     }
                     Some(Ok((id.clone(), w_op.op.clone(), w_op.byte_count)))
@@ -197,6 +212,16 @@ impl OperationPool {
                 }
             })
             .take(batch_size)
+            .collect()
+    }
+
+    pub fn get_operations(
+        &self,
+        operation_ids: &HashSet<OperationId>,
+    ) -> HashMap<OperationId, Operation> {
+        operation_ids
+            .iter()
+            .filter_map(|op_id| self.ops.get(&op_id).map(|w_op| (*op_id, w_op.op.clone())))
             .collect()
     }
 }

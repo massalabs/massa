@@ -24,6 +24,8 @@ pub enum StorageError {
     DeserializationError(String),
     #[error("add block error: {0}")]
     AddBlockError(String),
+    #[error("operation error: {0}")]
+    OperationError(String),
     #[error("clear error: {0}")]
     ClearError(String),
 }

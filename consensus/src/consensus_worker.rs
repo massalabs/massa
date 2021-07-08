@@ -11,7 +11,7 @@ use crypto::{
 };
 use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
-    SerializationContext, SerializeCompact, Slot,
+    OperationSearchResult, SerializationContext, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
 use std::convert::TryFrom;
@@ -47,6 +47,10 @@ pub enum ConsensusCommand {
     GetLedgerData {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<LedgerDataExport>,
+    },
+    GetOperations {
+        operation_ids: HashSet<OperationId>,
+        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
 }
 
@@ -390,7 +394,11 @@ impl ConsensusWorker {
                 thread_ledger.extend(missing_entries);
 
                 // try to apply the changes caused by the op in the block's thread
-                if thread_ledger.try_apply_changes(&thread_changes).is_err() {
+                if let Err(err) = thread_ledger.try_apply_changes(&thread_changes) {
+                    massa_trace!("create block thread_ledger.try_apply_changes error", {
+                        "error:": err.to_string(),
+                        "ledger:": thread_ledger,
+                    });
                     continue;
                 }
 
@@ -421,6 +429,8 @@ impl ConsensusWorker {
             &self.serialization_context,
         )?;
         let block = Block { header, operations };
+
+        massa_trace!("create block", { "block": block });
 
         // add block to db
         self.block_db.incoming_block(
@@ -548,7 +558,83 @@ impl ConsensusWorker {
                         ))
                     })
             }
+            ConsensusCommand::GetOperations {
+                operation_ids,
+                response_tx,
+            } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_operations",
+                    { "operation_ids": operation_ids }
+                );
+                let res = self.get_operations(&operation_ids).await?;
+                response_tx.send(res).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get operations response: {:?}",
+                        err
+                    ))
+                })
+            }
         }
+    }
+
+    async fn get_operations(
+        &mut self,
+        operation_ids: &HashSet<OperationId>,
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, ConsensusError> {
+        // get from pool
+        let mut res: HashMap<OperationId, OperationSearchResult> = self
+            .pool_command_sender
+            .get_operations(operation_ids.clone())
+            .await?
+            .into_iter()
+            .map(|(op_id, op)| {
+                (
+                    op_id,
+                    OperationSearchResult {
+                        op,
+                        in_pool: true,
+                        in_blocks: HashMap::new(),
+                    },
+                )
+            })
+            .collect();
+
+        // extend with consensus
+        self.block_db
+            .get_operations(operation_ids)
+            .into_iter()
+            .for_each(|(op_id, search_new)| {
+                res.entry(op_id)
+                    .and_modify(|search_old| search_old.extend(&search_new))
+                    .or_insert(search_new);
+            });
+
+        // for those that have not been found in consensus, extend with storage
+        if let Some(storage) = &mut self.opt_storage_command_sender {
+            let to_gather: HashSet<OperationId> = operation_ids
+                .iter()
+                .filter(|op_id| {
+                    if let Some(cur_search) = res.get(op_id) {
+                        if !cur_search.in_blocks.is_empty() {
+                            return false;
+                        }
+                    }
+                    true
+                })
+                .copied()
+                .collect();
+            storage
+                .get_operations(to_gather)
+                .await?
+                .into_iter()
+                .for_each(|(op_id, search_new)| {
+                    res.entry(op_id)
+                        .and_modify(|search_old| search_old.extend(&search_new))
+                        .or_insert(search_new);
+                });
+        }
+
+        Ok(res)
     }
 
     /// Manages received protocolevents.
