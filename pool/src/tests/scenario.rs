@@ -519,9 +519,7 @@ async fn test_new_final_ops() {
         .wait_command(500.into(), op_filter.clone())
         .await
     {
-        Some(ProtocolCommand::PropagateOperations(ops)) => {
-            panic!("unexpected operation propagation")
-        }
+        Some(ProtocolCommand::PropagateOperations(_)) => panic!("unexpected operation propagation"),
         Some(_) => panic!("unexpected protocol command"),
         None => {}
     };

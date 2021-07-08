@@ -19,7 +19,7 @@ use time::UTime;
 #[serial]
 async fn test_ledger_init() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -37,7 +37,7 @@ async fn test_ledger_init() {
 #[serial]
 async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -61,7 +61,7 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 #[serial]
 async fn test_ledger_final_balance_increment_new_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -96,7 +96,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 #[serial]
 async fn test_ledger_apply_change_wrong_thread() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -134,7 +134,7 @@ async fn test_ledger_apply_change_wrong_thread() {
 #[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -174,7 +174,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -224,7 +224,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -280,7 +280,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -308,7 +308,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -337,7 +337,7 @@ async fn test_ledger_final_balance_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_duplicate_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -370,7 +370,7 @@ async fn test_ledger_final_balance_duplicate_address() {
 #[serial]
 async fn test_ledger_final_balance_multiple_addresses() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -408,7 +408,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
 #[serial]
 async fn test_ledger_clear() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -453,7 +453,7 @@ async fn test_ledger_clear() {
 #[serial]
 async fn test_ledger_read_whole() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -556,9 +556,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     ledger.insert(address_2, LedgerData { balance: 3000 });
 
     let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
@@ -591,6 +589,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             pool_command_sender,
             None,
             None,
+            None,
             0,
         )
         .await
@@ -610,7 +609,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(1, 0),
         &genesis_ids,
-        nodes[0],
+        staking_keys[0],
         vec![operation_1],
     );
     protocol_controller.receive_block(block_a).await;
@@ -627,7 +626,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(1, 1),
         &genesis_ids,
-        nodes[0],
+        staking_keys[0],
         vec![operation_2, operation_3],
     );
     protocol_controller.receive_block(block_b).await;
@@ -641,7 +640,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(2, 0),
         &vec![block_a_id, block_b_id],
-        nodes[0],
+        staking_keys[0],
         vec![operation_4],
     );
     protocol_controller.receive_block(block_c).await;
@@ -652,7 +651,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(2, 1),
         &vec![block_a_id, block_b_id],
-        nodes[0],
+        staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_d).await;
@@ -665,7 +664,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(3, 0),
         &vec![block_c_id, block_b_id],
-        nodes[0],
+        staking_keys[0],
         vec![operation_5],
     );
     protocol_controller.receive_block(block_e).await;
@@ -678,7 +677,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(3, 1),
         &vec![block_c_id, block_d_id],
-        nodes[0],
+        staking_keys[0],
         vec![operation_6],
     );
     protocol_controller.receive_block(block_f).await;
@@ -689,7 +688,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(4, 0),
         &vec![block_e_id, block_f_id],
-        nodes[0],
+        staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_g).await;
@@ -698,9 +697,10 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // B3 and B4 have become final.
     {
         let ledger = consensus_command_sender
-            .get_bootstrap_graph()
+            .get_bootstrap_state()
             .await
             .unwrap()
+            .1
             .ledger;
         let ledger_0: HashMap<Address, LedgerData> =
             ledger.ledger_per_thread[0].iter().cloned().collect();
@@ -719,7 +719,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(5, 0),
         &vec![block_g_id, block_f_id],
-        nodes[0],
+        staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_h).await;
@@ -730,7 +730,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(6, 0),
         &vec![block_h_id, block_f_id],
-        nodes[0],
+        staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_i).await;
@@ -739,9 +739,10 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // B5 has become final.
     {
         let ledger = consensus_command_sender
-            .get_bootstrap_graph()
+            .get_bootstrap_state()
             .await
             .unwrap()
+            .1
             .ledger;
         let ledger_0: HashMap<Address, LedgerData> =
             ledger.ledger_per_thread[0].iter().cloned().collect();
@@ -757,7 +758,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(7, 0),
         &vec![block_i_id, block_f_id],
-        nodes[0],
+        staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_j).await;
@@ -766,9 +767,10 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // B6 has become final.
     {
         let ledger = consensus_command_sender
-            .get_bootstrap_graph()
+            .get_bootstrap_state()
             .await
             .unwrap()
+            .1
             .ledger;
         let ledger_0: HashMap<Address, LedgerData> =
             ledger.ledger_per_thread[0].iter().cloned().collect();
@@ -784,7 +786,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         &cfg,
         Slot::new(8, 0),
         &vec![block_j_id, block_f_id],
-        nodes[0],
+        staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_k).await;
@@ -793,9 +795,10 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // B7 and B8 have become final.
     {
         let ledger = consensus_command_sender
-            .get_bootstrap_graph()
+            .get_bootstrap_state()
             .await
             .unwrap()
+            .1
             .ledger;
         let ledger_0: HashMap<Address, LedgerData> =
             ledger.ledger_per_thread[0].iter().cloned().collect();

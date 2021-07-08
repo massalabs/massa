@@ -22,7 +22,7 @@ async fn test_unsorted_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -49,6 +49,7 @@ async fn test_unsorted_block() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -170,7 +171,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -198,6 +199,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -286,7 +288,7 @@ async fn test_too_many_blocks_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -315,6 +317,7 @@ async fn test_too_many_blocks_in_the_future() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -410,7 +413,7 @@ async fn test_dep_in_back_order() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -439,6 +442,7 @@ async fn test_dep_in_back_order() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -509,7 +513,6 @@ async fn test_dep_in_back_order() {
     let hash_list = vec![
         hasht0s1, hasht1s1, hasht0s2, hasht1s2, hasht0s3, hasht1s3, hasht0s4, hasht1s4,
     ];
-    println!("{:#?}", hash_list);
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
     protocol_controller.receive_block(t0s2).await; // not propagated and update wishlist
@@ -603,7 +606,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -632,6 +635,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -756,7 +760,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -785,6 +789,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,

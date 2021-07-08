@@ -15,7 +15,7 @@ use serial_test::serial;
 #[serial]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -42,6 +42,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -105,7 +106,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 #[serial]
 async fn test_consensus_block_not_found() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -132,6 +133,7 @@ async fn test_consensus_block_not_found() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,

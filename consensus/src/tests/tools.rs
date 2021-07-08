@@ -395,7 +395,8 @@ pub fn get_export_active_test_block(
             block,
             children: vec![vec![], vec![]],
             is_final,
-            block_ledger_change: vec![],
+            block_ledger_change: vec![vec![], vec![]],
+            roll_updates: vec![],
         },
         id,
     )

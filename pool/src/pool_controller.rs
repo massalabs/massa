@@ -148,7 +148,10 @@ impl PoolCommandSender {
             })?;
 
         response_rx.await.map_err(|e| {
-            PoolError::ChannelError(format!("pool command response read error {:?}", e))
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_operation_batch {:?}",
+                e
+            ))
         })
     }
 
@@ -169,9 +172,12 @@ impl PoolCommandSender {
             .await
             .map_err(|_| PoolError::ChannelError("get_operation command send error".into()))?;
 
-        response_rx
-            .await
-            .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_operations {:?}",
+                e
+            ))
+        })
     }
 
     pub async fn get_operations_involving_address(
@@ -195,9 +201,12 @@ impl PoolCommandSender {
                 )
             })?;
 
-        response_rx
-            .await
-            .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_operations_involving_address {:?}",
+                e
+            ))
+        })
     }
 }
 

@@ -3629,6 +3629,7 @@ mod tests {
                     },
                 )],
             ],
+            roll_updates: vec![],
         }
     }
 
@@ -3688,6 +3689,7 @@ mod tests {
             dependencies: vec![], // dependencies required for validity check
             is_final: true,
             block_ledger_change: vec![Vec::new(); thread_count as usize],
+            roll_updates: vec![],
         };
         let export_genesist1 = ExportActiveBlock {
             block: block_genesist1,
@@ -3696,6 +3698,7 @@ mod tests {
             dependencies: vec![], // dependencies required for validity check
             is_final: true,
             block_ledger_change: vec![Vec::new(); thread_count as usize],
+            roll_updates: vec![],
         };
         //update ledget with inital content.
         //   Thread 0  [at the output of block p0t0]:
