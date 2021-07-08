@@ -284,7 +284,7 @@ pub async fn propagate_block(
     protocol_controller.receive_block(block).await;
     if valid {
         //see if the block is propagated.
-        validate_propagate_block(protocol_controller, block_hash, 150).await;
+        validate_propagate_block(protocol_controller, block_hash, 1000).await;
     } else {
         //see if the block is propagated.
         validate_notpropagate_block(protocol_controller, block_hash, 1000).await;
