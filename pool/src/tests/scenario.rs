@@ -485,7 +485,7 @@ async fn test_new_final_ops() {
             ops[..4]
                 .to_vec()
                 .iter()
-                .map(|(id, op)| (*id, (8u64, 0u8)))
+                .map(|(id, _)| (*id, (8u64, 0u8)))
                 .collect::<HashMap<OperationId, (u64, u8)>>(),
         )
         .await

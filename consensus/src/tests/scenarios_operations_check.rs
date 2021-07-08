@@ -4,7 +4,6 @@ use models::{Address, Slot};
 
 use crate::{
     ledger::LedgerData,
-    pos::RollCounts,
     start_consensus_controller,
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
@@ -64,7 +63,6 @@ async fn test_operations_check() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),

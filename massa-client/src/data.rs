@@ -210,7 +210,7 @@ pub fn extract_addresses_from_ledger<'a>(
 
     if let Some(ord) = ordered_addrs.clone() {
         ord.into_iter()
-            .map(|(address)| WrapperAddressLedgerDataExport {
+            .map(|address| WrapperAddressLedgerDataExport {
                 address: address,
                 balances: base_ledger_map.get(&address).unwrap().clone(),
             })

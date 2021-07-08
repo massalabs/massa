@@ -7,7 +7,7 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::{pos::RollCounts, start_consensus_controller, tests::tools::generate_ledger_file};
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
 
@@ -22,7 +22,6 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        2,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -114,7 +113,6 @@ async fn test_consensus_block_not_found() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        2,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),

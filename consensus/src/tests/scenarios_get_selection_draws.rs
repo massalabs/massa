@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use models::{Address, Slot};
-use pool::{PoolCommand, PoolCommandSender};
 use serial_test::serial;
 use time::UTime;
 
@@ -10,13 +9,9 @@ use crate::{
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
         mock_protocol_controller::MockProtocolController,
-        tools::{
-            self, create_and_test_block, create_block_with_operations, create_roll_buy,
-            create_roll_sell, create_transaction, generate_ledger_file, get_creator_for_draw,
-            propagate_block, wait_pool_slot,
-        },
+        tools::{self, generate_ledger_file},
     },
-    LedgerData, LedgerExport,
+    LedgerData,
 };
 
 #[tokio::test]
@@ -61,7 +56,6 @@ async fn test_get_selection_draws_high_end_slot() {
 
     let staking_file = tools::generate_staking_keys_file(&vec![priv_2]);
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -80,7 +74,7 @@ async fn test_get_selection_draws_high_end_slot() {
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
 
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
     // launch consensus controller
