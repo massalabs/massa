@@ -90,7 +90,7 @@ impl PeerDatabase {
                     opt_opt_p = saver_watch_rx.recv() => match opt_opt_p {
                         Some(Some(op)) => {
                             if last_value.is_none() {
-
+                                delay = delay_for(Duration::from_secs_f32(peer_file_dump_interval_seconds));
                             }
                             last_value = Some(op);
                         },
