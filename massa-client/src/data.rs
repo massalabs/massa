@@ -182,6 +182,7 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
 /// Wrapps a ledger data export
 pub fn extract_addresses_from_ledger<'a>(
     ledger: &'a LedgerDataExport,
+    ordered_addrs: Option<Vec<Address>>,
 ) -> Vec<WrapperAddressLedgerDataExport<'a>> {
     //extract address from final_data
     let mut base_ledger_map: HashMap<&Address, WrapperAddressLedger<'a>> = ledger
@@ -215,10 +216,22 @@ pub fn extract_addresses_from_ledger<'a>(
             data.candidate_balance = Some(ledger);
         });
 
-    base_ledger_map
-        .into_iter()
-        .map(|(address, balances)| WrapperAddressLedgerDataExport { address, balances })
-        .collect()
+    if let Some(ord) = ordered_addrs.clone() {
+        ord.into_iter()
+            .map(|(address)| WrapperAddressLedgerDataExport {
+                address: address,
+                balances: base_ledger_map.get(&address).unwrap().clone(),
+            })
+            .collect()
+    } else {
+        base_ledger_map
+            .into_iter()
+            .map(|(address, balances)| WrapperAddressLedgerDataExport {
+                address: *address,
+                balances,
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -229,7 +242,7 @@ pub struct WrapperAddressLedger<'a> {
 
 #[derive(Debug, Clone)]
 pub struct WrapperAddressLedgerDataExport<'a> {
-    pub address: &'a Address,
+    pub address: Address,
     pub balances: WrapperAddressLedger<'a>,
 }
 
