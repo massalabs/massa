@@ -70,6 +70,78 @@ pub fn create_block(
     }
 }
 
+pub fn create_block_with_operations(
+    private_key: &PrivateKey,
+    public_key: &PublicKey,
+    slot: Slot,
+    operations: Vec<Operation>,
+    serialization_context: &SerializationContext,
+) -> Block {
+    let operation_merkle_root = Hash::hash(
+        &operations.iter().fold(Vec::new(), |acc, v| {
+            let res = [
+                acc,
+                v.get_operation_id(serialization_context)
+                    .unwrap()
+                    .to_bytes()
+                    .to_vec(),
+            ]
+            .concat();
+            res
+        })[..],
+    );
+    let (_, header) = BlockHeader::new_signed(
+        private_key,
+        BlockHeaderContent {
+            creator: public_key.clone(),
+            slot,
+            parents: Vec::new(),
+            operation_merkle_root,
+        },
+        &serialization_context,
+    )
+    .unwrap();
+
+    Block { header, operations }
+}
+
+pub async fn send_and_propagate_block(
+    network_controller: &mut MockNetworkController,
+    block: Block,
+    valid: bool,
+    serialization_context: &SerializationContext,
+    source_node_id: NodeId,
+    protocol_event_receiver: &mut ProtocolEventReceiver,
+) {
+    let expected_hash = block
+        .header
+        .compute_block_id(serialization_context)
+        .unwrap();
+
+    // Send block to protocol.
+    network_controller.send_block(source_node_id, block).await;
+
+    // Check protocol sends block to consensus.
+    let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
+        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+        _ => None,
+    })
+    .await
+    {
+        Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => Some(block_id),
+        None => None,
+        _ => panic!("Unexpected or no protocol event."),
+    };
+    if valid {
+        assert_eq!(
+            expected_hash,
+            hash.expect("block not propagated before timeout")
+        );
+    } else {
+        assert!(hash.is_none(), "unexpected protocol event")
+    }
+}
+
 /// Creates an operation for use in protocol tests,
 /// without paying attention to consensus related things.
 pub fn create_operation(context: &SerializationContext) -> Operation {
@@ -88,6 +160,31 @@ pub fn create_operation(context: &SerializationContext) -> Operation {
         op,
         sender_public_key: sender_pub,
         expire_period: 0,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+
+    Operation { content, signature }
+}
+
+pub fn create_operation_with_expire_period(
+    context: &SerializationContext,
+    sender_priv: PrivateKey,
+    sender_pub: PublicKey,
+    expire_period: u64,
+) -> Operation {
+    let recv_priv = crypto::generate_random_private_key();
+    let recv_pub = crypto::derive_public_key(&recv_priv);
+
+    let op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        amount: 0,
+    };
+    let content = OperationContent {
+        fee: 0,
+        op,
+        sender_public_key: sender_pub,
+        expire_period,
     };
     let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();

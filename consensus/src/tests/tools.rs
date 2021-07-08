@@ -1,9 +1,15 @@
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{block_graph::BlockGraphExport, ledger::LedgerData, ConsensusConfig};
+use crate::{
+    block_graph::BlockGraphExport, ledger::LedgerData, BootsrapableGraph, ConsensusConfig,
+};
 use communication::protocol::ProtocolCommand;
-use crypto::{hash::Hash, signature::PrivateKey};
+use crypto::{
+    hash::Hash,
+    signature::{PrivateKey, PublicKey},
+};
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    OperationType, SerializationContext, SerializeCompact, Slot,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -243,7 +249,13 @@ pub async fn create_and_test_block(
     valid: bool,
     trace: bool,
 ) -> BlockId {
-    let (block_hash, block, _) = create_block(&cfg, &serialization_context, slot, best_parents);
+    let (block_hash, block, _) = create_block(
+        &cfg,
+        &serialization_context,
+        slot,
+        best_parents,
+        cfg.nodes[0].clone(),
+    );
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -280,12 +292,37 @@ pub async fn propagate_block(
     block_hash
 }
 
+pub fn create_transaction(
+    priv_key: PrivateKey,
+    sender_public_key: PublicKey,
+    recipient_address: Address,
+    amount: u64,
+    context: &SerializationContext,
+    expire_period: u64,
+) -> Operation {
+    let op = OperationType::Transaction {
+        recipient_address,
+        amount,
+    };
+
+    let content = OperationContent {
+        sender_public_key,
+        fee: 1,
+        expire_period,
+        op,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    Operation { content, signature }
+}
+
 // returns hash and resulting discarded blocks
 pub fn create_block(
     cfg: &ConsensusConfig,
     serialization_context: &SerializationContext,
     slot: Slot,
     best_parents: Vec<BlockId>,
+    creator: (PublicKey, PrivateKey),
 ) -> (BlockId, Block, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
@@ -293,6 +330,7 @@ pub fn create_block(
         Hash::hash("default_val".as_bytes()),
         slot,
         best_parents,
+        creator,
     )
 }
 
@@ -303,12 +341,9 @@ pub fn create_block_with_merkle_root(
     operation_merkle_root: Hash,
     slot: Slot,
     best_parents: Vec<BlockId>,
+    creator: (PublicKey, PrivateKey),
 ) -> (BlockId, Block, PrivateKey) {
-    let (public_key, private_key) = cfg
-        .nodes
-        .get(0)
-        .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
-        .unwrap();
+    let (public_key, private_key) = creator;
 
     let (hash, header) = BlockHeader::new_signed(
         &private_key,
@@ -326,6 +361,40 @@ pub fn create_block_with_merkle_root(
         header,
         operations: Vec::new(),
     };
+
+    (hash, block, private_key)
+}
+
+pub fn create_block_with_operations(
+    cfg: &ConsensusConfig,
+    serialization_context: &SerializationContext,
+    slot: Slot,
+    best_parents: &Vec<BlockId>,
+    creator: (PublicKey, PrivateKey),
+    operations: Vec<Operation>,
+) -> (BlockId, Block, PrivateKey) {
+    let (public_key, private_key) = creator;
+
+    let operation_merkle_root = Hash::hash(
+        &operations.iter().fold(Vec::new(), |acc, v| {
+            let res = [acc, v.to_bytes_compact(serialization_context).unwrap()].concat();
+            res
+        })[..],
+    );
+
+    let (hash, header) = BlockHeader::new_signed(
+        &private_key,
+        BlockHeaderContent {
+            creator: public_key,
+            slot,
+            parents: best_parents.clone(),
+            operation_merkle_root,
+        },
+        &serialization_context,
+    )
+    .unwrap();
+
+    let block = Block { header, operations };
 
     (hash, block, private_key)
 }

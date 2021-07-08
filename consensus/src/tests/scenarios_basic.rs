@@ -137,6 +137,7 @@ async fn test_block_not_processed_multiple_times() {
         &serialization_context,
         Slot::new(1, 0),
         parents.clone(),
+        cfg.nodes[0].clone(),
     );
     protocol_controller.receive_block(block_1.clone()).await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1.clone()], 1000)
@@ -296,6 +297,7 @@ async fn test_double_staking_does_not_propagate() {
         Hash::hash("different".as_bytes()),
         Slot::new(1, 0),
         parents.clone(),
+        cfg.nodes[0].clone(),
     );
     protocol_controller.receive_block(block_2).await;
 

@@ -24,7 +24,7 @@ pub struct Ledger {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub struct LedgerData {
-    balance: u64,
+    pub balance: u64,
 }
 
 impl LedgerData {

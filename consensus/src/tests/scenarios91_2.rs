@@ -118,6 +118,7 @@ async fn test_queueing() {
         &serialization_context,
         Slot::new(32, 0),
         vec![valid_hasht0, valid_hasht1],
+        cfg.nodes[0].clone(),
     );
 
     //create 1 block in thread 0 slot 33 with missed block as parent
@@ -406,6 +407,7 @@ async fn test_double_staking() {
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
+        cfg.nodes[0].clone(),
     );
     tools::propagate_block(
         &serialization_context,
@@ -422,6 +424,7 @@ async fn test_double_staking() {
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
+        cfg.nodes[0].clone(),
     );
     tools::propagate_block(
         &serialization_context,
