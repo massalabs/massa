@@ -51,6 +51,8 @@ pub enum NetworkEvent {
     },
     /// Someone ask for block with given header hash.
     AskedForBlock(NodeId, Hash),
+    /// That node does not have this block
+    BlockNotFound(NodeId, Hash),
 }
 
 #[derive(Debug)]

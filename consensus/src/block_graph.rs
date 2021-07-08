@@ -1744,8 +1744,8 @@ impl BlockGraph {
     }
 
     // get the current block wishlist
-    pub fn get_block_wishlist(&self) -> Result<Vec<Hash>, ConsensusError> {
-        let mut wishlist = vec![];
+    pub fn get_block_wishlist(&self) -> Result<HashSet<Hash>, ConsensusError> {
+        let mut wishlist = HashSet::new();
         for block_status in self.block_statuses.values() {
             if let BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
@@ -1761,7 +1761,7 @@ impl BlockGraph {
                         // the full block is already available
                         continue;
                     }
-                    wishlist.push(*unsatisfied_h);
+                    wishlist.insert(*unsatisfied_h);
                 }
             }
         }

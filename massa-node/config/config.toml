@@ -24,11 +24,13 @@
     max_future_processing_blocks = 320
     max_dependency_blocks = 100
     delta_f0 = 64
+    max_operations_per_block = 500
+    max_block_size = 10000
     
 
 [protocol]
     message_timeout = 5000
-    ask_peer_list_interval = 10000
+    ask_block_timeout = 10000
 
 [network]
     bind = "0.0.0.0:31234"
@@ -45,6 +47,9 @@
     max_banned_peers = 1000
     max_advertise_length = 100000
     peers_file_dump_interval = 10000
+    max_message_size = 100
+    message_timeout = 100
+    ask_peer_list_interval = 10000
 
 [storage]
     max_stored_blocks= 10000
