@@ -4,7 +4,8 @@ use super::{
     protocol_controller::NodeId,
 };
 use crate::{
-    crypto::signature::PrivateKey, crypto::signature::SignatureEngine,
+    crypto::signature::PrivateKey,
+    crypto::{hash::Hash, signature::SignatureEngine},
     network::network_controller::NetworkController,
 };
 use futures::future::try_join;
@@ -50,9 +51,9 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
     /// Creates the binders to communicate with that node
     pub async fn run(mut self) -> HandshakeReturnType<NetworkControllerT> {
         // generate random bytes
-        let mut self_random_bytes = vec![0u8; 64];
+        let mut self_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
-
+        let self_random_hash = Hash::hash(&self_random_bytes);
         // send handshake init future
         let send_init_msg = Message::HandshakeInitiation {
             public_key: self.self_node_id.0,
@@ -112,7 +113,8 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
 
         // sign their random bytes
         let signature_engine = SignatureEngine::new();
-        let self_signature = signature_engine.sign(&other_random_bytes, &self.private_key);
+        let other_random_hash = Hash::hash(&other_random_bytes);
+        let self_signature = signature_engine.sign(&other_random_hash, &self.private_key);
 
         // send handshake reply future
         let send_reply_msg = Message::HandshakeReply {
@@ -160,7 +162,7 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
         };
 
         // check their signature
-        if !signature_engine.verify(&self_random_bytes, &other_signature, &other_node_id.0) {
+        if !signature_engine.verify(&self_random_hash, &other_signature, &other_node_id.0) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "handshake remote signature invalid".to_string(),

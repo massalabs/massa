@@ -39,14 +39,10 @@ impl<NetworkControllerT: NetworkController + 'static>
         massa_trace!("start", {});
 
         // generate our own random PublicKey (and therefore NodeId) and keep private key
-        let private_key;
-        let self_node_id;
-        {
-            let signature_engine = SignatureEngine::new();
-            private_key =
-                SignatureEngine::generate_random_private_key(&mut SignatureEngine::create_rng());
-            self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
-        }
+        let signature_engine = SignatureEngine::new();
+        let private_key = SignatureEngine::generate_random_private_key();
+        let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
+
         debug!("local protocol node_id={:?}", self_node_id);
         massa_trace!("self_node_id", { "node_id": self_node_id });
 
