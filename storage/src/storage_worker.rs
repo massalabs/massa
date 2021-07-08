@@ -31,14 +31,12 @@ impl BlockStorage {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
         (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
-            let block_vec = match block.into_bytes() {
-                Ok(b) => b,
-                Err(_e) => {
-                    return Err(ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(format!("error serializing block")),
-                    ))
-                }
-            };
+            let block_vec = block.into_bytes().map_err(|err| {
+                ConflictableTransactionError::Abort(InternalError::TransactionError(format!(
+                    "error serializing block: {:?}",
+                    err
+                )))
+            })?;
             hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
             slot_tx.insert(
                 Slot::new(block.header.period_number, block.header.thread_number).into_bytes(),
@@ -52,21 +50,6 @@ impl BlockStorage {
     pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         BlockStorage::get_block_internal(hash, &hash_to_block)
-        /*hash_to_block
-        .get(&hash.to_bytes())
-        .map(|v| {
-            if let Some(b) = v {
-                match Block::from_bytes(b.deref().into()) {
-                    Ok(b) => Ok(Some(b)),
-                    Err(e) => {
-                        return Err(e);
-                    }
-                }
-            } else {
-                Ok(None)
-            }
-        })?
-        .map_err(|e| StorageError::from(e))*/
     }
 
     fn get_block_internal(hash: Hash, hash_to_block: &Tree) -> Result<Option<Block>, StorageError> {
@@ -84,10 +67,10 @@ impl BlockStorage {
     ) -> Result<HashMap<Hash, Block>, StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-        let start = Slot::new_tuple(start).into_bytes();
-        let end = Slot::new_tuple(end).into_bytes();
-        let result_iter = slot_to_hash.range(start..end);
-        result_iter
+        let start = Slot::from_tuple(start).into_bytes();
+        let end = Slot::from_tuple(end).into_bytes();
+        slot_to_hash
+            .range(start..end)
             .map(|res| {
                 res.map_err(|e| StorageError::from(e))
                     .and_then(|(_, shash)| {
