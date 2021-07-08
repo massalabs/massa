@@ -3,9 +3,6 @@ use crate::crypto::hash::Hash;
 use crate::network::network_controller::NetworkController;
 use crate::structures::block::Block;
 use async_trait::async_trait;
-use std::error::Error;
-
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Clone, Debug)]
 pub enum ProtocolEventType {
