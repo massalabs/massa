@@ -41,11 +41,7 @@ async fn test_consensus_asks_for_block() {
 
     //send header for block t0s1
     protocol_controller
-        .receive_header(
-            node_ids[0].1.clone(),
-            t0s1.signature.clone(),
-            t0s1.header.clone(),
-        )
+        .receive_header(t0s1.signature.clone(), t0s1.header.clone())
         .await;
 
     tools::validate_asks_for_block_in_list(&mut protocol_controller, &vec![hasht0s1], 1000).await;
@@ -95,9 +91,7 @@ async fn test_consensus_does_not_ask_for_block() {
     let signature = t0s1.signature.clone();
 
     // Send the actual block.
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s1)
-        .await;
+    protocol_controller.receive_block(t0s1).await;
 
     //block t0s1 is propagated
     let hash_list = vec![hasht0s1];
@@ -109,9 +103,7 @@ async fn test_consensus_does_not_ask_for_block() {
     .await;
 
     // Send the hash
-    protocol_controller
-        .receive_header(node_ids[0].1.clone(), signature, header)
-        .await;
+    protocol_controller.receive_header(signature, header).await;
 
     // Consensus should not ask for the block, so the time-out should be hit.
     tools::validate_does_not_ask_for_block_in_list(&mut protocol_controller, &vec![hasht0s1], 10)

@@ -97,7 +97,7 @@ pub async fn validate_asks_for_block_in_list(
     )
     .await
     {
-        Ok(Some(ProtocolCommand::AskForBlock { hash, .. })) => {
+        Ok(Some(ProtocolCommand::AskForBlock(hash))) => {
             trace!("receive hash:{}", hash);
             assert!(valid_hashs.contains(&hash), "not the valid hash asked for");
             hash
@@ -122,7 +122,7 @@ pub async fn validate_does_not_ask_for_block_in_list(
     )
     .await
     {
-        Ok(Some(ProtocolCommand::AskForBlock { hash, .. })) => {
+        Ok(Some(ProtocolCommand::AskForBlock(hash))) => {
             panic!("unexpected ask for block {:?}", hash);
         }
         Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
@@ -174,7 +174,6 @@ pub async fn validate_propagate_block(
 pub async fn validate_send_block(
     protocol_controller: &mut MockProtocolController,
     valid_hash: Hash,
-    recipient: NodeId,
     timeout_ms: u64,
 ) {
     match timeout(
@@ -183,9 +182,8 @@ pub async fn validate_send_block(
     )
     .await
     {
-        Ok(Some(ProtocolCommand::SendBlock { hash, node, .. })) => {
+        Ok(Some(ProtocolCommand::SendBlock { hash, .. })) => {
             assert_eq!(valid_hash, hash, "not the valid hash propagated");
-            assert_eq!(recipient, node, "block not send to the right node.");
         }
         Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
@@ -207,7 +205,6 @@ pub fn create_node_ids(nb_nodes: usize) -> Vec<(PrivateKey, NodeId)> {
 pub async fn create_and_test_block(
     protocol_controller: &mut MockProtocolController,
     cfg: &ConsensusConfig,
-    source_node_id: NodeId,
     thread_number: u8,
     period_number: u64,
     best_parents: Vec<Hash>,
@@ -219,9 +216,7 @@ pub async fn create_and_test_block(
         info!("create block:{}", block_hash);
     }
 
-    protocol_controller
-        .receive_block(source_node_id, block)
-        .await;
+    protocol_controller.receive_block(block).await;
     if valid {
         //see if the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, 1000).await;
@@ -234,14 +229,11 @@ pub async fn create_and_test_block(
 
 pub async fn propagate_block(
     protocol_controller: &mut MockProtocolController,
-    source_node_id: NodeId,
     block: Block,
     valid: bool,
 ) -> Hash {
     let block_hash = block.header.compute_hash().unwrap();
-    protocol_controller
-        .receive_block(source_node_id, block)
-        .await;
+    protocol_controller.receive_block(block).await;
     if valid {
         //see if the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, 1000).await;

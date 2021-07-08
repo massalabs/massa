@@ -62,31 +62,15 @@ async fn test_unsorted_block() {
         tools::create_block(&cfg, 1, 4 + start_slot, vec![hasht0s3, hasht1s3]);
 
     //send blocks  t0s1, t1s1,
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s1)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s1)
-        .await;
+    protocol_controller.receive_block(t0s1).await;
+    protocol_controller.receive_block(t1s1).await;
     //send blocks t0s3, t1s4, t0s4, t0s2, t1s3, t1s2
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s4)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s4)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s2)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s2)
-        .await;
+    protocol_controller.receive_block(t0s3).await;
+    protocol_controller.receive_block(t1s4).await;
+    protocol_controller.receive_block(t0s4).await;
+    protocol_controller.receive_block(t0s2).await;
+    protocol_controller.receive_block(t1s3).await;
+    protocol_controller.receive_block(t1s2).await;
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
@@ -157,9 +141,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     // a block in the past must be propagated
     let (hash1, block1, _) = tools::create_block(&cfg, 0, 1, genesis_hashes.clone());
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), block1)
-        .await;
+    protocol_controller.receive_block(block1).await;
     tools::validate_propagate_block(&mut protocol_controller, hash1, 1000).await;
 
     // this block is slightly in the future: will wait for it
@@ -169,9 +151,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             .unwrap();
     let (hash2, block2, _) =
         tools::create_block(&cfg, last_thread, last_period + 2, genesis_hashes.clone());
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), block2)
-        .await;
+    protocol_controller.receive_block(block2).await;
     assert!(!tools::validate_notpropagate_block(&mut protocol_controller, hash2, 500).await);
     tools::validate_propagate_block(&mut protocol_controller, hash2, 2500).await;
 
@@ -186,9 +166,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         last_period + 1000,
         genesis_hashes.clone(),
     );
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), block3)
-        .await;
+    protocol_controller.receive_block(block3).await;
     assert!(!tools::validate_notpropagate_block(&mut protocol_controller, hash3, 2500).await);
 
     //validate the block isn't final.
@@ -254,9 +232,7 @@ async fn test_too_many_blocks_in_the_future() {
         max_period = last_period + 2 + period;
         let (hash, block, _) =
             tools::create_block(&cfg, last_thread, max_period, genesis_hashes.clone());
-        protocol_controller
-            .receive_block(node_ids[0].1.clone(), block)
-            .await;
+        protocol_controller.receive_block(block).await;
         if period < 2 {
             expected_block_hashes.insert(hash);
         }
@@ -354,30 +330,14 @@ async fn test_dep_in_back_order() {
     let (hasht1s4, t1s4, _) = tools::create_block(&cfg, 1, 4, vec![hasht0s3, hasht1s3]);
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s2)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s1)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s4)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s4)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s1)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s2)
-        .await;
+    protocol_controller.receive_block(t0s2).await;
+    protocol_controller.receive_block(t1s3).await;
+    protocol_controller.receive_block(t0s1).await;
+    protocol_controller.receive_block(t0s4).await;
+    protocol_controller.receive_block(t1s4).await;
+    protocol_controller.receive_block(t1s1).await;
+    protocol_controller.receive_block(t0s3).await;
+    protocol_controller.receive_block(t1s2).await;
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
@@ -454,24 +414,12 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     let (hasht1s3, t1s3, _) = tools::create_block(&cfg, 1, 3, vec![hasht0s2, hasht1s2]);
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s2)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s1)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s2)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s1)
-        .await;
+    protocol_controller.receive_block(t0s2).await;
+    protocol_controller.receive_block(t1s3).await;
+    protocol_controller.receive_block(t0s1).await;
+    protocol_controller.receive_block(t0s3).await;
+    protocol_controller.receive_block(t1s2).await;
+    protocol_controller.receive_block(t1s1).await;
 
     let mut expected_blocks: HashSet<Hash> =
         vec![hasht0s1, hasht1s1, hasht1s2].into_iter().collect();
@@ -556,21 +504,11 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s1)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s1)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t0s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t1s3)
-        .await;
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), t3s2)
-        .await;
+    protocol_controller.receive_block(t0s1).await;
+    protocol_controller.receive_block(t1s1).await;
+    protocol_controller.receive_block(t0s3).await;
+    protocol_controller.receive_block(t1s3).await;
+    protocol_controller.receive_block(t3s2).await;
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
