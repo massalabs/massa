@@ -2,10 +2,6 @@
 stages:
   - build
 
-cache:
-  key: "$CI_BUILD_STAGE-$CI_BUILD_REF_NAME"
-  untracked: true
-
 # Use rustfmt to check formatting
 sanity:
   stage: build
