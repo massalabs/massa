@@ -541,7 +541,11 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
 pub fn generate_roll_counts_file(roll_counts_vec: &Vec<RollCounts>) -> NamedTempFile {
     use std::io::prelude::*;
     let roll_counts_file_named = NamedTempFile::new().expect("cannot create temp file");
-    serde_json::to_writer_pretty(roll_counts_file_named.as_file(), &roll_counts_vec)
+    let mut roll_counts_map: HashMap<Address, u64> = HashMap::new();
+    for roll_c in roll_counts_vec.iter() {
+        roll_counts_map.extend(roll_c.0.iter().map(|(k, v)| (*k, *v)))
+    }
+    serde_json::to_writer_pretty(roll_counts_file_named.as_file(), &roll_counts_map)
         .expect("unable to write ledger file");
     roll_counts_file_named
         .as_file()
