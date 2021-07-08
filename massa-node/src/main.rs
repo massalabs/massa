@@ -9,11 +9,11 @@ use communication::{
     network::{start_network_controller, Establisher},
     protocol::start_protocol_controller,
 };
-use pool::start_pool_controller;
 use consensus::start_consensus_controller;
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::SerializationContext;
+use pool::start_pool_controller;
 use storage::start_storage;
 use tokio::{
     fs::read_to_string,
@@ -62,27 +62,29 @@ async fn run(cfg: config::Config) {
             .expect("could not start storage controller");
 
     // launch protocol controller
-    let (protocol_command_sender, protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            cfg.protocol.clone(),
-            serialization_context.clone(),
-            network_command_sender.clone(),
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+    let (
+        protocol_command_sender,
+        protocol_event_receiver,
+        protocol_pool_event_receiver,
+        protocol_manager,
+    ) = start_protocol_controller(
+        cfg.protocol.clone(),
+        serialization_context.clone(),
+        network_command_sender.clone(),
+        network_event_receiver,
+    )
+    .await
+    .expect("could not start protocol controller");
 
     // launch pool controller
-    let (pool_command_sender, pool_manager) =
-        start_pool_controller(
-            cfg.pool.clone(),
-            serialization_context.clone(),
-            protocol_command_sender.clone(),
-            protocol_pool_event_receiver,
-            clock_compensation,
-        )
-        .await
-        .expect("could not start pool controller");
+    let (pool_command_sender, pool_manager) = start_pool_controller(
+        cfg.pool.clone(),
+        protocol_command_sender.clone(),
+        protocol_pool_event_receiver,
+        serialization_context.clone(),
+    )
+    .await
+    .expect("could not start pool controller");
 
     // launch consensus controller
     let (consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
@@ -90,8 +92,8 @@ async fn run(cfg: config::Config) {
             cfg.consensus.clone(),
             serialization_context.clone(),
             protocol_command_sender.clone(),
-            pool_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender.clone(),
             Some(storage_command_sender.clone()),
             boot_graph,
             clock_compensation,
@@ -107,6 +109,7 @@ async fn run(cfg: config::Config) {
         cfg.network.clone(),
         Some(storage_command_sender),
         clock_compensation,
+        serialization_context.clone(),
     )
     .await
     .expect("could not start API controller");
@@ -129,6 +132,7 @@ async fn run(cfg: config::Config) {
     // loop over messages
     loop {
         massa_trace!("massa-node.main.run.select", {});
+        let mut api_pool_command_sender = pool_command_sender.clone();
         tokio::select! {
             evt = consensus_event_receiver.wait_event() => {
                 massa_trace!("massa-node.main.run.select.consensus_event", {});
@@ -144,6 +148,15 @@ async fn run(cfg: config::Config) {
             evt = api_event_receiver.wait_event() =>{
                 massa_trace!("massa-node.main.run.select.api_event", {});
                 match evt {
+                Ok(ApiEvent::AddOperations(operations)) => {
+                    massa_trace!("massa-node.main.run.select.api_event.AddOperations", {"operations": operations});
+                    if api_pool_command_sender.add_operations(operations)
+                            .await
+                        .is_err() {
+                            warn!("could not send AddOperations to pool in api_event_receiver.wait_event");
+                        }
+
+                },
                 Ok(ApiEvent::AskStop) => {
                     info!("API asked node stop");
                     break;
@@ -228,14 +241,11 @@ async fn run(cfg: config::Config) {
         .expect("consensus shutdown failed");
 
     // stop pool controller
-    let protocol_event_receiver = pool_manager
-        .stop()
-        .await
-        .expect("pool shutdown failed");
+    let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // stop protocol controller
     let network_event_receiver = protocol_manager
-        .stop(protocol_event_receiver)
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
         .await
         .expect("protocol shutdown failed");
 

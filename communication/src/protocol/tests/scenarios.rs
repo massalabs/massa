@@ -22,15 +22,19 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     };
 
     // start protocol controller
-    let (mut protocol_command_sender, mut protocol_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            serialization_context.clone(),
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+    let (
+        mut protocol_command_sender,
+        mut protocol_event_receiver,
+        protocol_pool_event_receiver,
+        protocol_manager,
+    ) = start_protocol_controller(
+        protocol_config.clone(),
+        serialization_context.clone(),
+        network_command_sender,
+        network_event_receiver,
+    )
+    .await
+    .expect("could not start protocol controller");
 
     let mut nodes =
         tools::create_and_connect_nodes(3, &signature_engine, &mut network_controller).await;
@@ -102,7 +106,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     );
 
     protocol_manager
-        .stop(protocol_event_receiver)
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
         .await
         .expect("Failed to shutdown protocol.");
 }
@@ -123,15 +127,19 @@ async fn test_protocol_sends_blocks_when_asked_for() {
         MockNetworkController::new();
 
     // start protocol controller
-    let (mut protocol_command_sender, mut protocol_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            serialization_context.clone(),
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+    let (
+        mut protocol_command_sender,
+        mut protocol_event_receiver,
+        protocol_pool_event_receiver,
+        protocol_manager,
+    ) = start_protocol_controller(
+        protocol_config.clone(),
+        serialization_context.clone(),
+        network_command_sender,
+        network_event_receiver,
+    )
+    .await
+    .expect("could not start protocol controller");
 
     let mut nodes =
         tools::create_and_connect_nodes(4, &signature_engine, &mut network_controller).await;
@@ -226,7 +234,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     assert!(got_more_commands.is_none());
 
     protocol_manager
-        .stop(protocol_event_receiver)
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
         .await
         .expect("Failed to shutdown protocol.");
 }
@@ -241,15 +249,19 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         MockNetworkController::new();
 
     // start protocol controller
-    let (mut protocol_command_sender, mut protocol_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            serialization_context.clone(),
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+    let (
+        mut protocol_command_sender,
+        mut protocol_event_receiver,
+        protocol_pool_event_receiver,
+        protocol_manager,
+    ) = start_protocol_controller(
+        protocol_config.clone(),
+        serialization_context.clone(),
+        network_command_sender,
+        network_event_receiver,
+    )
+    .await
+    .expect("could not start protocol controller");
 
     // Create 4 nodes.
     let nodes =
@@ -358,7 +370,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
     }
 
     protocol_manager
-        .stop(protocol_event_receiver)
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
         .await
         .expect("Failed to shutdown protocol.");
 }
@@ -373,14 +385,15 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
         MockNetworkController::new();
 
     // start protocol controller
-    let (_, mut protocol_event_receiver, protocol_manager) = start_protocol_controller(
-        protocol_config.clone(),
-        serialization_context.clone(),
-        network_command_sender,
-        network_event_receiver,
-    )
-    .await
-    .expect("could not start protocol controller");
+    let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            protocol_config.clone(),
+            serialization_context.clone(),
+            network_command_sender,
+            network_event_receiver,
+        )
+        .await
+        .expect("could not start protocol controller");
 
     // Create 1 node.
     let mut nodes =
@@ -419,7 +432,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     assert_eq!(expected_hash, hash);
 
     protocol_manager
-        .stop(protocol_event_receiver)
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
         .await
         .expect("Failed to shutdown protocol.");
 }
@@ -434,15 +447,19 @@ async fn test_protocol_block_not_found() {
         MockNetworkController::new();
 
     // start protocol controller
-    let (mut protocol_command_sender, mut protocol_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            serialization_context.clone(),
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+    let (
+        mut protocol_command_sender,
+        mut protocol_event_receiver,
+        protocol_pool_event_receiver,
+        protocol_manager,
+    ) = start_protocol_controller(
+        protocol_config.clone(),
+        serialization_context.clone(),
+        network_command_sender,
+        network_event_receiver,
+    )
+    .await
+    .expect("could not start protocol controller");
 
     // Create 1 node.
     let mut nodes =
@@ -506,7 +523,7 @@ async fn test_protocol_block_not_found() {
     assert_eq!(creator_node.id, node);
 
     protocol_manager
-        .stop(protocol_event_receiver)
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
         .await
         .expect("Failed to shutdown protocol.");
 }

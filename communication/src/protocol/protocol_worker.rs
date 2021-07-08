@@ -2,7 +2,8 @@ use super::config::ProtocolConfig;
 use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
-use models::{Block, BlockHeader, BlockId, Operation, SerializationContext};
+use crypto::signature::SignatureEngine;
+use models::{Block, BlockHeader, BlockId, Operation, OperationId, SerializationContext};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -24,8 +25,15 @@ pub enum ProtocolEvent {
     },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<BlockId>),
-    /// Operation
-    ReceivedOperation(Operation),
+}
+/// Possible types of pool events that can happen.
+#[derive(Debug, Serialize)]
+pub enum ProtocolPoolEvent {
+    /// An operation was received
+    ReceivedOperation {
+        operation_id: OperationId,
+        operation: Operation,
+    },
 }
 
 /// Commands that protocol worker can process
@@ -43,7 +51,10 @@ pub enum ProtocolCommand {
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(HashMap<BlockId, Option<Block>>),
     /// Operation
-    PropagateOperation(Operation),
+    PropagateOperation {
+        operation_id: OperationId,
+        operation: Operation,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -139,6 +150,8 @@ mod nodeinfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     cfg: ProtocolConfig,
+    /// Signature engine
+    signature_engine: SignatureEngine,
     // Serialization context
     serialization_context: SerializationContext,
     /// Associated nework command sender.
@@ -147,6 +160,8 @@ pub struct ProtocolWorker {
     network_event_receiver: NetworkEventReceiver,
     /// Channel to send protocol events to the controller.
     controller_event_tx: mpsc::Sender<ProtocolEvent>,
+    /// Channel to send protocol pool events to the controller.
+    controller_pool_event_tx: mpsc::Sender<ProtocolPoolEvent>,
     /// Channel receiving commands from the controller.
     controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
@@ -173,15 +188,18 @@ impl ProtocolWorker {
         network_command_sender: NetworkCommandSender,
         network_event_receiver: NetworkEventReceiver,
         controller_event_tx: mpsc::Sender<ProtocolEvent>,
+        controller_pool_event_tx: mpsc::Sender<ProtocolPoolEvent>,
         controller_command_rx: mpsc::Receiver<ProtocolCommand>,
         controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     ) -> ProtocolWorker {
         ProtocolWorker {
             serialization_context,
             cfg,
+            signature_engine: SignatureEngine::new(),
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
+            controller_pool_event_tx,
             controller_command_rx,
             controller_manager_rx,
             active_nodes: HashMap::new(),
@@ -207,6 +225,31 @@ impl ProtocolWorker {
             }
             Err(SendTimeoutError::Timeout(event)) => {
                 warn!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
+            }
+        }
+    }
+
+    async fn send_protocol_pool_event(&self, event: ProtocolPoolEvent) {
+        let result = self
+            .controller_pool_event_tx
+            .send_timeout(
+                event,
+                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
+            )
+            .await;
+        match result {
+            Ok(()) => {}
+            Err(SendTimeoutError::Closed(event)) => {
+                warn!(
+                    "Failed to send ProtocolPoolEvent due to channel closure: {:?}.",
+                    event
+                );
+            }
+            Err(SendTimeoutError::Timeout(event)) => {
+                warn!(
+                    "Failed to send ProtocolPoolEvent due to timeout: {:?}.",
+                    event
+                );
             }
         }
     }
@@ -398,10 +441,13 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::PropagateOperation(operation) => {
+            ProtocolCommand::PropagateOperation {
+                operation_id,
+                operation,
+            } => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.operation.begin",
-                    { "operation": operation }
+                    { "operation_id": operation_id, "operation": operation }
                 );
                 for (node, _) in self.active_nodes.iter() {
                     self.network_command_sender
@@ -658,6 +704,26 @@ impl ProtocolWorker {
         }
     }
 
+    /// Check a an operation
+    fn note_operation_from_node(
+        &mut self,
+        operation: &Operation,
+        source_node_id: &NodeId,
+    ) -> Result<Option<OperationId>, CommunicationError> {
+        massa_trace!("protocol.protocol_worker.note_operation_from_node", { "node": source_node_id, "opearation": operation });
+        match operation.verify_integrity(&self.serialization_context, &self.signature_engine) {
+            Ok(operation_id) => Ok(Some(operation_id)),
+            Err(err) => {
+                massa_trace!("protocol.protocol_worker.note_operation_from_node.invalid", { "node": source_node_id, "opearation": operation, "err": format!("{:?}", err) });
+                warn!(
+                    "node {:?} sent an invalid operation: {:?}",
+                    source_node_id, err
+                );
+                Ok(None)
+            }
+        }
+    }
+
     /// Manages network event
     /// Only used by the worker.
     ///
@@ -759,8 +825,15 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperation { node, operation } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operation", { "node": node, "operation": operation});
-                self.send_protocol_event(ProtocolEvent::ReceivedOperation(operation))
+                if let Some(operation_id) = self.note_operation_from_node(&operation, &node)? {
+                    self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperation {
+                        operation_id,
+                        operation,
+                    })
                     .await;
+                } else {
+                    massa_trace!("protocol.protocol_worker.on_network_event.received_operation.noack_invalid", { "node": node, "operation": operation});
+                }
             }
         }
         Ok(())

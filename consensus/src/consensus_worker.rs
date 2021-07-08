@@ -5,6 +5,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{signature::PublicKey, signature::SignatureEngine};
 use models::{Block, BlockId, Slot};
+use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet};
 use storage::StorageAccess;
 use tokio::{
@@ -49,6 +50,8 @@ pub struct ConsensusWorker {
     protocol_command_sender: ProtocolCommandSender,
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
+    /// Associated Pool command sender.
+    pool_command_sender: PoolCommandSender,
     /// Associated storage command sender. If we want to have long term final blocks storage.
     opt_storage_command_sender: Option<StorageAccess>,
     /// Database containing all information about blocks, the blockgraph and cliques.
@@ -86,6 +89,7 @@ impl ConsensusWorker {
         cfg: ConsensusConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
+        pool_command_sender: PoolCommandSender,
         opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
@@ -122,6 +126,7 @@ impl ConsensusWorker {
             next_slot,
             wishlist: HashSet::new(),
             clock_compensation,
+            pool_command_sender,
         })
     }
 
@@ -215,6 +220,10 @@ impl ConsensusWorker {
             .estimate_instant(self.clock_compensation)?,
         ));
 
+        //send transaction pool new slot.
+        self.pool_command_sender
+            .update_current_slot(self.next_slot)
+            .await?;
         Ok(())
     }
 
@@ -369,7 +378,6 @@ impl ConsensusWorker {
                     .send_get_blocks_results(results)
                     .await?;
             }
-            ProtocolEvent::ReceivedOperation(operation) => todo!("add operation to pool"),
         }
         Ok(())
     }
@@ -409,6 +417,13 @@ impl ConsensusWorker {
                 .send_wishlist_delta(new_blocks, remove_blocks)
                 .await?;
             self.wishlist = new_wishlist;
+        }
+
+        //send transaction pool new final block period.
+        if let Some(final_periods) = self.block_db.get_changed_latest_final_blocks_periods() {
+            self.pool_command_sender
+                .update_latest_final_periods(final_periods)
+                .await?;
         }
 
         Ok(())

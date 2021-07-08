@@ -1,4 +1,8 @@
-use super::{mock_protocol_controller::MockProtocolController, tools};
+use super::{
+    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_protocol_controller::MockProtocolController,
+    tools,
+};
 use crate::{random_selector::RandomSelector, start_consensus_controller};
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
@@ -24,9 +28,12 @@ async fn test_queueing() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -35,6 +42,7 @@ async fn test_queueing() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -171,9 +179,12 @@ async fn test_doubles() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -182,6 +193,7 @@ async fn test_doubles() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -299,9 +311,12 @@ async fn test_double_staking() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -310,6 +325,7 @@ async fn test_double_staking() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -442,9 +458,12 @@ async fn test_test_parents() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -453,6 +472,7 @@ async fn test_test_parents() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -568,9 +588,12 @@ async fn test_block_creation() {
     //to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0).unwrap();
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -579,6 +602,7 @@ async fn test_block_creation() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,

@@ -2,42 +2,146 @@ use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    ModelsError, SerializationContext,
+    Address, ModelsError, SerializationContext, ADDRESS_SIZE_BYTES,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
-    signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES},
+    signature::{
+        PublicKey, Signature, SignatureEngine, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+    },
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use std::str::FromStr;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct OperationId(Hash);
+
+impl std::fmt::Display for OperationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_bs58_check())
+    }
+}
+
+impl FromStr for OperationId {
+    type Err = ModelsError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(OperationId(Hash::from_str(s)?))
+    }
+}
+
+impl OperationId {
+    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
+        self.0.to_bytes()
+    }
+
+    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+        self.0.into_bytes()
+    }
+
+    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
+        Ok(OperationId(
+            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
+        ))
+    }
+    pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {
+        Ok(OperationId(
+            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
+        ))
+    }
+}
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 enum OperationTypeId {
     Transaction = 0,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Operation {
+    pub content: OperationContent,
+    pub signature: Signature,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Operation {
+pub struct OperationContent {
+    pub sender_public_key: PublicKey,
+    pub fee: u64,
+    pub expire_period: u64,
+    pub op: OperationType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum OperationType {
     Transaction {
-        content: TransactionContent,
-        signature: Signature,
+        recipient_address: Address,
+        amount: u64,
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransactionContent {
-    expire_period: u64,
-    sender_public_key: PublicKey,
-    recipient_address: Hash, // Hash of the recipient's public key
-    amount: u64,
-    fee: u64,
-}
-
-impl SerializeCompact for TransactionContent {
+impl SerializeCompact for OperationType {
     fn to_bytes_compact(&self, _context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
+        match self {
+            OperationType::Transaction {
+                recipient_address,
+                amount,
+            } => {
+                // type id
+                res.extend(u32::from(OperationTypeId::Transaction).to_varint_bytes());
+
+                // recipient_address
+                res.extend(&recipient_address.to_bytes());
+
+                // amount
+                res.extend(&amount.to_varint_bytes());
+            }
+        }
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for OperationType {
+    fn from_bytes_compact(
+        buffer: &[u8],
+        _context: &SerializationContext,
+    ) -> Result<(Self, usize), ModelsError> {
+        let mut cursor = 0;
+
+        // type id
+        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        let type_id: OperationTypeId = type_id_raw
+            .try_into()
+            .map_err(|_| ModelsError::DeserializeError("invalid operation type ID".into()))?;
+
+        let res = match type_id {
+            OperationTypeId::Transaction => {
+                // recipient_address
+                let recipient_address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += ADDRESS_SIZE_BYTES;
+
+                // amount
+                let (amount, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                OperationType::Transaction {
+                    recipient_address,
+                    amount,
+                }
+            }
+        };
+        Ok((res, cursor))
+    }
+}
+
+impl SerializeCompact for OperationContent {
+    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        // fee
+        res.extend(self.fee.to_varint_bytes());
 
         // expire period
         res.extend(self.expire_period.to_varint_bytes());
@@ -45,25 +149,23 @@ impl SerializeCompact for TransactionContent {
         // sender public key
         res.extend(&self.sender_public_key.to_bytes());
 
-        // recipient address
-        res.extend(&self.recipient_address.to_bytes());
-
-        // amount
-        res.extend(self.amount.to_varint_bytes());
-
-        // fee
-        res.extend(self.fee.to_varint_bytes());
+        // operation type
+        res.extend(&self.op.to_bytes_compact(context)?);
 
         Ok(res)
     }
 }
 
-impl DeserializeCompact for TransactionContent {
+impl DeserializeCompact for OperationContent {
     fn from_bytes_compact(
         buffer: &[u8],
-        _context: &SerializationContext,
+        context: &SerializationContext,
     ) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
+
+        // fee
+        let (fee, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
 
         // expire period
         let (expire_period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -73,41 +175,49 @@ impl DeserializeCompact for TransactionContent {
         let sender_public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
         cursor += PUBLIC_KEY_SIZE_BYTES;
 
-        // recipient address
-        let recipient_address = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += HASH_SIZE_BYTES;
-
-        // amount
-        let (amount, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        // fee
-        let (fee, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        // op
+        let (op, delta) = OperationType::from_bytes_compact(&buffer[cursor..], context)?;
         cursor += delta;
 
         Ok((
-            TransactionContent {
+            OperationContent {
+                fee,
                 expire_period,
                 sender_public_key,
-                recipient_address,
-                amount,
-                fee,
+                op,
             },
             cursor,
         ))
     }
 }
 
+impl Operation {
+    /// Verify the signature and integrity of the operation and computes operation ID
+    pub fn verify_integrity(
+        &self,
+        context: &SerializationContext,
+        signature_engine: &SignatureEngine,
+    ) -> Result<OperationId, ModelsError> {
+        let content_hash = Hash::hash(&self.content.to_bytes_compact(context)?);
+        signature_engine.verify(
+            &content_hash,
+            &self.signature,
+            &self.content.sender_public_key,
+        )?;
+        Ok(OperationId(Hash::hash(&self.to_bytes_compact(context)?)))
+    }
+}
+
 impl SerializeCompact for Operation {
     fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
-        match self {
-            Operation::Transaction { content, signature } => {
-                res.extend(u32::from(OperationTypeId::Transaction).to_varint_bytes());
-                res.extend(content.to_bytes_compact(&context)?);
-                res.extend(&signature.to_bytes());
-            }
-        }
+
+        // content
+        res.extend(self.content.to_bytes_compact(&context)?);
+
+        // signature
+        res.extend(&self.signature.to_bytes());
+
         Ok(res)
     }
 }
@@ -119,25 +229,16 @@ impl DeserializeCompact for Operation {
     ) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0;
 
-        // type id
-        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        // content
+        let (content, delta) = OperationContent::from_bytes_compact(&buffer[cursor..], context)?;
         cursor += delta;
 
-        let type_id: OperationTypeId = type_id_raw
-            .try_into()
-            .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
+        // signature
+        let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += SIGNATURE_SIZE_BYTES;
 
-        let res = match type_id {
-            OperationTypeId::Transaction => {
-                // Transaction
-                let (content, delta) =
-                    TransactionContent::from_bytes_compact(&buffer[cursor..], &context)?;
-                cursor += delta;
-                let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += delta;
-                Operation::Transaction { content, signature }
-            }
-        };
+        let res = Operation { content, signature };
+
         Ok((res, cursor))
     }
 }

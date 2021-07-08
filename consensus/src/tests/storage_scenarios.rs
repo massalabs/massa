@@ -1,4 +1,8 @@
-use super::{mock_protocol_controller::MockProtocolController, tools};
+use super::{
+    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_protocol_controller::MockProtocolController,
+    tools,
+};
 use crate::start_consensus_controller;
 use models::Slot;
 use time::UTime;
@@ -25,9 +29,12 @@ async fn test_storage() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // start storage
     let storage_access = tools::start_storage(&serialization_context);
@@ -39,6 +46,7 @@ async fn test_storage() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             Some(storage_access.clone()),
             None,
             0,

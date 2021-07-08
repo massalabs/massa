@@ -1,0 +1,55 @@
+use crate::ModelsError;
+use crypto::{
+    hash::{Hash, HASH_SIZE_BYTES},
+    signature::PublicKey,
+};
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct Address(Hash);
+
+impl std::fmt::Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_bs58_check())
+    }
+}
+
+impl FromStr for Address {
+    type Err = ModelsError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Address(Hash::from_str(s)?))
+    }
+}
+
+impl Address {
+    pub fn get_thread(&self, thread_count: u8) -> u8 {
+        self.to_bytes()[0] >> (8 - thread_count.trailing_zeros())
+    }
+
+    pub fn from_public_key(public_key: &PublicKey) -> Result<Self, ModelsError> {
+        Ok(Address(Hash::hash(&public_key.to_bytes())))
+    }
+
+    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
+        self.0.to_bytes()
+    }
+
+    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+        self.0.into_bytes()
+    }
+
+    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Address, ModelsError> {
+        Ok(Address(
+            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
+        ))
+    }
+
+    pub fn from_bs58_check(data: &str) -> Result<Address, ModelsError> {
+        Ok(Address(
+            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
+        ))
+    }
+}
