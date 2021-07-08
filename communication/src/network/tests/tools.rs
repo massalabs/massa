@@ -4,8 +4,10 @@ use crate::common::NodeId;
 use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
 use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
-use crypto::signature::SignatureEngine;
-use models::SerializationContext;
+use crypto::{hash::Hash, signature::SignatureEngine};
+use models::{
+    Address, Operation, OperationContent, OperationType, SerializationContext, SerializeCompact,
+};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -337,4 +339,35 @@ pub async fn incoming_message_drain_stop(
     let (join_handle, stop_tx) = handle;
     let _ = stop_tx.send(()); // ignore failure which just means that the drain has quit on socket drop
     join_handle.await.expect("could not join message drain")
+}
+
+pub fn get_transaction(
+    expire_period: u64,
+    fee: u64,
+    context: &SerializationContext,
+) -> (Operation, u8) {
+    let sig_engine = SignatureEngine::new();
+    let sender_priv = SignatureEngine::generate_random_private_key();
+    let sender_pub = sig_engine.derive_public_key(&sender_priv);
+
+    let recv_priv = SignatureEngine::generate_random_private_key();
+    let recv_pub = sig_engine.derive_public_key(&recv_priv);
+
+    let op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        amount: 0,
+    };
+    let content = OperationContent {
+        fee,
+        op,
+        sender_public_key: sender_pub,
+        expire_period,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let signature = sig_engine.sign(&hash, &sender_priv).unwrap();
+
+    (
+        Operation { content, signature },
+        Address::from_public_key(&sender_pub).unwrap().get_thread(2),
+    )
 }
