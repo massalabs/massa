@@ -74,6 +74,6 @@
     max_ping = 500
 
 [hang_monitor]
-    monitor_interval = 1000
-	hang_timeout = 100
+    monitor_interval = 5000
+	hang_timeout = 1000
 	monitor = true

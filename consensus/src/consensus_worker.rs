@@ -8,11 +8,12 @@ use hang_monitor::{
     ConsensusHangAnnotation, HangAnnotation, HangMonitorCommandSender, MonitoredComponentId,
 };
 use models::{Block, Slot};
+use time::UTime;
 use std::collections::HashSet;
 use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
-    time::{sleep_until, Sleep},
+    time::{sleep_until, sleep, Sleep},
 };
 
 /// Commands that can be proccessed by consensus.

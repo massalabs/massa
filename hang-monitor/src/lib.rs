@@ -273,7 +273,7 @@ impl HangMonitorWorker {
             tokio::select! {
                 _ = &mut monitor_interval => {
                     let now = Instant::now();
-                    for (id, component) in self.monitored_components.iter().filter(|(_, component)| component.is_waiting) {
+                    for (id, component) in self.monitored_components.iter().filter(|(_, component)| !component.is_waiting) {
                         let is_hanging = now.duration_since(component.last_activity) > self.cfg.hang_timeout.to_duration();
                         if is_hanging {
                              debug!("Component {:?} is hanging on {:?}.", id, component.last_annotation);
@@ -312,11 +312,13 @@ impl HangMonitorWorker {
                 if let Some(component) = self.monitored_components.get_mut(&id) {
                     component.last_activity =  Instant::now();
                     component.last_annotation = Some(annotation);
+					component.is_waiting = false;
                 }
             }
             HangMonitorCommand::NotifyWait(id) => {
                 if let Some(component) = self.monitored_components.get_mut(&id) {
                     component.is_waiting = true;
+					component.last_annotation = None;
                 }
             }
         }
