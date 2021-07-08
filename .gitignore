@@ -1,6 +1,10 @@
+.DS_Store
 lcov.info
 *.swp*
 **/target
 **/Cargo.lock
 !/testrun/Cargo.lock
 massa-client/config/history.txt
+massa-node/block_store/
+massa-node/config/node_privkey.key
+massa-node/logs.txt
