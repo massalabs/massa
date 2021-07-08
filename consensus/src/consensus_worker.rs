@@ -325,10 +325,7 @@ impl ConsensusWorker {
                         .await?;
 
                     // unlock dependencies
-                    let res: Result<
-                        HashMap<crypto::hash::Hash, models::block::Block>,
-                        ConsensusError,
-                    > = self
+                    let res = self
                         .dependency_waiting_blocks
                         .valid_block_obtained(&hash)?
                         .1
@@ -342,8 +339,7 @@ impl ConsensusWorker {
                                     .clone(),
                             ))
                         })
-                        .collect();
-                    let res = res?;
+                        .collect::<Result<HashMap<Hash, Block>, ConsensusError>>()?;
                     Ok(AcknowledgeBlockReturn {
                         to_retry: res,
                         finals: final_blocks,
