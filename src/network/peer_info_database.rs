@@ -1,7 +1,7 @@
 use super::config::NetworkConfig;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use log::warn;
+use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
@@ -531,6 +531,7 @@ impl PeerInfoDatabase {
         if let Some(our_ip) = self.cfg.routable_ip {
             // avoid our own IP
             if *ip == our_ip {
+                warn!("incomming connection from our own IP");
                 return false;
             }
         }
@@ -546,6 +547,10 @@ impl PeerInfoDatabase {
             active_in_connections: 0,
         });
         if peer.banned {
+            trace!(
+                "massa-network__network__peer_info_database__PeerInfoDatabase::try_new_in_connection__incomming connection::banned peer::{:?}",
+                peer.ip
+            );
             peer.last_failure = Some(Utc::now());
             self.request_dump();
             return false;
