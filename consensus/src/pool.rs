@@ -28,6 +28,7 @@ impl WrappedOperation {
         })
     }
 
+    /// Used to compare operations
     fn get_fee_density(&self) -> Ratio<u64> {
         Ratio::new(self.op.content.fee, self.byte_count)
     }
@@ -51,6 +52,7 @@ pub struct OperationPool {
     /// one vec per thread
     ops_by_thread_and_interest:
         Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
+    /// latest final blocks periods
     current_periods: Vec<u64>,
     cfg: ConsensusConfig,
 }
@@ -80,6 +82,7 @@ impl OperationPool {
         context: &SerializationContext,
     ) -> Result<bool, ConsensusError> {
         let op_id = OperationId(Hash::hash(&operation.signature.to_bytes()));
+        // Already present
         if self.ops.contains_key(&op_id) {
             return Ok(false);
         }
@@ -106,28 +109,28 @@ impl OperationPool {
 
         self.ops_by_thread_and_interest[thread as usize].insert(interest);
         self.ops.insert(op_id, wrapped_op);
-        // remove excess
+        // remove excess operation if pool is full
         while self.ops_by_thread_and_interest[thread as usize].len()
             > self.cfg.max_pool_size as usize
         {
-            // normalement 1 seule itération
+            // should be one iteration
             let (_removed_rentability, removed_id) = self.ops_by_thread_and_interest
                 [thread as usize]
                 .pop_last()
-                .unwrap(); // will not panic because of the while condition. complexité = log ou mieux
-            self.ops.remove(&removed_id); // complexité: const
+                .unwrap(); // will not panic because of the while condition. complexity = log or better
+            self.ops.remove(&removed_id); // complexity: const
         }
 
         Ok(true)
     }
 
-    // remove an operation
+    // removes an operation
     fn remove_op(&mut self, op_id: OperationId) {
         if let Some(wrapped_op) = self.ops.remove(&op_id) {
-            // complexité: const
+            // complexity: const
             let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
             self.ops_by_thread_and_interest[wrapped_op.thread as usize].remove(&interest);
-            // complexité: log
+            // complexity: log
         }
     }
 
