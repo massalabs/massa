@@ -18,12 +18,14 @@ cache:
 rustfmt:
   stage: sanity
   script:
+    - rustup component add rustfmt
     - cargo fmt -- --write-mode=diff
 
 clippy:
   stage: sanity
   allow_failure: true
   script:
+    - rustup component add clippy
     - cargo clippy -- -D warnings # Turn all warnings in
 
 
