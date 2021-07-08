@@ -152,7 +152,7 @@ async fn protocol_controller_fn(
                     if !running_handshakes.insert(connection_id) {
                         panic!("expect that the id is not already in running_handshakes");
                     }
-                    let messsage_timeout_copy = Duration::from_secs_f32(cfg.message_timeout_seconds);
+                    let messsage_timeout_copy = cfg.message_timeout;
                     let handshake_fn_handle = tokio::spawn(async move {
                         handshake_fn(
                             connection_id,
@@ -401,9 +401,7 @@ async fn node_controller_fn(
         node_writer_fn(cfg_copy, socket_writer, writer_event_tx, writer_command_rx).await;
     });
 
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f32(
-        cfg.ask_peer_list_interval_seconds,
-    ));
+    let mut interval = tokio::time::interval(cfg.ask_peer_list_interval);
 
     let mut exit_reason = ConnectionClosureReason::Normal;
 
@@ -496,7 +494,7 @@ async fn node_writer_fn(
     writer_event_tx: tokio::sync::oneshot::Sender<bool>,
     mut writer_command_rx: Receiver<Message>,
 ) {
-    let write_timeout = Duration::from_secs_f32(cfg.message_timeout_seconds);
+    let write_timeout = cfg.message_timeout;
     let mut clean_exit = true;
     loop {
         match writer_command_rx.next().await {

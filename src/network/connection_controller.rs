@@ -146,7 +146,7 @@ async fn connection_controller_fn(
                 peer_info_db.new_out_connection_attempt(&ip);
                 out_connecting_futures.push(out_connector_fn(
                     SocketAddr::new(ip, cfg.protocol_port),
-                    Duration::from_secs_f32(cfg.connect_timeout_seconds),
+                    cfg.connect_timeout,
                 ));
             }
         }
