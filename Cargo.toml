@@ -25,7 +25,7 @@ overflow-checks = false
 [dependencies]
 tokio = { version = "0.2.13", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-toml = { version = "0.5" }
+toml = { version = "0.5.6" }
 failure = { version = "0.1" }
 clap = { version = "2" }
 log = { version ="0.4" }
