@@ -1,3 +1,3 @@
 pub mod config;
-pub mod controller;
-mod peer_database;
+pub mod connection_controller;
+mod peer_info_database;
