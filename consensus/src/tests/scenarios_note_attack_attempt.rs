@@ -56,7 +56,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     );
     protocol_controller.receive_block(block).await;
 
-    tools::validate_notify_block_attack_attempt(&mut protocol_controller, hash, 1000).await;
+    tools::validate_notify_block_attack_attempt(&mut protocol_controller, hash, 500).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
@@ -114,7 +114,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     );
     protocol_controller.receive_header(block.header).await;
 
-    tools::validate_notify_block_attack_attempt(&mut protocol_controller, hash, 1000).await;
+    tools::validate_notify_block_attack_attempt(&mut protocol_controller, hash, 500).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);

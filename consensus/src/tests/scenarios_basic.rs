@@ -140,16 +140,16 @@ async fn test_block_not_processed_multiple_times() {
         cfg.nodes[0].clone(),
     );
     protocol_controller.receive_block(block_1.clone()).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1.clone()], 1000)
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1.clone()], 500)
         .await;
 
     // Send it again, it should not be propagated.
     protocol_controller.receive_block(block_1.clone()).await;
-    tools::validate_notpropagate_block_in_list(&mut protocol_controller, &vec![hash_1], 1000).await;
+    tools::validate_notpropagate_block_in_list(&mut protocol_controller, &vec![hash_1], 500).await;
 
     // Send it again, it should not be propagated.
     protocol_controller.receive_block(block_1).await;
-    tools::validate_notpropagate_block_in_list(&mut protocol_controller, &vec![hash_1], 1000).await;
+    tools::validate_notpropagate_block_in_list(&mut protocol_controller, &vec![hash_1], 500).await;
 
     // Block was not discarded.
     let status = consensus_command_sender
@@ -302,7 +302,7 @@ async fn test_double_staking_does_not_propagate() {
     protocol_controller.receive_block(block_2).await;
 
     // Note: currently does propagate, see #190.
-    tools::validate_propagate_block(&mut protocol_controller, hash_2, 1000).await;
+    tools::validate_propagate_block(&mut protocol_controller, hash_2, 500).await;
 
     // Block was not discarded.
     let status = consensus_command_sender

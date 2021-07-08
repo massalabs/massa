@@ -38,7 +38,6 @@ impl MockProtocolController {
         let timer = sleep(timeout.into());
         tokio::pin!(timer);
         loop {
-            sleep(std::time::Duration::from_millis(20)).await;
             tokio::select! {
                 cmd_opt = self.protocol_command_rx.recv() => match cmd_opt {
                     Some(orig_cmd) => if let Some(res_cmd) = filter_map(orig_cmd) { return Some(res_cmd); },
@@ -46,6 +45,8 @@ impl MockProtocolController {
                 },
                 _ = &mut timer => return None
             }
+            //add a delay to avoid other task that we wait for to starve
+            sleep(std::time::Duration::from_millis(20)).await;
         }
     }
 
