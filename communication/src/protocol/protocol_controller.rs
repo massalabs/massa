@@ -8,7 +8,7 @@ use crate::{
 };
 use crypto::hash::Hash;
 use models::{Block, SerializationContext};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
 /// start a new ProtocolController from a ProtocolConfig
@@ -112,22 +112,23 @@ impl ProtocolCommandSender {
         res
     }
 
-    /// Sends a block to a peer.
-    ///
-    /// # Arguments
-    /// * block : the block.
-    /// * node: the id of the node to send the block to.
-    pub async fn found_block(
+    /// Send the response to a ProtocolEvent::GetBlocks.
+    pub async fn send_get_blocks_results(
         &mut self,
-        hash: Hash,
-        block: Block,
+        results: HashMap<Hash, Option<Block>>,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("protocol.command_sender.found_block", { "hash": hash, "block": block });
+        massa_trace!("protocol.command_sender.send_get_blocks_results", {
+            "results": results
+        });
         let res = self
             .0
-            .send(ProtocolCommand::FoundBlock { hash, block })
+            .send(ProtocolCommand::GetBlocksResults(results))
             .await
-            .map_err(|_| CommunicationError::ChannelError("found_block command send error".into()));
+            .map_err(|_| {
+                CommunicationError::ChannelError(
+                    "send_get_blocks_results command send error".into(),
+                )
+            });
         res
     }
 
@@ -143,18 +144,6 @@ impl ProtocolCommandSender {
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("send_wishlist_delta command send error".into())
-            });
-        res
-    }
-
-    pub async fn block_not_found(&mut self, hash: Hash) -> Result<(), CommunicationError> {
-        massa_trace!("protocol.command_sender.block_not_found", { "hash": hash });
-        let res = self
-            .0
-            .send(ProtocolCommand::BlockNotFound(hash))
-            .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("block_not_found command send error".into())
             });
         res
     }

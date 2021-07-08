@@ -37,17 +37,13 @@ pub enum ProtocolCommand {
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(Hash),
-    /// Send a block to peers who asked for it.
-    FoundBlock {
-        hash: Hash,
-        block: Block,
-    },
     /// Wishlist delta
     WishlistDelta {
         new: HashSet<Hash>,
         remove: HashSet<Hash>,
     },
-    BlockNotFound(Hash),
+    // The response to a ProtocolEvent::GetBlocks.
+    GetBlocksResults(HashMap<Hash, Option<Block>>),
 }
 
 #[derive(Debug, Serialize)]
@@ -337,32 +333,56 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::FoundBlock { hash, block } => {
-                massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "hash": hash, "block": block });
-                // Send the block once to all nodes who asked for it.
-                for (node_id, node_info) in self.active_nodes.iter_mut() {
-                    if node_info.remove_wanted_block(&hash) {
-                        node_info.insert_known_block(
-                            hash,
-                            true,
-                            Instant::now(),
-                            self.cfg.max_node_known_blocks_size,
-                        );
-                        massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "hash": hash, "block": block });
-                        self.network_command_sender
-                            .send_block(*node_id, block.clone())
-                            .await
-                            .map_err(|_| {
-                                CommunicationError::ChannelError(
-                                    "send block node command send failed".into(),
-                                )
-                            })?;
+            ProtocolCommand::GetBlocksResults(results) => {
+                for (hash, block) in results.into_iter() {
+                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "hash": hash, "block": block });
+                    match block {
+                        Some(block) => {
+                            // Send the block once to all nodes who asked for it.
+                            for (node_id, node_info) in self.active_nodes.iter_mut() {
+                                if node_info.remove_wanted_block(&hash) {
+                                    node_info.insert_known_block(
+                                        hash,
+                                        true,
+                                        Instant::now(),
+                                        self.cfg.max_node_known_blocks_size,
+                                    );
+                                    massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "hash": hash, "block": block });
+                                    self.network_command_sender
+                                        .send_block(*node_id, block.clone())
+                                        .await
+                                        .map_err(|_| {
+                                            CommunicationError::ChannelError(
+                                                "send block node command send failed".into(),
+                                            )
+                                        })?;
+                                }
+                            }
+                            massa_trace!(
+                                "protocol.protocol_worker.process_command.found_block.end",
+                                {}
+                            );
+                        }
+                        None => {
+                            massa_trace!(
+                                "protocol.protocol_worker.process_command.block_not_found.begin",
+                                { "hash": hash }
+                            );
+                            for (node_id, node_info) in self.active_nodes.iter_mut() {
+                                if node_info.contains_wanted_block(&hash) {
+                                    massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "hash": hash });
+                                    self.network_command_sender
+                                        .block_not_found(*node_id, hash)
+                                        .await?
+                                }
+                            }
+                            massa_trace!(
+                                "protocol.protocol_worker.process_command.block_not_found.end",
+                                {}
+                            );
+                        }
                     }
                 }
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.found_block.end",
-                    {}
-                );
             }
             ProtocolCommand::WishlistDelta { new, remove } => {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
@@ -371,24 +391,6 @@ impl ProtocolWorker {
                 self.update_ask_block(timer).await?;
                 massa_trace!(
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
-                    {}
-                );
-            }
-            ProtocolCommand::BlockNotFound(hash) => {
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.block_not_found.begin",
-                    { "hash": hash }
-                );
-                for (node_id, node_info) in self.active_nodes.iter_mut() {
-                    if node_info.contains_wanted_block(&hash) {
-                        massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "hash": hash });
-                        self.network_command_sender
-                            .block_not_found(*node_id, hash)
-                            .await?
-                    }
-                }
-                massa_trace!(
-                    "protocol.protocol_worker.process_command.block_not_found.end",
                     {}
                 );
             }
