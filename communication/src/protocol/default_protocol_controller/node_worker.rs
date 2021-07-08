@@ -4,7 +4,7 @@ use super::super::{
     messages::Message,
     protocol_controller::NodeId,
 };
-use crate::error::CommunicationError;
+use crate::error::{ChannelError, CommunicationError};
 use crate::network::network_controller::ConnectionClosureReason;
 use futures::{future::FusedFuture, FutureExt, StreamExt};
 use models::block::Block;
@@ -121,16 +121,16 @@ where
                         match msg {
                             Message::Block(block) => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))
-                                ).await?,
+                                ).await.map_err(|err| ChannelError::from(err))?,
                             Message::Transaction(tr) =>  self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedTransaction(tr))
-                                ).await?,
+                                ).await.map_err(|err| ChannelError::from(err))?,
                             Message::PeerList(pl) =>  self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))
-                                ).await?,
+                                ).await.map_err(|err| ChannelError::from(err))?,
                             Message::AskPeerList => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::AskedPeerList)
-                                ).await?,
+                                ).await.map_err(|err| ChannelError::from(err))?,
                             _ => {  // wrong message
                                 exit_reason = ConnectionClosureReason::Failed;
                                 break;
@@ -148,13 +148,13 @@ where
                 cmd = self.node_command_rx.next() => match cmd {
                     Some(NodeCommand::Close) => break,
                     Some(NodeCommand::SendPeerList(ip_vec)) => {
-                        writer_command_tx.send(Message::PeerList(ip_vec)).await?;
+                        writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(|err| ChannelError::from(err))?;
                     }
                     Some(NodeCommand::SendBlock(block)) => {
-                        writer_command_tx.send(Message::Block(block)).await?;
+                        writer_command_tx.send(Message::Block(block)).await.map_err(|err| ChannelError::from(err))?;
                     }
                     Some(NodeCommand::SendTransaction(transaction)) => {
-                        writer_command_tx.send(Message::Transaction(transaction)).await?;
+                        writer_command_tx.send(Message::Transaction(transaction)).await.map_err(|err| ChannelError::from(err))?;
                     }
                     None => {
                         return Err(CommunicationError::UnexpectedProtocolControllerClosureError);
@@ -163,7 +163,7 @@ where
 
                 // writer event
                 evt = &mut fused_writer_event_rx => {
-                    if !evt? {
+                    if !evt.map_err(|err| ChannelError::from(err))? {
                         exit_reason = ConnectionClosureReason::Failed;
                     }
                     break;
@@ -172,7 +172,7 @@ where
                 _ = ask_peer_list_interval.tick() => {
                     debug!("timer-based asking node_id={:?} for peer list", self.node_id);
                     massa_trace!("timer_ask_peer_list", {"node_id": self.node_id});
-                    writer_command_tx.send(Message::AskPeerList).await?;
+                    writer_command_tx.send(Message::AskPeerList).await.map_err(|err| ChannelError::from(err))?;
                 }
             }
         }
@@ -192,7 +192,8 @@ where
         // notify protocol controller of closure
         self.node_event_tx
             .send(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason)))
-            .await?;
+            .await
+            .map_err(|err| ChannelError::from(err))?;
         Ok(())
     }
 }

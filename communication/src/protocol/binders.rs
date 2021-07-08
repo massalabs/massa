@@ -1,4 +1,4 @@
-use crate::CommunicationError;
+use crate::error::{CommunicationError, FlexbufferError};
 
 use super::messages::Message;
 use futures::SinkExt;
@@ -24,7 +24,8 @@ impl<T: AsyncWrite + Unpin> WriteBinder<T> {
 
     pub async fn send(&mut self, msg: &Message) -> Result<u64, CommunicationError> {
         let mut serializer = flexbuffers::FlexbufferSerializer::new();
-        msg.serialize(&mut serializer)?;
+        msg.serialize(&mut serializer)
+            .map_err(|err| FlexbufferError::from(err))?;
         self.framed_writer
             .send(serializer.take_buffer().into())
             .await?;
@@ -52,7 +53,10 @@ impl<T: AsyncRead + Unpin> ReadBinder<T> {
             Some(b) => b?.into_iter().collect(),
             None => return Ok(None),
         };
-        let res_msg = Message::deserialize(flexbuffers::Reader::get_root(&buf)?)?;
+        let res_msg = Message::deserialize(
+            flexbuffers::Reader::get_root(&buf).map_err(|err| FlexbufferError::from(err))?,
+        )
+        .map_err(|err| FlexbufferError::from(err))?;
         let res_index = self.message_index;
         self.message_index += 1;
         Ok(Some((res_index, res_msg)))

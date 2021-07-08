@@ -5,7 +5,7 @@ use super::super::{
     network_controller::*,
     peer_info_database::*,
 };
-use crate::error::CommunicationError;
+use crate::error::{ChannelError, CommunicationError};
 use crate::logging::debug;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -138,7 +138,7 @@ async fn manage_network_command<EstablisherT: Establisher>(
             response_tx
                 .send(peer_info_db.get_advertisable_peer_ips())
                 .map_err(|err| {
-                    CommunicationError::GetAdvertisablePeerListChannelError(format!(
+                    ChannelError::GetAdvertisablePeerListChannelError(format!(
                         "could not send GetAdvertisablePeerListChannelError upstream:{:?}",
                         err
                     ))
@@ -181,7 +181,7 @@ async fn manage_network_command<EstablisherT: Establisher>(
                             .send(NetworkEvent::ConnectionBanned(*target_id))
                             .await
                             .map_err(|err| {
-                                CommunicationError::NetworkEventChannelError(format!(
+                                ChannelError::NetworkEventChannelError(format!(
                                     "could not send connection banned notification upstream:{}",
                                     err
                                 ))
@@ -236,7 +236,7 @@ where
                     .send(NetworkEvent::NewConnection((connection_id, reader, writer)))
                     .await
                     .map_err(|err| {
-                        CommunicationError::NetworkEventChannelError(format!(
+                        ChannelError::NetworkEventChannelError(format!(
                             "could not send new out connection notification:{}",
                             err
                         ))
@@ -290,7 +290,7 @@ where
                     .send(NetworkEvent::NewConnection((connection_id, reader, writer)))
                     .await
                     .map_err(|err| {
-                        CommunicationError::NetworkEventChannelError(format!(
+                        ChannelError::NetworkEventChannelError(format!(
                             "could not send new in connection notification:{}",
                             err
                         ))

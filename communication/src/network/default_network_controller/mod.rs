@@ -1,6 +1,6 @@
 mod network_worker;
 
-use crate::CommunicationError;
+use crate::error::{ChannelError, CommunicationError};
 
 use super::config::NetworkConfig;
 use super::establisher::Establisher;
@@ -34,7 +34,7 @@ impl<EstablisherT: Establisher + 'static> DefaultNetworkController<EstablisherT>
         // check that local IP is routable
         if let Some(self_ip) = cfg.routable_ip {
             if !self_ip.is_global() {
-                return Err(CommunicationError::ConfigRoutableIpError);
+                return Err(CommunicationError::InvalidIpError(self_ip));
             }
         }
 
@@ -100,7 +100,7 @@ impl<EstablisherT: Establisher> NetworkController for DefaultNetworkController<E
         self.network_event_rx
             .recv()
             .await
-            .ok_or(CommunicationError::NetworkControllerEventError)
+            .ok_or(ChannelError::NetworkControllerEventError.into())
     }
 
     async fn merge_advertised_peer_list(
@@ -109,7 +109,8 @@ impl<EstablisherT: Establisher> NetworkController for DefaultNetworkController<E
     ) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(NetworkCommand::MergeAdvertisedPeerList(ips))
-            .await?;
+            .await
+            .map_err(|err| ChannelError::from(err))?;
         Ok(())
     }
 
@@ -117,8 +118,9 @@ impl<EstablisherT: Establisher> NetworkController for DefaultNetworkController<E
         let (response_tx, response_rx) = oneshot::channel::<Vec<IpAddr>>();
         self.network_command_tx
             .send(NetworkCommand::GetAdvertisablePeerList(response_tx))
-            .await?;
-        Ok(response_rx.await?)
+            .await
+            .map_err(|err| ChannelError::from(err))?;
+        Ok(response_rx.await.map_err(|err| ChannelError::from(err))?)
     }
 
     async fn connection_closed(
@@ -128,14 +130,16 @@ impl<EstablisherT: Establisher> NetworkController for DefaultNetworkController<E
     ) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(NetworkCommand::ConnectionClosed((id, reason)))
-            .await?;
+            .await
+            .map_err(|err| ChannelError::from(err))?;
         Ok(())
     }
 
     async fn connection_alive(&mut self, id: ConnectionId) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(NetworkCommand::ConnectionAlive(id))
-            .await?;
+            .await
+            .map_err(|err| ChannelError::from(err))?;
         Ok(())
     }
 }
