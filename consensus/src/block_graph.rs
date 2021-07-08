@@ -2324,6 +2324,7 @@ impl BlockGraph {
 
     // prune and return final blocks, return discarded final blocks
     pub fn prune(&mut self) -> Result<HashMap<Hash, Block>, ConsensusError> {
+        let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active()?;
 
@@ -2335,6 +2336,14 @@ impl BlockGraph {
 
         // Step 4: prune discarded
         self.prune_discarded()?;
+
+        let after = self.max_cliques.len();
+        if before != after {
+            warn!(
+                "clique number went from {:?} to {:?} after pruning",
+                before, after
+            );
+        }
 
         Ok(discarded_finals)
     }
