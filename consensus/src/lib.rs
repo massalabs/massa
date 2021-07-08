@@ -23,7 +23,8 @@ pub use consensus_controller::{
 pub use consensus_worker::{ConsensusCommand, ConsensusEvent};
 pub use error::ConsensusError;
 pub use timeslots::{
-    get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp, time_range_to_slot_range
+    get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp,
+    time_range_to_slot_range,
 };
 
 #[cfg(test)]

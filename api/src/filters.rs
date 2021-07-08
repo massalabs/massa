@@ -152,7 +152,10 @@ use communication::{
     network::{NetworkConfig, PeerInfo},
     protocol::ProtocolConfig,
 };
-use consensus::{BlockGraphExport, ConsensusConfig, ConsensusError, DiscardReason, get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range};
+use consensus::{
+    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
+    BlockGraphExport, ConsensusConfig, ConsensusError, DiscardReason,
+};
 use crypto::{hash::Hash, signature::PublicKey};
 use models::{Block, BlockHeader, Slot};
 use serde::{Deserialize, Serialize};
@@ -620,7 +623,13 @@ async fn get_block_interval(
     let mut res = get_block_from_graph(event_tx, &consensus_cfg, start_opt, end_opt).await?;
 
     if let Some(ref storage) = opt_storage_command_sender {
-        let (start_slot, end_slot) = time_range_to_slot_range(consensus_cfg.thread_count, consensus_cfg.t0, consensus_cfg.genesis_timestamp, start_opt, end_opt)?;
+        let (start_slot, end_slot) = time_range_to_slot_range(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            start_opt,
+            end_opt,
+        )?;
         storage
             .get_slot_range(start_slot, end_slot)
             .await
@@ -687,7 +696,13 @@ async fn get_graph_interval(
     })?;
 
     if let Some(storage) = opt_storage_command_sender {
-        let (start_slot, end_slot) = time_range_to_slot_range(consensus_cfg.thread_count, consensus_cfg.t0, consensus_cfg.genesis_timestamp, start_opt, end_opt)?;
+        let (start_slot, end_slot) = time_range_to_slot_range(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            start_opt,
+            end_opt,
+        )?;
         let blocks = storage.get_slot_range(start_slot, end_slot).await?;
         for (hash, block) in blocks {
             res.push((

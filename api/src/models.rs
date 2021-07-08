@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, net::IpAddr};
+use std::{
+    collections::{HashMap, HashSet},
+    net::IpAddr,
+};
 
 use communication::PeerInfo;
 use consensus::DiscardReason;
@@ -15,65 +18,63 @@ pub struct StakerInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-struct HashSlot{
-    hash: Hash, 
+struct HashSlot {
+    hash: Hash,
     slot: Slot,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Parents{
+pub struct Parents {
     content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Invalids{
+pub struct Invalids {
     content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Finals{
+pub struct Finals {
     content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Stales{
+pub struct Stales {
     content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BlockInterval{
+pub struct BlockInterval {
     content: Vec<HashSlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct BlockInfo{
+struct BlockInfo {
     hash: Hash,
     slot: Slot,
     status: String,
-    parents: Vec<Hash>, 
+    parents: Vec<Hash>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GraphInterval{
+pub struct GraphInterval {
     content: Vec<BlockInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Cliques{
-    number: u64, 
+pub struct Cliques {
+    number: u64,
     content: Vec<HashSet<HashSlot>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct NetworkInfo{
-    our_ip: Option<IpAddr>, 
+pub struct NetworkInfo {
+    our_ip: Option<IpAddr>,
     peers: HashMap<IpAddr, PeerInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Peers{
+pub struct Peers {
     content: HashMap<IpAddr, PeerInfo>,
 }
 
@@ -85,7 +86,7 @@ struct HashSlotTime {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct State{
+pub struct State {
     time: UTime,
     latest_slot: Option<Slot>,
     our_ip: Option<IpAddr>,
