@@ -15,7 +15,7 @@ mod messages;
 use config::BootstrapConfig;
 use crypto::{
     hash::Hash,
-    signature::{sign, verify_signature, PrivateKey},
+    signature::{sign, verify_signature, PrivateKey, PublicKey},
 };
 use error::BootstrapError;
 pub use establisher::Establisher;
@@ -28,7 +28,7 @@ use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
 async fn get_state_internal(
     cfg: &BootstrapConfig,
-    bootstrap_addr: SocketAddr,
+    (bootstrap_addr, bootstrap_public_key): (SocketAddr, PublicKey),
     establisher: &mut Establisher,
 ) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
@@ -87,7 +87,7 @@ async fn get_state_internal(
     let mut signed_data = random_bytes.to_vec();
     signed_data.extend(server_time.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
-    verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
+    verify_signature(&signed_data_hash, &sig, &bootstrap_public_key)?;
 
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
@@ -135,7 +135,7 @@ async fn get_state_internal(
     let mut signed_data = sig_prev.to_bytes().to_vec();
     signed_data.extend(peers.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
-    verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
+    verify_signature(&signed_data_hash, &sig, &bootstrap_public_key)?;
     let sig_prev = sig;
 
     // Third, handle state message.
@@ -165,13 +165,13 @@ async fn get_state_internal(
     signed_data.extend(pos.to_bytes_compact()?);
     signed_data.extend(graph.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
-    verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
+    verify_signature(&signed_data_hash, &sig, &bootstrap_public_key)?;
 
     Ok((pos, graph, compensation_millis, peers))
 }
 
 pub async fn get_state(
-    mut cfg: BootstrapConfig,
+    cfg: BootstrapConfig,
     mut establisher: Establisher,
 ) -> Result<
     (
@@ -183,11 +183,13 @@ pub async fn get_state(
     BootstrapError,
 > {
     massa_trace!("bootstrap.lib.get_state", {});
-    if let Some(addr) = cfg.bootstrap_addr.take() {
+    if cfg.bootstrap_list.len() > 0 {
+        let mut idx = 0;
         loop {
-            match get_state_internal(&cfg, addr, &mut establisher).await {
+            match get_state_internal(&cfg, cfg.bootstrap_list[idx], &mut establisher).await {
                 Err(e) => {
                     warn!("error {:?} while bootstraping", e);
+                    idx = (idx + 1) % cfg.bootstrap_list.len();
                     sleep(cfg.retry_delay.into()).await;
                 }
                 Ok((pos, graph, compensation, peers)) => {
