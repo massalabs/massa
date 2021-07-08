@@ -429,15 +429,11 @@ impl ConsensusWorker {
     /// * event: event type to process.
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
         match event {
-            ProtocolEvent::ReceivedBlock(_source_node_id, block) => {
+            ProtocolEvent::ReceivedBlock(block) => {
                 self.rec_acknowledge_block(block.header.compute_hash()?, block)
                     .await?;
             }
-            ProtocolEvent::ReceivedBlockHeader {
-                source_node_id,
-                signature,
-                header,
-            } => {
+            ProtocolEvent::ReceivedBlockHeader { signature, header } => {
                 let hash = header
                     .compute_hash()
                     .map_err(|err| ConsensusError::HeaderHashError(err))?;
@@ -449,19 +445,17 @@ impl ConsensusWorker {
                     self.current_slot,
                 );
                 if header_check.is_ok() {
-                    self.protocol_command_sender
-                        .ask_for_block(hash, source_node_id)
-                        .await?;
+                    self.protocol_command_sender.ask_for_block(hash).await?;
                 }
             }
-            ProtocolEvent::ReceivedTransaction(_source_node_id, _transaction) => {
+            ProtocolEvent::ReceivedTransaction(_transaction) => {
                 // todo (see issue #108)
             }
-            ProtocolEvent::AskedForBlock(source_node_id, block_hash) => {
+            ProtocolEvent::GetActiveBlock(block_hash) => {
                 if let Some(block) = self.block_db.get_active_block(block_hash) {
-                    massa_trace!("sending_block", {"dest_node_id": source_node_id, "block_hash": block_hash});
+                    massa_trace!("sending_block", { "block_hash": block_hash });
                     self.protocol_command_sender
-                        .send_block(block_hash, block.clone(), source_node_id)
+                        .send_block(block_hash, block.clone())
                         .await?;
                 }
             }

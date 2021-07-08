@@ -32,42 +32,30 @@ impl MockProtocolController {
         Some(self.protocol_command_rx.recv().await?)
     }
 
-    pub async fn receive_block(&mut self, source_node_id: NodeId, block: Block) {
+    pub async fn receive_block(&mut self, block: Block) {
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlock(source_node_id, block))
+            .send(ProtocolEvent::ReceivedBlock(block))
             .await
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_header(
-        &mut self,
-        source_node_id: NodeId,
-        signature: Signature,
-        header: BlockHeader,
-    ) {
+    pub async fn receive_header(&mut self, signature: Signature, header: BlockHeader) {
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlockHeader {
-                source_node_id,
-                signature,
-                header,
-            })
+            .send(ProtocolEvent::ReceivedBlockHeader { signature, header })
             .await
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_transaction(&mut self, source_node_id: NodeId, transaction: String) {
+    pub async fn receive_transaction(&mut self, transaction: String) {
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedTransaction(
-                source_node_id,
-                transaction,
-            ))
+            .send(ProtocolEvent::ReceivedTransaction(transaction))
             .await
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_ask_for_block(&mut self, source_node_id: NodeId, hash: Hash) {
+    pub async fn receive_get_active_block(&mut self, _source_node_id: NodeId, hash: Hash) {
         self.protocol_event_tx
-            .send(ProtocolEvent::AskedForBlock(source_node_id, hash))
+            .send(ProtocolEvent::GetActiveBlock(hash))
             .await
             .expect("could not send protocol event");
     }

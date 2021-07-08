@@ -53,7 +53,6 @@ async fn test_queueing() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -66,7 +65,6 @@ async fn test_queueing() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -80,7 +78,6 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             0,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -93,7 +90,6 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             1,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -110,7 +106,6 @@ async fn test_queueing() {
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         33,
         vec![missed_hash, valid_hasht1],
@@ -124,7 +119,6 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             0,
             i + 34,
             vec![valid_hasht0, valid_hasht1],
@@ -137,7 +131,6 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             1,
             i + 34,
             vec![valid_hasht0, valid_hasht1],
@@ -201,7 +194,6 @@ async fn test_doubles() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -214,7 +206,6 @@ async fn test_doubles() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -228,7 +219,6 @@ async fn test_doubles() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             0,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -241,7 +231,6 @@ async fn test_doubles() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             1,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -255,7 +244,6 @@ async fn test_doubles() {
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         41,
         vec![valid_hasht0, valid_hasht1],
@@ -269,13 +257,7 @@ async fn test_doubles() {
         .await
         .unwrap()
     {
-        tools::propagate_block(
-            &mut protocol_controller,
-            node_ids[0].1.clone(),
-            block,
-            false,
-        )
-        .await;
+        tools::propagate_block(&mut protocol_controller, block, false).await;
     };
 
     // stop controller while ignoring all commands
@@ -332,7 +314,6 @@ async fn test_double_staking() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -345,7 +326,6 @@ async fn test_double_staking() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -359,7 +339,6 @@ async fn test_double_staking() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             0,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -372,7 +351,6 @@ async fn test_double_staking() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             1,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -391,13 +369,7 @@ async fn test_double_staking() {
         41,
         vec![valid_hasht0, valid_hasht1],
     );
-    tools::propagate_block(
-        &mut protocol_controller,
-        node_ids[0].1.clone(),
-        block_1,
-        true,
-    )
-    .await;
+    tools::propagate_block(&mut protocol_controller, block_1, true).await;
 
     let operation_merkle_root = Hash::hash("so long and thanks for all the fish".as_bytes());
     let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
@@ -407,13 +379,7 @@ async fn test_double_staking() {
         41,
         vec![valid_hasht0, valid_hasht1],
     );
-    tools::propagate_block(
-        &mut protocol_controller,
-        node_ids[0].1.clone(),
-        block_2,
-        true,
-    )
-    .await;
+    tools::propagate_block(&mut protocol_controller, block_2, true).await;
 
     let graph = consensus_command_sender
         .get_block_graph_status()
@@ -477,7 +443,6 @@ async fn test_test_parents() {
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -490,7 +455,6 @@ async fn test_test_parents() {
     let valid_hasht1s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -503,7 +467,6 @@ async fn test_test_parents() {
     let valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         2,
         vec![valid_hasht0s1, valid_hasht1s1],
@@ -516,7 +479,6 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         2,
         vec![valid_hasht0s1, valid_hasht1s1],
@@ -530,7 +492,6 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         3,
         vec![valid_hasht0s2, genesis_hashes[1]],
@@ -543,7 +504,6 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         3,
         vec![genesis_hashes[0], genesis_hashes[0]],

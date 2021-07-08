@@ -105,14 +105,10 @@ impl ProtocolCommandSender {
     /// # Arguments
     /// * hash : hash of the block header.
     /// * node: the id of the node to ask from.
-    pub async fn ask_for_block(
-        &mut self,
-        hash: Hash,
-        node: NodeId,
-    ) -> Result<(), CommunicationError> {
+    pub async fn ask_for_block(&mut self, hash: Hash) -> Result<(), CommunicationError> {
         massa_trace!("ask_for_block_order", { "block": hash });
         self.0
-            .send(ProtocolCommand::AskForBlock { hash, node })
+            .send(ProtocolCommand::AskForBlock(hash))
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("ask_for_block command send error".into())
@@ -124,15 +120,10 @@ impl ProtocolCommandSender {
     /// # Arguments
     /// * block : the block.
     /// * node: the id of the node to send the block to.
-    pub async fn send_block(
-        &mut self,
-        hash: Hash,
-        block: Block,
-        node: NodeId,
-    ) -> Result<(), CommunicationError> {
+    pub async fn send_block(&mut self, hash: Hash, block: Block) -> Result<(), CommunicationError> {
         massa_trace!("send_block_order", { "block": block });
         self.0
-            .send(ProtocolCommand::SendBlock { hash, block, node })
+            .send(ProtocolCommand::SendBlock { hash, block })
             .await
             .map_err(|_| CommunicationError::ChannelError("send_block command send error".into()))
     }

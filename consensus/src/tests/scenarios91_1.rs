@@ -43,7 +43,6 @@ async fn test_block_validity() {
     let valid_block_p2t0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         2,
         genesis_hashes.clone(),
@@ -56,7 +55,6 @@ async fn test_block_validity() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         2,
         1,
         genesis_hashes.clone(),
@@ -69,7 +67,6 @@ async fn test_block_validity() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         0,
         genesis_hashes.clone(),
@@ -82,7 +79,6 @@ async fn test_block_validity() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         vec![valid_block_p2t0, genesis_hashes[1]],
@@ -99,9 +95,7 @@ async fn test_block_validity() {
     invalid_block.signature = signature_engine
         .sign(&genesis_hashes[1], &block_private_key)
         .unwrap();
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), invalid_block)
-        .await;
+    protocol_controller.receive_block(invalid_block).await;
     //see if the block is not propagated.
     assert!(!tools::validate_notpropagate_block(&mut protocol_controller, invalid_hash, 500).await);
 
@@ -115,9 +109,7 @@ async fn test_block_validity() {
     invalid_block.signature = signature_engine
         .sign(&header_hash, &block_private_key)
         .unwrap();
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), invalid_block)
-        .await;
+    protocol_controller.receive_block(invalid_block).await;
     //see if the block is not propagated.
     assert!(!tools::validate_notpropagate_block(&mut protocol_controller, invalid_hash, 500).await);
 
@@ -125,7 +117,6 @@ async fn test_block_validity() {
     let valid_hash1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -138,7 +129,6 @@ async fn test_block_validity() {
     let valid_hash2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -155,17 +145,13 @@ async fn test_block_validity() {
         1,
         genesis_hashes.clone(),
     );
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), valid_block)
-        .await;
+    protocol_controller.receive_block(valid_block).await;
     tools::validate_propagate_block(&mut protocol_controller, block_clique_hash, 1000).await;
 
     //validate block with parent in same slot same thread
     let (child_clique_hash2, valid_block, _) =
         tools::create_block(&cfg, 0, 3, vec![valid_hash1, block_clique_hash]);
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), valid_block)
-        .await;
+    protocol_controller.receive_block(valid_block).await;
     //see if the block is propagated.
     assert!(
         !tools::validate_notpropagate_block(&mut protocol_controller, child_clique_hash2, 1000)
@@ -177,7 +163,6 @@ async fn test_block_validity() {
     let child_clique_hash1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         2,
         vec![valid_hash1, valid_hash2],
@@ -190,7 +175,6 @@ async fn test_block_validity() {
     let child_clique_hash2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         2,
         vec![block_clique_hash, valid_hash2],
@@ -202,9 +186,7 @@ async fn test_block_validity() {
     //create a block with parent on the different clique.
     let (child_clique_hash2, valid_block, _) =
         tools::create_block(&cfg, 0, 3, vec![child_clique_hash1, child_clique_hash2]);
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), valid_block)
-        .await;
+    protocol_controller.receive_block(valid_block).await;
     //see if the block is propagated.
     assert!(
         !tools::validate_notpropagate_block(&mut protocol_controller, child_clique_hash2, 1000)
@@ -215,7 +197,6 @@ async fn test_block_validity() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         3,
         vec![child_clique_hash1, valid_hash2],
@@ -228,7 +209,6 @@ async fn test_block_validity() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         4,
         vec![valid_hash1, valid_hash2],
@@ -293,7 +273,6 @@ async fn test_ti() {
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -306,7 +285,6 @@ async fn test_ti() {
     let valid_hasht1s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -335,9 +313,7 @@ async fn test_ti() {
         genesis_hashes.clone(),
     );
 
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), block)
-        .await;
+    protocol_controller.receive_block(block).await;
     tools::validate_propagate_block(&mut protocol_controller, fork_block_hash, 1000).await;
     //two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
     //test the first clique hasn't changed.
@@ -362,7 +338,6 @@ async fn test_ti() {
         let block_hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             0,
             slot,
             vec![parentt0sn_hash, valid_hasht1s1],
@@ -385,9 +360,7 @@ async fn test_ti() {
     //create new block in other clique
     let (invalid_block_hasht1s2, block, _) =
         tools::create_block(&cfg, 1, 2, vec![fork_block_hash, valid_hasht1s1]);
-    protocol_controller
-        .receive_block(node_ids[0].1.clone(), block)
-        .await;
+    protocol_controller.receive_block(block).await;
     assert!(
         !tools::validate_notpropagate_block(
             &mut protocol_controller,
@@ -458,7 +431,6 @@ async fn test_gpi() {
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -471,7 +443,6 @@ async fn test_gpi() {
     let valid_hasht1s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -496,7 +467,6 @@ async fn test_gpi() {
     let valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         2,
         vec![valid_hasht0s1, genesis_hashes[1]],
@@ -508,7 +478,6 @@ async fn test_gpi() {
     let valid_hasht1s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         2,
         vec![genesis_hashes[0], valid_hasht1s1],
@@ -545,7 +514,6 @@ async fn test_gpi() {
         let block_hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             0,
             slot,
             vec![parentt0sn_hash, valid_hasht1s1],
@@ -559,7 +527,6 @@ async fn test_gpi() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         3,
         vec![valid_hasht0s1, valid_hasht1s2],
@@ -638,7 +605,6 @@ async fn test_old_stale() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
@@ -651,7 +617,6 @@ async fn test_old_stale() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         1,
         1,
         genesis_hashes.clone(),
@@ -665,7 +630,6 @@ async fn test_old_stale() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             0,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -678,7 +642,6 @@ async fn test_old_stale() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            node_ids[0].1.clone(),
             1,
             i + 2,
             vec![valid_hasht0, valid_hasht1],
@@ -692,7 +655,6 @@ async fn test_old_stale() {
     let _valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        node_ids[0].1.clone(),
         0,
         1,
         genesis_hashes.clone(),
