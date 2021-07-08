@@ -26,7 +26,7 @@
     delta_f0 = 64
     max_operations_per_block = 500
     max_block_size = 100000
-    
+    operation_validity_periods = 3
 
 [protocol]
     message_timeout = 5000
@@ -81,8 +81,6 @@
     write_timeout = 10000
 
 [pool]
-    thread_count = 32
-    operation_validity_periods= 1000000
     max_pool_size_per_thread = 100000
 
 

@@ -44,10 +44,16 @@ pub struct OperationPool {
     cfg: PoolConfig,
     /// thread count
     thread_count: u8,
+    /// operation validity periods
+    operation_validity_periods: u64,
 }
 
 impl OperationPool {
-    pub fn new(cfg: PoolConfig, thread_count: u8) -> OperationPool {
+    pub fn new(
+        cfg: PoolConfig,
+        thread_count: u8,
+        operation_validity_periods: u64,
+    ) -> OperationPool {
         OperationPool {
             ops: HashMap::new(),
             ops_by_thread_and_interest: vec![BTreeSet::new(); thread_count as usize],
@@ -55,6 +61,7 @@ impl OperationPool {
             last_final_periods: vec![0; thread_count as usize],
             cfg,
             thread_count,
+            operation_validity_periods,
         }
     }
 
@@ -157,7 +164,7 @@ impl OperationPool {
                     return None;
                 }
                 if let Some(w_op) = self.ops.get(id) {
-                    if !(w_op.op.content.expire_period.saturating_sub(self.cfg.operation_validity_periods)..=w_op.op.content.expire_period)
+                    if !(w_op.op.content.expire_period.saturating_sub(self.operation_validity_periods)..=w_op.op.content.expire_period)
                         .contains(&block_slot.period) {
                         return None;
                     }
@@ -170,5 +177,158 @@ impl OperationPool {
             })
             .take(max_count)
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crypto::{hash::Hash, signature::SignatureEngine};
+    use models::{Operation, OperationContent, OperationType};
+
+    fn example_pool_config() -> (PoolConfig, SerializationContext, u8, u64) {
+        let sig_engine = SignatureEngine::new();
+        let mut nodes = Vec::new();
+        for _ in 0..2 {
+            let private_key = SignatureEngine::generate_random_private_key();
+            let public_key = sig_engine.derive_public_key(&private_key);
+            nodes.push((public_key, private_key));
+        }
+        let thread_count: u8 = 2;
+        let operation_validity_periods: u64 = 50;
+        let max_block_size = 1024 * 1024;
+        let max_operations_per_block = 1024;
+        (
+            PoolConfig {
+                max_pool_size_per_thread: 100000,
+            },
+            SerializationContext {
+                max_block_size,
+                max_block_operations: max_operations_per_block,
+                parent_count: thread_count,
+                max_peer_list_length: 128,
+                max_message_size: 3 * 1024 * 1024,
+                max_bootstrap_blocks: 100,
+                max_bootstrap_cliques: 100,
+                max_bootstrap_deps: 100,
+                max_bootstrap_children: 100,
+                max_ask_blocks_per_message: 10,
+                max_bootstrap_message_size: 100000000,
+            },
+            thread_count,
+            operation_validity_periods,
+        )
+    }
+
+    fn get_transaction(
+        expire_period: u64,
+        fee: u64,
+        context: &SerializationContext,
+    ) -> (Operation, u8) {
+        let sig_engine = SignatureEngine::new();
+        let sender_priv = SignatureEngine::generate_random_private_key();
+        let sender_pub = sig_engine.derive_public_key(&sender_priv);
+
+        let recv_priv = SignatureEngine::generate_random_private_key();
+        let recv_pub = sig_engine.derive_public_key(&recv_priv);
+
+        let op = OperationType::Transaction {
+            recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+            amount: 0,
+        };
+        let content = OperationContent {
+            fee,
+            op,
+            sender_public_key: sender_pub,
+            expire_period,
+        };
+        let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+        let signature = sig_engine.sign(&hash, &sender_priv).unwrap();
+
+        (
+            Operation { content, signature },
+            Address::from_public_key(&sender_pub).unwrap().get_thread(2),
+        )
+    }
+
+    #[test]
+    fn test_pool() {
+        let (mut cfg, context, thread_count, operation_validity_periods) = example_pool_config();
+
+        let max_pool_size_per_thread = 10;
+        cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+
+        let sig_engine = SignatureEngine::new();
+        let mut pool = OperationPool::new(cfg, thread_count, operation_validity_periods);
+
+        // generate transactions
+        let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
+        for i in 0..18 {
+            let fee = 40 + i;
+            let expire_period: u64 = 40 + i;
+            let start_period = expire_period.saturating_sub(operation_validity_periods);
+            let (op, thread) = get_transaction(expire_period, fee, &context);
+            let id = op.verify_integrity(&context, &sig_engine).unwrap();
+
+            pool.add_operations(vec![(id, op.clone())], &context)
+                .unwrap();
+
+            // duplicate
+            pool.add_operations(vec![(id, op.clone())], &context)
+                .unwrap();
+
+            thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
+        }
+
+        // sort from bigger fee to smaller and truncate
+        for lst in thread_tx_lists.iter_mut() {
+            lst.reverse();
+            lst.truncate(max_pool_size_per_thread as usize);
+        }
+
+        // checks ops for thread 0 and 1 and various periods
+        for thread in 0u8..=1 {
+            for period in 0u64..70 {
+                let target_slot = Slot::new(period, thread);
+                let max_count = 3;
+                let res = pool
+                    .get_operation_batch(target_slot, HashSet::new(), max_count)
+                    .unwrap();
+                assert!(res
+                    .iter()
+                    .map(|(id, op)| (id, op.to_bytes_compact(&context).unwrap()))
+                    .eq(thread_tx_lists[target_slot.thread as usize]
+                        .iter()
+                        .filter(|(_, _, r)| r.contains(&target_slot.period))
+                        .take(max_count)
+                        .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))));
+            }
+        }
+
+        // op ending before or at period 45 should be discarded
+        let final_period = 45u64;
+        pool.update_latest_final_periods(vec![final_period; thread_count as usize]);
+        for lst in thread_tx_lists.iter_mut() {
+            lst.retain(|(_, op, _)| op.content.expire_period > final_period);
+        }
+
+        // checks ops for thread 0 and 1 and various periods
+        for thread in 0u8..=1 {
+            for period in 0u64..70 {
+                let target_slot = Slot::new(period, thread);
+                let max_count = 4;
+                let res = pool
+                    .get_operation_batch(target_slot, HashSet::new(), max_count)
+                    .unwrap();
+                assert!(res
+                    .iter()
+                    .map(|(id, op)| (id, op.to_bytes_compact(&context).unwrap()))
+                    .eq(thread_tx_lists[target_slot.thread as usize]
+                        .iter()
+                        .filter(|(_, _, r)| r.contains(&target_slot.period))
+                        .take(max_count)
+                        .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))));
+            }
+        }
     }
 }

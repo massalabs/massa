@@ -2736,6 +2736,7 @@ mod tests {
                 disable_block_creation: true,
                 max_block_size,
                 max_operations_per_block,
+                operation_validity_periods: 3,
             },
             SerializationContext {
                 max_block_size,
