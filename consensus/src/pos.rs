@@ -8,18 +8,29 @@ use crate::{block_graph::ActiveBlock, ConsensusError};
 
 pub trait OperationPosInterface {
     /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
-    fn get_roll_changes(
-        &self,
-        thread_count: u8,
-    ) -> Result<Vec<HashMap<Address, (u64, u64)>>, ConsensusError>;
+    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError>;
 }
 
 impl OperationPosInterface for Operation {
-    fn get_roll_changes(
-        &self,
-        thread_count: u8,
-    ) -> Result<Vec<HashMap<Address, (u64, u64)>>, ConsensusError> {
-        todo!()
+    /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
+    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError> {
+        let mut res = HashMap::new();
+        match self.content.op {
+            models::OperationType::Transaction { .. } => {}
+            models::OperationType::RollBuy { roll_count } => {
+                res.insert(
+                    Address::from_public_key(&self.content.sender_public_key)?,
+                    (roll_count, 0),
+                );
+            }
+            models::OperationType::RollSell { roll_count } => {
+                res.insert(
+                    Address::from_public_key(&self.content.sender_public_key)?,
+                    (0, roll_count),
+                );
+            }
+        }
+        Ok(res)
     }
 }
 
