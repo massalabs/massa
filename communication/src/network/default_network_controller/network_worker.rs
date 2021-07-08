@@ -1,3 +1,5 @@
+/// The network worker actually does the job of managing connections
+/// That's why it's ... a worker ! 🦀
 use super::super::{
     config::NetworkConfig,
     establisher::Establisher,
@@ -14,6 +16,7 @@ use std::net::{IpAddr, SocketAddr};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{mpsc, oneshot};
 
+/// Commands that the worker can execute
 #[derive(Debug)]
 pub enum NetworkCommand {
     MergeAdvertisedPeerList(Vec<IpAddr>),
@@ -23,16 +26,32 @@ pub enum NetworkCommand {
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
 }
 
+/// Real job is done by network worker
 pub struct NetworkWorker<EstablisherT: Establisher> {
+    /// Network configuration.
     cfg: NetworkConfig,
+    /// Listener part of the establisher.
     listener: EstablisherT::ListenerT,
+    /// The connection establisher.
     establisher: EstablisherT,
+    /// Database with peer information.
     peer_info_db: PeerInfoDatabase,
+    /// Receiver for network commands
     network_command_rx: mpsc::Receiver<NetworkCommand>,
+    /// Sender for network events
     event_tx: mpsc::Sender<NetworkEvent<EstablisherT::ReaderT, EstablisherT::WriterT>>,
 }
 
 impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
+    /// Creates a new NetworkWorker
+    ///
+    /// # Arguments
+    /// * cfg: Network configuration.
+    /// * listener: Listener part of the establisher.
+    /// * establisher: The connection establisher.
+    /// * peer_info_db: Database with peer information.
+    /// * network_command_rx: Receiver for network commands.
+    /// * event_tx: Sender for network events.
     pub fn new(
         cfg: NetworkConfig,
         listener: EstablisherT::ListenerT,
@@ -51,6 +70,8 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
         }
     }
 
+    /// Runs the main loop of the network_worker
+    /// There is a tokio::select! insside the loop
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         let mut out_connecting_futures = FuturesUnordered::new();
         let mut cur_connection_id = ConnectionId::default();
@@ -123,6 +144,14 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
     }
 }
 
+/// Manages network commands
+/// Only used inside worker's run_loop
+///
+/// # Arguments
+/// * cmd : command to process.
+/// * peer_info_db: Database with peer information.
+/// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
+/// * event_tx: channel to send network events out.
 async fn manage_network_command<EstablisherT: Establisher>(
     cmd: NetworkCommand,
     peer_info_db: &mut PeerInfoDatabase,
@@ -216,6 +245,15 @@ async fn manage_network_command<EstablisherT: Establisher>(
     Ok(())
 }
 
+/// Manages out connection
+/// Only used inside worker's run_loop
+///
+/// # Arguments
+/// * res : (reader, writer) in a result comming out of out_connecting_futures
+/// * peer_info_db: Database with peer information.
+/// * cur_connection_id : connection id of the node we are trying to reach
+/// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
+/// * event_tx: channel to send network events out.
 async fn manage_out_connections<ReaderT, WriterT>(
     res: tokio::io::Result<(ReaderT, WriterT)>,
     ip_addr: IpAddr,
@@ -272,6 +310,15 @@ where
     Ok(())
 }
 
+/// Manages in connection
+/// Only used inside worker's run_loop
+///
+/// # Arguments
+/// * res : (reader, writer, socketAddr) in a result comming out of the listener
+/// * peer_info_db: Database with peer information.
+/// * cur_connection_id : connection id of the node we are trying to reach
+/// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
+/// * event_tx: channel to send network events out.
 async fn manage_in_connections<ReaderT, WriterT>(
     res: std::io::Result<(ReaderT, WriterT, SocketAddr)>,
     peer_info_db: &mut PeerInfoDatabase,

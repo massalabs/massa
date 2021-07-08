@@ -18,11 +18,16 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
+/// Manages protocol
 #[derive(Debug)]
 pub struct DefaultProtocolController<NetworkControllerT: NetworkController> {
+    /// Channel that receive protocol events
     protocol_event_rx: Receiver<ProtocolEvent>,
+    /// Channel that send protocol commands
     protocol_command_tx: Sender<ProtocolCommand>,
+    /// Handle on the worker's task
     protocol_controller_handle: JoinHandle<()>,
+    /// Phantom data marker - unused.
     _network_controller_t: std::marker::PhantomData<NetworkControllerT>,
 }
 
@@ -33,6 +38,10 @@ impl<NetworkControllerT: NetworkController + 'static>
     /// - generate public / private key
     /// - create protocol_command/protocol_event channels
     /// - lauch protocol_controller_fn in an other task
+    ///
+    /// # Arguments
+    /// * cfg : protocol configuration
+    /// * network_controller: the network_controller we interact with for connection managing
     pub async fn new(cfg: ProtocolConfig, network_controller: NetworkControllerT) -> Self {
         debug!("starting protocol controller");
         massa_trace!("start", {});
@@ -83,7 +92,6 @@ impl<NetworkControllerT: NetworkController> ProtocolController
     /// Receives the next ProtocolEvent from connected Node.
     /// None is returned when all Sender halves have dropped,
     /// indicating that no further values can be sent on the channel
-    /// panics if the protocol controller event can't be retrieved
     async fn wait_event(&mut self) -> Result<ProtocolEvent, CommunicationError> {
         self.protocol_event_rx.recv().await.ok_or(
             ChannelError::ReceiveProtocolEventError(
@@ -94,7 +102,6 @@ impl<NetworkControllerT: NetworkController> ProtocolController
     }
 
     /// Stop the protocol controller
-    /// panices if the protocol controller is not reachable
     async fn stop(mut self) -> Result<(), CommunicationError> {
         debug!("stopping protocol controller");
         massa_trace!("begin", {});
@@ -106,6 +113,11 @@ impl<NetworkControllerT: NetworkController> ProtocolController
         Ok(())
     }
 
+    /// Sends the order to propagate that block
+    ///
+    /// # Arguments
+    /// * hash : hash of the block header
+    /// * block : block we want to propagate
     async fn propagate_block(
         &mut self,
         hash: Hash,
@@ -121,6 +133,7 @@ impl<NetworkControllerT: NetworkController> ProtocolController
             .map_err(|err| ChannelError::from(err).into())
     }
 
+    /// Sends the order retrieve peers
     async fn get_peers(&self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
         let (response_tx, response_rx) = oneshot::channel::<HashMap<IpAddr, PeerInfo>>();
         self.protocol_command_tx

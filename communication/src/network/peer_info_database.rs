@@ -11,25 +11,38 @@ use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
+/// All information concerning a peer is here
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct PeerInfo {
+    /// Peer ip address.
     pub ip: IpAddr,
+    /// If peer is banned.
     pub banned: bool,
+    /// If peer is boostrap, ie peer was in initial peer file
     pub bootstrap: bool,
+    /// Time in millis when peer was last alive
     pub last_alive: Option<UTime>,
+    /// Time in millis of peer's last failure
     pub last_failure: Option<UTime>,
+    /// Wether peer was promoted through another peer
     pub advertised: bool,
 
+    /// Current number of active out connection attemps with that peer.
+    /// Isn't dump into peer file.
     #[serde(default = "usize::default")]
     pub active_out_connection_attempts: usize,
+    /// Current number of active out connections with that peer.
+    /// Isn't dump into peer file.
     #[serde(default = "usize::default")]
     pub active_out_connections: usize,
+    /// Current number of active in connections with that peer.
+    /// Isn't dump into peer file.
     #[serde(default = "usize::default")]
     pub active_in_connections: usize,
 }
 
 impl PeerInfo {
-    /// true if there is at least one connection attempt /
+    /// Returns true if there is at least one connection attempt /
     ///  one active connection in either direction
     /// with this peer
     fn is_active(&self) -> bool {
@@ -39,19 +52,33 @@ impl PeerInfo {
     }
 }
 
+/// Contains all information about every peers we know about.
 pub struct PeerInfoDatabase {
+    /// Network configuration.
     cfg: NetworkConfig,
+    /// Maps an ip address to peer's info
     peers: HashMap<IpAddr, PeerInfo>,
+    /// todo : I'm not sur what it is for
+    /// Handle on the task managing the dump
     saver_join_handle: JoinHandle<()>,
+    /// todo : I'm not sur what it is for
+    /// Monitor changed peers.
     saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
+    /// Total number of active out connection attemps.
     active_out_connection_attempts: usize,
+    /// Total number of active out connections.
     active_out_connections: usize,
+    /// Total number of active in connections
     active_in_connections: usize,
+    /// Every wakeup_interval we try to establish a connection with known inactive peers
     wakeup_interval: UTime,
 }
 
 /// Saves banned, advertised and bootstrap peers to a file.
-/// Can return an error if the writing fails.
+///
+/// # Arguments
+/// * peers: peers to save
+/// * file_path : path to the file
 async fn dump_peers(
     peers: &HashMap<IpAddr, PeerInfo>,
     file_path: &std::path::PathBuf,
@@ -81,6 +108,10 @@ async fn dump_peers(
 /// If opt_new_peers is provided, adds its contents as well.
 ///
 /// Note: only non-active, non-bootstrap peers are counted when clipping to size limits.
+///
+/// Arguments : cfg : NetworkConfig
+/// peers : peers to clean up
+/// opt_new_peers : optionnal peers to add to the database
 fn cleanup_peers(
     cfg: &NetworkConfig,
     peers: &mut HashMap<IpAddr, PeerInfo>,
@@ -173,8 +204,10 @@ fn cleanup_peers(
 
 impl PeerInfoDatabase {
     /// Creates new peerInfoDatabase from NetworkConfig.
-    /// Can fail reading the file containing peers.
     /// will only emit a warning if peers dumping failed.
+    ///
+    /// # Argument
+    /// * cfg : network configuration
     pub async fn new(cfg: &NetworkConfig) -> Result<Self, CommunicationError> {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
@@ -338,10 +371,8 @@ impl PeerInfoDatabase {
 
     /// Acknowledges a new out connection attempt to ip.
     ///
-    /// Panics if :
-    /// - target ip is not global
-    /// - there are too many out connection attempts
-    /// - ip does not match with a known peer
+    /// # Argument
+    /// ip: ipAddr we are now connected to
     pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if !ip.is_global() {
             return Err(CommunicationError::InvalidIpError(ip.clone()));
@@ -363,6 +394,9 @@ impl PeerInfoDatabase {
 
     /// Merges new_peers with our peers using the cleanup_peers function.
     /// A dump is requested afterwards.
+    ///
+    /// # Argument
+    /// new_peers: peers we are trying to merge
     pub fn merge_candidate_peers(
         &mut self,
         new_peers: &Vec<IpAddr>,
@@ -375,8 +409,10 @@ impl PeerInfoDatabase {
     }
 
     /// Sets the peer status as alive.
-    /// Panics if ip does not match a known peer.
     /// Requests a subsequent dump.
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn peer_alive(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         self.peers
             .get_mut(&ip)
@@ -388,8 +424,10 @@ impl PeerInfoDatabase {
     }
 
     /// Sets the peer status as failed.
-    /// Panics if the peer is unknown.
     /// Requests a dump.
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn peer_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         self.peers
             .get_mut(&ip)
@@ -401,9 +439,11 @@ impl PeerInfoDatabase {
     }
 
     /// Sets that the peer is banned now.
-    /// Panics if the ip does not match an unknown peer.
     /// If the peer is not active, the database is cleaned up.
     /// A dump is requested.
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         let peer = self
             .peers
@@ -423,13 +463,11 @@ impl PeerInfoDatabase {
 
     /// Notifies of a closed outgoing connection.
     ///
-    /// Panics if :
-    /// - too many out connections closed
-    /// - the peer is unknown
-    /// - too many out connections closed for that peer
-    ///
     /// If the peer is not active nor bootstrap,
     /// peers are cleaned up and a dump is requested
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_out_connections == 0 {
             return Err(CommunicationError::PeerConnectionError(
@@ -460,13 +498,11 @@ impl PeerInfoDatabase {
 
     /// Notifies that an inbound connection is closed.
     ///
-    /// Panics if :
-    /// - too many in connections closed
-    /// - the peer is unknown
-    /// - too many in connections closed for that peer
-    ///
     /// If the peer is not active nor bootstrap
     /// peers are cleaned up and a dump is requested.
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_in_connections == 0 {
             return Err(CommunicationError::PeerConnectionError(
@@ -499,12 +535,10 @@ impl PeerInfoDatabase {
     /// returns false if there are no slots left for out connections.
     /// The peer is set to advertized.
     ///
-    /// Panics if :
-    /// - too many out connection attempts succeeded
-    /// - an unknown peer connection attempt succeeded
-    /// - too many out connection attempts succeded for that peer
-    ///
     /// A dump is requested.
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn try_out_connection_attempt_success(
         &mut self,
         ip: &IpAddr,
@@ -550,12 +584,10 @@ impl PeerInfoDatabase {
 
     /// Oh no an out connection attempt failed.
     ///
-    /// Panics if:
-    /// - too many out connection attempts failed
-    /// - an unknown peer connection attempt failed
-    /// - too many out connection attampts failed for tha peer
-    ///
     /// A dump is requested.
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_out_connection_attempts == 0 {
             return Err(CommunicationError::PeerConnectionError(
@@ -587,6 +619,9 @@ impl PeerInfoDatabase {
     /// If the corresponding peer exists, it is updated,
     /// otherwise it is created (not advertised).
     /// A dump is requested.
+    ///
+    /// # Argument
+    /// * ip : ip address of the considered peer.
     pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<bool, CommunicationError> {
         // try to create a new input connection, return false if no slots
         if !ip.is_global()

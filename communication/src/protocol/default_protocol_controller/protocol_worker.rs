@@ -20,28 +20,50 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
+/// Commands that protocol worker can process
 #[derive(Debug)]
 pub enum ProtocolCommand {
+    /// Propagate given block
     PropagateBlock { hash: Hash, block: Block },
+    /// Get all known peers
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
 }
 
 pub struct ProtocolWorker<NetworkControllerT: 'static + NetworkController> {
+    /// Protocol configuration.
     cfg: ProtocolConfig,
+    /// Our node id.
     self_node_id: NodeId,
+    /// Our private key.
     private_key: PrivateKey,
+    /// Associated nework controller.
     network_controller: NetworkControllerT,
+    /// Channel to send protocol events to the controller.
     controller_event_tx: Sender<ProtocolEvent>,
+    /// Channel receiving commands from the controller.
     controller_command_rx: Receiver<ProtocolCommand>,
+    /// Set of connection id of node with running handshake.
     running_handshakes: HashSet<ConnectionId>,
+    /// Running handshakes futures.
     handshake_futures:
         FuturesUnordered<JoinHandle<(ConnectionId, HandshakeReturnType<NetworkControllerT>)>>,
+    /// Ids of active nodes mapped to Connection id, node command sender and handle on the associated node worker.
     active_nodes: HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>, JoinHandle<()>)>,
+    /// Optional channel for sending node events.
     node_event_tx_opt: Option<Sender<NodeEvent>>,
+    /// Receiving channel for node events.
     node_event_rx: Receiver<NodeEvent>,
 }
 
 impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkControllerT> {
+    /// Creates a new protocol worker.
+    ///
+    /// # Arguments
+    /// * cfg: protocol configuration.
+    /// * self_node_id: our private key.
+    /// * network_controller associated network controller.
+    /// * controller_event_tx: Channel to send protocol events to the controller.
+    /// * controller_command_rx: Channel receiving commands from the controller.
     pub fn new(
         cfg: ProtocolConfig,
         self_node_id: NodeId,
@@ -74,14 +96,6 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
     /// - handshake_futures
     /// - node_event_rx
     /// And at the end every thing is closed properly
-    ///
-    /// panics if :
-    /// - a new node_id is already in running_handshakes while it shouldn't
-    /// - node command tx disappeared
-    /// - running handshake future await returned an error
-    /// - event from misising node through node_event_rx
-    /// - controller event tx failed
-    /// - node_event_rx died
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         loop {
             tokio::select! {
@@ -149,6 +163,11 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
         Ok(())
     }
 
+    /// Manages network event
+    /// Only used by the worker.
+    ///
+    /// # Argument
+    /// evt: event to processs
     async fn on_network_event(
         &mut self,
         evt: NetworkEvent<NetworkControllerT::ReaderT, NetworkControllerT::WriterT>,
@@ -208,6 +227,12 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
         Ok(())
     }
 
+    /// Manages finished handshakes.
+    /// Only used by the worker.
+    ///
+    /// # Arguments
+    /// * new_connection_id: connection id of the connection that should be established here.
+    /// * outcome: result returned by a handshake.
     async fn on_handshake_finished(
         &mut self,
         new_connection_id: ConnectionId,
@@ -314,6 +339,11 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
         Ok(())
     }
 
+    /// Manages node events.
+    /// Only used by the worker.
+    ///
+    /// # Argument
+    /// * evt: optional node event to process.
     async fn on_node_event(&mut self, evt: Option<NodeEvent>) -> Result<(), CommunicationError> {
         match evt {
             // received a list of peers
