@@ -1,5 +1,5 @@
 use bitvec::prelude::*;
-use models::{Address, Operation, Slot};
+use models::{Address, Block, Operation, Slot};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,23 @@ impl OperationPosInterface for Operation {
                     Address::from_public_key(&self.content.sender_public_key)?,
                     (0, roll_count),
                 );
+            }
+        }
+        Ok(res)
+    }
+}
+
+impl OperationPosInterface for Block {
+    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError> {
+        let mut res = HashMap::new();
+        for op in self.operations.iter() {
+            let op_res = op.get_roll_changes()?;
+            for (address, (bought, sold)) in op_res.into_iter() {
+                if let Some(&(old_bought, old_sold)) = res.get(&address) {
+                    res.insert(address, (old_bought + bought, old_sold + sold));
+                } else {
+                    res.insert(address, (bought, sold));
+                }
             }
         }
         Ok(res)
