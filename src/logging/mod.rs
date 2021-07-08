@@ -13,7 +13,7 @@ macro_rules! function_path {
 
 macro_rules! massa_trace {
     ($evt:expr, $params:tt) => {
-        trace!(
+        log::trace!(
             "massa_trace:{}",
             serde_json::json!({
                 "origin": function_path!(),

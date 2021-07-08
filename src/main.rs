@@ -23,7 +23,7 @@ async fn run(cfg: config::Config) -> BoxResult<()> {
     let network = DefaultNetworkController::new(&cfg.network, establisher).await?;
 
     // launch network controller
-    let mut protocol = DefaultProtocolController::new(&cfg.protocol, network).await?;
+    let mut protocol = DefaultProtocolController::new(cfg.protocol, network).await?;
 
     // loop over messages
     loop {

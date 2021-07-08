@@ -1,5 +1,5 @@
 use super::config::NetworkConfig;
-use crate::logging::{trace, warn};
+use crate::logging::warn;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -633,12 +633,12 @@ mod tests {
             peers.insert(peer.ip, peer);
         }
         let cfg = example_network_config();
-        let peers_file = cfg.peers_file.clone();
-        let peers_file_dump_interval = cfg.peers_file_dump_interval;
+        //let peers_file = cfg.peers_file.clone();
+        //let peers_file_dump_interval = cfg.peers_file_dump_interval;
         let wakeup_interval = chrono::Duration::from_std(cfg.wakeup_interval)
             .expect("NetworkCOnfig.wakeup_interval overflows chrono");
 
-        let (saver_watch_tx, saver_watch_rx) = watch::channel(peers.clone());
+        let (saver_watch_tx, _) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
         PeerInfoDatabase {
             cfg,

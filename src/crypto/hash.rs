@@ -247,7 +247,7 @@ mod tests {
         let mut s = flexbuffers::FlexbufferSerializer::new();
         let hash = example();
         hash.serialize(&mut s).unwrap();
-        let serialized = s.view();
+        //let serialized = s.view();
         let r = flexbuffers::Reader::get_root(s.view()).unwrap();
         let deserialized = Hash::deserialize(r).unwrap();
         assert_eq!(deserialized, hash)
