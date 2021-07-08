@@ -195,10 +195,20 @@ impl DeserializeCompact for ExportActiveBlock {
 
         //childrens
         let (children_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        if children_count > context.parent_count.into() {
+            return Err(ModelsError::DeserializeError(
+                "too much threads with children to deserialize".to_string(),
+            ));
+        }
         cursor += delta;
         let mut children: Vec<Vec<(Hash, u64)>> = Vec::with_capacity(children_count as usize);
         for _ in 0..(children_count as usize) {
             let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            if map_count > context.max_bootstrap_children {
+                return Err(ModelsError::DeserializeError(
+                    "too much children to deserialize".to_string(),
+                ));
+            }
             cursor += delta;
             let mut map: Vec<(Hash, u64)> = Vec::with_capacity(map_count as usize);
             for _ in 0..(map_count as usize) {
@@ -213,6 +223,11 @@ impl DeserializeCompact for ExportActiveBlock {
 
         //dependencies
         let (dependencies_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        if dependencies_count > context.max_bootstrap_deps {
+            return Err(ModelsError::DeserializeError(
+                "too many dependencies to deserialize".to_string(),
+            ));
+        }
         cursor += delta;
         let mut dependencies: Vec<Hash> = Vec::with_capacity(dependencies_count as usize);
         for _ in 0..(dependencies_count as usize) {
@@ -420,6 +435,9 @@ impl SerializeCompact for BoostrapableGraph {
                 err
             ))
         })?;
+        if blocks_count > context.max_bootstrap_blocks {
+            return Err(ModelsError::SerializeError(format!("too many blocks in active_blocks for serialization context in BootstrapableGraph: {:?}", blocks_count)));
+        }
         res.extend(u32::from(blocks_count).to_varint_bytes());
         for (hash, block) in self.active_blocks.iter() {
             res.extend(&hash.to_bytes());
@@ -463,6 +481,9 @@ impl SerializeCompact for BoostrapableGraph {
                 err
             ))
         })?;
+        if max_cliques_count > context.max_bootstrap_cliques {
+            return Err(ModelsError::SerializeError(format!("too many blocks in max_cliques for serialization context in BootstrapableGraph: {:?}", max_cliques_count)));
+        }
         res.extend(u32::from(max_cliques_count).to_varint_bytes());
         for set in self.max_cliques.iter() {
             let set_count: u32 = set.len().try_into().map_err(|err| {
@@ -490,6 +511,9 @@ impl DeserializeCompact for BoostrapableGraph {
 
         //active_blocks
         let (active_blocks_count, delta) = u32::from_varint_bytes(buffer)?;
+        if active_blocks_count > context.max_bootstrap_blocks {
+            return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {:?}", active_blocks_count)));
+        }
         cursor += delta;
         let mut active_blocks: Vec<(Hash, ExportActiveBlock)> =
             Vec::with_capacity(active_blocks_count as usize);
@@ -523,12 +547,18 @@ impl DeserializeCompact for BoostrapableGraph {
 
         //gi_head
         let (gi_head_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        if gi_head_count > context.max_bootstrap_blocks {
+            return Err(ModelsError::DeserializeError(format!("too many blocks in gi_head for deserialization context in BootstrapableGraph: {:?}", gi_head_count)));
+        }
         cursor += delta;
         let mut gi_head: Vec<(Hash, Vec<Hash>)> = Vec::with_capacity(gi_head_count as usize);
         for _ in 0..(gi_head_count as usize) {
             let gihash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            if set_count > context.max_bootstrap_blocks {
+                return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {:?}", set_count)));
+            }
             cursor += delta;
             let mut set: Vec<Hash> = Vec::with_capacity(set_count as usize);
             for _ in 0..(set_count as usize) {
@@ -541,10 +571,16 @@ impl DeserializeCompact for BoostrapableGraph {
 
         //max_cliques: Vec<HashSet<Hash>>
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        if max_cliques_count > context.max_bootstrap_cliques {
+            return Err(ModelsError::DeserializeError(format!("too many blocks in max_clilques for deserialization context in BootstrapableGraph: {:?}", max_cliques_count)));
+        }
         cursor += delta;
         let mut max_cliques: Vec<Vec<Hash>> = Vec::with_capacity(max_cliques_count as usize);
         for _ in 0..(max_cliques_count as usize) {
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            if set_count > context.max_bootstrap_blocks {
+                return Err(ModelsError::DeserializeError(format!("too many blocks in a clique for deserialization context in BootstrapableGraph: {:?}", set_count)));
+            }
             cursor += delta;
             let mut set: Vec<Hash> = Vec::with_capacity(set_count as usize);
             for _ in 0..(set_count as usize) {
@@ -2286,6 +2322,10 @@ mod tests {
             parent_count: 2,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
         };
 
         let active_block = get_export_active_test_block();
@@ -2455,6 +2495,10 @@ mod tests {
                 parent_count: thread_count,
                 max_peer_list_length: 128,
                 max_message_size: 3 * 1024 * 1024,
+                max_bootstrap_blocks: 100,
+                max_bootstrap_cliques: 100,
+                max_bootstrap_deps: 100,
+                max_bootstrap_children: 100,
             },
         )
     }

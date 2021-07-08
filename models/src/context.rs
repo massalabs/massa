@@ -6,4 +6,8 @@ pub struct SerializationContext {
     pub max_block_size: u32,
     pub max_peer_list_length: u32,
     pub max_message_size: u32,
+    pub max_bootstrap_blocks: u32,
+    pub max_bootstrap_cliques: u32,
+    pub max_bootstrap_deps: u32,
+    pub max_bootstrap_children: u32,
 }

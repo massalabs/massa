@@ -15,6 +15,11 @@ pub struct BootstrapConfig {
     pub connect_timeout: UTime,
     /// Time we wait before retrying a bootstrap
     pub retry_delay: UTime,
+    /// Max number of blocks we provide/ take into account while bootstrapping
+    pub max_bootstrap_blocks: u32,
+    pub max_bootstrap_cliques: u32,
+    pub max_bootstrap_deps: u32,
+    pub max_bootstrap_children: u32,
     /// Max ping delay.
     pub max_ping: UTime,
 }
