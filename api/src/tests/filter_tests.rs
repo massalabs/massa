@@ -3,7 +3,6 @@ use apimodel::{BlockInfo, Cliques, HashSlot, NetworkInfo};
 use storage::{start_storage_controller, StorageConfig};
 
 use super::tools::*;
-use crate::filters::hash_slot_vec_to_json;
 use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock};
 use crypto::hash::Hash;
@@ -197,14 +196,10 @@ async fn test_current_parents() {
     assert_eq!(res.status(), 200);
 
     handle.await.unwrap();
-    let expected = (get_test_hash(), get_test_block().header.content.slot);
+    let expected: HashSlot = (get_test_hash(), get_test_block().header.content.slot).into();
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&hash_slot_vec_to_json(vec![
-            expected.clone(),
-            expected.clone(),
-        ]))
-        .unwrap(),
+        &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -568,8 +563,7 @@ async fn test_last_final() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
-                .unwrap();
+            serde_json::from_str(&serde_json::to_string(&Vec::<HashSlot>::new()).unwrap()).unwrap();
         assert_eq!(obtained, expected);
 
         drop(filter);
@@ -610,16 +604,16 @@ async fn test_last_final() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&hash_slot_vec_to_json(
-            expected
+        &serde_json::to_string(
+            &expected
                 .latest_final_blocks_periods
                 .iter()
                 .enumerate()
                 .map(|(thread_number, (hash, period))| {
-                    (hash.clone(), Slot::new(*period, thread_number as u8))
+                    (hash.clone(), Slot::new(*period, thread_number as u8)).into()
                 })
-                .collect::<Vec<(Hash, Slot)>>(),
-        ))
+                .collect::<Vec<HashSlot>>(),
+        )
         .unwrap(),
     )
     .unwrap();

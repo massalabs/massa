@@ -528,15 +528,6 @@ async fn retrieve_selection_draw(
         })
 }
 
-pub fn hash_slot_vec_to_json(input: Vec<(Hash, Slot)>) -> Vec<serde_json::Value> {
-    input
-        .iter()
-        .map(|(hash, slot)| json!({"hash": hash, "slot": slot}))
-        .collect()
-}
-/// Returns best parents as a Vec<Hash, Slot>
-/// The Slot represents the parent's slot.
-///
 async fn get_current_parents(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<HashSlot>, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
 
