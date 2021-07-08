@@ -715,7 +715,6 @@ pub struct BlockGraph {
     to_propagate: HashMap<BlockId, Block>,
     attack_attempts: Vec<BlockId>,
     ledger: Ledger,
-    next_block: Option<Block>,
 }
 
 #[derive(Debug)]
@@ -867,7 +866,6 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
-                next_block: None,
             };
             // compute block descendants
             let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
@@ -914,16 +912,15 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
-                next_block: None,
             })
         }
     }
 
     pub fn prepare_block_creation(
-        &mut self,
+        &self,
         val: String,
         slot: Slot,
-    ) -> Result<u64, ConsensusError> {
+    ) -> Result<(u64, Block), ConsensusError> {
         let (public_key, private_key) = self
             .cfg
             .nodes
@@ -953,8 +950,7 @@ impl BlockGraph {
         );
         massa_trace!("consensus.block_graph.prepare_create_block", {"hash": res.0, "block": res.1});
         let bytes = res.1.bytes_count(&self.serialization_context)?;
-        self.next_block = Some(res.1);
-        Ok(bytes)
+        Ok((bytes, res.1))
     }
 
     /// Returns hash and resulting discarded blocks
@@ -966,6 +962,7 @@ impl BlockGraph {
         &mut self,
         operations: Vec<Operation>,
         operation_merkle_root: Hash,
+        prepared: Block,
     ) -> Result<(BlockId, Block), ConsensusError> {
         let (public_key, private_key) = self
             .cfg
@@ -973,14 +970,6 @@ impl BlockGraph {
             .get(self.cfg.current_node_index as usize)
             .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
             .ok_or(ConsensusError::KeyError)?;
-
-        let prepared = self
-            .next_block
-            .clone()
-            .ok_or(ConsensusError::BlockCreationError(
-                "No prepared block avaible".to_string(),
-            ))?;
-        self.next_block = None;
 
         let (hash, header) = BlockHeader::new_signed(
             &private_key,

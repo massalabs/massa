@@ -352,34 +352,7 @@ impl ConsensusWorker {
             && self.next_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
-            let left_size = self.cfg.max_block_size as u64
-                - self
-                    .block_db
-                    .prepare_block_creation("block".to_string(), cur_slot)?;
-            let operations = self.get_best_operations(cur_slot, left_size).await?;
-            let ids: HashSet<OperationId> = operations
-                .iter()
-                .map(|op| op.get_operation_id(&self.serialization_context))
-                .collect::<Result<_, _>>()?;
-
-            let operation_merkle_root = Hash::hash(
-                &operations.iter().fold(Vec::new(), |acc, v| {
-                    let res = [
-                        acc,
-                        v.to_bytes_compact(&self.serialization_context).unwrap(),
-                    ]
-                    .concat();
-                    res
-                })[..],
-            );
-
-            let (hash, block) = self
-                .block_db
-                .create_block(operations, operation_merkle_root)?;
-            massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
-
-            self.block_db
-                .incoming_block(hash, block, ids, &mut self.selector, Some(cur_slot))?;
+            self.create_block(cur_slot).await?;
         }
 
         // signal tick to block graph
@@ -405,6 +378,38 @@ impl ConsensusWorker {
             .estimate_instant(self.clock_compensation)?,
         ));
 
+        Ok(())
+    }
+
+    async fn create_block(&mut self, cur_slot: Slot) -> Result<(), ConsensusError> {
+        let (size, prepared) = self
+            .block_db
+            .prepare_block_creation("block".to_string(), cur_slot)?;
+        let left_size = self.cfg.max_block_size as u64 - size;
+        let operations = self.get_best_operations(cur_slot, left_size).await?;
+        let ids: HashSet<OperationId> = operations
+            .iter()
+            .map(|op| op.get_operation_id(&self.serialization_context))
+            .collect::<Result<_, _>>()?;
+
+        let operation_merkle_root = Hash::hash(
+            &operations.iter().fold(Vec::new(), |acc, v| {
+                let res = [
+                    acc,
+                    v.to_bytes_compact(&self.serialization_context).unwrap(),
+                ]
+                .concat();
+                res
+            })[..],
+        );
+
+        let (hash, block) =
+            self.block_db
+                .create_block(operations, operation_merkle_root, prepared)?;
+        massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
+
+        self.block_db
+            .incoming_block(hash, block, ids, &mut self.selector, Some(cur_slot))?;
         Ok(())
     }
 
