@@ -1,6 +1,9 @@
 use crate::{get_filter, ApiConfig, ApiEvent};
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-use consensus::{BlockGraphExport, ConsensusConfig, ExportCompiledBlock, ExportDiscardedBlocks};
+use consensus::{
+    get_block_slot_timestamp, BlockGraphExport, ConsensusConfig, ExportCompiledBlock,
+    ExportDiscardedBlocks,
+};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
@@ -14,9 +17,15 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     vec,
 };
-use storage::storage_controller::StorageCommandSender;
+use storage::{
+    config::StorageConfig,
+    storage_controller::{start_storage_controller, StorageCommandSender},
+};
 use time::UTime;
-use tokio::sync::mpsc::{self, Receiver};
+use tokio::{
+    sync::mpsc::{self, Receiver},
+    task::JoinHandle,
+};
 use warp::{filters::BoxedFilter, reply::Reply};
 
 pub fn get_test_hash() -> Hash {
@@ -138,6 +147,69 @@ pub fn get_dummy_staker() -> PublicKey {
     signature_engine.derive_public_key(&private_key)
 }
 
+pub async fn get_test_storage(
+    path: String,
+    cfg: ConsensusConfig,
+) -> (StorageCommandSender, (Block, Block, Block)) {
+    let (storage_command_tx, _storage_manager) = start_storage_controller(StorageConfig {
+        max_stored_blocks: 10,
+        path,
+        cache_capacity: 500,
+        flush_every_ms: None,
+    })
+    .unwrap();
+
+    let mut blocks = HashMap::new();
+    let mut block_a = get_test_block();
+    block_a.header.slot = Slot::new(1, 0);
+    assert_eq!(
+        get_block_slot_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            block_a.header.slot
+        )
+        .unwrap(),
+        2000.into()
+    );
+    blocks.insert(block_a.header.compute_hash().unwrap(), block_a.clone());
+
+    let mut block_b = get_test_block();
+    block_b.header.slot = Slot::new(1, 1);
+    assert_eq!(
+        get_block_slot_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            block_b.header.slot
+        )
+        .unwrap(),
+        3000.into()
+    );
+    blocks.insert(block_b.header.compute_hash().unwrap(), block_b.clone());
+
+    let mut block_c = get_test_block();
+    block_c.header.slot = Slot::new(2, 0);
+    assert_eq!(
+        get_block_slot_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            block_c.header.slot
+        )
+        .unwrap(),
+        4000.into()
+    );
+    blocks.insert(block_c.header.compute_hash().unwrap(), block_c.clone());
+
+    storage_command_tx
+        .add_multiple_blocks(blocks)
+        .await
+        .unwrap();
+
+    (storage_command_tx, (block_a, block_b, block_c))
+}
+
 pub fn get_test_block() -> Block {
     Block {
             header: BlockHeader {
@@ -156,6 +228,20 @@ pub fn get_test_block() -> Block {
         }
 }
 
+pub fn get_empty_graph_handle(mut rx_api: Receiver<ApiEvent>) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+            None => {}
+            _ => {}
+        }
+    })
+}
 pub fn get_test_compiled_exported_block(
     slot: Slot,
     creator: Option<PublicKey>,
