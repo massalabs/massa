@@ -15,23 +15,26 @@ cache:
   key: "$CI_BUILD_STAGE-$CI_BUILD_REF_NAME"
   untracked: true
 
-rustfmt:
-  stage: sanity
+# Use rustfmt to check code formatting
+sanity:rustfmt:
   script:
     - rustup component add rustfmt
-    - cargo fmt -- --write-mode=diff
+    - cargo fmt -- --check
 
-clippy:
-  stage: sanity
-  allow_failure: true
+# Use clippy to detect code problems
+sanity:clippy:
   script:
     - rustup component add clippy
-    - cargo clippy -- -D warnings # Turn all warnings in
+    - cargo clippy -- -D warnings
 
-
-  
 # Use cargo to test the project
 test:cargo:
   script:
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo test --all --verbose
+
+# Use cargo to build the project
+build:cargo:
+  script:
+    - cargo build
+
