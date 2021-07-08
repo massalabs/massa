@@ -2,7 +2,8 @@ use crate::common::NodeId;
 use crate::network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use models::{Block, BlockHeader};
-use tokio::sync::mpsc;
+use time::UTime;
+use tokio::{sync::mpsc, time::sleep};
 
 const CHANNEL_SIZE: usize = 16;
 
@@ -26,8 +27,21 @@ impl MockNetworkController {
         )
     }
 
-    pub async fn wait_command(&mut self) -> Option<NetworkCommand> {
-        Some(self.network_command_rx.recv().await?)
+    pub async fn wait_command<F>(&mut self, timeout: UTime, filter_map: F) -> Option<NetworkCommand>
+    where
+        F: Fn(NetworkCommand) -> Option<NetworkCommand>,
+    {
+        let timer = sleep(timeout.into());
+        tokio::pin!(timer);
+        loop {
+            tokio::select! {
+                cmd_opt = self.network_command_rx.recv() => match cmd_opt {
+                    Some(orig_cmd) => if let Some(res_cmd) = filter_map(orig_cmd) { return Some(res_cmd); },
+                    None => return None
+                },
+                _ = &mut timer => return None
+            }
+        }
     }
 
     pub async fn new_connection(&mut self, new_node_id: NodeId) {

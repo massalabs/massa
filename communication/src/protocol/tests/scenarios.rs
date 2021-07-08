@@ -18,6 +18,11 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
+    let ask_for_block_cmd_filter = |cmd| match cmd {
+        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        _ => None,
+    };
+
     // start protocol controller
     let (mut protocol_command_sender, mut protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
@@ -37,7 +42,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     // 1. Close one connection.
     network_controller.close_connection(nodes[0].id).await;
 
-    // 2. Create a block coming from node 0.
+    // 2. Create a block coming from node creator_node.
     let block = tools::create_block(
         &creator_node.private_key,
         &creator_node.id.0,
@@ -51,17 +56,17 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         .await;
 
     // Check protocol sends header to consensus.
-    let received_hash = match protocol_event_receiver
-        .wait_event()
+    let received_hash =
+        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
+        {
+            evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+            _ => None,
+        })
         .await
-        .expect("Protocol didn't send event.")
-    {
-        ProtocolEvent::ReceivedBlockHeader {
-            hash,
-            header: _header,
-        } => hash,
-        _ => panic!("Unexpected protocol event."),
-    };
+        {
+            Some(ProtocolEvent::ReceivedBlockHeader { hash, .. }) => hash,
+            _ => panic!("Unexpected or no protocol event."),
+        };
 
     // 4. Check that protocol sent the right header to consensus.
     let expected_hash = block
@@ -79,7 +84,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
     // 6. Check that protocol asks the node for the full block.
     let (ask_to_node_id, asked_for_hash) = match network_controller
-        .wait_command()
+        .wait_command(1000.into(), ask_for_block_cmd_filter)
         .await
         .expect("Protocol didn't send network command.")
     {
@@ -94,9 +99,15 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         .await
         .expect("Failed to shutdown protocol.");
 
-    // 7. Make sure protocol did not ask the other nodes for the block.
-    let got_more_commands = network_controller.wait_command().await;
-    assert!(got_more_commands.is_none());
+    // 7. Make sure protocol did not ask for the block again.
+    let got_more_commands = network_controller
+        .wait_command(100.into(), ask_for_block_cmd_filter)
+        .await;
+    assert!(
+        got_more_commands.is_none(),
+        "unexpected command {:?}",
+        got_more_commands
+    );
 }
 
 #[tokio::test]
@@ -104,6 +115,12 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
     let mut signature_engine = SignatureEngine::new();
+
+    let send_block_or_header_cmd_filter = |cmd| match cmd {
+        cmd @ NetworkCommand::SendBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
+        _ => None,
+    };
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -127,7 +144,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     // 1. Close one connection.
     network_controller.close_connection(nodes[2].id).await;
 
-    // 2. Create a block coming from node 0.
+    // 2. Create a block coming from creator_node.
     let block = tools::create_block(
         &creator_node.private_key,
         &creator_node.id.0,
@@ -148,52 +165,58 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             .await;
 
         // Check protocol sends get block event to consensus.
-        let received_hash = match protocol_event_receiver
-            .wait_event()
+        let received_hash =
+            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::GetBlock(..) => Some(evt),
+                    _ => None,
+                }
+            })
             .await
-            .expect("Protocol didn't send event.")
-        {
-            ProtocolEvent::GetBlock(hash) => hash,
-            _ => panic!("Unexpected protocol event."),
-        };
+            {
+                Some(ProtocolEvent::GetBlock(hash)) => hash,
+                _ => panic!("Unexpected or no protocol event."),
+            };
 
         // Check that protocol sent the right hash to consensus.
         assert_eq!(expected_hash, received_hash);
     }
 
-    // 4. Simulate consensing sending block.
+    // 4. Simulate consensus sending block.
     protocol_command_sender
         .send_block(expected_hash.clone(), block)
         .await
-        .expect("Failed to ask for block.");
+        .expect("Failed to send block.");
 
-    // 5. Check that protocol send the nodes the full block.
-    let mut expected = HashSet::new();
-    expected.insert(nodes[0].id.clone());
-    expected.insert(nodes[1].id.clone());
+    // 5. Check that protocol sends the nodes the full block.
+    let mut expecting_block = HashSet::new();
+    expecting_block.insert(nodes[0].id.clone());
+    expecting_block.insert(nodes[1].id.clone());
     loop {
-        let (sent_to_node_id, sent_hash) = match network_controller
-            .wait_command()
+        match network_controller
+            .wait_command(1000.into(), send_block_or_header_cmd_filter)
             .await
-            .expect("Protocol didn't send network command.")
         {
-            NetworkCommand::SendBlock(node_id, block) => {
+            Some(NetworkCommand::SendBlock(node_id, block)) => {
                 let hash = block
                     .header
                     .content
                     .compute_hash(&serialization_context)
                     .expect("Failed to compute hash.");
-                (node_id, hash)
+                assert_eq!(expected_hash, hash);
+                assert!(expecting_block.remove(&node_id));
+            }
+            Some(NetworkCommand::SendBlockHeader { .. }) => {
+                panic!("unexpected header sent");
+            }
+            None => {
+                if expecting_block.is_empty() {
+                    break;
+                } else {
+                    panic!("expecting a block to be sent");
+                }
             }
             _ => panic!("Unexpected network command."),
-        };
-        assert_eq!(expected_hash, sent_hash);
-
-        // Check that the header was propagated to a node that didn't know about it.
-        assert!(expected.remove(&sent_to_node_id));
-
-        if expected.is_empty() {
-            break;
         }
     }
 
@@ -202,8 +225,10 @@ async fn test_protocol_sends_blocks_when_asked_for() {
         .await
         .expect("Failed to shutdown protocol.");
 
-    // 7. Make sure protocol did not send the block to other nodes.
-    let got_more_commands = network_controller.wait_command().await;
+    // 7. Make sure protocol did not send block or header to other nodes.
+    let got_more_commands = network_controller
+        .wait_command(100.into(), send_block_or_header_cmd_filter)
+        .await;
     assert!(got_more_commands.is_none());
 }
 
@@ -250,14 +275,17 @@ async fn test_protocol_propagates_headers_to_all_node_who_do_not_know_about_it()
         .await;
 
     // Check protocol sends header to consensus.
-    let (hash, header) = match protocol_event_receiver
-        .wait_event()
+    let (hash, header) =
+        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
+        {
+            evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+            _ => None,
+        })
         .await
-        .expect("Protocol didn't send event.")
-    {
-        ProtocolEvent::ReceivedBlockHeader { hash, header } => (hash, header),
-        _ => panic!("Unexpected protocol event."),
-    };
+        {
+            Some(ProtocolEvent::ReceivedBlockHeader { hash, header }) => (hash, header),
+            _ => panic!("Unexpected or no protocol event."),
+        };
 
     // 5. Propagate header.
     protocol_command_sender
@@ -271,12 +299,14 @@ async fn test_protocol_propagates_headers_to_all_node_who_do_not_know_about_it()
     expected.insert(nodes[2].id.clone());
     loop {
         let (sent_to_node_id, sent_header) = match network_controller
-            .wait_command()
+            .wait_command(1000.into(), |cmd| match cmd {
+                cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
+                _ => None,
+            })
             .await
-            .expect("Protocol didn't send network command.")
         {
-            NetworkCommand::SendBlockHeader { node, header } => (node, header),
-            _ => panic!("Unexpected network command."),
+            Some(NetworkCommand::SendBlockHeader { node, header }) => (node, header),
+            _ => panic!("Unexpected or no network command."),
         };
 
         // Check that the header was propagated to a node that didn't know about it.
@@ -343,14 +373,17 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     network_controller.send_block(creator_node.id, block).await;
 
     // Check protocol sends block to consensus.
-    let hash = match protocol_event_receiver
-        .wait_event()
+    let hash =
+        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
+        {
+            evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+            _ => None,
+        })
         .await
-        .expect("Protocol didn't send event.")
-    {
-        ProtocolEvent::ReceivedBlock { hash, block: _ } => hash,
-        _ => panic!("Unexpected protocol event."),
-    };
+        {
+            Some(ProtocolEvent::ReceivedBlock { hash, .. }) => hash,
+            _ => panic!("Unexpected or no protocol event."),
+        };
     assert_eq!(expected_hash, hash);
 
     protocol_manager
@@ -399,9 +432,15 @@ async fn test_protocol_does_not_send_full_blocks_it_receives_with_invalid_signat
     network_controller.send_block(creator_node.id, block).await;
 
     // Check protocol does not send block to consensus.
-    match protocol_event_receiver.wait_event().await {
-        Err(_) => {}
-        _ => panic!("Unexpected protocol event."),
+    match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt {
+        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+        _ => None,
+    })
+    .await
+    {
+        None => {}
+        _ => panic!("Protocol unexpectedly sent block or header."),
     }
 
     match protocol_manager.stop(protocol_event_receiver).await {
