@@ -1,5 +1,3 @@
-use std::{collections::HashSet, ops::Sub};
-
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
     timeslots::*,
@@ -7,6 +5,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
 use models::{Block, Slot};
+use std::collections::HashSet;
 use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -53,7 +52,7 @@ pub struct ConsensusWorker {
     /// Channel receiving consensus commands.
     controller_command_rx: mpsc::Receiver<ConsensusCommand>,
     /// Channel sending out consensus events.
-    controller_event_tx: mpsc::Sender<ConsensusEvent>,
+    _controller_event_tx: mpsc::Sender<ConsensusEvent>,
     /// Channel receiving consensus management commands.
     controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
     /// Selector used to select roll numbers.
@@ -104,7 +103,7 @@ impl ConsensusWorker {
             opt_storage_command_sender,
             block_db,
             controller_command_rx,
-            controller_event_tx,
+            _controller_event_tx: controller_event_tx,
             controller_manager_rx,
             selector,
             previous_slot,
@@ -297,7 +296,7 @@ impl ConsensusWorker {
 
     async fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
         // prune block db and send discarded final blocks to storage if present
-        let discarded_final_blocks = self.block_db.prune(self.previous_slot)?;
+        let discarded_final_blocks = self.block_db.prune()?;
         if let Some(storage_cmd) = &self.opt_storage_command_sender {
             storage_cmd.add_block_batch(discarded_final_blocks).await?;
         }

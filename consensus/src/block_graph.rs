@@ -979,8 +979,8 @@ impl BlockGraph {
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<CheckOutcome, ConsensusError> {
-        let mut deps;
-        let mut incomp;
+        let deps;
+        let incomp;
         let parents;
         let inherited_incomp_count;
 
@@ -1354,10 +1354,7 @@ impl BlockGraph {
     }
 
     // prune active blocks and return final blocks, return discarded final blocks
-    fn prune_active(
-        &mut self,
-        current_slot: Option<Slot>,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    fn prune_active(&mut self) -> Result<HashMap<Hash, Block>, ConsensusError> {
         // list all active blocks
         let active_blocks: HashSet<Hash> = self
             .block_statuses
@@ -1724,12 +1721,9 @@ impl BlockGraph {
     }
 
     // prune and return final blocks, return discarded final blocks
-    pub fn prune(
-        &mut self,
-        current_slot: Option<Slot>,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    pub fn prune(&mut self) -> Result<HashMap<Hash, Block>, ConsensusError> {
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
-        let discarded_finals = self.prune_active(current_slot)?;
+        let discarded_finals = self.prune_active()?;
 
         // Step 2: prune slot waiting blocks
         self.prune_slot_waiting();

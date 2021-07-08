@@ -3,7 +3,6 @@ use super::{
     establisher::Establisher,
     network_worker::{NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker},
     peer_info_database::*,
-    ConnectionClosureReason,
 };
 use crate::common::NodeId;
 use crate::error::CommunicationError;

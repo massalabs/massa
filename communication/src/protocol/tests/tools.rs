@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
 use crate::protocol::ProtocolConfig;
