@@ -54,15 +54,15 @@ fn main() {
     // * a REPL moode where the command are typed and executed directly inside the client.
     //declare client parameters common for all modes.
     let app = App::new("Massa CLI")
-        .version("1.0")
-        .author("Massa Labs <contact@massa.network>")
+        .version("0.3")
+        .author("Massa Labs <info@massa.net>")
         .about("Massa")
         .arg(
             Arg::with_name("nodeip")
                 .short("n")
                 .long("node")
                 .value_name("IP ADDR")
-                .help("Ip:Port of the node, ex: 127.0.0.1:3030")
+                .help("IP:PORT of the node, e.g. 127.0.0.1:3030")
                 .required(false)
                 .takes_value(true),
         )
@@ -71,7 +71,7 @@ fn main() {
                 .short("w")
                 .long("wallet")
                 .value_name("Wallet file path")
-                .help("Activate wallet command.")
+                .help("Wallet file to load.")
                 .required(false)
                 .takes_value(true),
         )
@@ -80,7 +80,7 @@ fn main() {
                 .short("s")
                 .long("shorthash")
                 .value_name("true, false")
-                .help("true: display short hash. Doesn't work in command mode")
+                .help("true: shorten displayed hashes. Doesn't work in command mode")
                 .required(false)
                 .takes_value(true),
         );
@@ -95,7 +95,7 @@ fn main() {
     //Detection is done by clap for cli mode and rustlyline in REPL mode.
     let (mut repl, app) = repl::Repl::new().new_command(
         "set_short_hash",
-        "set displayed hash short: Parameter: bool: true (short), false(long)",
+        "shorten displayed hashes: Parameters: bool: true (short), false(long)",
         1,
         1,
         set_short_hash,
@@ -111,10 +111,10 @@ fn main() {
         true,
         cmd_current_parents,
     )
-    .new_command_noargs("last_final", "get last finals blocks", true, cmd_last_final)
+    .new_command_noargs("last_final", "get lates finals blocks", true, cmd_last_final)
     .new_command(
         "block",
-        "get the block with the specifed hash. Parameter: block hash",
+        "get the block with the specifed hash. Parameters: block hash",
         1,
         1, //max nb parameters
         true,
@@ -122,7 +122,7 @@ fn main() {
     )
     .new_command(
         "blockinterval",
-        "get the block within the specifed time interval. Optinal parameters: [from] <start> and [to] <end> (excluded) time interval. ",
+        "get blocks within the specifed time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp",
     //    &["from", "to"],
         0,
         2,
@@ -131,7 +131,7 @@ fn main() {
     )
     .new_command(
         "graphinterval",
-        "get the block graph within the specifed time interval. Optinal parameters: [from] <start> and [to] <end> (excluded) time interval",
+        "get the block graph within the specifed time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp",
         0,
         2, //max nb parameters
         true,
@@ -139,35 +139,35 @@ fn main() {
     )
     .new_command_noargs(
         "network_info",
-        "network information: own IP address, connected peers (IP)",
+        "network information: own IP address, connected peers",
         true,
         cmd_network_info,
     )
-    .new_command_noargs("state", "summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes", true, cmd_state)
+    .new_command_noargs("state", "summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count", true, cmd_state)
     .new_command_noargs(
         "last_stale",
-        "(hash, thread, slot) for last stale blocks",
+        "(hash, thread, slot) for recent stale blocks",
         true,
         cmd_last_stale,
     )
     .new_command_noargs(
         "last_invalid",
-        "(hash, thread, slot, reason) for last invalid blocks",
+        "(hash, thread, slot, discard reason) for recent invalid blocks",
         true,
         cmd_last_invalid,
     )
     .new_command(
         "get_operation",
-        "return the operation with the specified id. parameters: <operation id>",
+        "returns the operation with the specified id. Parameters: <operation id>",
         1,
         1,
         true,
         cmd_get_operation,
     )
-    .new_command_noargs("stop_node", "Stop node gracefully", true, cmd_stop_node)
+    .new_command_noargs("stop_node", "Gracefully stop the node", true, cmd_stop_node)
     .new_command(
         "staker_info",
-        "staker info from staker address (pubkey hash) -> (blocks created, next slots where address is selected)",
+        "staker info from staker address -> (blocks created, next slots in which the address will be selected)",
         1,
         1, //max nb parameters
         true,
@@ -175,7 +175,7 @@ fn main() {
     )
     .new_command(
         "operations_involving_address",
-        "operation involving given address (Address) -> HashMap(block id, is_final)",
+        "list operations involving the provided address. Note that old operations are forgotten.",
         1,
         1, //max nb parameters
         true,
@@ -183,18 +183,18 @@ fn main() {
     )
     .new_command(
         "addresses_info",
-        "return the specified addresses balance for current final block and best parents parameters: list of addresses separated by ,  (no space).",
+        "returns the final and candidate balances for a list of addresses. Parameters: list of addresses separated by ,  (no space).",
         1,
         1, //max nb parameters
         true,
         cmd_addresses_info,
     )
     //non active wellet command
-    .new_command_noargs("wallet_info", "Show wallet info.", false, wallet_info)
-    .new_command_noargs("wallet_new_privkey", "Generates a new private key and adds it to the wallet file. Return the associated public key address.", false, wallet_new_privkey)
+    .new_command_noargs("wallet_info", "Shows wallet info", false, wallet_info)
+    .new_command_noargs("wallet_new_privkey", "Generates a new private key and adds it to the wallet. Returns the associated address.", false, wallet_new_privkey)
     .new_command(
         "send_transaction",
-        "send a transaction <from_address> to <to_address>(if that address has a private key in the wallet or else error). Return the OperationId parameters: <from_address> <to_address> <amount> <fee>",
+        "sends a transaction from <from_address> to <to_address> (from_address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <from_address> <to_address> <amount> <fee>",
         4,
         4, //max nb parameters
         false,
@@ -212,7 +212,7 @@ fn main() {
         .and_then(|node| {
             FromStr::from_str(node)
                 .map_err(|err| {
-                    println!("bad ip address, use default one");
+                    println!("bad ip address, using defaults");
                     err
                 })
                 .ok()
@@ -226,7 +226,7 @@ fn main() {
         .and_then(|val| {
             FromStr::from_str(val)
                 .map_err(|err| {
-                    println!("bad short hash value, use default one");
+                    println!("bad short hash value, using default");
                     err
                 })
                 .ok()
@@ -250,7 +250,7 @@ fn main() {
             }
             Err(err) => {
                 println!(
-                    "Error during loading wallet file:{}. No wallet is actif.",
+                    "Error while loading wallet file:{}. No wallet was loaded.",
                     err
                 );
             }
@@ -292,7 +292,7 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
         Ok(operation_ids) => OperationIds { operation_ids },
         Err(err) => {
             println!(
-                "Error during operations convertion, atleast one provided address not a bs58 Hash :{}",
+                "Error during operations conversion, at least one address is invalid: {}",
                 err
             );
             return Ok(());
@@ -306,7 +306,7 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
             Ok(s) => s,
             Err(err) => {
                 println!(
-                    "Error during operations id convertion, could not convert to url :{}",
+                    "Error during operations id conversion, could not convert to url: {}",
                     err
                 );
                 return Ok(());
@@ -344,7 +344,7 @@ fn wallet_new_privkey(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplE
         if data.cli {
             println!("{}", serde_json::to_string_pretty(&addr)?);
         } else {
-            println!("Generated private key address:{}", addr.to_bs58_check());
+            println!("Generated address: {}", addr.to_bs58_check());
         }
     }
     Ok(())
@@ -358,7 +358,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                 wallet
                     .to_json_string()
                     .map_err(|err| ReplError::GeneralError(format!(
-                        "internal error during wallet json conversion:{}",
+                        "internal error during wallet json conversion: {}",
                         err
                     )))?
             );
@@ -377,7 +377,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
         let resp = reqwest::blocking::get(&url)?;
         if resp.status() != StatusCode::OK {
             return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server answer code :{}",
+                "Error during node connection. Server response code: {}",
                 resp.status()
             )));
         }
@@ -401,7 +401,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
         let resp = reqwest::blocking::get(&url)?;
         if resp.status() != StatusCode::OK {
             return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server answer code :{}",
+                "Error during node connection. Server response code: {}",
                 resp.status()
             )));
         }
@@ -414,7 +414,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             wallet
                 .find_associated_private_key(from_address)
                 .ok_or(ReplError::GeneralError(format!(
-                    "No private key found in the wallet for specified from address:{}",
+                    "No private key found in the wallet for the specified FROM address: {}",
                     params[0].trim()
                 )))?;
         let public_key = derive_public_key(&private_key);
@@ -422,14 +422,10 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
         let recipient_address = Address::from_bs58_check(params[1])
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let amount: u64 = FromStr::from_str(&params[2]).map_err(|err| {
-            ReplError::GeneralError(format!(
-                "Error incorrect specified amount not an int :{}",
-                err
-            ))
+            ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
         })?;
-        let fee: u64 = FromStr::from_str(&params[3]).map_err(|err| {
-            ReplError::GeneralError(format!("Error incorrect specified fee not an int :{}", err))
-        })?;
+        let fee: u64 = FromStr::from_str(&params[3])
+            .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
 
         let slot = consensus::get_current_latest_block_slot(
             consensus_cfg.thread_count,
@@ -439,13 +435,11 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
         )
         .map_err(|err| {
             ReplError::GeneralError(format!(
-                "Error during current time slot generation :{}",
+                "Error during current time slot computation: {}",
                 err
             ))
         })?
-        .ok_or(ReplError::GeneralError(
-            "Error no current time slot generated".to_string(),
-        ))?;
+        .unwrap_or(Slot::new(0, 0));
 
         let mut expire_period = slot.period + consensus_cfg.operation_validity_periods;
         if slot.thread >= from_address.get_thread(consensus_cfg.thread_count) {
@@ -480,7 +474,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
                 .map(|message| message.message)
                 .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
                 .unwrap();
-            println!("The serveur answer status:{} an error:{}", status, message);
+            println!("Server response error. Status: {} - {}", status, message);
         } else {
             if data.cli {
                 println!("{}", resp.text().unwrap());
@@ -488,10 +482,10 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
                 let opid_list = resp.json::<Vec<OperationId>>()?;
                 if opid_list.len() == 0 {
                     return Err(ReplError::GeneralError(
-                        "Error no operation id generated during transaction send".to_string(),
+                        "Could not obtain the transaction ID".to_string(),
                     ));
                 }
-                println!("Operation created:{}", opid_list[0]);
+                println!("Operation created: {}", opid_list[0]);
             }
         }
     }
@@ -517,10 +511,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
     let search_addresses = match addr_list {
         Ok(addrs) => Addresses { addrs },
         Err(err) => {
-            println!(
-                "Error during addresses convertion, atleast one provided address not a bs58 Hash :{}",
-                err
-            );
+            println!("Error during addresses parsing: {}", err);
             return Ok(());
         }
     };
@@ -532,7 +523,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             Ok(s) => s,
             Err(err) => {
                 println!(
-                    "Error during addresses convertion, could not convert to url :{}",
+                    "Error during addresses parsing, could not convert to url: {}",
                     err
                 );
                 return Ok(());
@@ -548,7 +539,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             .map(|message| message.message)
             .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
             .unwrap();
-        println!("The serveur answer status:{} an error:{}", status, message);
+        println!("Server error response: {} - {}", status, message);
     } else {
         if data.cli {
             println!("{}", resp.text().unwrap());
@@ -556,9 +547,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             let ledger = resp.json::<LedgerDataExport>()?;
             let balance_list = data::extract_addresses_from_ledger(&ledger);
             if balance_list.len() == 0 {
-                return Err(ReplError::GeneralError(
-                    "Error no balance found.".to_string(),
-                ));
+                return Err(ReplError::GeneralError("No balance found.".to_string()));
             } else {
                 for export in balance_list {
                     println!("{}", export);
@@ -620,7 +609,7 @@ fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/state", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<data::State>()?;
-        println!("Summary of current node state");
+        println!("Summary of the current node state");
         println!("{}", resp);
     }
     Ok(())
@@ -633,7 +622,7 @@ fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), Repl
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.1, v.0));
         let formated = format_node_hash(&mut resp);
-        println!("Parents:{:#?}", formated);
+        println!("Parents: {:#?}", formated);
     }
     Ok(())
 }
@@ -645,7 +634,7 @@ fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.1, v.0));
         let formated = format_node_hash(&mut resp);
-        println!("Last stale:{:#?}", formated);
+        println!("Last stale: {:#?}", formated);
     }
     Ok(())
 }
@@ -657,7 +646,7 @@ fn cmd_last_invalid(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplErr
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.0, v.1));
         let formated = format_node_hash(&mut resp);
-        println!("Last invalid:{:#?}", formated);
+        println!("Last invalid: {:#?}", formated);
     }
     Ok(())
 }
@@ -669,7 +658,7 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.1, v.0));
         let formated = format_node_hash(&mut resp);
-        println!("last finals:{:#?}", formated);
+        println!("last finals: {:#?}", formated);
     }
     Ok(())
 }
@@ -680,7 +669,7 @@ fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
         let mut block: Vec<(data::WrappedHash, data::WrappedSlot)> =
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         if block.len() == 0 {
-            println!("Not block found.");
+            println!("Block not found.");
         } else {
             block.sort_unstable_by_key(|v| (v.1, v.0));
             let formated = format_node_hash(&mut block);
@@ -696,8 +685,8 @@ fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<Option<IpAddr>>()?;
         match resp {
-            Some(ip) => println!("Our IP address: {}", ip),
-            None => println!("Our IP address isn't defined"),
+            Some(ip) => println!("Node IP address: {}", ip),
+            None => println!("The node's IP address isn't defined as routable"),
         }
     }
     Ok(())
@@ -834,7 +823,7 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
             .map(|message| message.message)
             .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
             .unwrap();
-        println!("The serveur answer status:{} an error:{}", status, message);
+        println!("Server error response status: {} - {}", status, message);
         Ok(None)
     } else {
         if data.cli {
