@@ -1,10 +1,9 @@
+use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
-use models::{Address, Operation, Slot};
-use std::collections::{BTreeMap, HashMap, VecDeque};
-
+use crypto::hash::Hash;
+use models::{Address, BlockId, Operation, Slot};
 use serde::{Deserialize, Serialize};
-
-use crate::{block_graph::ActiveBlock, ConsensusError};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 pub trait OperationPosInterface {
     /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
@@ -26,6 +25,7 @@ impl OperationPosInterface for Operation {
 struct FinalRollThreadData {
     /// Cycle number
     cycle: u64,
+    /// Slot of the latest final block
     last_final_slot: Slot,
     /// number of rolls an address has
     roll_count: BTreeMap<Address, u64>,
@@ -39,16 +39,14 @@ struct FinalRollThreadData {
 }
 
 struct ProofOfStake {
-    /// Cycle indexed by thread
-    last_final_block_cycle: Vec<u64>,
+    /// Config
+    cfg: ConsensusConfig,
     /// Index by thread and cycle number
     final_roll_data: Vec<VecDeque<FinalRollThreadData>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ExportProofOfStake {
-    /// Cycle indexed by thread
-    last_final_block_cycle: Vec<u64>,
     /// Index by thread and cycle number
     final_roll_data: Vec<Vec<ExportFinalRollThreadData>>,
 }
@@ -76,7 +74,6 @@ impl ProofOfStake {
 
     pub fn export(&self) -> ExportProofOfStake {
         ExportProofOfStake {
-            last_final_block_cycle: self.last_final_block_cycle.clone(),
             final_roll_data: self
                 .final_roll_data
                 .iter()
@@ -89,9 +86,9 @@ impl ProofOfStake {
         }
     }
 
-    pub fn from_export(export: ExportProofOfStake) -> ProofOfStake {
+    pub fn from_export(cfg: ConsensusConfig, export: ExportProofOfStake) -> ProofOfStake {
         ProofOfStake {
-            last_final_block_cycle: export.last_final_block_cycle,
+            cfg,
             final_roll_data: export
                 .final_roll_data
                 .into_iter()
@@ -109,47 +106,96 @@ impl ProofOfStake {
         todo!()
     }
 
-    pub fn note_final_block(
-        &self,
-        misses: Vec<Slot>,
-        a_block: &ActiveBlock,
-    ) -> Result<(), ConsensusError> {
-        todo!()
-        //update internal states after a block becomes final. When multiple blocks become final,
-        // this method should be called in slot order.
-        // "misses" is the list of misses in the same thread between the block and its parent in the same thread.
+    /// Update internal states after a set of blocks become final
+    /// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final
+    pub fn note_final_blocks(&mut self, blocks: &HashMap<BlockId, ActiveBlock>) {
+        // Update internal states after a set of blocks become final.
 
-        // note_final_block: When a block B in thread Tau and cycle N becomes final
-        //
-        // if N > last_final_block_cycle[Tau]:
-        //
-        // update last_final_block_cycle[Tau]
-        // pop front for final_roll_data[thread] until the 1st element represents cycle N-4
-        // push back a new last element in final_roll_data that represents cycle N:
-        //
-        // inherit FinalRollThreadData.roll_count from cycle N-1
-        // empty FinalRollThreadData.cycle_purchases, FinalRollThreadData.cycle_sales, FinalRollThreadData.rng_seed
-        //
-        //
-        //
-        //
-        // if there were misses between B and its parent, for each of them in order:
-        //
-        // push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in final_roll_data[thread].rng_seed
-        //
-        //
-        // push the 1st bit of BlockId in final_roll_data[thread].rng_seed
-        // overwrite the FinalRollThreadData sales/purchase entries at cycle N with the ones from the ActiveBlock
+        // process blocks by increasing slot number
+        let mut indices: Vec<(Slot, BlockId)> = blocks
+            .iter()
+            .map(|(k, v)| (v.block.header.content.slot, *k))
+            .collect();
+        indices.sort_unstable();
+        for (block_slot, block_id) in indices.into_iter() {
+            let a_block = &blocks[&block_id];
+            let thread = block_slot.thread;
+
+            // for this thread, iterate from the latest final period + 1 to the block's
+            // all iterations for which period < block_slot.period are misses
+            // the iteration at period = block_slot.period corresponds to a_block
+            let cur_last_final_period = self.final_roll_data[thread as usize][0]
+                .last_final_slot
+                .period;
+            for period in (cur_last_final_period + 1)..=block_slot.period {
+                let cycle = period / self.cfg.periods_per_cycle;
+                let slot = Slot::new(period, thread);
+
+                // if the cycle of the miss/block being processed is higher than the latest final block cycle
+                // then create a new FinalRollThreadData representing this new cycle and push it at the front of final_roll_data[thread]
+                // (step 1 in the spec)
+                if cycle
+                    > self.final_roll_data[thread as usize][0]
+                        .last_final_slot
+                        .period
+                        / self.cfg.periods_per_cycle
+                {
+                    // the new FinalRollThreadData inherits from the roll_count of the previous cycle but has empty cycle_purchases, cycle_sales, rng_seed
+                    let roll_count = self.final_roll_data[thread as usize][0].roll_count.clone();
+                    self.final_roll_data[thread as usize].push_front(FinalRollThreadData {
+                        cycle,
+                        last_final_slot: slot.clone(),
+                        cycle_purchases: HashMap::new(),
+                        cycle_sales: HashMap::new(),
+                        roll_count,
+                        rng_seed: BitVec::new(),
+                    });
+                    // If final_roll_data becomes longer than pos_lookback_cycles+pos_lock_cycles+1, truncate it by removing the back elements
+                    self.final_roll_data[thread as usize].truncate(
+                        (self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1) as usize,
+                    );
+                }
+
+                // apply the miss/block to the latest final_roll_data
+                // (step 2 in the spec)
+                let entry = &mut self.final_roll_data[thread as usize][0];
+                // update the last_final_slot for the latest cycle
+                entry.last_final_slot = slot.clone();
+                // check if we are applying the block itself or a miss
+                if period == block_slot.period {
+                    // we are applying the block itself
+                    // overwrite the cycle's roll_count,cycle_purchases,cycle_sales with the subsets from the block
+                    entry.roll_count.extend(&a_block.roll_updates.roll_count);
+                    entry
+                        .cycle_purchases
+                        .extend(&a_block.roll_updates.cycle_purchases);
+                    entry.cycle_sales.extend(&a_block.roll_updates.cycle_sales);
+                    // append the 1st bit of the block's hash to the RNG seed bitfield
+                    entry
+                        .rng_seed
+                        .push(Hash::hash(&block_id.to_bytes()).to_bytes()[0] >> 7 == 1);
+                } else {
+                    // we are applying a miss
+                    // append the 1st bit of the hash of the slot of the miss to the RNG seed bitfield
+                    entry
+                        .rng_seed
+                        .push(Hash::hash(&slot.to_bytes_key()).to_bytes()[0] >> 7 == 1);
+                }
+            }
+        }
     }
 
     pub fn get_last_final_block_cycle(&self, thread: u8) -> u64 {
-        // returns the cycle of the last final block in thread
-        self.last_final_block_cycle[thread as usize]
+        self.final_roll_data[thread as usize][0].cycle
     }
 
     pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&FinalRollThreadData> {
-        todo!()
-        // that returns None if that cycle is not stored
+        let last_final_block_cycle = self.get_last_final_block_cycle(thread);
+        if let Some(neg_relative_cycle) = last_final_block_cycle.checked_sub(cycle) {
+            self.final_roll_data[thread as usize].get(neg_relative_cycle as usize)
+        } else {
+            None
+        }
     }
 }
 

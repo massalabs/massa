@@ -41,11 +41,11 @@ impl HeaderOrBlock {
 /// subset of addresses whose rolls changed in a block
 pub struct RollThreadUpdates {
     /// roll counts in the cycle so far for the involved addressses
-    roll_count: HashMap<Address, u64>,
+    pub roll_count: HashMap<Address, u64>,
     /// compensated number of rolls an address has bought in the cycle so far for the involved addressses
-    cycle_purchases: HashMap<Address, u64>,
+    pub cycle_purchases: HashMap<Address, u64>,
     /// compensated number of rolls an address has sold in the cycle so far for the involved addressses
-    cycle_sales: HashMap<Address, u64>,
+    pub cycle_sales: HashMap<Address, u64>,
 }
 
 impl RollThreadUpdates {
