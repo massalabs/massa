@@ -73,6 +73,11 @@ pub struct ProtocolController {
 }
 
 impl ProtocolController {
+    /// initiate a new ProtocolCOntroller from a ProtocolConfig
+    /// - generate public / private key
+    /// - create protocol_command/protocol_event channels
+    /// - lauch protocol_controller_fn in an other task
+    /// returns the ProtocolController in a BoxResult once it is ready
     pub async fn new(cfg: &ProtocolConfig) -> BoxResult<Self> {
         debug!("starting protocol controller");
         trace!("massa-network__protocol__controllers__ProtocolController::new__start");
@@ -121,8 +126,10 @@ impl ProtocolController {
         })
     }
 
-    //Receives the next ProtocolEvent from connected Node.
-    //None is returned when all Sender halves have dropped, indicating that no further values can be sent on the channel
+    /// Receives the next ProtocolEvent from connected Node.
+    /// None is returned when all Sender halves have dropped,
+    /// indicating that no further values can be sent on the channel
+    /// panics if the protocol controller event can't be retrieved
     pub async fn wait_event(&mut self) -> ProtocolEvent {
         self.protocol_event_rx
             .recv()
@@ -130,7 +137,8 @@ impl ProtocolController {
             .expect("failed retrieving protocol controller event")
     }
 
-    //stop the protocol controller
+    /// Stop the protocol controller
+    /// panices id the protocol controller is not reachable
     pub async fn stop(mut self) {
         debug!("stopping protocol controller");
         trace!("massa-network__protocol__controllers__ProtocolController::stop__start");
@@ -144,6 +152,23 @@ impl ProtocolController {
     }
 }
 
+/// this function is launched in a separated task
+/// It is the link between the ProtocolController and node_controller_fn
+/// It is mostly a tokio::select inside a loop
+/// wainting on :
+/// - controller_command_rx
+/// - connection_controller
+/// - handshake_futures
+/// - node_event_rx
+/// And at the end every thing is close properly
+///
+/// panics if :
+/// - a new node_id is already in running_handshakes while it shouldn't
+/// - node command tx disappeared
+/// - running handshake future await returned an error
+/// - event from misising node through node_event_rx
+/// - controller event tx failed
+/// - node_event_rx died
 async fn protocol_controller_fn(
     cfg: ProtocolConfig,
     self_node_id: NodeId,
@@ -152,8 +177,11 @@ async fn protocol_controller_fn(
     controller_event_tx: Sender<ProtocolEvent>,
     mut controller_command_rx: Receiver<ProtocolCommand>,
 ) {
-    let mut running_handshakes: HashSet<ConnectionId> = HashSet::new(); // number of running handshakes for each connection ID
-    let mut handshake_futures = FuturesUnordered::new(); //list of currently running handshake response futures (see fn_handshake)
+    // number of running handshakes for each connection ID
+    let mut running_handshakes: HashSet<ConnectionId> = HashSet::new();
+
+    //list of currently running handshake response futures (see fn_handshake)
+    let mut handshake_futures = FuturesUnordered::new();
 
     // list of active nodes we are connected to
     let mut active_nodes: HashMap<
@@ -280,7 +308,7 @@ async fn protocol_controller_fn(
                 Some(NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst))) => {
                     debug!("node_id={:?} sent us a peer list: {:?}", from_node_id, lst);
                     trace!("massa-network__protocol__controllers__protocol_controller_fn__ReceivedPeerList::{:?}::{:?}", from_node_id, lst);
-                    let (connection_id, _, _) = active_nodes.get(&from_node_id).expect("event from msising node");
+                    let (connection_id, _, _) = active_nodes.get(&from_node_id).expect("event from missing node");
                     connection_controller.connection_alive(*connection_id).await;
                     connection_controller.merge_advertised_peer_list(lst).await;
                 }
@@ -296,11 +324,11 @@ async fn protocol_controller_fn(
                     .expect("controller event tx failed"),
                 // connection closed
                 Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
-                    let (connection_id, _, handle) = active_nodes.remove(&from_node_id).expect("event from msising node");
+                    let (connection_id, _, handle) = active_nodes.remove(&from_node_id).expect("event from misising node");
                     info!("protocol channel closed peer_id={:?}", from_node_id);
                     trace!("massa-network__protocol__controllers__protocol_controller_fn__protocol::closed::{:?}", from_node_id);
                     connection_controller.connection_closed(connection_id, reason).await;
-                    handle.await.expect("could not join node handle");
+                    handle.await.expect("controller event tx failed");
                 },
                 // asked peer list
                 Some(NodeEvent(from_node_id, NodeEventType::AskedPeerList)) => {
@@ -336,6 +364,11 @@ async fn protocol_controller_fn(
     connection_controller.stop().await;
 }
 
+/// This function is lauched in a new task
+/// It manages one on going handshake
+/// Will not panic
+/// Returns a tuple (ConnectionId, Result)
+/// Creates the binders to communicate with that node
 async fn handshake_fn(
     connection_id: ConnectionId,
     socket: TcpStream,
@@ -433,6 +466,19 @@ async fn handshake_fn(
     (connection_id, Ok((other_node_id, reader, writer)))
 }
 
+/// This function is launched in a new task
+/// node_controller_fn is the link between
+/// protocol_controller_fn (through node_command and node_event channels)
+/// and node_writer_fn (through writer and writer_event channels)
+///
+/// Can panic if :
+/// - node_event_tx died
+/// - writer disappeared
+/// - the protocol controller has not close everything before shuting down
+/// - writer_evt_rx died
+/// - writer_evt_tx already closed
+/// - node_writer_handle already closed
+/// - node_event_tx already closed
 async fn node_controller_fn(
     cfg: ProtocolConfig,
     node_id: NodeId,
@@ -441,7 +487,6 @@ async fn node_controller_fn(
     mut node_command_rx: Receiver<NodeCommand>,
     node_event_tx: Sender<NodeEvent>,
 ) {
-    debug!("node_controller_fn start node_id={:?}", node_id);
     trace!(
         "massa-network__protocol__controllers__node_controller_fn__start::{:?}",
         node_id
@@ -543,13 +588,17 @@ async fn node_controller_fn(
         .await
         .expect("node_event_tx already closed");
 
-    debug!("node_controller_fn close node_id={:?}", node_id);
     trace!(
         "massa-network__protocol__controllers__node_controller_fn__stop::{:?}",
         node_id
     );
 }
 
+/// This function is spawned in a separated task
+/// It communicates with node_controller_fn
+/// through writer and writer event channels
+/// Can panic if writer_event_tx died
+/// Manages timeout while talking to anouther node
 async fn node_writer_fn(
     cfg: ProtocolConfig,
     mut socket_writer: WriteBinder<OwnedWriteHalf>,
