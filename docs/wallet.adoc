@@ -39,11 +39,15 @@ If the wallet file `wallet.dat` does not exist, it is created.
 
 Generate a new private key (and associated public key / address):
 
-`wallet_new_privkey`
+----
+wallet_new_privkey
+----
 
 The list of addresses and keys of your wallet can be accessed with:
 
-`wallet_info`
+----
+wallet_info
+----
 
 
 
