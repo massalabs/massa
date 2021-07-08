@@ -82,14 +82,14 @@ fn main() {
     )
     .new_command(
         "blockinterval",
-        "get the block within the specifed time interval. Parameters: start and end time interval",
+        "get the block within the specifed time interval. Parameters: start and end (excluded) time interval",
         2,
         2, //max nb parameters
         cmd_blockinterval,
     )
     .new_command(
         "graphinterval",
-        "get the block graph within the specifed time interval. Parameters: start and end time interval",
+        "get the block graph within the specifed time interval. Parameters: start and end (excluded) time interval",
         2,
         2, //max nb parameters
         cmd_graph_interval,

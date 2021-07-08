@@ -25,7 +25,7 @@
 //! ```
 //!
 //! ## Block interval
-//! Returns all blocks generate between start and end, in millis.
+//! Returns all blocks generate between start and end (excluded), in millis.
 //! ```ignore
 //! let res = warp::test::request()
 //!     .method("GET")
@@ -58,7 +58,7 @@
 //! ```
 //!
 //! ## Graph interval
-//! Returns some information on blocks generated between start and end, in millis :
+//! Returns some information on blocks generated between start and end (excluded), in millis :
 //! - hash
 //! - period_number,
 //! - header.thread_number,
@@ -546,7 +546,7 @@ async fn get_last_final(
 /// Returns all blocks in a time interval as a Vec<Hash, (u64, u8)> wrapped in a reply.
 /// The (u64, u8) tuple represents the block's slot.
 ///
-/// Note: both start time and end time are included
+/// Note: both start time is included and end time is excluded
 async fn get_block_interval(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
@@ -585,7 +585,7 @@ async fn get_block_interval(
                 .into_response())
             }
         };
-        if start <= time && time <= end {
+        if start <= time && time < end {
             res.push((hash, (header.period_number, header.thread_number)));
         }
     }
@@ -597,7 +597,7 @@ async fn get_block_interval(
 /// The result is a vec of (hash, period, thread, status, parents hash) wrapped in a reply.
 ///
 /// Note:
-/// * both start time and end time are included
+/// * both start time is included and end time is excluded
 /// * status is in ["active", "final", "stale"]
 async fn get_graph_interval(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -638,7 +638,7 @@ async fn get_graph_interval(
             }
         };
 
-        if start <= time && time <= end {
+        if start <= time && time < end {
             res.insert(
                 hash,
                 (
