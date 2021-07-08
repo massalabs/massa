@@ -7,6 +7,7 @@
 //! Parameters:
 //! * -n (--node): the node IP
 //! * -s (--short) The format of the displayed hash. Set to true display sort hash (default).
+//! * -w (--wallet) activate the wallet command, using the file specified.
 //!
 //! In REPL mode, up and down arrows or tab key can be use to search in the command history.
 //!
@@ -23,6 +24,7 @@ use crypto::{
 use log::trace;
 use models::Address;
 use models::Operation;
+use models::OperationId;
 use models::SerializeCompact;
 use models::{Block, Slot};
 use models::{OperationContent, OperationType};
@@ -30,6 +32,7 @@ use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::string::ToString;
 
+use crate::wallet::Wallet;
 use communication::network::PeerInfo;
 use consensus::LedgerDataExport;
 use std::fs::read_to_string;
@@ -41,6 +44,7 @@ use std::sync::atomic::Ordering;
 mod config;
 mod data;
 mod repl;
+mod wallet;
 
 ///Start the massa-client.
 fn main() {
@@ -54,6 +58,15 @@ fn main() {
                 .long("node")
                 .value_name("IP ADDR")
                 .help("Ip:Port of the node, ex: 127.0.0.1:3030")
+                .required(false)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("wallet")
+                .short("w")
+                .long("wallet")
+                .value_name("Wallet file path")
+                .help("Activate wallet command.")
                 .required(false)
                 .takes_value(true),
         )
@@ -78,22 +91,25 @@ fn main() {
         1,
         1,
         set_short_hash,
+        true,
         app
     )
-    .new_command_noargs("our_ip", "get node ip", cmd_our_ip)
-    .new_command_noargs("peers", "get node peers", cmd_peers)
-    .new_command_noargs("cliques", "get cliques", cmd_cliques)
+    .new_command_noargs("our_ip", "get node ip", true, cmd_our_ip)
+    .new_command_noargs("peers", "get node peers", true, cmd_peers)
+    .new_command_noargs("cliques", "get cliques", true, cmd_cliques)
     .new_command_noargs(
         "current_parents",
         "get current parents",
+        true,
         cmd_current_parents,
     )
-    .new_command_noargs("last_final", "get last finals blocks", cmd_last_final)
+    .new_command_noargs("last_final", "get last finals blocks", true, cmd_last_final)
     .new_command(
         "block",
         "get the block with the specifed hash. Parameter: block hash",
         1,
         1, //max nb parameters
+        true,
         cmd_get_block,
     )
     .new_command(
@@ -102,6 +118,7 @@ fn main() {
     //    &["from", "to"],
         0,
         2,
+        true,
         cmd_blockinterval,
     )
     .new_command(
@@ -109,22 +126,26 @@ fn main() {
         "get the block graph within the specifed time interval. Optinal parameters: [from] <start> and [to] <end> (excluded) time interval",
         0,
         2, //max nb parameters
+        true,
         cmd_graph_interval,
     )
     .new_command_noargs(
         "network_info",
         "network information: own IP address, connected peers (IP)",
+        true,
         cmd_network_info,
     )
-    .new_command_noargs("state", "summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes", cmd_state)
+    .new_command_noargs("state", "summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes", true, cmd_state)
     .new_command_noargs(
         "last_stale",
         "(hash, thread, slot) for last stale blocks",
+        true,
         cmd_last_stale,
     )
     .new_command_noargs(
         "last_invalid",
         "(hash, thread, slot, reason) for last invalid blocks",
+        true,
         cmd_last_invalid,
     )
     .new_command(
@@ -132,14 +153,16 @@ fn main() {
         "create a new transaction with specified parameters. parameters: <private_key> <recipient address> <amount> <fee> <expire_period>",
         5,
         5,
+        true,
         cmd_create_transaction,
     )
-    .new_command_noargs("stop_node", "Stop node gracefully", cmd_stop_node)
+    .new_command_noargs("stop_node", "Stop node gracefully", true, cmd_stop_node)
     .new_command(
         "staker_info",
         "staker info from staker address (pubkey hash) -> (blocks created, next slots where address is selected)",
         1,
         1, //max nb parameters
+        true,
         cmd_staker_info,
     )
     .new_command(
@@ -147,8 +170,23 @@ fn main() {
         "return the specified address balance for current final block and best parents parameters: <Address Hash>",
         1,
         1, //max nb parameters
+        true,
         cmd_address_info,
-    )    .split();
+    )
+    //non active wellet command
+    .new_command_noargs("wallet_info", "Show wallet info.", false, wallet_info)
+    .new_command_noargs("wallet_new_privkey", "Generates a new private key and adds it to the wallet file. Return the associated public key address.", false, wallet_new_privkey)
+    .new_command(
+        "send_transaction",
+        "send a transaction <from_address> to <to_address>(if that address has a private key in the wallet or else error). Return the OperationId parameters: <from_address> <to_address> <amount> <fee>",
+        4,
+        4, //max nb parameters
+        false,
+        send_transaction,
+    )
+
+
+    .split();
 
     let matches = app.get_matches();
 
@@ -181,6 +219,25 @@ fn main() {
         data::FORMAT_SHORT_HASH.swap(false, Ordering::Relaxed);
     }
 
+    let wallet_file_param = matches.value_of("wallet");
+    if let Some(file_name) = wallet_file_param {
+        println!("open wallet");
+        match Wallet::new(file_name) {
+            Ok(wallet) => {
+                repl.data.wallet = Some(wallet);
+                repl.activate_command("wallet_info");
+                repl.activate_command("wallet_new_privkey");
+                repl.activate_command("send_transaction");
+            }
+            Err(err) => {
+                println!(
+                    "Error during loading wallet file:{}. No wallet is actif.",
+                    err
+                );
+            }
+        }
+    }
+
     match matches.subcommand() {
         (_, None) => {
             repl.run_cmd("help", &[]);
@@ -198,10 +255,170 @@ fn main() {
     }
 }
 
+fn wallet_new_privkey(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+    if let Some(wallet) = &mut data.wallet {
+        let priv_key = crypto::generate_random_private_key();
+        wallet.add_private_key(priv_key)?;
+        let pub_key = crypto::derive_public_key(&priv_key);
+        let addr = Address::from_public_key(&pub_key).map_err(|err| {
+            ReplError::GeneralError(format!(
+                "internal error error during address generation:{}",
+                err
+            ))
+        })?;
+        if data.cli {
+            println!("{}", serde_json::to_string_pretty(&addr)?);
+        } else {
+            println!("Generated private key address:{}", addr.to_bs58_check());
+        }
+    }
+    Ok(())
+}
+
+fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+    if let Some(wallet) = &data.wallet {
+        if data.cli {
+            println!(
+                "{}",
+                wallet
+                    .to_json_string()
+                    .map_err(|err| ReplError::GeneralError(format!(
+                        "internal error during wallet json conversion:{}",
+                        err
+                    )))?
+            );
+        } else {
+            println!("{}", wallet);
+        }
+    }
+
+    Ok(())
+}
+
+fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    if let Some(wallet) = &data.wallet {
+        //get node serialisation context
+        let url = format!("http://{}/api/v1/node_config", data.node_ip);
+        let resp = reqwest::blocking::get(&url)?;
+        if resp.status() != StatusCode::OK {
+            return Err(ReplError::GeneralError(format!(
+                "Error during node connection. Server answer code :{}",
+                resp.status()
+            )));
+        }
+        let context = resp.json::<models::SerializationContext>()?;
+        //get pool config
+        let url = format!("http://{}/api/v1/pool_config", data.node_ip);
+        let resp = reqwest::blocking::get(&url)?;
+        if resp.status() != StatusCode::OK {
+            return Err(ReplError::GeneralError(format!(
+                "Error during node connection. Server answer code :{}",
+                resp.status()
+            )));
+        }
+        let pool_cfg = resp.json::<pool::PoolConfig>()?;
+        //get consensus config
+        let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
+        let resp = reqwest::blocking::get(&url)?;
+        if resp.status() != StatusCode::OK {
+            return Err(ReplError::GeneralError(format!(
+                "Error during node connection. Server answer code :{}",
+                resp.status()
+            )));
+        }
+        let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
+
+        //get from address private key
+        let from_address = Address::from_bs58_check(params[0].trim())
+            .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+        let private_key =
+            wallet
+                .find_associated_private_key(from_address)
+                .ok_or(ReplError::GeneralError(format!(
+                    "No private key found in the wallet for specified from address:{}",
+                    params[0].trim()
+                )))?;
+        let public_key = derive_public_key(&private_key);
+
+        let recipient_address = Address::from_bs58_check(params[1])
+            .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+        let amount: u64 = FromStr::from_str(&params[2]).map_err(|err| {
+            ReplError::GeneralError(format!(
+                "Error incorrect specified amount not an int :{}",
+                err
+            ))
+        })?;
+        let fee: u64 = FromStr::from_str(&params[3]).map_err(|err| {
+            ReplError::GeneralError(format!("Error incorrect specified fee not an int :{}", err))
+        })?;
+
+        let slot = consensus::get_current_latest_block_slot(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            0,
+        )
+        .map_err(|err| {
+            ReplError::GeneralError(format!(
+                "Error during current time slot generation :{}",
+                err
+            ))
+        })?
+        .ok_or(ReplError::GeneralError(
+            "Error no current time slot generated".to_string(),
+        ))?;
+
+        let expire_period = slot.period + pool_cfg.max_operation_future_validity_start_periods;
+        let operation_type = OperationType::Transaction {
+            recipient_address,
+            amount,
+        };
+        let operation_content = OperationContent {
+            fee,
+            expire_period,
+            sender_public_key: public_key,
+            op: operation_type,
+        };
+
+        let hash = Hash::hash(&operation_content.to_bytes_compact(&context).unwrap());
+        let signature = crypto::sign(&hash, &private_key).unwrap();
+
+        let operation = Operation {
+            content: operation_content,
+            signature,
+        };
+        let resp = reqwest::blocking::Client::new()
+            .post(&format!("http://{}/api/v1/operations", data.node_ip))
+            .json(&vec![operation])
+            .send()?;
+        if resp.status() != StatusCode::OK {
+            let status = resp.status();
+            let message = resp
+                .json::<data::ErrorMessage>()
+                .map(|message| message.message)
+                .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
+                .unwrap();
+            println!("The serveur answer status:{} an error:{}", status, message);
+        } else {
+            let opid_list = resp.json::<Vec<OperationId>>()?;
+            if opid_list.len() == 0 {
+                return Err(ReplError::GeneralError(
+                    "Error no operation id generated during transaction send".to_string(),
+                ));
+            }
+            if data.cli {
+                println!("{}", opid_list[0]);
+            } else {
+                println!("Operation created:{}", opid_list[0]);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 //create_transaction <private_key> <recipient address> <amount> <fee> <expire_period>
 fn cmd_create_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    trace!("before sending request to client in cmd_create_transaction in massa-client main");
-
     //get node serialisation context
     let url = format!("http://{}/api/v1/node_config", data.node_ip);
     let resp = reqwest::blocking::get(&url)?;

@@ -9,6 +9,7 @@ use crypto::{
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
+use pool::PoolConfig;
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -70,6 +71,12 @@ pub fn get_protocol_config() -> ProtocolConfig {
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: UTime::from(100),
+    }
+}
+pub fn get_pool_config() -> PoolConfig {
+    PoolConfig {
+        max_pool_size_per_thread: 100000,
+        max_operation_future_validity_start_periods: 200,
     }
 }
 
@@ -156,6 +163,7 @@ pub fn mock_filter(
             get_consensus_config(),
             get_protocol_config(),
             get_network_config(),
+            get_pool_config(),
             evt_tx,
             storage_cmd,
             0,
