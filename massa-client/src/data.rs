@@ -199,12 +199,12 @@ pub struct WrapperAddressLedgerDataExport<'a> {
 
 impl<'a> std::fmt::Display for WrapperAddressLedgerDataExport<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "address:{}", self.address)?;
+        write!(f, "address: {}", self.address)?;
         if let Some(balance) = self.balances.final_balance {
-            write!(f, ", balance at final blocks:{}", balance.balance)?;
+            write!(f, ", final balance: {}", balance.balance)?;
         }
         if let Some(balance) = self.balances.candidate_balance {
-            write!(f, ", balance at best parents:{}", balance.balance)?;
+            write!(f, ", candidate balance: {}", balance.balance)?;
         }
         Ok(())
     }
@@ -262,7 +262,7 @@ impl std::fmt::Display for WrappedBlockHeader {
         };
         writeln!(
             f,
-            "creator: {} period:{} thread:{} merkle_root:{} parents:{:?}",
+            "creator: {} period: {} thread: {} merkle_root: {} parents: {:?}",
             pk,
             self.0.content.slot.period,
             self.0.content.slot.thread,
@@ -359,7 +359,7 @@ impl std::fmt::Display for StakerInfo {
         }
         writeln!(
             f,
-            "  staker_next_draws{:?}:",
+            "  staker_next_draws: {:?}",
             self.staker_next_draws
                 .iter()
                 .map(|slot| format!("(slot:{})", slot))
@@ -405,7 +405,7 @@ impl From<&'_ PeerInfo> for WrappedPeerInfo {
 }
 impl std::fmt::Display for WrappedPeerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Peer: Ip:{} bootstrap:{} banned:{} last_alive:{} last_failure:{} act_out_attempts:{} act_out:{} act_in:{}"
+        writeln!(f, "Peer: Ip: {} bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {}"
             ,self.0.ip
             , self.0.banned
             , self.0.bootstrap
