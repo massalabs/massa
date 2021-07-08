@@ -134,9 +134,11 @@ impl PoolWorker {
                         .await?;
                 }
             }
-            PoolCommand::UpdateCurrentSlot(slot) => self.operation_pool.update_current_slot(slot),
+            PoolCommand::UpdateCurrentSlot(slot) => {
+                self.operation_pool.update_current_slot(slot)?
+            }
             PoolCommand::UpdateLatestFinalPeriods(periods) => {
-                self.operation_pool.update_latest_final_periods(periods)
+                self.operation_pool.update_latest_final_periods(periods)?
             }
             PoolCommand::GetOperationBatch {
                 target_slot,
