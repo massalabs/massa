@@ -30,6 +30,9 @@ pub struct PeerInfo {
 }
 
 impl PeerInfo {
+    /// true if there is at least one connection attempt /
+    ///  one active connection in either direction
+    /// with this peer
     fn is_active(&self) -> bool {
         self.active_out_connection_attempts > 0
             || self.active_out_connections > 0
@@ -47,6 +50,8 @@ pub struct PeerInfoDatabase {
     active_in_connections: usize,
 }
 
+/// Saves banned, advertised and bootstrap peers to a file.
+/// Can return an error if the writing fails.
 async fn dump_peers(peers: &HashMap<IpAddr, PeerInfo>, file_name: &String) -> BoxResult<()> {
     let peer_vec: Vec<PeerInfo> = peers
         .values()
@@ -57,12 +62,17 @@ async fn dump_peers(peers: &HashMap<IpAddr, PeerInfo>, file_name: &String) -> Bo
     Ok(())
 }
 
+/// Cleans up the peer database using max values
+/// provided by NetworkConfig.ProtocolConfig.
+/// If opt_new_peers is provided, adds its contents as well.
+///
+/// Note: only non-active, non-bootstrap peers are counted when clipping to size limits.
 fn cleanup_peers(
     cfg: &NetworkConfig,
     peers: &mut HashMap<IpAddr, PeerInfo>,
     opt_new_peers: Option<&Vec<IpAddr>>,
 ) {
-    // filter and map new peers
+    // filter and map new peers, remove duplicates
     let mut res_new_peers: Vec<PeerInfo> = if let Some(new_peers) = opt_new_peers {
         new_peers
             .iter()
@@ -100,7 +110,7 @@ fn cleanup_peers(
     } else {
         Vec::new()
     };
-    // TODO : check for duplicates in res_new_peers
+
     // split between peers that need to be kept (keep_peers),
     // inactive banned peers (banned_peers)
     // and other inactive but advertised peers (idle_peers)
@@ -147,6 +157,9 @@ fn cleanup_peers(
 }
 
 impl PeerInfoDatabase {
+    /// Creates new peerInfoDatabase from NetworkConfig.
+    /// Can fail reading the file containing peers.
+    /// will only emit a warning if peers dumping failed.
     pub async fn new(cfg: &NetworkConfig) -> BoxResult<Self> {
         // load from file
         let mut peers = serde_json::from_str::<Vec<PeerInfo>>(
@@ -208,12 +221,15 @@ impl PeerInfoDatabase {
         })
     }
 
+    /// Request peers dump to file
     fn request_dump(&self) {
         self.saver_watch_tx
             .send(self.peers.clone())
             .expect("peer database saver task disappeared");
     }
 
+    /// Cleanly closes peerInfoDatabase, performing one last peer dump.
+    /// A warining is raised on dump failure.
     pub async fn stop(self) {
         drop(self.saver_watch_tx);
         self.saver_join_handle
@@ -224,6 +240,8 @@ impl PeerInfoDatabase {
         }
     }
 
+    /// Gets avaible out connection attempts
+    /// accordig to NeworkConfig and current connections and connection attempts.
     pub fn get_available_out_connection_attempts(&self) -> usize {
         std::cmp::min(
             self.cfg
@@ -236,6 +254,8 @@ impl PeerInfoDatabase {
         )
     }
 
+    /// Sorts peers by ( last_failure, rev(last_success) )
+    /// and returns as many peers as there are avaible slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Vec<IpAddr> {
         /*
             get_connect_candidate_ips must return the full sorted list where:
@@ -260,6 +280,7 @@ impl PeerInfoDatabase {
             .collect()
     }
 
+    /// Returns a vec of advertisable IpAddrs sorted by ( last_failure, rev(last_success) )
     pub fn get_advertisable_peer_ips(&self) -> Vec<IpAddr> {
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
@@ -280,6 +301,12 @@ impl PeerInfoDatabase {
         sorted_ips
     }
 
+    /// Acknowledges a new out connection attempt to ip.
+    ///
+    /// Panics if :
+    /// - target ip is not global
+    /// - there are too many out connection attempts
+    /// - ip does not match with a known peer
     pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) {
         if !ip.is_global() {
             panic!("target IP is not global");
@@ -294,6 +321,8 @@ impl PeerInfoDatabase {
         self.active_out_connection_attempts += 1;
     }
 
+    /// Merges new_peers with our peers using the cleanup_peers function.
+    /// A dump is requested afterwards.
     pub fn merge_candidate_peers(&mut self, new_peers: &Vec<IpAddr>) {
         if new_peers.is_empty() {
             return;
@@ -302,6 +331,9 @@ impl PeerInfoDatabase {
         self.request_dump();
     }
 
+    /// Sets the peer status as alive.
+    /// Panics if ip does not match a known peer.
+    /// Requests a subsequent dump.
     pub fn peer_alive(&mut self, ip: &IpAddr) {
         self.peers
             .get_mut(&ip)
@@ -310,6 +342,9 @@ impl PeerInfoDatabase {
         self.request_dump();
     }
 
+    /// Sets the peer status as failed.
+    /// Panics if the peer is unknown.
+    /// Requests a dump.
     pub fn peer_failed(&mut self, ip: &IpAddr) {
         self.peers
             .get_mut(&ip)
@@ -318,6 +353,10 @@ impl PeerInfoDatabase {
         self.request_dump();
     }
 
+    /// Sets that the peer is banned now.
+    /// Panics if the ip does not match an unknown peer.
+    /// If the peer is not active, the database is cleaned up.
+    /// A dump is requested.
     pub fn peer_banned(&mut self, ip: &IpAddr) {
         let peer = self.peers.get_mut(&ip).expect("unknown peer failed");
         peer.last_failure = Some(Utc::now());
@@ -330,6 +369,15 @@ impl PeerInfoDatabase {
         self.request_dump();
     }
 
+    /// Notifies of a closed outgoing connection.
+    ///
+    /// Panics if :
+    /// - too many out connections closed
+    /// - the peer is unknown
+    /// - too many out connections closed for that peer
+    ///
+    /// If the peer is not active nor bootstrap,
+    /// peers are cleaned up and a dump is requested
     pub fn out_connection_closed(&mut self, ip: &IpAddr) {
         if self.active_out_connections == 0 {
             panic!("too many out connections closed");
@@ -349,6 +397,15 @@ impl PeerInfoDatabase {
         }
     }
 
+    /// Notifies that an inbound connection is closed.
+    ///
+    /// Panics if :
+    /// - too many in connections closed
+    /// - the peer is unknown
+    /// - too many in connections closed for that peer
+    ///
+    /// If the peer is not active nor bootstrap
+    /// peers are cleaned up and a dump is requested.
     pub fn in_connection_closed(&mut self, ip: &IpAddr) {
         if self.active_in_connections == 0 {
             panic!("too many in connections closed");
@@ -368,6 +425,16 @@ impl PeerInfoDatabase {
         }
     }
 
+    /// Yay an out connection attempt succeded.
+    /// returns false if there are no slots left for out connections.
+    /// The peer is set to advertized.
+    ///
+    /// Panics if :
+    /// - too many out connection attempts succeeded
+    /// - an unknown peer connection attempt succeeded
+    /// - too many out connection attempts succeded for that peer
+    ///
+    /// A dump is requested.
     pub fn try_out_connection_attempt_success(&mut self, ip: &IpAddr) -> bool {
         // a connection attempt succeeded
         // remove out connection attempt and add out connection
@@ -401,6 +468,14 @@ impl PeerInfoDatabase {
         true
     }
 
+    /// Oh no an out connection attempt failed.
+    ///
+    /// Panics if:
+    /// - too many out connection attempts failed
+    /// - an unknown peer connection attempt failed
+    /// - too many out connection attampts failed for tha peer
+    ///
+    /// A dump is requested.
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) {
         if self.active_out_connection_attempts == 0 {
             panic!("too many out connection attempts failed");
@@ -421,6 +496,11 @@ impl PeerInfoDatabase {
         self.request_dump();
     }
 
+    /// An ip has successfully connected to us.
+    /// returns true if some in slots for connections are left.
+    /// If the corresponding peer exists, it is updated,
+    /// otherwise it is created (not advertised).
+    /// A dump is requested.
     pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> bool {
         // try to create a new input connection, return false if no slots
         if !ip.is_global()
