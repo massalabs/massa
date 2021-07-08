@@ -1113,8 +1113,9 @@ async fn test_get_block() {
         max_stored_blocks: 5,
         /// path to db
         path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //defaut
+        cache_capacity: 256,    //little to force flush cache
+        flush_interval: None,   //defaut
+        reset_at_startup: true, // if there was something in storage, it is not the case anymore
     };
     let (storage_command_tx, _storage_manager) =
         start_storage(storage_config, serialization_context.clone()).unwrap();

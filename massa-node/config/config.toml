@@ -52,12 +52,14 @@
     max_message_size = 100
     message_timeout = 100
     ask_peer_list_interval = 10000
+    private_key_file="config/node_privkey.key"
 
 [storage]
     max_stored_blocks= 10000
     path = "block_store"
     cache_capacity = 10000
     #flush_every_ms = 
+    reset_at_startup = true
 
 [bootstrap]
     bootstrap_ip = "200.200.200.200"

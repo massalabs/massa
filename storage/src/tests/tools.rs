@@ -31,6 +31,7 @@ pub fn get_test_config() -> (StorageConfig, SerializationContext) {
             path: tempdir.path().to_path_buf(),
             cache_capacity: 1000000,
             flush_interval: Some(200.into()),
+            reset_at_startup: true,
         },
         SerializationContext {
             max_block_size: 1024 * 1024,
