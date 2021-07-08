@@ -2,10 +2,10 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use communication::network::{BootstrapPeers, NetworkCommand};
-use consensus::{BootsrapableGraph, ConsensusCommand, LedgerExport};
+use consensus::{BootsrapableGraph, ConsensusCommand, LedgerData, LedgerDataExport, LedgerExport};
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
-use models::BlockId;
+use models::{Address, BlockId};
 use time::UTime;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -105,6 +105,13 @@ where
 }
 
 pub fn get_boot_graph() -> BootsrapableGraph {
+    let private_key = crypto::generate_random_private_key();
+    let public_key = crypto::derive_public_key(&private_key);
+    let address = Address::from_public_key(&public_key).unwrap();
+    let thread = address.get_thread(2);
+
+    let mut ledger_per_thread = vec![Vec::new(), Vec::new()];
+    ledger_per_thread[thread as usize].push((address, LedgerData { balance: 10 }));
     BootsrapableGraph {
         active_blocks: Default::default(),
         best_parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
@@ -112,9 +119,18 @@ pub fn get_boot_graph() -> BootsrapableGraph {
             (get_dummy_block_id("parent1"), 10),
             (get_dummy_block_id("parent2"), 10),
         ],
-        gi_head: Default::default(),
-        max_cliques: vec![Vec::new()],
-        ledger: LedgerExport::new(2),
+        gi_head: vec![
+            (get_dummy_block_id("parent1"), vec![]),
+            (get_dummy_block_id("parent2"), vec![]),
+        ],
+        max_cliques: vec![vec![
+            get_dummy_block_id("parent1"),
+            get_dummy_block_id("parent2"),
+        ]],
+        ledger: LedgerExport {
+            ledger_per_thread,
+            latest_final_periods: vec![10, 10],
+        },
     }
 }
 
