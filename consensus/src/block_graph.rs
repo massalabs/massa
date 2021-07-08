@@ -2,7 +2,7 @@
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::{BlockAcknowledgeError, ConsensusError};
 use crypto::hash::Hash;
-use crypto::signature::SignatureEngine;
+use crypto::signature::{Signature, SignatureEngine};
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -434,6 +434,7 @@ impl BlockGraph {
         selector: &mut RandomSelector,
         current_slot: Slot,
     ) -> Result<HashSet<Hash>, BlockAcknowledgeError> {
+        // todo begin move to check header_structure
         // check if we already know about this block
         if let Some((_, (reason, header))) = self.discarded_blocks.get(&hash) {
             let (reason, header) = (*reason, header.clone());
@@ -466,7 +467,9 @@ impl BlockGraph {
                 .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
             return Err(BlockAcknowledgeError::TooOld);
         }
+        // todo end move to check header structure
 
+        // todo begin move to how_far_in the future
         // check if block slot is too much in the future
         if header.content.slot
             > Slot::new(
@@ -478,7 +481,9 @@ impl BlockGraph {
         {
             return Err(BlockAcknowledgeError::TooMuchInTheFuture);
         }
+        // todo end move to how far in the future
 
+        // todo begin move to check roll number
         // check if it was the creator's turn to create this block
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
@@ -488,6 +493,7 @@ impl BlockGraph {
                 .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
             return Err(BlockAcknowledgeError::DrawMismatch);
         }
+        // todo end move to check roll number
 
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
@@ -499,6 +505,7 @@ impl BlockGraph {
         // TODO check if we already have a block for that slot
         // TODO denounce ? see issue #101
 
+        // todo begin move to check parents
         // ensure parents presence and validity
         let mut missing_dependencies = HashSet::new();
         for parent_thread in 0u8..self.cfg.thread_count {
@@ -608,6 +615,7 @@ impl BlockGraph {
         }
 
         Ok(missing_dependencies)
+        // todo end move to check parents
     }
 
     /// Acknowledges a block.
@@ -631,11 +639,13 @@ impl BlockGraph {
             "period": block.header.content.slot.period
         });
 
+        // todo begin move to how far in the future
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
         if block.header.content.slot > current_slot {
             return Err(BlockAcknowledgeError::InTheFuture(block));
         }
+        // todo end move to how far in the future
 
         let missing_dependencies =
             self.check_header(&hash, &block.header, selector, current_slot)?;
@@ -751,6 +761,7 @@ impl BlockGraph {
         {
             return Err(ConsensusError::InvalidBlock);
         }
+        // todo end move to check header structure
 
         // list of incompatibilities
         let mut incomp: HashSet<Hash> = HashSet::new();
@@ -1201,6 +1212,16 @@ impl BlockGraph {
 
         Ok(removed)
     }
+}
+
+/// Checks if the signature is ok.
+/// In the future, that check should happen while deserializing
+pub fn check_signature(
+    header: BlockHeader,
+    hash: Hash,
+    signature: Signature,
+) -> Result<bool, ConsensusError> {
+    todo!()
 }
 
 #[cfg(test)]
