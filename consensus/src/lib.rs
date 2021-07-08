@@ -11,6 +11,7 @@ mod config;
 mod consensus_controller;
 mod consensus_worker;
 mod error;
+mod pool;
 mod random_selector;
 mod timeslots;
 pub use block_graph::BootsrapableGraph;
