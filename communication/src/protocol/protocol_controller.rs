@@ -1,66 +1,141 @@
-use std::{collections::HashMap, net::IpAddr};
-
-use crate::error::CommunicationError;
-use crate::network::{network_controller::NetworkController, PeerInfo};
-use async_trait::async_trait;
-use crypto::{hash::Hash, signature::PublicKey};
+use super::{
+    common::NodeId,
+    config::{ProtocolConfig, CHANNEL_SIZE},
+    protocol_worker::{ProtocolCommand, ProtocolEvent, ProtocolManagementCommand, ProtocolWorker},
+};
+use crate::{
+    error::CommunicationError,
+    network::{NetworkCommandSender, NetworkEventReceiver},
+};
+use crypto::{hash::Hash, signature::SignatureEngine};
 use models::block::Block;
-use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
+use tokio::{sync::mpsc, task::JoinHandle};
 
-/// For now, wraps a public key.
-/// Used to uniquely identify a node.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct NodeId(pub PublicKey);
+/// start a new ProtocolController from a ProtocolConfig
+/// - generate public / private key
+/// - create protocol_command/protocol_event channels
+/// - lauch protocol_controller_fn in an other task
+///
+/// # Arguments
+/// * cfg : protocol configuration
+/// * network_command_sender: the NetworkCommandSender we interact with
+/// * network_event_receiver: the NetworkEventReceiver we interact with
+pub async fn start_protocol_controller(
+    cfg: ProtocolConfig,
+    network_command_sender: NetworkCommandSender,
+    network_event_receiver: NetworkEventReceiver,
+) -> Result<
+    (
+        ProtocolCommandSender,
+        ProtocolEventReceiver,
+        ProtocolManager,
+    ),
+    CommunicationError,
+> {
+    debug!("starting protocol controller");
 
-impl std::fmt::Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
+    // generate our own random PublicKey (and therefore NodeId) and keep private key
+    let signature_engine = SignatureEngine::new();
+    let private_key = SignatureEngine::generate_random_private_key();
+    let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
+
+    debug!("local protocol node_id={:?}", self_node_id);
+    massa_trace!("self_node_id", { "node_id": self_node_id });
+
+    // launch worker
+    let (event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
+    let (command_tx, command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
+    let (manager_tx, manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
+    let join_handle = tokio::spawn(async move {
+        ProtocolWorker::new(
+            cfg,
+            self_node_id,
+            private_key,
+            network_command_sender,
+            network_event_receiver,
+            event_tx,
+            command_rx,
+            manager_rx,
+        )
+        .run_loop()
+        .await
+    });
+    debug!("protocol controller ready");
+    Ok((
+        ProtocolCommandSender(command_tx),
+        ProtocolEventReceiver(event_rx),
+        ProtocolManager {
+            join_handle,
+            manager_tx,
+        },
+    ))
 }
 
-impl std::fmt::Debug for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
+#[derive(Clone)]
+pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
 
-/// Possible types of events that can happen.
-#[derive(Clone, Debug)]
-pub enum ProtocolEventType {
-    /// A isolated transaction was received.
-    ReceivedTransaction(String),
-    /// A block was received
-    ReceivedBlock(Block),
-    /// Someone ask for block with given header hash.
-    AskedBlock(Hash),
-}
-
-/// Links a protocol event type to the node it came from.
-#[derive(Clone, Debug)]
-pub struct ProtocolEvent(pub NodeId, pub ProtocolEventType);
-
-/// Manages protocol related events.
-#[async_trait]
-pub trait ProtocolController
-where
-    Self: Send + Sync + Unpin + std::fmt::Debug,
-{
-    type NetworkControllerT: NetworkController;
-    /// Listens for next incomming event.
-    async fn wait_event(&mut self) -> Result<ProtocolEvent, CommunicationError>;
-    /// Closes everything properly.
-    async fn stop(mut self) -> Result<(), CommunicationError>;
-    /// Gives the order to propagate given block to every connected peer.
+impl ProtocolCommandSender {
+    /// Sends the order to propagate that block
     ///
-    ///  # Arguments
-    /// * hash: header hash of the given block.
-    /// * block: block to propagate.
-    async fn propagate_block(
+    /// # Arguments
+    /// * hash : hash of the block header
+    /// * block : block we want to propagate
+    pub async fn propagate_block(
         &mut self,
         hash: Hash,
         block: &Block,
-    ) -> Result<(), CommunicationError>;
-    /// Returns ips mapped to peerInfo.
-    /// For internal use.
-    async fn get_peers(&self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError>;
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("block_propagation_order", { "block": hash });
+        self.0
+            .send(ProtocolCommand::PropagateBlock {
+                hash,
+                block: block.clone(),
+            })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("propagate_block command send error".into())
+            })
+    }
+}
+
+pub struct ProtocolEventReceiver(pub mpsc::Receiver<ProtocolEvent>);
+
+impl ProtocolEventReceiver {
+    /// Receives the next ProtocolEvent from connected Node.
+    /// None is returned when all Sender halves have dropped,
+    /// indicating that no further values can be sent on the channel
+    pub async fn wait_event(&mut self) -> Result<ProtocolEvent, CommunicationError> {
+        self.0.recv().await.ok_or(CommunicationError::ChannelError(
+            "DefaultProtocolController wait_event channel recv failed".into(),
+        ))
+    }
+
+    /// drains remaining events and returns them in a VecDeque
+    /// note: events are sorted from oldest to newest
+    pub async fn drain(mut self) -> VecDeque<ProtocolEvent> {
+        let mut remaining_events: VecDeque<ProtocolEvent> = VecDeque::new();
+        while let Some(evt) = self.0.recv().await {
+            remaining_events.push_back(evt);
+        }
+        remaining_events
+    }
+}
+
+pub struct ProtocolManager {
+    join_handle: JoinHandle<Result<NetworkEventReceiver, CommunicationError>>,
+    manager_tx: mpsc::Sender<ProtocolManagementCommand>,
+}
+
+impl ProtocolManager {
+    /// Stop the protocol controller
+    pub async fn stop(
+        self,
+        protocol_event_receiver: ProtocolEventReceiver,
+    ) -> Result<NetworkEventReceiver, CommunicationError> {
+        drop(self.manager_tx);
+        let _remaining_events = protocol_event_receiver.drain().await;
+        let network_event_receiver = self.join_handle.await??;
+        Ok(network_event_receiver)
+    }
 }

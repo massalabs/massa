@@ -13,7 +13,6 @@ dependencies = [
 name = "api"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "communication",
  "consensus",
  "crypto",
@@ -26,17 +25,6 @@ dependencies = [
  "time 0.1.0",
  "tokio",
  "warp",
-]
-
-[[package]]
-name = "async-trait"
-version = "0.1.42"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d3a45e77e34375a7923b1e8febb049bb011f064714a8e17a1a616fef01da13d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -212,7 +200,6 @@ dependencies = [
 name = "communication"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "crypto",
  "flexbuffers",
  "futures",
@@ -237,7 +224,6 @@ dependencies = [
 name = "consensus"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "communication",
  "crypto",
  "flexbuffers",

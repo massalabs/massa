@@ -1,17 +1,13 @@
-use super::super::{
+use super::{
     binders::{ReadBinder, WriteBinder},
-    config::ProtocolConfig,
+    common::NodeId,
+    config::{ProtocolConfig, CHANNEL_SIZE},
     messages::Message,
-    protocol_controller::NodeId,
 };
-use crate::error::{ChannelError, CommunicationError};
-use crate::network::network_controller::ConnectionClosureReason;
+use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use models::block::Block;
 use std::net::IpAddr;
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::time::timeout;
+use tokio::{sync::mpsc, time::timeout};
 
 /// Commands that node worker can manage.
 #[derive(Clone, Debug)]
@@ -48,30 +44,22 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
 /// Manages connections
 /// One worker per node.
-pub struct NodeWorker<ReaderT: 'static, WriterT: 'static>
-where
-    ReaderT: AsyncRead + Send + Sync + Unpin,
-    WriterT: AsyncWrite + Send + Sync + Unpin,
-{
+pub struct NodeWorker {
     /// Protocol configuration.
     cfg: ProtocolConfig,
     /// Node id associated to that worker.
     node_id: NodeId,
     /// Reader for incomming data.
-    socket_reader: ReadBinder<ReaderT>,
+    socket_reader: ReadBinder,
     /// Optional writer to send data.
-    socket_writer_opt: Option<WriteBinder<WriterT>>,
+    socket_writer_opt: Option<WriteBinder>,
     /// Channel to receive node commands.
-    node_command_rx: Receiver<NodeCommand>,
+    node_command_rx: mpsc::Receiver<NodeCommand>,
     /// Channel to send node events.
-    node_event_tx: Sender<NodeEvent>,
+    node_event_tx: mpsc::Sender<NodeEvent>,
 }
 
-impl<ReaderT: 'static, WriterT: 'static> NodeWorker<ReaderT, WriterT>
-where
-    ReaderT: AsyncRead + Send + Sync + Unpin,
-    WriterT: AsyncWrite + Send + Sync + Unpin,
-{
+impl NodeWorker {
     /// Creates a new node worker
     ///
     /// # Arguments
@@ -84,11 +72,11 @@ where
     pub fn new(
         cfg: ProtocolConfig,
         node_id: NodeId,
-        socket_reader: ReadBinder<ReaderT>,
-        socket_writer: WriteBinder<WriterT>,
-        node_command_rx: Receiver<NodeCommand>,
-        node_event_tx: Sender<NodeEvent>,
-    ) -> NodeWorker<ReaderT, WriterT> {
+        socket_reader: ReadBinder,
+        socket_writer: WriteBinder,
+        node_command_rx: mpsc::Receiver<NodeCommand>,
+        node_event_tx: mpsc::Sender<NodeEvent>,
+    ) -> NodeWorker {
         NodeWorker {
             cfg,
             node_id,
@@ -101,7 +89,7 @@ where
 
     /// node event loop. Consumes self.
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
-        let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(1024);
+        let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(CHANNEL_SIZE);
         let (writer_event_tx, mut writer_event_rx) = mpsc::channel::<bool>(1);
         let mut socket_writer =
             self.socket_writer_opt
@@ -142,16 +130,16 @@ where
                         match msg {
                             Message::Block(block) => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))
-                                ).await.map_err(|err| ChannelError::from(err))?,
+                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block event".into()))?,
                             Message::Transaction(tr) =>  self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedTransaction(tr))
-                                ).await.map_err(|err| ChannelError::from(err))?,
+                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send received transaction event".into()))?,
                             Message::PeerList(pl) =>  self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))
-                                ).await.map_err(|err| ChannelError::from(err))?,
+                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send received peers list event".into()))?,
                             Message::AskPeerList => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::AskedPeerList)
-                                ).await.map_err(|err| ChannelError::from(err))?,
+                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send asked block event".into()))?,
                             _ => {  // wrong message
                                 exit_reason = ConnectionClosureReason::Failed;
                                 break;
@@ -169,13 +157,19 @@ where
                 cmd = self.node_command_rx.recv() => match cmd {
                     Some(NodeCommand::Close) => break,
                     Some(NodeCommand::SendPeerList(ip_vec)) => {
-                        writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(|err| ChannelError::from(err))?;
+                        writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(
+                            |_| CommunicationError::ChannelError("send peer list node command send failed".into())
+                        )?;
                     }
                     Some(NodeCommand::SendBlock(block)) => {
-                        writer_command_tx.send(Message::Block(block)).await.map_err(|err| ChannelError::from(err))?;
+                        writer_command_tx.send(Message::Block(block)).await.map_err(
+                            |_| CommunicationError::ChannelError("send peer block node command send failed".into())
+                        )?;
                     }
                     Some(NodeCommand::SendTransaction(transaction)) => {
-                        writer_command_tx.send(Message::Transaction(transaction)).await.map_err(|err| ChannelError::from(err))?;
+                        writer_command_tx.send(Message::Transaction(transaction)).await.map_err(
+                            |_| CommunicationError::ChannelError("send transaction node command send failed".into())
+                        )?;
                     }
                     None => {
                         return Err(CommunicationError::UnexpectedProtocolControllerClosureError);
@@ -196,7 +190,9 @@ where
                 _ = ask_peer_list_interval.tick() => {
                     debug!("timer-based asking node_id={:?} for peer list", self.node_id);
                     massa_trace!("timer_ask_peer_list", {"node_id": self.node_id});
-                    writer_command_tx.send(Message::AskPeerList).await.map_err(|err| ChannelError::from(err))?;
+                    writer_command_tx.send(Message::AskPeerList).await.map_err(
+                        |_| CommunicationError::ChannelError("writer send ask peer list failed".into())
+                    )?;
                 }
             }
         }
@@ -210,7 +206,9 @@ where
         self.node_event_tx
             .send(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason)))
             .await
-            .map_err(|err| ChannelError::from(err))?;
+            .map_err(|_| {
+                CommunicationError::ChannelError("node closing event send failed".into())
+            })?;
         Ok(())
     }
 }

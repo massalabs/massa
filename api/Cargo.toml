@@ -19,4 +19,3 @@ log = { version = "0.4" }
 thiserror = "1.0"
 time = {path = "../time"}
 communication = {path = "../communication"}
-async-trait = "0.1.42"

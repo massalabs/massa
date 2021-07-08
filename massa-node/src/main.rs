@@ -2,53 +2,73 @@
 #![feature(destructuring_assignment)]
 
 extern crate logging;
-pub mod config;
+mod config;
 
-use api::ApiEvent;
-use communication::network::default_establisher::DefaultEstablisher;
-use communication::network::default_network_controller::DefaultNetworkController;
-use communication::protocol::default_protocol_controller::DefaultProtocolController;
-use consensus::consensus_controller::ConsensusController;
-use consensus::default_consensus_controller::DefaultConsensusController;
-use log::{error, info, warn};
+use api::{start_api_controller, ApiEvent};
+use communication::{
+    network::{start_network_controller, Establisher},
+    protocol::start_protocol_controller,
+};
+use consensus::start_consensus_controller;
+use log::{error, info};
 use tokio::{
     fs::read_to_string,
     signal::unix::{signal, SignalKind},
 };
 
-async fn run(cfg: config::Config) -> () {
-    let establisher = DefaultEstablisher::new();
-    let network = DefaultNetworkController::new(&cfg.network, establisher)
+async fn run(cfg: config::Config) {
+    // launch network controller
+    let (network_command_sender, network_event_receiver, network_manager) =
+        start_network_controller(cfg.network.clone(), Establisher::new())
+            .await
+            .expect("could not start network controller");
+
+    // launch protocol controller
+    let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            cfg.protocol.clone(),
+            network_command_sender.clone(),
+            network_event_receiver,
+        )
         .await
-        .expect("Could not create network controller");
+        .expect("could not start protocol controller");
 
     // launch consensus controller
-    let ptcl = DefaultProtocolController::new(cfg.protocol.clone(), network).await;
-    let mut cnss = DefaultConsensusController::new(&cfg.consensus, ptcl)
+    let (consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.consensus.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+        )
         .await
-        .expect("Could not create consensus controller");
+        .expect("could not start consensus controller");
 
-    // spawn API
-    let mut api_handle = api::spawn_server(
-        cnss.get_interface(),
+    // launch API controller
+    let (mut api_event_receiver, api_manager) = start_api_controller(
         cfg.api.clone(),
         cfg.consensus.clone(),
+        cfg.protocol.clone(),
         cfg.network.clone(),
+        consensus_command_sender.clone(),
+        protocol_command_sender.clone(),
+        network_command_sender.clone(),
     )
     .await
-    .expect("could not start API");
+    .expect("could not start API controller");
 
+    // interrupt signal listener
     let mut stop_signal = signal(SignalKind::interrupt()).unwrap();
+
     // loop over messages
     loop {
         tokio::select! {
-            evt = cnss.wait_event() => match evt {
+            evt = consensus_event_receiver.wait_event() => match evt {
                 _ => {}
             },
 
-            evt = api_handle.wait_event() => match evt {
+            evt = api_event_receiver.wait_event() => match evt {
                 Ok(ApiEvent::AskStop) => {
-                    info!("shutting down node");
+                    info!("API asked node stop");
                     break;
                 },
                 Err(err) => {
@@ -58,18 +78,35 @@ async fn run(cfg: config::Config) -> () {
             },
 
             _ = stop_signal.recv() => {
-                info!("shutting down node");
+                info!("interrupt signal received");
                 break;
             }
         }
     }
 
-    if let Err(e) = api_handle.stop().await {
-        warn!("graceful api shutdown failed: {:?}", e);
-    }
-    if let Err(e) = cnss.stop().await {
-        warn!("graceful shutdown failed: {:?}", e);
-    }
+    // stop API controller
+    let _remaining_api_events = api_manager
+        .stop(api_event_receiver)
+        .await
+        .expect("API shutdown failed");
+
+    // stop consensus controller
+    let protocol_event_receiver = consensus_manager
+        .stop(consensus_event_receiver)
+        .await
+        .expect("consensus shutdown failed");
+
+    // stop protocol controller
+    let network_event_receiver = protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("protocol shutdown failed");
+
+    // stop network controller
+    network_manager
+        .stop(network_event_receiver)
+        .await
+        .expect("network shutdown failed");
 }
 
 #[tokio::main]

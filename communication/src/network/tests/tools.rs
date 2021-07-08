@@ -1,15 +1,19 @@
-use super::super::config::NetworkConfig;
-use super::super::network_controller::{ConnectionId, NetworkController, NetworkEvent};
-use super::super::peer_info_database::PeerInfo;
 use super::mock_establisher::MockEstablisherInterface;
+use crate::network::{
+    ConnectionId, NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo,
+};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::path::Path;
-use std::time::Duration;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
+    time::Duration,
+};
 use tempfile::NamedTempFile;
 use time::UTime;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::time::timeout;
+use tokio::{
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    time::timeout,
+};
 
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -82,8 +86,9 @@ pub async fn expect_reader_writer_communication<ReaderT, WriterT>(
 
 // establish a full alive connection to the controller
 // note: panics if any other NetworkEvent is received before NewConnection
-pub async fn full_connection_to_controller<NetworkControllerT: NetworkController>(
-    network_controller: &mut NetworkControllerT,
+pub async fn full_connection_to_controller(
+    network_command_sender: &mut NetworkCommandSender,
+    network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
     mock_addr: SocketAddr,
     connect_timeout_ms: u64,
@@ -102,7 +107,7 @@ pub async fn full_connection_to_controller<NetworkControllerT: NetworkController
     // wait for a NetworkEvent::NewConnection event
     let conn_id = match timeout(
         Duration::from_millis(event_timeout_ms),
-        network_controller.wait_event(),
+        network_event_receiver.wait_event(),
     )
     .await
     .expect("Failed waiting for a network event")
@@ -127,7 +132,7 @@ pub async fn full_connection_to_controller<NetworkControllerT: NetworkController
     };
 
     // notify the controller that the connection is alive
-    network_controller
+    network_command_sender
         .connection_alive(conn_id)
         .await
         .expect("Error while connection alive");
@@ -138,8 +143,9 @@ pub async fn full_connection_to_controller<NetworkControllerT: NetworkController
 // establish a full alive connection from the network controller
 // note: fails if the controller attempts a connection to another IP first
 // note: panics if any other NetworkEvent is received before NewConnection
-pub async fn full_connection_from_controller<NetworkControllerT: NetworkController>(
-    network_controller: &mut NetworkControllerT,
+pub async fn full_connection_from_controller(
+    network_command_sender: &mut NetworkCommandSender,
+    network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
     peer_addr: SocketAddr,
     connect_timeout_ms: u64,
@@ -160,7 +166,7 @@ pub async fn full_connection_from_controller<NetworkControllerT: NetworkControll
     // wait for a NetworkEvent::NewConnection event
     let conn_id = match timeout(
         Duration::from_millis(event_timeout_ms),
-        network_controller.wait_event(),
+        network_event_receiver.wait_event(),
     )
     .await
     .expect("Failed waiting for a network event")
@@ -185,7 +191,7 @@ pub async fn full_connection_from_controller<NetworkControllerT: NetworkControll
     };
 
     // notify the controller that the connection is alive
-    network_controller
+    network_command_sender
         .connection_alive(conn_id)
         .await
         .expect("Error while connection alive");

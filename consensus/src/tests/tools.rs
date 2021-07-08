@@ -1,11 +1,11 @@
-use super::super::config::ConsensusConfig;
-use super::mock_protocol_controller::{MockProtocolCommand, MockProtocolControllerInterface};
-use crate::block_graph::BlockGraphExport;
-use communication::protocol::protocol_controller::NodeId;
-use crypto::signature::PrivateKey;
-use crypto::{hash::Hash, signature::SignatureEngine};
-use models::block::Block;
-use models::block::BlockHeader;
+use super::mock_protocol_controller::MockProtocolController;
+use crate::{block_graph::BlockGraphExport, ConsensusConfig};
+use communication::protocol::{NodeId, ProtocolCommand};
+use crypto::{
+    hash::Hash,
+    signature::{PrivateKey, SignatureEngine},
+};
+use models::block::{Block, BlockHeader};
 use std::{collections::HashSet, time::Duration};
 use time::UTime;
 
@@ -13,24 +13,24 @@ use tokio::time::timeout;
 
 //return true if another block has been seen
 pub async fn validate_notpropagate_block(
-    protocol_controler_interface: &mut MockProtocolControllerInterface,
+    protocol_controller: &mut MockProtocolController,
     not_propagated_hash: Hash,
     timeout_ms: u64,
 ) -> bool {
     match timeout(
         Duration::from_millis(timeout_ms),
-        protocol_controler_interface.wait_command(),
+        protocol_controller.wait_command(),
     )
     .await
     {
-        Ok(Some(MockProtocolCommand::PropagateBlock { hash, .. })) => {
+        Ok(Some(ProtocolCommand::PropagateBlock { hash, .. })) => {
             if not_propagated_hash == hash {
                 panic!("validate_notpropagate_block the block has been propagated.")
             } else {
                 true
             }
         }
-        Ok(Some(_)) => panic!("unexpected command"),
+        // Ok(Some(_)) => panic!("unexpected command"),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => false,
     }
@@ -38,17 +38,17 @@ pub async fn validate_notpropagate_block(
 
 //return true if another block has been seen
 pub async fn validate_notpropagate_block_in_list(
-    protocol_controler_interface: &mut MockProtocolControllerInterface,
+    protocol_controller: &mut MockProtocolController,
     not_propagated_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) -> bool {
     match timeout(
         Duration::from_millis(timeout_ms),
-        protocol_controler_interface.wait_command(),
+        protocol_controller.wait_command(),
     )
     .await
     {
-        Ok(Some(MockProtocolCommand::PropagateBlock { hash, .. })) => if not_propagated_hashs.contains(&hash) {
+        Ok(Some(ProtocolCommand::PropagateBlock { hash, .. })) => if not_propagated_hashs.contains(&hash) {
             panic!(
                 "validate_notpropagate_block the block has been propagated."
             )
@@ -57,29 +57,29 @@ pub async fn validate_notpropagate_block_in_list(
         }
         ,
         //        event @ Ok(Some(_)) => panic!("unexpected event sent by Protocol: {:?}", event),
-        Ok(Some(_)) => panic!("unexpected command"),
+        // Ok(Some(_)) => panic!("unexpected command"),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => false,
     }
 }
 
 pub async fn validate_propagate_block_in_list(
-    protocol_controler_interface: &mut MockProtocolControllerInterface,
+    protocol_controller: &mut MockProtocolController,
     valid_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) -> Hash {
     match timeout(
         Duration::from_millis(timeout_ms),
-        protocol_controler_interface.wait_command(),
+        protocol_controller.wait_command(),
     )
     .await
     {
-        Ok(Some(MockProtocolCommand::PropagateBlock { hash, .. })) => {
+        Ok(Some(ProtocolCommand::PropagateBlock { hash, .. })) => {
             trace!("receive hash:{}", hash);
             assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
             hash
         }
-        Ok(Some(_)) => panic!("unexpected command"),
+        // Ok(Some(_)) => panic!("unexpected command"),
         //        event @ Ok(Some(_)) => panic!("unexpected event sent by Protocol: {:?}", event),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => panic!("timeout block not propagated"),
@@ -87,29 +87,29 @@ pub async fn validate_propagate_block_in_list(
 }
 
 pub async fn validate_propagate_block(
-    protocol_controler_interface: &mut MockProtocolControllerInterface,
+    protocol_controller: &mut MockProtocolController,
     valid_hash: Hash,
     timeout_ms: u64,
 ) {
     match timeout(
         Duration::from_millis(timeout_ms),
-        protocol_controler_interface.wait_command(),
+        protocol_controller.wait_command(),
     )
     .await
     {
-        Ok(Some(MockProtocolCommand::PropagateBlock { hash, .. })) => {
+        Ok(Some(ProtocolCommand::PropagateBlock { hash, .. })) => {
             //skip created block
             if valid_hash != hash {
                 match timeout(
                     Duration::from_millis(timeout_ms),
-                    protocol_controler_interface.wait_command(),
+                    protocol_controller.wait_command(),
                 )
                 .await
                 {
-                    Ok(Some(MockProtocolCommand::PropagateBlock { hash, .. })) => {
+                    Ok(Some(ProtocolCommand::PropagateBlock { hash, .. })) => {
                         assert_eq!(valid_hash, hash, "not the valid hash propagated")
                     }
-                    Ok(Some(_)) => panic!("unexpected command"),
+                    // Ok(Some(_)) => panic!("unexpected command"),
                     Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
                     Err(_) => panic!("timeout block not propagated"),
                 }
@@ -117,7 +117,7 @@ pub async fn validate_propagate_block(
             //assert_eq!(valid_hash, hash, "not the valid hash propagated")
         }
         //        event @ Ok(Some(_)) => panic!("unexpected event sent by Protocol: {:?}", event),
-        Ok(Some(_)) => panic!("unexpected command"),
+        // Ok(Some(_)) => panic!("unexpected command"),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => panic!("timeout block not propagated"),
     };
@@ -135,7 +135,7 @@ pub fn create_node_ids(nb_nodes: usize) -> Vec<(PrivateKey, NodeId)> {
 }
 
 pub async fn create_and_test_block(
-    protocol_controler_interface: &mut MockProtocolControllerInterface,
+    protocol_controller: &mut MockProtocolController,
     cfg: &ConsensusConfig,
     source_node_id: NodeId,
     thread_number: u8,
@@ -149,35 +149,35 @@ pub async fn create_and_test_block(
         info!("create block:{}", block_hash);
     }
 
-    protocol_controler_interface
-        .receive_block(source_node_id, &block)
+    protocol_controller
+        .receive_block(source_node_id, block)
         .await;
     if valid {
         //see if the block is propagated.
-        validate_propagate_block(protocol_controler_interface, block_hash, 1000).await;
+        validate_propagate_block(protocol_controller, block_hash, 1000).await;
     } else {
         //see if the block is propagated.
-        validate_notpropagate_block(protocol_controler_interface, block_hash, 500).await;
+        validate_notpropagate_block(protocol_controller, block_hash, 500).await;
     }
     block_hash
 }
 
 pub async fn propagate_block(
-    protocol_controler_interface: &mut MockProtocolControllerInterface,
+    protocol_controller: &mut MockProtocolController,
     source_node_id: NodeId,
     block: Block,
     valid: bool,
 ) -> Hash {
     let block_hash = block.header.compute_hash().unwrap();
-    protocol_controler_interface
-        .receive_block(source_node_id, &block)
+    protocol_controller
+        .receive_block(source_node_id, block)
         .await;
     if valid {
         //see if the block is propagated.
-        validate_propagate_block(protocol_controler_interface, block_hash, 1000).await;
+        validate_propagate_block(protocol_controller, block_hash, 1000).await;
     } else {
         //see if the block is propagated.
-        validate_notpropagate_block(protocol_controler_interface, block_hash, 1000).await;
+        validate_notpropagate_block(protocol_controller, block_hash, 1000).await;
     }
     block_hash
 }

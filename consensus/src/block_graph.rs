@@ -271,11 +271,11 @@ impl BlockGraph {
     ///
     /// # Argument
     /// * cfg : consensus configuration.
-    pub fn new(cfg: &ConsensusConfig) -> Result<Self, ConsensusError> {
+    pub fn new(cfg: ConsensusConfig) -> Result<Self, ConsensusError> {
         let mut active_blocks = HashMap::new();
         let mut block_hashes: Vec<Hash> = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
-            let (genesis_block_hash, genesis_block) = create_genesis_block(cfg, thread)
+            let (genesis_block_hash, genesis_block) = create_genesis_block(&cfg, thread)
                 .map_err(|_err| ConsensusError::GenesisCreationError)?;
             block_hashes.push(genesis_block_hash);
             active_blocks.insert(
@@ -286,11 +286,12 @@ impl BlockGraph {
                 },
             );
         }
+        let max_discarded_blocks = cfg.max_discarded_blocks;
         Ok(BlockGraph {
-            cfg: cfg.clone(),
+            cfg,
             genesis_blocks: block_hashes.clone(),
             active_blocks,
-            discarded_blocks: DiscardedBlocks::new(cfg.max_discarded_blocks),
+            discarded_blocks: DiscardedBlocks::new(max_discarded_blocks),
             best_parents: block_hashes.clone(),
             latest_final_blocks_periods: block_hashes.into_iter().map(|h| (h, 0u64)).collect(),
             gi_head: HashMap::new(), // genesis blocks are final and not included in gi_head
@@ -1186,7 +1187,7 @@ mod tests {
     #[test]
     fn test_block_validity() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1262,7 +1263,7 @@ mod tests {
     #[test]
     fn test_parent_in_the_future() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1305,7 +1306,7 @@ mod tests {
     #[test]
     fn test_parents_in_incompatible_cliques() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1466,7 +1467,7 @@ mod tests {
         // ensure eliminated blocks remain in discard list
         cfg.max_discarded_blocks = 40;
 
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1585,7 +1586,7 @@ mod tests {
     #[test]
     fn test_parents() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1642,7 +1643,7 @@ mod tests {
     #[test]
     fn test_grandpa_incompatibility() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
         let genesis = block_graph.best_parents.clone();
@@ -1762,7 +1763,7 @@ mod tests {
     #[test]
     fn test_clique_calculation() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg).unwrap();
         let hashes: Vec<Hash> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
@@ -1808,7 +1809,7 @@ mod tests {
     #[test]
     fn test_old_stale() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1840,7 +1841,7 @@ mod tests {
     #[test]
     fn test_queueing() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1891,7 +1892,7 @@ mod tests {
     #[test]
     fn test_doubles() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
@@ -1935,7 +1936,7 @@ mod tests {
     #[test]
     fn test_double_staking() {
         let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(&cfg).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 

@@ -1,14 +1,16 @@
 //! Here are happening hanshakes.
 use super::{
     binders::{ReadBinder, WriteBinder},
+    common::NodeId,
     messages::Message,
-    protocol_controller::NodeId,
 };
-use crate::error::{CommunicationError, HandshakeErrorType};
-use crate::network::network_controller::NetworkController;
+use crate::{
+    error::{CommunicationError, HandshakeErrorType},
+    network::{ReadHalf, WriteHalf},
+};
 use crypto::{
-    signature::PrivateKey,
-    {hash::Hash, signature::SignatureEngine},
+    hash::Hash,
+    signature::{PrivateKey, SignatureEngine},
 };
 use futures::future::try_join;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -16,21 +18,14 @@ use time::UTime;
 use tokio::time::timeout;
 
 /// Type alias for more readability
-pub type HandshakeReturnType<NetworkControllerT> = Result<
-    (
-        NodeId,
-        ReadBinder<<NetworkControllerT as NetworkController>::ReaderT>,
-        WriteBinder<<NetworkControllerT as NetworkController>::WriterT>,
-    ),
-    CommunicationError,
->;
+pub type HandshakeReturnType = Result<(NodeId, ReadBinder, WriteBinder), CommunicationError>;
 
 /// Manages handshakes.
-pub struct HandshakeWorker<NetworkControllerT: NetworkController> {
+pub struct HandshakeWorker {
     /// Listens incomming data.
-    reader: ReadBinder<NetworkControllerT::ReaderT>,
+    reader: ReadBinder,
     /// Sends out data.
-    writer: WriteBinder<NetworkControllerT::WriterT>,
+    writer: WriteBinder,
     /// Our node id.
     self_node_id: NodeId,
     /// Our private key.
@@ -39,7 +34,7 @@ pub struct HandshakeWorker<NetworkControllerT: NetworkController> {
     timeout_duration: UTime,
 }
 
-impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> {
+impl HandshakeWorker {
     /// Creates a new handshake worker.
     ///
     /// # Arguments
@@ -49,12 +44,12 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
     /// * private_key : our private key.
     /// * timeout_duration: after timeout_duration millis, the handshake attempt is dropped.
     pub fn new(
-        socket_reader: NetworkControllerT::ReaderT,
-        socket_writer: NetworkControllerT::WriterT,
+        socket_reader: ReadHalf,
+        socket_writer: WriteHalf,
         self_node_id: NodeId,
         private_key: PrivateKey,
         timeout_duration: UTime,
-    ) -> HandshakeWorker<NetworkControllerT> {
+    ) -> HandshakeWorker {
         HandshakeWorker {
             reader: ReadBinder::new(socket_reader),
             writer: WriteBinder::new(socket_writer),
@@ -68,7 +63,7 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
     /// Consumes self.
     /// Returns a tuple (ConnectionId, Result).
     /// Creates the binders to communicate with that node.
-    pub async fn run(mut self) -> HandshakeReturnType<NetworkControllerT> {
+    pub async fn run(mut self) -> HandshakeReturnType {
         // generate random bytes
         let mut self_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);

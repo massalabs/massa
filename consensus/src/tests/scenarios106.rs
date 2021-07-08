@@ -1,12 +1,7 @@
 //RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
-use super::super::{
-    consensus_controller::{ConsensusController, ConsensusControllerInterface},
-    default_consensus_controller::DefaultConsensusController,
-    timeslots,
-};
-use super::mock_protocol_controller::{self};
-use super::tools;
+use super::{mock_protocol_controller::MockProtocolController, tools};
+use crate::{start_consensus_controller, timeslots};
 use crypto::hash::Hash;
 use std::collections::HashSet;
 use time::UTime;
@@ -20,19 +15,27 @@ async fn test_unsorted_block() {
     .unwrap();*/
     let node_ids = tools::create_node_ids(1);
 
-    let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
     let mut cfg = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+    // mock protocol
+    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+        )
         .await
-        .expect("Could not create consensus controller");
-    let cnss_cmd = cnss.get_interface();
+        .expect("could not start consensus controller");
 
     let start_slot = 3;
-    let genesis_hashes = cnss_cmd
+    let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -59,60 +62,61 @@ async fn test_unsorted_block() {
         tools::create_block(&cfg, 1, 4 + start_slot, vec![hasht0s3, hasht1s3]);
 
     //send blocks  t0s1, t1s1,
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s1)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s1)
         .await;
     //send blocks t0s3, t1s4, t0s4, t0s2, t1s3, t1s2
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s4)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s4)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s4)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s4)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s2)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s2)
         .await;
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
     tools::validate_propagate_block_in_list(
-        &mut protocol_controler_interface,
+        &mut protocol_controller,
         &hash_list,
         3000 + start_slot * 1000,
     )
     .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     //block t0s2 and t1s2 are propagated
     let hash_list = vec![hasht0s2, hasht1s2];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     //block t0s3 and t1s3 are propagated
     let hash_list = vec![hasht0s3, hasht1s3];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     //block t0s4 and t1s4 are propagated
     let hash_list = vec![hasht0s4, hasht1s4];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 4000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 4000).await;
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
 }
 
 //test future_incoming_blocks block in the future with max_future_processing_blocks.
@@ -124,19 +128,28 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .init()
     .unwrap();*/
     let node_ids = tools::create_node_ids(1);
-    let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
     let mut cfg = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now().unwrap().saturating_sub(2000.into()); // slot 1 is in the past
     cfg.future_block_processing_max_periods = 3;
     cfg.max_future_processing_blocks = 5;
-    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+
+    // mock protocol
+    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+        )
         .await
-        .expect("could not create consensus controller");
-    let cnss_cmd = cnss.get_interface();
+        .expect("could not start consensus controller");
 
     //create test blocks
-    let genesis_hashes = cnss_cmd
+    let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -144,10 +157,10 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     // a block in the past must be propagated
     let (hash1, block1, _) = tools::create_block(&cfg, 0, 1, genesis_hashes.clone());
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &block1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), block1)
         .await;
-    tools::validate_propagate_block(&mut protocol_controler_interface, hash1, 1000).await;
+    tools::validate_propagate_block(&mut protocol_controller, hash1, 1000).await;
 
     // this block is slightly in the future: will wait for it
     let (last_period, last_thread) =
@@ -156,13 +169,11 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             .unwrap();
     let (hash2, block2, _) =
         tools::create_block(&cfg, last_thread, last_period + 2, genesis_hashes.clone());
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &block2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), block2)
         .await;
-    assert!(
-        !tools::validate_notpropagate_block(&mut protocol_controler_interface, hash2, 500).await
-    );
-    tools::validate_propagate_block(&mut protocol_controler_interface, hash2, 2500).await;
+    assert!(!tools::validate_notpropagate_block(&mut protocol_controller, hash2, 500).await);
+    tools::validate_propagate_block(&mut protocol_controller, hash2, 2500).await;
 
     // this block is too much in the future: do not process
     let (last_period, last_thread) =
@@ -175,16 +186,25 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         last_period + 1000,
         genesis_hashes.clone(),
     );
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &block3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), block3)
         .await;
-    assert!(
-        !tools::validate_notpropagate_block(&mut protocol_controler_interface, hash3, 2500).await
-    );
+    assert!(!tools::validate_notpropagate_block(&mut protocol_controller, hash3, 2500).await);
 
     //validate the block isn't final.
-    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
+    let block_graph = consensus_command_sender
+        .get_block_graph_status()
+        .await
+        .unwrap();
     assert!(!block_graph.discarded_blocks.map.contains_key(&hash3));
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -195,20 +215,29 @@ async fn test_too_many_blocks_in_the_future() {
     .init()
     .unwrap();*/
     let node_ids = tools::create_node_ids(1);
-    let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
     let mut cfg = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 100;
     cfg.max_future_processing_blocks = 2;
     cfg.delta_f0 = 1000;
     cfg.genesis_timestamp = UTime::now().unwrap().saturating_sub(2000.into()); // slot 1 is in the past
-    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+
+    // mock protocol
+    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+        )
         .await
-        .expect("could not create consensus controller");
-    let cnss_cmd = cnss.get_interface();
+        .expect("could not start consensus controller");
 
     //get genesis block hashes
-    let genesis_hashes = cnss_cmd
+    let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -225,8 +254,8 @@ async fn test_too_many_blocks_in_the_future() {
         max_period = last_period + 2 + period;
         let (hash, block, _) =
             tools::create_block(&cfg, last_thread, max_period, genesis_hashes.clone());
-        protocol_controler_interface
-            .receive_block(node_ids[0].1.clone(), &block)
+        protocol_controller
+            .receive_block(node_ids[0].1.clone(), block)
             .await;
         if period < 2 {
             expected_block_hashes.insert(hash);
@@ -238,7 +267,7 @@ async fn test_too_many_blocks_in_the_future() {
         assert!(
             expected_block_hashes.remove(
                 &tools::validate_propagate_block_in_list(
-                    &mut protocol_controler_interface,
+                    &mut protocol_controller,
                     &expected_block_hashes.iter().copied().collect(),
                     2500
                 )
@@ -254,7 +283,7 @@ async fn test_too_many_blocks_in_the_future() {
         < (max_period + 1, 0)
     {}
     // ensure that the graph contains only what we expect
-    let graph = cnss_cmd
+    let graph = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status");
@@ -264,6 +293,14 @@ async fn test_too_many_blocks_in_the_future() {
         graph.active_blocks.keys().copied().collect(),
         "unexpected block graph"
     );
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -275,20 +312,28 @@ async fn test_dep_in_back_order() {
     .unwrap();*/
     let node_ids = tools::create_node_ids(1);
 
-    let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
     let mut cfg = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
-
     cfg.max_dependency_blocks = 10;
 
-    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+    // mock protocol
+    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+        )
         .await
-        .expect("Could not create consensus controller");
-    let cnss_cmd = cnss.get_interface();
-    let genesis_hashes = cnss_cmd
+        .expect("could not start consensus controller");
+
+    let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -309,55 +354,55 @@ async fn test_dep_in_back_order() {
     let (hasht1s4, t1s4, _) = tools::create_block(&cfg, 1, 4, vec![hasht0s3, hasht1s3]);
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s2)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s1)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s4)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s4)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s4)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s4)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s1)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s2)
         .await;
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     //block t0s2 and t1s2 are propagated
     let hash_list = vec![hasht0s2, hasht1s2];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     //block t0s3 and t1s3 are propagated
     let hash_list = vec![hasht0s3, hasht1s3];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     //block t0s4 and t1s4 are propagated
     let hash_list = vec![hasht0s4, hasht1s4];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 4000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 4000).await;
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -369,7 +414,6 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .unwrap();*/
     let node_ids = tools::create_node_ids(1);
 
-    let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
     let mut cfg = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now()
@@ -377,11 +421,21 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 2;
 
-    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+    // mock protocol
+    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+        )
         .await
-        .expect("Could not create consensus controller");
-    let cnss_cmd = cnss.get_interface();
-    let genesis_hashes = cnss_cmd
+        .expect("could not start consensus controller");
+
+    let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -400,23 +454,23 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     let (hasht1s3, t1s3, _) = tools::create_block(&cfg, 1, 3, vec![hasht0s2, hasht1s2]);
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s2)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s1)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s2)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s1)
         .await;
 
     let mut expected_blocks: HashSet<Hash> =
@@ -426,7 +480,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     while !expected_blocks.is_empty() {
         expected_blocks.remove(
             &tools::validate_propagate_block_in_list(
-                &mut protocol_controler_interface,
+                &mut protocol_controller,
                 &expected_blocks.iter().copied().collect(),
                 1000,
             )
@@ -435,12 +489,20 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     }
     assert!(
         !tools::validate_notpropagate_block_in_list(
-            &mut protocol_controler_interface,
+            &mut protocol_controller,
             &unexpected_blocks.iter().copied().collect(),
             2000
         )
         .await
     );
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -452,7 +514,6 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .unwrap();*/
     let node_ids = tools::create_node_ids(1);
 
-    let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
     let mut cfg = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now()
@@ -461,12 +522,21 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     cfg.max_dependency_blocks = 7;
 
-    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
-        .await
-        .expect("Could not create consensus controller");
-    let cnss_cmd = cnss.get_interface();
+    // mock protocol
+    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
 
-    let genesis_hashes = cnss_cmd
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+        )
+        .await
+        .expect("could not start consensus controller");
+
+    let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -486,45 +556,43 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s1)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s1)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s1)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t0s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t0s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t1s3)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t1s3)
         .await;
-    protocol_controler_interface
-        .receive_block(node_ids[0].1.clone(), &t3s2)
+    protocol_controller
+        .receive_block(node_ids[0].1.clone(), t3s2)
         .await;
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
-    tools::validate_propagate_block_in_list(&mut protocol_controler_interface, &hash_list, 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
 
     //block  t0s3, t1s3 are not propagated
     let hash_list = vec![hasht0s3, hasht1s3];
     assert!(
-        !tools::validate_notpropagate_block_in_list(
-            &mut protocol_controler_interface,
-            &hash_list,
-            2000
-        )
-        .await
+        !tools::validate_notpropagate_block_in_list(&mut protocol_controller, &hash_list, 2000)
+            .await
     );
     assert!(
-        !tools::validate_notpropagate_block_in_list(
-            &mut protocol_controler_interface,
-            &hash_list,
-            2000
-        )
-        .await
+        !tools::validate_notpropagate_block_in_list(&mut protocol_controller, &hash_list, 2000)
+            .await
     );
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
 }
