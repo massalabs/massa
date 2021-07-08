@@ -155,7 +155,7 @@ pub async fn validate_send_block(
         .await;
     match param {
         Some(hash) => assert_eq!(valid_hash, hash, "not the valid hash propagated"),
-        None => panic!("Block not propagated before timeout."),
+        None => panic!("Block not sent before timeout."),
     }
 }
 
