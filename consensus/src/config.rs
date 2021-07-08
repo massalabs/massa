@@ -39,6 +39,12 @@ pub struct ConsensusConfig {
     pub max_block_size: u32,
     /// Maximum operation validity period count
     pub operation_validity_periods: u64,
+    /// cycle duration in periods
+    pub periods_per_cycle: u64,
+    /// PoS lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1
+    pub pos_lookback_cycles: u64,
+    /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
+    pub pos_lock_cycles: u64,
     /// path to ledger db
     pub ledger_path: PathBuf,
     pub ledger_cache_capacity: u64,
