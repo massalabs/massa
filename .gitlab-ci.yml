@@ -16,21 +16,21 @@ cache:
 # Use rustfmt to check code formatting
 rustfmt:
   stage: sanity
-  image: "rustdocker/rustfmt_clippy"
+  image: "demilletech/rust"
   script:
     - cargo fmt -- --check
 
 # Use clippy to detect code problems
 clippy:
   stage: sanity
-  image: "rustdocker/rustfmt_clippy"
+  image: "demilletech/rust"
   script:
     - cargo clippy -- -D warnings
 
 # Use cargo to test the project
 test:
   stage: test
-  image: "xd009642/tarpaulin"
+  image: "demilletech/rust"
   script:
     - cargo tarpaulin -v
   coverage: /([\d\.]+)\% coverage/
