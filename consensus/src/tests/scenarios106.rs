@@ -2,7 +2,6 @@
 
 use super::{mock_protocol_controller::MockProtocolController, tools};
 use crate::{start_consensus_controller, timeslots};
-use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::Slot;
 use std::collections::HashSet;
@@ -661,29 +660,6 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         500,
     )
     .await;
-
-    let mut expected_blocks: HashSet<Hash> =
-        vec![hasht0s1, hasht1s1, hasht1s2].into_iter().collect();
-    let unexpected_blocks: HashSet<Hash> = vec![hasht0s2, hasht0s3, hasht1s3].into_iter().collect();
-
-    // while !expected_blocks.is_empty() {
-    //     expected_blocks.remove(
-    //         &tools::validate_propagate_block_in_list(
-    //             &mut protocol_controller,
-    //             &expected_blocks.iter().copied().collect(),
-    //             1000,
-    //         )
-    //         .await,
-    //     );
-    // }
-    // assert!(
-    //     !tools::validate_notpropagate_block_in_list(
-    //         &mut protocol_controller,
-    //         &unexpected_blocks.iter().copied().collect(),
-    //         2000
-    //     )
-    //     .await
-    // );
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);

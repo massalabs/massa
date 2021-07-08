@@ -482,8 +482,14 @@ impl ProtocolWorker {
 
         for (hash, criteria) in candidate_nodes.into_iter() {
             // find the best node
-            if let Some((_knowledge, best_node)) =
-                criteria.into_iter().min_by_key(|(knowledge, node_id)| {
+            if let Some((_knowledge, best_node)) = criteria
+                .into_iter()
+                .filter(|(_knowledge, node_id)| {
+                    // filter out nodes with too many active block requests
+                    *active_block_req_count.get(node_id).unwrap_or(&0)
+                        <= self.cfg.max_simultaneous_ask_blocks_per_node
+                })
+                .min_by_key(|(knowledge, node_id)| {
                     (
                         *active_block_req_count.get(node_id).unwrap_or(&0), // active requests
                         *knowledge,                                         // block knowledge

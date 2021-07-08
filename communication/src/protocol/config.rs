@@ -9,4 +9,5 @@ pub struct ProtocolConfig {
     pub ask_block_timeout: UTime,
     pub max_node_known_blocks_size: usize,
     pub max_node_wanted_blocks_size: usize,
+    pub max_simultaneous_ask_blocks_per_node: usize,
 }

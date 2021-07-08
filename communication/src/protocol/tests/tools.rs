@@ -77,6 +77,7 @@ pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
             ask_block_timeout: 500.into(),
             max_node_known_blocks_size: 100,
             max_node_wanted_blocks_size: 100,
+            max_simultaneous_ask_blocks_per_node: 10,
         },
         SerializationContext {
             max_block_size: 1024 * 1024,
