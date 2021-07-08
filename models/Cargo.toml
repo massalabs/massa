@@ -8,7 +8,8 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 crypto = {path = "../crypto"}
 thiserror = "1.0"
-integer-encoding = "3.0.2"
+integer-encoding = "3.0"
+num_enum = "0.5"
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }
