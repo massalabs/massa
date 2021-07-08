@@ -4,7 +4,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::signature::{derive_public_key, PublicKey};
-use models::{Block, BlockId, Slot};
+use models::{Address, Block, BlockId, Slot};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
@@ -30,7 +30,13 @@ pub enum ConsensusCommand {
         end: Slot,
         response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     },
+    /// Returns the bootstrap graph
     GetBootGraph(oneshot::Sender<BootsrapableGraph>),
+    /// Returns through a channel current blockgraph without block operations.
+    GetLedgerData {
+        addresses: HashSet<Address>,
+        response_tx: oneshot::Sender<LedgerDataExport>,
+    },
 }
 
 /// Events that are emitted by consensus.
@@ -349,6 +355,36 @@ impl ConsensusWorker {
                             err
                         ))
                     })
+            }
+            ConsensusCommand::GetLedgerData {
+                addresses,
+                response_tx,
+            } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_ledger_data",
+                    { "addresses": addresses }
+                );
+                let best_parents = self.block_db.get_best_parents();
+                let last_final_block_ids: Vec<BlockId> = self
+                    .block_db
+                    .get_latest_final_blocks_periods()
+                    .iter()
+                    .map(|(b, _p)| *b)
+                    .collect();
+                let result = LedgerDataExport {
+                    candidate_data: self
+                        .block_db
+                        .get_ledger_at_parents(best_parents, &addresses)?,
+                    final_data: self
+                        .block_db
+                        .get_ledger_at_parents(&last_final_block_ids, &addresses)?,
+                };
+                response_tx.send(result).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send GetLedgerData response: {:?}",
+                        err
+                    ))
+                })
             }
         }
     }
