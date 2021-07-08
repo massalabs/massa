@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.6", features = ["full"] }
 log = { version = "0.4" }
 logging = { path = "../logging" }
 serde_json = { version = "1.0" }
