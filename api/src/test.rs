@@ -3,11 +3,10 @@ use async_trait::async_trait;
 use communication::network::config::NetworkConfig;
 use communication::network::PeerInfo;
 use consensus::{
-    config::ConsensusConfig, consensus_controller::ConsensusControllerInterface,
+    config::ConsensusConfig, consensus_controller::ConsensusControllerInterface, ConsensusError,
     ExportDiscardedBlocks,
 };
-use consensus::{BlockGraphExport, DiscardReason};
-use consensus::{ConsensusError, ExportCompiledBlock};
+use consensus::{BlockGraphExport, DiscardReason, ExportCompiledBlock};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},

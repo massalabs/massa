@@ -3,6 +3,7 @@ level = 4
 
 [api]
     max_return_invalid_blocks = 10
+    selection_return_periods = 10
 
 [consensus]
     genesis_timestamp = 1607958448000
@@ -16,18 +17,23 @@ level = 4
         ['54VEbD2R2HkUz2G5NGHyxhaFDhrQFG62UqFLWsUywnHtDsM8qh','2eLQSjhrep9Grw7yDifXnDKgCc1WTXBCtdeREzuJd9jiSZuZmr']
     ]
     current_node_index = 0
+    max_discarded_blocks=10
+    future_block_processing_max_periods=100000
+    max_future_processing_blocks=32
+    max_dependency_blocks=10
+    delta_f0=32
     
 
 [protocol]
-    message_timeout = {secs = 5, nanos = 0}
-    ask_peer_list_interval = {secs = 50, nanos = 0}
+    message_timeout = 5
+    ask_peer_list_interval = 50
 
 [network]
     bind = "0.0.0.0:50000"
     routable_ip = "200.200.200.200"
     protocol_port = 50000
-    connect_timeout = {secs = 5, nanos = 0}
-    wakeup_interval = {secs = 10, nanos = 0}
+    connect_timeout = 5
+    wakeup_interval = 10
     peers_file = "config/peers.json"
     target_out_connections = 20
     max_in_connections = 100
@@ -36,5 +42,6 @@ level = 4
     max_idle_peers = 1000
     max_banned_peers = 1000
     max_advertise_length = 100000
-    peers_file_dump_interval = {secs = 30, nanos = 0}
+    peers_file_dump_interval = 30
     
+

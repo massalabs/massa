@@ -1,5 +1,5 @@
 [package]
-name = "testrun"
+name = "massa-node"
 version = "0.1.0"
 authors = ["Massa Labs <contact@massa.network>"]
 edition = "2018"
