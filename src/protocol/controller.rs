@@ -346,6 +346,14 @@ async fn fn_handshake(
             },
         };
 
+    // check if remote node ID is the same as ours
+    if their_node_id == our_node_id {
+        return (
+            connection_id,
+            Err("handshake announced own public key".into()),
+        );
+    }
+
     // sign their random bytes
     let signature_engine = SignatureEngine::new();
     let our_signature = signature_engine.sign(&their_random_bytes, &private_key);
