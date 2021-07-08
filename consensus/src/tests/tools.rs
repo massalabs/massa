@@ -1,10 +1,9 @@
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{block_graph::BlockGraphExport, ConsensusConfig};
 use communication::protocol::ProtocolCommand;
-use communication::NodeId;
 use crypto::{
     hash::Hash,
-    signature::{PrivateKey, PublicKey, SignatureEngine},
+    signature::{PrivateKey, SignatureEngine},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 use std::{collections::HashSet, time::Duration};
@@ -214,10 +213,10 @@ pub async fn create_and_test_block(
 
     protocol_controller.receive_block(block).await;
     if valid {
-        //see if the block is propagated.
+        // Assert that the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, 1000).await;
     } else {
-        //see if the block is propagated.
+        // Assert that the the block is not propagated.
         validate_notpropagate_block(protocol_controller, block_hash, 500).await;
     }
     block_hash
