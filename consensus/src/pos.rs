@@ -171,15 +171,11 @@ impl ProofOfStake {
                         .extend(&a_block.roll_updates.cycle_purchases);
                     entry.cycle_sales.extend(&a_block.roll_updates.cycle_sales);
                     // append the 1st bit of the block's hash to the RNG seed bitfield
-                    entry
-                        .rng_seed
-                        .push(Hash::hash(&block_id.to_bytes()).to_bytes()[0] >> 7 == 1);
+                    entry.rng_seed.push(block_id.get_first_bit());
                 } else {
                     // we are applying a miss
                     // append the 1st bit of the hash of the slot of the miss to the RNG seed bitfield
-                    entry
-                        .rng_seed
-                        .push(Hash::hash(&slot.to_bytes_key()).to_bytes()[0] >> 7 == 1);
+                    entry.rng_seed.push(slot.get_first_bit());
                 }
             }
         }
