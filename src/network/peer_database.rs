@@ -72,19 +72,46 @@ async fn dump_peers(peers: &HashMap<IpAddr, PeerInfo>, file_name: &String) -> Bo
 }
 
 impl PeerDatabase {
-    pub async fn load(peers_filename: String) -> BoxResult<Self> {
+    pub async fn load(
+        peers_filename: String,
+        peer_file_dump_interval_seconds: f32,
+    ) -> BoxResult<Self> {
         // load from file
         let peers = load_peers(&peers_filename).await?;
 
         // setup saver
         let peers_filename_copy = peers_filename.clone();
-        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(Some(HashMap::new()));
+        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(Some(peers.clone()));
         let saver_join_handle = tokio::spawn(async move {
-            while let Some(Some(p)) = saver_watch_rx.recv().await {
+            let mut delay = delay_for(Duration::from_secs_f32(peer_file_dump_interval_seconds));
+            let mut last_value: Option<HashMap<IpAddr, PeerInfo>> = None;
+            loop {
+                tokio::select! {
+                    opt_opt_p = saver_watch_rx.recv() => match opt_opt_p {
+                        Some(Some(op)) => {
+                            if last_value.is_none() {
+
+                            }
+                            last_value = Some(op);
+                        },
+                        _ => break
+                    },
+                    _ = &mut delay => {
+                        if let Some(ref p) = last_value {
+                            if let Err(e) = dump_peers(&p, &peers_filename_copy).await {
+                                warn!("could not dump peers to file: {}", e);
+                                delay = delay_for(Duration::from_secs_f32(peer_file_dump_interval_seconds));
+                                continue;
+                            }
+                            last_value = None;
+                        }
+                    }
+                }
+            }
+            if let Some(p) = last_value {
                 if let Err(e) = dump_peers(&p, &peers_filename_copy).await {
                     warn!("could not dump peers to file: {}", e);
                 }
-                delay_for(Duration::from_secs(10)).await; // save at most every 10 seconds  //TODO this slows down graceful shutdown
             }
         });
 
@@ -110,7 +137,6 @@ impl PeerDatabase {
     pub async fn stop(self) {
         let _ = self.saver_watch_tx.broadcast(None);
         let _ = self.saver_join_handle.await;
-        let _ = dump_peers(&self.peers, &self.peers_filename).await;
     }
 
     pub fn count_peers_with_status(&self, status: PeerStatus) -> usize {

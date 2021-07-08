@@ -12,4 +12,5 @@ pub struct NetworkConfig {
     pub max_simultaneous_outgoing_connection_attempts: usize,
     pub max_simultaneous_incoming_connection_attempts: usize,
     pub max_known_nodes: usize,
+    pub peer_file_dump_interval_seconds: f32,
 }

@@ -51,7 +51,11 @@ pub enum PeerFeedbackEvent {
 
 impl NetworkController {
     pub async fn new(cfg: NetworkConfig) -> BoxResult<Self> {
-        let peer_db = PeerDatabase::load(cfg.known_peers_file.clone()).await?;
+        let peer_db = PeerDatabase::load(
+            cfg.known_peers_file.clone(),
+            cfg.peer_file_dump_interval_seconds,
+        )
+        .await?;
 
         // launch controller
         let (stop_tx, stop_rx) = oneshot::channel::<()>();
