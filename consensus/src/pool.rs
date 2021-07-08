@@ -140,7 +140,7 @@ impl OperationPool {
                     .ops
                     .iter()
                     .filter(|(_id, op)| {
-                        op.is_valid_at_period(*period, self.cfg.operation_validity_periods)
+                        !op.is_valid_at_period(*period, self.cfg.operation_validity_periods)
                     })
                     .map(|(id, _op)| id.clone())
                     .collect();
@@ -279,5 +279,11 @@ mod tests {
             .unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].1, t1);
+
+        pool.ack_final_block(vec![100, 100]).unwrap(); // t1 should be expired after 50
+        let res = pool
+            .get_ops(Slot::new(1, thread), HashSet::new(), 50)
+            .unwrap();
+        assert_eq!(res.len(), 0);
     }
 }
