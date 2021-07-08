@@ -1,13 +1,13 @@
+use chrono::Local;
+use chrono::TimeZone;
 use communication::PeerInfo;
 use consensus::DiscardReason;
 use crypto::hash::Hash;
 use models::{BlockHeader, Slot};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::{
-    collections::{HashMap, HashSet},
-    net::IpAddr,
-};
+use std::time::Duration;
+use std::{collections::HashSet, net::IpAddr};
 use time::UTime;
 
 pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true);
@@ -88,14 +88,15 @@ impl std::fmt::Display for HashSlot {
     }
 }
 
-//can't implement trait for typle.
-pub fn from_hash_slot((hash, slot): (Hash, Slot)) -> HashSlot {
-    HashSlot { hash, slot }
+impl From<(Hash, Slot)> for HashSlot {
+    fn from((hash, slot): (Hash, Slot)) -> Self {
+        HashSlot { hash, slot }
+    }
 }
 
-//same for Vec<T>
+//doesn't impl From because Vec and From are ouside this crate.
 pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<HashSlot> {
-    list.into_iter().map(|v| from_hash_slot(*v)).collect()
+    list.into_iter().map(|v| (*v).into()).collect()
 }
 
 ///Construct a list of diplay String from the specified list of Hash
@@ -194,6 +195,50 @@ impl std::fmt::Display for Cliques {
 pub struct NetworkInfo {
     pub our_ip: Option<IpAddr>,
     pub peers: Vec<PeerInfo>,
+}
+
+impl std::fmt::Display for NetworkInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(
+            f,
+            "  Our IP address: {}",
+            self.our_ip
+                .map(|i| i.to_string())
+                .unwrap_or("None".to_string())
+        )?;
+        writeln!(f, "  Peers:")?;
+        self.peers
+            .iter()
+            .map(|peer| write!(f, "    {}", WrappedPeerInfo::from(peer)))
+            .collect()
+    }
+}
+
+#[derive(Clone, Deserialize)]
+struct WrappedPeerInfo(PeerInfo);
+
+impl From<PeerInfo> for WrappedPeerInfo {
+    fn from(peer: PeerInfo) -> Self {
+        WrappedPeerInfo(peer)
+    }
+}
+impl From<&'_ PeerInfo> for WrappedPeerInfo {
+    fn from(peer: &PeerInfo) -> Self {
+        WrappedPeerInfo(peer.clone())
+    }
+}
+impl std::fmt::Display for WrappedPeerInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Peer: Ip:{} bootstrap:{} banned:{} last_alive:{} last_failure:{} act_out_attempts:{} act_out:{} act_in:{}"
+            ,self.0.ip
+            , self.0.banned
+            , self.0.bootstrap
+            , self.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or("None".to_string())
+            , self.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or("None".to_string())
+            , self.0.active_out_connection_attempts
+            , self.0.active_out_connections
+            , self.0.active_in_connections)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]

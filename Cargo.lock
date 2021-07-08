@@ -35,6 +35,7 @@ dependencies = [
 name = "apimodel"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "communication",
  "consensus",
  "crypto",
