@@ -49,8 +49,6 @@ If the lookback aims at a cycle `-N` below zero, use:
 ### Special case: genesis blocks
 
 For genesis blocks, force the draw to yield the genesis creator's address.
-For simplicity, we do not send genesis block bits to the RNG seed bitfield of cycle 0.
-
 ### Cache
 
 When computing draws for a cycle, draw the whole cycle and leave it in cache.
