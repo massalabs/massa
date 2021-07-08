@@ -446,8 +446,8 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     cfg.delta_f0 = 4;
     cfg.block_reward = 1;
     cfg.operation_validity_periods = 20;
-    let nodes = vec![(public_key_1, private_key_1)];
-    cfg.nodes = nodes.clone();
+    let nodes = vec![private_key_1];
+    cfg.staking_keys = nodes.clone();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =

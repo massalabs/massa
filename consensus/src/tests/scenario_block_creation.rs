@@ -224,7 +224,7 @@ async fn test_with_two_cliques() {
     };
 
     let boot_graph = get_two_cliques_bootgraph(
-        cfg.nodes[0].0,
+        crypto::derive_public_key(&cfg.staking_keys[0]),
         vec![op1.clone(), op2.clone(), op3.clone()],
         boot_ledger,
     );

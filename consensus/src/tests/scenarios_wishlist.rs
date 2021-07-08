@@ -51,7 +51,7 @@ async fn test_wishlist_delta_with_empty_remove() {
         &cfg,
         Slot::new(1, 0),
         genesis_hashes.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     //send header for block t0s1
     protocol_controller
@@ -118,7 +118,7 @@ async fn test_wishlist_delta_remove() {
         &cfg,
         Slot::new(1, 0),
         genesis_hashes.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     //send header for block t0s1
     protocol_controller

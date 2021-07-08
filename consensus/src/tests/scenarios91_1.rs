@@ -98,7 +98,7 @@ async fn test_ti() {
         Hash::hash("Other hash!".as_bytes()),
         Slot::new(2, 0),
         genesis_hashes.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
 
     protocol_controller.receive_block(block).await;
@@ -149,7 +149,7 @@ async fn test_ti() {
         &cfg,
         Slot::new(2, 1),
         vec![fork_block_hash, valid_hasht1s1],
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     protocol_controller.receive_block(block).await;
     assert!(

@@ -133,7 +133,7 @@ async fn test_thread_incompatibility() {
             &cfg,
             Slot::new(current_period, 0),
             parents.clone(),
-            cfg.nodes[0].clone(),
+            cfg.staking_keys[0].clone(),
         );
         current_period += 1;
         parents[0] = hash.clone();

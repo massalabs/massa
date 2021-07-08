@@ -51,7 +51,7 @@ async fn test_consensus_asks_for_block() {
         &cfg,
         Slot::new(1, 0),
         genesis_hashes.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     //send header for block t0s1
     protocol_controller
@@ -111,7 +111,7 @@ async fn test_consensus_does_not_ask_for_block() {
         &cfg,
         Slot::new(1 + start_slot, 0),
         genesis_hashes.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     let header = t0s1.header.clone();
 

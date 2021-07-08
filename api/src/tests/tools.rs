@@ -48,7 +48,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
             "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S",
         )
         .unwrap(),
-        nodes: Vec::new(),
+        staking_keys: Default::default(),
         current_node_index: 0,
         max_discarded_blocks: 0,
         future_block_processing_max_periods: 0,
@@ -71,6 +71,8 @@ pub fn get_consensus_config() -> ConsensusConfig {
         periods_per_cycle: 100,
         pos_lookback_cycles: 4,
         pos_lock_cycles: 1,
+        pos_draw_cached_cycles: 0,
+        roll_price: 0,
     }
 }
 

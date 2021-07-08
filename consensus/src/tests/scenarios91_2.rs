@@ -5,9 +5,7 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::{
-    random_selector::RandomSelector, start_consensus_controller, tests::tools::generate_ledger_file,
-};
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::Slot;
@@ -113,7 +111,7 @@ async fn test_queueing() {
         &cfg,
         Slot::new(32, 0),
         vec![valid_hasht0, valid_hasht1],
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
 
     //create 1 block in thread 0 slot 33 with missed block as parent
@@ -383,7 +381,7 @@ async fn test_double_staking() {
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     tools::propagate_block(&mut protocol_controller, block_1, true).await;
 
@@ -393,7 +391,7 @@ async fn test_double_staking() {
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     tools::propagate_block(&mut protocol_controller, block_2, true).await;
 
@@ -530,104 +528,6 @@ async fn test_test_parents() {
     .await;
 
     // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
-}
-
-#[tokio::test]
-#[serial]
-async fn test_block_creation() {
-    //     // setup logging
-    // stderrlog::new()
-    //     .verbosity(4)
-    //     .timestamp(stderrlog::Timestamp::Millisecond)
-    //     .init()
-    //     .unwrap();
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(2, ledger_file.path());
-    cfg.t0 = 1000.into();
-    cfg.delta_f0 = 32;
-    cfg.disable_block_creation = false;
-    cfg.thread_count = 1;
-
-    let seed = vec![0u8; 32]; // TODO temporary (see issue #422)
-    let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #422)
-    let mut selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights).unwrap();
-    let mut expected_slots = Vec::new();
-    for i in 1..11 {
-        expected_slots.push(selector.draw(Slot::new(i, 0)))
-    }
-
-    //to avoid timing pb for block in the future
-    cfg.genesis_timestamp = UTime::now(0).unwrap();
-
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
-
-    // launch consensus controller
-    let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
-
-    for (i, &draw) in expected_slots.iter().enumerate() {
-        let timer = sleep(UTime::from(5000).into());
-        tokio::pin!(timer);
-        loop {
-            tokio::select! {
-                cmd = protocol_controller
-                .wait_command(cfg.t0.checked_div_u64(2).unwrap(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock { block, .. } => Some(block.header),
-                    _ => None,
-                })
-                 =>  {
-                     match cmd {
-                         Some(header) => {
-                             assert_eq!(draw, 0);
-                             assert_eq!(i + 1, header.content.slot.period as usize);
-                             // Go to the next slot.
-                             break;
-
-                         }
-                         None => {
-                             if draw == 1 {
-                                // Go to the next slot.
-                                break;
-                             }
-                         }
-                     };
-                },
-                cmd = pool_controller.wait_command(cfg.t0, |cmd| match cmd {
-                    PoolCommand::GetOperationBatch { response_tx, .. } => Some(response_tx),
-                    _ => None,
-                }) => {
-                    match cmd {
-                        Some(response_tx) => response_tx.send(Vec::new()).unwrap(),
-                        None => panic!("did not receive response channel")
-                    }
-                }
-                _ = &mut timer => panic!("Block not integrated before timeout.")
-            }
-        }
-    }
-
-    // stop controller while ignoring all commands
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);
     protocol_controller
