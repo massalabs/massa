@@ -27,9 +27,9 @@ impl MockNetworkController {
         )
     }
 
-    pub async fn wait_command<F>(&mut self, timeout: UTime, filter_map: F) -> Option<NetworkCommand>
+    pub async fn wait_command<F, T>(&mut self, timeout: UTime, filter_map: F) -> Option<T>
     where
-        F: Fn(NetworkCommand) -> Option<NetworkCommand>,
+        F: Fn(NetworkCommand) -> Option<T>,
     {
         let timer = sleep(timeout.into());
         tokio::pin!(timer);
@@ -37,7 +37,7 @@ impl MockNetworkController {
             tokio::select! {
                 cmd_opt = self.network_command_rx.recv() => match cmd_opt {
                     Some(orig_cmd) => if let Some(res_cmd) = filter_map(orig_cmd) { return Some(res_cmd); },
-                    None => return None
+                    None => panic!("Unexpected closure of network command channel."),
                 },
                 _ = &mut timer => return None
             }

@@ -113,19 +113,49 @@ pub async fn assert_hash_asked_to_node(
     network_controller: &mut MockNetworkController,
 ) {
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
-        b => {
-            println!("{:?}", b);
-            None
-        }
+        NetworkCommand::AskForBlock { node, hash } => Some((node, hash)),
+        _ => None,
     };
-    let (ask_to_node_id, asked_for_hash) = match network_controller
+    let (ask_to_node_id, asked_for_hash) = network_controller
         .wait_command(1000.into(), ask_for_block_cmd_filter)
         .await
-    {
-        Some(NetworkCommand::AskForBlock { node, hash }) => (node, hash),
-        cmd => panic!("Unexpected network command. {:?}", cmd),
-    };
+        .expect("Hash not asked for before timer.");
     assert_eq!(hash_1, asked_for_hash);
     assert_eq!(ask_to_node_id, node_id);
+}
+
+pub async fn assert_banned_node(node_id: NodeId, network_controller: &mut MockNetworkController) {
+    let banned_node = network_controller
+        .wait_command(1000.into(), |cmd| match cmd {
+            NetworkCommand::Ban(node) => Some(node),
+            _ => None,
+        })
+        .await
+        .expect("Node not banned before timeout.");
+    assert_eq!(banned_node, node_id);
+}
+
+pub async fn assert_banned_nodes(
+    mut nodes: Vec<NodeId>,
+    network_controller: &mut MockNetworkController,
+) {
+    let timer = sleep(UTime::from(5000).into());
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            msg = network_controller
+                   .wait_command(1000.into(), |cmd| match cmd {
+                       NetworkCommand::Ban(node) => Some(node),
+                       _ => None,
+                   })
+             =>  {
+                 let banned_node = msg.expect("Nodes not banned before timeout.");
+                 nodes.drain_filter(|id| *id == banned_node);
+                 if nodes.is_empty() {
+                     break;
+                 }
+            },
+            _ = &mut timer => panic!("Nodes not banned before timeout.")
+        }
+    }
 }
