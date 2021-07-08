@@ -304,7 +304,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("cliques"))
         .and(warp::path::end())
-        .and_then(move || get_cliques(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_cliques(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let peers = warp::get()
@@ -825,19 +825,8 @@ async fn get_graph_interval(
 ///
 async fn get_cliques(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+) -> Result<(usize, Vec<HashSet<(Hash, Slot)>>), ApiError> {
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let mut hashes = HashSet::new();
     for clique in graph.max_cliques.iter() {
@@ -847,15 +836,11 @@ async fn get_cliques(
     let mut hashes_map = HashMap::new();
     for hash in hashes.iter() {
         if let Some((_, block)) = graph.active_blocks.get_key_value(hash) {
-            hashes_map.insert(hash, block.block.content.slot);
+            hashes_map.insert(hash.clone(), block.block.content.slot);
         } else {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("inconsticency error between cliques and active_blocks")
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response());
+            return Err(ApiError::DataInconsistencyError(format!(
+                "inconstencency error between cliques and active_blocks"
+            )));
         }
     }
 
@@ -868,20 +853,16 @@ async fn get_cliques(
                     set.insert((k.clone(), v.clone()));
                 }
                 None => {
-                    return Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message":"inconsistency error between clique and active blocks"
-                        })),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                    .into_response())
+                    return Err(ApiError::DataInconsistencyError(format!(
+                        "inconsistency error between clique and active blocks"
+                    )));
                 }
             }
         }
         res.push(set)
     }
 
-    Ok(warp::reply::json(&(graph.max_cliques.len(), res)).into_response())
+    Ok((graph.max_cliques.len(), res))
 }
 
 /// Returns network information:
