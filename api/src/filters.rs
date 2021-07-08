@@ -576,7 +576,7 @@ async fn get_block_interval(
     end: UTime,
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let mut res = Vec::new();
+    let mut res = HashMap::new();
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -609,7 +609,7 @@ async fn get_block_interval(
             }
         };
         if start <= time && time <= end {
-            res.push((hash, (header.period_number, header.thread_number)));
+            res.insert(hash, (header.period_number, header.thread_number));
         }
     }
     if let Some(storage) = opt_storage_command_sender {
@@ -679,13 +679,14 @@ async fn get_block_interval(
             Ok(blocks) => blocks,
         };
         for (hash, block) in blocks {
-            res.push((
+            res.insert(
                 hash,
                 (block.header.period_number, block.header.thread_number),
-            ));
+            );
         }
     }
 
+    let res: Vec<(&Hash, &(u64, u8))> = res.iter().collect();
     Ok(warp::reply::json(&res).into_response())
 }
 
