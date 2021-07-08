@@ -3,7 +3,7 @@ level = 4
 
 [network]
 bind = "0.0.0.0:50000"
-known_peers_file = "config/peers.csv"
+known_peers_file = "config/peers.json"
 retry_wait_seconds = 2.0
 timeout_seconds = 2.0
 target_outgoing_connections = 20

@@ -83,30 +83,33 @@ impl NetworkController {
     }
 
     pub async fn feedback_peer_list(
-        &mut self, ips: HashSet<IpAddr>
+        &mut self,
+        ips: HashSet<IpAddr>,
     ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
-        self.peer_feedback_tx.send(PeerFeedbackEvent::PeerList {
-            ips,
-        }).await?;
+        self.peer_feedback_tx
+            .send(PeerFeedbackEvent::PeerList { ips })
+            .await?;
         Ok(())
     }
 
     pub async fn feedback_peer_closed(
-        &mut self, ip: IpAddr, reason: PeerClosureReason
+        &mut self,
+        ip: IpAddr,
+        reason: PeerClosureReason,
     ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
-        self.peer_feedback_tx.send(PeerFeedbackEvent::PeerClosed {
-            ip,
-            reason,
-        }).await?;
+        self.peer_feedback_tx
+            .send(PeerFeedbackEvent::PeerClosed { ip, reason })
+            .await?;
         Ok(())
     }
 
     pub async fn feedback_peer_alive(
-        &mut self, ip: IpAddr
+        &mut self,
+        ip: IpAddr,
     ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
-        self.peer_feedback_tx.send(PeerFeedbackEvent::PeerAlive {
-            ip,
-        }).await?;
+        self.peer_feedback_tx
+            .send(PeerFeedbackEvent::PeerAlive { ip })
+            .await?;
         Ok(())
     }
 }
