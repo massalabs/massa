@@ -1,9 +1,14 @@
+//! warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 use time::UTime;
 
 use crate::error::ConsensusError;
 
-// warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
-
+/// Gets timestamp in millis for given slot.
+///
+/// # Arguments
+/// * thread_count: number of threads.
+/// * t0: time in millis between two periods in the same thread.
+/// * slot: the considered slot.
 pub fn get_block_slot_timestamp(
     thread_count: u8,
     t0: UTime,
@@ -25,7 +30,13 @@ pub fn get_block_slot_timestamp(
         .or(Err(ConsensusError::TimeOverflowError))?)
 }
 
-// return the thread and block slot index of the latest block slot at a given timstamp (inclusive), if any happened
+/// Returns the thread and block period index of the latest block slot at a given timstamp (inclusive), if any happened
+///
+/// # Arguments
+/// * thread_count: number of threads.
+/// * t0: time in millis between two periods in the same thread.
+/// * genesis_timestamp: when the blockclique first started, in millis.
+/// * timestamp: target timestamp in millis.
 pub fn get_latest_block_slot_at_timestamp(
     thread_count: u8,
     t0: UTime,
@@ -42,7 +53,12 @@ pub fn get_latest_block_slot_at_timestamp(
     Ok(None)
 }
 
-// return the thread and block slot index of the latest block slot (inclusive), if any happened yet
+/// Returns the thread and block slot index of the current block slot (inclusive), if any happened yet
+///
+/// # Arguments
+/// * thread_count: number of threads.
+/// * t0: time in millis between two periods in the same thread.
+/// * genesis_timestamp: when the blockclique first started, in millis.
 pub fn get_current_latest_block_slot(
     thread_count: u8,
     t0: UTime,
@@ -51,7 +67,11 @@ pub fn get_current_latest_block_slot(
     get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, UTime::now()?)
 }
 
-// return the (period, thread) of the next block slot
+/// Returns the (period, thread) of the next block slot
+///
+/// # Arguments
+/// * thread_count: number of threads.
+/// * slot: previous slot.
 pub fn get_next_block_slot(
     thread_count: u8,
     slot: (u64, u8), // period, thread

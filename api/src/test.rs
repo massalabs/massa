@@ -308,7 +308,7 @@ async fn test_current_parents() {
 }
 
 #[tokio::test]
-async fn test_get_block_interval() {
+async fn test_get_graph_interval() {
     let mut mock_interface = MockConsensusControllerInterface::new();
     mock_interface.graph.best_parents = vec![get_test_hash(), get_test_hash()];
 
@@ -484,7 +484,7 @@ async fn test_peers() {
 }
 
 #[tokio::test]
-async fn test_get_graph_interval() {
+async fn test_get_block_interval() {
     let mut mock_interface = MockConsensusControllerInterface::new();
     mock_interface.graph.best_parents = vec![get_test_hash(), get_test_hash()];
 

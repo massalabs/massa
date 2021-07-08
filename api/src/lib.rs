@@ -1,7 +1,150 @@
-/// The goal of this API is to retrieve information
-/// on the current state of our node and interact with it.
-/// In version 0.1, we can get some informations
-/// and stop the node through the API.
+//! The goal of this API is to retrieve information
+//! on the current state of our node and interact with it.
+//! In version 0.1, we can get some informations
+//! and stop the node through the API.
+//!
+//! # Examples
+//! ## Get cliques
+//! Returns a vec containing all cliques, as sets of hashes.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/cliques")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Current parents
+//! Returns a vec containing current best parents.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/current_parents")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Block interval
+//! Returns all blocks generate between start and end, in millis.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path(&format!(
+//!         "/api/v1/blockinterval?start={}&end={}",
+//!         start, end
+//!     ))
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Last final
+//! Returns last final block in each thread.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/last_final")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Peers
+//! Returns all known peers with full peer info.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/peers")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Graph interval
+//! Returns some information on blocks generated between start and end, in millis :
+//! - hash
+//! - period_number,
+//! - header.thread_number,
+//! - status in ["final", "active", "stale"],
+//! - parents,
+//!
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path(&format!(
+//!         "/api/v1/graph_interval?start={}&end={}",
+//!         start, end
+//!     ))
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Get block
+//! Returns full block associated with given hash.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path(&format!("/api/v1/block/{}", some_hash))
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Network info
+//! Returns our ip and known peers with full peer info.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/network_info")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## State
+//! Returns current node state :
+//! - last final blocks
+//! - number of active cliques
+//! - number of peers
+//! - our ip
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/state")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Last stale
+//! Returns a number (see configuration) of recent stale blocks.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/last_stale")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ## Last invalid
+//! Returns a number (see configuration) of recent invalid blocks.
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path("/api/v1/last_invalid")
+//!     .reply(&filter)
+//!     .await;
+//! ```
+//!
+//! ### Staker info
+//! Returns information about staker using given public key :
+//! - staker active blocks: active blocks created by staker
+//! - staker discarded blocks: discarded block created by staker
+//! - staker next draw: next slot when staker can create a block
+//!
+//!
+//! ```ignore
+//! let res = warp::test::request()
+//!     .method("GET")
+//!     .path(&format!("/api/v1/staker_info/{}", staker))
+//!     .reply(&filter)
+//!     .await;
+//! ```
+
 use communication::network::config::NetworkConfig;
 use config::ApiConfig;
 use consensus::{config::ConsensusConfig, consensus_controller::ConsensusControllerInterface};

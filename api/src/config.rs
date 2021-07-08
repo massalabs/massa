@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-///
+/// Api configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct ApiConfig {
     /// limit on the number of invalid blocks that are returned, to avoid flooding
