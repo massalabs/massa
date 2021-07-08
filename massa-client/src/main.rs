@@ -474,7 +474,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                         Ok(format!("{}", resp.text().unwrap()))
                     } else {
                         let ledger = resp.json::<LedgerDataExport>()?;
-                        let balance_list = data::extract_addresses_from_ledger(&ledger);
+                        let balance_list = data::extract_addresses_from_ledger(&ledger, None);
                         if balance_list.len() == 0 {
                             Ok("Error no balance found".to_string())
                         } else {
@@ -548,7 +548,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
+        .collect::<Result<Vec<Address>, _>>();
 
     let search_addresses = match addr_list {
         Ok(addrs) => addrs,
@@ -558,7 +558,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
         }
     };
 
-    let resp = query_addresses(&data, search_addresses)?;
+    let resp = query_addresses(&data, search_addresses.iter().copied().collect())?;
     if resp.status() != StatusCode::OK {
         let status = resp.status();
         let message = resp
@@ -572,7 +572,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             println!("{}", resp.text().unwrap());
         } else {
             let ledger = resp.json::<LedgerDataExport>()?;
-            let balance_list = data::extract_addresses_from_ledger(&ledger);
+            let balance_list = data::extract_addresses_from_ledger(&ledger, Some(search_addresses));
             if balance_list.len() == 0 {
                 return Err(ReplError::GeneralError("No balance found.".to_string()));
             } else {
