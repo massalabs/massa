@@ -17,7 +17,7 @@ use crate::{
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
         mock_protocol_controller::MockProtocolController,
-        tools::{self, create_transaction, generate_ledger_file},
+        tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     },
     BootsrapableGraph, LedgerExport,
 };
@@ -321,95 +321,35 @@ async fn test_with_two_cliques() {
     pool_sink.stop().await;
 }
 
-fn get_export_active_test_block(
-    creator: PublicKey,
-    parents: Vec<(BlockId, u64)>,
-    operations: Vec<Operation>,
-    slot: Slot,
-    context: &SerializationContext,
-) -> (ExportActiveBlock, BlockId) {
-    let block = Block {
-        header: BlockHeader {
-            content: BlockHeaderContent{
-                creator: creator,
-                operation_merkle_root: Hash::hash(&operations.iter().map(|op|{
-                    op
-                        .get_operation_id()
-                        .unwrap()
-                        .to_bytes()
-                        .clone()
-                    })
-                    .flatten()
-                    .collect::<Vec<_>>()[..]),
-                parents: parents.iter()
-                    .map(|(id,_)| *id)
-                    .collect(),
-                slot,
-            },
-            signature: crypto::signature::Signature::from_bs58_check(
-                "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
-            ).unwrap()
-        },
-        operations: operations.clone(),
-    };
-
-    let mut block_ledger_change = vec![HashMap::new(); context.parent_count as usize];
-    for op in operations.iter() {
-        let _thread = Address::from_public_key(&op.content.sender_public_key)
-            .unwrap()
-            .get_thread(context.parent_count);
-        let mut changes = op
-            .get_changes(
-                &Address::from_public_key(&creator).unwrap(),
-                context.parent_count,
-            )
-            .unwrap();
-        for i in 0..changes.len() {
-            for (address, change) in changes[i].iter_mut() {
-                if let Some(old) = block_ledger_change[i].get(address) {
-                    change.chain(old).unwrap();
-                }
-                block_ledger_change[i].insert(address.clone(), change.clone());
-            }
-        }
-    }
-    let id = block.header.compute_block_id().unwrap();
-    (
-        ExportActiveBlock {
-            parents,
-            dependencies: vec![],
-            block,
-            children: vec![vec![], vec![]],
-            is_final: false,
-            block_ledger_change: block_ledger_change
-                .iter()
-                .map(|map| {
-                    map.into_iter()
-                        .map(|(a, c)| (a.clone(), c.clone()))
-                        .collect()
-                })
-                .collect(),
-        },
-        id,
-    )
-}
-
 fn get_two_cliques_bootgraph(
     creator: PublicKey,
     context: &SerializationContext,
     operations: Vec<Operation>,
     ledger: LedgerExport,
 ) -> BootsrapableGraph {
-    let (genesis_0, g0_id) =
-        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), context);
-    let (genesis_1, g1_id) =
-        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 1), context);
+    let (genesis_0, g0_id) = get_export_active_test_block(
+        creator.clone(),
+        vec![],
+        vec![],
+        Slot::new(0, 0),
+        context,
+        true,
+    );
+    let (genesis_1, g1_id) = get_export_active_test_block(
+        creator.clone(),
+        vec![],
+        vec![],
+        Slot::new(0, 1),
+        context,
+        true,
+    );
     let (p1t0, p1t0_id) = get_export_active_test_block(
         creator.clone(),
         vec![(g0_id, 0), (g1_id, 0)],
         vec![operations[1].clone()],
         Slot::new(1, 0),
         context,
+        false,
     );
     let (p1t1, p1t1_id) = get_export_active_test_block(
         creator.clone(),
@@ -417,6 +357,7 @@ fn get_two_cliques_bootgraph(
         vec![],
         Slot::new(1, 1),
         context,
+        false,
     );
     let (p2t0, p2t0_id) = get_export_active_test_block(
         creator.clone(),
@@ -424,6 +365,7 @@ fn get_two_cliques_bootgraph(
         vec![operations[0].clone()],
         Slot::new(2, 0),
         context,
+        false,
     );
     let (p2t1, p2t1_id) = get_export_active_test_block(
         creator.clone(),
@@ -431,6 +373,7 @@ fn get_two_cliques_bootgraph(
         vec![],
         Slot::new(2, 1),
         context,
+        false,
     );
     let (p3t0, p3t0_id) = get_export_active_test_block(
         creator.clone(),
@@ -438,6 +381,7 @@ fn get_two_cliques_bootgraph(
         vec![],
         Slot::new(3, 0),
         context,
+        false,
     );
     let (p3t1, p3t1_id) = get_export_active_test_block(
         creator.clone(),
@@ -445,6 +389,7 @@ fn get_two_cliques_bootgraph(
         vec![],
         Slot::new(3, 1),
         context,
+        false,
     );
     BootsrapableGraph {
         /// Map of active blocks, where blocks are in their exported version.

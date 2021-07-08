@@ -1,5 +1,9 @@
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{block_graph::BlockGraphExport, ledger::LedgerData, ConsensusConfig};
+use crate::{
+    block_graph::{BlockGraphExport, ExportActiveBlock},
+    ledger::{LedgerData, OperationLedgerInterface},
+    ConsensusConfig,
+};
 use communication::protocol::ProtocolCommand;
 use crypto::{
     hash::Hash,
@@ -7,7 +11,7 @@ use crypto::{
 };
 use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
-    OperationType, SerializeCompact, Slot,
+    OperationType, SerializationContext, SerializeCompact, Slot,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -349,6 +353,80 @@ pub fn create_block_with_merkle_root(
     };
 
     (hash, block, private_key)
+}
+
+pub fn get_export_active_test_block(
+    creator: PublicKey,
+    parents: Vec<(BlockId, u64)>,
+    operations: Vec<Operation>,
+    slot: Slot,
+    context: &SerializationContext,
+    is_final: bool,
+) -> (ExportActiveBlock, BlockId) {
+    let block = Block {
+        header: BlockHeader {
+            content: BlockHeaderContent{
+                creator: creator,
+                operation_merkle_root: Hash::hash(&operations.iter().map(|op|{
+                    op
+                        .get_operation_id()
+                        .unwrap()
+                        .to_bytes()
+                        .clone()
+                    })
+                    .flatten()
+                    .collect::<Vec<_>>()[..]),
+                parents: parents.iter()
+                    .map(|(id,_)| *id)
+                    .collect(),
+                slot,
+            },
+            signature: crypto::signature::Signature::from_bs58_check(
+                "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+            ).unwrap()
+        },
+        operations: operations.clone(),
+    };
+
+    let mut block_ledger_change = vec![HashMap::new(); context.parent_count as usize];
+    for op in operations.iter() {
+        let thread = Address::from_public_key(&op.content.sender_public_key)
+            .unwrap()
+            .get_thread(context.parent_count);
+        let mut changes = op
+            .get_changes(
+                &Address::from_public_key(&creator).unwrap(),
+                context.parent_count,
+            )
+            .unwrap();
+        for i in 0..changes.len() {
+            for (address, change) in changes[i].iter_mut() {
+                if let Some(old) = block_ledger_change[i].get(address) {
+                    change.chain(old).unwrap();
+                }
+                block_ledger_change[i].insert(address.clone(), change.clone());
+            }
+        }
+    }
+    let id = block.header.compute_block_id().unwrap();
+    (
+        ExportActiveBlock {
+            parents,
+            dependencies: vec![],
+            block,
+            children: vec![vec![], vec![]],
+            is_final,
+            block_ledger_change: block_ledger_change
+                .iter()
+                .map(|map| {
+                    map.into_iter()
+                        .map(|(a, c)| (a.clone(), c.clone()))
+                        .collect()
+                })
+                .collect(),
+        },
+        id,
+    )
 }
 
 pub fn create_block_with_operations(
