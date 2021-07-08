@@ -29,16 +29,23 @@ pub enum ProtocolEvent {
 #[derive(Debug)]
 pub enum ProtocolCommand {
     /// Propagate header of a given block.
-    PropagateBlockHeader { hash: Hash, header: BlockHeader },
+    PropagateBlockHeader {
+        hash: Hash,
+        header: BlockHeader,
+    },
     /// Propagate hash of a given block header
     AskForBlock(Hash),
     /// Send a block to peers who asked for it.
-    SendBlock { hash: Hash, block: Block },
+    SendBlock {
+        hash: Hash,
+        block: Block,
+    },
     /// Wishlist delta
     WishlistDelta {
         new: HashSet<Hash>,
         remove: HashSet<Hash>,
     },
+    BlockNotFound(Hash),
 }
 
 #[derive(Debug)]
@@ -215,6 +222,15 @@ impl ProtocolWorker {
                 self.stop_asking_blocks(remove)?;
                 self.block_wishlist.extend(new);
                 self.update_ask_block(timer).await?;
+            }
+            ProtocolCommand::BlockNotFound(hash) => {
+                for (node_id, node_info) in self.active_nodes.iter() {
+                    if node_info.wanted_blocks.contains(&hash) {
+                        self.network_command_sender
+                            .block_not_found(*node_id, hash)
+                            .await?
+                    }
+                }
             }
         }
         Ok(())

@@ -288,7 +288,17 @@ impl ConsensusWorker {
                         self.protocol_command_sender
                             .send_block(block_hash, block)
                             .await?;
+                    } else {
+                        // not found in given storage
+                        self.protocol_command_sender
+                            .block_not_found(block_hash)
+                            .await?
                     }
+                } else {
+                    // not found in consensu and no storage provided
+                    self.protocol_command_sender
+                        .block_not_found(block_hash)
+                        .await?
                 }
             }
         }
