@@ -12,8 +12,8 @@ use crypto::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
-use std::str::FromStr;
+use std::{convert::TryInto, ops::Range};
+use std::{ops::RangeInclusive, str::FromStr};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
@@ -212,6 +212,14 @@ impl Operation {
     ) -> Result<OperationId, ModelsError> {
         Ok(OperationId(Hash::hash(&self.to_bytes_compact(context)?)))
     }
+
+    pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
+        let start = self
+            .content
+            .expire_period
+            .saturating_sub(operation_validity_period);
+        start..=self.content.expire_period
+    }
 }
 
 impl SerializeCompact for Operation {
@@ -306,5 +314,7 @@ mod tests {
         let ser_op = op.to_bytes_compact(&context).unwrap();
         let (res_op, _) = Operation::from_bytes_compact(&ser_op, &context).unwrap();
         assert_eq!(format!("{:?}", res_op), format!("{:?}", op));
+
+        assert_eq!(op.get_validity_range(10), 40..=50);
     }
 }

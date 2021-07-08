@@ -90,11 +90,12 @@ impl OperationPool {
                 } else {
                     cur_slot.period.saturating_sub(1)
                 };
-                let validity_start_period = wrapped_op
+
+                let validity_start_period = *wrapped_op
                     .op
-                    .content
-                    .expire_period
-                    .saturating_sub(self.operation_validity_periods);
+                    .get_validity_range(self.operation_validity_periods)
+                    .start();
+
                 if validity_start_period.saturating_sub(cur_period_in_thread)
                     > self.cfg.max_operation_future_validity_start_periods
                 {
@@ -184,7 +185,7 @@ impl OperationPool {
                     return None;
                 }
                 if let Some(w_op) = self.ops.get(id) {
-                    if !(w_op.op.content.expire_period.saturating_sub(self.operation_validity_periods)..=w_op.op.content.expire_period)
+                    if !w_op.op.get_validity_range(self.operation_validity_periods)
                         .contains(&block_slot.period) || w_op.byte_count > max_size {
                         return None;
                     }

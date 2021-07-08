@@ -1865,10 +1865,10 @@ impl BlockGraph {
                     ));
                 }
             };
-            let op_start_validity_period = operation
-                .content
-                .expire_period
-                .saturating_sub(self.cfg.operation_validity_periods);
+
+            let op_start_validity_period = *operation
+                .get_validity_range(self.cfg.operation_validity_periods)
+                .start();
 
             let mut current_block_id = block_to_check.header.content.parents[op_thread as usize]; // non-genesis => has parents
             loop {
