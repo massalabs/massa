@@ -705,7 +705,6 @@ mod tests {
 
         for index in 0..9 {
             let hash = Hash::hash(index.to_string().as_bytes());
-            println!("index:{} hash:{:?}", index, hash);
             nodeinfo.insert_known_block(hash, true, Instant::now(), max_node_known_blocks_size);
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }

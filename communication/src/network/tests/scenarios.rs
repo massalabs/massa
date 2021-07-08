@@ -3,7 +3,10 @@ use super::{mock_establisher, tools};
 use crate::network::messages::Message;
 use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
+use crate::NodeId;
 use crypto::hash::Hash;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::{
     convert::TryInto,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -435,10 +438,7 @@ async fn test_block_not_found() {
     // assert it is sent to protocol
     if let Some((list, node)) =
         tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::AskedForBlocks { list, node } => {
-                println!(" list {:?}", list);
-                Some((list, node))
-            }
+            NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
             _ => None,
         })
         .await
@@ -472,7 +472,54 @@ async fn test_block_not_found() {
         }
     }
 
-    //test with max_ask_blocks_per_message > 3
+    //test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
+    let mut block_list: HashMap<NodeId, Vec<Hash>> = HashMap::new();
+    let mut hash_list = vec![];
+    hash_list.push(Hash::hash("default_val1".as_bytes()));
+    hash_list.push(Hash::hash("default_val2".as_bytes()));
+    hash_list.push(Hash::hash("default_val3".as_bytes()));
+    hash_list.push(Hash::hash("default_val4".as_bytes()));
+    block_list.insert(conn1_id, hash_list);
+
+    network_command_sender
+        .ask_for_block_list(block_list)
+        .await
+        .unwrap();
+    //receive 2 list
+    let timer = sleep(Duration::from_millis(100));
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            evt = conn1_r.next() => {
+                let evt = evt.unwrap().unwrap().1;
+                match evt {
+                Message::AskForBlocks(list1) => {
+                     assert!(list1.contains(&Hash::hash("default_val1".as_bytes())));
+                     assert!(list1.contains(&Hash::hash("default_val2".as_bytes())));
+                     assert!(list1.contains(&Hash::hash("default_val3".as_bytes())));
+                     break;
+                 }
+                _ => {}
+            }},
+            _ = &mut timer => panic!("timeout reached waiting for message")
+        }
+    }
+    let timer = sleep(Duration::from_millis(100));
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            evt = conn1_r.next() => {
+                let evt = evt.unwrap().unwrap().1;
+                match evt {
+                Message::AskForBlocks(list2) => {assert!(list2.contains(&Hash::hash("default_val4".as_bytes()))); break;}
+                _ => {}
+            }},
+            _ = &mut timer => panic!("timeout reached waiting for message")
+        }
+    }
+
+    //test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
+    // the message is rejected by the receiver.
     let wanted_hash1 = Hash::hash("default_val1".as_bytes());
     let wanted_hash2 = Hash::hash("default_val2".as_bytes());
     let wanted_hash3 = Hash::hash("default_val3".as_bytes());
@@ -486,14 +533,10 @@ async fn test_block_not_found() {
         ]))
         .await
         .unwrap();
-
     // assert it is sent to protocol
     if let Some(_) =
         tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::AskedForBlocks { list, node } => {
-                println!(" list {:?}", list);
-                Some((list, node))
-            }
+            NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
             _ => None,
         })
         .await
