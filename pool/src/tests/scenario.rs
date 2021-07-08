@@ -1,10 +1,12 @@
 use communication::protocol::ProtocolCommand;
+use models::Address;
 use models::SerializeCompact;
 use models::Slot;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 use crate::pool_controller;
+use crate::tests::tools::get_transaction_with_addresses;
 
 use super::{
     mock_protocol_controller::MockProtocolController,
@@ -239,6 +241,159 @@ async fn test_pool_with_protocol_events() {
 
         thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
     }
+
+    pool_manager.stop().await.unwrap();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_get_involved_operations() {
+    let thread_count = 2;
+    //define addresses use for the test
+    // addresses a and b both in thread 0
+    let mut priv_a = crypto::generate_random_private_key();
+    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
+    while 1 != address_a.get_thread(thread_count) {
+        priv_a = crypto::generate_random_private_key();
+        pubkey_a = crypto::derive_public_key(&priv_a);
+        address_a = Address::from_public_key(&pubkey_a).unwrap();
+    }
+    assert_eq!(1, address_a.get_thread(thread_count));
+
+    let mut priv_b = crypto::generate_random_private_key();
+    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
+    while 1 != address_b.get_thread(thread_count) {
+        priv_b = crypto::generate_random_private_key();
+        pubkey_b = crypto::derive_public_key(&priv_b);
+        address_b = Address::from_public_key(&pubkey_b).unwrap();
+    }
+    assert_eq!(1, address_b.get_thread(thread_count));
+
+    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+    let max_pool_size_per_thread = 10;
+    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+
+    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
+        MockProtocolController::new();
+
+    let (mut pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
+        cfg.clone(),
+        thread_count,
+        operation_validity_periods,
+        protocol_command_sender,
+        protocol_pool_event_receiver,
+    )
+    .await
+    .unwrap();
+    let op_filter = |cmd| match cmd {
+        cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
+        _ => None,
+    };
+
+    pool_command_sender
+        .update_current_slot(Slot::new(1, 0))
+        .await
+        .unwrap();
+    let (op1, _) = get_transaction_with_addresses(1, 1, pubkey_a, priv_a, pubkey_b);
+    let (op2, _) = get_transaction_with_addresses(2, 10, pubkey_b, priv_b, pubkey_b);
+    let (op3, _) = get_transaction_with_addresses(3, 100, pubkey_a, priv_a, pubkey_a);
+    let op1_id = op1.get_operation_id().unwrap();
+    let op2_id = op2.get_operation_id().unwrap();
+    let op3_id = op3.get_operation_id().unwrap();
+    let mut ops = HashMap::new();
+    for (op, id) in vec![op1, op2, op3]
+        .into_iter()
+        .zip(vec![op1_id, op2_id, op3_id].into_iter())
+    {
+        ops.insert(id, op.clone());
+    }
+
+    // Add ops to pool
+    protocol_controller.received_operations(ops.clone()).await;
+
+    let newly_added = match protocol_controller
+        .wait_command(250.into(), op_filter.clone())
+        .await
+    {
+        Some(ProtocolCommand::PropagateOperations(ops)) => ops,
+        Some(_) => panic!("unexpected protocol command"),
+        None => panic!("unexpected timeout reached"),
+    };
+    assert_eq!(
+        newly_added.keys().copied().collect::<HashSet<_>>(),
+        ops.keys().copied().collect::<HashSet<_>>()
+    );
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_a)
+        .await
+        .unwrap();
+    assert_eq!(
+        res,
+        vec![op1_id, op3_id].into_iter().collect::<HashSet<_>>()
+    );
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_b)
+        .await
+        .unwrap();
+    assert_eq!(
+        res,
+        vec![op1_id, op2_id].into_iter().collect::<HashSet<_>>()
+    );
+
+    pool_command_sender
+        .update_latest_final_periods(vec![1, 1])
+        .await
+        .unwrap();
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_a)
+        .await
+        .unwrap();
+    assert_eq!(res, vec![op3_id].into_iter().collect::<HashSet<_>>());
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_b)
+        .await
+        .unwrap();
+    assert_eq!(res, vec![op2_id].into_iter().collect::<HashSet<_>>());
+
+    pool_command_sender
+        .update_latest_final_periods(vec![2, 2])
+        .await
+        .unwrap();
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_a)
+        .await
+        .unwrap();
+    assert_eq!(res, vec![op3_id].into_iter().collect::<HashSet<_>>());
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_b)
+        .await
+        .unwrap();
+    assert_eq!(res, HashSet::new());
+
+    pool_command_sender
+        .update_latest_final_periods(vec![3, 3])
+        .await
+        .unwrap();
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_a)
+        .await
+        .unwrap();
+    assert_eq!(res, HashSet::new());
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_b)
+        .await
+        .unwrap();
+    assert_eq!(res, HashSet::new());
 
     pool_manager.stop().await.unwrap();
 }
