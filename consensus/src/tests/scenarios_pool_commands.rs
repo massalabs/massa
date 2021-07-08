@@ -56,15 +56,16 @@ async fn test_update_current_slot_cmd_notification() {
     assert_eq!(slot_cmd, Some(Slot::new(0, 1)));
 
     // ignore all pool commands from now on
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
-    // stop consensus controller while ignoring all protocol commands
+    // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);
-    let _ = protocol_controller
+    protocol_controller
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -122,13 +123,14 @@ async fn test_update_latest_final_block_cmd_notification() {
     assert_eq!(final_periods, Some(vec![1, 0]));
 
     // ignore all next pool commands
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
-    // stop controller while ignoring all protocol commands
+    // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);
-    let _ = protocol_controller
+    protocol_controller
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }

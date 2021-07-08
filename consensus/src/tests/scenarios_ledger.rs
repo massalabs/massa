@@ -7,7 +7,6 @@ use super::{
 };
 use crate::{
     ledger::{Ledger, LedgerChange, LedgerData},
-    random_selector::RandomSelector,
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
@@ -30,10 +29,6 @@ async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let cfg = tools::default_consensus_config(1, ledger_file.path());
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
-
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
 
     for latest_final in ledger
         .get_latest_final_periods()
@@ -452,17 +447,16 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     cfg.block_reward = 1;
     cfg.operation_validity_periods = 20;
     let nodes = vec![(public_key_1, private_key_1)];
-    let addresses = vec![address_1, address_2, address_3];
     cfg.nodes = nodes.clone();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
-    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             protocol_command_sender.clone(),
@@ -728,4 +722,13 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             "wrong address balance"
         );
     }
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
+    pool_sink.stop().await;
 }

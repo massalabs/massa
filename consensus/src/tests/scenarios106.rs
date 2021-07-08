@@ -29,7 +29,7 @@ async fn test_unsorted_block() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -146,6 +146,7 @@ async fn test_unsorted_block() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 //test future_incoming_blocks block in the future with max_future_processing_blocks.
@@ -168,7 +169,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -253,6 +254,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -275,7 +277,7 @@ async fn test_too_many_blocks_in_the_future() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -367,6 +369,7 @@ async fn test_too_many_blocks_in_the_future() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -389,7 +392,7 @@ async fn test_dep_in_back_order() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -550,6 +553,7 @@ async fn test_dep_in_back_order() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -572,7 +576,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -693,6 +697,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -715,7 +720,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -805,4 +810,5 @@ async fn test_add_block_that_depends_on_invalid_block() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }

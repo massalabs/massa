@@ -165,13 +165,14 @@ async fn test_order_of_inclusion() {
     }
 
     // stop controller while ignoring all commands
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);
     protocol_controller
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -310,13 +311,14 @@ async fn test_with_two_cliques() {
     );
 
     // stop controller while ignoring all commands
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);
     protocol_controller
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 fn get_export_active_test_block(
@@ -639,11 +641,12 @@ async fn test_block_filling() {
     assert_eq!(block.operations.len(), nb);
 
     // stop controller while ignoring all commands
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);
     protocol_controller
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }

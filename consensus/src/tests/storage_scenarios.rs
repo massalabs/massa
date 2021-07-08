@@ -37,13 +37,13 @@ async fn test_storage() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // start storage
     let storage_access = tools::start_storage();
 
     // launch consensus controller
-    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             protocol_command_sender.clone(),
@@ -127,4 +127,13 @@ async fn test_storage() {
     assert!(&storage_access.contains(genesis_hashes[0]).await.unwrap());
     assert!(&storage_access.contains(genesis_hashes[1]).await.unwrap());
     assert!(&storage_access.contains(valid_hasht0s1).await.unwrap());
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
+    pool_sink.stop().await;
 }

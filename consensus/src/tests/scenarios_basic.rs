@@ -23,7 +23,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -91,6 +91,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -106,7 +107,7 @@ async fn test_block_not_processed_multiple_times() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -156,6 +157,7 @@ async fn test_block_not_processed_multiple_times() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -171,7 +173,7 @@ async fn test_queuing() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -229,6 +231,7 @@ async fn test_queuing() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -244,7 +247,7 @@ async fn test_double_staking_does_not_propagate() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -303,4 +306,5 @@ async fn test_double_staking_does_not_propagate() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }

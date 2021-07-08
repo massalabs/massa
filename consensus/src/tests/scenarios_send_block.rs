@@ -24,7 +24,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -82,6 +82,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -97,7 +98,7 @@ async fn test_consensus_block_not_found() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -143,4 +144,5 @@ async fn test_consensus_block_not_found() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }

@@ -10,8 +10,8 @@ use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
-    BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
-    OperationId, OperationSearchResult, SerializeCompact, SerializeVarInt, Slot,
+    BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, OperationId,
+    OperationSearchResult, SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -63,15 +63,6 @@ impl ActiveBlock {
             })
         */
         1
-    }
-
-    fn get_operation(&self, op_id: OperationId) -> Option<(Operation, usize)> {
-        self.operation_set.get(&op_id).and_then(|index| {
-            self.block
-                .operations
-                .get(*index)
-                .map(|op| (op.clone(), *index))
-        })
     }
 }
 
