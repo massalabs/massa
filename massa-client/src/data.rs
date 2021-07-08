@@ -363,6 +363,7 @@ impl std::fmt::Display for WrappedBlockHeader {
 pub struct State {
     time: UTime,
     latest_slot: Option<Slot>,
+    current_cycle: u64,
     our_ip: Option<IpAddr>,
     last_final: Vec<(Hash, Slot, UTime)>,
     nb_cliques: usize,
@@ -375,15 +376,16 @@ impl std::fmt::Display for State {
         let date = Local.timestamp(duration.as_secs() as i64, 0);
         write!(
             f,
-            "  Time: {:?} Latest:{}",
+            "  Time: {:?} Latest:{} Cycle:{}\n",
             date,
             self.latest_slot
                 .map(|s| format!("Slot {:?}", s))
-                .unwrap_or("None".to_string())
+                .unwrap_or("None".to_string()),
+            self.current_cycle
         )?;
         write!(
             f,
-            " Nb peers: {}, our IP: {}",
+            " Nb peers: {}, our IP: {}\n",
             self.nb_peers,
             self.our_ip
                 .map(|i| i.to_string())
@@ -394,7 +396,7 @@ impl std::fmt::Display for State {
 
         write!(
             f,
-            " Nb cliques: {}, last final blocks:{:#?}",
+            " Nb cliques: {}, last final blocks:{:#?}\n",
             self.nb_cliques,
             final_blocks
                 .iter()

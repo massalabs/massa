@@ -1764,6 +1764,7 @@ async fn get_state(
     Ok(warp::reply::json(&json!({
         "time": cur_time,
         "latest_slot": latest_slot_opt,
+        "current_cycle": latest_slot_opt.unwrap_or(Slot::new(0,0)).get_cycle(consensus_cfg.periods_per_cycle),
         "our_ip": network_cfg.routable_ip,
         "last_final": finals,
         "nb_cliques": graph.max_cliques.len(),
