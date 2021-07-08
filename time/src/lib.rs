@@ -92,6 +92,9 @@ impl FromStr for UTime {
 }
 
 impl UTime {
+    /// Smallest time interval
+    pub const EPSILON: UTime = UTime(1);
+
     /// Gets current timestamp.
     ///
     /// ```
