@@ -270,7 +270,7 @@ fn create_genesis_block(
 /// return type of update_consensus_with_new_block and acknowledge_block
 pub struct UpdateConsensusReturn {
     /// Blocks that were pruned during last update
-    pub pruned: HashMap<crypto::hash::Hash, Block>,
+    pub pruned: HashSet<crypto::hash::Hash>,
     /// Final blocks that were discarded that we may want to send to storage
     pub finals: HashMap<crypto::hash::Hash, Block>,
 }
@@ -764,8 +764,8 @@ impl BlockGraph {
         //       (stale blocks are completely discarded)
         if !incomp.is_subset(&self.gi_head.keys().cloned().collect()) {
             // block is incompatible with some final blocks
-            let mut pruned = HashMap::with_capacity(1);
-            pruned.insert(hash, block);
+            let mut pruned = HashSet::with_capacity(1);
+            pruned.insert(hash);
             return Ok(UpdateConsensusReturn {
                 pruned,
                 finals: HashMap::new(),
@@ -897,7 +897,11 @@ impl BlockGraph {
         info!("stale_blocks:{:?}", stale_blocks);
 
         // prune stale blocks
-        let mut pruned_blocks = self.prune_blocks(stale_blocks, false, true)?;
+        let mut pruned_blocks: HashSet<Hash> = self
+            .prune_blocks(stale_blocks, false, true)?
+            .keys()
+            .copied()
+            .collect();
 
         // list final blocks
         let final_blocks = {
@@ -973,7 +977,7 @@ impl BlockGraph {
 
         let removed_finals = self.prune_blocks(final_blocks.clone(), true, false)?;
         // prune final blocks
-        pruned_blocks.extend(removed_finals.clone());
+        pruned_blocks.extend(removed_finals.keys());
 
         Ok(UpdateConsensusReturn {
             pruned: pruned_blocks,

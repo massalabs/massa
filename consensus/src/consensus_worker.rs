@@ -305,8 +305,7 @@ impl ConsensusWorker {
                 finals: final_blocks,
             }) => {
                 // cancel discarded dependencies
-                self.dependency_waiting_blocks
-                    .cancel(discarded.keys().copied().collect())?;
+                self.dependency_waiting_blocks.cancel(discarded)?;
                 // cancel dependency_waiting_blocks for which the slot number is now inferior or equal to the latest final block in their thread
                 let last_finals = self
                     .block_db
