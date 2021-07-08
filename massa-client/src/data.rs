@@ -14,7 +14,7 @@ use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
 use consensus::DiscardReason;
-use consensus::{ExportBlockStatus, LedgerData, LedgerDataExport};
+use consensus::{AddressState, ExportBlockStatus, LedgerData};
 use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{
@@ -181,40 +181,32 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
 
 /// Wrapps a ledger data export
 pub fn extract_addresses_from_ledger<'a>(
-    ledger: &'a LedgerDataExport,
+    ledger: &'a HashMap<Address, AddressState>,
     ordered_addrs: Option<Vec<Address>>,
 ) -> Vec<WrapperAddressLedgerDataExport<'a>> {
     //extract address from final_data
     let mut base_ledger_map: HashMap<&Address, WrapperAddressLedger<'a>> = ledger
-        .final_data
-        .data
         .iter()
-        .flatten()
-        .map(|(addr, ledger)| {
+        .map(|(addr, state)| {
             (
                 addr,
                 WrapperAddressLedger {
-                    final_balance: Some(ledger),
+                    final_balance: Some(&state.final_ledger_data),
                     candidate_balance: None,
                 },
             )
         })
         .collect();
     //get balance at best parents.
-    ledger
-        .candidate_data
-        .data
-        .iter()
-        .flatten()
-        .for_each(|(addr, ledger)| {
-            let mut data = base_ledger_map
-                .entry(addr)
-                .or_insert_with(|| WrapperAddressLedger {
-                    final_balance: None,
-                    candidate_balance: None,
-                });
-            data.candidate_balance = Some(ledger);
-        });
+    ledger.iter().for_each(|(addr, state)| {
+        let mut data = base_ledger_map
+            .entry(addr)
+            .or_insert_with(|| WrapperAddressLedger {
+                final_balance: None,
+                candidate_balance: None,
+            });
+        data.candidate_balance = Some(&state.candidate_ledger_data);
+    });
 
     if let Some(ord) = ordered_addrs.clone() {
         ord.into_iter()

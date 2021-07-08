@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use models::{Address, AddressRollState, Slot};
+use models::{Address, Slot};
 use pool::{PoolCommand, PoolCommandSender};
 use serial_test::serial;
 use time::UTime;
