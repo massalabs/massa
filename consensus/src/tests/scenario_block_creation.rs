@@ -66,13 +66,14 @@ async fn test_block_creation_with_draw() {
     let mut updates = RollUpdates::new();
     updates.apply(&address_1, &update).unwrap();
     roll_counts[0].apply_subset(&updates, None).unwrap();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_roll_counts_file(&roll_counts);
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.roll_price = 1000;
     cfg.periods_per_cycle = 10_000;
@@ -126,7 +127,7 @@ async fn test_block_creation_with_draw() {
         &cfg,
         Slot::new(1, 0),
         &genesis_ids,
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
         vec![op1],
     );
     tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
@@ -143,6 +144,7 @@ async fn test_block_creation_with_draw() {
                 cur_parents.clone(),
                 true,
                 false,
+                staking_keys[0].clone(),
             )
             .await;
             cur_parents[thread as usize] = res_block_id;
@@ -241,12 +243,14 @@ async fn test_order_of_inclusion() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
+
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
@@ -399,12 +403,13 @@ async fn test_block_filling() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;

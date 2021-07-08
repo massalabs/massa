@@ -18,11 +18,12 @@ async fn test_old_stale_not_propagated_and_discarded() {
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -62,6 +63,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
         parents.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -72,6 +74,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
         parents.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -83,6 +86,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
         vec![hash_1, parents[0]],
         false,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -112,11 +116,12 @@ async fn test_block_not_processed_multiple_times() {
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
@@ -153,7 +158,7 @@ async fn test_block_not_processed_multiple_times() {
         &cfg,
         Slot::new(1, 0),
         parents.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
     protocol_controller.receive_block(block_1.clone()).await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1.clone()], 1000)
@@ -192,11 +197,12 @@ async fn test_queuing() {
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -237,6 +243,7 @@ async fn test_queuing() {
         parents.clone(),
         false,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -248,6 +255,7 @@ async fn test_queuing() {
         vec![hash_1.clone(), parents[1]],
         false,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -276,11 +284,12 @@ async fn test_double_staking_does_not_propagate() {
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -320,6 +329,7 @@ async fn test_double_staking_does_not_propagate() {
         parents.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -329,7 +339,7 @@ async fn test_double_staking_does_not_propagate() {
         Hash::hash("different".as_bytes()),
         Slot::new(1, 0),
         parents.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
     protocol_controller.receive_block(block_2).await;
 

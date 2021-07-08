@@ -17,7 +17,7 @@ use storage::StorageAccess;
 use tokio::sync::mpsc;
 
 pub use error::ApiError;
-pub use filters::{Addresses, ApiEvent, ApiManagementCommand, OperationIds};
+pub use filters::{Addresses, ApiEvent, ApiManagementCommand, OperationIds, PrivateKeys};
 
 pub struct ApiEventReceiver(mpsc::Receiver<ApiEvent>);
 

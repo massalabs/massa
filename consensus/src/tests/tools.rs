@@ -258,9 +258,9 @@ pub async fn create_and_test_block(
     best_parents: Vec<BlockId>,
     valid: bool,
     trace: bool,
+    creator: PrivateKey,
 ) -> BlockId {
-    let (block_hash, block, _) =
-        create_block(&cfg, slot, best_parents, cfg.staking_keys[0].clone());
+    let (block_hash, block, _) = create_block(&cfg, slot, best_parents, creator);
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -537,6 +537,18 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
     ledger_file_named
 }
 
+pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFile {
+    use std::io::prelude::*;
+    let file_named = NamedTempFile::new().expect("cannot create temp file");
+    serde_json::to_writer_pretty(file_named.as_file(), &staking_keys)
+        .expect("unable to write ledger file");
+    file_named
+        .as_file()
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("could not seek file");
+    file_named
+}
+
 /// generate a named temporary JSON initial rolls file
 pub fn generate_roll_counts_file(roll_counts_vec: &Vec<RollCounts>) -> NamedTempFile {
     use std::io::prelude::*;
@@ -590,7 +602,7 @@ pub fn default_consensus_config(
     nb_nodes: usize,
     initial_ledger_path: &Path,
     roll_counts_path: &Path,
-    staking_keys: Vec<PrivateKey>,
+    staking_keys_path: &Path,
 ) -> ConsensusConfig {
     let genesis_key = crypto::generate_random_private_key();
     let thread_count: u8 = 2;
@@ -622,7 +634,6 @@ pub fn default_consensus_config(
         thread_count: thread_count,
         t0: 32000.into(),
         genesis_key,
-        staking_keys,
         max_discarded_blocks: 10,
         future_block_processing_max_periods: 3,
         max_future_processing_blocks: 10,
@@ -647,6 +658,7 @@ pub fn default_consensus_config(
         pos_draw_cached_cycles: 0,
         roll_price: 0,
         stats_timespan: 60000.into(),
+        staking_keys_path: staking_keys_path.to_path_buf(),
     }
 }
 

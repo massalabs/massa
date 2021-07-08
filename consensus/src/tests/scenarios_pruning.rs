@@ -20,12 +20,13 @@ async fn test_pruning_of_discarded_blocks() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -68,6 +69,7 @@ async fn test_pruning_of_discarded_blocks() {
             parents.clone(),
             false,
             false,
+            staking_keys[0].clone(),
         )
         .await;
     }
@@ -95,12 +97,13 @@ async fn test_pruning_of_awaiting_slot_blocks() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -143,6 +146,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
             parents.clone(),
             false,
             false,
+            staking_keys[0].clone(),
         )
         .await;
     }
@@ -170,12 +174,14 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
+
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
@@ -213,7 +219,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
         &cfg,
         Slot::new(10000, 0),
         parents.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
 
     for i in 1..4 {
@@ -225,6 +231,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             vec![bad_parent.clone(), parents.clone()[0]],
             false,
             false,
+            staking_keys[0].clone(),
         )
         .await;
     }

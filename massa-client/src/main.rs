@@ -18,12 +18,13 @@ use crate::data::WrappedHash;
 use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use crate::wallet::Wallet;
-use api::{Addresses, OperationIds};
+use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
 use communication::network::PeerInfo;
 use consensus::ExportBlockStatus;
 use consensus::LedgerDataExport;
+use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
@@ -150,6 +151,11 @@ fn main() {
         "(hash, thread, slot) for recent stale blocks",
         true,
         cmd_last_stale,
+    ).new_command_noargs(
+        "staking_addresses",
+        "hashset of  staking addresses",
+        true,
+        cmd_staking_addresses,
     )
     .new_command_noargs(
         "last_invalid",
@@ -173,6 +179,22 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_staker_info,
+    )
+    .new_command(
+        "register_staking_keys",
+        "add a new private key for the node to use to stake",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_register_staking_keys,
+    )
+    .new_command(
+        "remove_staking_addresses",
+        "removes an address used to stake",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_remove_staking_addresses,
     )
     .new_command(
         "next_draws",
@@ -657,12 +679,78 @@ fn cmd_stop_node(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError>
     Ok(())
 }
 
+fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let keys_list = params[0]
+        .split(',')
+        .map(|str| PrivateKey::from_bs58_check(str.trim()))
+        .collect::<Result<Vec<PrivateKey>, _>>();
+
+    let keys = match keys_list {
+        Ok(keys) => keys,
+        Err(err) => {
+            println!("Error during keys parsing: {}", err);
+            return Ok(());
+        }
+    };
+
+    let client = reqwest::blocking::Client::new();
+    trace!("before sending request to client in cmd_register_staking_keys in massa-client main");
+    client
+        .post(&format!(
+            "http://{}/api/v1/register_staking_keys/{}",
+            data.node_ip,
+            serde_qs::to_string(&PrivateKeys { keys })?
+        ))
+        .send()?;
+    trace!("after sending request to client in cmd_register_staking_keys in massa-client main");
+    Ok(())
+}
+
+fn cmd_remove_staking_addresses(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let addrs_list = params[0]
+        .split(',')
+        .map(|str| Address::from_bs58_check(str.trim()))
+        .collect::<Result<HashSet<Address>, _>>();
+
+    let addrs = match addrs_list {
+        Ok(addrs) => addrs,
+        Err(err) => {
+            println!("Error during keys parsing: {}", err);
+            return Ok(());
+        }
+    };
+
+    let client = reqwest::blocking::Client::new();
+    trace!("before sending request to client in cmd_remove_staking_addresses in massa-client main");
+    client
+        .delete(&format!(
+            "http://{}/api/v1/remove_staking_addresses/{}",
+            data.node_ip,
+            serde_qs::to_string(&Addresses { addrs })?
+        ))
+        .send()?;
+    trace!("after sending request to client in cmd_remove_staking_addresses in massa-client main");
+    Ok(())
+}
+
 fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/state", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<data::State>()?;
         println!("Summary of the current node state");
         println!("{}", resp);
+    }
+    Ok(())
+}
+
+fn cmd_staking_addresses(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/staking_addresses", data.node_ip);
+    if let Some(resp) = request_data(data, &url)? {
+        let resp = resp.json::<HashSet<Address>>()?;
+        println!("Staking Addresses");
+        for ad in resp.into_iter() {
+            println!("{}\n", ad);
+        }
     }
     Ok(())
 }

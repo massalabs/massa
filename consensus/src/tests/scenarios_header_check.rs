@@ -18,12 +18,13 @@ async fn test_consensus_asks_for_block() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
@@ -61,7 +62,7 @@ async fn test_consensus_asks_for_block() {
         &cfg,
         Slot::new(1, 0),
         genesis_hashes.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
     //send header for block t0s1
     protocol_controller
@@ -87,12 +88,13 @@ async fn test_consensus_does_not_ask_for_block() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -131,7 +133,7 @@ async fn test_consensus_does_not_ask_for_block() {
         &cfg,
         Slot::new(1 + start_slot, 0),
         genesis_hashes.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
     let header = t0s1.header.clone();
 

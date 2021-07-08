@@ -61,12 +61,13 @@ async fn test_operations_check() {
 
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -74,7 +75,6 @@ async fn test_operations_check() {
     cfg.block_reward = 1;
     cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
-    cfg.staking_keys = vec![private_key_1];
     cfg.disable_block_creation = true;
     cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(10000.into());
 

@@ -16,6 +16,7 @@ use std::{
     vec,
 };
 use storage::{start_storage, StorageAccess, StorageConfig};
+use tempfile::NamedTempFile;
 use time::UTime;
 use tokio::{
     sync::mpsc::{self, Receiver},
@@ -35,10 +36,27 @@ pub fn get_another_test_block_id() -> BlockId {
     get_dummy_block_id("another test")
 }
 
+pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFile {
+    use std::io::prelude::*;
+    let file_named = NamedTempFile::new().expect("cannot create temp file");
+    serde_json::to_writer_pretty(file_named.as_file(), &staking_keys)
+        .expect("unable to write ledger file");
+    file_named
+        .as_file()
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("could not seek file");
+    file_named
+}
+
 pub fn get_consensus_config() -> ConsensusConfig {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     let tempdir2 = tempfile::tempdir().expect("cannot create temp dir");
     let tempdir3 = tempfile::tempdir().expect("cannot create temp dir");
+    let mut staking_keys = Vec::new();
+    for _ in 0..2 {
+        staking_keys.push(crypto::generate_random_private_key());
+    }
+    let staking_file = generate_staking_keys_file(&staking_keys);
     ConsensusConfig {
         genesis_timestamp: 0.into(),
         thread_count: 2,
@@ -47,7 +65,6 @@ pub fn get_consensus_config() -> ConsensusConfig {
             "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S",
         )
         .unwrap(),
-        staking_keys: Default::default(),
         max_discarded_blocks: 0,
         future_block_processing_max_periods: 0,
         max_future_processing_blocks: 0,
@@ -72,6 +89,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         pos_draw_cached_cycles: 0,
         roll_price: 0,
         stats_timespan: 60000.into(),
+        staking_keys_path: staking_file.path().to_path_buf(),
     }
 }
 

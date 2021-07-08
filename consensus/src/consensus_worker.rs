@@ -17,7 +17,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, convert::TryFrom};
+use std::{collections::VecDeque, convert::TryFrom, path::PathBuf};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -76,6 +76,9 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
+    RegisterStakingPrivateKeys(Vec<PrivateKey>),
+    RemoveStakingAddresses(HashSet<Address>),
+    GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,17 +177,7 @@ impl ConsensusWorker {
             .iter()
             .map(|(_block_id, period)| *period)
             .collect();
-        let staking_keys = cfg
-            .staking_keys
-            .iter()
-            .map(|private_key| {
-                let public_key = derive_public_key(&private_key);
-                Ok((
-                    Address::from_public_key(&public_key)?,
-                    (public_key, private_key.clone()),
-                ))
-            })
-            .collect::<Result<HashMap<Address, (PublicKey, PrivateKey)>, ConsensusError>>()?;
+        let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
 
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
@@ -723,6 +716,35 @@ impl ConsensusWorker {
                     ))
                 })
             }
+            ConsensusCommand::RegisterStakingPrivateKeys(keys) => {
+                for key in keys.into_iter() {
+                    let public = crypto::derive_public_key(&key);
+                    let address = Address::from_public_key(&public)?;
+                    self.staking_keys.insert(address, (public, key));
+                }
+                Ok(())
+            }
+            ConsensusCommand::RemoveStakingAddresses(addresses) => {
+                for address in addresses.into_iter() {
+                    self.staking_keys.remove(&address);
+                }
+
+                Ok(())
+            }
+            ConsensusCommand::GetStakingAddressses(response_tx) => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_staking_addresses",
+                    {}
+                );
+                response_tx
+                    .send(self.staking_keys.keys().cloned().collect())
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send get_staking addresses response: {:?}",
+                            err
+                        ))
+                    })
+            }
         }
     }
 
@@ -1041,4 +1063,22 @@ impl ConsensusWorker {
 
         Ok(())
     }
+}
+
+async fn load_initial_staking_keys(
+    path: &PathBuf,
+) -> Result<HashMap<Address, (PublicKey, PrivateKey)>, ConsensusError> {
+    if !std::path::Path::is_file(path) {
+        return Ok(HashMap::new());
+    }
+    serde_json::from_str::<Vec<PrivateKey>>(&tokio::fs::read_to_string(path).await?)?
+        .iter()
+        .map(|private_key| {
+            let public_key = derive_public_key(&private_key);
+            Ok((
+                Address::from_public_key(&public_key)?,
+                (public_key, private_key.clone()),
+            ))
+        })
+        .collect()
 }

@@ -58,12 +58,13 @@ async fn test_roll() {
     ledger.insert(address_2, LedgerData { balance: 10_000 });
     let ledger_file = generate_ledger_file(&ledger);
 
+    let staking_file = tools::generate_staking_keys_file(&vec![priv_2]);
     let roll_counts_file = tools::generate_default_roll_counts_file(vec![priv_1]);
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        vec![priv_2],
+        staking_file.path(),
     );
     cfg.periods_per_cycle = 2;
     cfg.pos_lookback_cycles = 2;
