@@ -158,6 +158,7 @@ use consensus::{
 };
 use logging::massa_trace;
 use models::Address;
+use models::AddressesRollState;
 use models::ModelsError;
 use models::Operation;
 use models::OperationId;
@@ -205,6 +206,10 @@ pub enum ApiEvent {
         operation_ids: HashSet<OperationId>,
         /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+    },
+    GetRollState {
+        addresses: HashSet<Address>,
+        response_tx: oneshot::Sender<AddressesRollState>,
     },
 }
 
@@ -425,6 +430,25 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
+    let api_cfg = api_config.clone();
+    let consensus_cfg = consensus_config.clone();
+    let next_draws = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("next_draws"))
+        .and(warp::path::end())
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
+        .and_then(move |Addresses { addrs }| {
+            get_next_draws(
+                evt_tx.clone(),
+                api_cfg.clone(),
+                consensus_cfg.clone(),
+                addrs,
+                clock_compensation,
+            )
+        });
+
+    let evt_tx = event_tx.clone();
     let operations_involving_address = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -441,6 +465,15 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |Addresses { addrs }| get_address_data(addrs, evt_tx.clone()));
+
+    let evt_tx = event_tx.clone();
+    let address_roll_state = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("addresses_roll_state"))
+        .and(warp::path::end())
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
+        .and_then(move |Addresses { addrs }| get_addresses_roll_state(addrs, evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
     let stop_node = warp::post()
@@ -473,6 +506,7 @@ pub fn get_filter(
         .or(last_invalid)
         .or(staker_info)
         .or(address_data)
+        .or(address_roll_state)
         .or(stop_node)
         .or(send_operations)
         .or(node_config)
@@ -480,6 +514,7 @@ pub fn get_filter(
         .or(get_consensus_cfg)
         .or(operations_involving_address)
         .or(operations)
+        .or(next_draws)
         .boxed()
 }
 
@@ -533,6 +568,34 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
         )
         .into_response()),
     }
+}
+
+/// Returns the ledger data for an address (candidate and final)
+///
+async fn get_addresses_roll_state(
+    addresses: HashSet<Address>,
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_addresses_roll_state", {
+        "addresses": addresses
+    });
+
+    let res = match retrieve_roll_state(addresses, &event_tx).await {
+        Ok(data) => data,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error during roll state retrieving : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    //Add consensus command call. issue !414
+    //return a model::AddressesRollState
+    Ok(warp::reply::json(&res).into_response())
 }
 
 /// This function sends the new transaction outside the Api and
@@ -716,6 +779,31 @@ async fn retrieve_operations(
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve operation : {0}", e))
+    })
+}
+
+async fn retrieve_roll_state(
+    addresses: HashSet<Address>,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<AddressesRollState, ApiError> {
+    massa_trace!("api.filters.retrieve_operations", {
+        "addresses": addresses
+    });
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetRollState {
+            addresses,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get retrieve_roll_state : {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve retrieve_roll_state : {0}", e))
     })
 }
 
@@ -1855,4 +1943,74 @@ async fn get_staker_info(
         "staker_next_draws": next_slots_by_creator,
     }))
     .into_response())
+}
+
+async fn get_next_draws(
+    event_tx: mpsc::Sender<ApiEvent>,
+    api_cfg: ApiConfig,
+    consensus_cfg: ConsensusConfig,
+    addresses: HashSet<Address>,
+    clock_compensation: i64,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let cur_time = match UTime::now(clock_compensation) {
+        Ok(time) => time,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting current time : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    let start_slot = match consensus::get_latest_block_slot_at_timestamp(
+        consensus_cfg.thread_count,
+        consensus_cfg.t0,
+        consensus_cfg.genesis_timestamp,
+        cur_time,
+    ) {
+        Ok(slot) => slot,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting slot at timestamp : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    }
+    .unwrap_or(Slot::new(0, 0));
+    let end_slot = Slot::new(
+        start_slot
+            .period
+            .saturating_add(api_cfg.selection_return_periods),
+        start_slot.thread,
+    );
+
+    let next_slots: Vec<(Address, Slot)> =
+        match retrieve_selection_draw(start_slot, end_slot, &event_tx).await {
+            Ok(slot) => slot,
+            Err(err) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error selecting draw : {:?}", err)
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        }
+        .into_iter()
+        .filter_map(|(slt, sel)| {
+            if addresses.contains(&sel) {
+                return Some((sel, slt));
+            }
+            None
+        })
+        .collect();
+
+    Ok(warp::reply::json(&next_slots).into_response())
 }

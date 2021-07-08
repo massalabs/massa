@@ -205,6 +205,17 @@ async fn run(cfg: config::Config) {
                             warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
                         }
                     },
+                Ok(ApiEvent::GetRollState {addresses, response_tx}) => {
+                    massa_trace!("massa-node.main.run.select.api_event.get_selection_draws", {});
+                    if response_tx.send(
+                        consensus_command_sender
+                            .get_roll_state(addresses)
+                            .await
+                            .expect("could not get roll state")
+                        ).is_err() {
+                            warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
+                        }
+                    },
                 Ok(ApiEvent::GetLedgerData {addresses, response_tx}) => {
                     massa_trace!("massa-node.main.run.select.api_event.get_ledger_data", {});
                     if response_tx.send(

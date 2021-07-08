@@ -855,6 +855,33 @@ impl ProofOfStake {
         }
         Ok(res)
     }
+
+    /// Gets cycle in which we are drawing at source_cycle
+    pub fn get_lookback_roll_count(
+        &self,
+        source_cycle: u64,
+        thread: u8,
+    ) -> Result<&RollCounts, ConsensusError> {
+        if source_cycle >= self.cfg.pos_lookback_cycles + 1 {
+            // nominal case: lookback after or at cycle 0
+            let target_cycle = source_cycle - self.cfg.pos_lookback_cycles - 1;
+            if let Some(state) = self.cycle_states[thread as usize].get(target_cycle as usize) {
+                Ok(&state.roll_count)
+            } else {
+                Err(ConsensusError::PosCycleUnavailable(
+                    "target cycle unavaible".to_string(),
+                ))
+            }
+        } else {
+            if let Some(init) = &self.initial_rolls {
+                Ok(&init[thread as usize])
+            } else {
+                Err(ConsensusError::PosCycleUnavailable(
+                    "negative cycle unavaible".to_string(),
+                ))
+            }
+        }
+    }
 }
 
 impl ThreadCycleState {
