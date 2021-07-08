@@ -1,4 +1,4 @@
-use crate::ledger::OperationLedgerInterface;
+use crate::ledger::{LedgerChange, OperationLedgerInterface};
 
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
@@ -236,14 +236,27 @@ impl ConsensusWorker {
                 .0,
         )?;
 
-        // todo exclude operations in ancestry
+        let mut query_addr = HashSet::new();
+        if fee_target.get_thread(self.cfg.thread_count) == cur_slot.thread {
+            query_addr.insert(fee_target);
+        }
 
         let asked_nb = self.cfg.operation_batch_size;
         let mut ledger = self
             .block_db
-            .get_ledger_at_parents(&self.block_db.get_best_parents(), &HashSet::new())?;
+            .get_ledger_at_parents(&self.block_db.get_best_parents(), &query_addr)?;
 
-        // todo apply block creation fee
+        if fee_target.get_thread(self.cfg.thread_count) == cur_slot.thread {
+            // reward
+            let reward_ledger_change = LedgerChange {
+                balance_delta: self.cfg.block_reward,
+                balance_increment: true,
+            };
+            let reward_change = (&fee_target, &reward_ledger_change);
+
+            ledger.apply_change(reward_change, self.cfg.thread_count)?;
+        }
+        // todo exclude operations in ancestry
         while ops.len() < self.cfg.max_operations_per_block as usize {
             let to_exclude = [excluded.clone(), ids_to_keep.clone()].concat();
             let (response_tx, response_rx) = oneshot::channel();
@@ -254,7 +267,7 @@ impl ConsensusWorker {
                     asked_nb,
                     left_size,
                     response_tx,
-                ) // todo add real left size
+                )
                 .await?;
 
             let candidates = response_rx.await?;
