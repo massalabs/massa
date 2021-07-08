@@ -40,7 +40,7 @@ pub async fn start_protocol_controller(
     let (command_tx, command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
-        ProtocolWorker::new(
+        let res = ProtocolWorker::new(
             cfg,
             serialization_context,
             network_command_sender,
@@ -50,7 +50,17 @@ pub async fn start_protocol_controller(
             manager_rx,
         )
         .run_loop()
-        .await
+        .await;
+        match res {
+            Err(err) => {
+                error!("protocol worker crashed: {:?}", err);
+                Err(err)
+            }
+            Ok(v) => {
+                info!("protocol worker finished cleanly");
+                Ok(v)
+            }
+        }
     });
     debug!("protocol controller ready");
     Ok((

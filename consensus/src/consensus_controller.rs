@@ -66,7 +66,7 @@ pub async fn start_consensus_controller(
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
     let cfg_copy = cfg.clone();
     let join_handle = tokio::spawn(async move {
-        ConsensusWorker::new(
+        let res = ConsensusWorker::new(
             cfg_copy,
             protocol_command_sender,
             protocol_event_receiver,
@@ -78,7 +78,17 @@ pub async fn start_consensus_controller(
             clock_compensation,
         )?
         .run_loop()
-        .await
+        .await;
+        match res {
+            Err(err) => {
+                error!("consensus worker crashed: {:?}", err);
+                Err(err)
+            }
+            Ok(v) => {
+                info!("consensus worker finished cleanly");
+                Ok(v)
+            }
+        }
     });
     Ok((
         ConsensusCommandSender(command_tx),

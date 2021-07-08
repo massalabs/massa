@@ -90,7 +90,7 @@ pub async fn start_network_controller(
     let (manager_tx, manager_rx) = mpsc::channel::<NetworkManagementCommand>(1);
     let cfg_copy = cfg.clone();
     let join_handle = tokio::spawn(async move {
-        NetworkWorker::new(
+        let res = NetworkWorker::new(
             cfg_copy,
             serialization_context,
             private_key,
@@ -103,7 +103,17 @@ pub async fn start_network_controller(
             manager_rx,
         )
         .run_loop()
-        .await
+        .await;
+        match res {
+            Err(err) => {
+                error!("network worker crashed: {:?}", err);
+                Err(err)
+            }
+            Ok(v) => {
+                info!("network worker finished cleanly");
+                Ok(v)
+            }
+        }
     });
 
     debug!("network controller started");
