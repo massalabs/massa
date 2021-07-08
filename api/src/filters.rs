@@ -146,6 +146,7 @@
 //! ```
 
 use crate::ApiError;
+use logging::massa_trace;
 
 use super::config::ApiConfig;
 use communication::{
@@ -158,7 +159,6 @@ use consensus::{
     ConsensusConfig, ConsensusError, DiscardReason,
 };
 use crypto::{hash::Hash, signature::PublicKey};
-use log::trace;
 use models::{Block, BlockHeader, Slot};
 use serde::Deserialize;
 use serde_json::json;
@@ -210,6 +210,7 @@ pub fn get_filter(
     opt_storage_command_sender: Option<StorageAccess>,
     clock_compensation: i64,
 ) -> BoxedFilter<(impl Reply,)> {
+    massa_trace!("api.filters.get_filter", {});
     let evt_tx = event_tx.clone();
     let storage = opt_storage_command_sender.clone();
     let block = warp::get()
@@ -392,8 +393,8 @@ pub fn get_filter(
 /// # Argument
 /// * event_tx : Sender used to send the event out
 async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
-    trace!("before sending ask stop to mpsc api event sender in stop_node in filters");
-    let res = match evt_tx.send(ApiEvent::AskStop).await {
+    massa_trace!("api.filters.stop_node", {});
+    match evt_tx.send(ApiEvent::AskStop).await {
         Ok(_) => Ok(warp::reply().into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
@@ -402,9 +403,7 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
-    };
-    trace!("after sending ask stop to mpsc api event sender in stop_node in filters");
-    res
+    }
 }
 
 /// Returns block with given hash as a reply
@@ -414,6 +413,7 @@ async fn get_block(
     hash: Hash,
     opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.get_block", { "hash": hash });
     match retrieve_block(hash, &event_tx).await {
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
@@ -461,69 +461,57 @@ async fn get_block(
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
 async fn get_our_ip(network_cfg: NetworkConfig) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_our_ip", {});
     Ok(warp::reply::json(&network_cfg.routable_ip))
 }
 
 async fn retrieve_graph_export(
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<BlockGraphExport, ApiError> {
+    massa_trace!("api.filters.retrieve_graph_export", {});
     let (response_tx, response_rx) = oneshot::channel();
-    trace!("before sending GetBlockGraphStatus to mpsc api event sender in retrieve_graph_export in filters");
     event_tx
         .send(ApiEvent::GetBlockGraphStatus(response_tx))
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get block graph : {0}", e))
+            ApiError::SendChannelError(format!("could not send api event get block graph : {0}", e))
         })?;
-    trace!("after sending GetBlockGraphStatus to mpsc api event sender in retrieve_graph_export in filters");
-
-    trace!("before receiving BlockGraphExport from oneshot response_rx in retrieve_graph_export in filters");
-    let res = response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!("Could not retrieve block graph: {0}", e))
-    });
-    trace!("after receiving BlockGraphExport from oneshot response_rx in retrieve_graph_export in filters");
-    res
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("could not retrieve block graph: {0}", e))
+    })
 }
 
 async fn retrieve_block(
     hash: Hash,
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Option<Block>, ApiError> {
+    massa_trace!("api.filters.retrieve_block", { "hash": hash });
     let (response_tx, response_rx) = oneshot::channel();
-    trace!("before sending GetActiveBlock to mpsc api event sender in retrieve_block in filters");
     event_tx
         .send(ApiEvent::GetActiveBlock { hash, response_tx })
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!("Could not send api event get block : {0}", e))
         })?;
-    trace!("after sending GetActiveBlock to mpsc api event sender in retrieve_block in filters");
-    trace!("before receiving Block from oneshot response_rx in retrieve_block in filters");
-    let res = response_rx
+    response_rx
         .await
-        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)));
-    trace!("after receiving Block from oneshot response_rx in retrieve_block in filters");
-    res
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
 }
 
 async fn retrieve_peers(
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
+    massa_trace!("api.filters.retrieve_peers", {});
     let (response_tx, response_rx) = oneshot::channel();
-    trace!("before sending GetPeers to mpsc api event sender in retrieve_peers in filters");
     event_tx
         .send(ApiEvent::GetPeers(response_tx))
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!("Could not send api event get peers : {0}", e))
         })?;
-    trace!("after sending GetPeers to mpsc api event sender in retrieve_peers in filters");
-    trace!("before receiving Peers from oneshot response_rx in retrieve_peers in filters");
-    let res = response_rx.await.map_err(|e| {
+    response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve block peers: {0}", e))
-    });
-    trace!("after receiving Peers from oneshot response_rx in retrieve_peers in filters");
-    res
+    })
 }
 
 async fn retrieve_selection_draw(
@@ -531,8 +519,8 @@ async fn retrieve_selection_draw(
     end: Slot,
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Vec<(Slot, PublicKey)>, ApiError> {
+    massa_trace!("api.filters.retrieve_selection_draw", {});
     let (response_tx, response_rx) = oneshot::channel();
-    trace!("before sending GetSelectionDraw to mpsc api event sender in retrieve_selection_draw in filters");
     event_tx
         .send(ApiEvent::GetSelectionDraw {
             start,
@@ -546,18 +534,14 @@ async fn retrieve_selection_draw(
                 e
             ))
         })?;
-    trace!("after sending GetSelectionDraw to mpsc api event sender in retrieve_selection_draw in filters");
-    trace!("before receiving selection draw from oneshot response_rx in retrieve_selection_draw in filters");
-    let res = response_rx
+    response_rx
         .await
         .map_err(|e| {
             ApiError::ReceiveChannelError(format!("Could not retrieve selection draws: {0}", e))
         })?
         .map_err(|e| {
             ApiError::ReceiveChannelError(format!("Could not retrieve selection draws: {0}", e))
-        });
-    trace!("after receiving selection draw from oneshot response_rx in retrieve_selection_draw in filters");
-    res
+        })
 }
 
 /// Returns best parents as a Vec<Hash, Slot> wrapped in a reply.
@@ -566,6 +550,7 @@ async fn retrieve_selection_draw(
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_current_parents", {});
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -605,6 +590,7 @@ async fn get_current_parents(
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_last_final", {});
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -636,6 +622,7 @@ async fn get_block_interval(
     end: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_block_interval", {});
     match get_block_interval_process(
         event_tx,
         consensus_cfg,
@@ -663,6 +650,7 @@ async fn get_block_from_graph(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
 ) -> Result<Vec<(Hash, Slot)>, String> {
+    massa_trace!("api.filters.get_block_from_graph", {});
     retrieve_graph_export(&event_tx)
         .await
         .map_err(|err| (format!("error retrieving graph : {:?}", err)))
@@ -701,6 +689,7 @@ async fn get_block_interval_process(
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<Vec<(Hash, Slot)>, String> {
+    massa_trace!("api.filters.get_block_interval_process", {});
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
         .is_some()
@@ -988,6 +977,7 @@ async fn get_graph_interval(
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_graph_interval", {});
     match get_graph_interval_process(
         event_tx,
         consensus_cfg,
@@ -1013,6 +1003,7 @@ async fn get_graph_interval_process(
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<Vec<(Hash, Slot, Status, Vec<Hash>)>, String> {
+    massa_trace!("api.filters.get_graph_interval_process", {});
     //filter block from graph_export
     let mut res = retrieve_graph_export(&event_tx)
         .await
@@ -1139,6 +1130,7 @@ async fn get_graph_interval_process(
 async fn get_cliques(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_cliques", {});
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -1207,6 +1199,7 @@ async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_network_info", {});
     let peers = match retrieve_peers(&event_tx).await {
         Ok(peers) => peers,
         Err(err) => {
@@ -1232,6 +1225,7 @@ async fn get_network_info(
 /// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
 ///
 async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_peers", {});
     let peers = match retrieve_peers(&event_tx).await {
         Ok(peers) => peers,
         Err(err) => {
@@ -1260,6 +1254,7 @@ async fn get_state(
     network_cfg: NetworkConfig,
     clock_compensation: i64,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_state", {});
     let cur_time = match UTime::now(clock_compensation) {
         Ok(time) => time,
         Err(err) => {
@@ -1372,6 +1367,7 @@ async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
     api_config: ApiConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_last_stale", {});
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -1406,6 +1402,7 @@ async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_last_invalid", {});
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -1446,6 +1443,7 @@ async fn get_staker_info(
     creator: PublicKey,
     clock_compensation: i64,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_staker_info", {});
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(

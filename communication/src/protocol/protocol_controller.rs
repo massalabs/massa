@@ -86,8 +86,7 @@ impl ProtocolCommandSender {
         hash: Hash,
         block: Block,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("block_integrated_order", { "block": hash });
-        trace!("before sending  ProtocolCommand::IntegratedBlock from ProtocolCommandSender.0 in protocol_controller integrated_block");
+        massa_trace!("protocol.command_sender.integrated_block", { "hash": hash, "block": block });
         let res = self
             .0
             .send(ProtocolCommand::IntegratedBlock { hash, block })
@@ -95,14 +94,14 @@ impl ProtocolCommandSender {
             .map_err(|_| {
                 CommunicationError::ChannelError("block_integrated command send error".into())
             });
-        trace!("after sending  ProtocolCommand::IntegratedBlock from ProtocolCommandSender.0 in protocol_controller integrated_block");
         res
     }
 
     /// Notify to protocol an attack attempt.
     pub async fn notify_block_attack(&mut self, hash: Hash) -> Result<(), CommunicationError> {
-        massa_trace!("notify_block_attack_order", { "object": hash });
-        trace!("before sending  ProtocolCommand::AttackBlockDetected from ProtocolCommandSender.0 in protocol_controller notify_block_attack");
+        massa_trace!("protocol.command_sender.notify_block_attack", {
+            "hash": hash
+        });
         let res = self
             .0
             .send(ProtocolCommand::AttackBlockDetected(hash))
@@ -110,7 +109,6 @@ impl ProtocolCommandSender {
             .map_err(|_| {
                 CommunicationError::ChannelError("notify_block_attack command send error".into())
             });
-        trace!("after sending  ProtocolCommand::AttackBlockDetected from ProtocolCommandSender.0 in protocol_controller notify_block_attack");
         res
     }
 
@@ -124,14 +122,12 @@ impl ProtocolCommandSender {
         hash: Hash,
         block: Block,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("found_block_order", { "block": block });
-        trace!("before sending  ProtocolCommand::FoundBlock from ProtocolCommandSender.0 in protocol_controller found_block");
+        massa_trace!("protocol.command_sender.found_block", { "hash": hash, "block": block });
         let res = self
             .0
             .send(ProtocolCommand::FoundBlock { hash, block })
             .await
             .map_err(|_| CommunicationError::ChannelError("found_block command send error".into()));
-        trace!("after sending  ProtocolCommand::FoundBlock from ProtocolCommandSender.0 in protocol_controller found_block");
         res
     }
 
@@ -140,8 +136,7 @@ impl ProtocolCommandSender {
         new: HashSet<Hash>,
         remove: HashSet<Hash>,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("send_wishlist_delta", {});
-        trace!("before sending  ProtocolCommand::WishlistDelta from ProtocolCommandSender.0 in protocol_controller send_wishlist_delta");
+        massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         let res = self
             .0
             .send(ProtocolCommand::WishlistDelta { new, remove })
@@ -149,13 +144,11 @@ impl ProtocolCommandSender {
             .map_err(|_| {
                 CommunicationError::ChannelError("send_wishlist_delta command send error".into())
             });
-        trace!("after sending  ProtocolCommand::WishlistDelta from ProtocolCommandSender.0 in protocol_controller send_wishlist_delta");
         res
     }
 
     pub async fn block_not_found(&mut self, hash: Hash) -> Result<(), CommunicationError> {
-        massa_trace!("block_not_found", {});
-        trace!("before sending  ProtocolCommand::BlockNotFound from ProtocolCommandSender.0 in protocol_controller block_not_found");
+        massa_trace!("protocol.command_sender.block_not_found", { "hash": hash });
         let res = self
             .0
             .send(ProtocolCommand::BlockNotFound(hash))
@@ -163,7 +156,6 @@ impl ProtocolCommandSender {
             .map_err(|_| {
                 CommunicationError::ChannelError("block_not_found command send error".into())
             });
-        trace!("after sending  ProtocolCommand::BlockNotFound from ProtocolCommandSender.0 in protocol_controller block_not_found");
         res
     }
 }
@@ -175,15 +167,10 @@ impl ProtocolEventReceiver {
     /// None is returned when all Sender halves have dropped,
     /// indicating that no further values can be sent on the channel
     pub async fn wait_event(&mut self) -> Result<ProtocolEvent, CommunicationError> {
-        debug!(
-            "before receiving event from ProtocolEventReceiver.0 in protocol_controller wait_event"
-        );
+        massa_trace!("protocol.event_receiver.wait_event", {});
         let res = self.0.recv().await.ok_or(CommunicationError::ChannelError(
             "DefaultProtocolController wait_event channel recv failed".into(),
         ));
-        debug!(
-            "after receiving event from ProtocolEventReceiver.0 in protocol_controller wait_event"
-        );
         res
     }
 

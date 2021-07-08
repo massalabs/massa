@@ -695,6 +695,8 @@ impl BlockGraph {
                 }),
             );
         }
+
+        massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
             Ok(BlockGraph {
                 cfg,
@@ -767,13 +769,15 @@ impl BlockGraph {
             &self.serialization_context,
         )?;
 
-        Ok((
+        let res = (
             hash,
             Block {
                 header,
                 operations: Vec::new(),
             },
-        ))
+        );
+        massa_trace!("consensus.block_graph.create_block", {"hash": res.0, "block": res.1});
+        Ok(res)
     }
 
     /// Gets lastest final blocks (hash, period) for each thread.
@@ -815,6 +819,7 @@ impl BlockGraph {
             })
             .collect();
 
+        massa_trace!("consensus.block_graph.slot_tick", {});
         // process those elements
         self.rec_process(to_process, selector, current_slot)?;
 
@@ -833,6 +838,7 @@ impl BlockGraph {
             return Ok(());
         }
 
+        massa_trace!("consensus.block_graph.incoming_header", {"hash": hash, "header": header});
         let mut to_ack: BTreeSet<(Slot, Hash)> = BTreeSet::new();
         match self.block_statuses.entry(hash) {
             // if absent => add as Incoming, call rec_ack on it
@@ -873,6 +879,7 @@ impl BlockGraph {
             return Ok(());
         }
 
+        massa_trace!("consensus.block_graph.incoming_block", {"hash": hash, "block": block});
         let mut to_ack: BTreeSet<(Slot, Hash)> = BTreeSet::new();
         match self.block_statuses.entry(hash) {
             // if absent => add as Incoming, call rec_ack on it
@@ -945,6 +952,7 @@ impl BlockGraph {
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
 
+        massa_trace!("consensus.block_graph.process", { "hash": hash });
         // control all the waiting states and try to get a valid block
         let (
             valid_block,
@@ -956,13 +964,22 @@ impl BlockGraph {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
             // discarded: do nothing
-            Some(BlockStatus::Discarded { .. }) => return Ok(BTreeSet::new()),
+            Some(BlockStatus::Discarded { .. }) => {
+                massa_trace!("consensus.block_graph.process.discarded", { "hash": hash });
+                return Ok(BTreeSet::new());
+            }
 
             // already active: do nothing
-            Some(BlockStatus::Active(_)) => return Ok(BTreeSet::new()),
+            Some(BlockStatus::Active(_)) => {
+                massa_trace!("consensus.block_graph.process.active", { "hash": hash });
+                return Ok(BTreeSet::new());
+            }
 
             // incoming header
             Some(BlockStatus::Incoming(HeaderOrBlock::Header(_))) => {
+                massa_trace!("consensus.block_graph.process.incomming_header", {
+                    "hash": hash
+                });
                 // remove header
                 let header = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
                     self.block_statuses.remove(&hash)
@@ -987,6 +1004,11 @@ impl BlockGraph {
                             },
                         );
                         self.promote_dep_tree(hash)?;
+
+                        massa_trace!(
+                            "consensus.block_graph.process.incomming_header.waiting_for_self",
+                            { "hash": hash }
+                        );
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForDependencies(mut dependencies) => {
@@ -1003,6 +1025,8 @@ impl BlockGraph {
                             },
                         );
                         self.promote_dep_tree(hash)?;
+
+                        massa_trace!("consensus.block_graph.process.incomming_header.waiting_for_dependencies", {"hash": hash});
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForSlot => {
@@ -1010,6 +1034,11 @@ impl BlockGraph {
                         self.block_statuses.insert(
                             hash,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
+                        );
+
+                        massa_trace!(
+                            "consensus.block_graph.process.incomming_header.waiting_for_slot",
+                            { "hash": hash }
                         );
                         return Ok(BTreeSet::new());
                     }
@@ -1027,6 +1056,8 @@ impl BlockGraph {
                                 ),
                             },
                         );
+
+                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"hash": hash, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
@@ -1034,6 +1065,9 @@ impl BlockGraph {
 
             // incoming block
             Some(BlockStatus::Incoming(HeaderOrBlock::Block(_))) => {
+                massa_trace!("consensus.block_graph.process.incomming_block", {
+                    "hash": hash
+                });
                 let block = if let Some(BlockStatus::Incoming(HeaderOrBlock::Block(block))) =
                     self.block_statuses.remove(&hash)
                 {
@@ -1049,6 +1083,10 @@ impl BlockGraph {
                         inherited_incompatibilities_count,
                     } => {
                         // block is valid: remove it from Incoming and return it
+
+                        massa_trace!("consensus.block_graph.process.incomming_block.valid", {
+                            "hash": hash
+                        });
                         (
                             block,
                             parents_hash_period,
@@ -1070,6 +1108,7 @@ impl BlockGraph {
                             },
                         );
                         self.promote_dep_tree(hash)?;
+                        massa_trace!("consensus.block_graph.process.incomming_block.waiting_for_dependencies", {"hash": hash});
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForSlot => {
@@ -1077,6 +1116,11 @@ impl BlockGraph {
                         self.block_statuses.insert(
                             hash,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Block(block)),
+                        );
+
+                        massa_trace!(
+                            "consensus.block_graph.process.incomming_block.waiting_for_slot",
+                            { "hash": hash }
                         );
                         return Ok(BTreeSet::new());
                     }
@@ -1094,14 +1138,23 @@ impl BlockGraph {
                                 ),
                             },
                         );
+
+                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"hash": hash, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
             }
 
             Some(BlockStatus::WaitingForSlot(header_or_block)) => {
+                massa_trace!("consensus.block_graph.process.waiting_for_slot", {
+                    "hash": hash
+                });
                 let slot = header_or_block.get_slot();
                 if Some(slot) > current_slot {
+                    massa_trace!(
+                        "consensus.block_graph.process.waiting_for_slot.in_the_future",
+                        { "hash": hash }
+                    );
                     // in the future: ignore
                     return Ok(BTreeSet::new());
                 }
@@ -1112,6 +1165,10 @@ impl BlockGraph {
                     self.block_statuses
                         .insert(hash, BlockStatus::Incoming(header_or_block));
                     reprocess.insert((slot, hash));
+                    massa_trace!(
+                        "consensus.block_graph.process.waiting_for_slot.reprocess",
+                        { "hash": hash }
+                    );
                     return Ok(reprocess);
                 } else {
                     return Err(ConsensusError::ContainerInconsistency);
@@ -1122,6 +1179,9 @@ impl BlockGraph {
                 unsatisfied_dependencies,
                 ..
             }) => {
+                massa_trace!("consensus.block_graph.process.waiting_for_dependencies", {
+                    "hash": hash
+                });
                 if !unsatisfied_dependencies.is_empty() {
                     // still has unsatisfied depdendencies: ignore
                     return Ok(BTreeSet::new());
@@ -1134,6 +1194,10 @@ impl BlockGraph {
                     reprocess.insert((header_or_block.get_slot(), hash));
                     self.block_statuses
                         .insert(hash, BlockStatus::Incoming(header_or_block));
+                    massa_trace!(
+                        "consensus.block_graph.process.waiting_for_dependencies.reprocess",
+                        { "hash": hash }
+                    );
                     return Ok(reprocess);
                 } else {
                     return Err(ConsensusError::ContainerInconsistency);
@@ -1153,6 +1217,7 @@ impl BlockGraph {
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
         if let Some(BlockStatus::Active(active)) = self.block_statuses.get(&hash) {
+            massa_trace!("consensus.block_graph.process.is_active", { "hash": hash });
             self.to_propagate.insert(hash.clone(), active.block.clone());
             for (itm_hash, itm_status) in self.block_statuses.iter_mut() {
                 if let BlockStatus::WaitingForDependencies {
@@ -1174,6 +1239,7 @@ impl BlockGraph {
 
     /// Note an attack attempt if the discard reason indicates one.
     fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &Hash) {
+        massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
         // If invalid, note the attack attempt.
         match reason {
             &DiscardReason::Invalid => {
@@ -1227,6 +1293,7 @@ impl BlockGraph {
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<CheckOutcome, ConsensusError> {
+        massa_trace!("consensus.block_graph.check_header", { "hash": hash });
         let mut parents: Vec<(Hash, u64)> = Vec::with_capacity(self.cfg.thread_count as usize);
         let mut deps = HashSet::new();
         let mut incomp = HashSet::new();
@@ -1453,6 +1520,7 @@ impl BlockGraph {
         ) {
             return Ok(CheckOutcome::Discard(DiscardReason::Stale));
         }
+        massa_trace!("consensus.block_graph.check_header.ok", { "hash": hash });
 
         Ok(CheckOutcome::Proceed {
             parents_hash_period: parents,
@@ -1469,6 +1537,7 @@ impl BlockGraph {
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<CheckOutcome, ConsensusError> {
+        massa_trace!("consensus.block_graph.check_block", { "hash": hash });
         let deps;
         let incomp;
         let parents;
@@ -1493,6 +1562,8 @@ impl BlockGraph {
         //TODO check block
 
         // TODO operation incompatibility test (see issue #102)
+
+        massa_trace!("consensus.block_graph.check_block.ok", { "hash": hash });
 
         Ok(CheckOutcome::Proceed {
             parents_hash_period: parents,
@@ -1560,6 +1631,7 @@ impl BlockGraph {
         inherited_incomp_count: usize,
     ) -> Result<(), ConsensusError> {
         // add block to status structure
+        massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
         self.block_statuses.insert(
             hash,
             BlockStatus::Active(ActiveBlock {
@@ -1599,7 +1671,19 @@ impl BlockGraph {
                 .for_each(|c| drop(c.insert(hash)));
         } else {
             // fully recompute max cliques
+            massa_trace!(
+                "consensus.block_graph.add_block_to_graph.clique_full_computing",
+                { "hash": hash }
+            );
+            let before = self.max_cliques.len();
             self.max_cliques = self.compute_max_cliques();
+            let after = self.max_cliques.len();
+            if before != after {
+                warn!(
+                    "clique number went from {:?} to {:?} after adding {:?}",
+                    before, after, hash
+                );
+            }
         }
 
         // compute clique fitnesses and find blockclique
@@ -1723,6 +1807,9 @@ impl BlockGraph {
                     }
                 }
 
+                massa_trace!("consensus.block_graph.add_block_to_graph.stale", {
+                    "hash": stale_block_hash
+                });
                 // mark as stale
                 self.block_statuses.insert(
                     stale_block_hash,
@@ -1823,6 +1910,9 @@ impl BlockGraph {
                 ..
             })) = self.block_statuses.get_mut(&final_block_hash)
             {
+                massa_trace!("consensus.block_graph.add_block_to_graph.final", {
+                    "hash": final_block_hash
+                });
                 *is_final = true;
                 if final_block.header.content.slot.period
                     > self.latest_final_blocks_periods
@@ -1961,6 +2051,7 @@ impl BlockGraph {
                 }
             }
 
+            massa_trace!("consensus.block_graph.prune_active", {"hash": discard_active_h, "reason": DiscardReason::Final});
             // mark as final
             self.block_statuses.insert(
                 *discard_active_h,
@@ -2138,6 +2229,7 @@ impl BlockGraph {
                     HeaderOrBlock::Header(h) => h,
                     HeaderOrBlock::Block(b) => b.header,
                 };
+                massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": hash, "reason": reason_opt});
                 // transition to Discarded only if there is a reason
                 if let Some(reason) = reason_opt {
                     self.block_statuses.insert(

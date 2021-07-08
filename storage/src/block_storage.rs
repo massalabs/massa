@@ -72,6 +72,7 @@ impl BlockStorage {
 
     pub fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
         //acquire W lock on block_count
+        massa_trace!("block_storage.add_block", {"hash": hash, "block": block});
         let mut block_count_w = self
             .block_count
             .write()
@@ -92,6 +93,7 @@ impl BlockStorage {
 
         //add the new blocks
         for (hash, block) in blocks.into_iter() {
+            massa_trace!("block_storage.add_block_batch", {"hash": hash, "block": block});
             self.add_block_internal(hash, block, &mut block_count_w)?;
         }
 
@@ -164,6 +166,7 @@ impl BlockStorage {
     }
 
     pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
+        massa_trace!("block_storage.get_block", { "hash": hash });
         let hash_key = hash.to_bytes();
 
         let _block_count_r = self

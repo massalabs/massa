@@ -10,7 +10,7 @@ pub use config::ApiConfig;
 use config::CHANNEL_SIZE;
 use consensus::ConsensusConfig;
 use filters::get_filter;
-use log::trace;
+use logging::massa_trace;
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::sync::mpsc;
@@ -37,7 +37,7 @@ pub async fn start_api_controller(
 ) -> Result<(ApiEventReceiver, ApiManager), ApiError> {
     let (event_tx, event_rx) = mpsc::channel::<ApiEvent>(CHANNEL_SIZE);
     let (manager_tx, mut manager_rx) = mpsc::channel::<ApiManagementCommand>(1);
-
+    massa_trace!("api.lib.start_api_controller", {});
     let bind = cfg.bind;
     let (_addr, server) = warp::serve(get_filter(
         cfg,
@@ -50,14 +50,15 @@ pub async fn start_api_controller(
     ))
     .try_bind_with_graceful_shutdown(bind, async move {
         loop {
-            trace!("waiting on select in start_api_controller in api lib");
+            massa_trace!("api.lib.start_api_controller.select", {});
             tokio::select! {
                 cmd = manager_rx.recv() => {
-                    trace!("entered manager_rx.recv() branch of the select in start_api_controller in api lib");
+                    massa_trace!("api.lib.start_api_controller.manager", {});
                     match cmd {
-                    None => break,
-                    Some(_) => {}
-                }}
+                        None => break,
+                        Some(_) => {}
+                    }
+                }
             }
         }
     })?;
@@ -76,25 +77,19 @@ pub async fn start_api_controller(
 impl ApiEventReceiver {
     /// Listen for ApiEvents
     pub async fn wait_event(&mut self) -> Result<ApiEvent, ApiError> {
-        trace!("before receiving next event from ApiEventReceiver in wait_event in api lib");
-        let res = self
-            .0
+        self.0
             .recv()
             .await
             .ok_or(ApiError::SendChannelError(format!(
                 "could not receive api event"
-            )));
-        trace!("after receiving next event from ApiEventReceiver in wait_event in api lib");
-        res
+            )))
     }
 
     /// drains remaining events and returns them in a VecDeque
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<ApiEvent> {
         let mut remaining_events: VecDeque<ApiEvent> = VecDeque::new();
-        trace!("before receiving next event from ApiEventReceiver in drain in api lib");
         while let Some(evt) = self.0.recv().await {
-            trace!("after receiving next event from ApiEventReceiver in drain in api lib");
             remaining_events.push_back(evt);
         }
         remaining_events
@@ -107,6 +102,7 @@ impl ApiManager {
         self,
         api_event_receiver: ApiEventReceiver,
     ) -> Result<VecDeque<ApiEvent>, ApiError> {
+        massa_trace!("api.lib.stop", {});
         drop(self.manager_tx);
         let remaining_events = api_event_receiver.drain().await;
         let _ = self.join_handle.await?;

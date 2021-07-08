@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate logging;
+
 mod block_storage;
 mod config;
 mod error;
