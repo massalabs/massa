@@ -190,10 +190,11 @@ impl ConsensusWorker {
 
         // process queued blocks
         let popped_blocks = self.future_incoming_blocks.pop_until(self.current_slot)?;
-        for (hash, _header, block) in popped_blocks.into_iter() {
+        for (hash, header, block) in popped_blocks.into_iter() {
             if let Some(b) = block {
                 self.rec_acknowledge_block(hash, b).await?;
             } else {
+                self.waiting_header.0.insert(hash, header);
                 // todo ask for block content and process it
             }
         }
