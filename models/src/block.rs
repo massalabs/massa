@@ -259,7 +259,7 @@ mod test {
         let ctx = SerializationContext {
             max_block_size: 1024 * 1024,
             max_block_operations: 1024,
-            parent_count: 2,
+            parent_count: 3,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
         };
@@ -274,9 +274,13 @@ mod test {
             BlockHeaderContent {
                 creator: public_key,
                 slot: Slot::new(1, 2),
-                parents: vec![Hash::hash("abc".as_bytes()), Hash::hash("def".as_bytes())],
-                out_ledger_hash: Hash::hash("ghi".as_bytes()),
-                operation_merkle_root: Hash::hash("jkl".as_bytes()),
+                parents: vec![
+                    Hash::hash("abc".as_bytes()),
+                    Hash::hash("def".as_bytes()),
+                    Hash::hash("ghi".as_bytes()),
+                ],
+                out_ledger_hash: Hash::hash("jkl".as_bytes()),
+                operation_merkle_root: Hash::hash("mno".as_bytes()),
             },
             &ctx,
         )

@@ -89,10 +89,18 @@ impl DeserializeCompact for Slot {
     // deserializes from a compact representation
     fn from_bytes_compact(
         buffer: &[u8],
-        _context: &SerializationContext,
+        context: &SerializationContext,
     ) -> Result<(Self, usize), ModelsError> {
+        let mut cursor = 0usize;
         let (period, delta) = u64::from_varint_bytes(buffer)?;
-        let thread = u8_from_slice(&buffer[delta..])?;
-        Ok((Slot { period, thread }, delta + 1))
+        cursor += delta;
+        let thread = u8_from_slice(&buffer[cursor..])?;
+        cursor += 1;
+        if thread >= context.parent_count {
+            return Err(ModelsError::DeserializeError(
+                "invalid thread number".into(),
+            ));
+        }
+        Ok((Slot { period, thread }, cursor))
     }
 }
