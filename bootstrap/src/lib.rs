@@ -33,7 +33,7 @@ async fn get_state_internal(
 ) -> Result<(BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
 
-    // create listener
+    // connect and handshake
     let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
     let (socket_reader, socket_writer) = connector.connect(bootstrap_addr).await?;
     let mut reader = ReadBinder::new(socket_reader);

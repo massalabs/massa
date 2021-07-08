@@ -657,9 +657,13 @@ impl LedgerExport {
 impl SerializeCompact for LedgerExport {
     /// ## Example
     /// ```rust
-    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext};
-    /// # use consensus::LedgerExport;
-    /// # let ledger = LedgerExport::new(2);
+    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address};
+    /// # use consensus::{LedgerExport, LedgerData};
+    /// # let mut ledger = LedgerExport::new(2);
+    /// # ledger.ledger_per_thread = vec![
+    /// #   vec![(Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData{balance: 1022})],
+    /// #   vec![(Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData{balance: 1020})],
+    /// # ];
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
     /// #     parent_count: 2,
@@ -723,7 +727,7 @@ impl DeserializeCompact for LedgerExport {
         let (thread_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
-        let ledger_per_thread = vec![Vec::new(); thread_count as usize];
+        let mut ledger_per_thread = Vec::with_capacity(thread_count as usize);
         for _ in 0..(thread_count as usize) {
             let (vec_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
@@ -737,6 +741,8 @@ impl DeserializeCompact for LedgerExport {
                 cursor += delta;
                 set.push((address, data));
             }
+
+            ledger_per_thread.push(set);
         }
 
         let mut latest_final_periods = Vec::new();
