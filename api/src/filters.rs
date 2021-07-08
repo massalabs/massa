@@ -612,59 +612,60 @@ async fn get_block_interval(
             res.push((hash, (header.period_number, header.thread_number)));
         }
     }
-    let start_slot = match get_latest_block_slot_at_timestamp(
-        consensus_cfg.thread_count,
-        consensus_cfg.t0,
-        consensus_cfg.genesis_timestamp,
-        start,
-    ) {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving slot from time: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(Some(slot)) => slot,
-        Ok(None) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving slot from time : no slot found")
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-    let end_slot = match get_latest_block_slot_at_timestamp(
-        consensus_cfg.thread_count,
-        consensus_cfg.t0,
-        consensus_cfg.genesis_timestamp,
-        end,
-    ) {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving slot from time: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(Some(slot)) => slot,
-        Ok(None) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving slot from time : no slot found")
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
     if let Some(storage) = opt_storage_command_sender {
+        let start_slot = match get_latest_block_slot_at_timestamp(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            start,
+        ) {
+            Err(err) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error retrieving slot from time: {:?}", err)
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+            Ok(Some(slot)) => slot,
+            Ok(None) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error retrieving slot from time : no slot found")
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        };
+        let end_slot = match get_latest_block_slot_at_timestamp(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            end,
+        ) {
+            Err(err) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error retrieving slot from time: {:?}", err)
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+            Ok(Some(slot)) => slot,
+            Ok(None) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error retrieving slot from time : no slot found")
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        };
+
         let blocks = match storage.get_slot_range(start_slot, end_slot).await {
             Err(err) => {
                 return Ok(warp::reply::with_status(
