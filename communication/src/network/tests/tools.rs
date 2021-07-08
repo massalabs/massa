@@ -5,9 +5,7 @@ use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
 use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
-use models::{
-    Address, Operation, OperationContent, OperationType, SerializationContext, SerializeCompact,
-};
+use models::{Address, Operation, OperationContent, OperationType, SerializeCompact};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -41,48 +39,36 @@ fn get_temp_private_key_file() -> NamedTempFile {
 pub fn create_network_config(
     network_controller_port: u16,
     peers_file_path: &Path,
-) -> (NetworkConfig, SerializationContext) {
-    (
-        NetworkConfig {
-            bind: format!("0.0.0.0:{}", network_controller_port)
-                .parse()
-                .unwrap(),
-            routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
-            protocol_port: network_controller_port,
-            connect_timeout: UTime::from(3000),
-            peers_file: peers_file_path.to_path_buf(),
-            target_out_connections: 10,
-            wakeup_interval: UTime::from(3000),
-            max_in_connections: 100,
-            max_in_connections_per_ip: 100,
-            max_out_connnection_attempts: 100,
-            max_idle_peers: 100,
-            max_banned_peers: 100,
-            max_advertise_length: 10,
-            peers_file_dump_interval: UTime::from(30000),
-            max_message_size: 3 * 1024 * 1024,
-            message_timeout: UTime::from(5000u64),
-            ask_peer_list_interval: UTime::from(50000u64),
-            private_key_file: get_temp_private_key_file().path().to_path_buf(),
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_send_wait: UTime::from(100),
-        },
-        SerializationContext {
-            max_block_size: 1024 * 1024,
-            max_block_operations: 1024,
-            parent_count: 2,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-        },
-    )
+) -> NetworkConfig {
+    // Init the serialization context with a default,
+    // can be overwritten with a more specific one in the test.
+    models::init_serialization_context(Default::default());
+
+    NetworkConfig {
+        bind: format!("0.0.0.0:{}", network_controller_port)
+            .parse()
+            .unwrap(),
+        routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
+        protocol_port: network_controller_port,
+        connect_timeout: UTime::from(3000),
+        peers_file: peers_file_path.to_path_buf(),
+        target_out_connections: 10,
+        wakeup_interval: UTime::from(3000),
+        max_in_connections: 100,
+        max_in_connections_per_ip: 100,
+        max_out_connnection_attempts: 100,
+        max_idle_peers: 100,
+        max_banned_peers: 100,
+        max_advertise_length: 10,
+        peers_file_dump_interval: UTime::from(30000),
+        max_message_size: 3 * 1024 * 1024,
+        message_timeout: UTime::from(5000u64),
+        ask_peer_list_interval: UTime::from(50000u64),
+        private_key_file: get_temp_private_key_file().path().to_path_buf(),
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_send_wait: UTime::from(100),
+    }
 }
 
 /// Establish a full alive connection to the controller
@@ -101,7 +87,6 @@ pub async fn full_connection_to_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
-    serialization_context: SerializationContext,
 ) -> (NodeId, ReadBinder, WriteBinder) {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
@@ -117,7 +102,6 @@ pub async fn full_connection_to_controller(
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
     let (_, read_binder, write_binder) = HandshakeWorker::new(
-        serialization_context,
         mock_read_half,
         mock_write_half,
         mock_node_id,
@@ -157,7 +141,6 @@ pub async fn rejected_connection_to_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
-    serialization_context: SerializationContext,
 ) {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
@@ -173,7 +156,6 @@ pub async fn rejected_connection_to_controller(
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
     let _handshake_res = HandshakeWorker::new(
-        serialization_context,
         mock_read_half,
         mock_write_half,
         mock_node_id,
@@ -229,7 +211,6 @@ pub async fn full_connection_from_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
-    serialization_context: SerializationContext,
 ) -> (NodeId, ReadBinder, WriteBinder) {
     // wait for the incoming connection attempt, check address and accept
     let (mock_read_half, mock_write_half, ctl_addr, resp_tx) = timeout(
@@ -247,7 +228,6 @@ pub async fn full_connection_from_controller(
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
     let (_controller_node_id, read_binder, write_binder) = HandshakeWorker::new(
-        serialization_context,
         mock_read_half,
         mock_write_half,
         mock_node_id,
@@ -338,11 +318,8 @@ pub async fn incoming_message_drain_stop(
     join_handle.await.expect("could not join message drain")
 }
 
-pub fn get_transaction(
-    expire_period: u64,
-    fee: u64,
-    context: &SerializationContext,
-) -> (Operation, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
+    let context = &models::get_serialization_context();
     let sender_priv = crypto::generate_random_private_key();
     let sender_pub = crypto::derive_public_key(&sender_priv);
 

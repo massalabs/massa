@@ -12,23 +12,21 @@ use std::collections::{HashMap, VecDeque};
 #[serial]
 async fn test_thread_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -48,7 +46,6 @@ async fn test_thread_incompatibility() {
     let hash_1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         parents.clone(),
         true,
@@ -59,7 +56,6 @@ async fn test_thread_incompatibility() {
     let hash_2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         parents.clone(),
         true,
@@ -70,7 +66,6 @@ async fn test_thread_incompatibility() {
     let hash_3 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(2, 0),
         parents.clone(),
         true,
@@ -110,7 +105,6 @@ async fn test_thread_incompatibility() {
         let hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(current_period, 0),
             parents.clone(),
             true,
@@ -137,7 +131,6 @@ async fn test_thread_incompatibility() {
     for _ in 0..30 as usize {
         let (hash, b, _) = tools::create_block(
             &cfg,
-            &serialization_context,
             Slot::new(current_period, 0),
             parents.clone(),
             cfg.nodes[0].clone(),
@@ -162,7 +155,6 @@ async fn test_thread_incompatibility() {
     let _ = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(40, 0),
         parents.clone(),
         false,
@@ -183,23 +175,21 @@ async fn test_thread_incompatibility() {
 #[serial]
 async fn test_grandpa_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -219,7 +209,6 @@ async fn test_grandpa_incompatibility() {
     let hash_1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         vec![genesis[0], genesis[1]],
         true,
@@ -230,7 +219,6 @@ async fn test_grandpa_incompatibility() {
     let hash_2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         vec![genesis[0], genesis[1]],
         true,
@@ -241,7 +229,6 @@ async fn test_grandpa_incompatibility() {
     let hash_3 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(2, 0),
         vec![hash_1, genesis[1]],
         true,
@@ -252,7 +239,6 @@ async fn test_grandpa_incompatibility() {
     let hash_4 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(2, 1),
         vec![genesis[0], hash_2],
         true,
@@ -295,7 +281,6 @@ async fn test_grandpa_incompatibility() {
         let hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(3 + extend_i, 0),
             status.best_parents,
             true,

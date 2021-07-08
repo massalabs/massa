@@ -11,7 +11,6 @@ use config::CHANNEL_SIZE;
 use consensus::ConsensusConfig;
 use filters::get_filter;
 use logging::massa_trace;
-use models::SerializationContext;
 use pool::PoolConfig;
 use std::collections::VecDeque;
 use storage::StorageAccess;
@@ -37,7 +36,6 @@ pub async fn start_api_controller(
     pool_config: PoolConfig,
     opt_storage_command_sender: Option<StorageAccess>,
     clock_compensation: i64,
-    context: SerializationContext,
 ) -> Result<(ApiEventReceiver, ApiManager), ApiError> {
     let (event_tx, event_rx) = mpsc::channel::<ApiEvent>(CHANNEL_SIZE);
     let (manager_tx, mut manager_rx) = mpsc::channel::<ApiManagementCommand>(1);
@@ -52,7 +50,6 @@ pub async fn start_api_controller(
         event_tx,
         opt_storage_command_sender,
         clock_compensation,
-        context,
     ))
     .try_bind_with_graceful_shutdown(bind, async move {
         loop {

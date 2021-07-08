@@ -6,8 +6,8 @@ use std::collections::HashMap;
 #[tokio::test]
 #[serial]
 async fn test_add() {
-    let (cfg, serialization_context) = get_test_config();
-    let (command_sender, manager) = start_storage(cfg, serialization_context).unwrap();
+    let (cfg, _serialization_context) = get_test_config();
+    let (command_sender, manager) = start_storage(cfg).unwrap();
     assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_block_id();
     let block = get_test_block();
@@ -21,7 +21,7 @@ async fn test_add() {
 #[serial]
 async fn test_find_operation() {
     let (cfg, serialization_context) = get_test_config();
-    let (command_sender, manager) = start_storage(cfg, serialization_context.clone()).unwrap();
+    let (command_sender, manager) = start_storage(cfg).unwrap();
     assert_eq!(0, command_sender.len().await.unwrap());
     let (block, id, op) = get_block_with_op(&serialization_context);
     command_sender.add_block(id, block).await.unwrap();
@@ -45,8 +45,8 @@ async fn test_find_operation() {
 #[tokio::test]
 #[serial]
 async fn test_add_multiple() {
-    let (cfg, serialization_context) = get_test_config();
-    let (command_sender, manager) = start_storage(cfg, serialization_context).unwrap();
+    let (cfg, _serialization_context) = get_test_config();
+    let (command_sender, manager) = start_storage(cfg).unwrap();
     let hash = get_test_block_id();
     let block = get_test_block();
     let mut map = HashMap::new();
@@ -64,8 +64,8 @@ async fn test_get() {
     //     .timestamp(stderrlog::Timestamp::Millisecond)
     //     .init()
     //     .unwrap();
-    let (cfg, serialization_context) = get_test_config();
-    let (command_sender, manager) = start_storage(cfg, serialization_context.clone()).unwrap();
+    let (cfg, _serialization_context) = get_test_config();
+    let (command_sender, manager) = start_storage(cfg).unwrap();
     assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_block_id();
     let block = get_test_block();
@@ -73,16 +73,8 @@ async fn test_get() {
     let retrived = command_sender.get_block(hash).await.unwrap().unwrap();
 
     assert_eq!(
-        retrived
-            .header
-            .content
-            .compute_hash(&serialization_context)
-            .unwrap(),
-        block
-            .header
-            .content
-            .compute_hash(&serialization_context)
-            .unwrap()
+        retrived.header.content.compute_hash().unwrap(),
+        block.header.content.compute_hash().unwrap()
     );
 
     assert!(command_sender
@@ -97,8 +89,8 @@ async fn test_get() {
 #[tokio::test]
 #[serial]
 async fn test_contains() {
-    let (cfg, serialization_context) = get_test_config();
-    let (command_sender, manager) = start_storage(cfg, serialization_context).unwrap();
+    let (cfg, _serialization_context) = get_test_config();
+    let (command_sender, manager) = start_storage(cfg).unwrap();
     //test in an empty db that the contains return false.
     assert!(!command_sender
         .contains(get_another_test_block_id())

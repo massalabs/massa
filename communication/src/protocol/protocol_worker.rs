@@ -4,7 +4,7 @@ use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use itertools::Itertools;
-use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId, SerializationContext};
+use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -151,8 +151,6 @@ pub struct ProtocolWorker {
     cfg: ProtocolConfig,
     /// Operation validity periods
     operation_validity_periods: u64,
-    // Serialization context
-    serialization_context: SerializationContext,
     /// Associated nework command sender.
     network_command_sender: NetworkCommandSender,
     /// Associated nework event receiver.
@@ -185,7 +183,6 @@ impl ProtocolWorker {
     pub fn new(
         cfg: ProtocolConfig,
         operation_validity_periods: u64,
-        serialization_context: SerializationContext,
         network_command_sender: NetworkCommandSender,
         network_event_receiver: NetworkEventReceiver,
         controller_event_tx: mpsc::Sender<ProtocolEvent>,
@@ -194,7 +191,6 @@ impl ProtocolWorker {
         controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     ) -> ProtocolWorker {
         ProtocolWorker {
-            serialization_context,
             cfg,
             operation_validity_periods,
             network_command_sender,
@@ -682,7 +678,7 @@ impl ProtocolWorker {
         source_node_id: &NodeId,
     ) -> Result<Option<BlockId>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
-        match header.verify_integrity(&self.serialization_context) {
+        match header.verify_integrity() {
             Ok(block_id) => {
                 if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
                     node_info.insert_known_block(
@@ -712,7 +708,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
-        let block_id = match block.header.verify_integrity(&self.serialization_context) {
+        let block_id = match block.header.verify_integrity() {
             Ok(block_id) => block_id,
             Err(err) => {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_header", { "node": source_node_id, "block": block, "err": format!("{:?}", err)});
@@ -724,6 +720,7 @@ impl ProtocolWorker {
         let mut op_ids: Vec<OperationId> = Vec::with_capacity(block.operations.len());
         let mut seen_ops: HashMap<OperationId, usize> =
             HashMap::with_capacity(block.operations.len());
+        let serialization_context = models::with_serialization_context(|context| context.clone());
         for (idx, op) in block.operations.iter().enumerate() {
             // check validity period
             if !(op
@@ -738,7 +735,7 @@ impl ProtocolWorker {
             // check address and thread
             match Address::from_public_key(&op.content.sender_public_key) {
                 Ok(addr) => {
-                    if addr.get_thread(self.serialization_context.parent_count)
+                    if addr.get_thread(serialization_context.parent_count)
                         != block.header.content.slot.thread
                     {
                         massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
@@ -754,7 +751,7 @@ impl ProtocolWorker {
             }
 
             // check integrity (signature) and reuse
-            match op.verify_integrity(&self.serialization_context) {
+            match op.verify_integrity(&serialization_context) {
                 Ok(op_id) => {
                     if seen_ops.insert(op_id, idx).is_some() {
                         // reused
@@ -807,8 +804,9 @@ impl ProtocolWorker {
     ) -> Option<HashMap<OperationId, Operation>> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "opearations": operations });
         let mut result = HashMap::new();
+        let serialization_context = models::with_serialization_context(|context| context.clone());
         for op in operations.into_iter() {
-            match op.verify_integrity(&self.serialization_context) {
+            match op.verify_integrity(&serialization_context) {
                 Ok(operation_id) => {
                     result.insert(operation_id, op);
                 }

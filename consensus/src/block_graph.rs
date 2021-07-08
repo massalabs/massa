@@ -726,7 +726,6 @@ impl DeserializeCompact for BootsrapableGraph {
 
 pub struct BlockGraph {
     cfg: ConsensusConfig,
-    serialization_context: SerializationContext,
     genesis_hashes: Vec<BlockId>,
     sequence_counter: u64,
     block_statuses: HashMap<BlockId, BlockStatus>,
@@ -776,15 +775,12 @@ enum BlockOperationsCheckOutcome {
     WaitForDependencies(HashSet<BlockId>),
 }
 
-async fn read_genesis_ledger(
-    cfg: &ConsensusConfig,
-    serialization_context: &SerializationContext,
-) -> Result<Ledger, ConsensusError> {
+async fn read_genesis_ledger(cfg: &ConsensusConfig) -> Result<Ledger, ConsensusError> {
     // load ledger from file
     let ledger = serde_json::from_str::<HashMap<Address, LedgerData>>(
         &tokio::fs::read_to_string(&cfg.initial_ledger_path).await?,
     )?;
-    Ledger::new(cfg.clone(), serialization_context.clone(), Some(ledger))
+    Ledger::new(cfg.clone(), Some(ledger))
 }
 
 /// Creates genesis block in given thread.
@@ -795,7 +791,6 @@ async fn read_genesis_ledger(
 /// * thread_number: thread in wich we want a genesis block
 fn create_genesis_block(
     cfg: &ConsensusConfig,
-    serialization_context: &SerializationContext,
     thread_number: u8,
 ) -> Result<(BlockId, Block), ConsensusError> {
     let private_key = cfg.genesis_key;
@@ -808,7 +803,6 @@ fn create_genesis_block(
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
         },
-        &serialization_context,
     )?;
 
     Ok((
@@ -828,17 +822,15 @@ impl BlockGraph {
     /// * serialization_context: SerializationContext instance
     pub async fn new(
         cfg: ConsensusConfig,
-        serialization_context: SerializationContext,
         init: Option<BootsrapableGraph>,
     ) -> Result<Self, ConsensusError> {
         // load genesis blocks
         let mut block_statuses = HashMap::new();
         let mut block_hashes = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
-            let (hash, block) = create_genesis_block(&cfg, &serialization_context, thread)
-                .map_err(|err| {
-                    ConsensusError::GenesisCreationError(format!("genesis error {:?}", err))
-                })?;
+            let (hash, block) = create_genesis_block(&cfg, thread).map_err(|err| {
+                ConsensusError::GenesisCreationError(format!("genesis error {:?}", err))
+            })?;
             block_hashes.push(hash);
             block_statuses.insert(
                 hash,
@@ -857,14 +849,9 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
-            let ledger = Ledger::from_export(
-                boot_graph.ledger,
-                cfg.clone(),
-                serialization_context.clone(),
-            )?;
+            let ledger = Ledger::from_export(boot_graph.ledger, cfg.clone())?;
             let mut res_graph = BlockGraph {
                 cfg,
-                serialization_context,
                 sequence_counter: 0,
                 genesis_hashes: block_hashes.clone(),
                 block_statuses: boot_graph
@@ -919,10 +906,9 @@ impl BlockGraph {
             }
             Ok(res_graph)
         } else {
-            let ledger = read_genesis_ledger(&cfg, &serialization_context).await?;
+            let ledger = read_genesis_ledger(&cfg).await?;
             Ok(BlockGraph {
                 cfg,
-                serialization_context,
                 sequence_counter: 0,
                 genesis_hashes: block_hashes.clone(),
                 block_statuses,
@@ -3304,6 +3290,7 @@ mod tests {
         let active_block: ActiveBlock = get_export_active_test_block().into();
         let ledger_file = generate_ledger_file(&HashMap::new());
         let (mut cfg, serialization_context) = example_consensus_config(ledger_file.path());
+        models::init_serialization_context(serialization_context.clone());
 
         cfg.block_reward = 1;
         //to generate address and public keys
@@ -3339,10 +3326,8 @@ mod tests {
             Address::from_bs58_check("21bU2xruH7bFzfcUhJ6SGjnLmC9cMt1kxzqFr11eV58uj7Ui8h").unwrap();
         assert_eq!(1, address_d.get_thread(thread_count));
 
-        let (hash_genesist0, block_genesist0) =
-            create_genesis_block(&cfg, &serialization_context, 0).unwrap();
-        let (hash_genesist1, block_genesist1) =
-            create_genesis_block(&cfg, &serialization_context, 1).unwrap();
+        let (hash_genesist0, block_genesist0) = create_genesis_block(&cfg, 0).unwrap();
+        let (hash_genesist1, block_genesist1) = create_genesis_block(&cfg, 1).unwrap();
         let export_genesist0 = ExportActiveBlock {
             block: block_genesist0,
             parents: vec![],      // one (hash, period) per thread ( if not genesis )
@@ -3522,9 +3507,7 @@ mod tests {
             },
         };
 
-        let block_graph = BlockGraph::new(cfg, serialization_context, Some(export_graph))
-            .await
-            .unwrap();
+        let block_graph = BlockGraph::new(cfg, Some(export_graph)).await.unwrap();
 
         //Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
         let res = block_graph
@@ -3599,6 +3582,7 @@ mod tests {
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         };
+        models::init_serialization_context(serialization_context.clone());
 
         let active_block = get_export_active_test_block();
 
@@ -3704,9 +3688,8 @@ mod tests {
     async fn test_clique_calculation() {
         let ledger_file = generate_ledger_file(&HashMap::new());
         let (cfg, serialization_context) = example_consensus_config(ledger_file.path());
-        let mut block_graph = BlockGraph::new(cfg, serialization_context, None)
-            .await
-            .unwrap();
+        models::init_serialization_context(serialization_context.clone());
+        let mut block_graph = BlockGraph::new(cfg, None).await.unwrap();
         let hashes: Vec<BlockId> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",

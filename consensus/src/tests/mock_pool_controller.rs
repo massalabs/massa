@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use models::{Operation, OperationId, SerializationContext, Slot};
+use models::{Operation, OperationId, Slot};
 use pool::{PoolCommand, PoolCommandSender, PoolError};
 use time::UTime;
 use tokio::{
@@ -15,18 +15,14 @@ use tokio::{
 const CHANNEL_SIZE: usize = 256;
 
 pub struct MockPoolController {
-    _serialization_context: SerializationContext,
     pub pool_command_rx: mpsc::Receiver<PoolCommand>,
 }
 
 impl MockPoolController {
-    pub fn new(serialization_context: SerializationContext) -> (Self, PoolCommandSender) {
+    pub fn new() -> (Self, PoolCommandSender) {
         let (pool_command_tx, pool_command_rx) = mpsc::channel::<PoolCommand>(CHANNEL_SIZE);
         (
-            MockPoolController {
-                _serialization_context: serialization_context,
-                pool_command_rx,
-            },
+            MockPoolController { pool_command_rx },
             PoolCommandSender(pool_command_tx),
         )
     }

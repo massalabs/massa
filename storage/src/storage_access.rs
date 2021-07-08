@@ -5,7 +5,8 @@ use crate::{
 };
 use logging::debug;
 use models::{
-    Block, BlockId, Operation, OperationId, OperationSearchResult, SerializationContext, Slot,
+    get_serialization_context, Block, BlockId, Operation, OperationId, OperationSearchResult,
+    SerializationContext, Slot,
 };
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicUsize;
@@ -13,11 +14,9 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, Notify};
 use tokio::task::JoinHandle;
 
-pub fn start_storage(
-    cfg: StorageConfig,
-    serialization_context: SerializationContext,
-) -> Result<(StorageAccess, StorageManager), StorageError> {
+pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManager), StorageError> {
     debug!("starting storage controller");
+    let serialization_context = get_serialization_context();
     let sled_config = sled::Config::default()
         .path(&cfg.path)
         .cache_capacity(cfg.cache_capacity)

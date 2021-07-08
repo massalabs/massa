@@ -10,8 +10,7 @@ use std::collections::{HashMap, HashSet};
 #[tokio::test]
 #[serial]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
-
+    let protocol_config = tools::create_protocol_config();
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -29,7 +28,6 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -44,11 +42,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     network_controller.close_connection(nodes[0].id).await;
 
     // 2. Create a block coming from node creator_node.
-    let block = tools::create_block(
-        &creator_node.private_key,
-        &creator_node.id.0,
-        &serialization_context,
-    );
+    let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
 
     // 3. Send header to protocol.
     network_controller
@@ -69,10 +63,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         };
 
     // 4. Check that protocol sent the right header to consensus.
-    let expected_hash = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let expected_hash = block.header.compute_block_id().unwrap();
     assert_eq!(expected_hash, received_hash);
 
     // 5. Ask for block.
@@ -112,7 +103,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_blocks_when_asked_for() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
+    let protocol_config = tools::create_protocol_config();
 
     let send_block_or_header_cmd_filter = |cmd| match cmd {
         cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
@@ -132,7 +123,6 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -147,16 +137,9 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     network_controller.close_connection(nodes[2].id).await;
 
     // 2. Create a block coming from creator_node.
-    let block = tools::create_block(
-        &creator_node.private_key,
-        &creator_node.id.0,
-        &serialization_context,
-    );
+    let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
 
-    let expected_hash = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let expected_hash = block.header.compute_block_id().unwrap();
 
     // 3. Simulate two nodes asking for a block.
     for n in 0..2 {
@@ -202,10 +185,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             .await
         {
             Some(NetworkCommand::SendBlock { node, block }) => {
-                let hash = block
-                    .header
-                    .compute_block_id(&serialization_context)
-                    .unwrap();
+                let hash = block.header.compute_block_id().unwrap();
                 assert_eq!(expected_hash, hash);
                 assert!(expecting_block.remove(&node));
             }
@@ -238,7 +218,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
+    let protocol_config = tools::create_protocol_config();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -252,7 +232,6 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -274,11 +253,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
     network_controller.close_connection(node_d.id).await;
 
     // 2. Create a block coming from one node.
-    let ref_block = tools::create_block(
-        &creator_node.private_key,
-        &creator_node.id.0,
-        &serialization_context,
-    );
+    let ref_block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
 
     // 3. Send header to protocol.
     network_controller
@@ -344,15 +319,12 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         {
             Some(NetworkCommand::SendBlockHeader { node, header }) => {
                 assert!(expected_headers.remove(&node));
-                let sent_header_hash = header.compute_block_id(&serialization_context).unwrap();
+                let sent_header_hash = header.compute_block_id().unwrap();
                 assert_eq!(sent_header_hash, ref_hash);
             }
             Some(NetworkCommand::SendBlock { node, block }) => {
                 assert!(expected_full_blocks.remove(&node));
-                let sent_header_hash = block
-                    .header
-                    .compute_block_id(&serialization_context)
-                    .unwrap();
+                let sent_header_hash = block.header.compute_block_id().unwrap();
                 assert_eq!(sent_header_hash, ref_hash);
             }
             _ => panic!("Unexpected or no network command."),
@@ -372,7 +344,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
+    let protocol_config = tools::create_protocol_config();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -382,7 +354,6 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
         start_protocol_controller(
             protocol_config.clone(),
             5u64,
-            serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
         )
@@ -395,16 +366,9 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
     // 1. Create a block coming from one node.
-    let block = tools::create_block(
-        &creator_node.private_key,
-        &creator_node.id.0,
-        &serialization_context,
-    );
+    let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
 
-    let expected_hash = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let expected_hash = block.header.compute_block_id().unwrap();
 
     // 3. Send block to protocol.
     network_controller.send_block(creator_node.id, block).await;
@@ -432,7 +396,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_block_not_found() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
+    let protocol_config = tools::create_protocol_config();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -446,7 +410,6 @@ async fn test_protocol_block_not_found() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -459,16 +422,9 @@ async fn test_protocol_block_not_found() {
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
     // 1. Create a block coming from one node.
-    let block = tools::create_block(
-        &creator_node.private_key,
-        &creator_node.id.0,
-        &serialization_context,
-    );
+    let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
 
-    let expected_hash = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let expected_hash = block.header.compute_block_id().unwrap();
 
     // 3. Ask block to protocol.
     network_controller

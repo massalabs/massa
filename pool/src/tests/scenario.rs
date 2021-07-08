@@ -15,7 +15,9 @@ use serial_test::serial;
 #[tokio::test]
 #[serial]
 async fn test_pool() {
-    let (mut cfg, context, thread_count, operation_validity_periods) = example_pool_config();
+    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+    models::init_serialization_context(Default::default());
+    let context = models::get_serialization_context();
 
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
@@ -29,7 +31,6 @@ async fn test_pool() {
         operation_validity_periods,
         protocol_command_sender,
         protocol_pool_event_receiver,
-        context.clone(),
     )
     .await
     .unwrap();
@@ -180,7 +181,9 @@ async fn test_pool() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_protocol_events() {
-    let (mut cfg, context, thread_count, operation_validity_periods) = example_pool_config();
+    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+    models::init_serialization_context(Default::default());
+    let context = models::get_serialization_context();
 
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
@@ -194,7 +197,6 @@ async fn test_pool_with_protocol_events() {
         operation_validity_periods,
         protocol_command_sender,
         protocol_pool_event_receiver,
-        context.clone(),
     )
     .await
     .unwrap();

@@ -5,7 +5,7 @@ use models::{
 
 use crate::PoolConfig;
 
-pub fn example_pool_config() -> (PoolConfig, SerializationContext, u8, u64) {
+pub fn example_pool_config() -> (PoolConfig, u8, u64) {
     let mut nodes = Vec::new();
     for _ in 0..2 {
         let private_key = crypto::generate_random_private_key();
@@ -20,20 +20,6 @@ pub fn example_pool_config() -> (PoolConfig, SerializationContext, u8, u64) {
         PoolConfig {
             max_pool_size_per_thread: 100000,
             max_operation_future_validity_start_periods: 200,
-        },
-        SerializationContext {
-            max_block_size,
-            max_block_operations: max_operations_per_block,
-            parent_count: thread_count,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
         },
         thread_count,
         operation_validity_periods,

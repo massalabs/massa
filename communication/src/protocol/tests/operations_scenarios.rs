@@ -10,7 +10,8 @@ use std::collections::HashMap;
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
+    let protocol_config = tools::create_protocol_config();
+    let serialization_context = models::get_serialization_context();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -20,7 +21,6 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
         start_protocol_controller(
             protocol_config.clone(),
             5u64,
-            serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
         )
@@ -33,7 +33,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
     // 1. Create an operation
-    let operation = tools::create_operation(&serialization_context);
+    let operation = tools::create_operation();
 
     let expected_operation_id = operation.verify_integrity(&serialization_context).unwrap();
 
@@ -66,7 +66,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
+    let protocol_config = tools::create_protocol_config();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -76,7 +76,6 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
         start_protocol_controller(
             protocol_config.clone(),
             5u64,
-            serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
         )
@@ -89,7 +88,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
     // 1. Create an operation.
-    let mut operation = tools::create_operation(&serialization_context);
+    let mut operation = tools::create_operation();
 
     // Change the fee, making the signature invalid.
     operation.content.fee = 111;
@@ -122,7 +121,8 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 #[tokio::test]
 #[serial]
 async fn test_protocol_propagates_operations_to_active_nodes() {
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
+    let protocol_config = tools::create_protocol_config();
+    let serialization_context = models::get_serialization_context();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -136,7 +136,6 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -147,7 +146,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
     let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
     // 1. Create an operation
-    let operation = tools::create_operation(&serialization_context);
+    let operation = tools::create_operation();
 
     // Send operation and wait for the protocol event,
     // just to be sure the nodes are connected before sendind the propagate command.

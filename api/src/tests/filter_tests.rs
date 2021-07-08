@@ -4,7 +4,7 @@ use storage::{start_storage, StorageConfig};
 use super::tools::*;
 use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
-use models::{Block, BlockHeader, BlockId, SerializationContext, Slot};
+use models::{Block, BlockHeader, BlockId, Slot};
 use serde_json::json;
 use serial_test::serial;
 use std::{
@@ -207,20 +207,7 @@ async fn test_current_parents() {
 #[tokio::test]
 #[serial]
 async fn test_get_graph_interval() {
-    let serialization_context = SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    };
+    models::init_serialization_context(Default::default());
 
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -283,7 +270,7 @@ async fn test_get_graph_interval() {
     let mut expected = get_test_block_graph();
     expected.active_blocks.insert(
         get_test_block_id(),
-        get_test_compiled_exported_block(&serialization_context, Slot::new(1, 0), None),
+        get_test_compiled_exported_block(Slot::new(1, 0), None),
     );
     let cloned = expected.clone();
 
@@ -331,8 +318,7 @@ async fn test_get_graph_interval() {
     let mut cfg = get_consensus_config();
     cfg.t0 = 2000.into();
 
-    let (storage_command_tx, (block_a, block_b, block_c)) =
-        get_test_storage(cfg, serialization_context.clone()).await;
+    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
 
     let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
 
@@ -354,19 +340,13 @@ async fn test_get_graph_interval() {
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
         Status::Final,
         block_b.header.content.parents.clone(),
     ));
     expected.push((
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_c.header.compute_block_id().unwrap(),
         block_c.header.content.slot,
         Status::Final,
         block_c.header.content.parents.clone(),
@@ -400,28 +380,19 @@ async fn test_get_graph_interval() {
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
-        block_a
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_a.header.compute_block_id().unwrap(),
         block_a.header.content.slot,
         Status::Final,
         block_a.header.content.parents.clone(),
     ));
     expected.push((
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
         Status::Final,
         block_b.header.content.parents.clone(),
     ));
     expected.push((
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_c.header.compute_block_id().unwrap(),
         block_c.header.content.slot,
         Status::Final,
         block_c.header.content.parents.clone(),
@@ -454,28 +425,19 @@ async fn test_get_graph_interval() {
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
-        block_a
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_a.header.compute_block_id().unwrap(),
         block_a.header.content.slot,
         Status::Final,
         block_a.header.content.parents.clone(),
     ));
     expected.push((
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
         Status::Final,
         block_b.header.content.parents.clone(),
     ));
     expected.push((
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_c.header.compute_block_id().unwrap(),
         block_c.header.content.slot,
         Status::Final,
         block_c.header.content.parents.clone(),
@@ -509,10 +471,7 @@ async fn test_get_graph_interval() {
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
 
     expected.push((
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
         Status::Final,
         block_b.header.content.parents.clone(),
@@ -542,10 +501,7 @@ async fn test_get_graph_interval() {
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
 
     expected.push((
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_c.header.compute_block_id().unwrap(),
         block_c.header.content.slot,
         Status::Final,
         block_c.header.content.parents.clone(),
@@ -764,20 +720,7 @@ async fn test_peers() {
 #[tokio::test]
 #[serial]
 async fn test_get_block_interval() {
-    let serialization_context = SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    };
+    models::init_serialization_context(Default::default());
 
     let mut graph = get_test_block_graph();
     graph.best_parents = vec![get_test_block_id(), get_test_block_id()];
@@ -876,8 +819,7 @@ async fn test_get_block_interval() {
     let mut cfg = get_consensus_config();
     cfg.t0 = 2000.into();
 
-    let (storage_command_tx, (block_a, block_b, block_c)) =
-        get_test_storage(cfg, serialization_context.clone()).await;
+    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
 
     let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
 
@@ -919,10 +861,7 @@ async fn test_get_block_interval() {
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
     ));
     let expected: serde_json::Value =
@@ -949,24 +888,15 @@ async fn test_get_block_interval() {
     let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
-        block_a
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_a.header.compute_block_id().unwrap(),
         block_a.header.content.slot,
     ));
     expected.push((
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
     ));
     expected.push((
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_c.header.compute_block_id().unwrap(),
         block_c.header.content.slot,
     ));
     for item in obtained.iter() {
@@ -996,10 +926,7 @@ async fn test_get_block_interval() {
     let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_c.header.compute_block_id().unwrap(),
         block_c.header.content.slot,
     ));
 
@@ -1030,17 +957,11 @@ async fn test_get_block_interval() {
     let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
     ));
     expected.push((
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
+        block_c.header.compute_block_id().unwrap(),
         block_c.header.content.slot,
     ));
 
@@ -1056,20 +977,7 @@ async fn test_get_block_interval() {
 #[tokio::test]
 #[serial]
 async fn test_get_block() {
-    let serialization_context = SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    };
+    models::init_serialization_context(Default::default());
 
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -1141,8 +1049,7 @@ async fn test_get_block() {
         flush_interval: None,   //defaut
         reset_at_startup: true, // if there was something in storage, it is not the case anymore
     };
-    let (storage_command_tx, _storage_manager) =
-        start_storage(storage_config, serialization_context.clone()).unwrap();
+    let (storage_command_tx, _storage_manager) = start_storage(storage_config).unwrap();
     let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
@@ -1378,20 +1285,7 @@ async fn test_state() {
 #[tokio::test]
 #[serial]
 async fn test_last_stale() {
-    let serialization_context = SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    };
+    models::init_serialization_context(Default::default());
 
     //test with empty stale block
     {
@@ -1431,15 +1325,12 @@ async fn test_last_stale() {
             get_test_block_id(),
             (
                 DiscardReason::Invalid("for test reason".to_string()),
-                get_header(&serialization_context, Slot::new(1, 1), None).1,
+                get_header(Slot::new(1, 1), None).1,
             ),
         ),
         (
             get_another_test_block_id(),
-            (
-                DiscardReason::Stale,
-                get_header(&serialization_context, Slot::new(2, 0), None).1,
-            ),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None).1),
         ),
     ]);
     let cloned = graph.clone();
@@ -1479,20 +1370,7 @@ async fn test_last_stale() {
 #[tokio::test]
 #[serial]
 async fn test_last_invalid() {
-    let serialization_context = SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    };
+    models::init_serialization_context(Default::default());
 
     //test with empty final block
     {
@@ -1532,15 +1410,12 @@ async fn test_last_invalid() {
             get_test_block_id(),
             (
                 DiscardReason::Invalid("for test reason".to_string()),
-                get_header(&serialization_context, Slot::new(1, 1), None).1,
+                get_header(Slot::new(1, 1), None).1,
             ),
         ),
         (
             get_another_test_block_id(),
-            (
-                DiscardReason::Stale,
-                get_header(&serialization_context, Slot::new(2, 0), None).1,
-            ),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None).1),
         ),
     ]);
     let cloned = graph.clone();
@@ -1577,20 +1452,7 @@ async fn test_last_invalid() {
 #[tokio::test]
 #[serial]
 async fn test_staker_info() {
-    let serialization_context = SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    };
+    models::init_serialization_context(Default::default());
 
     let staker = get_dummy_staker();
     let cloned_staker = staker.clone();
@@ -1644,23 +1506,20 @@ async fn test_staker_info() {
         get_test_block_id(),
         (
             DiscardReason::Invalid("for test reason".to_string()),
-            get_header(&serialization_context, Slot::new(1, 1), Some(staker)).1,
+            get_header(Slot::new(1, 1), Some(staker)).1,
         ),
     )];
     graph.discarded_blocks.map.extend(vec![
         staker_s_discarded[0].clone(),
         (
             get_another_test_block_id(),
-            (
-                DiscardReason::Stale,
-                get_header(&serialization_context, Slot::new(2, 0), None).1,
-            ),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None).1),
         ),
     ]);
 
     let staker_s_active = vec![(
         get_another_test_block_id(),
-        get_test_compiled_exported_block(&serialization_context, Slot::new(2, 1), Some(staker)),
+        get_test_compiled_exported_block(Slot::new(2, 1), Some(staker)),
     )];
     graph
         .active_blocks

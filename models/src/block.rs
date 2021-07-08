@@ -1,6 +1,7 @@
 use crate::{
-    array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, ModelsError,
-    Operation, SerializationContext, SerializeCompact, SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
+    array_from_slice, u8_from_slice, with_serialization_context, DeserializeCompact,
+    DeserializeMinBEInt, ModelsError, Operation, SerializationContext, SerializeCompact,
+    SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -159,16 +160,20 @@ impl DeserializeCompact for Block {
 impl BlockHeader {
     /// Verify the integrity of the block,
     /// and generate a block id if ok.
-    pub fn verify_integrity(&self, context: &SerializationContext) -> Result<BlockId, ModelsError> {
-        let hash = self.content.compute_hash(context)?;
+    pub fn verify_integrity(&self) -> Result<BlockId, ModelsError> {
+        let hash = self.content.compute_hash()?;
         self.verify_signature(&hash)?;
-        Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
+        with_serialization_context(|context| {
+            Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
+        })
     }
 
     /// Generate the block id without verifying the integrity of the it,
     /// used only in tests.
-    pub fn compute_block_id(&self, context: &SerializationContext) -> Result<BlockId, ModelsError> {
-        Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
+    pub fn compute_block_id(&self) -> Result<BlockId, ModelsError> {
+        with_serialization_context(|context| {
+            Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
+        })
     }
 
     // Hash([slot, hash])
@@ -198,15 +203,14 @@ impl BlockHeader {
     pub fn new_signed(
         private_key: &PrivateKey,
         content: BlockHeaderContent,
-        context: &SerializationContext,
     ) -> Result<(BlockId, Self), ModelsError> {
-        let hash = content.compute_hash(&context)?;
+        let hash = content.compute_hash()?;
         let signature = sign(
             &BlockHeader::get_signature_message(&content.slot, &hash),
             private_key,
         )?;
         let header = BlockHeader { content, signature };
-        let block_id = header.compute_block_id(&context)?;
+        let block_id = header.compute_block_id()?;
         Ok((block_id, header))
     }
 
@@ -254,8 +258,8 @@ impl DeserializeCompact for BlockHeader {
 }
 
 impl BlockHeaderContent {
-    pub fn compute_hash(&self, context: &SerializationContext) -> Result<Hash, ModelsError> {
-        Ok(Hash::hash(&self.to_bytes_compact(&context)?))
+    pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
+        with_serialization_context(|context| Ok(Hash::hash(&self.to_bytes_compact(&context)?)))
     }
 }
 
@@ -359,6 +363,7 @@ mod test {
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         };
+        crate::init_serialization_context(ctx.clone());
         let private_key = crypto::generate_random_private_key();
         let public_key = crypto::derive_public_key(&private_key);
 
@@ -375,7 +380,6 @@ mod test {
                 ],
                 operation_merkle_root: Hash::hash("mno".as_bytes()),
             },
-            &ctx,
         )
         .unwrap();
 
@@ -393,8 +397,8 @@ mod test {
         assert_eq!(orig_bytes.len(), res_size);
 
         // check equality
-        let res_id = res_block.header.verify_integrity(&ctx).unwrap();
-        let generated_res_id = res_block.header.compute_block_id(&ctx).unwrap();
+        let res_id = res_block.header.verify_integrity().unwrap();
+        let generated_res_id = res_block.header.compute_block_id().unwrap();
         assert_eq!(orig_id, res_id);
         assert_eq!(orig_id, generated_res_id);
         assert_eq!(res_block.header.signature, orig_block.header.signature);

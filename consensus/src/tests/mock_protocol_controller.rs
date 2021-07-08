@@ -1,28 +1,24 @@
 use communication::protocol::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
-use models::{Block, BlockHeader, BlockId, SerializationContext};
+use models::{Block, BlockHeader, BlockId};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
 const CHANNEL_SIZE: usize = 256;
 
 pub struct MockProtocolController {
-    serialization_context: SerializationContext,
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,
     protocol_event_tx: mpsc::Sender<ProtocolEvent>,
 }
 
 impl MockProtocolController {
-    pub fn new(
-        serialization_context: SerializationContext,
-    ) -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
+    pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
         let (protocol_command_tx, protocol_command_rx) =
             mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
         (
             MockProtocolController {
-                serialization_context,
                 protocol_event_tx,
                 protocol_command_rx,
             },
@@ -50,10 +46,7 @@ impl MockProtocolController {
 
     // Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
-        let block_id = block
-            .header
-            .compute_block_id(&self.serialization_context)
-            .unwrap();
+        let block_id = block.header.compute_block_id().unwrap();
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
                 block_id,
@@ -65,9 +58,7 @@ impl MockProtocolController {
     }
 
     pub async fn receive_header(&mut self, header: BlockHeader) {
-        let block_id = header
-            .compute_block_id(&self.serialization_context)
-            .unwrap();
+        let block_id = header.compute_block_id().unwrap();
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlockHeader { block_id, header })
             .await

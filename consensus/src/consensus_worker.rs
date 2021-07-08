@@ -10,8 +10,8 @@ use crypto::{
     signature::{derive_public_key, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
-    OperationSearchResult, SerializationContext, SerializeCompact, Slot,
+    with_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
+    Operation, OperationId, OperationSearchResult, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
 use std::convert::TryFrom;
@@ -96,8 +96,6 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
-    /// serialisation context
-    serialization_context: SerializationContext,
 }
 
 impl ConsensusWorker {
@@ -122,7 +120,6 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
-        serialization_context: SerializationContext,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
         let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
@@ -161,7 +158,6 @@ impl ConsensusWorker {
             latest_final_periods,
             clock_compensation,
             pool_command_sender,
-            serialization_context,
         })
     }
 
@@ -294,16 +290,18 @@ impl ConsensusWorker {
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&Vec::new()[..]),
             },
-            &self.serialization_context,
         )?;
         let block = Block {
             header,
             operations: Vec::new(),
         };
 
+        let serialized_block =
+            with_serialization_context(|context| block.to_bytes_compact(context))?;
+
         // initialize remaining block space and remaining operation count
         let mut remaining_block_space = (self.cfg.max_block_size as u64)
-            .checked_sub(block.to_bytes_compact(&self.serialization_context)?.len() as u64)
+            .checked_sub(serialized_block.len() as u64)
             .ok_or(ConsensusError::BlockCreationError(
                 "consensus config max_block_size is smaller than an ampty block".into(),
             ))?;
@@ -426,7 +424,6 @@ impl ConsensusWorker {
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&total_hash),
             },
-            &self.serialization_context,
         )?;
         let block = Block { header, operations };
 

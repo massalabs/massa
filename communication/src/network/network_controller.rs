@@ -8,7 +8,7 @@ use super::{
 use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey};
-use models::{Block, BlockHeader, BlockId, Operation, SerializationContext};
+use models::{Block, BlockHeader, BlockId, Operation};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -24,7 +24,6 @@ use tokio::{
 /// * cfg : network configuration
 pub async fn start_network_controller(
     cfg: NetworkConfig,
-    serialization_context: SerializationContext,
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
@@ -96,7 +95,6 @@ pub async fn start_network_controller(
     let join_handle = tokio::spawn(async move {
         let res = NetworkWorker::new(
             cfg_copy,
-            serialization_context,
             private_key,
             self_node_id,
             listener,

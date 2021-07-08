@@ -8,8 +8,8 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
-    OperationType, SerializationContext, SerializeCompact, Slot,
+    get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation,
+    OperationContent, OperationType, SerializeCompact, Slot,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -172,7 +172,7 @@ pub async fn validate_notify_block_attack_attempt(
     }
 }
 
-pub fn start_storage(serialization_context: &SerializationContext) -> StorageAccess {
+pub fn start_storage() -> StorageAccess {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     let storage_config = StorageConfig {
         /// Max number of bytes we want to store
@@ -183,8 +183,7 @@ pub fn start_storage(serialization_context: &SerializationContext) -> StorageAcc
         flush_interval: None, //defaut
         reset_at_startup: true,
     };
-    let (storage_command_tx, _storage_manager) =
-        storage::start_storage(storage_config, serialization_context.clone()).unwrap();
+    let (storage_command_tx, _storage_manager) = storage::start_storage(storage_config).unwrap();
     storage_command_tx
 }
 
@@ -243,19 +242,12 @@ pub async fn validate_block_not_found(
 pub async fn create_and_test_block(
     protocol_controller: &mut MockProtocolController,
     cfg: &ConsensusConfig,
-    serialization_context: &SerializationContext,
     slot: Slot,
     best_parents: Vec<BlockId>,
     valid: bool,
     trace: bool,
 ) -> BlockId {
-    let (block_hash, block, _) = create_block(
-        &cfg,
-        &serialization_context,
-        slot,
-        best_parents,
-        cfg.nodes[0].clone(),
-    );
+    let (block_hash, block, _) = create_block(&cfg, slot, best_parents, cfg.nodes[0].clone());
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -272,15 +264,11 @@ pub async fn create_and_test_block(
 }
 
 pub async fn propagate_block(
-    serialization_context: &SerializationContext,
     protocol_controller: &mut MockProtocolController,
     block: Block,
     valid: bool,
 ) -> BlockId {
-    let block_hash = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let block_hash = block.header.compute_block_id().unwrap();
     protocol_controller.receive_block(block).await;
     if valid {
         //see if the block is propagated.
@@ -297,7 +285,6 @@ pub fn create_transaction(
     sender_public_key: PublicKey,
     recipient_address: Address,
     amount: u64,
-    context: &SerializationContext,
     expire_period: u64,
     fee: u64,
 ) -> Operation {
@@ -312,6 +299,7 @@ pub fn create_transaction(
         expire_period,
         op,
     };
+    let context = &get_serialization_context();
     let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
     let signature = crypto::sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
@@ -320,14 +308,12 @@ pub fn create_transaction(
 // returns hash and resulting discarded blocks
 pub fn create_block(
     cfg: &ConsensusConfig,
-    serialization_context: &SerializationContext,
     slot: Slot,
     best_parents: Vec<BlockId>,
     creator: (PublicKey, PrivateKey),
 ) -> (BlockId, Block, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
-        serialization_context,
         Hash::hash("default_val".as_bytes()),
         slot,
         best_parents,
@@ -338,7 +324,6 @@ pub fn create_block(
 // returns hash and resulting discarded blocks
 pub fn create_block_with_merkle_root(
     cfg: &ConsensusConfig,
-    serialization_context: &SerializationContext,
     operation_merkle_root: Hash,
     slot: Slot,
     best_parents: Vec<BlockId>,
@@ -354,7 +339,6 @@ pub fn create_block_with_merkle_root(
             parents: best_parents,
             operation_merkle_root,
         },
-        &serialization_context,
     )
     .unwrap();
 
@@ -368,13 +352,13 @@ pub fn create_block_with_merkle_root(
 
 pub fn create_block_with_operations(
     cfg: &ConsensusConfig,
-    serialization_context: &SerializationContext,
     slot: Slot,
     best_parents: &Vec<BlockId>,
     creator: (PublicKey, PrivateKey),
     operations: Vec<Operation>,
 ) -> (BlockId, Block, PrivateKey) {
     let (public_key, private_key) = creator;
+    let serialization_context = &get_serialization_context();
 
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {
@@ -391,7 +375,6 @@ pub fn create_block_with_operations(
             parents: best_parents.clone(),
             operation_merkle_root,
         },
-        &serialization_context,
     )
     .unwrap();
 
@@ -413,10 +396,7 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
     ledger_file_named
 }
 
-pub fn default_consensus_config(
-    nb_nodes: usize,
-    initial_ledger_path: &Path,
-) -> (ConsensusConfig, SerializationContext) {
+pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> ConsensusConfig {
     let genesis_key = crypto::generate_random_private_key();
     let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
@@ -429,47 +409,36 @@ pub fn default_consensus_config(
         })
         .collect();
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
-    (
-        ConsensusConfig {
-            genesis_timestamp: UTime::now(0).unwrap(),
-            thread_count: thread_count,
-            t0: 32000.into(),
-            selection_rng_seed: 42,
-            genesis_key,
-            nodes,
-            current_node_index: 0,
-            max_discarded_blocks: 10,
-            future_block_processing_max_periods: 3,
-            max_future_processing_blocks: 10,
-            max_dependency_blocks: 10,
-            delta_f0: 32,
-            disable_block_creation: true,
-            max_block_size,
-            max_operations_per_block,
-            operation_validity_periods: 1,
-            ledger_path: tempdir.path().to_path_buf(),
-            ledger_cache_capacity: 1000000,
-            ledger_flush_interval: Some(200.into()),
-            ledger_reset_at_startup: true,
-            block_reward: 1,
-            initial_ledger_path: initial_ledger_path.to_path_buf(),
-            operation_batch_size: 100,
-        },
-        SerializationContext {
-            max_block_size,
-            max_block_operations: max_operations_per_block,
-            parent_count: thread_count,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-        },
-    )
+
+    // Init the serialization context with a default,
+    // can be overwritten with a more specific one in the test.
+    models::init_serialization_context(Default::default());
+
+    ConsensusConfig {
+        genesis_timestamp: UTime::now(0).unwrap(),
+        thread_count: thread_count,
+        t0: 32000.into(),
+        selection_rng_seed: 42,
+        genesis_key,
+        nodes,
+        current_node_index: 0,
+        max_discarded_blocks: 10,
+        future_block_processing_max_periods: 3,
+        max_future_processing_blocks: 10,
+        max_dependency_blocks: 10,
+        delta_f0: 32,
+        disable_block_creation: true,
+        max_block_size,
+        max_operations_per_block,
+        operation_validity_periods: 1,
+        ledger_path: tempdir.path().to_path_buf(),
+        ledger_cache_capacity: 1000000,
+        ledger_flush_interval: Some(200.into()),
+        ledger_reset_at_startup: true,
+        block_reward: 1,
+        initial_ledger_path: initial_ledger_path.to_path_buf(),
+        operation_batch_size: 100,
+    }
 }
 
 pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {

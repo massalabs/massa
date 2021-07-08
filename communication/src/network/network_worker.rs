@@ -154,8 +154,6 @@ impl DeserializeCompact for BootstrapPeers {
 pub struct NetworkWorker {
     /// Network configuration.
     cfg: NetworkConfig,
-    // Serialization context
-    serialization_context: SerializationContext,
     /// Our private key.
     private_key: PrivateKey,
     /// Our node id.
@@ -202,7 +200,6 @@ impl NetworkWorker {
     /// * controller_manager_rx: Channel receiving network management commands.
     pub fn new(
         cfg: NetworkConfig,
-        serialization_context: SerializationContext,
         private_key: PrivateKey,
         self_node_id: NodeId,
         listener: Listener,
@@ -215,7 +212,6 @@ impl NetworkWorker {
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         NetworkWorker {
             cfg,
-            serialization_context,
             self_node_id,
             private_key,
             listener,
@@ -502,7 +498,6 @@ impl NetworkWorker {
                             mpsc::channel::<NodeCommand>(CHANNEL_SIZE);
                         let node_event_tx_clone = self.node_event_tx.clone();
                         let cfg_copy = self.cfg.clone();
-                        let node_serialization_context = self.serialization_context.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             let res = NodeWorker::new(
                                 cfg_copy,
@@ -512,7 +507,7 @@ impl NetworkWorker {
                                 node_command_rx,
                                 node_event_tx_clone,
                             )
-                            .run_loop(node_serialization_context)
+                            .run_loop()
                             .await;
                             (new_node_id, res)
                         });
@@ -583,20 +578,12 @@ impl NetworkWorker {
         let private_key = self.private_key;
         let message_timeout = self.cfg.message_timeout;
         let connection_id_copy = connection_id.clone();
-        let serialization_context = self.serialization_context.clone();
         let handshake_fn_handle = tokio::spawn(async move {
             (
                 connection_id_copy,
-                HandshakeWorker::new(
-                    serialization_context,
-                    reader,
-                    writer,
-                    self_node_id,
-                    private_key,
-                    message_timeout,
-                )
-                .run()
-                .await,
+                HandshakeWorker::new(reader, writer, self_node_id, private_key, message_timeout)
+                    .run()
+                    .await,
             )
         });
         self.handshake_futures.push(handshake_fn_handle);
@@ -692,7 +679,7 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::SendBlockHeader { node, header } => {
-                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"hash": header.content.compute_hash(&self.serialization_context)?, "header": header, "node": node});
+                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"hash": header.content.compute_hash()?, "header": header, "node": node});
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
                     NodeCommand::SendBlockHeader(header),
@@ -715,7 +702,7 @@ impl NetworkWorker {
             NetworkCommand::SendBlock { node, block } => {
                 massa_trace!(
                     "network_worker.manage_network_command send NodeCommand::SendBlock",
-                    {"hash": block.header.content.compute_hash(&self.serialization_context)?, "block": block, "node": node}
+                    {"hash": block.header.content.compute_hash()?, "block": block, "node": node}
                 );
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
@@ -918,7 +905,7 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
                 massa_trace!(
                     "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-                    {"hash": data.header.content.compute_hash(&self.serialization_context)?, "block": data, "node": from_node_id}
+                    {"hash": data.header.content.compute_hash()?, "block": data, "node": from_node_id}
                 );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlock {
@@ -938,7 +925,7 @@ impl NetworkWorker {
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
                 massa_trace!(
                     "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
-                    {"hash": header.content.compute_hash(&self.serialization_context)?, "header": header, "node": source_node_id}
+                    {"hash": header.content.compute_hash()?, "header": header, "node": source_node_id}
                 );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlockHeader {

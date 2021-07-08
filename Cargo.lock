@@ -996,6 +996,7 @@ version = "0.1.0"
 dependencies = [
  "crypto",
  "integer-encoding",
+ "lazy_static",
  "num_enum",
  "pretty_assertions",
  "serde",

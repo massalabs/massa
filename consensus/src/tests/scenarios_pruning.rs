@@ -13,23 +13,21 @@ use serial_test::serial;
 #[serial]
 async fn test_pruning_of_discarded_blocks() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -52,7 +50,6 @@ async fn test_pruning_of_discarded_blocks() {
         let _ = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(100000000 + i, 0),
             parents.clone(),
             false,
@@ -80,23 +77,21 @@ async fn test_pruning_of_discarded_blocks() {
 #[serial]
 async fn test_pruning_of_awaiting_slot_blocks() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -119,7 +114,6 @@ async fn test_pruning_of_awaiting_slot_blocks() {
         let _ = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(10 + i, 0),
             parents.clone(),
             false,
@@ -147,23 +141,21 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 #[serial]
 async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -183,7 +175,6 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
     // Too far into the future.
     let (bad_parent, bad_block, _) = tools::create_block(
         &cfg,
-        &serialization_context,
         Slot::new(10000, 0),
         parents.clone(),
         cfg.nodes[0].clone(),
@@ -194,7 +185,6 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
         let _ = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i, 0),
             vec![bad_parent.clone(), parents.clone()[0]],
             false,

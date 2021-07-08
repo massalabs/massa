@@ -24,7 +24,7 @@ async fn test_storage() {
     .unwrap();*/
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 10;
     cfg.max_discarded_blocks = 1;
@@ -36,19 +36,17 @@ async fn test_storage() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // start storage
-    let storage_access = tools::start_storage(&serialization_context);
+    let storage_access = tools::start_storage();
 
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -69,7 +67,6 @@ async fn test_storage() {
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -80,7 +77,6 @@ async fn test_storage() {
     let valid_hasht1s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -92,7 +88,6 @@ async fn test_storage() {
     let fork_block_hash = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(2, 0),
         genesis_hashes.clone(),
         true,
@@ -109,7 +104,6 @@ async fn test_storage() {
         let block_hash_0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(period, 0),
             vec![parentt0sn_hash, parentt1sn_hash],
             true,
@@ -121,7 +115,6 @@ async fn test_storage() {
         let block_hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(period, 1),
             vec![parentt0sn_hash, parentt1sn_hash],
             true,
