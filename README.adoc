@@ -47,7 +47,7 @@ For project announcements we mainly use link:https://t.me/massanetwork[Telegram]
 On a first window:
 ----
 cd massa/massa-node/
-RUST_BACKTRACE=full cargo run --release
+RUST_BACKTRACE=full cargo run --release |& tee logs.txt
 ----
 
 ### Start the client
