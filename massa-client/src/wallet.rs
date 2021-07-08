@@ -10,7 +10,6 @@ use models::SerializeCompact;
 use models::Slot;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
 /// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
@@ -58,7 +57,7 @@ impl Wallet {
         })
     }
 
-    pub fn get_wallet_address_list(&self) -> HashSet<Address> {
+    pub fn get_wallet_address_list(&self) -> Vec<Address> {
         self.keys
             .iter()
             .map(|key| {

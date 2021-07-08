@@ -215,17 +215,12 @@ impl<'a> std::fmt::Display for WrappedAddressState {
 
 pub struct AddressStates {
     pub map: HashMap<Address, WrappedAddressState>,
-    pub order: Option<Vec<Address>>,
+    pub order: Vec<Address>,
 }
 
 impl<'a> std::fmt::Display for AddressStates {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let order = if let Some(order) = self.order.clone() {
-            order
-        } else {
-            self.map.keys().cloned().collect()
-        };
-        for addr in order {
+        for addr in &self.order {
             write!(f, "Address: {}", addr)?;
             if let Some(state) = self.map.get(&addr) {
                 write!(f, "State: \n{}", state)?;
