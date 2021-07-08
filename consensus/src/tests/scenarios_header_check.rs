@@ -11,7 +11,7 @@ use models::Slot;
 #[tokio::test]
 async fn test_consensus_asks_for_block() {
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
-    cfg.t0 = 1000.into();
+    cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 

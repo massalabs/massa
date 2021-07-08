@@ -96,7 +96,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
 #[tokio::test]
 async fn test_block_not_processed_multiple_times() {
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
-    cfg.t0 = 1000.into();
+    cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
