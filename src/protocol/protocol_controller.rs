@@ -1,45 +1,23 @@
-use super::binders::{ReadBinder, WriteBinder};
 use super::config::ProtocolConfig;
-use super::messages::Message;
-use crate::crypto::signature::{PrivateKey, PublicKey, SignatureEngine};
+use super::handshake::{handshake_fn, HandshakeReturnType};
+use super::node_controller::node_controller_fn;
+use super::node_controller::{NodeCommand, NodeEvent, NodeEventType, NodeId};
+use crate::crypto::hash::Hash;
+use crate::crypto::signature::{PrivateKey, SignatureEngine};
 use crate::logging::{debug, info, trace};
 use crate::network::network_controller::{
     ConnectionClosureReason, ConnectionId, NetworkController, NetworkEvent,
 };
-use futures::{
-    future::try_join, future::FusedFuture, stream::FuturesUnordered, FutureExt, StreamExt,
-};
-use rand::{rngs::StdRng, FromEntropy, RngCore};
-use serde::{Deserialize, Serialize};
+use crate::structures::block::Block;
+use futures::{stream::FuturesUnordered, StreamExt};
+use rand::{rngs::StdRng, FromEntropy};
 use std::collections::{hash_map, HashMap, HashSet};
 use std::error::Error;
-use std::net::IpAddr;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-use tokio::time::{timeout, Duration};
-
-use crate::crypto::hash::Hash;
-use crate::structures::block::Block;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
-
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct NodeId(PublicKey);
-
-impl std::fmt::Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-impl std::fmt::Debug for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
 
 #[derive(Clone, Debug)]
 enum ProtocolCommand {
@@ -59,26 +37,6 @@ pub enum ProtocolEventType {
 
 #[derive(Clone, Debug)]
 pub struct ProtocolEvent(pub NodeId, pub ProtocolEventType);
-
-#[derive(Clone, Debug)]
-enum NodeCommand {
-    SendPeerList(Vec<IpAddr>),
-    SendBlock(Block),
-    SendTransaction(String),
-    Close,
-}
-
-#[derive(Clone, Debug)]
-enum NodeEventType {
-    AskedPeerList,
-    ReceivedPeerList(Vec<IpAddr>),
-    ReceivedBlock(Block),        //put some date for the example
-    ReceivedTransaction(String), //put some date for the example
-    Closed(ConnectionClosureReason),
-}
-
-#[derive(Clone, Debug)]
-struct NodeEvent(NodeId, NodeEventType);
 
 pub struct ProtocolController {
     protocol_event_rx: Receiver<ProtocolEvent>,
@@ -201,7 +159,8 @@ async fn protocol_controller_fn(
     let mut running_handshakes: HashSet<ConnectionId> = HashSet::new();
 
     //list of currently running handshake response futures (see handshake_fn)
-    let mut handshake_futures = FuturesUnordered::new();
+    let mut handshake_futures: FuturesUnordered<JoinHandle<HandshakeReturnType>> =
+        FuturesUnordered::new();
 
     // list of active nodes we are connected to
     let mut active_nodes: HashMap<
@@ -221,165 +180,34 @@ async fn protocol_controller_fn(
             },
 
             // listen to network controller event
-            evt = network_controller.wait_event() => match evt {
-                NetworkEvent::NewConnection((connection_id, socket)) => {
-                    // add connection ID to running_handshakes
-                    // launch async handshake_fn(connectionId, socket)
-                    // add its handle to handshake_futures
-                    if !running_handshakes.insert(connection_id) {
-                        panic!("expect that the id is not already in running_handshakes");
-                    }
-
-                    debug!("starting handshake with connection_id={:?}", connection_id);
-                    massa_trace!("handshake_start", {"connection_id": connection_id});
-
-                    let messsage_timeout_copy = cfg.message_timeout;
-                    let handshake_fn_handle = tokio::spawn(async move {
-                        handshake_fn(
-                            connection_id,
-                            socket,
-                            self_node_id,
-                            private_key,
-                            messsage_timeout_copy,
-                        )
-                        .await
-                    });
-                    handshake_futures.push(handshake_fn_handle);
-                }
-                NetworkEvent::ConnectionBanned(connection_id) => {
-                    // connection_banned(connectionId)
-                    // remove the connectionId entry in running_handshakes
-                    running_handshakes.remove(&connection_id);
-                    // find all active_node with this ConnectionId and send a NodeMessage::Close
-                    for (c_id, node_tx, _) in active_nodes.values() {
-                        if *c_id == connection_id {
-                            node_tx
-                                .send(NodeCommand::Close)
-                                .await
-                                .expect("node command tx disappeared");
-                        }
-                    }
-                }
-            },
+            evt = network_controller.wait_event() => manage_network_event(
+                evt,
+                &mut running_handshakes,
+                &cfg,
+                self_node_id,
+                private_key,
+                &mut handshake_futures,
+                &active_nodes
+            ).await,
 
 
             // wait for a handshake future to complete
-            Some(res) = handshake_futures.next() => match res {
-                // a handshake finished, and succeeded
-                Ok((new_connection_id, Ok((new_node_id, socket_reader, socket_writer)))) =>  {
-                    debug!("handshake with connection_id={:?} succeeded => node_id={:?}", new_connection_id, new_node_id);
-                    massa_trace!("handshake_ok", {
-                        "connection_id": new_connection_id,
-                        "node_id": new_node_id
-                    });
-
-                    // connection was banned in the meantime
-                    if !running_handshakes.remove(&new_connection_id) {
-                        debug!("connection_id={:?}, node_id={:?} peer was banned while handshaking", new_connection_id, new_node_id);
-                        massa_trace!("handshake_banned", {
-                            "connection_id": new_connection_id,
-                            "node_id": new_node_id
-                        });
-                        network_controller
-                            .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
-                            .await;
-                        continue;
-                    }
-
-                    match active_nodes.entry(new_node_id) {
-                        // we already have this node ID
-                        hash_map::Entry::Occupied(_) => {
-                            debug!("connection_id={:?}, node_id={:?} protocol channel would be redundant", new_connection_id, new_node_id);
-                            massa_trace!("node_redundant", {
-                                "connection_id": new_connection_id,
-                                "node_id": new_node_id
-                            });
-                            network_controller
-                                .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
-                                .await;
-                        },
-                        // we don't have this node ID
-                        hash_map::Entry::Vacant(entry) => {
-                            info!("established protocol channel with connection_id={:?} => node_id={:?}", new_connection_id, new_node_id);
-                            massa_trace!("node_connected", {
-                                "connection_id": new_connection_id,
-                                "node_id": new_node_id
-                            });
-                            // spawn node_controller_fn
-                            let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1024);
-                            let node_event_tx_clone = node_event_tx.clone();
-                            let cfg_copy = cfg.clone();
-                            let node_fn_handle = tokio::spawn(async move {
-                                node_controller_fn(
-                                    cfg_copy,
-                                    new_node_id,
-                                    socket_reader,
-                                    socket_writer,
-                                    node_command_rx,
-                                    node_event_tx_clone
-                                )
-                                .await
-                            });
-                            entry.insert((new_connection_id, node_command_tx, node_fn_handle));
-                        }
-                    }
-                },
-                // a handshake finished and failed
-                Ok((connection_id, Err(err))) => {
-                    debug!("handshake failed with connection_id={:?}: {:?}", connection_id, err);
-                    massa_trace!("handshake_failed", {
-                        "connection_id": connection_id,
-                        "err": err.to_string()
-                    });
-                    running_handshakes.remove(&connection_id);
-                    network_controller.connection_closed(connection_id, ConnectionClosureReason::Failed).await;
-                },
-                Err(err) => panic!("running handshake future await returned an error:{:?}", err)
-            },
+            Some(res) = handshake_futures.next() => manage_handshake_futures(
+                res,
+                &mut running_handshakes,
+                &mut active_nodes,
+                &mut network_controller,
+                &node_event_tx,
+                &cfg,
+            ).await,
 
             // event received from a node
-            event = node_event_rx.next() =>  match event {
-                // received a list of peers
-                Some(NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst))) => {
-                    debug!("node_id={:?} sent us a peer list: {:?}", from_node_id, lst);
-                    massa_trace!("peer_list_received", {
-                        "node_id": from_node_id,
-                        "ips": lst
-                    });
-                    let (connection_id, _, _) = active_nodes.get(&from_node_id).expect("event from missing node");
-                    network_controller.connection_alive(*connection_id).await;
-                    network_controller.merge_advertised_peer_list(lst).await;
-                }
-                // received block (TODO test only)
-                Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => controller_event_tx
-                    .send(ProtocolEvent(from_node_id, ProtocolEventType::ReceivedBlock(data)))
-                    .await.expect("controller event tx failed"),
-                // received transaction (TODO test only)
-                Some(NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data))) => controller_event_tx
-                    .send(ProtocolEvent(from_node_id, ProtocolEventType::ReceivedTransaction(data)))
-                    .await.expect("controller event tx failed"),
-                // connection closed
-                Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
-                    let (connection_id, _, handle) = active_nodes.remove(&from_node_id).expect("event from misising node");
-                    info!("protocol channel closed peer_id={:?}", from_node_id);
-                    massa_trace!("node_closed", {
-                        "node_id": from_node_id,
-                        "reason": reason
-                    });
-                    network_controller.connection_closed(connection_id, reason).await;
-                    handle.await.expect("controller event tx failed");
-                },
-                // asked peer list
-                Some(NodeEvent(from_node_id, NodeEventType::AskedPeerList)) => {
-                    debug!("node_id={:?} asked us for peer list", from_node_id);
-                    massa_trace!("node_asked_peer_list", {"node_id": from_node_id});
-                    let (_, node_command_tx, _) = active_nodes.get(&from_node_id).expect("event received from missing node");
-                    node_command_tx
-                        .send(NodeCommand::SendPeerList(network_controller.get_advertisable_peer_list().await))
-                        .await.expect("controller event tx failed");
-                },
-                None => panic!("node_event_rx died")
-            }
+            event = node_event_rx.next() => manage_node_event(
+                event,
+                &mut active_nodes,
+                &mut network_controller,
+                &controller_event_tx,
+            ).await,
 
         } //end select!
     } //end loop
@@ -403,252 +231,223 @@ async fn protocol_controller_fn(
     network_controller.stop().await;
 }
 
-/// This function is lauched in a new task
-/// It manages one on going handshake
-/// Will not panic
-/// Returns a tuple (ConnectionId, Result)
-/// Creates the binders to communicate with that node
-async fn handshake_fn(
-    connection_id: ConnectionId,
-    socket: TcpStream,
-    self_node_id: NodeId, // NodeId.0 is our PublicKey
+async fn manage_network_event(
+    evt: NetworkEvent,
+    running_handshakes: &mut HashSet<ConnectionId>,
+    cfg: &ProtocolConfig,
+    self_node_id: NodeId,
     private_key: PrivateKey,
-    timeout_duration: Duration,
-) -> (
-    ConnectionId,
-    Result<
-        (
-            NodeId,
-            ReadBinder<OwnedReadHalf>,
-            WriteBinder<OwnedWriteHalf>,
-        ),
-        String,
-    >,
+    handshake_futures: &mut FuturesUnordered<JoinHandle<HandshakeReturnType>>,
+    active_nodes: &HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>, JoinHandle<()>)>,
 ) {
-    // split socket, bind reader and writer
-    let (socket_reader, socket_writer) = socket.into_split();
-    let (mut reader, mut writer) = (
-        ReadBinder::new(socket_reader),
-        WriteBinder::new(socket_writer),
-    );
+    match evt {
+        NetworkEvent::NewConnection((connection_id, socket)) => {
+            // add connection ID to running_handshakes
+            // launch async handshake_fn(connectionId, socket)
+            // add its handle to handshake_futures
+            if !running_handshakes.insert(connection_id) {
+                panic!("expect that the id is not already in running_handshakes");
+            }
 
-    // generate random bytes
-    let mut self_random_bytes = vec![0u8; 64];
-    StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
+            debug!("starting handshake with connection_id={:?}", connection_id);
+            massa_trace!("handshake_start", { "connection_id": connection_id });
 
-    // send handshake init future
-    let send_init_msg = Message::HandshakeInitiation {
-        public_key: self_node_id.0,
-        random_bytes: self_random_bytes.clone(),
-    };
-    let send_init_fut = writer.send(&send_init_msg);
-
-    // receive handshake init future
-    let recv_init_fut = reader.next();
-
-    // join send_init_fut and recv_init_fut with a timeout, and match result
-    let (other_node_id, other_random_bytes) =
-        match timeout(timeout_duration, try_join(send_init_fut, recv_init_fut)).await {
-            Err(_) => return (connection_id, Err("handshake init timed out".into())),
-            Ok(Err(_)) => return (connection_id, Err("handshake init r/w failed".into())),
-            Ok(Ok((_, None))) => return (connection_id, Err("handshake init stopped".into())),
-            Ok(Ok((_, Some((_, msg))))) => match msg {
-                Message::HandshakeInitiation {
-                    public_key: pk,
-                    random_bytes: rb,
-                } => (NodeId(pk), rb),
-                _ => return (connection_id, Err("handshake init wrong message".into())),
-            },
-        };
-
-    // check if remote node ID is the same as ours
-    if other_node_id == self_node_id {
-        return (
-            connection_id,
-            Err("handshake announced own public key".into()),
-        );
-    }
-
-    // sign their random bytes
-    let signature_engine = SignatureEngine::new();
-    let self_signature = signature_engine.sign(&other_random_bytes, &private_key);
-
-    // send handshake reply future
-    let send_reply_msg = Message::HandshakeReply {
-        signature: self_signature,
-    };
-    let send_reply_fut = writer.send(&send_reply_msg);
-
-    // receive handshake reply future
-    let recv_reply_fut = reader.next();
-
-    // join send_reply_fut and recv_reply_fut with a timeout, and match result
-    let other_signature =
-        match timeout(timeout_duration, try_join(send_reply_fut, recv_reply_fut)).await {
-            Err(_) => return (connection_id, Err("handshake reply timed out".into())),
-            Ok(Err(_)) => return (connection_id, Err("handshake reply r/w failed".into())),
-            Ok(Ok((_, None))) => return (connection_id, Err("handshake reply stopped".into())),
-            Ok(Ok((_, Some((_, msg))))) => match msg {
-                Message::HandshakeReply { signature: sig } => sig,
-                _ => return (connection_id, Err("handshake reply wrong message".into())),
-            },
-        };
-
-    // check their signature
-    if !signature_engine.verify(&self_random_bytes, &other_signature, &other_node_id.0) {
-        return (
-            connection_id,
-            Err("invalid remote handshake signature".into()),
-        );
-    }
-
-    (connection_id, Ok((other_node_id, reader, writer)))
-}
-
-/// This function is launched in a new task
-/// node_controller_fn is the link between
-/// protocol_controller_fn (through node_command and node_event channels)
-/// and node_writer_fn (through writer and writer_event channels)
-///
-/// Can panic if :
-/// - node_event_tx died
-/// - writer disappeared
-/// - the protocol controller has not close everything before shuting down
-/// - writer_evt_rx died
-/// - writer_evt_tx already closed
-/// - node_writer_handle already closed
-/// - node_event_tx already closed
-async fn node_controller_fn(
-    cfg: ProtocolConfig,
-    node_id: NodeId,
-    mut socket_reader: ReadBinder<OwnedReadHalf>,
-    socket_writer: WriteBinder<OwnedWriteHalf>,
-    mut node_command_rx: Receiver<NodeCommand>,
-    node_event_tx: Sender<NodeEvent>,
-) {
-    let (writer_command_tx, writer_command_rx) = mpsc::channel::<Message>(1024);
-    let (writer_event_tx, writer_event_rx) = oneshot::channel::<bool>(); // true = OK, false = ERROR
-    let mut fused_writer_event_rx = writer_event_rx.fuse();
-
-    let cfg_copy = cfg.clone();
-    let node_writer_handle = tokio::spawn(async move {
-        node_writer_fn(cfg_copy, socket_writer, writer_event_tx, writer_command_rx).await;
-    });
-
-    let mut interval = tokio::time::interval(cfg.ask_peer_list_interval);
-
-    let mut exit_reason = ConnectionClosureReason::Normal;
-
-    loop {
-        tokio::select! {
-            // incoming socket data
-            res = socket_reader.next() => match res {
-                Ok(Some((_, msg))) => {
-                    match msg {
-                        Message::Block(block) => node_event_tx.send(
-                                NodeEvent(node_id, NodeEventType::ReceivedBlock(block))
-                            ).await.expect("node_event_tx died"),
-                        Message::Transaction(tr) =>  node_event_tx.send(
-                                NodeEvent(node_id, NodeEventType::ReceivedTransaction(tr))
-                            ).await.expect("node_event_tx died"),
-                        Message::PeerList(pl) =>  node_event_tx.send(
-                                NodeEvent(node_id, NodeEventType::ReceivedPeerList(pl))
-                            ).await.expect("node_event_tx died"),
-                        Message::AskPeerList => node_event_tx.send(
-                                NodeEvent(node_id, NodeEventType::AskedPeerList)
-                            ).await.expect("node_event_tx died"),
-                        _ => {  // wrong message
-                            exit_reason = ConnectionClosureReason::Failed;
-                            break;
-                        },
-                    }
-                },
-                Ok(None)=> break, // peer closed cleanly
-                Err(_) => {  //stream error
-                    exit_reason = ConnectionClosureReason::Failed;
-                    break;
-                },
-            },
-
-            // node command
-            cmd = node_command_rx.next() => match cmd {
-                Some(NodeCommand::Close) => break,
-                Some(NodeCommand::SendPeerList(ip_vec)) => {
-                    writer_command_tx.send(Message::PeerList(ip_vec)).await.expect("writer disappeared");
+            let messsage_timeout_copy = cfg.message_timeout;
+            let handshake_fn_handle = tokio::spawn(async move {
+                handshake_fn(
+                    connection_id,
+                    socket,
+                    self_node_id,
+                    private_key,
+                    messsage_timeout_copy,
+                )
+                .await
+            });
+            handshake_futures.push(handshake_fn_handle);
+        }
+        NetworkEvent::ConnectionBanned(connection_id) => {
+            // connection_banned(connectionId)
+            // remove the connectionId entry in running_handshakes
+            running_handshakes.remove(&connection_id);
+            // find all active_node with this ConnectionId and send a NodeMessage::Close
+            for (c_id, node_tx, _) in active_nodes.values() {
+                if *c_id == connection_id {
+                    node_tx
+                        .send(NodeCommand::Close)
+                        .await
+                        .expect("node command tx disappeared");
                 }
-                Some(NodeCommand::SendBlock(block)) => {
-                    writer_command_tx.send(Message::Block(block)).await.expect("writer disappeared");
-                }
-                Some(NodeCommand::SendTransaction(transaction)) => {
-                    writer_command_tx.send(Message::Transaction(transaction)).await.expect("writer disappeared");
-                }
-                /*Some(_) => {
-                    panic!("unknown protocol command")
-                },*/
-                None => {
-                    panic!("the protocol controller should have close everything before shuting down")
-                },
-            },
-
-            // writer event
-            evt = &mut fused_writer_event_rx => {
-                if !evt.expect("writer_evt_rx died") {
-                    exit_reason = ConnectionClosureReason::Failed;
-                }
-                break;
-            },
-
-            _ = interval.tick() => {
-                debug!("timer-based asking node_id={:?} for peer list", node_id);
-                massa_trace!("timer_ask_peer_list", {"node_id": node_id});
-                writer_command_tx.send(Message::AskPeerList).await.expect("writer disappeared");
             }
         }
     }
+}
 
-    // close writer
-    drop(writer_command_tx);
-    if !fused_writer_event_rx.is_terminated() {
-        fused_writer_event_rx
+async fn manage_handshake_futures(
+    res: Result<HandshakeReturnType, tokio::task::JoinError>,
+    running_handshakes: &mut HashSet<ConnectionId>,
+    active_nodes: &mut HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>, JoinHandle<()>)>,
+    network_controller: &mut NetworkController,
+    node_event_tx: &Sender<NodeEvent>,
+    cfg: &ProtocolConfig,
+) {
+    match res {
+        // a handshake finished, and succeeded
+        Ok((new_connection_id, Ok((new_node_id, socket_reader, socket_writer)))) => {
+            debug!(
+                "handshake with connection_id={:?} succeeded => node_id={:?}",
+                new_connection_id, new_node_id
+            );
+            massa_trace!("handshake_ok", {
+                "connection_id": new_connection_id,
+                "node_id": new_node_id
+            });
+
+            // connection was banned in the meantime
+            if !running_handshakes.remove(&new_connection_id) {
+                debug!(
+                    "connection_id={:?}, node_id={:?} peer was banned while handshaking",
+                    new_connection_id, new_node_id
+                );
+                massa_trace!("handshake_banned", {
+                    "connection_id": new_connection_id,
+                    "node_id": new_node_id
+                });
+                network_controller
+                    .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
+                    .await;
+                return;
+            }
+
+            match active_nodes.entry(new_node_id) {
+                // we already have this node ID
+                hash_map::Entry::Occupied(_) => {
+                    debug!(
+                        "connection_id={:?}, node_id={:?} protocol channel would be redundant",
+                        new_connection_id, new_node_id
+                    );
+                    massa_trace!("node_redundant", {
+                        "connection_id": new_connection_id,
+                        "node_id": new_node_id
+                    });
+                    network_controller
+                        .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
+                        .await;
+                }
+                // we don't have this node ID
+                hash_map::Entry::Vacant(entry) => {
+                    info!(
+                        "established protocol channel with connection_id={:?} => node_id={:?}",
+                        new_connection_id, new_node_id
+                    );
+                    massa_trace!("node_connected", {
+                        "connection_id": new_connection_id,
+                        "node_id": new_node_id
+                    });
+                    // spawn node_controller_fn
+                    let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1024);
+                    let node_event_tx_clone = node_event_tx.clone();
+                    let cfg_copy = cfg.clone();
+                    let node_fn_handle = tokio::spawn(async move {
+                        node_controller_fn(
+                            cfg_copy,
+                            new_node_id,
+                            socket_reader,
+                            socket_writer,
+                            node_command_rx,
+                            node_event_tx_clone,
+                        )
+                        .await
+                    });
+                    entry.insert((new_connection_id, node_command_tx, node_fn_handle));
+                }
+            }
+        }
+        // a handshake finished and failed
+        Ok((connection_id, Err(err))) => {
+            debug!(
+                "handshake failed with connection_id={:?}: {:?}",
+                connection_id, err
+            );
+            massa_trace!("handshake_failed", {
+                "connection_id": connection_id,
+                "err": err.to_string()
+            });
+            running_handshakes.remove(&connection_id);
+            network_controller
+                .connection_closed(connection_id, ConnectionClosureReason::Failed)
+                .await;
+        }
+        Err(err) => panic!("running handshake future await returned an error:{:?}", err),
+    }
+}
+
+async fn manage_node_event(
+    event: Option<NodeEvent>,
+    active_nodes: &mut HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>, JoinHandle<()>)>,
+    network_controller: &mut NetworkController,
+    controller_event_tx: &Sender<ProtocolEvent>,
+) {
+    match event {
+        // received a list of peers
+        Some(NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst))) => {
+            debug!("node_id={:?} sent us a peer list: {:?}", from_node_id, lst);
+            massa_trace!("peer_list_received", {
+                "node_id": from_node_id,
+                "ips": lst
+            });
+            let (connection_id, _, _) = active_nodes
+                .get(&from_node_id)
+                .expect("event from missing node");
+            network_controller.connection_alive(*connection_id).await;
+            network_controller.merge_advertised_peer_list(lst).await;
+        }
+        // received block (TODO test only)
+        Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => controller_event_tx
+            .send(ProtocolEvent(
+                from_node_id,
+                ProtocolEventType::ReceivedBlock(data),
+            ))
             .await
-            .expect("writer_evt_tx already closed");
-    }
-    node_writer_handle
-        .await
-        .expect("node_writer_handle already closed");
-
-    // notify protocol controller of closure
-    node_event_tx
-        .send(NodeEvent(node_id, NodeEventType::Closed(exit_reason)))
-        .await
-        .expect("node_event_tx already closed");
-}
-
-/// This function is spawned in a separated task
-/// It communicates with node_controller_fn
-/// through writer and writer event channels
-/// Can panic if writer_event_tx died
-/// Manages timeout while talking to anouther node
-async fn node_writer_fn(
-    cfg: ProtocolConfig,
-    mut socket_writer: WriteBinder<OwnedWriteHalf>,
-    writer_event_tx: oneshot::Sender<bool>,
-    mut writer_command_rx: Receiver<Message>,
-) {
-    let write_timeout = cfg.message_timeout;
-    let mut clean_exit = true;
-    loop {
-        match writer_command_rx.next().await {
-            Some(msg) => {
-                if let Err(_) = timeout(write_timeout, socket_writer.send(&msg)).await {
-                    clean_exit = false;
-                    break;
-                }
-            }
-            None => break,
+            .expect("controller event tx failed"),
+        // received transaction (TODO test only)
+        Some(NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data))) => {
+            controller_event_tx
+                .send(ProtocolEvent(
+                    from_node_id,
+                    ProtocolEventType::ReceivedTransaction(data),
+                ))
+                .await
+                .expect("controller event tx failed")
         }
+        // connection closed
+        Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
+            let (connection_id, _, handle) = active_nodes
+                .remove(&from_node_id)
+                .expect("event from misising node");
+            info!("protocol channel closed peer_id={:?}", from_node_id);
+            massa_trace!("node_closed", {
+                "node_id": from_node_id,
+                "reason": reason
+            });
+            network_controller
+                .connection_closed(connection_id, reason)
+                .await;
+            handle.await.expect("controller event tx failed");
+        }
+        // asked peer list
+        Some(NodeEvent(from_node_id, NodeEventType::AskedPeerList)) => {
+            debug!("node_id={:?} asked us for peer list", from_node_id);
+            massa_trace!("node_asked_peer_list", { "node_id": from_node_id });
+            let (_, node_command_tx, _) = active_nodes
+                .get(&from_node_id)
+                .expect("event received from missing node");
+            node_command_tx
+                .send(NodeCommand::SendPeerList(
+                    network_controller.get_advertisable_peer_list().await,
+                ))
+                .await
+                .expect("controller event tx failed");
+        }
+        None => panic!("node_event_rx died"),
     }
-    writer_event_tx
-        .send(clean_exit)
-        .expect("writer_evt_tx died");
 }

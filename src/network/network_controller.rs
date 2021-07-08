@@ -1,19 +1,18 @@
-use std::error::Error;
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
-
+use super::config::NetworkConfig;
 use super::peer_info_database::*;
 use crate::logging::{debug, trace};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::error::Error;
 use std::net::{IpAddr, SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{timeout, Duration};
 
-use super::config::NetworkConfig;
+type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ConnectionId(u64);
@@ -184,117 +183,35 @@ async fn network_controller_fn(
 
         tokio::select! {
             // wake up interval
-            _ = wakeup_interval.tick() => {}
+            _ = wakeup_interval.tick() => {},
 
             // peer feedback event
             res = network_command_rx.next() => match res {
-                Some(NetworkCommand::MergeAdvertisedPeerList(ips)) => {
-                    debug!("merging incoming peer list: {:?}", ips);
-                    massa_trace!("merge_incoming_peer_list", {"ips": ips});
-                    peer_info_db.merge_candidate_peers(&ips);
-                },
-                Some(NetworkCommand::GetAdvertisablePeerList(response_tx)) => {
-                    response_tx.send(
-                        peer_info_db.get_advertisable_peer_ips()
-                    ).expect("upstream disappeared");
-                },
-                Some(NetworkCommand::ConnectionClosed((id, reason))) => {
-                    let (ip, is_outgoing) = active_connections.remove(&id).expect("missing connection closed");
-                    debug!("connection closed connedtion_id={:?}, ip={:?}, reason={:?}", id, ip, reason);
-                    massa_trace!("connection_closed", {
-                        "connnection_id": id,
-                        "ip": ip,
-                        "reason": reason
-                    });
-                    match reason {
-                        ConnectionClosureReason::Normal => {},
-                        ConnectionClosureReason::Failed => { peer_info_db.peer_failed(&ip); },
-                        ConnectionClosureReason::Banned =>  {
-                            peer_info_db.peer_banned(&ip);
-                            // notify all other banned connections to close
-                            // note: they must close using Normal reason or else risk of feedback loop
-                            let target_ids = active_connections.iter().filter_map(|(other_id, (other_ip, _))| {
-                                if *other_ip == ip {
-                                    Some(other_id)
-                                } else {
-                                    None
-                                }
-                            });
-                            for target_id in target_ids {
-                                event_tx
-                                    .send(NetworkEvent::ConnectionBanned(*target_id))
-                                    .await.expect("could not send connection banned notification upstream");
-                            }
-                        }
-                    }
-                    if is_outgoing {
-                        peer_info_db.out_connection_closed(&ip);
-                    } else {
-                        peer_info_db.in_connection_closed(&ip);
-                    }
-                },
-                Some(NetworkCommand::ConnectionAlive(id) ) => {
-                    let (ip, _) = active_connections.get(&id).expect("missing connection alive");
-                    peer_info_db.peer_alive(&ip);
-                }
+                Some(cmd) => manage_network_command(
+                    cmd,
+                    &mut peer_info_db,
+                    &mut active_connections,
+                    &event_tx
+                ).await,
                 None => break,
             },
-
             // out-connector event
-            Some((ip_addr, res)) = out_connecting_futures.next() => match res {
-                Ok(socket) => {
-                    if peer_info_db.try_out_connection_attempt_success(&ip_addr) {  // outgoing connection established
-                        let connection_id = cur_connection_id;
-                        debug!("out connection towards ip={:?} established => connection_id={:?}", ip_addr, connection_id);
-                        massa_trace!("out_connection_established", {
-                            "ip": ip_addr,
-                            "connection_id": connection_id
-                        });
-                        cur_connection_id.0 += 1;
-                        active_connections.insert(connection_id, (ip_addr, true));
-                        event_tx
-                            .send(NetworkEvent::NewConnection((connection_id, socket)))
-                            .await.expect("could not send new out connection notification");
-                    } else {
-                        debug!("out connection towards ip={:?} refused", ip_addr);
-                        massa_trace!("out_connection_refused", {"ip": ip_addr});
-                    }
-                },
-                Err(err) => {
-                    debug!("outgoing connection attempt towards ip={:?} failed: {:?}", ip_addr, err);
-                    massa_trace!("out_connection_attempt_failed", {
-                        "ip": ip_addr,
-                        "err": err.to_string()
-                    });
-                    peer_info_db.out_connection_attempt_failed(&ip_addr);
-                }
-            },
+            Some((ip_addr, res)) = out_connecting_futures.next() => manage_out_connections(
+                res,
+                ip_addr,
+                &mut peer_info_db,
+                &mut cur_connection_id,
+                &mut active_connections,
+                &event_tx,
+            ).await,
 
             // listener socket received
-            res = listener.accept() => match res {
-                Ok((socket, remote_addr)) => {
-                    if peer_info_db.try_new_in_connection(&remote_addr.ip()) {
-                        let connection_id = cur_connection_id;
-                        debug!("inbound connection from addr={:?} succeeded => connection_id={:?}", remote_addr, connection_id);
-                        massa_trace!("in_connection_established", {
-                            "ip": remote_addr.ip(),
-                            "connection_id": connection_id
-                        });
-                        cur_connection_id.0 += 1;
-                        active_connections.insert(connection_id, (remote_addr.ip(), false));
-                        event_tx
-                            .send(NetworkEvent::NewConnection((connection_id, socket)))
-                            .await.expect("could not send new in connection notification");
-                    } else {
-                        debug!("inbound connection from addr={:?} refused", remote_addr);
-                        massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
-                    }
-                },
-                Err(err) => {
-                    debug!("connection accept failed: {:?}", err);
-                    massa_trace!("in_connection_failed", {"err": err.to_string()});
-                },
-            }
+            res = listener.accept() => manage_in_connections(res,
+                &mut peer_info_db,
+                &mut cur_connection_id,
+                &mut active_connections,
+                &event_tx
+            ).await,
         }
     }
 
@@ -313,5 +230,160 @@ async fn out_connector_fn(
         Ok(Ok(sock)) => (addr.ip(), Ok(sock)),
         Ok(Err(e)) => (addr.ip(), Err(format!("TCP connection failed: {:?}", e))),
         Err(_) => (addr.ip(), Err(format!("TCP connection timed out"))),
+    }
+}
+
+async fn manage_network_command(
+    cmd: NetworkCommand,
+    peer_info_db: &mut PeerInfoDatabase,
+    active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
+    event_tx: &mpsc::Sender<NetworkEvent>,
+) {
+    match cmd {
+        NetworkCommand::MergeAdvertisedPeerList(ips) => {
+            debug!("merging incoming peer list: {:?}", ips);
+            massa_trace!("merge_incoming_peer_list", { "ips": ips });
+            peer_info_db.merge_candidate_peers(&ips);
+        }
+        NetworkCommand::GetAdvertisablePeerList(response_tx) => {
+            response_tx
+                .send(peer_info_db.get_advertisable_peer_ips())
+                .expect("upstream disappeared");
+        }
+        NetworkCommand::ConnectionClosed((id, reason)) => {
+            let (ip, is_outgoing) = active_connections
+                .remove(&id)
+                .expect("missing connection closed");
+            debug!(
+                "connection closed connedtion_id={:?}, ip={:?}, reason={:?}",
+                id, ip, reason
+            );
+            massa_trace!("connection_closed", {
+                "connnection_id": id,
+                "ip": ip,
+                "reason": reason
+            });
+            match reason {
+                ConnectionClosureReason::Normal => {}
+                ConnectionClosureReason::Failed => {
+                    peer_info_db.peer_failed(&ip);
+                }
+                ConnectionClosureReason::Banned => {
+                    peer_info_db.peer_banned(&ip);
+                    // notify all other banned connections to close
+                    // note: they must close using Normal reason or else risk of feedback loop
+                    let target_ids =
+                        active_connections
+                            .iter()
+                            .filter_map(|(other_id, (other_ip, _))| {
+                                if *other_ip == ip {
+                                    Some(other_id)
+                                } else {
+                                    None
+                                }
+                            });
+                    for target_id in target_ids {
+                        event_tx
+                            .send(NetworkEvent::ConnectionBanned(*target_id))
+                            .await
+                            .expect("could not send connection banned notification upstream");
+                    }
+                }
+            }
+            if is_outgoing {
+                peer_info_db.out_connection_closed(&ip);
+            } else {
+                peer_info_db.in_connection_closed(&ip);
+            }
+        }
+        NetworkCommand::ConnectionAlive(id) => {
+            let (ip, _) = active_connections
+                .get(&id)
+                .expect("missing connection alive");
+            peer_info_db.peer_alive(&ip);
+        }
+    }
+}
+
+async fn manage_out_connections(
+    res: Result<TcpStream, String>,
+    ip_addr: IpAddr,
+    peer_info_db: &mut PeerInfoDatabase,
+    cur_connection_id: &mut ConnectionId,
+    active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
+    event_tx: &mpsc::Sender<NetworkEvent>,
+) {
+    match res {
+        Ok(socket) => {
+            if peer_info_db.try_out_connection_attempt_success(&ip_addr) {
+                // outgoing connection established
+                let connection_id = *cur_connection_id;
+                debug!(
+                    "out connection towards ip={:?} established => connection_id={:?}",
+                    ip_addr, connection_id
+                );
+                massa_trace!("out_connection_established", {
+                    "ip": ip_addr,
+                    "connection_id": connection_id
+                });
+                cur_connection_id.0 += 1;
+                active_connections.insert(connection_id, (ip_addr, true));
+                event_tx
+                    .send(NetworkEvent::NewConnection((connection_id, socket)))
+                    .await
+                    .expect("could not send new out connection notification");
+            } else {
+                debug!("out connection towards ip={:?} refused", ip_addr);
+                massa_trace!("out_connection_refused", { "ip": ip_addr });
+            }
+        }
+        Err(err) => {
+            debug!(
+                "outgoing connection attempt towards ip={:?} failed: {:?}",
+                ip_addr, err
+            );
+            massa_trace!("out_connection_attempt_failed", {
+                "ip": ip_addr,
+                "err": err.to_string()
+            });
+            peer_info_db.out_connection_attempt_failed(&ip_addr);
+        }
+    }
+}
+
+async fn manage_in_connections(
+    res: std::io::Result<(TcpStream, SocketAddr)>,
+    peer_info_db: &mut PeerInfoDatabase,
+    cur_connection_id: &mut ConnectionId,
+    active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
+    event_tx: &mpsc::Sender<NetworkEvent>,
+) {
+    match res {
+        Ok((socket, remote_addr)) => {
+            if peer_info_db.try_new_in_connection(&remote_addr.ip()) {
+                let connection_id = *cur_connection_id;
+                debug!(
+                    "inbound connection from addr={:?} succeeded => connection_id={:?}",
+                    remote_addr, connection_id
+                );
+                massa_trace!("in_connection_established", {
+                    "ip": remote_addr.ip(),
+                    "connection_id": connection_id
+                });
+                cur_connection_id.0 += 1;
+                active_connections.insert(connection_id, (remote_addr.ip(), false));
+                event_tx
+                    .send(NetworkEvent::NewConnection((connection_id, socket)))
+                    .await
+                    .expect("could not send new in connection notification");
+            } else {
+                debug!("inbound connection from addr={:?} refused", remote_addr);
+                massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
+            }
+        }
+        Err(err) => {
+            debug!("connection accept failed: {:?}", err);
+            massa_trace!("in_connection_failed", {"err": err.to_string()});
+        }
     }
 }
