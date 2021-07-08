@@ -9,7 +9,7 @@ pub use config::HangMonitorConfig;
 use config::CHANNEL_SIZE;
 use error::HangMonitorError;
 use std::collections::HashMap;
-use time::UTime;
+use std::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -240,7 +240,7 @@ impl HangMonitorManager {
 }
 
 struct MonitoredComponent {
-    last_activity: UTime,
+    last_activity: Instant,
     last_annotation: Option<HangAnnotation>,
     is_waiting: bool,
 }
@@ -272,10 +272,9 @@ impl HangMonitorWorker {
         loop {
             tokio::select! {
                 _ = &mut monitor_interval => {
-                    let now = UTime::now(0).unwrap().estimate_instant(0).unwrap();
+                    let now = Instant::now();
                     for (id, component) in self.monitored_components.iter().filter(|(_, component)| component.is_waiting) {
-                        let last_activity = component.last_activity.estimate_instant(0).unwrap();
-                        let is_hanging = now.duration_since(last_activity) > self.cfg.hang_timeout.to_duration();
+                        let is_hanging = now.duration_since(component.last_activity) > self.cfg.hang_timeout.to_duration();
                         if is_hanging {
                              debug!("Component {:?} is hanging on {:?}.", id, component.last_annotation);
                         }
@@ -300,7 +299,7 @@ impl HangMonitorWorker {
                 self.monitored_components.insert(
                     id,
                     MonitoredComponent {
-                        last_activity: UTime::now(0).unwrap(),
+                        last_activity: Instant::now(),
                         last_annotation: None,
                         is_waiting: false,
                     },
@@ -311,7 +310,7 @@ impl HangMonitorWorker {
             }
             HangMonitorCommand::NotifyActivity(id, annotation) => {
                 if let Some(component) = self.monitored_components.get_mut(&id) {
-                    component.last_activity = UTime::now(0).unwrap();
+                    component.last_activity =  Instant::now();
                     component.last_annotation = Some(annotation);
                 }
             }
