@@ -40,11 +40,18 @@ pub struct StorageEventReceiver(pub mpsc::Receiver<StorageEvent>);
 
 impl StorageEventReceiver {
     pub async fn wait_event(&mut self) -> Result<StorageEvent, StorageError> {
-        todo!()
+        self.0
+            .recv()
+            .await
+            .ok_or(StorageError::ControllerEventError)
     }
 
     pub async fn drain(mut self) -> VecDeque<StorageEvent> {
-        todo!()
+        let mut remaining_events: VecDeque<StorageEvent> = VecDeque::new();
+        while let Some(evt) = self.0.recv().await {
+            remaining_events.push_back(evt);
+        }
+        remaining_events
     }
 }
 
