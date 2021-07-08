@@ -25,11 +25,15 @@ Also, if you want to save this wallet and be able to restore it later, click `Sa
 
 Go to the client folder:
 
-`cd massa-client`
+----
+cd massa-client
+----
 
 Start the interactive client and load a wallet file:
 
-`cargo run -- --wallet wallet.dat`
+----
+cargo run -- --wallet wallet.dat
+----
 
 If the wallet file `wallet.dat` does not exist, it is created.
 
