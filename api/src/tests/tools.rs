@@ -148,14 +148,14 @@ pub fn get_dummy_staker() -> PublicKey {
 }
 
 pub async fn get_test_storage(
-    path: String,
     cfg: ConsensusConfig,
 ) -> (StorageCommandSender, (Block, Block, Block)) {
+    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     let (storage_command_tx, _storage_manager) = start_storage_controller(StorageConfig {
         max_stored_blocks: 10,
-        path,
+        path: tempdir.path().to_path_buf(),
         cache_capacity: 500,
-        flush_every_ms: None,
+        flush_interval: Some(200.into()),
     })
     .unwrap();
 

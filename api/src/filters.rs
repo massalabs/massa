@@ -226,8 +226,6 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(warp::query::<TimeInterval>()) //start, end
         .and_then(move |TimeInterval { start, end }| {
-            println!("blockinterval start:{:?} end:{:?}", start, end);
-
             get_block_interval(
                 evt_tx.clone(),
                 consensus_cfg.clone(),
@@ -597,8 +595,6 @@ async fn get_block_interval(
     end: Option<UTime>,
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    //    let start = start_opt.unwrap_or(UTime::from(0));
-    //    let end = end_opt.unwrap_or(UTime::from(u64::MAX));
     match get_block_interval_process(
         event_tx,
         consensus_cfg,
@@ -620,6 +616,43 @@ async fn get_block_interval(
     }
 }
 
+async fn get_block_from_graph(
+    event_tx: mpsc::Sender<ApiEvent>,
+    consensus_cfg: &ConsensusConfig,
+    start_opt: Option<UTime>,
+    end_opt: Option<UTime>,
+) -> Result<Vec<(Hash, Slot)>, String> {
+    retrieve_graph_export(&event_tx)
+        .await
+        .map_err(|err| (format!("error retrieving graph : {:?}", err)))
+        .and_then(|graph| {
+            let start = start_opt.unwrap_or(UTime::from(0));
+            let end = end_opt.unwrap_or(UTime::from(u64::MAX));
+
+            graph
+                .active_blocks
+                .into_iter()
+                .filter_map(|(hash, exported_block)| {
+                    get_block_slot_timestamp(
+                        consensus_cfg.thread_count,
+                        consensus_cfg.t0,
+                        consensus_cfg.genesis_timestamp,
+                        exported_block.block.slot,
+                    )
+                    .map_err(|err| (format!("error getting time : {:?}", err)))
+                    .map(|time| {
+                        if start <= time && time < end {
+                            Some((hash, exported_block.block.slot))
+                        } else {
+                            None
+                        }
+                    })
+                    .transpose()
+                })
+                .collect::<Result<Vec<(Hash, Slot)>, String>>()
+        })
+}
+
 async fn get_block_interval_process(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
@@ -635,35 +668,7 @@ async fn get_block_interval_process(
     }
 
     //filter block from graph_export
-    let mut res = retrieve_graph_export(&event_tx)
-        .await
-        .map_err(|err| (format!("error retrieving graph : {:?}", err)))
-        .and_then(|graph| {
-            let start = start_opt.unwrap_or(UTime::from(0));
-            let end = end_opt.unwrap_or(UTime::from(u64::MAX));
-
-            graph
-                .active_blocks
-                .iter()
-                .filter_map(|(hash, exported_block)| {
-                    get_block_slot_timestamp(
-                        consensus_cfg.thread_count,
-                        consensus_cfg.t0,
-                        consensus_cfg.genesis_timestamp,
-                        exported_block.block.slot,
-                    )
-                    .map_err(|err| (format!("error getting time : {:?}", err)))
-                    .map(|time| {
-                        if start <= time && time < end {
-                            Some((*hash, exported_block.block.slot))
-                        } else {
-                            None
-                        }
-                    })
-                    .transpose()
-                })
-                .collect::<Result<Vec<(Hash, Slot)>, String>>()
-        })?;
+    let mut res = get_block_from_graph(event_tx, &consensus_cfg, start_opt, end_opt).await?;
 
     if let Some(ref storage) = opt_storage_command_sender {
         //add block from storage
@@ -704,34 +709,39 @@ async fn get_block_interval_process(
         };
 
         //get end slot
-        let end_slot_opt = get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            end,
-        )
-        .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
-        .and_then(|opt_slot| {
-            opt_slot
-                .map(|slot| {
-                    get_block_slot_timestamp(
-                        consensus_cfg.thread_count,
-                        consensus_cfg.t0,
-                        consensus_cfg.genesis_timestamp,
-                        slot,
-                    )
-                    .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                    .and_then(|end_time| {
-                        if end_time == end {
-                            Ok(slot)
-                        } else {
-                            slot.get_next_slot(consensus_cfg.thread_count)
-                                .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                        }
+        let end_slot_opt = if let Some(end) = end_opt {
+            let slot = get_latest_block_slot_at_timestamp(
+                consensus_cfg.thread_count,
+                consensus_cfg.t0,
+                consensus_cfg.genesis_timestamp,
+                end,
+            )
+            .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
+            .and_then(|opt_slot| {
+                opt_slot
+                    .map(|slot| {
+                        get_block_slot_timestamp(
+                            consensus_cfg.thread_count,
+                            consensus_cfg.t0,
+                            consensus_cfg.genesis_timestamp,
+                            slot,
+                        )
+                        .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
+                        .and_then(|end_time| {
+                            if end_time == end {
+                                Ok(slot)
+                            } else {
+                                slot.get_next_slot(consensus_cfg.thread_count)
+                                    .map_err(|err| format!("error retrieving next slot: {:?}", err))
+                            }
+                        })
                     })
-                })
-                .transpose()
-        })?;
+                    .transpose()
+            })?;
+            Some(slot)
+        } else {
+            None
+        };
 
         if let Some(end_slot) = end_slot_opt {
             storage
@@ -765,13 +775,11 @@ async fn get_graph_interval(
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let start = start_opt.unwrap_or(UTime::from(0));
-    let end = end_opt.unwrap_or(UTime::from(u64::MAX));
     match get_graph_interval_process(
         event_tx,
         consensus_cfg,
-        start,
-        end,
+        start_opt,
+        end_opt,
         opt_storage_command_sender,
     )
     .await
@@ -788,121 +796,114 @@ async fn get_graph_interval(
 async fn get_graph_interval_process(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
-    start: UTime,
-    end: UTime,
+    start_opt: Option<UTime>,
+    end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<Vec<(Hash, Slot, String, Vec<Hash>)>, String> {
-    let mut res = HashMap::new();
-    let graph = retrieve_graph_export(&event_tx)
+    //filter block from graph_export
+    let mut res = retrieve_graph_export(&event_tx)
         .await
-        .map_err(|err| (format!("error retrieving graph : {:?}", err)))?;
-    for (hash, exported_block) in graph.active_blocks {
-        let header = exported_block.block;
-        let time = get_block_slot_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            header.slot,
-        )
-        .map_err(|err| (format!("error getting time : {:?}", err)))?;
+        .map_err(|err| (format!("error retrieving graph : {:?}", err)))
+        .and_then(|graph| {
+            let start = start_opt.unwrap_or(UTime::from(0));
+            let end = end_opt.unwrap_or(UTime::from(u64::MAX));
 
-        if start <= time && time < end {
-            res.insert(hash, (header.slot, "active".to_string(), header.parents));
-        }
-    }
-    let mut final_blocks = HashMap::new();
-    for (hash, (slot, _, parents)) in res.iter() {
-        if !graph.gi_head.contains_key(&hash) {
-            final_blocks.insert(hash.clone(), (*slot, "final".to_string(), parents.clone()));
-        }
-    }
-
-    for (key, value) in final_blocks {
-        res.insert(key, value);
-    }
-
-    for (hash, (reason, header)) in graph.discarded_blocks.map {
-        let time = get_block_slot_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            header.slot,
-        )
-        .map_err(|err| (format!("error getting time : {:?}", err)))?;
-        if start <= time && time < end {
-            let status;
-            match reason {
-                DiscardReason::Invalid => {
-                    continue;
-                }
-                DiscardReason::Stale => status = "stale".to_string(),
-                DiscardReason::Final => status = "final".to_string(),
-            }
-            res.insert(hash, (header.slot, status, header.parents));
-        }
-    }
+            graph
+                .active_blocks
+                .into_iter()
+                .filter_map(|(hash, exported_block)| {
+                    let header = exported_block.block;
+                    get_block_slot_timestamp(
+                        consensus_cfg.thread_count,
+                        consensus_cfg.t0,
+                        consensus_cfg.genesis_timestamp,
+                        header.slot,
+                    )
+                    .map_err(|err| (format!("error getting time : {:?}", err)))
+                    .map(|time| {
+                        if start <= time && time < end {
+                            Some((hash, (header.slot, "active".to_string(), header.parents)))
+                        } else {
+                            None
+                        }
+                    })
+                    .transpose()
+                })
+                .collect::<Result<Vec<(Hash, (Slot, String, Vec<Hash>))>, String>>()
+        })?;
 
     if let Some(storage) = opt_storage_command_sender {
-        let start_slot = get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            start,
-        )
-        .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
-        let start_slot = if let Some(slot) = start_slot {
-            // if there is a slot at start timestamp
-            if get_block_slot_timestamp(
+        let start_slot = if let Some(start) = start_opt {
+            let start_slot = get_latest_block_slot_at_timestamp(
                 consensus_cfg.thread_count,
                 consensus_cfg.t0,
                 consensus_cfg.genesis_timestamp,
-                slot,
+                start,
             )
-            .map_err(|err| (format!("error retrieving time : {:?}", err)))?
-                == start
-            {
-                slot
-            } else {
-                slot.get_next_slot(consensus_cfg.thread_count)
-                    .map_err(|err| (format!("error retrieving graph : {:?}", err)))?
-            }
-        } else {
-            // no slot found
-            Slot::new(0, 0)
-        };
-        let end_slot = get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            end,
-        )
-        .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
+            .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
 
-        let end_slot = if let Some(slot) = end_slot {
-            if get_block_slot_timestamp(
+            let start_slot = if let Some(slot) = start_slot {
+                // if there is a slot at start timestamp
+                if get_block_slot_timestamp(
+                    consensus_cfg.thread_count,
+                    consensus_cfg.t0,
+                    consensus_cfg.genesis_timestamp,
+                    slot,
+                )
+                .map_err(|err| (format!("error retrieving time : {:?}", err)))?
+                    == start
+                {
+                    slot
+                } else {
+                    slot.get_next_slot(consensus_cfg.thread_count)
+                        .map_err(|err| (format!("error retrieving graph : {:?}", err)))?
+                }
+            } else {
+                // no slot found
+                Slot::new(0, 0)
+            };
+            Some(start_slot)
+        } else {
+            None
+        };
+
+        let end_slot = if let Some(end) = end_opt {
+            let end_slot = get_latest_block_slot_at_timestamp(
                 consensus_cfg.thread_count,
                 consensus_cfg.t0,
                 consensus_cfg.genesis_timestamp,
-                slot,
+                end,
             )
-            .map_err(|err| (format!("error retrieving time : {:?}", err)))?
-                == end
-            {
-                slot
-            } else {
-                slot.get_next_slot(consensus_cfg.thread_count)
-                    .map_err(|err| (format!("error retrieving time : {:?}", err)))?
-            }
-        } else {
-            return Err("No end timestamp".to_string());
-        };
+            .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
 
+            let end_slot = if let Some(slot) = end_slot {
+                if get_block_slot_timestamp(
+                    consensus_cfg.thread_count,
+                    consensus_cfg.t0,
+                    consensus_cfg.genesis_timestamp,
+                    slot,
+                )
+                .map_err(|err| (format!("error retrieving time : {:?}", err)))?
+                    == end
+                {
+                    slot
+                } else {
+                    slot.get_next_slot(consensus_cfg.thread_count)
+                        .map_err(|err| (format!("error retrieving time : {:?}", err)))?
+                }
+            } else {
+                return Err("No end timestamp".to_string());
+            };
+            Some(end_slot)
+        } else {
+            None
+        };
         let blocks = storage
             .get_slot_range(start_slot, end_slot)
             .await
             .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
         for (hash, block) in blocks {
-            res.insert(hash, (block.header.slot, "final".to_string(), Vec::new()));
+            res.push((hash, (block.header.slot, "final".to_string(), Vec::new())));
         }
     }
     Ok(res

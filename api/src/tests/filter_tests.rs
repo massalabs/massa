@@ -295,7 +295,7 @@ async fn test_get_graph_interval() {
     let expected = vec![(
         get_test_hash(),
         block.block.slot,
-        "final", // in tests there are no blocks in gi_head, so no just active blocks
+        "active", // in tests there are no blocks in gi_head, so no just active blocks
         block.block.parents.clone(),
     )];
     let expected: serde_json::Value =
@@ -308,8 +308,7 @@ async fn test_get_graph_interval() {
     let mut cfg = get_consensus_config();
     cfg.t0 = 2000.into();
 
-    let (storage_command_tx, (block_a, block_b, block_c)) =
-        get_test_storage("test_graph_interval".to_string(), cfg).await;
+    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
 
     let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
 
@@ -728,30 +727,16 @@ async fn test_get_block_interval() {
             _ => {}
         }
     });
-
     // invalid hash: filter mismatch
     let matches = warp::test::request()
         .method("GET")
         .path(&"/api/v1/blockinterval")
         .matches(&filter)
         .await;
-    println!(" filter{:?}", filter);
     assert!(matches);
 
     let (filter, mut rx_api) = mock_filter(None);
 
-    let handle = tokio::spawn(async move {
-        let evt = rx_api.recv().await;
-        match evt {
-            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
-                response_sender_tx
-                    .send(get_test_block_graph())
-                    .expect("failed to send block graph");
-            }
-
-            _ => {}
-        }
-    });
     // block not found
     let start: UTime = 0.into();
     let end: UTime = 0.into();
@@ -768,7 +753,7 @@ async fn test_get_block_interval() {
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap()).unwrap();
     assert_eq!(obtained, expected);
-    handle.await.unwrap();
+    //handle.await.unwrap();
 
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -794,7 +779,6 @@ async fn test_get_block_interval() {
         ))
         .reply(&filter)
         .await;
-    handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let mut expected = Vec::new();
@@ -810,8 +794,7 @@ async fn test_get_block_interval() {
     let mut cfg = get_consensus_config();
     cfg.t0 = 2000.into();
 
-    let (storage_command_tx, (block_a, block_b, block_c)) =
-        get_test_storage("test_block_interval".to_string(), cfg).await;
+    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
 
     let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
 
@@ -1006,11 +989,12 @@ async fn test_get_block() {
     handle.await.unwrap();
     drop(filter);
 
+    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     let (storage_command_tx, _storage_manager) = start_storage_controller(StorageConfig {
         max_stored_blocks: 10,
-        path: "test_block".to_string(),
+        path: tempdir.path().to_path_buf(),
         cache_capacity: 500,
-        flush_every_ms: None,
+        flush_interval: Some(200.into()),
     })
     .unwrap();
     let (filter, mut rx_api) = mock_filter(None);
