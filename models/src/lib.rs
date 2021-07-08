@@ -18,7 +18,9 @@ pub use context::{
     SerializationContext,
 };
 pub use error::ModelsError;
-pub use operation::{Operation, OperationContent, OperationId, OperationType};
+pub use operation::{
+    Operation, OperationContent, OperationId, OperationType, OPERATION_ID_SIZE_BYTES,
+};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,

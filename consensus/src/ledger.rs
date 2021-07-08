@@ -159,10 +159,6 @@ impl DeserializeCompact for LedgerChange {
 }
 
 pub trait OperationLedgerInterface {
-    fn get_involved_addresses(
-        &self,
-        fee_target: &Address,
-    ) -> Result<HashSet<Address>, ConsensusError>;
     fn get_changes(
         &self,
         fee_target: &Address,
@@ -171,23 +167,6 @@ pub trait OperationLedgerInterface {
 }
 
 impl OperationLedgerInterface for Operation {
-    fn get_involved_addresses(
-        &self,
-        fee_target: &Address,
-    ) -> Result<HashSet<Address>, ConsensusError> {
-        let mut res = HashSet::new();
-        res.insert(fee_target.clone());
-        res.insert(Address::from_public_key(&self.content.sender_public_key)?);
-        match self.content.op {
-            models::OperationType::Transaction {
-                recipient_address, ..
-            } => {
-                res.insert(recipient_address);
-            }
-        }
-        Ok(res)
-    }
-
     fn get_changes(
         &self,
         fee_target: &Address,
@@ -707,20 +686,8 @@ impl SerializeCompact for LedgerExport {
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext};
     /// # use consensus::LedgerExport;
     /// # let ledger = LedgerExport::new(2);
-    /// #    let context = SerializationContext {
-    /// #        max_block_size: 100000,
-    /// #        max_block_operations: 1000000,
-    /// #        parent_count: 2,
-    /// #        max_peer_list_length: 128,
-    /// #        max_message_size: 3 * 1024 * 1024,
-    /// #        max_bootstrap_blocks: 100,
-    /// #        max_bootstrap_cliques: 100,
-    /// #        max_bootstrap_deps: 100,
-    /// #        max_bootstrap_children: 100,
-    /// #        max_ask_blocks_per_message: 10,
-    /// #        max_operations_per_message: 1024,
-    /// #        max_bootstrap_message_size: 100000000,
-    /// #    };
+    /// # models::init_serialization_context(Default::default());
+    /// # let context = Default::default();
     /// let bytes = ledger.clone().to_bytes_compact(&context).unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes, &context).unwrap();
     /// assert_eq!(ledger.latest_final_periods, res.latest_final_periods);

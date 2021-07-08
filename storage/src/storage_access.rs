@@ -27,10 +27,12 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         db.drop_tree("hash_to_block")?;
         db.drop_tree("slot_to_hash")?;
         db.drop_tree("op_to_block")?;
+        db.drop_tree("addr_to_op")?;
     }
     let hash_to_block = db.open_tree("hash_to_block")?;
     let slot_to_hash = db.open_tree("slot_to_hash")?;
     let op_to_block = db.open_tree("op_to_block")?;
+    let addr_to_op = db.open_tree("addr_to_op")?;
 
     let block_count = Arc::new(AtomicUsize::new(hash_to_block.len()));
     let notify = Arc::new(Notify::new());
@@ -41,6 +43,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         hash_to_block.clone(),
         slot_to_hash.clone(),
         op_to_block.clone(),
+        addr_to_op.clone(),
         block_count.clone(),
         notify.clone(),
     )?;
@@ -52,6 +55,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         hash_to_block,
         slot_to_hash,
         op_to_block,
+        addr_to_op,
         block_count,
         serialization_context,
     )?;
