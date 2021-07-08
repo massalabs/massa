@@ -521,7 +521,7 @@ async fn test_block_not_found() {
     //let mut  conn1_r = conn1_drain.0.await.unwrap();
     // assert that block not found is sent to node
 
-    let timer = sleep(Duration::from_millis(100));
+    let timer = sleep(Duration::from_millis(500));
     tokio::pin!(timer);
     loop {
         tokio::select! {
