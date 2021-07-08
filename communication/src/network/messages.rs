@@ -178,11 +178,6 @@ impl DeserializeCompact for Message {
                 cursor += HASH_SIZE_BYTES;
                 Message::BlockNotFound(hash)
             }
-            _ => {
-                return Err(ModelsError::DeserializeError(
-                    "unsupported message type".into(),
-                ))
-            }
         };
         Ok((res, cursor))
     }
