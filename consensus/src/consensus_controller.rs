@@ -66,8 +66,11 @@ pub async fn start_consensus_controller(
 
     // start worker
     let block_db = BlockGraph::new(cfg.clone(), boot_graph).await?;
-    let pos = ProofOfStake::new(cfg.clone()).await?;
+
     //TODO pos bootstrapping (like block_db)
+    // otherwise, initialize a new PoS:
+    let pos = ProofOfStake::new(cfg.clone(), block_db.get_genesis_block_ids()).await?;
+
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);

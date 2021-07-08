@@ -1,10 +1,11 @@
 //! All information concerning blocks, the block graph and cliques is managed here.
-use super::{config::ConsensusConfig, pos::ProofOfStake};
+use super::config::ConsensusConfig;
 use crate::{
     error::ConsensusError,
     ledger::{
         Ledger, LedgerChange, LedgerData, LedgerExport, LedgerSubset, OperationLedgerInterface,
     },
+    pos::{ProofOfStake, RollCounts, RollUpdates},
 };
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
@@ -38,27 +39,6 @@ impl HeaderOrBlock {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-/// subset of addresses whose rolls changed in a block
-pub struct RollThreadUpdates {
-    /// roll counts in the cycle so far for the involved addressses
-    pub roll_count: HashMap<Address, u64>,
-    /// compensated number of rolls an address has bought in the cycle so far for the involved addressses
-    pub cycle_purchases: HashMap<Address, u64>,
-    /// compensated number of rolls an address has sold in the cycle so far for the involved addressses
-    pub cycle_sales: HashMap<Address, u64>,
-}
-
-impl RollThreadUpdates {
-    fn empty() -> RollThreadUpdates {
-        RollThreadUpdates {
-            roll_count: HashMap::new(),
-            cycle_purchases: HashMap::new(),
-            cycle_sales: HashMap::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
     pub block: Block,
     pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
@@ -69,7 +49,7 @@ pub struct ActiveBlock {
     pub block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
     pub operation_set: HashMap<OperationId, (usize, u64)>, // index in the block, end of validity period
     pub addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
-    pub roll_updates: RollThreadUpdates,
+    pub roll_updates: RollUpdates, // Address -> RollUpdate
 }
 
 impl ActiveBlock {
@@ -134,7 +114,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             .collect::<Result<_, _>>()?;
 
         let addresses_to_operations = block.block.involved_addresses()?;
-        let roll_updates = RollThreadUpdates::empty();
+        let roll_updates = RollUpdates::new();
         // todo update export active block see #398
         Ok(ActiveBlock {
             block: block.block,
@@ -794,7 +774,7 @@ enum BlockCheckOutcome {
         incompatibilities: HashSet<BlockId>,
         inherited_incompatibilities_count: usize,
         block_changes: Vec<HashMap<Address, LedgerChange>>,
-        roll_updates: RollThreadUpdates,
+        roll_updates: RollUpdates,
     },
     Discard(DiscardReason),
     WaitForSlot,
@@ -806,7 +786,7 @@ enum BlockOperationsCheckOutcome {
     Proceed {
         dependencies: HashSet<BlockId>,
         block_changes: Vec<HashMap<Address, LedgerChange>>,
-        roll_updates: RollThreadUpdates,
+        roll_updates: RollUpdates,
     },
     Discard(DiscardReason),
     WaitForDependencies(HashSet<BlockId>),
@@ -870,8 +850,6 @@ impl BlockGraph {
                 ConsensusError::GenesisCreationError(format!("genesis error {:?}", err))
             })?;
 
-            let roll_updates = RollThreadUpdates::empty();
-
             block_hashes.push(hash);
             block_statuses.insert(
                 hash,
@@ -885,7 +863,7 @@ impl BlockGraph {
                     block_ledger_change: vec![HashMap::new(); cfg.thread_count as usize], // no changes in genesis blocks
                     operation_set: HashMap::with_capacity(0),
                     addresses_to_operations: HashMap::with_capacity(0),
-                    roll_updates,
+                    roll_updates: RollUpdates::new(),
                 }),
             );
         }
@@ -977,7 +955,6 @@ impl BlockGraph {
             })
         }
     }
-
     /// Gets lastest final blocks (hash, period) for each thread.
     pub fn get_latest_final_blocks_periods(&self) -> &Vec<(BlockId, u64)> {
         &self.latest_final_blocks_periods
@@ -988,8 +965,88 @@ impl BlockGraph {
         &self.best_parents
     }
 
-    fn get_roll_data_at_parent(&self, id: BlockId, addrs: HashSet<Address>) -> RollThreadUpdates {
-        todo!() // see #408
+    ///for algo see pos.md
+    fn get_roll_data_at_parent(
+        &self,
+        block_id: BlockId,
+        addrs: HashSet<Address>,
+        pos: ProofOfStake,
+    ) -> Result<RollCounts, ConsensusError> {
+        // get target block and its cycle/thread
+        let (target_cycle, target_thread) = match self.block_statuses.get(&block_id) {
+            Some(BlockStatus::Active(a_block)) => (
+                a_block
+                    .block
+                    .header
+                    .content
+                    .slot
+                    .get_cycle(self.cfg.periods_per_cycle),
+                a_block.block.header.content.slot.thread,
+            ),
+            _ => {
+                return Err(ConsensusError::ContainerInconsistency(format!(
+                    "block missing or non-active: {:?}",
+                    block_id
+                )));
+            }
+        };
+
+        // stack back to latest final slot
+        let mut stack = Vec::new();
+        let mut cur_block_id = block_id;
+        let mut final_cycle = 0;
+        loop {
+            // get block
+            let cur_a_block = match self.block_statuses.get(&cur_block_id) {
+                Some(BlockStatus::Active(a_block)) => a_block,
+                _ => {
+                    return Err(ConsensusError::ContainerInconsistency(format!(
+                        "block missing or non-active: {:?}",
+                        cur_block_id
+                    )));
+                }
+            };
+            if cur_a_block.is_final {
+                // filters out genesis and final blocks
+                final_cycle = cur_a_block
+                    .block
+                    .header
+                    .content
+                    .slot
+                    .get_cycle(self.cfg.periods_per_cycle);
+                break;
+            }
+            stack.push(cur_block_id);
+            cur_block_id = cur_a_block.parents[target_thread as usize].0;
+        }
+
+        // get latest final PoS state for addresses
+        let mut cur_rolls = pos
+            .get_final_roll_data(final_cycle, target_thread)
+            .ok_or(ConsensusError::ContainerInconsistency(format!(
+                "final PoS cycle not available: {:?}",
+                final_cycle
+            )))?
+            .roll_count
+            .clone_subset(&addrs);
+
+        // unstack blocks and apply their roll changes
+        while let Some(cur_block_id) = stack.pop() {
+            // get block and apply its roll updates to cur_rolls
+            match self.block_statuses.get(&cur_block_id) {
+                Some(BlockStatus::Active(a_block)) => {
+                    cur_rolls.apply(&a_block.roll_updates)?;
+                }
+                _ => {
+                    return Err(ConsensusError::ContainerInconsistency(format!(
+                        "block missing or non-active: {:?}",
+                        cur_block_id
+                    )));
+                }
+            };
+        }
+
+        Ok(cur_rolls)
     }
 
     /// gets Ledger data export for given Addressses
@@ -2207,6 +2264,10 @@ impl BlockGraph {
         })
     }
 
+    pub fn get_genesis_block_ids(&self) -> &Vec<BlockId> {
+        &self.genesis_hashes
+    }
+
     /// Compute ledger subset after given parents for given addresses
     pub fn get_ledger_at_parents(
         &self,
@@ -2389,7 +2450,7 @@ impl BlockGraph {
         block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
         operation_set: HashMap<OperationId, (usize, u64)>,
         addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
-        roll_updates: RollThreadUpdates,
+        roll_updates: RollUpdates,
     ) -> Result<(), ConsensusError> {
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
         // add block to status structure
@@ -3922,6 +3983,7 @@ mod tests {
             periods_per_cycle: 100,
             pos_lookback_cycles: 4,
             pos_lock_cycles: 1,
+            pos_draw_cached_cycles: 2,
         }
     }
 }

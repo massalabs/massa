@@ -3,43 +3,43 @@
 ## In consensus
 
 ```
-struct FinalRollThreadData {
+pub struct RollUpdate {
+    pub roll_increment: bool, // true = majority buy, false = majority sell
+    pub roll_delta: u64,      // absolute change in roll count
+}
+
+pub struct RollUpdates(pub HashMap<Address, RollUpdate>);
+
+struct ThreadCycleState {
     cycle: u64,
-    last_final_slot: Slot,
-    roll_count: BTreeMap<Address, u64>,  // number of rolls an address has
-    cycle_purchases: HashMap<Address, u64>,  // compensated number of rolls an address has bought in the cycle 
-    cycle_sales: HashMap<Address, u64>,  // compenseated number of rolls an address has sold in the cycle
+    last_final_slot: Slot,  // last final slot of cycle for this thread (even if miss)
+    roll_count: RollCounts,  // number of rolls addresses have
+    cycle_updates: RollUpdates,  // compensated number of rolls addresses have bought/sold in the cycle 
     rng_seed: BitVec // https://docs.rs/bitvec/0.22.3/bitvec/
 }
+
+pub struct RollCounts(pub BTreeMap<Address, u64>);
 ```
 
-* `final_roll_data: Vec< VecDeque<FinalRollThreadData> >` indices: [thread][cycle] -> FinalRollThreadData
+* `cycle_states: Vec<VecDeque<ThreadCycleState> >` indices: [thread][cycle] -> ThreadCycleState
 
 Those values are either bootstrapped, or set to their genesis values:
-* final_roll_data:
+* cycle_states:
   * set the N=0 to the genesis roll distribution. Bitvec set to the 1st bit of the genesis block hashes as if they were the only final blocks here.
   * set the N=-1,-2,-3,-4 elements to genesis roll distribution. Bitvecs generated through an RNG seeded with the sha256 of a hardcoded seed in config.
 
 ## In ActiveBlock
 
-```
-struct RollThreadUpdates {  // subset of addresses whose rolls changed in a block
-    roll_count: HashMap<Address, u64>,  // roll counts in the cycle so far for the involved addressses
-    cycle_purchases: HashMap<Address, u64>, // compensated number of rolls an address has bought in the cycle so far for the involved addressses
-    cycle_sales: HashMap<Address, u64> // compensated number of rolls an address has sold in the cycle so far for the involved addressses
-}
-```
-
 Add a field:
 
-* `roll_updates: RollThreadUpdates`  for the block's thread
+* `roll_updates: RollUpdates`  for the block's thread
 
 
 ## Draws
 
 ### Principle
 
-To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of FinalRollThreadData.rng_seed for all threads in increasing order)`, then draw an index among the cumsum of the `final_roll_data.roll_count` for cycle `N-3` among all threads. THe complexity of a draw should be in `O(log(K))` where K is the roll ledger size. 
+To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of ThreadCycleState.rng_seed for all threads in increasing order)`, then draw an index among the cumsum of the `cycle_states.roll_count` for cycle `N-3` among all threads. THe complexity of a draw should be in `O(log(K))` where K is the roll ledger size. 
 
 ### Special case: if N-3 < 0
 
@@ -62,56 +62,39 @@ Whenever cache is computed or read for a given cycle, set its sequence number to
 
 ### get_roll_data_at_parent
 
-`get_roll_data_at_parent(BlockId, HashSet<Address>) -> RollThreadUpdates` returns the (current number of rolls, compensated number of purchases in cycle, compensated number of sales in cycle) addresses had at the output of BlockId.
-This works by going backwards from BlockId (including BlockId) in the same thread parents.
-* Loop, when a block Bp is reached:
-  * if Bp is final:
-    * get the missing address data from FinalRollThreadData
-    * set cycle_purchases and cycle_sales to 0 if Bp is not in the same cycle as BlockId
-    * fill up remainder addresses with zeros
-    * break the loop
-  * else:
-    * if the address is in Bp's RollThreadUpdates, set its roll_count/cycle_purchases/cycle_sales to that values
-    * set cycle_purchases and cycle_sales to 0 if Bp is not in the same cycle as BlockId
-  * if all addresses are filled, break the loop
+`get_roll_data_at_parent(BlockId, HashSet<Address>) -> RollCounts` returns the RollCounts addresses had at the output of BlockId.
 
-
+Algo:
+* start from BlockId, and explore itself and its ancestors backwars in the same thread:
+  * if a final block is explored, break + save final_cycle 
+  * otherwise, stack the explored block ID
+* set cur_rolls = the latest final roll state at final_cycle for the selected addresses
+* while block_id = stack.pop():
+  * apply active_block[block_id].roll_updates to cur_rolls
+* return cur_rolls
 
 ### block reception process
 
 * check that the draw matches the block creator
 * get the list of `roll_involved_addresses` buying/selling rolls in the block
-* set `B.roll_updates = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
+* set `cur_rolls = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
+* set `B.roll_updates = new()`
 * if the block is the first of a new cycle N for thread Tau:
-  * credit `roll_price * final_roll_data[Tau][4].cycle_sales[addr]` for every addr in `final_roll_data[Tau][4].cycle_sales.keys()`
-  * set all the compensated purchase/sale counts to 0 in `B.roll_update` (because they were counted for the previous cycle)
+  * credit `roll_price * cycle_states[Tau][4].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
 * parse the operations of the block in order:
-  * if there is a ROLL_BUY[nb_rolls] operation from address A:
-    * compute `sale_compensations = min(nb_rolls, B.roll_updates[A].cycle_sales)`
-    * `B.roll_updates[A].cycle_sales -= sale_compensations`
-    * `compensated_rolls = nb_rolls - sale_compensations`
-    * apply `B.roll_updates[A].cycle_purchases += compensated_rolls`
-    * try to apply ledgerchanges crediting the block creator with the fee, and substracting `compensated_rolls * config.roll_price` from the A's balance. If fails (low balance) => invalid.
-    * `B.roll_updates[A].roll_count += compensated_rolls`
-    
-  * if there is a ROLL_SELL[nb_rolls] operation from address A:
-    * compute `purchase_compensations = min(nb_rolls, B.roll_updates[A].cycle_purchases)`
-    * `B.roll_updates[A].cycle_purchases -= purchase_compensations`
-    * `compensated_rolls = nb_rolls - purchase_compensations`
-    * credit A with `purchase_compensations * roll_price` tokens through ledgerchanges
-    * apply `B.roll_updates[A].cycle_sales += compensated_rolls`
-    * `B.roll_updates[A].roll_count -= compensated_rolls` => fail if negative    
+  * try apply roll changes to cur_rolls. If failure => block invalid
+  * try chain roll changes to `B.roll_updates`. If failure => block invalid
 
 ## When a block B in thread Tau and cycle N becomes final
 
 * step 1:
-  * if N > final_roll_data[thread][0].cycle:
-    * push front a new element in final_roll_data that represents cycle N:
-      * inherit FinalRollThreadData.roll_count from cycle N-1
-      * empty FinalRollThreadData.cycle_purchases, FinalRollThreadData.cycle_sales, FinalRollThreadData.rng_seed
-    * pop back for final_roll_data[thread] to keep it the right size
+  * if N > cycle_states[thread][0].cycle:
+    * push front a new element in cycle_states that represents cycle N:
+      * inherit ThreadCycleState.roll_count from cycle N-1
+      * empty ThreadCycleState.cycle_updates, ThreadCycleState.rng_seed
+    * pop back for cycle_states[thread] to keep it the right size
 * step 2:
   * if there were misses between B and its parent, for each of them in order:
-    * push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in final_roll_data[thread].rng_seed
-  * push the 1st bit of BlockId in final_roll_data[thread].rng_seed
-  * overwrite the FinalRollThreadData sales/purchase entries at cycle N with the ones from the ActiveBlock 
+    * push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in cycle_states[thread].rng_seed
+  * push the 1st bit of BlockId in cycle_states[thread].rng_seed
+  * update the ThreadCycleState roll counts at cycle N with by applying ActiveBlock.roll_updates 
