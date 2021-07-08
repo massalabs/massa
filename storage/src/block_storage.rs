@@ -109,7 +109,7 @@ impl StorageCleaner {
                                 ops.remove(&op_id.to_bytes())?;
 
                                 // remove involved addrs from address => operation index
-                                let involved_addrs = op.get_involved_addresses(&fee_addr).map_err(|err| {
+                                let involved_addrs = op.get_involved_addresses(Some(fee_addr)).map_err(|err| {
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError(format!(
                                             "error computing op-involved addresses: {:?}",
@@ -337,14 +337,15 @@ impl BlockStorage {
                         [&block_id.to_bytes()[..], &(idx as u64).to_be_bytes()[..]].concat(),
                     )?;
                     // add to involved addrs
-                    let involved_addrs = op.get_involved_addresses(&fee_target).map_err(|err| {
-                        sled::transaction::ConflictableTransactionError::Abort(
-                            InternalError::TransactionError(format!(
-                                "error getting involved addrs: {:?}",
-                                err
-                            )),
-                        )
-                    })?;
+                    let involved_addrs =
+                        op.get_involved_addresses(Some(fee_target)).map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(format!(
+                                    "error getting involved addrs: {:?}",
+                                    err
+                                )),
+                            )
+                        })?;
                     for involved_addr in involved_addrs.into_iter() {
                         // get current ops
                         match addr_to_ops.entry(involved_addr) {
@@ -498,6 +499,32 @@ impl BlockStorage {
         (&self.op_to_block, &self.hash_to_block)
             .transaction(|(op_tx, hash_tx)| {
                 tx_func(op_tx, hash_tx).map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!("transaction error: {:?}", err)),
+                    )
+                })
+            })
+            .map_err(|err| {
+                StorageError::OperationError(format!("error getting operatiosn: {:?}", err))
+            })
+    }
+
+    pub async fn get_recent_operations(
+        &self,
+        address: &Address,
+    ) -> Result<HashSet<OperationId>, StorageError> {
+        let tx_func =
+            |addr_to_op: &TransactionalTree| -> Result<HashSet<OperationId>, StorageError> {
+                if let Some(ops) = addr_to_op.get(address.to_bytes())? {
+                    ops_from_ivec(ops)
+                } else {
+                    Ok(HashSet::new())
+                }
+            };
+
+        (&self.addr_to_op)
+            .transaction(|addr_tx| {
+                tx_func(addr_tx).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!("transaction error: {:?}", err)),
                     )

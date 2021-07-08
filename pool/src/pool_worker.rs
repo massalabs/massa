@@ -7,7 +7,7 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 
-use models::{Operation, OperationId, Slot};
+use models::{Address, Operation, OperationId, Slot};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be proccessed by pool.
@@ -26,6 +26,10 @@ pub enum PoolCommand {
     GetOperations {
         operation_ids: HashSet<OperationId>,
         response_tx: oneshot::Sender<HashMap<OperationId, Operation>>,
+    },
+    GetRecentOperations {
+        address: Address,
+        response_tx: oneshot::Sender<HashSet<OperationId>>,
     },
 }
 
@@ -149,6 +153,12 @@ impl PoolWorker {
                 response_tx,
             } => response_tx
                 .send(self.operation_pool.get_operations(&operation_ids))
+                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::GetRecentOperations {
+                address,
+                response_tx,
+            } => response_tx
+                .send(self.operation_pool.get_recent_operations(&address)?)
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())

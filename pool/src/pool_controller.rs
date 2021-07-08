@@ -7,7 +7,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
-use models::{Operation, OperationId, Slot};
+use models::{Address, Operation, OperationId, Slot};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -157,6 +157,30 @@ impl PoolCommandSender {
             })
             .await
             .map_err(|_| PoolError::ChannelError("get_operation command send error".into()))?;
+
+        response_rx
+            .await
+            .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
+    }
+
+    pub async fn get_recent_operations(
+        &mut self,
+        address: Address,
+    ) -> Result<HashSet<OperationId>, PoolError> {
+        massa_trace!("pool.command_sender.get_recent_operations", {
+            "addrese": address
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetRecentOperations {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_recent_operations command send error".into())
+            })?;
 
         response_rx
             .await

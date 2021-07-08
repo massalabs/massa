@@ -209,7 +209,18 @@ async fn run(cfg: config::Config) {
                             .get_ledger_data(addresses )
                             .await
                         ).is_err() {
-                            warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
+                            warn!("could not send get_sledger_data response in api_event_receiver.wait_event");
+                        }
+                    },
+                Ok(ApiEvent::GetRecentOperations {address, response_tx}) => {
+                    massa_trace!("massa-node.main.run.select.api_event.get_recent_operations", {});
+                    if response_tx.send(
+                        consensus_command_sender
+                            .get_recent_operations(address )
+                            .await
+                            .expect("could not get recent operations")
+                        ).is_err() {
+                            warn!("could not send get_recent_operations response in api_event_receiver.wait_event");
                         }
                     },
                 Ok(ApiEvent::GetOperations {operation_ids, response_tx}) => {

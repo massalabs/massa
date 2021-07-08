@@ -84,9 +84,9 @@ impl Block {
             .iter()
             .map(|op| {
                 let addrs = op
-                    .get_involved_addresses(&Address::from_public_key(
+                    .get_involved_addresses(Some(Address::from_public_key(
                         &self.header.content.creator,
-                    )?)
+                    )?))
                     .map_err(|err| {
                         ModelsError::DeserializeError(format!(
                             "could not get invoolved addresses: {:?}",

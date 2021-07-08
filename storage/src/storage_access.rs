@@ -4,7 +4,7 @@ use crate::{
     error::StorageError,
 };
 use logging::debug;
-use models::{Block, BlockId, OperationId, OperationSearchResult, Slot};
+use models::{Address, Block, BlockId, OperationId, OperationSearchResult, Slot};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -90,6 +90,13 @@ impl StorageAccess {
         blocks: HashMap<BlockId, Block>,
     ) -> Result<(), StorageError> {
         self.0.add_block_batch(blocks).await
+    }
+
+    pub async fn get_recent_operations(
+        &self,
+        address: &Address,
+    ) -> Result<HashSet<OperationId>, StorageError> {
+        self.0.get_recent_operations(address).await
     }
 
     pub async fn get_block(&self, hash: BlockId) -> Result<Option<Block>, StorageError> {

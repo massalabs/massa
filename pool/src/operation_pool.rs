@@ -219,6 +219,20 @@ impl OperationPool {
             .filter_map(|op_id| self.ops.get(&op_id).map(|w_op| (*op_id, w_op.op.clone())))
             .collect()
     }
+
+    pub fn get_recent_operations(
+        &self,
+        address: &Address,
+    ) -> Result<HashSet<OperationId>, PoolError> {
+        let mut res = HashSet::new();
+        for (id, op) in self.ops.iter() {
+            let involved = op.op.get_involved_addresses(None)?;
+            if involved.contains(address) {
+                res.insert(*id);
+            }
+        }
+        Ok(res)
+    }
 }
 
 #[cfg(test)]

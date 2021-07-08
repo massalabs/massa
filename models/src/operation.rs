@@ -213,10 +213,12 @@ impl Operation {
 
     pub fn get_involved_addresses(
         &self,
-        fee_target: &Address,
+        fee_target: Option<Address>,
     ) -> Result<HashSet<Address>, ModelsError> {
         let mut res = HashSet::new();
-        res.insert(fee_target.clone());
+        if let Some(target) = fee_target {
+            res.insert(target.clone());
+        }
         res.insert(Address::from_public_key(&self.content.sender_public_key)?);
         match self.content.op {
             OperationType::Transaction {

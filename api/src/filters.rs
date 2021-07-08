@@ -198,6 +198,10 @@ pub enum ApiEvent {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<Result<LedgerDataExport, ConsensusError>>,
     },
+    GetRecentOperations {
+        address: Address,
+        response_tx: oneshot::Sender<HashMap<OperationId, bool>>, // bool: if it is final
+    },
     GetOperations {
         operation_ids: HashSet<OperationId>,
         /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
@@ -422,6 +426,15 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
+    let recent_operations = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("recent_operations"))
+        .and(warp::path::param::<Address>())
+        .and(warp::path::end())
+        .and_then(move |address| get_recent_operations(evt_tx.clone(), address));
+
+    let evt_tx = event_tx.clone();
     let address_data = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -466,6 +479,7 @@ pub fn get_filter(
         .or(node_config)
         .or(pool_config)
         .or(get_consensus_cfg)
+        .or(recent_operations)
         .or(operations)
         .boxed()
 }
@@ -1496,6 +1510,45 @@ async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply,
         }
     };
     Ok(warp::reply::json(&peers).into_response())
+}
+
+async fn get_recent_operations(
+    event_tx: mpsc::Sender<ApiEvent>,
+    address: Address,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_recent_operations", { "address": address });
+    let (response_tx, response_rx) = oneshot::channel();
+    if let Err(err) = event_tx
+        .send(ApiEvent::GetRecentOperations {
+            address,
+            response_tx,
+        })
+        .await
+    {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error during sending ledger data : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response());
+    }
+
+    let res = match response_rx.await {
+        Ok(res) => res,
+
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error get ledger data : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    Ok(warp::reply::json(&res).into_response())
 }
 
 /// Returns a summary of the current state:
