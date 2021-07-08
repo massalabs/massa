@@ -50,6 +50,7 @@ async fn test_parent_in_the_future() {
         &serialization_context,
         Slot::new(4, 0),
         genesis_hashes.clone(),
+        cfg.nodes[0].clone(),
     );
 
     let _ = tools::create_and_test_block(

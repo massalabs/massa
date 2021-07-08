@@ -182,6 +182,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
         &serialization_context,
         Slot::new(10000, 0),
         parents.clone(),
+        cfg.nodes[0].clone(),
     );
 
     for i in 1..4 {

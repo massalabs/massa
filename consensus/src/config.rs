@@ -37,7 +37,7 @@ pub struct ConsensusConfig {
     pub max_operations_per_block: u32,
     /// Maximum block size in bytes
     pub max_block_size: u32,
-    /// Maximul operation validity period count
+    /// Maximum operation validity period count
     pub operation_validity_periods: u64,
     /// path to ledger db
     pub ledger_path: PathBuf,
