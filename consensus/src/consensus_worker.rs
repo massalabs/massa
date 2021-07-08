@@ -1002,12 +1002,15 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
         // Propagate newly active blocks.
+        println!("One");
         for (hash, block) in self.block_db.get_blocks_to_propagate().into_iter() {
+            println!("Two");
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "hash": hash, "block": block });
             self.protocol_command_sender
                 .integrated_block(hash, block)
                 .await?;
         }
+        println!("Three");
 
         // Notify protocol of attack attempts.
         for hash in self.block_db.get_attack_attempts().into_iter() {

@@ -90,114 +90,105 @@ async fn test_block_creation_with_draw() {
 
     let operation_fee = 0;
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_pool_test(
+        cfg.clone(),
+        async move |pool_controller,
+                    mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver| {
+            let genesis_ids = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
-    let genesis_ids = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
-
-    // initial block: addr2 buys 1 roll
-    let op1 = create_roll_transaction(priv_2, pubkey_2, 1, true, 10, operation_fee);
-    let (initial_block_id, block, _) = tools::create_block_with_operations(
-        &cfg,
-        Slot::new(1, 0),
-        &genesis_ids,
-        staking_keys[0].clone(),
-        vec![op1],
-    );
-    tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
-
-    // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
-    // note that blocks in cycle 3 may be created during this, so make sure that their clique is overrun by sending a large amount of blocks
-    let mut cur_parents = vec![initial_block_id, genesis_ids[1]];
-    for delta_period in 0u64..10 {
-        for thread in 0..cfg.thread_count {
-            let res_block_id = tools::create_and_test_block(
-                &mut protocol_controller,
+            // initial block: addr2 buys 1 roll
+            println!("1");
+            let op1 = create_roll_transaction(priv_2, pubkey_2, 1, true, 10, operation_fee);
+            let (initial_block_id, block, _) = tools::create_block_with_operations(
                 &cfg,
-                Slot::new(cfg.periods_per_cycle + delta_period, thread),
-                cur_parents.clone(),
-                true,
-                false,
+                Slot::new(1, 0),
+                &genesis_ids,
                 staking_keys[0].clone(),
-            )
-            .await;
-            cur_parents[thread as usize] = res_block_id;
-        }
-    }
+                vec![op1],
+            );
+            tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
 
-    // get draws for cycle 3 (lookback = cycle 0)
-    let draws = consensus_command_sender
-        .get_selection_draws(
-            Slot::new(3 * cfg.periods_per_cycle, 0),
-            Slot::new(4 * cfg.periods_per_cycle, 0),
-        )
-        .await
-        .unwrap();
-    let nb_address1_draws = draws.iter().filter(|(_, addr)| *addr == address_1).count();
-    // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
-    // note: this is a statistical test. It may fail in rare occasions.
-    assert!(
-        (0.5 - ((nb_address1_draws as f32)
-            / ((cfg.thread_count as u64 * cfg.periods_per_cycle) as f32)))
-            .abs()
-            < 0.15
-    );
-
-    // check 10 draws
-    let draws: HashMap<Slot, Address> = draws.into_iter().collect();
-    let mut cur_slot = Slot::new(cfg.periods_per_cycle * 3, 0);
-    for _ in 0..10 {
-        // wait block propagation
-        let block_creator = protocol_controller
-            .wait_command(3000.into(), |cmd| match cmd {
-                ProtocolCommand::IntegratedBlock { block, .. } => {
-                    if block.header.content.slot == cur_slot {
-                        Some(block.header.content.creator)
-                    } else {
-                        None
-                    }
+            // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
+            // note that blocks in cycle 3 may be created during this, so make sure that their clique is overrun by sending a large amount of blocks
+            let mut cur_parents = vec![initial_block_id, genesis_ids[1]];
+            for delta_period in 0u64..10 {
+                for thread in 0..cfg.thread_count {
+                    println!("2: {:?}", thread);
+                    let res_block_id = tools::create_and_test_block(
+                        &mut protocol_controller,
+                        &cfg,
+                        Slot::new(cfg.periods_per_cycle + delta_period, thread),
+                        cur_parents.clone(),
+                        true,
+                        false,
+                        staking_keys[0].clone(),
+                    )
+                    .await;
+                    cur_parents[thread as usize] = res_block_id;
+                    println!("2.1: {:?}", thread);
                 }
-                _ => None,
-            })
-            .await
-            .expect("block did not propagate in time");
-        assert_eq!(
-            draws[&cur_slot],
-            Address::from_public_key(&block_creator).unwrap(),
-            "wrong block creator"
-        );
-        cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
-    }
+            }
 
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
+            println!("3");
+
+            // get draws for cycle 3 (lookback = cycle 0)
+            let draws = consensus_command_sender
+                .get_selection_draws(
+                    Slot::new(3 * cfg.periods_per_cycle, 0),
+                    Slot::new(4 * cfg.periods_per_cycle, 0),
+                )
+                .await
+                .unwrap();
+            let nb_address1_draws = draws.iter().filter(|(_, addr)| *addr == address_1).count();
+            // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
+            // note: this is a statistical test. It may fail in rare occasions.
+            assert!(
+                (0.5 - ((nb_address1_draws as f32)
+                    / ((cfg.thread_count as u64 * cfg.periods_per_cycle) as f32)))
+                    .abs()
+                    < 0.15
+            );
+
+            // check 10 draws
+            let draws: HashMap<Slot, Address> = draws.into_iter().collect();
+            let mut cur_slot = Slot::new(cfg.periods_per_cycle * 3, 0);
+            for _ in 0..10 {
+                // wait block propagation
+                let block_creator = protocol_controller
+                    .wait_command(3000.into(), |cmd| match cmd {
+                        ProtocolCommand::IntegratedBlock { block, .. } => {
+                            if block.header.content.slot == cur_slot {
+                                Some(block.header.content.creator)
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    })
+                    .await
+                    .expect("block did not propagate in time");
+                assert_eq!(
+                    draws[&cur_slot],
+                    Address::from_public_key(&block_creator).unwrap(),
+                    "wrong block creator"
+                );
+                cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
+            }
+            (
+                pool_controller,
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

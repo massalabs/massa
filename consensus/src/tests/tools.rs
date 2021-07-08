@@ -267,6 +267,7 @@ pub async fn create_and_test_block(
     }
 
     protocol_controller.receive_block(block).await;
+    println!("Block received.");
     if valid {
         // Assert that the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, 2000).await;
@@ -685,7 +686,7 @@ where
     let (pool_controller, pool_command_sender) = MockPoolController::new();
 
     // launch consensus controller
-    let (mut consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             protocol_command_sender,
@@ -693,7 +694,7 @@ where
             pool_command_sender,
             None,
             None,
-			None,
+            None,
             0,
         )
         .await
@@ -701,10 +702,10 @@ where
 
     // Call test func.
     let (
-        mut pool_controller,
+        pool_controller,
         mut protocol_controller,
-        mut consensus_command_sender,
-        mut consensus_event_receiver,
+        _consensus_command_sender,
+        consensus_event_receiver,
     ) = test(
         pool_controller,
         protocol_controller,
@@ -722,12 +723,6 @@ where
         .await
         .unwrap();
     pool_sink.stop().await;
-}
-
-pub fn consensus_test<F>(config: ConsensusConfig, test: F)
-where
-    F: FnOnce(&mut MockProtocolController),
-{
 }
 
 pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
