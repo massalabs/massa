@@ -36,6 +36,7 @@ impl WriteBinder {
     /// # Argument
     /// * msg: date to transmit.
     pub async fn send(&mut self, msg: &Message) -> Result<u64, CommunicationError> {
+        //        massa_trace!("binder.send", { "msg": msg });
         // serialize
         let bytes_vec = msg.to_bytes_compact(&self.serialization_context)?;
         let msg_size: u32 = bytes_vec
@@ -53,6 +54,7 @@ impl WriteBinder {
 
         let res_index = self.message_index;
         self.message_index += 1;
+        //        massa_trace!("binder.send end", { "index": res_index });
         Ok(res_index)
     }
 }
@@ -81,6 +83,7 @@ impl ReadBinder {
 
     /// Awaits the next incomming message and deserializes it.
     pub async fn next(&mut self) -> Result<Option<(u64, Message)>, CommunicationError> {
+        //        massa_trace!("binder.next start", {});
         // read message length
         let msg_len_len = u32::be_bytes_min_length(self.serialization_context.max_message_size);
         let mut msg_len_buf = vec![0u8; msg_len_len];
@@ -103,6 +106,7 @@ impl ReadBinder {
 
         let res_index = self.message_index;
         self.message_index += 1;
+        //        massa_trace!("binder.next", { "msg": res_msg });
         Ok(Some((res_index, res_msg)))
     }
 }

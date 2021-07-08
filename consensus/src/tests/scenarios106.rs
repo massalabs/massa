@@ -187,7 +187,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         genesis_hashes.clone(),
     );
     protocol_controller.receive_block(block1).await;
-    tools::validate_propagate_block(&mut protocol_controller, hash1, 1000).await;
+    tools::validate_propagate_block(&mut protocol_controller, hash1, 2500).await;
 
     // this block is slightly in the future: will wait for it
     let slot = timeslots::get_current_latest_block_slot(

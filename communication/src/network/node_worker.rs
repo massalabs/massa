@@ -142,14 +142,30 @@ impl NodeWorker {
             loop {
                 match writer_command_rx.recv().await {
                     Some(msg) => {
-                        if let Err(_) =
-                            timeout(write_timeout.to_duration(), socket_writer.send(&msg)).await
-                        {
-                            clean_exit = false;
-                            break;
+                        massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv. Some", {
+                            "msg": msg
+                        });
+
+                        match timeout(write_timeout.to_duration(), socket_writer.send(&msg)).await {
+                            Err(err) => {
+                                warn!("node_worker.run_loop.loop.writer_command_rx.recv. timeout Error:{}", err);
+                                clean_exit = false;
+                                break;
+                            }
+                            Ok(Err(err)) => {
+                                warn!("node_worker.run_loop.loop.writer_command_rx.recv. send msg error:{}", err);
+                                clean_exit = false;
+                                break;
+                            }
+                            Ok(Ok(id)) => massa_trace!("node_worker.run_loop. message send OK", {
+                                "msg_id": id, "msg": msg
+                            }),
                         }
                     }
-                    None => break,
+                    None => {
+                        massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv. None", {});
+                        break;
+                    }
                 };
             }
             writer_event_tx
@@ -165,7 +181,9 @@ impl NodeWorker {
             tokio::select! {
                 // incoming socket data
                 res = self.socket_reader.next() => match res {
-                    Ok(Some((_, msg))) => {
+                    Ok(Some((index, msg))) => {
+                        massa_trace!(
+                            "node_worker.run_loop. receive self.socket_reader.next()", {"index": index});
                         match msg {
                             Message::Block(block) => {
                                 massa_trace!(
@@ -197,15 +215,18 @@ impl NodeWorker {
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
                             }
                             _ => {  // wrong message
+                                warn!("node_worker.run_loop.self.socket_reader.next(). other message Error");
                                 exit_reason = ConnectionClosureReason::Failed;
                                 break;
                             },
                         }
                     },
                     Ok(None)=> {
+                        warn!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error");
                         break
                     }, // peer closed cleanly
-                    Err(_) => {  //stream error
+                    Err(err) => {  //stream error
+                        warn!("node_worker.run_loop.self.socket_reader.next(). receive Error:{}", err);
                         exit_reason = ConnectionClosureReason::Failed;
                         break;
                     },
