@@ -5,15 +5,6 @@ use models::block::Block;
 use models::block::BlockHeader;
 use std::collections::{HashMap, HashSet, VecDeque};
 
-pub fn trace_block_graph(block_db: &BlockGraph) {
-    trace!("START block graph dump");
-    trace!("gi_head:{:#?}", block_db.gi_head);
-    trace!("max_cliques:{:#?}", block_db.max_cliques);
-    trace!("active_blocks:{:#?}", block_db.active_blocks);
-    trace!("discarded_blocks:{:#?}", block_db.discarded_blocks);
-    trace!("END block graph dump");
-}
-
 #[derive(Debug, Clone)]
 pub struct ExportCompiledBlock {
     pub block: BlockHeader,
@@ -48,8 +39,7 @@ impl<'a> From<&'a DiscardedBlocks> for ExportDiscardedBlocks {
 
 #[derive(Clone, Debug)]
 pub struct BlockGraphExport {
-    pub cfg: ConsensusConfig,
-    pub genesis_blocks: HashSet<Hash>,
+    pub genesis_blocks: Vec<Hash>,
     pub active_blocks: HashMap<Hash, ExportCompiledBlock>, // map of active blocks
     pub discarded_blocks: ExportDiscardedBlocks,           // finite cache of discarded blocks
     pub best_parents: Vec<Hash>,                           // best parent in each thread
@@ -61,7 +51,6 @@ pub struct BlockGraphExport {
 impl<'a> From<&'a BlockGraph> for BlockGraphExport {
     fn from(dbgrah: &'a BlockGraph) -> Self {
         BlockGraphExport {
-            cfg: dbgrah.cfg.clone(),
             genesis_blocks: dbgrah.genesis_blocks.clone(),
             active_blocks: dbgrah
                 .active_blocks
@@ -162,7 +151,7 @@ impl DiscardedBlocks {
 #[derive(Debug)]
 pub struct BlockGraph {
     cfg: ConsensusConfig,
-    genesis_blocks: HashSet<Hash>,
+    genesis_blocks: Vec<Hash>,
     active_blocks: HashMap<Hash, CompiledBlock>, // map of active blocks
     discarded_blocks: DiscardedBlocks,           // finite cache of discarded blocks
     best_parents: Vec<Hash>,                     // best parent in each thread
@@ -219,7 +208,7 @@ impl BlockGraph {
         }
         Ok(BlockGraph {
             cfg: cfg.clone(),
-            genesis_blocks: block_hashes.iter().copied().collect(),
+            genesis_blocks: block_hashes.clone(),
             active_blocks,
             discarded_blocks: DiscardedBlocks::new(cfg.max_discarded_blocks),
             best_parents: block_hashes.clone(),
@@ -462,7 +451,8 @@ impl BlockGraph {
             }
             if !missing_dependencies.is_empty() {
                 // there are missing dependencies
-                if !missing_dependencies.is_disjoint(&self.genesis_blocks) {
+                if !missing_dependencies.is_disjoint(&self.genesis_blocks.iter().copied().collect())
+                {
                     // some of the missing dependencies are genesis: consider it as badly chosen parents
                     return Err(BlockAcknowledgeError::InvalidParents(
                         "depends on a discarded genesis block".to_string(),
@@ -1025,7 +1015,7 @@ mod tests {
         public_key: PublicKey,
         private_key: PrivateKey,
         parents: Vec<Hash>,
-        mut selector: &mut RandomSelector,
+        selector: &mut RandomSelector,
     ) -> Block {
         let signature_engine = SignatureEngine::new();
         let example_hash = Hash::hash(&val.as_bytes());
@@ -1303,8 +1293,8 @@ mod tests {
     }
 
     fn extend_thread(
-        mut block_graph: &mut BlockGraph,
-        mut selector: &mut RandomSelector,
+        block_graph: &mut BlockGraph,
+        selector: &mut RandomSelector,
         n: u64,
         parents: Vec<Hash>,
         slot: u64,
@@ -1721,75 +1711,44 @@ mod tests {
         let creator = cfg.nodes[0];
 
         // generate two normal blocks in each thread
-        generate_blocks(&mut block_graph, &mut selector, 100, (1, 1));
+        generate_blocks(&mut block_graph, &mut selector, 2, (1, 1));
 
-        let block_1 = create_standalone_block(
+        // create a block that will be a missing dependency
+        let block_miss = create_standalone_block(
             &mut block_graph,
             "42".into(),
             0,
-            102,
+            3,
             creator.0,
             creator.1,
-            genesis,
+            genesis.clone(),
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
+        let hash_miss = block_miss.header.compute_hash().unwrap();
 
-        let mut current_parents = vec![hash_1, block_graph.best_parents[1]];
-        let mut expected_dependencies = HashSet::new();
-        expected_dependencies.insert(hash_1);
+        // create a block that depends on the missing dep
+        let block_dep = create_standalone_block(
+            &mut block_graph,
+            "42".into(),
+            0,
+            4,
+            creator.0,
+            creator.1,
+            vec![hash_miss, genesis[1]],
+            &mut selector,
+        );
+        let hash_dep = block_dep.header.compute_hash().unwrap();
 
-        // don't acknowledge block to simulate miss
-        for i in 103..200 {
-            let block = create_standalone_block(
-                &mut block_graph,
-                "42".into(),
-                0,
-                i,
-                creator.0,
-                creator.1,
-                current_parents.clone(),
-                &mut selector,
-            );
-            let hash_1 = block.header.compute_hash().unwrap();
-            match block_graph.acknowledge_block(hash_1, block, &mut selector, (1000, 0)) {
-                Ok(_) => panic!("Corrupted block has been acknowledged"),
-                Err(BlockAcknowledgeError::MissingDependencies(_block, deps)) => {
-                    if !deps.is_subset(&expected_dependencies) {
-                        panic!("Wrong dependencies");
-                    }
+        // make sure the dependency problem is detected
+        match block_graph.acknowledge_block(hash_dep, block_dep, &mut selector, (1000, 0)) {
+            Ok(_) => panic!("block with missing dependency acknowledged"),
+            Err(BlockAcknowledgeError::MissingDependencies(_block, deps)) => {
+                if deps != vec![hash_miss].into_iter().collect() {
+                    panic!("wrong missing dependencies");
                 }
-                Err(e) => panic!(format!("unexpected error {:?}", e)),
-            };
-            expected_dependencies.insert(hash_1);
-
-            // in thread 1
-
-            let block = create_standalone_block(
-                &mut block_graph,
-                "42".into(),
-                1,
-                i,
-                creator.0,
-                creator.1,
-                current_parents.clone(),
-                &mut selector,
-            );
-            let hash_2 = block.header.compute_hash().unwrap();
-
-            match block_graph.acknowledge_block(hash_2, block, &mut selector, (1000, 0)) {
-                Ok(_) => panic!("Corrupted block has been acknowledged"),
-                Err(BlockAcknowledgeError::MissingDependencies(_block, deps)) => {
-                    if !deps.is_subset(&expected_dependencies) {
-                        panic!("Wrong dependencies");
-                    }
-                }
-                Err(e) => panic!(format!("unexpected error {:?}", e)),
-            };
-            expected_dependencies.insert(hash_2);
-
-            current_parents = vec![hash_1, hash_2];
-        }
+            }
+            Err(e) => panic!(format!("unexpected error {:?}", e)),
+        };
     }
 
     #[test]

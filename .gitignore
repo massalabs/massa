@@ -1,3 +1,4 @@
+lcov.info
 *.swp*
 **/target
 **/Cargo.lock

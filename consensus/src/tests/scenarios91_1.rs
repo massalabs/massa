@@ -21,12 +21,14 @@ async fn test_block_validity() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    let _cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-
-    let (hash_genesis_block_th0, _) = tools::create_genesis_block(&cfg, 0).unwrap();
-    let (hash_genesis_block_th1, _) = tools::create_genesis_block(&cfg, 1).unwrap();
+    let genesis_hashes = cnss
+        .get_block_graph_status()
+        .await
+        .expect("could not get block graph status")
+        .genesis_blocks;
 
     //create valid block
     let valid_block_p2t0 = tools::create_and_test_block(
@@ -35,7 +37,7 @@ async fn test_block_validity() {
         node_ids[0].1.clone(),
         0,
         2,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -48,7 +50,7 @@ async fn test_block_validity() {
         node_ids[0].1.clone(),
         2,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         false,
         false,
     )
@@ -61,7 +63,7 @@ async fn test_block_validity() {
         node_ids[0].1.clone(),
         0,
         0,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         false,
         false,
     )
@@ -74,37 +76,32 @@ async fn test_block_validity() {
         node_ids[0].1.clone(),
         0,
         1,
-        vec![valid_block_p2t0, hash_genesis_block_th1],
+        vec![valid_block_p2t0, genesis_hashes[1]],
         false,
         false,
     )
     .await;
 
     //create block with wrong signature
-    let (invalid_hash, mut invalid_block, block_private_key) = tools::create_block(
-        &cfg,
-        0,
-        15,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
-    );
+    let (invalid_hash, mut invalid_block, block_private_key) =
+        tools::create_block(&cfg, 0, 15, genesis_hashes.clone());
     let signature_engine = SignatureEngine::new();
     //use other hash
     invalid_block.signature = signature_engine
-        .sign(&hash_genesis_block_th1, &block_private_key)
+        .sign(&genesis_hashes[1], &block_private_key)
         .unwrap();
     protocol_controler_interface
         .receive_block(node_ids[0].1.clone(), &invalid_block)
         .await;
     //see if the block is not propagated.
-    tools::validate_notpropagate_block(&mut protocol_controler_interface, invalid_hash, 500).await;
+    assert!(
+        !tools::validate_notpropagate_block(&mut protocol_controler_interface, invalid_hash, 500)
+            .await
+    );
 
     //create block with wrong public key (creator)
-    let (invalid_hash, mut invalid_block, block_private_key) = tools::create_block(
-        &cfg,
-        0,
-        15,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
-    );
+    let (invalid_hash, mut invalid_block, block_private_key) =
+        tools::create_block(&cfg, 0, 15, genesis_hashes.clone());
     //change creator and rehash
     invalid_block.header.creator = signature_engine.derive_public_key(&cfg.genesis_key);
     let signature_engine = SignatureEngine::new();
@@ -116,7 +113,10 @@ async fn test_block_validity() {
         .receive_block(node_ids[0].1.clone(), &invalid_block)
         .await;
     //see if the block is not propagated.
-    tools::validate_notpropagate_block(&mut protocol_controler_interface, invalid_hash, 500).await;
+    assert!(
+        !tools::validate_notpropagate_block(&mut protocol_controler_interface, invalid_hash, 500)
+            .await
+    );
 
     //create a valids block for thread 0
     let valid_hash1 = tools::create_and_test_block(
@@ -125,7 +125,7 @@ async fn test_block_validity() {
         node_ids[0].1.clone(),
         0,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -138,7 +138,7 @@ async fn test_block_validity() {
         node_ids[0].1.clone(),
         1,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -150,7 +150,7 @@ async fn test_block_validity() {
         Hash::hash("Other hash!".as_bytes()),
         0,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
     );
     protocol_controler_interface
         .receive_block(node_ids[0].1.clone(), &valid_block)
@@ -165,8 +165,14 @@ async fn test_block_validity() {
         .receive_block(node_ids[0].1.clone(), &valid_block)
         .await;
     //see if the block is propagated.
-    tools::validate_notpropagate_block(&mut protocol_controler_interface, child_clique_hash2, 1000)
-        .await;
+    assert!(
+        !tools::validate_notpropagate_block(
+            &mut protocol_controler_interface,
+            child_clique_hash2,
+            1000
+        )
+        .await
+    );
 
     //Test parent in different clique
     //create a child for clique1.
@@ -202,8 +208,14 @@ async fn test_block_validity() {
         .receive_block(node_ids[0].1.clone(), &valid_block)
         .await;
     //see if the block is propagated.
-    tools::validate_notpropagate_block(&mut protocol_controler_interface, child_clique_hash2, 1000)
-        .await;
+    assert!(
+        !tools::validate_notpropagate_block(
+            &mut protocol_controler_interface,
+            child_clique_hash2,
+            1000
+        )
+        .await
+    );
 
     //validate block with parent in different slot
     tools::create_and_test_block(
@@ -259,9 +271,11 @@ async fn test_ti() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-
-    let (hash_genesis_block_th0, _) = tools::create_genesis_block(&cfg, 0).unwrap();
-    let (hash_genesis_block_th1, _) = tools::create_genesis_block(&cfg, 1).unwrap();
+    let genesis_hashes = cnss
+        .get_block_graph_status()
+        .await
+        .expect("could not get block graph status")
+        .genesis_blocks;
 
     //create a valids block for thread 0
     let valid_hasht0s1 = tools::create_and_test_block(
@@ -270,7 +284,7 @@ async fn test_ti() {
         node_ids[0].1.clone(),
         0,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -283,7 +297,7 @@ async fn test_ti() {
         node_ids[0].1.clone(),
         1,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -303,7 +317,7 @@ async fn test_ti() {
         Hash::hash("Other hash!".as_bytes()),
         0,
         2,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
     );
 
     protocol_controler_interface
@@ -353,12 +367,14 @@ async fn test_ti() {
     protocol_controler_interface
         .receive_block(node_ids[0].1.clone(), &block)
         .await;
-    tools::validate_notpropagate_block(
-        &mut protocol_controler_interface,
-        invalid_block_hasht1s2,
-        1000,
-    )
-    .await;
+    assert!(
+        !tools::validate_notpropagate_block(
+            &mut protocol_controler_interface,
+            invalid_block_hasht1s2,
+            1000,
+        )
+        .await
+    );
     //verify that the clique has been pruned.
     let block_graph = cnss.get_block_graph_status().await.unwrap();
     let fork_clic = tools::get_cliques(&block_graph, fork_block_hash);
@@ -388,9 +404,11 @@ async fn test_gpi() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-
-    let (hash_genesis_block_th0, _) = tools::create_genesis_block(&cfg, 0).unwrap();
-    let (hash_genesis_block_th1, _) = tools::create_genesis_block(&cfg, 1).unwrap();
+    let genesis_hashes = cnss
+        .get_block_graph_status()
+        .await
+        .expect("could not get block graph status")
+        .genesis_blocks;
 
     // * create 1 normal block in each thread (t0s1 and t1s1) with genesis parents
     //create a valids block for thread 0
@@ -400,7 +418,7 @@ async fn test_gpi() {
         node_ids[0].1.clone(),
         0,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -413,7 +431,7 @@ async fn test_gpi() {
         node_ids[0].1.clone(),
         1,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -435,7 +453,7 @@ async fn test_gpi() {
         node_ids[0].1.clone(),
         0,
         2,
-        vec![valid_hasht0s1, hash_genesis_block_th1],
+        vec![valid_hasht0s1, genesis_hashes[1]],
         true,
         false,
     )
@@ -447,7 +465,7 @@ async fn test_gpi() {
         node_ids[0].1.clone(),
         1,
         2,
-        vec![hash_genesis_block_th0, valid_hasht1s1],
+        vec![genesis_hashes[0], valid_hasht1s1],
         true,
         false,
     )
@@ -533,12 +551,14 @@ async fn test_old_stale() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    let _cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+    let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-
-    let (hash_genesis_block_th0, _) = tools::create_genesis_block(&cfg, 0).unwrap();
-    let (hash_genesis_block_th1, _) = tools::create_genesis_block(&cfg, 1).unwrap();
+    let genesis_hashes = cnss
+        .get_block_graph_status()
+        .await
+        .expect("could not get block graph status")
+        .genesis_blocks;
 
     // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
     //create a valid block for slot 1
@@ -548,7 +568,7 @@ async fn test_old_stale() {
         node_ids[0].1.clone(),
         0,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -561,7 +581,7 @@ async fn test_old_stale() {
         node_ids[0].1.clone(),
         1,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         true,
         false,
     )
@@ -596,13 +616,13 @@ async fn test_old_stale() {
     }
 
     //create 1 block in thread 0 slot 1 with genesis parents
-    let valid_hasht0s2 = tools::create_and_test_block(
+    let _valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controler_interface,
         &cfg,
         node_ids[0].1.clone(),
         0,
         1,
-        vec![hash_genesis_block_th0, hash_genesis_block_th1],
+        genesis_hashes.clone(),
         false,
         false,
     )
