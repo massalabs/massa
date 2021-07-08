@@ -20,6 +20,7 @@ thiserror = "1.0"
 time = {path = "../time"}
 communication = {path = "../communication"}
 storage = {path = "../storage"}
+apimodel = {path = "../apimodel"}
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }

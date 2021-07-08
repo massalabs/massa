@@ -77,6 +77,7 @@ pub struct HashSlot {
     pub hash: Hash,
     pub slot: Slot,
 }
+
 impl std::fmt::Display for HashSlot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
