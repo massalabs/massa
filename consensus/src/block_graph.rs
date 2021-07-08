@@ -10,8 +10,8 @@ use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    DeserializeCompact, DeserializeVarInt, ModelsError, OperationId, SerializationContext,
-    SerializeCompact, SerializeVarInt, Slot,
+    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationId,
+    SerializationContext, SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -927,6 +927,18 @@ impl BlockGraph {
 
         let example_hash = Hash::hash(&val.as_bytes());
 
+        let operations = self.get_best_operations();
+        let operation_merkle_root = Hash::hash(
+            &operations.iter().fold(Vec::new(), |acc, v| {
+                let res = [
+                    acc,
+                    v.to_bytes_compact(&self.serialization_context).unwrap(),
+                ]
+                .concat();
+                res
+            })[..],
+        );
+
         let (hash, header) = BlockHeader::new_signed(
             &private_key,
             BlockHeaderContent {
@@ -934,19 +946,17 @@ impl BlockGraph {
                 slot: slot,
                 parents: self.best_parents.clone(),
                 out_ledger_hash: example_hash,
-                operation_merkle_root: Hash::hash(&Vec::new()),
+                operation_merkle_root,
             },
             &self.serialization_context,
         )?;
-        let res = (
-            hash,
-            Block {
-                header,
-                operations: Vec::new(),
-            },
-        );
+        let res = (hash, Block { header, operations });
         massa_trace!("consensus.block_graph.create_block", {"hash": res.0, "block": res.1});
         Ok(res)
+    }
+
+    fn get_best_operations(&self) -> Vec<Operation> {
+        Vec::new() // todo
     }
 
     /// Gets lastest final blocks (hash, period) for each thread.
