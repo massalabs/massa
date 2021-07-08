@@ -172,34 +172,22 @@ impl NodeWorker {
                         trace!("after select res from self.socket_reader in node_worker run_loop");
                         match msg {
                             Message::Block(block) => {
-                                trace!("before sending NodeEventType::ReceivedBlock from node_event_tx in node_worker run_loop");
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
-                                trace!("after sending NodeEventType::ReceivedBlock from node_event_tx in node_worker run_loop");
                             },
                             Message::BlockHeader(header) => {
-                                trace!("before sending NodeEventType::ReceivedBlockHeader from node_event_tx in node_worker run_loop");
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
-                                trace!("before sending NodeEventType::ReceivedBlockHeader from node_event_tx in node_worker run_loop");
                             },
                             Message::AskForBlocks(list) => {
-                                trace!("before sending NodeEventType::ReceivedAskForBlock from node_event_tx in node_worker run_loop");
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list))).await;
-                                trace!("after sending NodeEventType::ReceivedAskForBlock from node_event_tx in node_worker run_loop");
                             }
                             Message::PeerList(pl) =>  {
-                                trace!("before sending NodeEventType::ReceivedPeerList from node_event_tx in node_worker run_loop");
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))).await;
-                                trace!("after sending NodeEventType::ReceivedPeerList from node_event_tx in node_worker run_loop");
                             }
                             Message::AskPeerList => {
-                                trace!("before sending NodeEventType::AskedPeerList from node_event_tx in node_worker run_loop");
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::AskedPeerList)).await;
-                                trace!("after sending NodeEventType::AskedPeerList from node_event_tx in node_worker run_loop");
                             }
                             Message::BlockNotFound(hash) => {
-                                trace!("before sending NodeEventType::BlockNotFound from node_event_tx in node_worker run_loop");
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
-                                trace!("after sending NodeEventType::BlockNotFound from node_event_tx in node_worker run_loop");
                             }
                             _ => {  // wrong message
                                 exit_reason = ConnectionClosureReason::Failed;
@@ -303,7 +291,6 @@ impl NodeWorker {
         node_writer_handle.await?;
 
         // Notify protocol controller of closure, while ignoring incoming commands to prevent deadlock.
-        trace!("before shutdown of node worker.");
         loop {
             tokio::select! {
                 _ = self
@@ -314,7 +301,6 @@ impl NodeWorker {
                 _ = self.node_command_rx.recv() => {},
             }
         }
-        trace!("after shutdown of node worker.");
         Ok(())
     }
 }

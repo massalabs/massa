@@ -412,11 +412,9 @@ impl NetworkWorker {
                         });
                         entry.insert((new_connection_id, node_command_tx.clone(), node_fn_handle));
 
-                        trace!("before sending  NetworkEvent::NewConnection from controller_event_tx in network_worker on_handshake_finished");
                         let res = self
                             .send_network_event(NetworkEvent::NewConnection(new_node_id))
                             .await;
-                        trace!("after sending  NetworkEvent::NewConnection from controller_event_tx in network_worker on_handshake_finished");
 
                         // If we failed to send the event to protocol, close the connection.
                         // TODO: retry later instead of closing?
@@ -581,7 +579,6 @@ impl NetworkWorker {
             }
             NetworkCommand::SendBlockHeader { node, header } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    trace!("before sending NodeCommand::SendBlockHeader from node_command_tx in network_worker manage_network_command");
                     let res = node_command_tx
                         .send(NodeCommand::SendBlockHeader(header))
                         .await;
@@ -593,7 +590,6 @@ impl NetworkWorker {
                             )
                         );
                     }
-                    trace!("after sending NodeCommand::SendBlockHeader from node_command_tx in network_worker manage_network_command");
                 } else {
                     // We probably weren't able to send this event previously,
                     // retry it now.
@@ -605,13 +601,9 @@ impl NetworkWorker {
             NetworkCommand::AskForBlocks { list } => {
                 for (node, hash_list) in list.into_iter() {
                     if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                        trace!("before sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
-
                         let res = node_command_tx
                             .send(NodeCommand::AskForBlocks(hash_list))
                             .await;
-
-                        trace!("after sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
                         if res.is_err() {
                             warn!(
                                 "{}",
@@ -625,11 +617,7 @@ impl NetworkWorker {
             }
             NetworkCommand::SendBlock { node, block } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    trace!("before sending NodeCommand::SendBlock from node_command_tx in network_worker manage_network_command");
-
                     let res = node_command_tx.send(NodeCommand::SendBlock(block)).await;
-
-                    trace!("after sending NodeCommand::SendBlock from node_command_tx in network_worker manage_network_command");
                     if res.is_err() {
                         warn!(
                             "{}",
@@ -647,7 +635,6 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::GetPeers(response_tx) => {
-                trace!("before sending self.peer_info_db.get_peers() from node_command_tx in network_worker manage_network_command");
                 response_tx
                     .send(self.peer_info_db.get_peers().clone())
                     .map_err(|_| {
@@ -655,15 +642,10 @@ impl NetworkWorker {
                             "could not send GetPeersChannelError upstream".into(),
                         )
                     })?;
-                trace!("after sending self.peer_info_db.get_peers() from node_command_tx in network_worker manage_network_command");
             }
             NetworkCommand::BlockNotFound { node, hash } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    trace!("before sending NodeCommand::BlockNotFound from node_command_tx in network_worker manage_network_command");
-
                     let res = node_command_tx.send(NodeCommand::BlockNotFound(hash)).await;
-
-                    trace!("after sending NodeCommand::BlockNotFound from node_command_tx in network_worker manage_network_command");
                     if res.is_err() {
                         warn!(
                             "{}",
@@ -802,45 +784,37 @@ impl NetworkWorker {
                 self.peer_info_db.merge_candidate_peers(&lst)?;
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
-                trace!("before sending NetworkEvent::ReceivedBlock from controller_event_tx in network_worker on_node_event");
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlock {
                         node: from_node_id,
                         block: data,
                     })
                     .await;
-                trace!("after sending NetworkEvent::ReceivedBlock from controller_event_tx in network_worker on_node_event");
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
-                trace!("before sending NetworkEvent::AskedForBlock from controller_event_tx in network_worker on_node_event");
                 let _ = self
                     .send_network_event(NetworkEvent::AskedForBlocks {
                         node: from_node_id,
                         list,
                     })
                     .await;
-                trace!("after sending NetworkEvent::AskedForBlock from controller_event_tx in network_worker on_node_event");
             }
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
-                trace!("before sending NetworkEvent::ReceivedBlockHeader from controller_event_tx in network_worker on_node_event");
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlockHeader {
                         source_node_id,
                         header,
                     })
                     .await;
-                trace!("after sending NetworkEvent::ReceivedBlockHeader from controller_event_tx in network_worker on_node_event");
             }
             // connection closed
             NodeEvent(from_node_id, NodeEventType::Closed(reason)) => {
-                trace!("before sending NetworkEvent::ConnectionClosed from controller_event_tx in network_worker on_node_event");
                 // Note: if the send is dropped, and we later receive a command related to an unknown node,
                 // we will retry a send for this event for that unknonw node,
                 // ensuring protocol eventually notes the closure.
                 let _ = self
                     .send_network_event(NetworkEvent::ConnectionClosed(from_node_id))
                     .await;
-                trace!("after sending NetworkEvent::ConnectionClosed from controller_event_tx in network_worker on_node_event");
                 let (connection_id, _, handle) = self
                     .active_nodes
                     .remove(&from_node_id)
@@ -862,7 +836,6 @@ impl NetworkWorker {
                     .active_nodes
                     .get(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;
-                trace!("before sending NetworkEvent::SendPeerList from controller_event_tx in network_worker on_node_event");
                 let res = node_command_tx
                     .send(NodeCommand::SendPeerList(peer_list))
                     .await;
@@ -874,15 +847,12 @@ impl NetworkWorker {
                         )
                     );
                 }
-                trace!("after sending NetworkEvent::SendPeerList from controller_event_tx in network_worker on_node_event");
             }
 
             NodeEvent(node, NodeEventType::BlockNotFound(hash)) => {
-                trace!("before sending NetworkEvent::BlockNotFound from controller_event_tx in network_worker on_node_event");
                 let _ = self
                     .send_network_event(NetworkEvent::BlockNotFound { node, hash })
                     .await;
-                trace!("after sending NetworkEvent::BlockNotFound from controller_event_tx in network_worker on_node_event");
             }
         }
         Ok(())

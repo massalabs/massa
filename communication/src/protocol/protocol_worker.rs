@@ -622,10 +622,8 @@ impl ProtocolWorker {
                     let mut set = HashSet::with_capacity(1);
                     set.insert(hash);
                     self.stop_asking_blocks(set)?;
-                    trace!("before sending  ProtocolEvent::ReceivedBlock from controller_event_tx in protocol_worker on_network_event");
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock { hash, block })
                         .await;
-                    trace!("after sending  ProtocolEvent::ReceivedBlock from controller_event_tx in protocol_worker on_network_event");
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
@@ -649,10 +647,8 @@ impl ProtocolWorker {
                     return Ok(());
                 }
                 for hash in list {
-                    trace!("before sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
                     self.send_protocol_event(ProtocolEvent::GetBlock(hash))
                         .await;
-                    trace!("after sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
                 }
             }
             NetworkEvent::ReceivedBlockHeader {
@@ -660,10 +656,8 @@ impl ProtocolWorker {
                 header,
             } => {
                 if let Some(hash) = self.note_header_from_node(&header, &source_node_id).await? {
-                    trace!("before sending  ProtocolEvent::ReceivedBlockHeader from controller_event_tx in protocol_worker on_network_event");
                     self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader { hash, header })
                         .await;
-                    trace!("after sending  ProtocolEvent::ReceivedBlockHeader from controller_event_tx in protocol_worker on_network_event");
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
