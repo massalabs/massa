@@ -12,13 +12,13 @@ use futures::future::try_join;
 use rand::{rngs::StdRng, FromEntropy, RngCore};
 use tokio::time::{timeout, Duration};
 
-pub type HandshakeReturnType<NetworkControllerT: NetworkController> = (
+pub type HandshakeReturnType<NetworkControllerT> = (
     ConnectionId,
     Result<
         (
             NodeId,
-            ReadBinder<NetworkControllerT::ReaderT>,
-            WriteBinder<NetworkControllerT::WriterT>,
+            ReadBinder<<NetworkControllerT as NetworkController>::ReaderT>,
+            WriteBinder<<NetworkControllerT as NetworkController>::WriterT>,
         ),
         String,
     >,
