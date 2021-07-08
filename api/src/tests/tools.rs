@@ -143,7 +143,7 @@ pub fn get_network_config() -> NetworkConfig {
         target_out_connections: 10,
         max_in_connections: 5,
         max_in_connections_per_ip: 2,
-        max_out_connnection_attempts: 15,
+        max_out_connection_attempts: 15,
         max_idle_peers: 3,
         max_banned_peers: 3,
         max_advertise_length: 5,

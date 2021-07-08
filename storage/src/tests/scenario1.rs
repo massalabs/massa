@@ -14,7 +14,7 @@ async fn test_max_block_count() {
         /// path to db
         path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
         cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //defaut
+        flush_interval: None, //default
         reset_at_startup: true,
     };
     models::init_serialization_context(SerializationContext {
@@ -84,7 +84,7 @@ async fn test_max_nb_blocks() {
         /// path to db
         path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
         cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //defaut
+        flush_interval: None, //default
         reset_at_startup: true,
     };
     models::init_serialization_context(SerializationContext {
@@ -153,7 +153,7 @@ async fn test_get_slot_range() {
         /// path to db
         path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
         cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //defaut
+        flush_interval: None, //default
         reset_at_startup: true,
     };
     models::init_serialization_context(SerializationContext {
@@ -175,7 +175,7 @@ async fn test_get_slot_range() {
 
     let (storage, manager) = start_storage(config).unwrap();
     assert_eq!(0, storage.len().await.unwrap());
-    //add block in this order depending on there periode and thread
+    //add block in this order depending on their period and thread
     add_block(Slot::new(2, 1), &storage).await;
     add_block(Slot::new(1, 0), &storage).await;
     add_block(Slot::new(1, 1), &storage).await;

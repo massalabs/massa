@@ -94,7 +94,7 @@ impl OperationPool {
         }
     }
 
-    /// Incomming operations. Returns newly added
+    /// Incoming operations. Returns newly added
     ///
     pub fn add_operations(
         &mut self,
@@ -205,7 +205,7 @@ impl OperationPool {
                 for addr in addrs {
                     self.ops_by_address.remove_op_for_address(&addr, &id);
                 }
-            } // else final op wasnn't in pool.
+            } // else final op wasn't in pool.
         }
         self.final_operations.extend(ops);
         Ok(())

@@ -282,7 +282,7 @@ async fn test_peer_ban() {
 //   (making sure it is aimed at the advertised peer)
 //   then check the time it takes the controller to try a new connection to advertised peer
 //   (accept the connection)
-//   then check that thare are no further connection attempts at all
+//   then check that there are no further connection attempts at all
 #[tokio::test]
 #[serial]
 async fn test_advertised_and_wakeup_interval() {
@@ -741,7 +741,7 @@ async fn test_operation_messages() {
     .await;
     //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-    // Send tansaction message from connected peer
+    // Send transaction message from connected peer
     let (transaction, _) = get_transaction(50, 10);
     let ref_id = transaction.verify_integrity().unwrap();
     conn1_w

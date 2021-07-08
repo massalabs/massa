@@ -102,7 +102,7 @@ impl Block {
                     )?))
                     .map_err(|err| {
                         ModelsError::DeserializeError(format!(
-                            "could not get invoolved addresses: {:?}",
+                            "could not get involved addresses: {:?}",
                             err
                         ))
                     })?;
@@ -351,7 +351,7 @@ impl DeserializeCompact for BlockHeaderContent {
             Vec::new()
         } else {
             return Err(ModelsError::SerializeError(
-                "BlockHeaderContent from_bytes_compact bad hasparents flags.".into(),
+                "BlockHeaderContent from_bytes_compact bad has parents flags.".into(),
             ));
         };
 

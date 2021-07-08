@@ -359,7 +359,7 @@ async fn test_roll() {
     propagate_block(&mut protocol_controller, block9t1, true, 150).await;
     parents[1] = id_9t1;
 
-    // cylcle 5
+    // cycle 5
 
     let (id_10, block10, _) =
         create_block_with_operations(&cfg, Slot::new(10, 0), &parents, priv_1, vec![]);

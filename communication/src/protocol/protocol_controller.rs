@@ -16,7 +16,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 /// start a new ProtocolController from a ProtocolConfig
 /// - generate public / private key
 /// - create protocol_command/protocol_event channels
-/// - lauch protocol_controller_fn in an other task
+/// - launch protocol_controller_fn in an other task
 ///
 /// # Arguments
 /// * cfg : protocol configuration

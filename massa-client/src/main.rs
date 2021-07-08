@@ -114,10 +114,10 @@ fn main() {
         true,
         cmd_current_parents,
     )
-    .new_command_noargs("last_final", "get lates finals blocks", true, cmd_last_final)
+    .new_command_noargs("last_final", "get latest finals blocks", true, cmd_last_final)
     .new_command(
         "block",
-        "get the block with the specifed hash. Parameters: block hash",
+        "get the block with the specified hash. Parameters: block hash",
         1,
         1, //max nb parameters
         true,
@@ -125,7 +125,7 @@ fn main() {
     )
     .new_command(
         "blockinterval",
-        "get blocks within the specifed time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp",
+        "get blocks within the specified time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp",
     //    &["from", "to"],
         0,
         2,
@@ -134,7 +134,7 @@ fn main() {
     )
     .new_command(
         "graphinterval",
-        "get the block graph within the specifed time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp",
+        "get the block graph within the specified time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp",
         0,
         2, //max nb parameters
         true,
@@ -227,7 +227,7 @@ fn main() {
         true,
         cmd_get_active_stakers,
     )
-    //non active wellet command
+    //non active wallet command
     .new_command_noargs("wallet_info", "Shows wallet info", false, wallet_info)
     .new_command_noargs("wallet_new_privkey", "Generates a new private key and adds it to the wallet. Returns the associated address.", false, wallet_new_privkey)
     .new_command(
@@ -643,7 +643,7 @@ fn cmd_stop_node(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError>
         .post(&format!("http://{}/api/v1/stop_node", data.node_ip))
         .send()?;
     trace!("after sending request to client in cmd_stop_node in massa-client main");
-    println!("Stoping node");
+    println!("Stopping node");
     Ok(())
 }
 
@@ -729,8 +729,8 @@ fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), Repl
         let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.1, v.0));
-        let formated = format_node_hash(&mut resp);
-        println!("Parents: {:#?}", formated);
+        let formatted = format_node_hash(&mut resp);
+        println!("Parents: {:#?}", formatted);
     }
     Ok(())
 }
@@ -741,8 +741,8 @@ fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
         let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.1, v.0));
-        let formated = format_node_hash(&mut resp);
-        println!("Last stale: {:#?}", formated);
+        let formatted = format_node_hash(&mut resp);
+        println!("Last stale: {:#?}", formatted);
     }
     Ok(())
 }
@@ -753,8 +753,8 @@ fn cmd_last_invalid(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplErr
         let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.0, v.1));
-        let formated = format_node_hash(&mut resp);
-        println!("Last invalid: {:#?}", formated);
+        let formatted = format_node_hash(&mut resp);
+        println!("Last invalid: {:#?}", formatted);
     }
     Ok(())
 }
@@ -765,8 +765,8 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
         let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
         resp.sort_unstable_by_key(|v| (v.1, v.0));
-        let formated = format_node_hash(&mut resp);
-        println!("last finals: {:#?}", formated);
+        let formatted = format_node_hash(&mut resp);
+        println!("last finals: {:#?}", formatted);
     }
     Ok(())
 }
@@ -780,8 +780,8 @@ fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
             println!("Block not found.");
         } else {
             block.sort_unstable_by_key(|v| (v.1, v.0));
-            let formated = format_node_hash(&mut block);
-            println!("blocks: {:#?}", formated);
+            let formatted = format_node_hash(&mut block);
+            println!("blocks: {:#?}", formatted);
         }
     }
 
@@ -825,8 +825,8 @@ fn cmd_cliques(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
         wrapped_clique_list.into_iter().for_each(|mut clique| {
             //use sort_unstable_by to prepare sort by slot
             clique.sort_unstable_by_key(|v| (v.1, v.0));
-            let formated = format_node_hash(&mut clique);
-            println!("{:#?}", formated);
+            let formatted = format_node_hash(&mut clique);
+            println!("{:#?}", formatted);
         });
     }
     Ok(())
@@ -961,7 +961,7 @@ fn format_url_with_to_from(
 
 ///Send the REST request to the API node.
 ///
-///Return the request reponse or and Error.
+///Return the request response or and Error.
 fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplError> {
     let resp = reqwest::blocking::get(url)?;
     if resp.status() != StatusCode::OK && resp.status() != StatusCode::NOT_FOUND {
@@ -984,8 +984,8 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
     }
 }
 
-///Construct a list of diplay String from the specified list of Hash
-///The hash are sorted with their slot (periode) number
+///Construct a list of display String from the specified list of Hash
+///The hash are sorted with their slot (period) number
 ///
 ///The input parameter list is a collection of tuple (Hash, Slot)
 /// return a list of string the display.

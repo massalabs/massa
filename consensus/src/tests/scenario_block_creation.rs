@@ -282,7 +282,7 @@ async fn test_order_of_inclusion() {
         .await
         .expect("could not start consensus controller");
 
-    //wait for fisrt slot
+    //wait for first slot
     pool_controller
         .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
             PoolCommand::UpdateCurrentSlot(s) => {
@@ -442,7 +442,7 @@ async fn test_block_filling() {
 
     let op_size = 10;
 
-    //wait for fisrt slot
+    //wait for first slot
     pool_controller
         .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
             PoolCommand::UpdateCurrentSlot(s) => {

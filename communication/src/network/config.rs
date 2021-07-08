@@ -13,29 +13,29 @@ pub struct NetworkConfig {
     pub routable_ip: Option<IpAddr>,
     /// Protocol port
     pub protocol_port: u16,
-    /// Time intervall spent waiting for a response from a peer.
+    /// Time interval spent waiting for a response from a peer.
     /// In millis
     pub connect_timeout: UTime,
-    /// Network_worker will try to connect to avaible peers every wakeup_interval.
+    /// Network_worker will try to connect to available peers every wakeup_interval.
     /// In millis
     pub wakeup_interval: UTime,
     /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
     /// Path to the file containing our private_key
     pub private_key_file: std::path::PathBuf,
-    /// Number of avaible slots for out connections.
+    /// Number of available slots for out connections.
     pub target_out_connections: usize,
     /// Limit on the number of in connections.
     pub max_in_connections: usize,
     /// Limit on the number of in connections per ip.
     pub max_in_connections_per_ip: usize,
     /// Limit on the total current number of out connection attempts.
-    pub max_out_connnection_attempts: usize,
+    pub max_out_connection_attempts: usize,
     /// Limit on the number of idle peers we remember.
     pub max_idle_peers: usize,
     /// Limit on the number of banned peers we remember.
     pub max_banned_peers: usize,
-    /// Limit on the number of peers we advertize to others.
+    /// Limit on the number of peers we advertise to others.
     pub max_advertise_length: u32,
     /// Peer database is dumped every peers_file_dump_interval in millis
     pub peers_file_dump_interval: UTime,

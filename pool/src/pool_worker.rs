@@ -13,7 +13,7 @@ use communication::protocol::{
 use models::{Address, Operation, OperationId, OperationSearchResult, Slot};
 use tokio::sync::{mpsc, oneshot};
 
-/// Commands that can be proccessed by pool.
+/// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
     AddOperations(HashMap<OperationId, Operation>),
@@ -122,7 +122,7 @@ impl PoolWorker {
     /// Manages given pool command.
     ///
     /// # Argument
-    /// * cmd: consens command to process
+    /// * cmd: consensus command to process
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
             PoolCommand::AddOperations(mut ops) => {

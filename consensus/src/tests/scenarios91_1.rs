@@ -37,7 +37,7 @@ async fn test_ti() {
     );
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
-    //to avoir timing pb for block in the future
+    //to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
@@ -69,7 +69,7 @@ async fn test_ti() {
         .expect("could not get block graph status")
         .genesis_blocks;
 
-    //create a valids block for thread 0
+    //create a valid block for thread 0
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,

@@ -39,7 +39,7 @@ impl MockPoolController {
     }
 
     /*
-    // ignore all commands while waiting for a futrue
+    // ignore all commands while waiting for a future
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
         &mut self,
         mut future: FutureT,

@@ -208,7 +208,7 @@ impl Repl {
         repl
     }
 
-    /* not use in currrent massa_client
+    /* not use in current massa_client
     ///create a new command with no args.
      pub fn new_command_noargs<'a, 'b, S, F>(
          self,
@@ -234,8 +234,8 @@ impl Repl {
     Wallet command for example can only use when a wallet file is defined in the client start parameters.
     By default wallet cmd are non active (false) and activated when the client parameters are processed.
 
-    There's a difficulty with Clap. It parse client parameters and the executed command. All these the data are only avaible at the end.
-    So its impossible to know it the wallet cmd for example are actif when the cmd are declared. To wallet cmd are declared inactif
+    There's a difficulty with Clap. It parse client parameters and the executed command. All these the data are only available at the end.
+    So its impossible to know it the wallet cmd for example are active when the cmd are declared. To wallet cmd are declared inactive
     and when the wallet file parameter is process they are activated if it's present.
      */
 

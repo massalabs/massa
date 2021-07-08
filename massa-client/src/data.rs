@@ -2,10 +2,10 @@
 //!
 //!All struct implements display to be shown on the screen.
 //!
-//! Copy of all structure defined in the API side. They has been copied to avoid to force some behaviour on the massa node developements like display.
-//! To detect desynchronisation between the 2 API, tests has been added to validated the deserialisation of the REST API call response.
+//! Copy of all structure defined in the API side. They has been copied to avoid to force some behaviour on the massa node developments like display.
+//! To detect desynchronisation between the 2 API, tests has been added to validated the deserialization of the REST API call response.
 //!
-//! There're only deserialized when received from the REST call.
+//! They're only deserialized when received from the REST call.
 
 //massa type are wrapped to define a client specific display behaviour.
 //The display method is only use to show the data REPL mode.

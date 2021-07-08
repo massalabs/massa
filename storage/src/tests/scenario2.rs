@@ -70,10 +70,10 @@ async fn test_get() {
     let hash = get_test_block_id();
     let block = get_test_block();
     command_sender.add_block(hash, block.clone()).await.unwrap();
-    let retrived = command_sender.get_block(hash).await.unwrap().unwrap();
+    let retrieved = command_sender.get_block(hash).await.unwrap().unwrap();
 
     assert_eq!(
-        retrived.header.content.compute_hash().unwrap(),
+        retrieved.header.content.compute_hash().unwrap(),
         block.header.content.compute_hash().unwrap()
     );
 
@@ -102,7 +102,7 @@ async fn test_contains() {
     let block = get_test_block();
     command_sender.add_block(hash, block.clone()).await.unwrap();
 
-    //test the block is predent in db
+    //test the block is present in db
     assert!(command_sender.contains(hash).await.unwrap());
 
     //test that another block isn't present

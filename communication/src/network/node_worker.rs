@@ -34,15 +34,15 @@ pub enum NodeCommand {
 /// Event types that node worker can emit
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
-    /// Node we are conneced to asked for advertized peers
+    /// Node we are connected to asked for advertised peers
     AskedPeerList,
-    /// Node we are conneced to sent peer list
+    /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
-    /// Node we are conneced to sent block
+    /// Node we are connected to sent block
     ReceivedBlock(Block),
-    /// Node we are conneced to sent block header
+    /// Node we are connected to sent block header
     ReceivedBlockHeader(BlockHeader),
-    /// Node we are conneced to asks for a block.
+    /// Node we are connected to asks for a block.
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
     BlockNotFound(BlockId),
@@ -62,7 +62,7 @@ pub struct NodeWorker {
     cfg: NetworkConfig,
     /// Node id associated to that worker.
     node_id: NodeId,
-    /// Reader for incomming data.
+    /// Reader for incoming data.
     socket_reader: ReadBinder,
     /// Optional writer to send data.
     socket_writer_opt: Option<WriteBinder>,
@@ -79,7 +79,7 @@ impl NodeWorker {
     /// * cfg: Network configuration.
     /// * serialization_context: SerializationContext instance
     /// * node_id: Node id associated to that worker.
-    /// * socket_reader: Reader for incomming data.
+    /// * socket_reader: Reader for incoming data.
     /// * socket_writer: Writer for sending data.
     /// * node_command_rx: Channel to receive node commands.
     /// * node_event_tx: Channel to send node events.
