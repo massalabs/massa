@@ -668,34 +668,40 @@ async fn get_block_interval_process(
     if let Some(ref storage) = opt_storage_command_sender {
         //add block from storage
         //get first slot
-        let start_slot = get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            start,
-        )
-        .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
-        .and_then(|opt_slot| {
-            opt_slot
-                .map(|slot| {
-                    get_block_slot_timestamp(
-                        consensus_cfg.thread_count,
-                        consensus_cfg.t0,
-                        consensus_cfg.genesis_timestamp,
-                        slot,
-                    )
-                    .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                    .and_then(|start_time| {
-                        if start_time == start {
-                            Ok(slot)
-                        } else {
-                            slot.get_next_slot(consensus_cfg.thread_count)
-                                .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                        }
+
+        let start_slot = if let Some(start) = start_opt {
+            let slot = get_latest_block_slot_at_timestamp(
+                consensus_cfg.thread_count,
+                consensus_cfg.t0,
+                consensus_cfg.genesis_timestamp,
+                start,
+            )
+            .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
+            .and_then(|opt_slot| {
+                opt_slot
+                    .map(|slot| {
+                        get_block_slot_timestamp(
+                            consensus_cfg.thread_count,
+                            consensus_cfg.t0,
+                            consensus_cfg.genesis_timestamp,
+                            slot,
+                        )
+                        .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
+                        .and_then(|start_time| {
+                            if start_time == start {
+                                Ok(slot)
+                            } else {
+                                slot.get_next_slot(consensus_cfg.thread_count)
+                                    .map_err(|err| format!("error retrieving next slot: {:?}", err))
+                            }
+                        })
                     })
-                })
-                .unwrap_or(Ok(Slot::new(0, 0)))
-        })?;
+                    .unwrap_or(Ok(Slot::new(0, 0)))
+            })?;
+            Some(slot)
+        } else {
+            None
+        };
 
         //get end slot
         let end_slot_opt = get_latest_block_slot_at_timestamp(
