@@ -165,7 +165,7 @@ use models::OperationId;
 use models::OperationSearchResult;
 use models::{Block, BlockHeader, BlockId, Slot};
 use pool::PoolConfig;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
     cmp::min,
@@ -213,14 +213,14 @@ struct TimeInterval {
     end: Option<UTime>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-struct OperationIds {
-    operation_ids: HashSet<OperationId>,
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OperationIds {
+    pub operation_ids: HashSet<OperationId>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-struct Addresses {
-    addrs: HashSet<Address>,
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Addresses {
+    pub addrs: HashSet<Address>,
 }
 /// This function sets up all the routes that can be used
 /// and combines them into one filter
@@ -250,9 +250,9 @@ pub fn get_filter(
     let operations = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
-        .and(warp::path("operations"))
+        .and(warp::path("get_operations"))
         .and(warp::path::end())
-        .and(warp::query::<OperationIds>())
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |OperationIds { operation_ids }| {
             get_operations(evt_tx.clone(), operation_ids)
         });
@@ -425,9 +425,9 @@ pub fn get_filter(
     let address_data = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
-        .and(warp::path("address_data"))
+        .and(warp::path("addresses_data"))
         .and(warp::path::end())
-        .and(warp::query::<Addresses>())
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |Addresses { addrs }| get_address_data(addrs, evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
@@ -441,7 +441,7 @@ pub fn get_filter(
     let evt_tx = event_tx.clone();
     let send_operations = warp::path("api")
         .and(warp::path("v1"))
-        .and(warp::path("operations"))
+        .and(warp::path("send_operations"))
         .and(warp::path::end())
         .and(warp::post())
         .and(warp::body::json())
@@ -632,9 +632,9 @@ async fn get_operations(
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
-        Ok(ops) => Ok(warp::reply::json(&json!({
-            "operations": ops,
-        }))
+        Ok(ops) => Ok(warp::reply::json(&json!(ops
+            .into_iter()
+            .collect::<Vec<(OperationId, OperationSearchResult)>>()))
         .into_response()),
     }
 }

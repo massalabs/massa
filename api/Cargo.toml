@@ -21,6 +21,7 @@ time = {path = "../time"}
 communication = {path = "../communication"}
 storage = {path = "../storage"}
 pool = {path = "../pool"}
+serde_qs = {version= "0.8.3", features = ["warp"]}
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }

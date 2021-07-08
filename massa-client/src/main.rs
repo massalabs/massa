@@ -15,6 +15,7 @@
 
 use crate::repl::error::ReplError;
 use crate::repl::ReplData;
+use api::{Addresses, OperationIds};
 use clap::App;
 use clap::Arg;
 use crypto::{hash::Hash, signature::derive_public_key};
@@ -27,6 +28,8 @@ use models::{Block, Slot};
 use models::{OperationContent, OperationType};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::string::ToString;
 
 use crate::wallet::Wallet;
@@ -163,12 +166,12 @@ fn main() {
         cmd_staker_info,
     )
     .new_command(
-        "address_info",
-        "return the specified address balance for current final block and best parents parameters: <Address Hash>",
+        "addresses_info",
+        "return the specified addresses balance for current final block and best parents parameters: list of addresses separated by ,  (no space).",
         1,
         1, //max nb parameters
         true,
-        cmd_address_info,
+        cmd_addresses_info,
     )
     //non active wellet command
     .new_command_noargs("wallet_info", "Show wallet info.", false, wallet_info)
@@ -253,14 +256,43 @@ fn main() {
 }
 
 fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    let url = format!("http://{}/api/v1/operation/{}", data.node_ip, params[0]);
+    //convert specified ops to OperationId
+    let op_list = params[0]
+        .split(',')
+        .map(|str| OperationId::from_bs58_check(str.trim()))
+        .collect::<Result<HashSet<OperationId>, _>>();
+    let search_op = match op_list {
+        Ok(operation_ids) => OperationIds { operation_ids },
+        Err(err) => {
+            println!(
+                "Error during operations convertion, atleast one provided address not a bs58 Hash :{}",
+                err
+            );
+            return Ok(());
+        }
+    };
+
+    let url = format!(
+        "http://{}/api/v1/get_operations?{}",
+        data.node_ip,
+        match serde_qs::to_string(&search_op) {
+            Ok(s) => s,
+            Err(err) => {
+                println!(
+                    "Error during operations id convertion, could not convert to url :{}",
+                    err
+                );
+                return Ok(());
+            }
+        }
+    );
     if let Some(resp) = request_data(data, &url)? {
         //println!("resp {:?}", resp.text());
         if resp.status() == StatusCode::OK {
-            let op = resp.json::<data::GetOperationContent>()?;
-            println!("{}", op);
+            let op = resp.json::<Vec<(OperationId, data::GetOperationContent)>>()?;
+            println!("{:?}", op);
         } else {
-            println!("operation not found.");
+            println!("not ok status code: {:?}", resp);
         }
     }
 
@@ -400,7 +432,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             signature,
         };
         let resp = reqwest::blocking::Client::new()
-            .post(&format!("http://{}/api/v1/operations", data.node_ip))
+            .post(&format!("http://{}/api/v1/send_operations", data.node_ip))
             .json(&vec![operation])
             .send()?;
         if resp.status() != StatusCode::OK {
@@ -412,15 +444,15 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
                 .unwrap();
             println!("The serveur answer status:{} an error:{}", status, message);
         } else {
-            let opid_list = resp.json::<Vec<OperationId>>()?;
-            if opid_list.len() == 0 {
-                return Err(ReplError::GeneralError(
-                    "Error no operation id generated during transaction send".to_string(),
-                ));
-            }
             if data.cli {
-                println!("{}", opid_list[0]);
+                println!("{}", resp.text().unwrap());
             } else {
+                let opid_list = resp.json::<Vec<OperationId>>()?;
+                if opid_list.len() == 0 {
+                    return Err(ReplError::GeneralError(
+                        "Error no operation id generated during transaction send".to_string(),
+                    ));
+                }
                 println!("Operation created:{}", opid_list[0]);
             }
         }
@@ -438,13 +470,17 @@ fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     Ok(())
 }
 
-fn cmd_address_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    //convert specified address to Address
-    let search_address = match Address::from_bs58_check(params[0]) {
-        Ok(addr) => addr,
+fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    //convert specified addresses to Address
+    let addr_list = params[0]
+        .split(',')
+        .map(|str| Address::from_bs58_check(str.trim()))
+        .collect::<Result<HashSet<Address>, _>>();
+    let search_addresses = match addr_list {
+        Ok(addrs) => Addresses { addrs },
         Err(err) => {
             println!(
-                "Error during address convertion, provided address not a bs58 Hash :{}",
+                "Error during addresses convertion, atleast one provided address not a bs58 Hash :{}",
                 err
             );
             return Ok(());
@@ -452,16 +488,47 @@ fn cmd_address_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
     };
 
     let url = format!(
-        "http://{}/api/v1/address_data/{}",
-        data.node_ip, search_address
+        "http://{}/api/v1/addresses_data?{}",
+        data.node_ip,
+        match serde_qs::to_string(&search_addresses) {
+            Ok(s) => s,
+            Err(err) => {
+                println!(
+                    "Error during addresses convertion, could not convert to url :{}",
+                    err
+                );
+                return Ok(());
+            }
+        }
     );
-    if let Some(resp) = request_data(data, &url)? {
-        let resp = resp
-            .json::<LedgerDataExport>()
-            .map(|ledger| data::WrapperAddressLedgerDataExport::new(&search_address, ledger))?;
-        println!("ledger info for address:{}", search_address);
-        println!("{}", resp);
+
+    let resp = reqwest::blocking::get(&url)?;
+    if resp.status() != StatusCode::OK {
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
+            .unwrap();
+        println!("The serveur answer status:{} an error:{}", status, message);
+    } else {
+        if data.cli {
+            println!("{}", resp.text().unwrap());
+        } else {
+            let ledger = resp.json::<LedgerDataExport>()?;
+            let balance_list = data::extract_addresses_from_ledger(&ledger);
+            if balance_list.len() == 0 {
+                return Err(ReplError::GeneralError(
+                    "Error no balance found.".to_string(),
+                ));
+            } else {
+                for export in balance_list {
+                    println!("{}", export);
+                }
+            }
+        }
     }
+
     Ok(())
 }
 
