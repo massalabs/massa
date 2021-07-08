@@ -1,5 +1,6 @@
 [network]
 bind = "0.0.0.0:10000"
+node_key_file = "config/node.key"
 
 
 [logging]

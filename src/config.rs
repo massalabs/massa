@@ -14,7 +14,8 @@ pub struct LoggingConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct NetworkConfig {
-    pub bind: String
+    pub bind: String,
+    pub node_key_file: String
 }
 
 impl Config {

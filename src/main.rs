@@ -1,11 +1,14 @@
 //use log::{error, warn, info, debug, trace};
 mod config;
 mod network;
+mod crypto;
+
+
 
 #[tokio::main]
 async fn main() -> Result<(), failure::Error> {
     // parse arguments
-    let args = clap::App::new("Blockclique client")
+    let args = clap::App::new("Massa client")
         .arg(clap::Arg::with_name("config")
             .short("c")
             .long("config")
@@ -33,6 +36,10 @@ async fn main() -> Result<(), failure::Error> {
         })
         .init()
         .unwrap();
+
+
+    // initialize rng
+    
 
     // initialize network layer
     network::initialize(&config.network).await?;
