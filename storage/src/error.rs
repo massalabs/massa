@@ -1,3 +1,4 @@
+use sled::transaction::TransactionError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -8,4 +9,12 @@ pub enum StorageError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("sled error {0}")]
     SledError(#[from] sled::Error),
+    #[error("transaction error{0}")]
+    TransactionError(#[from] TransactionError<InternalError>),
+}
+
+#[derive(Error, Debug)]
+pub enum InternalError {
+    #[error("transaction error {0}")]
+    TransactionError(String),
 }

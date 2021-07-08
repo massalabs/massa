@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
 use crypto::hash::Hash;
-use models::block::Block;
-use sled::{Db, Tree};
+use models::{block::Block, slot::Slot};
+use sled::{transaction::ConflictableTransactionError, Db};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{config::StorageConfig, error::StorageError};
+use crate::{
+    config::StorageConfig,
+    error::{InternalError, StorageError},
+};
 
 struct BlockStorage {
-    hash_to_block: Tree,
-    slot_to_hash: Tree,
     db: Db,
 }
 
@@ -20,17 +21,30 @@ impl BlockStorage {
             .cache_capacity(cfg.cache_capacity)
             .flush_every_ms(cfg.flush_every_ms);
         let db = sled_config.open()?;
-        let hash_to_block = db.open_tree("hash_to_block")?;
-        let slot_to_hash = db.open_tree("slot_to_hash")?;
-        Ok(BlockStorage {
-            hash_to_block,
-            slot_to_hash,
-            db,
-        })
+        let _hash_to_block = db.open_tree("hash_to_block")?;
+        let _slot_to_hash = db.open_tree("slot_to_hash")?;
+        Ok(BlockStorage { db })
     }
 
     fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
-        todo!()
+        self.db.transaction(|db| {
+            let hash_to_block = match self.db.open_tree("hash_to_block") {
+                Ok(tree) => tree,
+                Err(e) => {
+                    return Err(ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(e.to_string()),
+                    ));
+                }
+            };
+            let slot_to_hash = self.db.open_tree("slot_to_hash")?;
+            hash_to_block.insert(&hash.to_bytes(), block.into_bytes().as_slice())?;
+            slot_to_hash.insert(
+                Slot::new(block.header.period_number, block.header.thread_number).into_bytes(),
+                &hash.to_bytes(),
+            )?;
+            Ok(())
+        })?;
+        Ok(())
     }
 
     fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
