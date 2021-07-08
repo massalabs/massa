@@ -16,25 +16,29 @@ cache:
   untracked: true
 
 # Use rustfmt to check code formatting
-sanity:rustfmt:
+rustfmt:
+  stage: sanity
   script:
     - rustup component add rustfmt
     - cargo fmt -- --check
 
 # Use clippy to detect code problems
-sanity:clippy:
+clippy:
+  stage: sanity
   script:
     - rustup component add clippy
     - cargo clippy -- -D warnings
 
 # Use cargo to test the project
 test:cargo:
+  stage: test
   script:
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo test --all --verbose
 
 # Use cargo to build the project
 build:cargo:
+  stage: build
   script:
     - cargo build
 
