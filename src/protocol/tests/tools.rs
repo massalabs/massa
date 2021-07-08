@@ -1,14 +1,13 @@
 use super::super::{config::ProtocolConfig, protocol_controller::NodeId};
 use super::mock_network_controller::{MockNetworkCommand, MockNetworkControllerInterface};
 use crate::crypto::signature::{PrivateKey, SignatureEngine};
-use rand::{rngs::StdRng, FromEntropy};
 use std::time::Duration;
 
 // generate random node ID (public key) and private key
 pub fn generate_node_keys() -> (PrivateKey, NodeId) {
     let signature_engine = SignatureEngine::new();
-    let mut rng = StdRng::from_entropy();
-    let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    let private_key =
+        SignatureEngine::generate_random_private_key(&mut SignatureEngine::create_rng());
     let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
     (private_key, self_node_id)
 }

@@ -8,7 +8,6 @@ use crate::structures::block::Block;
 use async_trait::async_trait;
 use futures::StreamExt;
 use protocol_worker::{ProtocolCommand, ProtocolWorker};
-use rand::{rngs::StdRng, FromEntropy};
 use std::error::Error;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -44,8 +43,8 @@ impl<NetworkControllerT: NetworkController + 'static>
         let self_node_id;
         {
             let signature_engine = SignatureEngine::new();
-            let mut rng = StdRng::from_entropy();
-            private_key = SignatureEngine::generate_random_private_key(&mut rng);
+            private_key =
+                SignatureEngine::generate_random_private_key(&mut SignatureEngine::create_rng());
             self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
         }
         debug!("local protocol node_id={:?}", self_node_id);

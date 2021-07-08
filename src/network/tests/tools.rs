@@ -2,7 +2,7 @@ use super::super::config::NetworkConfig;
 use super::super::network_controller::{ConnectionId, NetworkController, NetworkEvent};
 use super::super::peer_info_database::PeerInfo;
 use super::mock_establisher::MockEstablisherInterface;
-use rand::{rngs::StdRng, FromEntropy, RngCore};
+use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::Path;
 use std::time::Duration;
