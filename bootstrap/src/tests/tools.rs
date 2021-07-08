@@ -149,15 +149,15 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_increment: true,
-                    roll_delta: 1000,
+                    roll_purchases: 147,
+                    roll_sales: 44788,
                 },
             ),
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_increment: false,
-                    roll_delta: 897,
+                    roll_purchases: 8887,
+                    roll_sales: 114,
                 },
             ),
         ],
@@ -258,15 +258,15 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_increment: true,
-                    roll_delta: 1177,
+                    roll_purchases: 778,
+                    roll_sales: 54851,
                 },
             ),
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_increment: false,
-                    roll_delta: 7788990,
+                    roll_purchases: 788778,
+                    roll_sales: 11451,
                 },
             ),
         ],
