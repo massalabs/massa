@@ -2,6 +2,7 @@ use crate::{context::SerializationContext, error::ModelsError};
 use integer_encoding::VarInt;
 use std::convert::TryInto;
 use std::net::IpAddr;
+use time::UTime;
 
 pub trait SerializeVarInt {
     /// Serialize as varint bytes
@@ -227,6 +228,22 @@ impl DeserializeCompact for IpAddr {
                 "unsupported IpAddr variant".into(),
             )),
         }
+    }
+}
+
+impl SerializeCompact for UTime {
+    fn to_bytes_compact(&self, _context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+        Ok(self.to_millis().to_varint_bytes())
+    }
+}
+
+impl DeserializeCompact for UTime {
+    fn from_bytes_compact(
+        buffer: &[u8],
+        _context: &SerializationContext,
+    ) -> Result<(Self, usize), ModelsError> {
+        let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
+        Ok((res_u64.into(), delta))
     }
 }
 

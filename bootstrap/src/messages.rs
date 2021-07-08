@@ -57,7 +57,7 @@ impl SerializeCompact for BootstrapMessage {
             } => {
                 res.extend(u32::from(MessageTypeId::BootstrapTime).to_varint_bytes());
                 res.extend(&signature.to_bytes());
-                res.extend(server_time.to_millis().to_varint_bytes());
+                res.extend(server_time.to_bytes_compact(context)?);
             }
             BootstrapMessage::ConsensusState { graph, signature } => {
                 res.extend(u32::from(MessageTypeId::ConsensusState).to_varint_bytes());
@@ -95,7 +95,8 @@ impl DeserializeCompact for BootstrapMessage {
             MessageTypeId::BootstrapTime => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
-                let server_time = UTime::from(u64::from_varint_bytes(&buffer[cursor..])?.0);
+                let (server_time, delta) = UTime::from_bytes_compact(&buffer[cursor..], context)?;
+                cursor += delta;
                 BootstrapMessage::BootstrapTime {
                     server_time,
                     signature,

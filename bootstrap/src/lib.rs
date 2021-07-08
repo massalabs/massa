@@ -18,7 +18,7 @@ use crypto::{
 use error::BootstrapError;
 pub use establisher::Establisher;
 use messages::BootstrapMessage;
-use models::{SerializationContext, SerializeCompact, SerializeVarInt};
+use models::{SerializationContext, SerializeCompact};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::convert::TryInto;
 use time::UTime;
@@ -61,7 +61,7 @@ async fn get_state_internal(
 
     // Check signature.
     let mut signed_data = random_bytes.to_vec();
-    signed_data.extend(server_time.to_millis().to_varint_bytes());
+    signed_data.extend(server_time.to_bytes_compact(&serialization_context)?);
     let random_and_server_time = Hash::hash(&signed_data);
     signature_engine.verify(
         &random_and_server_time,
@@ -233,7 +233,7 @@ impl BootstrapServer {
                 // First, sync clocks.
                 let server_time = UTime::now(0)?;
                 let mut signed_data = random_bytes.to_vec();
-                signed_data.extend(server_time.to_millis().to_varint_bytes());
+                signed_data.extend(server_time.to_bytes_compact(&self.serialization_context)?);
                 let random_and_server_time = Hash::hash(&signed_data);
                 let signature =
                     signature_engine.sign(&random_and_server_time, &self.private_key)?;
