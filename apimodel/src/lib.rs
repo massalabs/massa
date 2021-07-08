@@ -103,13 +103,13 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<HashSlot> {
 ///
 ///The input parameter list is a collection of tuple (Hash, Slot)
 /// return a list of string the display.
-/*fn format_hash_slot_list(hash_slots: &[HashSlot]) -> Vec<String> {
-    let mut list: Vec<&HashSlot> = hash_slots.iter().collect();
+fn format_hash_slot_list(hash_slots: &[&HashSlot]) -> Vec<String> {
+    let mut list: Vec<&&HashSlot> = hash_slots.iter().collect();
     list.sort_unstable_by(|a, b| a.slot.cmp(&b.slot));
     list.iter()
         .map(|hash_slot| format!("({})", hash_slot))
         .collect()
-}*/
+}
 
 /*
 #[derive(Debug, Serialize, Deserialize)]
@@ -150,10 +150,25 @@ pub struct BlockInfo {
     pub parents: Vec<Hash>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl std::fmt::Display for BlockInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Block: {} Status:{}", self.hash_slot, self.status)?;
+        writeln!(
+            f,
+            "Block parents: {:?}",
+            self.parents
+                .iter()
+                .map(|h| h.into())
+                .collect::<Vec<WrappedHash>>()
+        )?;
+        writeln!(f)
+    }
+}
+
+/*#[derive(Debug, Serialize, Deserialize)]
 pub struct GraphInterval {
     pub content: Vec<BlockInfo>,
-}
+}*/
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cliques {
@@ -161,15 +176,24 @@ pub struct Cliques {
     pub content: Vec<HashSet<HashSlot>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct NetworkInfo {
-    pub our_ip: Option<IpAddr>,
-    pub peers: HashMap<IpAddr, PeerInfo>,
+impl std::fmt::Display for Cliques {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Nb of cliques: {}", self.number)?;
+        writeln!(f, "Cliques: ")?;
+        self.content
+            .iter()
+            .map(|clique| {
+                let formated = format_hash_slot_list(&clique.iter().collect::<Vec<&HashSlot>>());
+                writeln!(f, "{:#?}", formated)
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Peers {
-    pub content: Vec<PeerInfo>,
+pub struct NetworkInfo {
+    pub our_ip: Option<IpAddr>,
+    pub peers: Vec<PeerInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
