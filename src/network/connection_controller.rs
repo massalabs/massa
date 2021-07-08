@@ -57,6 +57,9 @@ pub struct ConnectionController {
 }
 
 impl ConnectionController {
+    /// Starts a new ConnectionController from NetworkConfig
+    /// can panic if :
+    /// - config routable_ip IP is not routable
     pub async fn new(cfg: &NetworkConfig) -> BoxResult<Self> {
         debug!("starting connection controller");
 
@@ -98,6 +101,8 @@ impl ConnectionController {
         })
     }
 
+    /// Stops the connectionController properly
+    /// can panic if network controller is not reachable
     pub async fn stop(mut self) {
         debug!("stopping connection controller");
         drop(self.connection_command_tx);
