@@ -37,6 +37,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -857,6 +863,7 @@ dependencies = [
  "models",
  "pool",
  "reqwest",
+ "rust_decimal",
  "rustyline",
  "serde",
  "serde_json",
@@ -1610,6 +1617,17 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "winreg",
+]
+
+[[package]]
+name = "rust_decimal"
+version = "1.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01127cb8617e5e21bcf2e19b5eb48317735ca677f1d0a94833c21c331c446582"
+dependencies = [
+ "arrayvec",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]
