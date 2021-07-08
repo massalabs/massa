@@ -14,6 +14,7 @@ async fn test_max_block_count() {
         path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
         cache_capacity: 256,  //little to force flush cache
         flush_interval: None, //defaut
+        reset_at_startup: true,
     };
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -65,6 +66,7 @@ async fn test_max_nb_blocks() {
         path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
         cache_capacity: 256,  //little to force flush cache
         flush_interval: None, //defaut
+        reset_at_startup: true,
     };
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -116,6 +118,7 @@ async fn test_get_slot_range() {
         path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
         cache_capacity: 256,  //little to force flush cache
         flush_interval: None, //defaut
+        reset_at_startup: true,
     };
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,

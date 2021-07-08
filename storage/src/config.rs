@@ -10,4 +10,5 @@ pub struct StorageConfig {
     pub path: PathBuf,
     pub cache_capacity: u64,
     pub flush_interval: Option<UTime>,
+    pub reset_at_startup: bool,
 }

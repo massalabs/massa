@@ -9,7 +9,10 @@ pub fn start_storage(
     serialization_context: SerializationContext,
 ) -> Result<(StorageAccess, StorageManager), StorageError> {
     debug!("starting storage controller");
-    let db = BlockStorage::open(cfg, serialization_context)?;
+    let db = BlockStorage::open(cfg.clone(), serialization_context)?;
+    if cfg.reset_at_startup {
+        db.clear()?;
+    }
     Ok((StorageAccess(db.clone()), StorageManager(db)))
 }
 
