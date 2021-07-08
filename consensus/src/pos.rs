@@ -2,6 +2,8 @@ use bitvec::prelude::*;
 use models::{Address, Slot};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{block_graph::ActiveBlock, ConsensusError};
 
 struct FinalRollThreadData {
@@ -26,12 +28,28 @@ struct ProofOfStake {
     final_roll_data: Vec<VecDeque<FinalRollThreadData>>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 struct ExportProofOfStake {
-    // todo
+    /// Cycle indexed by thread
+    last_final_block_cycle: Vec<u64>,
+    /// Index by thread and cycle number
+    final_roll_data: Vec<Vec<ExportFinalRollThreadData>>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct ExportFinalRollThreadData {
-    //todo
+    /// Cycle number
+    cycle: u64,
+    last_final_slot: Slot,
+    /// number of rolls an address has
+    roll_count: Vec<(Address, u64)>,
+    /// compensated number of rolls an address has bought in the cycle
+    cycle_purchases: Vec<(Address, u64)>,
+    /// compensated number of rolls an address has sold in the cycle
+    cycle_sales: Vec<(Address, u64)>,
+    /// https://docs.rs/bitvec/0.22.3/bitvec/
+    /// Used to seed random selector at each cycle
+    rng_seed: BitVec,
 }
 
 impl ProofOfStake {
@@ -40,11 +58,33 @@ impl ProofOfStake {
     }
 
     pub fn export(&self) -> ExportProofOfStake {
-        todo!()
+        ExportProofOfStake {
+            last_final_block_cycle: self.last_final_block_cycle.clone(),
+            final_roll_data: self
+                .final_roll_data
+                .iter()
+                .map(|vec| {
+                    vec.iter()
+                        .map(|frtd| frtd.export())
+                        .collect::<Vec<ExportFinalRollThreadData>>()
+                })
+                .collect(),
+        }
     }
 
     pub fn from_export(export: ExportProofOfStake) -> ProofOfStake {
-        todo!()
+        ProofOfStake {
+            last_final_block_cycle: export.last_final_block_cycle.clone(),
+            final_roll_data: export
+                .final_roll_data
+                .iter()
+                .map(|vec| {
+                    vec.into_iter()
+                        .map(|frtd| FinalRollThreadData::from_export(frtd.clone()))
+                        .collect::<VecDeque<FinalRollThreadData>>()
+                })
+                .collect(),
+        }
     }
 
     pub fn draw(&self, slot: Slot) -> Result<Address, ConsensusError> {
@@ -93,5 +133,29 @@ impl ProofOfStake {
     pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&FinalRollThreadData> {
         todo!()
         // that returns None if that cycle is not stored
+    }
+}
+
+impl FinalRollThreadData {
+    fn export(&self) -> ExportFinalRollThreadData {
+        ExportFinalRollThreadData {
+            cycle: self.cycle,
+            last_final_slot: self.last_final_slot,
+            roll_count: self.roll_count.clone().into_iter().collect(),
+            cycle_purchases: self.cycle_purchases.clone().into_iter().collect(),
+            cycle_sales: self.cycle_sales.clone().into_iter().collect(),
+            rng_seed: self.rng_seed.clone(),
+        }
+    }
+
+    fn from_export(export: ExportFinalRollThreadData) -> FinalRollThreadData {
+        FinalRollThreadData {
+            cycle: export.cycle,
+            last_final_slot: export.last_final_slot,
+            roll_count: export.roll_count.iter().cloned().collect(),
+            cycle_purchases: export.cycle_purchases.iter().cloned().collect(),
+            cycle_sales: export.cycle_sales.iter().cloned().collect(),
+            rng_seed: export.rng_seed.clone(),
+        }
     }
 }
