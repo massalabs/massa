@@ -16,6 +16,8 @@ pub enum StorageError {
     CryptoParseError(#[from] crypto::CryptoError),
     #[error("Mutex poisoned error:{0}")]
     MutexPoisonedError(String),
+    #[error("Database inconsistency error: {0}")]
+    DatabaseInconsistency(String),
 }
 
 #[derive(Error, Debug)]

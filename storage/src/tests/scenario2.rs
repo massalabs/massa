@@ -4,7 +4,7 @@ use super::tools::*;
 
 #[tokio::test]
 async fn test_add() {
-    let cfg = get_test_config("target/test/add".into());
+    let cfg = get_test_config();
     let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
     command_sender.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, command_sender.len().await.unwrap());
@@ -18,7 +18,7 @@ async fn test_add() {
 
 #[tokio::test]
 async fn test_get() {
-    let cfg = get_test_config("target/test/get".into());
+    let cfg = get_test_config();
     let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
     command_sender.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, command_sender.len().await.unwrap());
@@ -42,7 +42,7 @@ async fn test_get() {
 
 #[tokio::test]
 async fn test_contains() {
-    let cfg = get_test_config("target/test/contains".into());
+    let cfg = get_test_config();
     let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
     command_sender.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, command_sender.len().await.unwrap());

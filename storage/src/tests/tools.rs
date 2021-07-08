@@ -1,10 +1,9 @@
+use crate::config::StorageConfig;
 use crypto::hash::Hash;
 use models::{
     block::{Block, BlockHeader},
     slot::Slot,
 };
-
-use crate::config::StorageConfig;
 
 pub fn get_test_block() -> Block {
     Block {
@@ -24,12 +23,13 @@ pub fn get_test_block() -> Block {
         }
 }
 
-pub fn get_test_config(path: String) -> StorageConfig {
+pub fn get_test_config() -> StorageConfig {
+    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     StorageConfig {
         max_stored_blocks: 100000,
-        path,
+        path: tempdir.path().to_path_buf(),
         cache_capacity: 1000000,
-        flush_every_ms: Some(200),
+        flush_interval: Some(200.into()),
     }
 }
 

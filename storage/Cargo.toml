@@ -16,3 +16,9 @@ serde_json = { version = "1.0" }
 sled = "0.34.6"
 models = { path = "../models" }
 crypto = { path = "../crypto" }
+time = { path = "../time" }
+
+[dev-dependencies]
+stderrlog = { version = "0.5" }
+pretty_assertions = "0.6"
+tempfile = "3.2"

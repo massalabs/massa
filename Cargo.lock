@@ -1861,10 +1861,14 @@ dependencies = [
  "log",
  "logging",
  "models",
+ "pretty_assertions",
  "serde",
  "serde_json",
  "sled",
+ "stderrlog",
+ "tempfile",
  "thiserror",
+ "time 0.1.0",
  "tokio",
 ]
 
