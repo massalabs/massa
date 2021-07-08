@@ -136,7 +136,7 @@ impl ConsensusWorker {
                 self.cfg.genesis_timestamp,
                 self.next_slot,
             )?
-            .estimate_instant(0)?,
+            .estimate_instant(self.clock_compensation)?,
         );
         tokio::pin!(next_slot_timer);
         loop {
@@ -213,7 +213,7 @@ impl ConsensusWorker {
                 self.cfg.genesis_timestamp,
                 self.next_slot,
             )?
-            .estimate_instant(0)?,
+            .estimate_instant(self.clock_compensation)?,
         ));
 
         Ok(())
