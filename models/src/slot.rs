@@ -122,7 +122,7 @@ impl SerializeCompact for Slot {
     /// #    max_operations_per_message: 1024,
     /// #    max_bootstrap_message_size: 100000000,
     /// # });
-    /// # let context = models::test_with_serialization_context(|ctx| ctx.clone());
+    /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
     /// let ser = slot.to_bytes_compact(&context).unwrap();
     /// let (deser, _) = Slot::from_bytes_compact(&ser, &context).unwrap();
@@ -158,7 +158,7 @@ impl DeserializeCompact for Slot {
     /// #     max_operations_per_message: 1024,
     /// #     max_bootstrap_message_size: 100000000,
     /// # });
-    /// # let context = models::test_with_serialization_context(|ctx| ctx.clone());
+    /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
     /// let ser = slot.to_bytes_compact(&context).unwrap();
     /// let (deser, _) = Slot::from_bytes_compact(&ser, &context).unwrap();

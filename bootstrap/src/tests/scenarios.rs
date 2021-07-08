@@ -1,7 +1,6 @@
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
-use models::test_with_serialization_context as with_serialization_context;
-use models::{init_serialization_context, SerializeCompact};
+use models::{get_serialization_context, SerializeCompact};
 use serial_test::serial;
 use std::str::FromStr;
 use tokio::sync::mpsc;
@@ -21,7 +20,7 @@ use super::{
 async fn test_bootstrap_server() {
     let (private_key, public_key) = get_keys();
     let cfg = get_bootstrap_config(public_key);
-    let serialization_context = with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = get_serialization_context();
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);

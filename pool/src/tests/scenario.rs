@@ -1,4 +1,5 @@
 use communication::protocol::ProtocolCommand;
+use models::get_serialization_context;
 use models::SerializeCompact;
 use models::Slot;
 use std::collections::HashMap;
@@ -10,14 +11,13 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools::{example_pool_config, get_transaction},
 };
-use models::test_with_serialization_context as with_serialization_context;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_pool() {
     let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let context = with_serialization_context(|ctx| ctx.clone());
+    let context = get_serialization_context();
 
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
@@ -182,7 +182,7 @@ async fn test_pool() {
 #[serial]
 async fn test_pool_with_protocol_events() {
     let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let context = with_serialization_context(|ctx| ctx.clone());
+    let context = get_serialization_context();
 
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;

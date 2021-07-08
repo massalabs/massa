@@ -7,10 +7,9 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
-use models::test_with_serialization_context as with_serialization_context;
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
-    OperationType, SerializeCompact, Slot,
+    get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation,
+    OperationContent, OperationType, SerializeCompact, Slot,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -304,7 +303,7 @@ pub fn create_transaction(
         expire_period,
         op,
     };
-    let context = with_serialization_context(|ctx| ctx.clone());
+    let context = get_serialization_context();
     let hash = Hash::hash(&content.to_bytes_compact(&context).unwrap());
     let signature = crypto::sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
@@ -363,7 +362,7 @@ pub fn create_block_with_operations(
     operations: Vec<Operation>,
 ) -> (BlockId, Block, PrivateKey) {
     let (public_key, private_key) = creator;
-    let serialization_context = with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = get_serialization_context();
 
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {

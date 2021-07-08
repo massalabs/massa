@@ -5,8 +5,10 @@ use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
 use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
-use models::test_with_serialization_context as with_serialization_context;
-use models::{Address, BlockId, Operation, OperationContent, OperationType, SerializeCompact};
+use models::{
+    get_serialization_context, Address, BlockId, Operation, OperationContent, OperationType,
+    SerializeCompact,
+};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -337,7 +339,7 @@ pub async fn incoming_message_drain_stop(
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
-    let serialization_context = with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = get_serialization_context();
     let sender_priv = crypto::generate_random_private_key();
     let sender_pub = crypto::derive_public_key(&sender_priv);
 

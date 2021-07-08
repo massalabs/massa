@@ -6,10 +6,10 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
-use models::test_with_serialization_context as with_serialization_context;
 use models::SerializeCompact;
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, SerializationContext, Slot,
+    get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation,
+    SerializationContext, Slot,
 };
 use pool::PoolCommand;
 use time::UTime;
@@ -63,7 +63,7 @@ async fn test_order_of_inclusion() {
     ledger.insert(address_a, LedgerData { balance: 100 });
     let ledger_file = generate_ledger_file(&ledger);
     let mut cfg = tools::default_consensus_config(1, ledger_file.path());
-    let serialization_context = with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -228,7 +228,7 @@ async fn test_with_two_cliques() {
 
     let ledger_file = generate_ledger_file(&HashMap::new());
     let mut cfg = tools::default_consensus_config(1, ledger_file.path());
-    let serialization_context = models::with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = models::get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -546,7 +546,7 @@ async fn test_block_filling() {
     );
     let ledger_file = generate_ledger_file(&ledger);
     let mut cfg = tools::default_consensus_config(1, ledger_file.path());
-    let serialization_context = models::with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;

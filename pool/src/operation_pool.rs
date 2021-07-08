@@ -306,7 +306,7 @@ mod tests {
     #[serial]
     fn test_pool() {
         let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-        let context = models::test_with_serialization_context(|ctx| ctx.clone());
+        let context = models::get_serialization_context();
 
         let max_pool_size_per_thread = 10;
         cfg.max_pool_size_per_thread = max_pool_size_per_thread;

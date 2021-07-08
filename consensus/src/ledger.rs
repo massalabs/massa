@@ -700,7 +700,7 @@ impl SerializeCompact for LedgerExport {
     /// #     max_operations_per_message: 1024,
     /// #     max_bootstrap_message_size: 100000000,
     /// # });
-    /// # let context = models::test_with_serialization_context(|ctx| ctx.clone());
+    /// # let context = models::get_serialization_context();
     /// let bytes = ledger.clone().to_bytes_compact(&context).unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes, &context).unwrap();
     /// assert_eq!(ledger.latest_final_periods, res.latest_final_periods);

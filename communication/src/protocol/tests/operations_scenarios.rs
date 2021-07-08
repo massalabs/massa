@@ -4,7 +4,7 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolPoolEvent;
-use models::test_with_serialization_context as with_serialization_context;
+use models::get_serialization_context;
 use serial_test::serial;
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ use std::collections::HashMap;
 #[serial]
 async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     let protocol_config = tools::create_protocol_config();
-    let serialization_context = with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = get_serialization_context();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -123,7 +123,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 #[serial]
 async fn test_protocol_propagates_operations_to_active_nodes() {
     let protocol_config = tools::create_protocol_config();
-    let serialization_context = models::with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = get_serialization_context();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();

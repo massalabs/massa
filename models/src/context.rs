@@ -20,14 +20,12 @@ pub fn init_serialization_context(context: SerializationContext) {
 }
 
 /// Get a clone of the context. For tests only.
-pub fn test_with_serialization_context<F, V>(f: F) -> V
-where
-    F: FnOnce(&SerializationContext) -> V,
-{
-    let ctx = SERIALIZATION_CONTEXT
+pub fn get_serialization_context() -> SerializationContext {
+    SERIALIZATION_CONTEXT
         .lock()
-        .expect("Couldn't acquire mutex on SERIALIZATION_CONTEXT.");
-    f(ctx.as_ref().expect("Unitialized SERIALIZATION_CONTEXT."))
+        .expect("Couldn't acquire mutex on SERIALIZATION_CONTEXT.")
+        .clone()
+        .expect("Unitialized SERIALIZATION_CONTEXT.")
 }
 
 /// Use the tls context, should be called only after initializing the global context.

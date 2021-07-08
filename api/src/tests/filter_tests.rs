@@ -185,7 +185,7 @@ async fn test_get_operations() {
 #[serial]
 async fn test_get_addresses_data() {
     initialize_context();
-    let serialization_context = models::test_with_serialization_context(|ctx| ctx.clone());
+    let serialization_context = models::get_serialization_context();
 
     let search_address =
         Address::from_bs58_check("SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S").unwrap();
