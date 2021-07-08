@@ -2,7 +2,10 @@
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::{
     error::ConsensusError,
-    ledger::{CurrentBlockLedger, Ledger, LedgerChange, OperationLedgerInterface},
+    ledger::{
+        CurrentBlockLedger, Ledger, LedgerChange, LedgerData, LedgerExport,
+        OperationLedgerInterface,
+    },
 };
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
@@ -12,9 +15,12 @@ use models::{
     SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map, BTreeSet, HashMap, HashSet, VecDeque};
 use std::convert::TryInto;
 use std::mem;
+use std::{
+    collections::{hash_map, BTreeSet, HashMap, HashSet, VecDeque},
+    convert::TryFrom,
+};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
@@ -457,10 +463,13 @@ pub struct BootsrapableGraph {
     pub gi_head: Vec<(BlockId, Vec<BlockId>)>,
     /// List of maximal cliques of compatible blocks.
     pub max_cliques: Vec<Vec<BlockId>>,
+    /// Ledger at last final blocks
+    pub ledger: LedgerExport,
 }
 
-impl<'a> From<&'a BlockGraph> for BootsrapableGraph {
-    fn from(block_graph: &'a BlockGraph) -> Self {
+impl<'a> TryFrom<&'a BlockGraph> for BootsrapableGraph {
+    type Error = ConsensusError;
+    fn try_from(block_graph: &'a BlockGraph) -> Result<Self, Self::Error> {
         let mut active_blocks = HashMap::new();
         for (hash, status) in block_graph.block_statuses.iter() {
             match status {
@@ -471,7 +480,7 @@ impl<'a> From<&'a BlockGraph> for BootsrapableGraph {
             }
         }
 
-        BootsrapableGraph {
+        Ok(BootsrapableGraph {
             active_blocks: active_blocks
                 .into_iter()
                 .map(|(hash, block)| (hash, block.into()))
@@ -490,7 +499,8 @@ impl<'a> From<&'a BlockGraph> for BootsrapableGraph {
                 .into_iter()
                 .map(|clique| clique.into_iter().collect())
                 .collect(),
-        }
+            ledger: LedgerExport::try_from(&block_graph.ledger)?,
+        })
     }
 }
 
@@ -570,6 +580,8 @@ impl SerializeCompact for BootsrapableGraph {
                 res.extend(&hash.to_bytes());
             }
         }
+
+        res.extend(self.ledger.to_bytes_compact(context)?);
 
         Ok(res)
     }
@@ -664,6 +676,9 @@ impl DeserializeCompact for BootsrapableGraph {
             max_cliques.push(set);
         }
 
+        let (ledger, delta) = LedgerExport::from_bytes_compact(&buffer[cursor..], context)?;
+
+        cursor += delta;
         Ok((
             BootsrapableGraph {
                 active_blocks,
@@ -671,6 +686,7 @@ impl DeserializeCompact for BootsrapableGraph {
                 latest_final_blocks_periods,
                 gi_head,
                 max_cliques,
+                ledger,
             },
             cursor,
         ))
@@ -796,7 +812,11 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
-            let ledger = Ledger::new(cfg.clone(), serialization_context.clone())?;
+            let ledger = Ledger::from_export(
+                boot_graph.ledger,
+                cfg.clone(),
+                serialization_context.clone(),
+            )?;
             let mut res_graph = BlockGraph {
                 cfg,
                 serialization_context,
@@ -2958,6 +2978,10 @@ mod tests {
             ]
             .into_iter()
             .collect()],
+            ledger: LedgerExport {
+                ledger_per_thread: Vec::new(),
+                latest_final_periods: Vec::new(),
+            },
         };
 
         let bytes = graph.to_bytes_compact(&serialization_context).unwrap();

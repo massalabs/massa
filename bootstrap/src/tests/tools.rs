@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use communication::network::{BootstrapPeers, NetworkCommand};
-use consensus::{BootsrapableGraph, ConsensusCommand};
+use consensus::{BootsrapableGraph, ConsensusCommand, LedgerExport};
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use models::{BlockId, SerializationContext};
 use time::UTime;
@@ -112,6 +112,7 @@ pub fn get_boot_graph() -> BootsrapableGraph {
         ],
         gi_head: Default::default(),
         max_cliques: vec![Vec::new()],
+        ledger: LedgerExport::new(2),
     }
 }
 

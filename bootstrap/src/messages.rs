@@ -142,6 +142,7 @@ impl DeserializeCompact for BootstrapMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use consensus::LedgerExport;
     use models::BlockId;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
 
@@ -233,6 +234,8 @@ mod tests {
             ]
             .into_iter()
             .collect()],
+
+            ledger: LedgerExport::new(2),
         };
 
         let base_signature = crypto::signature::Signature::from_bs58_check(
