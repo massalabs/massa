@@ -49,12 +49,10 @@ state ConsensusUpdate  {
 }
 
 state Discard {
-    [*] --> Still
-    Still --> [*]
-    Still --> Moving
-    Moving --> Still
-    Moving --> Crash
-    Crash --> [*]
+    [*] --> DiscardedWithReason: Discarded
+    DiscardedWithReason --> DiscardedWithReason: Check if reason is final
+    DiscardedWithReason --> [*]: Store
+    DiscardedWithReason --> [*]: Forget about it
 }
 
 state DBCheck {
