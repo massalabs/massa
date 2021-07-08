@@ -31,6 +31,7 @@ use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fmt::Write;
 use std::string::ToString;
 
 use crate::wallet::Wallet;
@@ -240,7 +241,6 @@ fn main() {
     //filename of the wallet file. There's no security around the wallet file.
     let wallet_file_param = matches.value_of("wallet");
     if let Some(file_name) = wallet_file_param {
-        println!("open wallet");
         match Wallet::new(file_name) {
             Ok(wallet) => {
                 repl.data.wallet = Some(wallet);
@@ -352,18 +352,46 @@ fn wallet_new_privkey(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplE
 
 fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &data.wallet {
+        //get wallet addresses balances
+        let balances = query_addresses(&data, wallet.get_wallet_address_list())
+            .and_then(|resp| {
+                if resp.status() != StatusCode::OK {
+                    Ok("balance not available.".to_string())
+                } else {
+                    if data.cli {
+                        Ok(format!("{}", resp.text().unwrap()))
+                    } else {
+                        let ledger = resp.json::<LedgerDataExport>()?;
+                        let balance_list = data::extract_addresses_from_ledger(&ledger);
+                        if balance_list.len() == 0 {
+                            Ok("Error no balance found".to_string())
+                        } else {
+                            let mut s = String::new();
+                            for b in balance_list {
+                                writeln!(s, "{}", b)?;
+                            }
+                            Ok(s)
+                        }
+                    }
+                }
+            })
+            .or::<ReplError>(Ok("balance not available.".to_string()))
+            .unwrap();
         if data.cli {
             println!(
-                "{}",
+                "{{wallet:{}, balance:{}}}",
                 wallet
                     .to_json_string()
                     .map_err(|err| ReplError::GeneralError(format!(
-                        "internal error during wallet json conversion: {}",
+                        "Internal error during wallet json conversion: {}",
                         err
-                    )))?
+                    )))?,
+                balances
             );
         } else {
-            println!("{}", wallet);
+            println!("wallet:{}", wallet);
+            println!("balance:");
+            println!("{}", balances);
         }
     }
 
@@ -502,36 +530,31 @@ fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     Ok(())
 }
 
+fn query_addresses<'a>(data: &'a ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
+    let url = format!(
+        "http://{}/api/v1/addresses_data?{}",
+        data.node_ip,
+        serde_qs::to_string(&Addresses { addrs })?
+    );
+    reqwest::blocking::get(&url).map_err(|err| err.into())
+}
+
 fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     //convert specified addresses to Address
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
         .collect::<Result<HashSet<Address>, _>>();
+
     let search_addresses = match addr_list {
-        Ok(addrs) => Addresses { addrs },
+        Ok(addrs) => addrs,
         Err(err) => {
             println!("Error during addresses parsing: {}", err);
             return Ok(());
         }
     };
 
-    let url = format!(
-        "http://{}/api/v1/addresses_data?{}",
-        data.node_ip,
-        match serde_qs::to_string(&search_addresses) {
-            Ok(s) => s,
-            Err(err) => {
-                println!(
-                    "Error during addresses parsing, could not convert to url: {}",
-                    err
-                );
-                return Ok(());
-            }
-        }
-    );
-
-    let resp = reqwest::blocking::get(&url)?;
+    let resp = query_addresses(&data, search_addresses)?;
     if resp.status() != StatusCode::OK {
         let status = resp.status();
         let message = resp

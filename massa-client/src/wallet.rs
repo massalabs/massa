@@ -2,6 +2,7 @@ use crate::ReplError;
 use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 /// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,6 +48,16 @@ impl Wallet {
                 .map(|addr| if addr == address { true } else { false })
                 .unwrap_or(false)
         })
+    }
+
+    pub fn get_wallet_address_list(&self) -> HashSet<Address> {
+        self.keys
+            .iter()
+            .map(|key| {
+                let public_key = derive_public_key(&key);
+                Address::from_public_key(&public_key).unwrap() //private key has been tested: should never panic
+            })
+            .collect()
     }
 
     //save the wallet in json format in a file
