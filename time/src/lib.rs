@@ -54,9 +54,8 @@ impl TryFrom<Duration> for UTime {
     }
 }
 
-impl Into<Duration> for UTime {
-    /// Conversion into `std::time::Duration`.
-    ///
+impl From<UTime> for Duration {
+    /// Conversion Utime to duration, representing timestamp in millis.
     /// ```
     /// # use std::time::Duration;
     /// # use time::*;
@@ -66,8 +65,8 @@ impl Into<Duration> for UTime {
     /// let res: Duration = time.into();
     /// assert_eq!(res, duration);
     /// ```
-    fn into(self) -> Duration {
-        Duration::from_millis(self.to_millis())
+    fn from(value: UTime) -> Self {
+        Duration::from_millis(value.to_millis())
     }
 }
 
@@ -116,7 +115,7 @@ impl UTime {
             .map_err(|_| TimeError::TimeOverflowError)?;
         let compensated = now
             .checked_add(compensation_millis)
-            .ok_or_else(|| TimeError::TimeOverflowError)?
+            .ok_or(TimeError::TimeOverflowError)?
             .try_into()
             .map_err(|_| TimeError::TimeOverflowError)?;
         Ok(UTime(compensated))
@@ -162,11 +161,11 @@ impl UTime {
     pub fn estimate_instant(self, compensation_millis: i64) -> Result<Instant, TimeError> {
         let (cur_timestamp, cur_instant): (UTime, Instant) =
             (UTime::now(compensation_millis)?, Instant::now());
-        Ok(cur_instant
+        cur_instant
             .checked_add(self.to_duration())
             .ok_or(TimeError::TimeOverflowError)?
             .checked_sub(cur_timestamp.to_duration())
-            .ok_or(TimeError::TimeOverflowError)?)
+            .ok_or(TimeError::TimeOverflowError)
     }
 
     /// ```
@@ -201,10 +200,8 @@ impl UTime {
     pub fn checked_sub(self, t: UTime) -> Result<Self, TimeError> {
         self.0
             .checked_sub(t.0)
-            .ok_or(TimeError::CheckedOperationError(format!(
-                "subtraction error"
-            )))
-            .and_then(|value| Ok(UTime(value)))
+            .ok_or_else(|| TimeError::CheckedOperationError("subtraction error".to_string()))
+            .map(UTime)
     }
 
     /// ```
@@ -217,8 +214,8 @@ impl UTime {
     pub fn checked_add(self, t: UTime) -> Result<Self, TimeError> {
         self.0
             .checked_add(t.0)
-            .ok_or(TimeError::CheckedOperationError(format!("addition error")))
-            .and_then(|value| Ok(UTime(value)))
+            .ok_or_else(|| TimeError::CheckedOperationError("addition error".to_string()))
+            .map(UTime)
     }
 
     /// ```
@@ -231,7 +228,7 @@ impl UTime {
     pub fn checked_div_time(self, t: UTime) -> Result<u64, TimeError> {
         self.0
             .checked_div(t.0)
-            .ok_or(TimeError::CheckedOperationError(format!("division error")))
+            .ok_or_else(|| TimeError::CheckedOperationError("division error".to_string()))
     }
 
     /// ```
@@ -243,8 +240,8 @@ impl UTime {
     pub fn checked_div_u64(self, n: u64) -> Result<UTime, TimeError> {
         self.0
             .checked_div(n)
-            .ok_or(TimeError::CheckedOperationError(format!("division error")))
-            .and_then(|value| Ok(UTime(value)))
+            .ok_or_else(|| TimeError::CheckedOperationError("division error".to_string()))
+            .map(UTime)
     }
 
     /// ```
@@ -256,10 +253,8 @@ impl UTime {
     pub fn checked_mul(self, n: u64) -> Result<Self, TimeError> {
         self.0
             .checked_mul(n)
-            .ok_or(TimeError::CheckedOperationError(format!(
-                "multiplication error"
-            )))
-            .and_then(|value| Ok(UTime(value)))
+            .ok_or_else(|| TimeError::CheckedOperationError("multiplication error".to_string()))
+            .map(UTime)
     }
 
     /// ```
@@ -272,8 +267,8 @@ impl UTime {
     pub fn checked_rem_time(self, t: UTime) -> Result<Self, TimeError> {
         self.0
             .checked_rem(t.0)
-            .ok_or(TimeError::CheckedOperationError(format!("remainder error")))
-            .and_then(|value| Ok(UTime(value)))
+            .ok_or_else(|| TimeError::CheckedOperationError("remainder error".to_string()))
+            .map(UTime)
     }
 
     /// ```
@@ -285,7 +280,7 @@ impl UTime {
     pub fn checked_rem_u64(self, n: u64) -> Result<Self, TimeError> {
         self.0
             .checked_rem(n)
-            .ok_or(TimeError::CheckedOperationError(format!("remainder error")))
-            .and_then(|value| Ok(UTime(value)))
+            .ok_or_else(|| TimeError::CheckedOperationError("remainder error".to_string()))
+            .map(UTime)
     }
 }

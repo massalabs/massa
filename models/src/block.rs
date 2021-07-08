@@ -72,8 +72,7 @@ impl Block {
         Ok(self
             .operations
             .iter()
-            .find(|o| o.get_operation_id().map(|id| id == op_id).unwrap_or(false))
-            .is_some())
+            .any(|o| o.get_operation_id().map(|id| id == op_id).unwrap_or(false)))
     }
 
     pub fn bytes_count(&self) -> Result<u64, ModelsError> {
@@ -95,7 +94,7 @@ impl Block {
         let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
         self.operations
             .iter()
-            .map(|op| {
+            .try_for_each::<_, Result<(), ModelsError>>(|op| {
                 let addrs = op
                     .get_ledger_involved_addresses(Some(Address::from_public_key(
                         &self.header.content.creator,
@@ -117,8 +116,7 @@ impl Block {
                     }
                 }
                 Ok(())
-            })
-            .collect::<Result<(), ModelsError>>()?;
+            })?;
         Ok(addresses_to_operations)
     }
 }
@@ -307,7 +305,7 @@ impl SerializeCompact for BlockHeaderContent {
 
         // parents (note: there should be none if slot period=0)
         // parents (note: there should be none if slot period=0)
-        if self.parents.len() == 0 {
+        if self.parents.is_empty() {
             res.push(0);
         } else {
             res.push(1);

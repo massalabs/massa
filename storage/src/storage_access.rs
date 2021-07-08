@@ -45,7 +45,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
 
     let storage_cleaner = StorageCleaner::new(
         cfg.max_stored_blocks,
-        notify.clone(),
+        notify,
         shutdown_rx,
         hash_to_block,
         slot_to_hash,
@@ -67,7 +67,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         }
     });
     Ok((
-        StorageAccess(db.clone()),
+        StorageAccess(db),
         StorageManager {
             shutdown_tx,
             join_handle,

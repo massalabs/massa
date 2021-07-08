@@ -36,7 +36,7 @@ pub struct WrapperOperationType<'a>(&'a OperationType);
 
 impl<'a> From<&'a OperationType> for WrapperOperationType<'a> {
     fn from(op: &'a OperationType) -> Self {
-        WrapperOperationType(&op)
+        WrapperOperationType(op)
     }
 }
 
@@ -181,7 +181,7 @@ pub fn from_hash_slot((hash, slot): (Hash, Slot)) -> (WrappedHash, WrappedSlot) 
 
 /// Wrapps a vec of (hash, slot)
 pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlot)> {
-    list.into_iter().map(|v| from_hash_slot(*v)).collect()
+    list.iter().map(|v| from_hash_slot(*v)).collect()
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -196,26 +196,26 @@ pub struct WrappedAddressState {
 
 impl<'a> std::fmt::Display for WrappedAddressState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "    final_roll {}\n", self.final_rolls)?;
+        writeln!(f, "    final_roll {}", self.final_rolls)?;
         if let Some(active) = self.active_rolls {
-            write!(f, "    active_rolls {}\n", active)?;
+            writeln!(f, "    active_rolls {}", active)?;
         } else {
-            write!(f, "    No active rolls")?;
+            writeln!(f, "    No active rolls")?;
         }
-        write!(f, "    candidate_rolls {}\n", self.candidate_rolls)?;
-        write!(
+        writeln!(f, "    candidate_rolls {}", self.candidate_rolls)?;
+        writeln!(
             f,
-            "    locked_balance {}\n",
+            "    locked_balance {}",
             format_amount(self.locked_balance)
         )?;
-        write!(
+        writeln!(
             f,
-            "    candidate_ledger_data : balance:{}\n",
+            "    candidate_ledger_data : balance:{}",
             format_amount(self.candidate_ledger_data.balance)
         )?;
-        write!(
+        writeln!(
             f,
-            "    final_ledger_data : balance {}\n",
+            "    final_ledger_data : balance {}",
             format_amount(self.final_ledger_data.balance)
         )?;
         Ok(())
@@ -230,11 +230,11 @@ pub struct AddressStates {
 impl<'a> std::fmt::Display for AddressStates {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for addr in &self.order {
-            write!(f, "Address: {}", addr)?;
-            if let Some(state) = self.map.get(&addr) {
+            writeln!(f, "Address: {}", addr)?;
+            if let Some(state) = self.map.get(addr) {
                 write!(f, "State: \n{}", state)?;
             } else {
-                write!(f, "missing state\n")?;
+                writeln!(f, "missing state")?;
             }
         }
         Ok(())
@@ -369,29 +369,29 @@ impl std::fmt::Display for State {
         let duration: Duration = self.time.into();
 
         let date = Local.timestamp(duration.as_secs() as i64, 0);
-        write!(
+        writeln!(
             f,
-            "  Time: {:?} Latest:{} Cycle:{}\n",
+            "  Time: {:?} Latest:{} Cycle:{}",
             date,
             self.latest_slot
                 .map(|s| format!("Slot {:?}", s))
-                .unwrap_or("None".to_string()),
+                .unwrap_or_else(|| "None".to_string()),
             self.current_cycle
         )?;
-        write!(
+        writeln!(
             f,
-            " Nb peers: {}, our IP: {}\n",
+            " Nb peers: {}, our IP: {}",
             self.nb_peers,
             self.our_ip
                 .map(|i| i.to_string())
-                .unwrap_or("None".to_string())
+                .unwrap_or_else(|| "None".to_string())
         )?;
         let mut final_blocks: Vec<&(Hash, Slot, UTime)> = self.last_final.iter().collect();
         final_blocks.sort_unstable_by_key(|v| (v.1, v.0));
 
-        write!(
+        writeln!(
             f,
-            " Nb cliques: {}, last final blocks:{:#?}\n",
+            " Nb cliques: {}, last final blocks:{:#?}",
             self.nb_cliques,
             final_blocks
                 .iter()
@@ -475,7 +475,7 @@ impl std::fmt::Display for NetworkInfo {
             "  Our IP address: {}",
             self.our_ip
                 .map(|i| i.to_string())
-                .unwrap_or("None".to_string())
+                .unwrap_or_else(|| "None".to_string())
         )?;
         writeln!(f, "  Peers:")?;
         for peer in self.peers.values() {
@@ -495,7 +495,7 @@ impl From<PeerInfo> for WrappedPeerInfo {
 }
 impl From<&'_ PeerInfo> for WrappedPeerInfo {
     fn from(peer: &PeerInfo) -> Self {
-        WrappedPeerInfo(peer.clone())
+        WrappedPeerInfo(*peer)
     }
 }
 impl std::fmt::Display for WrappedPeerInfo {
@@ -504,8 +504,8 @@ impl std::fmt::Display for WrappedPeerInfo {
             ,self.0.ip
             , self.0.bootstrap
             , self.0.banned
-            , self.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or("None".to_string())
-            , self.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or("None".to_string())
+            , self.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
             , self.0.active_out_connection_attempts
             , self.0.active_out_connections
             , self.0.active_in_connections
@@ -552,7 +552,7 @@ pub fn parse_amount(str_amount: &str) -> Result<u64, String> {
     let res = Decimal::from_str(str_amount)
         .map_err(|err| err.to_string())?
         .checked_mul(AMOUNT_DECIMAL_FACTOR.into())
-        .ok_or("amount is too large".to_string())?;
+        .ok_or_else(|| "amount is too large".to_string())?;
     if res.is_sign_negative() {
         return Err("amounts should be positive".to_string());
     }
@@ -562,7 +562,9 @@ pub fn parse_amount(str_amount: &str) -> Result<u64, String> {
             AMOUNT_DECIMAL_FACTOR
         ));
     }
-    let res = res.to_u64().ok_or("amount is too large".to_string())?;
+    let res = res
+        .to_u64()
+        .ok_or_else(|| "amount is too large".to_string())?;
     Ok(res)
 }
 

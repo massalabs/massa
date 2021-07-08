@@ -39,7 +39,7 @@ impl WriteBinder {
         let msg_size: u32 = bytes_vec
             .len()
             .try_into()
-            .map_err(|_| BootstrapError::GeneralBootstrapError("message too long".into()))?;
+            .map_err(|_| BootstrapError::GeneralError("message too long".into()))?;
 
         // send length
         self.write_half

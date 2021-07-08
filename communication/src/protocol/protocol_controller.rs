@@ -183,9 +183,11 @@ impl ProtocolEventReceiver {
     /// indicating that no further values can be sent on the channel
     pub async fn wait_event(&mut self) -> Result<ProtocolEvent, CommunicationError> {
         massa_trace!("protocol.event_receiver.wait_event", {});
-        let res = self.0.recv().await.ok_or(CommunicationError::ChannelError(
-            "DefaultProtocolController wait_event channel recv failed".into(),
-        ));
+        let res = self.0.recv().await.ok_or_else(|| {
+            CommunicationError::ChannelError(
+                "DefaultProtocolController wait_event channel recv failed".into(),
+            )
+        });
         res
     }
 
@@ -210,9 +212,11 @@ impl ProtocolPoolEventReceiver {
     /// indicating that no further values can be sent on the channel
     pub async fn wait_event(&mut self) -> Result<ProtocolPoolEvent, CommunicationError> {
         massa_trace!("protocol.pool_event_receiver.wait_event", {});
-        let res = self.0.recv().await.ok_or(CommunicationError::ChannelError(
-            "DefaultProtocolController wait_pool_event channel recv failed".into(),
-        ));
+        let res = self.0.recv().await.ok_or_else(|| {
+            CommunicationError::ChannelError(
+                "DefaultProtocolController wait_pool_event channel recv failed".into(),
+            )
+        });
         res
     }
 

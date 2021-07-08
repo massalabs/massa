@@ -311,7 +311,7 @@ pub fn get_filter(
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
-    let storage = opt_storage_command_sender.clone();
+    let storage = opt_storage_command_sender;
     let graph_interval = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -365,9 +365,9 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("node_config"))
         .and(warp::path::end())
-        .and_then(move || get_node_config());
+        .and_then(get_node_config);
 
-    let pool_cfg = pool_config.clone();
+    let pool_cfg = pool_config;
     let pool_config = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -384,7 +384,7 @@ pub fn get_filter(
         .and_then(move || get_consensus_config(consensus_cfg.clone()));
 
     let evt_tx = event_tx.clone();
-    let network_cfg = network_config.clone();
+    let network_cfg = network_config;
     let consensus_cfg = consensus_config.clone();
     let state = warp::get()
         .and(warp::path("api"))
@@ -438,8 +438,8 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
-    let api_cfg = api_config.clone();
-    let consensus_cfg = consensus_config.clone();
+    let api_cfg = api_config;
+    let consensus_cfg = consensus_config;
     let next_draws = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -525,7 +525,7 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || get_active_stakers(evt_tx.clone()));
 
-    let evt_tx = event_tx.clone();
+    let evt_tx = event_tx;
     let staking_addresses = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -911,7 +911,7 @@ async fn get_current_parents(
                 return Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
                         "message":
-                            format!("inconsistency error between best_parents and active_blocks")
+                            "inconsistency error between best_parents and active_blocks"
                     })),
                     warp::http::StatusCode::INTERNAL_SERVER_ERROR,
                 )
@@ -993,8 +993,8 @@ async fn get_block_from_graph(
         .await
         .map_err(|err| (format!("error retrieving graph : {:?}", err)))
         .and_then(|graph| {
-            let start = start_opt.unwrap_or(UTime::from(0));
-            let end = end_opt.unwrap_or(UTime::from(u64::MAX));
+            let start = start_opt.unwrap_or_else(|| UTime::from(0));
+            let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
 
             graph
                 .active_blocks
@@ -1039,11 +1039,6 @@ async fn get_block_interval_process(
     let mut res = get_block_from_graph(event_tx, &consensus_cfg, start_opt, end_opt).await?;
 
     if let Some(ref storage) = opt_storage_command_sender {
-        let _start = start_opt.unwrap_or(UTime::from(0));
-        let _end = end_opt.unwrap_or(UTime::from(u64::MAX));
-        //add block from storage
-        //get first slot
-
         let start_slot = if let Some(start) = start_opt {
             let slot = get_latest_block_slot_at_timestamp(
                 consensus_cfg.thread_count,
@@ -1071,7 +1066,7 @@ async fn get_block_interval_process(
                             }
                         })
                     })
-                    .unwrap_or(Ok(Slot::new(0, 0)))
+                    .unwrap_or_else(|| Ok(Slot::new(0, 0)))
             })?;
             Some(slot)
         } else {
@@ -1080,7 +1075,7 @@ async fn get_block_interval_process(
 
         //get end slot
         let end_slot_opt = if let Some(end) = end_opt {
-            let slot = get_latest_block_slot_at_timestamp(
+            get_latest_block_slot_at_timestamp(
                 consensus_cfg.thread_count,
                 consensus_cfg.t0,
                 consensus_cfg.genesis_timestamp,
@@ -1107,8 +1102,7 @@ async fn get_block_interval_process(
                         })
                     })
                     .transpose()
-            })?;
-            slot
+            })?
         } else {
             None
         };
@@ -1347,8 +1341,8 @@ async fn get_graph_interval_process(
         .await
         .map_err(|err| (format!("error retrieving graph : {:?}", err)))
         .and_then(|graph| {
-            let start = start_opt.unwrap_or(UTime::from(0));
-            let end = end_opt.unwrap_or(UTime::from(u64::MAX));
+            let start = start_opt.unwrap_or_else(|| UTime::from(0));
+            let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
 
             graph
                 .active_blocks
@@ -1494,7 +1488,7 @@ async fn get_cliques(
         } else {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("inconstancy error between cliques and active_blocks")
+                    "message": "inconstancy error between cliques and active_blocks"
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1508,7 +1502,7 @@ async fn get_cliques(
         for hash in clique.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
-                    set.insert((k.clone(), v.clone()));
+                    set.insert((k, *v));
                 }
                 None => {
                     return Ok(warp::reply::with_status(
@@ -1781,7 +1775,7 @@ async fn get_state(
     Ok(warp::reply::json(&json!({
         "time": cur_time,
         "latest_slot": latest_slot_opt,
-        "current_cycle": latest_slot_opt.unwrap_or(Slot::new(0,0)).get_cycle(consensus_cfg.periods_per_cycle),
+        "current_cycle": latest_slot_opt.unwrap_or_else(|| Slot::new(0,0)).get_cycle(consensus_cfg.periods_per_cycle),
         "our_ip": network_cfg.routable_ip,
         "last_final": finals,
         "nb_cliques": graph.max_cliques.len(),
@@ -1810,14 +1804,14 @@ async fn get_last_stale(
         Ok(graph) => graph,
     };
 
-    let discarded = graph.discarded_blocks.clone();
+    let discarded = graph.discarded_blocks;
     let mut discarded = discarded
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
         .map(|(hash, (_reason, header))| (hash, header.content.slot))
         .collect::<Vec<(&BlockId, Slot)>>();
-    if discarded.len() > 0 {
+    if !discarded.is_empty() {
         let min = min(discarded.len(), api_config.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
@@ -1844,18 +1838,15 @@ async fn get_last_invalid(
         }
         Ok(graph) => graph,
     };
-    let discarded = graph.discarded_blocks.clone();
+    let discarded = graph.discarded_blocks;
 
     let mut discarded = discarded
         .map
         .iter()
-        .filter(|(_hash, (reason, _header))| match reason {
-            DiscardReason::Invalid(_) => true,
-            _ => false,
-        })
+        .filter(|(_hash, (reason, _header))| matches!(reason, DiscardReason::Invalid(_)))
         .map(|(hash, (_reason, header))| (hash, header.content.slot))
         .collect::<Vec<(&BlockId, Slot)>>();
-    if discarded.len() > 0 {
+    if !discarded.is_empty() {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
@@ -1937,7 +1928,7 @@ async fn get_staker_info(
             .into_response())
         }
     }
-    .unwrap_or(Slot::new(0, 0));
+    .unwrap_or_else(|| Slot::new(0, 0));
     let end_slot = Slot::new(
         start_slot
             .period
@@ -2012,7 +2003,7 @@ async fn get_next_draws(
             .into_response())
         }
     }
-    .unwrap_or(Slot::new(0, 0));
+    .unwrap_or_else(|| Slot::new(0, 0));
     let end_slot = Slot::new(
         start_slot
             .period

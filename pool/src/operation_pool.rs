@@ -15,7 +15,10 @@ impl OperationIndex {
         OperationIndex(HashMap::new())
     }
     fn insert_op(&mut self, addr: Address, op_id: OperationId) {
-        self.0.entry(addr).or_insert(HashSet::new()).insert(op_id);
+        self.0
+            .entry(addr)
+            .or_insert_with(HashSet::new)
+            .insert(op_id);
     }
 
     fn get_ops_for_address(&self, address: &Address) -> Option<&HashSet<OperationId>> {
@@ -25,7 +28,7 @@ impl OperationIndex {
     fn remove_op_for_address(&mut self, address: &Address, op_id: &OperationId) {
         if let Some(old) = self.0.get_mut(address) {
             old.remove(op_id);
-            if old.len() == 0 {
+            if old.is_empty() {
                 self.0.remove(address);
             }
         }
@@ -198,12 +201,12 @@ impl OperationPool {
         ops: HashMap<OperationId, (u64, u8)>,
     ) -> Result<(), PoolError> {
         for (id, _) in ops.iter() {
-            if let Some(wrapped) = self.ops.remove(&id) {
+            if let Some(wrapped) = self.ops.remove(id) {
                 self.ops_by_thread_and_interest[wrapped.thread as usize]
                     .remove(&(std::cmp::Reverse(wrapped.get_fee_density()), *id));
                 let addrs = wrapped.op.get_ledger_involved_addresses(None)?;
                 for addr in addrs {
-                    self.ops_by_address.remove_op_for_address(&addr, &id);
+                    self.ops_by_address.remove_op_for_address(&addr, id);
                 }
             } // else final op wasn't in pool.
         }
@@ -223,7 +226,7 @@ impl OperationPool {
             .filter(|(_id, w_op)| {
                 w_op.op.content.expire_period <= self.last_final_periods[w_op.thread as usize]
             })
-            .map(|(id, _)| id.clone())
+            .map(|(id, _)| *id)
             .collect();
 
         self.remove_ops(ids)?;
@@ -289,7 +292,7 @@ impl OperationPool {
                             });
                         return None;
                     }
-                    Some(Ok((id.clone(), w_op.op.clone(), w_op.byte_count)))
+                    Some(Ok((*id, w_op.op.clone(), w_op.byte_count)))
                 } else {
                     Some(Err(PoolError::ContainerInconsistency(
                         format!("operation pool get_ops inconsistency: op_id={:?} is in ops_by_thread_and_interest but not in ops", id)
@@ -306,7 +309,7 @@ impl OperationPool {
     ) -> HashMap<OperationId, Operation> {
         operation_ids
             .iter()
-            .filter_map(|op_id| self.ops.get(&op_id).map(|w_op| (*op_id, w_op.op.clone())))
+            .filter_map(|op_id| self.ops.get(op_id).map(|w_op| (*op_id, w_op.op.clone())))
             .collect()
     }
 

@@ -35,12 +35,7 @@ impl Wallet {
 
     /// Adds a new private key to wallet, if it was missing
     pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), ReplError> {
-        if self
-            .keys
-            .iter()
-            .find(|file_key| file_key == &&key)
-            .is_none()
-        {
+        if !self.keys.iter().any(|file_key| file_key == &key) {
             self.keys.push(key);
             self.save()?;
         }
@@ -50,9 +45,9 @@ impl Wallet {
     /// Finds the private key associated with given address
     pub fn find_associated_private_key(&self, address: Address) -> Option<&PrivateKey> {
         self.keys.iter().find(|priv_key| {
-            let pub_key = crypto::derive_public_key(&priv_key);
+            let pub_key = crypto::derive_public_key(priv_key);
             Address::from_public_key(&pub_key)
-                .map(|addr| if addr == address { true } else { false })
+                .map(|addr| addr == address)
                 .unwrap_or(false)
         })
     }
@@ -61,7 +56,7 @@ impl Wallet {
         self.keys
             .iter()
             .map(|key| {
-                let public_key = derive_public_key(&key);
+                let public_key = derive_public_key(key);
                 Address::from_public_key(&public_key).unwrap() //private key has been tested: should never panic
             })
             .collect()
@@ -121,13 +116,15 @@ impl Wallet {
         let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
 
         //get from address private key
-        let private_key =
-            self.find_associated_private_key(from_address)
-                .ok_or(ReplError::GeneralError(format!(
+        let private_key = self
+            .find_associated_private_key(from_address)
+            .ok_or_else(|| {
+                ReplError::GeneralError(format!(
                     "No private key found in the wallet for the specified FROM address: {}",
                     from_address.to_string()
-                )))?;
-        let public_key = derive_public_key(&private_key);
+                ))
+            })?;
+        let public_key = derive_public_key(private_key);
 
         let slot = consensus::get_current_latest_block_slot(
             consensus_cfg.thread_count,
@@ -141,7 +138,7 @@ impl Wallet {
                 err
             ))
         })?
-        .unwrap_or(Slot::new(0, 0));
+        .unwrap_or_else(|| Slot::new(0, 0));
 
         let mut expire_period = slot.period + consensus_cfg.operation_validity_periods;
         if slot.thread >= from_address.get_thread(consensus_cfg.thread_count) {
@@ -156,7 +153,7 @@ impl Wallet {
         };
 
         let hash = Hash::hash(&operation_content.to_bytes_compact().unwrap());
-        let signature = crypto::sign(&hash, &private_key).unwrap();
+        let signature = crypto::sign(&hash, private_key).unwrap();
 
         Ok(Operation {
             content: operation_content,
@@ -169,7 +166,7 @@ impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Wallet private key list:")?;
         for key in &self.keys {
-            let public_key = derive_public_key(&key);
+            let public_key = derive_public_key(key);
             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
             writeln!(f, "key:{} public:{} addr:{}", key, public_key, addr)?;
         }

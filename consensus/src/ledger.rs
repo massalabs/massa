@@ -51,17 +51,23 @@ impl DeserializeCompact for LedgerData {
 impl LedgerData {
     fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if change.balance_increment {
-            self.balance = self.balance.checked_add(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange(
-                    "balance overflow in LedgerData::apply_change".into(),
-                ),
-            )?;
+            self.balance = self
+                .balance
+                .checked_add(change.balance_delta)
+                .ok_or_else(|| {
+                    ConsensusError::InvalidLedgerChange(
+                        "balance overflow in LedgerData::apply_change".into(),
+                    )
+                })?;
         } else {
-            self.balance = self.balance.checked_sub(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange(
-                    "balance underflow in LedgerData::apply_change".into(),
-                ),
-            )?;
+            self.balance = self
+                .balance
+                .checked_sub(change.balance_delta)
+                .ok_or_else(|| {
+                    ConsensusError::InvalidLedgerChange(
+                        "balance underflow in LedgerData::apply_change".into(),
+                    )
+                })?;
         }
         Ok(())
     }
@@ -86,18 +92,27 @@ impl LedgerChange {
     /// Takes the first one mutably
     pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
-            self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into()),
-            )?;
+            self.balance_delta = self
+                .balance_delta
+                .checked_add(change.balance_delta)
+                .ok_or_else(|| {
+                    ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into())
+                })?;
         } else if change.balance_delta > self.balance_delta {
-            self.balance_delta = change.balance_delta.checked_sub(self.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
-            )?;
+            self.balance_delta = change
+                .balance_delta
+                .checked_sub(self.balance_delta)
+                .ok_or_else(|| {
+                    ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into())
+                })?;
             self.balance_increment = !self.balance_increment;
         } else {
-            self.balance_delta = self.balance_delta.checked_sub(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
-            )?;
+            self.balance_delta = self
+                .balance_delta
+                .checked_sub(change.balance_delta)
+                .ok_or_else(|| {
+                    ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into())
+                })?;
         }
         if self.balance_delta == 0 {
             self.balance_increment = true;
@@ -255,7 +270,7 @@ impl Ledger {
             let current_tree = db.open_tree(format!("ledger_thread_{:?}", thread))?;
             ledger_per_thread.push(current_tree);
         }
-        db.drop_tree(format!("latest_final_periods"))?;
+        db.drop_tree("latest_final_periods".to_string())?;
         let latest_final_periods = db.open_tree("latest_final_periods")?;
         if latest_final_periods.is_empty() {
             for thread in 0..cfg.thread_count {
@@ -300,14 +315,14 @@ impl Ledger {
                 let mut result = HashMap::with_capacity(addresses.len());
                 for address in addresses.iter() {
                     let thread = address.get_thread(self.cfg.thread_count);
-                    let ledger = ledger_per_thread.get(thread as usize).ok_or(
+                    let ledger = ledger_per_thread.get(thread as usize).ok_or_else(|| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
                                 "Could not get ledger for thread {:?}",
                                 thread
                             )),
-                        ),
-                    )?;
+                        )
+                    })?;
                     let data = if let Some(res) = ledger.get(address.to_bytes())? {
                         LedgerData::from_bytes_compact(&res)
                             .map_err(|err| {
@@ -324,7 +339,7 @@ impl Ledger {
                     };
 
                     // Should never panic since we are operating on a set of addresses.
-                    assert!(result.insert((*address).clone(), data).is_none());
+                    assert!(result.insert(**address, data).is_none());
                 }
                 Ok(result)
             })
@@ -364,8 +379,9 @@ impl Ledger {
         // fill ledger per thread
         for thread in 0..cfg.thread_count {
             for (address, balance) in export.ledger_per_thread[thread as usize].iter() {
-                if let Some(_) = ledger.ledger_per_thread[thread as usize]
+                if ledger.ledger_per_thread[thread as usize]
                     .insert(address.into_bytes(), balance.to_bytes_compact()?)?
+                    .is_some()
                 {
                     return Err(ConsensusError::LedgerInconsistency(format!(
                         "adress {:?} already in ledger while bootsrapping",
@@ -412,9 +428,9 @@ impl Ledger {
             self.check_thread_for_address(thread, address)?;
         }
 
-        let ledger = self.ledger_per_thread.get(thread as usize).ok_or(
-            ConsensusError::LedgerInconsistency(format!("missing ledger for thread {:?}", thread)),
-        )?;
+        let ledger = self.ledger_per_thread.get(thread as usize).ok_or_else(|| {
+            ConsensusError::LedgerInconsistency(format!("missing ledger for thread {:?}", thread))
+        })?;
 
         (ledger, &self.latest_final_periods).transaction(|(db, latest_final_periods_db)| {
             for (address, change) in changes.iter() {
@@ -433,7 +449,7 @@ impl Ledger {
                     // creating new entry
                     LedgerData::default()
                 };
-                data.apply_change(&change).map_err(|err| {
+                data.apply_change(change).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!(
                             "error applying change: {:?}",
@@ -558,9 +574,9 @@ impl Ledger {
                                 )),
                             )
                         })?;
-                    data[thread as usize].insert(addr.clone().clone(), ledger_data);
+                    data[thread as usize].insert(*addr, ledger_data);
                 } else {
-                    data[thread as usize].insert(addr.clone().clone(), LedgerData::default());
+                    data[thread as usize].insert(*addr, LedgerData::default());
                 }
             }
             Ok(data)
@@ -603,7 +619,7 @@ impl LedgerSubset {
         let thread_count = self.data.len() as u8;
         self.data[change_address.get_thread(thread_count) as usize]
             .entry(*change_address)
-            .or_insert_with(|| LedgerData::default())
+            .or_insert_with(LedgerData::default)
             .apply_change(change)
     }
 
@@ -611,7 +627,7 @@ impl LedgerSubset {
     /// in that batch passed, leave self untouched on failure
     pub fn try_apply_changes(
         &mut self,
-        changes: &Vec<HashMap<Address, LedgerChange>>,
+        changes: &[HashMap<Address, LedgerChange>],
     ) -> Result<(), ConsensusError> {
         // copy involved addresses
         let mut new_ledger = LedgerSubset {
@@ -663,7 +679,7 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
 
     fn try_from(value: &'a Ledger) -> Result<Self, Self::Error> {
         Ok(LedgerExport {
-            ledger_per_thread: value.read_whole()?.iter().cloned().collect(),
+            ledger_per_thread: value.read_whole()?.to_vec(),
         })
     }
 }
@@ -721,7 +737,7 @@ impl SerializeCompact for LedgerExport {
                 err
             ))
         })?;
-        res.extend(u32::from(thread_count).to_varint_bytes());
+        res.extend(thread_count.to_varint_bytes());
         for thread_ledger in self.ledger_per_thread.iter() {
             let vec_count: u32 = thread_ledger.len().try_into().map_err(|err| {
                 models::ModelsError::SerializeError(format!(
@@ -730,7 +746,7 @@ impl SerializeCompact for LedgerExport {
                 ))
             })?;
 
-            res.extend(u32::from(vec_count).to_varint_bytes());
+            res.extend(vec_count.to_varint_bytes());
             for (address, data) in thread_ledger.iter() {
                 res.extend(&address.to_bytes());
                 res.extend(&data.to_bytes_compact()?);

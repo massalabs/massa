@@ -266,11 +266,14 @@ impl Repl {
 
     ///active the command with specified name.
     pub fn activate_command(&mut self, name: &str) {
-        self.cmd_list
+        if let Some(cmd) = self
+            .cmd_list
             .iter_mut()
             .filter(|cmd| !cmd.active)
             .find(|cmd| cmd.name == name)
-            .map(|cmd| cmd.active = true);
+        {
+            cmd.active = true
+        }
     }
 
     pub fn run(mut self) {
@@ -375,7 +378,7 @@ impl Repl {
             println!("Massa client help:");
             self.cmd_list
                 .iter()
-                .filter(|cmd| cmd.active && cmd.name.len() > 0)
+                .filter(|cmd| cmd.active && !cmd.name.is_empty())
                 .for_each(|cmd| println!(" - {}  :  {}", cmd.name, cmd.help));
         }
         Ok(false)

@@ -74,21 +74,27 @@ impl RollUpdate {
         self.roll_purchases = self
             .roll_purchases
             .checked_add(change.roll_purchases - compensation_other)
-            .ok_or(ConsensusError::InvalidRollUpdate(
-                "roll_purchases overflow in RollUpdate::chain".into(),
-            ))?;
+            .ok_or_else(|| {
+                ConsensusError::InvalidRollUpdate(
+                    "roll_purchases overflow in RollUpdate::chain".into(),
+                )
+            })?;
         self.roll_sales = self
             .roll_sales
             .checked_add(change.roll_sales - compensation_other)
-            .ok_or(ConsensusError::InvalidRollUpdate(
-                "roll_sales overflow in RollUpdate::chain".into(),
-            ))?;
+            .ok_or_else(|| {
+                ConsensusError::InvalidRollUpdate("roll_sales overflow in RollUpdate::chain".into())
+            })?;
 
         let compensation_self = self.compensate().0;
 
-        let compensation_total = compensation_other.checked_add(compensation_self).ok_or(
-            ConsensusError::InvalidRollUpdate("compensation overflow in RollUpdate::chain".into()),
-        )?;
+        let compensation_total = compensation_other
+            .checked_add(compensation_self)
+            .ok_or_else(|| {
+                ConsensusError::InvalidRollUpdate(
+                    "compensation overflow in RollUpdate::chain".into(),
+                )
+            })?;
         Ok(RollCompensation(compensation_total))
     }
 
@@ -192,20 +198,23 @@ impl RollCounts {
         {
             match self.0.entry(*addr) {
                 btree_map::Entry::Occupied(mut occ) => {
+                    let cur_val = *occ.get();
                     if update.roll_purchases >= update.roll_sales {
-                        let cur_val = *occ.get();
                         *occ.get_mut() = cur_val
                             .checked_add(update.roll_purchases - update.roll_sales)
-                            .ok_or(ConsensusError::InvalidRollUpdate(
-                                "overflow while incrementing roll count".into(),
-                            ))?;
+                            .ok_or_else(|| {
+                                ConsensusError::InvalidRollUpdate(
+                                    "overflow while incrementing roll count".into(),
+                                )
+                            })?;
                     } else {
-                        let cur_val = *occ.get();
                         *occ.get_mut() = cur_val
                             .checked_sub(update.roll_sales - update.roll_purchases)
-                            .ok_or(ConsensusError::InvalidRollUpdate(
-                                "underflow while decrementing roll count".into(),
-                            ))?;
+                            .ok_or_else(|| {
+                                ConsensusError::InvalidRollUpdate(
+                                    "underflow while decrementing roll count".into(),
+                                )
+                            })?;
                     }
                 }
                 btree_map::Entry::Vacant(vac) => {
@@ -502,7 +511,7 @@ impl DeserializeCompact for ExportThreadCycleState {
 impl ProofOfStake {
     pub async fn new(
         cfg: ConsensusConfig,
-        genesis_block_ids: &Vec<BlockId>,
+        genesis_block_ids: &[BlockId],
         boot_pos: Option<ExportProofOfStake>,
     ) -> Result<ProofOfStake, ConsensusError> {
         let initial_seeds = ProofOfStake::generate_initial_seeds(&cfg);
@@ -518,7 +527,7 @@ impl ProofOfStake {
                 .into_iter()
                 .map(|vec| {
                     vec.into_iter()
-                        .map(|frtd| ThreadCycleState::from_export(frtd))
+                        .map(ThreadCycleState::from_export)
                         .collect::<VecDeque<ThreadCycleState>>()
                 })
                 .collect();
@@ -563,7 +572,7 @@ impl ProofOfStake {
         // generate object
         Ok(ProofOfStake {
             cycle_states,
-            initial_rolls: initial_rolls,
+            initial_rolls,
             initial_seeds,
             draw_cache,
             cfg,
@@ -579,7 +588,7 @@ impl ProofOfStake {
         for (addr, n_rolls) in addrs_map.into_iter() {
             res[addr.get_thread(cfg.thread_count) as usize].insert(addr, n_rolls);
         }
-        Ok(res.into_iter().map(|rolls| RollCounts(rolls)).collect())
+        Ok(res.into_iter().map(RollCounts).collect())
     }
 
     fn generate_initial_seeds(cfg: &ConsensusConfig) -> Vec<Vec<u8>> {
@@ -633,7 +642,7 @@ impl ProofOfStake {
 
         // get rolls and seed
         let blocks_in_cycle = self.cfg.periods_per_cycle as usize * self.cfg.thread_count as usize;
-        let (cum_sum, rng_seed) = if cycle >= self.cfg.pos_lookback_cycles + 1 {
+        let (cum_sum, rng_seed) = if cycle > self.cfg.pos_lookback_cycles {
             // nominal case: lookback after or at cycle 0
             let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
 
@@ -643,12 +652,14 @@ impl ProofOfStake {
             let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
             let mut cum_sum_cursor = 0u64;
             for scan_thread in 0..self.cfg.thread_count {
-                let final_data = self.get_final_roll_data(target_cycle, scan_thread).ok_or(
-                    ConsensusError::PosCycleUnavailable(format!(
+                let final_data = self
+                    .get_final_roll_data(target_cycle, scan_thread)
+                    .ok_or_else(|| {
+                        ConsensusError::PosCycleUnavailable(format!(
                     "trying to get PoS draw rolls/seed for cycle {} thread {} which is unavailable",
                     target_cycle, scan_thread
-                )),
-                )?;
+                ))
+                    })?;
                 if !final_data.is_complete(self.cfg.periods_per_cycle) {
                     // the target cycle is not final yet
                     return Err(ConsensusError::PosCycleUnavailable(format!("tryign to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
@@ -659,7 +670,7 @@ impl ProofOfStake {
                         continue;
                     }
                     cum_sum_cursor += n_rolls;
-                    cum_sum.push((cum_sum_cursor, addr.clone()));
+                    cum_sum.push((cum_sum_cursor, *addr));
                 }
             }
             // compute the RNG seed from the seed bits
@@ -673,7 +684,7 @@ impl ProofOfStake {
             let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
             let mut cum_sum_cursor = 0u64;
             for scan_thread in 0..self.cfg.thread_count {
-                let init_rolls = &self.initial_rolls.as_ref().ok_or(
+                let init_rolls = &self.initial_rolls.as_ref().ok_or_else( ||
                     ConsensusError::PosCycleUnavailable(format!(
                     "trying to get PoS initial draw rolls/seed for negative cycle at thread {}, which is unavailable",
                     scan_thread
@@ -683,7 +694,7 @@ impl ProofOfStake {
                         continue;
                     }
                     cum_sum_cursor += n_rolls;
-                    cum_sum.push((cum_sum_cursor, addr.clone()));
+                    cum_sum.push((cum_sum_cursor, *addr));
                 }
             }
 
@@ -695,9 +706,7 @@ impl ProofOfStake {
         };
         let cum_sum_max = cum_sum
             .last()
-            .ok_or(ConsensusError::ContainerInconsistency(
-                "draw cum_sum is empty".into(),
-            ))?
+            .ok_or_else(|| ConsensusError::ContainerInconsistency("draw cum_sum is empty".into()))?
             .0;
 
         // init RNG
@@ -749,13 +758,12 @@ impl ProofOfStake {
     pub fn draw(&mut self, slot: Slot) -> Result<Address, ConsensusError> {
         let cycle = slot.get_cycle(self.cfg.periods_per_cycle);
         let cycle_draws = self.get_cycle_draws(cycle)?;
-        Ok(cycle_draws
-            .get(&slot)
-            .ok_or(ConsensusError::ContainerInconsistency(format!(
+        Ok(*cycle_draws.get(&slot).ok_or_else(|| {
+            ConsensusError::ContainerInconsistency(format!(
                 "draw cycle computed for cycle {} but slot {} absent",
                 cycle, slot
-            )))?
-            .clone())
+            ))
+        })?)
     }
 
     /// Update internal states after a set of blocks become final
@@ -797,7 +805,7 @@ impl ProofOfStake {
                     let roll_count = self.cycle_states[thread as usize][0].roll_count.clone();
                     self.cycle_states[thread as usize].push_front(ThreadCycleState {
                         cycle,
-                        last_final_slot: slot.clone(),
+                        last_final_slot: slot,
                         cycle_updates: RollUpdates::new(),
                         roll_count,
                         rng_seed: BitVec::<Lsb0, u8>::new(),
@@ -811,7 +819,7 @@ impl ProofOfStake {
                 // (step 2 in the spec)
                 let entry = &mut self.cycle_states[thread as usize][0];
                 // update the last_final_slot for the latest cycle
-                entry.last_final_slot = slot.clone();
+                entry.last_final_slot = slot;
                 // check if we are applying the block itself or a miss
                 if period == block_slot.period {
                     // we are applying the block itself
@@ -832,14 +840,13 @@ impl ProofOfStake {
         }
 
         // if initial rolls are not needed, remove them to free memory
-        if self.initial_rolls.is_some() {
-            if !self
+        if self.initial_rolls.is_some()
+            && !self
                 .cycle_states
                 .iter()
                 .any(|v| v[0].cycle < self.cfg.pos_lock_cycles + self.cfg.pos_lock_cycles + 1)
-            {
-                self.initial_rolls = None;
-            }
+        {
+            self.initial_rolls = None;
         }
 
         Ok(())
@@ -928,7 +935,7 @@ impl ProofOfStake {
         source_cycle: u64,
         thread: u8,
     ) -> Result<&RollCounts, ConsensusError> {
-        if source_cycle >= self.cfg.pos_lookback_cycles + 1 {
+        if source_cycle > self.cfg.pos_lookback_cycles {
             // nominal case: lookback after or at cycle 0
             let target_cycle = source_cycle - self.cfg.pos_lookback_cycles - 1;
             if let Some(state) = self.get_final_roll_data(target_cycle, thread) {
@@ -943,14 +950,12 @@ impl ProofOfStake {
                     "target cycle unavaible".to_string(),
                 ))
             }
+        } else if let Some(init) = &self.initial_rolls {
+            Ok(&init[thread as usize])
         } else {
-            if let Some(init) = &self.initial_rolls {
-                Ok(&init[thread as usize])
-            } else {
-                Err(ConsensusError::PosCycleUnavailable(
-                    "negative cycle unavaible".to_string(),
-                ))
-            }
+            Err(ConsensusError::PosCycleUnavailable(
+                "negative cycle unavaible".to_string(),
+            ))
         }
     }
 }

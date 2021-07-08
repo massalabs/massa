@@ -6,6 +6,7 @@ use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
+use std::path::Path;
 use time::UTime;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
@@ -81,7 +82,7 @@ pub struct PeerInfoDatabase {
 /// * file_path : path to the file
 async fn dump_peers(
     peers: &HashMap<IpAddr, PeerInfo>,
-    file_path: &std::path::PathBuf,
+    file_path: &Path,
 ) -> Result<(), CommunicationError> {
     let peer_vec: Vec<Value> = peers
         .values()
@@ -123,7 +124,7 @@ fn cleanup_peers(
             .iter()
             .unique()
             .filter(|&ip| {
-                if let Some(mut p) = peers.get_mut(&ip) {
+                if let Some(mut p) = peers.get_mut(ip) {
                     // avoid already-known IPs, but mark them as advertised
                     p.advertised = true;
                     return false;
@@ -224,7 +225,7 @@ impl PeerInfoDatabase {
         .collect::<HashMap<IpAddr, PeerInfo>>();
 
         // cleanup
-        cleanup_peers(&cfg, &mut peers, None);
+        cleanup_peers(cfg, &mut peers, None);
 
         // setup saver
         let peers_file = cfg.peers_file.clone();
@@ -381,18 +382,20 @@ impl PeerInfoDatabase {
     /// ip: ipAddr we are now connected to
     pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if !ip.is_global() {
-            return Err(CommunicationError::InvalidIpError(ip.clone()));
+            return Err(CommunicationError::InvalidIpError(*ip));
         }
         if self.get_available_out_connection_attempts() == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionAttempt(ip.clone()),
+                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
         self.peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?
+            .get_mut(ip)
+            .ok_or_else(|| {
+                CommunicationError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?
             .active_out_connection_attempts += 1;
         self.active_out_connection_attempts += 1;
         Ok(())
@@ -410,7 +413,7 @@ impl PeerInfoDatabase {
         if new_peers.is_empty() {
             return Ok(());
         }
-        cleanup_peers(&self.cfg, &mut self.peers, Some(&new_peers));
+        cleanup_peers(&self.cfg, &mut self.peers, Some(new_peers));
         self.request_dump()
     }
 
@@ -421,10 +424,12 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn peer_alive(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         self.peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?
+            .get_mut(ip)
+            .ok_or_else(|| {
+                CommunicationError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?
             .last_alive = Some(UTime::now(self.clock_compensation)?);
         self.request_dump()
     }
@@ -436,10 +441,12 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn peer_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         self.peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?
+            .get_mut(ip)
+            .ok_or_else(|| {
+                CommunicationError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?
             .last_failure = Some(UTime::now(self.clock_compensation)?);
         self.request_dump()
     }
@@ -451,12 +458,11 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
-        let peer = self
-            .peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?;
+        let peer = self.peers.get_mut(ip).ok_or_else(|| {
+            CommunicationError::PeerConnectionError(
+                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+            )
+        })?;
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.banned {
             peer.banned = true;
@@ -477,19 +483,18 @@ impl PeerInfoDatabase {
     pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_out_connections == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip.clone()),
+                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
-        let peer = self
-            .peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?;
+        let peer = self.peers.get_mut(ip).ok_or_else(|| {
+            CommunicationError::PeerConnectionError(
+                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+            )
+        })?;
 
         if peer.active_out_connections == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip.clone()),
+                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
         self.active_out_connections -= 1;
@@ -512,19 +517,18 @@ impl PeerInfoDatabase {
     pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_in_connections == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip.clone()),
+                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
-        let peer = self
-            .peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?;
+        let peer = self.peers.get_mut(ip).ok_or_else(|| {
+            CommunicationError::PeerConnectionError(
+                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+            )
+        })?;
 
         if peer.active_in_connections == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip.clone()),
+                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
         self.active_in_connections -= 1;
@@ -553,22 +557,21 @@ impl PeerInfoDatabase {
         // remove out connection attempt and add out connection
         if self.active_out_connection_attempts == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionAttempt(ip.clone()),
+                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
         if self.active_out_connections >= self.cfg.target_out_connections {
             return Ok(false);
         }
-        let peer = self
-            .peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?;
+        let peer = self.peers.get_mut(ip).ok_or_else(|| {
+            CommunicationError::PeerConnectionError(
+                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+            )
+        })?;
 
         if peer.active_out_connection_attempts == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionAttempt(ip.clone()),
+                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
         self.active_out_connection_attempts -= 1;
@@ -597,18 +600,17 @@ impl PeerInfoDatabase {
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_out_connection_attempts == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionFailure(ip.clone()),
+                NetworkConnectionErrorType::ToManyConnectionFailure(*ip),
             ));
         }
-        let peer = self
-            .peers
-            .get_mut(&ip)
-            .ok_or(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(ip.clone()),
-            ))?;
+        let peer = self.peers.get_mut(ip).ok_or_else(|| {
+            CommunicationError::PeerConnectionError(
+                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+            )
+        })?;
         if peer.active_out_connection_attempts == 0 {
             return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionFailure(ip.clone()),
+                NetworkConnectionErrorType::ToManyConnectionFailure(*ip),
             ));
         }
         self.active_out_connection_attempts -= 1;

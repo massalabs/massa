@@ -85,9 +85,7 @@ impl ApiEventReceiver {
         self.0
             .recv()
             .await
-            .ok_or(ApiError::SendChannelError(format!(
-                "could not receive api event"
-            )))
+            .ok_or_else(|| ApiError::SendChannelError("could not receive api event".to_string()))
     }
 
     /// drains remaining events and returns them in a VecDeque

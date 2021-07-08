@@ -126,12 +126,11 @@ impl NodeWorker {
     /// node event loop. Consumes self.
     pub async fn run_loop(mut self) -> Result<ConnectionClosureReason, CommunicationError> {
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(CHANNEL_SIZE);
-        let mut socket_writer =
-            self.socket_writer_opt
-                .take()
-                .ok_or(CommunicationError::GeneralProtocolError(
-                    "NodeWorker call run_loop more than once".to_string(),
-                ))?;
+        let mut socket_writer = self.socket_writer_opt.take().ok_or_else(|| {
+            CommunicationError::GeneralProtocolError(
+                "NodeWorker call run_loop more than once".to_string(),
+            )
+        })?;
         let write_timeout = self.cfg.message_timeout;
         let node_id_copy = self.node_id;
         let node_writer_handle = tokio::spawn(async move {
@@ -280,7 +279,7 @@ impl NodeWorker {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
                             //cut operation list if it exceed max_operations_per_message
                             for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
-                                if writer_command_tx.send(Message::Operations(to_send_list.iter().cloned().collect())).await.is_err() {
+                                if writer_command_tx.send(Message::Operations(to_send_list.to_vec())).await.is_err() {
                                     break 'select_loop;
                                 }
                             }

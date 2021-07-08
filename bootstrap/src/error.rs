@@ -11,7 +11,7 @@ pub enum BootstrapError {
     #[error("io error: {0}")]
     IoError(#[from] std::io::Error),
     #[error("general bootstrap error: {0}")]
-    GeneralBootstrapError(String),
+    GeneralError(String),
     #[error("models error: {0}")]
     ModelsError(#[from] models::ModelsError),
     #[error("unexpected message from bootstrap node: {0:?}")]

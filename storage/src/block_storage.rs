@@ -70,7 +70,7 @@ impl StorageCleaner {
                             slots.remove(&slot)?;
                             let s_block = hashes
                                 .remove(&hash)?
-                                .ok_or(
+                                .ok_or_else( ||
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError("block missing".into()),
                                     )
@@ -242,7 +242,7 @@ impl BlockStorage {
             notify,
         };
 
-        return Ok(res);
+        Ok(res)
     }
 
     pub async fn add_block(&self, block_id: BlockId, block: Block) -> Result<(), StorageError> {
@@ -404,7 +404,7 @@ impl BlockStorage {
     pub async fn contains(&self, block_id: BlockId) -> Result<bool, StorageError> {
         self.hash_to_block
             .contains_key(block_id.to_bytes())
-            .map_err(|e| StorageError::from(e))
+            .map_err(StorageError::from)
     }
 
     pub fn get_block(&self, block_id: BlockId) -> Result<Option<Block>, StorageError> {
