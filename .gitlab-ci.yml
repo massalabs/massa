@@ -16,14 +16,14 @@ cache:
 # Use rustfmt to check code formatting
 rustfmt:
   stage: sanity
-  image: "rustdocker/rustfmt-clippy"
+  image: "rustdocker/rustfmt_clippy"
   script:
     - cargo fmt -- --check
 
 # Use clippy to detect code problems
 clippy:
   stage: sanity
-  image: "rustdocker/rustfmt-clippy"
+  image: "rustdocker/rustfmt_clippy"
   script:
     - cargo clippy -- -D warnings
 
