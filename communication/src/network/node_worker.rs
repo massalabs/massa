@@ -6,8 +6,8 @@ use super::{
 use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use crypto::hash::Hash;
-use models::SerializationContext;
 use models::{Block, BlockHeader};
+use models::{Operation, SerializationContext};
 use std::net::IpAddr;
 use tokio::{
     sync::mpsc,
@@ -27,8 +27,10 @@ pub enum NodeCommand {
     AskForBlocks(Vec<Hash>),
     /// Close the node worker.
     Close(ConnectionClosureReason),
-    /// Block not founf
+    /// Block not found
     BlockNotFound(Hash),
+    /// OPeration
+    Operation(Operation),
 }
 
 /// Event types that node worker can emit
@@ -46,6 +48,8 @@ pub enum NodeEventType {
     ReceivedAskForBlocks(Vec<Hash>),
     /// Didn't found given block,
     BlockNotFound(Hash),
+    /// Operation
+    Operation(Operation),
 }
 
 /// Events node worker can emit.
@@ -214,6 +218,10 @@ impl NodeWorker {
                                 massa_trace!("node_worker.run_loop. receive Message::BlockNotFound", {"hash": hash, "node": self.node_id});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
                             }
+                            Message::Operation(operation) => {
+                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"operation": operation, "node": self.node_id});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::Operation(operation))).await;
+                            }
                             _ => {  // wrong message
                                 warn!("node_worker.run_loop.self.socket_reader.next(). other message Error");
                                 exit_reason = ConnectionClosureReason::Failed;
@@ -267,12 +275,18 @@ impl NodeWorker {
                                 }
                             }
                         },
-                        Some(NodeCommand::BlockNotFound(hash)) =>  {
+                        Some(NodeCommand::BlockNotFound(hash)) => {
                             massa_trace!("node_worker.run_loop. send Message::BlockNotFound", {"hash": hash, "node": self.node_id});
                             if writer_command_tx.send(Message::BlockNotFound(hash)).await.is_err() {
                                 break;
                             }
                         },
+                        Some(NodeCommand::Operation(operation)) => {
+                            massa_trace!("node_worker.run_loop. send Message::OPeration", {"operation": operation, "node": self.node_id});
+                            if writer_command_tx.send(Message::Operation(operation)).await.is_err() {
+                                break;
+                            }
+                        }
                         None => {
                             // Note: this should never happen,
                             // since it implies the network worker dropped its node command sender

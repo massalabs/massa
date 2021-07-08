@@ -4,7 +4,7 @@ use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
-use models::{Block, BlockHeader, SerializationContext};
+use models::{Block, BlockHeader, Operation, SerializationContext};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -25,16 +25,15 @@ pub enum ProtocolEvent {
     ReceivedBlockHeader { hash: Hash, header: BlockHeader },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<Hash>),
+    /// Operation
+    Operation(Operation),
 }
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
-    IntegratedBlock {
-        hash: Hash,
-        block: Block,
-    },
+    IntegratedBlock { hash: Hash, block: Block },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(Hash),
     /// Wishlist delta
@@ -42,8 +41,10 @@ pub enum ProtocolCommand {
         new: HashSet<Hash>,
         remove: HashSet<Hash>,
     },
-    // The response to a ProtocolEvent::GetBlocks.
+    /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(HashMap<Hash, Option<Block>>),
+    /// Operation
+    Operation(Operation),
 }
 
 #[derive(Debug, Serialize)]
@@ -394,6 +395,9 @@ impl ProtocolWorker {
                     {}
                 );
             }
+            ProtocolCommand::Operation(operation) => {
+                todo!("propagate operation to every active node")
+            }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
@@ -736,6 +740,11 @@ impl ProtocolWorker {
                     );
                 }
                 self.update_ask_block(block_ask_timer).await?;
+            }
+            NetworkEvent::Operation { node, operation } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operation", { "node": node, "operation": operation});
+                self.send_protocol_event(ProtocolEvent::Operation(operation))
+                    .await;
             }
         }
         Ok(())

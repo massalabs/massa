@@ -14,7 +14,7 @@ use crate::logging::debug;
 use crypto::hash::Hash;
 use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
-use models::{Block, BlockHeader, SerializationContext};
+use models::{Block, BlockHeader, Operation, SerializationContext};
 use models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
@@ -78,6 +78,10 @@ pub enum NetworkEvent {
     BlockNotFound {
         node: NodeId,
         hash: Hash,
+    },
+    Operation {
+        node: NodeId,
+        operation: Operation,
     },
 }
 
@@ -957,6 +961,12 @@ impl NetworkWorker {
             NodeEvent(node, NodeEventType::BlockNotFound(hash)) => {
                 let _ = self
                     .send_network_event(NetworkEvent::BlockNotFound { node, hash })
+                    .await;
+            }
+            NodeEvent(node, NodeEventType::Operation(operation)) => {
+                // todo in th
+                let _ = self
+                    .send_network_event(NetworkEvent::Operation { node, operation })
                     .await;
             }
         }

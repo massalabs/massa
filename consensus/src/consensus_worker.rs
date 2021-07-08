@@ -4,7 +4,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::{Block, Slot};
+use models::{Block, Operation, Slot};
 use std::collections::{HashMap, HashSet};
 use storage::StorageAccess;
 use tokio::{
@@ -29,6 +29,7 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     },
     GetBootGraph(oneshot::Sender<BootsrapableGraph>),
+    CreatedOperation(Operation),
 }
 
 /// Events that are emitted by consensus.
@@ -309,6 +310,9 @@ impl ConsensusWorker {
                         ))
                     })
             }
+            ConsensusCommand::CreatedOperation(operation) => {
+                todo!("add operation to pool")
+            }
         }
     }
 
@@ -373,6 +377,9 @@ impl ConsensusWorker {
                 self.protocol_command_sender
                     .send_get_blocks_results(results)
                     .await?;
+            }
+            ProtocolEvent::Operation(operation) => {
+                todo!("add operation to pool")
             }
         }
         Ok(())
