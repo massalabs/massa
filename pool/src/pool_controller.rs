@@ -142,6 +142,20 @@ impl PoolCommandSender {
             .await
             .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
     }
+
+    pub async fn get_operation(&mut self, id: OperationId) -> Result<Option<Operation>, PoolError> {
+        massa_trace!("pool.command_sender.get_operation", { "id": id });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetOperation { id, response_tx })
+            .await
+            .map_err(|_| PoolError::ChannelError("get_operation command send error".into()))?;
+
+        response_rx
+            .await
+            .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
+    }
 }
 
 pub struct PoolManager {
