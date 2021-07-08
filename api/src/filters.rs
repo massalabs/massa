@@ -677,7 +677,7 @@ async fn get_graph_interval(
                     if start <= time && time < end {
                         Some(BlockInfo {
                             hash_slot: (hash, header.content.slot).into(),
-                            status: "active".to_string(),
+                            status: apimodel::StatusInfo::Active,
                             parents: header.content.parents,
                         })
                     } else {
@@ -701,7 +701,7 @@ async fn get_graph_interval(
         for (hash, block) in blocks {
             res.push(BlockInfo {
                 hash_slot: (hash, block.header.content.slot).into(),
-                status: " final".to_string(),
+                status: apimodel::StatusInfo::Final,
                 parents: Vec::new(),
             });
         }

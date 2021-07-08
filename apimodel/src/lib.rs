@@ -6,9 +6,12 @@ use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{Block, BlockHeader, Operation, Slot};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use std::{collections::HashSet, net::IpAddr};
+use std::{
+    fmt::Display,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use time::UTime;
 
 pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true);
@@ -249,11 +252,28 @@ pub struct BlockInterval {
     pub content: Vec<HashSlot>,
 }*/
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct BlockInfo {
     pub hash_slot: HashSlot,
-    pub status: String,
+    pub status: StatusInfo,
     pub parents: Vec<Hash>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum StatusInfo {
+    Stale,
+    Active,
+    Final,
+}
+
+impl Display for StatusInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StatusInfo::Stale => writeln!(f, "stale"),
+            StatusInfo::Active => writeln!(f, "active"),
+            StatusInfo::Final => writeln!(f, "final"),
+        }
+    }
 }
 
 // impl From<(Hash, Slot, String, Vec<Hash>)> for BlockInfo {

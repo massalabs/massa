@@ -315,12 +315,12 @@ async fn test_get_graph_interval() {
     handle.await.expect("handle failed");
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let block = expected.active_blocks.get(&get_test_hash()).unwrap();
-    let expected = vec![(
-        get_test_hash(),
-        block.block.content.slot,
-        "active", // in tests there are no blocks in gi_head, so no just active blocks
-        block.block.content.parents.clone(),
-    )];
+    let expected = vec![BlockInfo {
+        hash_slot: (get_test_hash(), block.block.content.slot).into(),
+        status: apimodel::StatusInfo::Active, // in tests there are no blocks in gi_head, so no just active blocks
+        parents: block.block.content.parents.clone(),
+    }];
+
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
@@ -350,28 +350,37 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
-    expected.push((
-        block_b
-            .header
-            .content
-            .compute_hash(&serialization_context)
-            .unwrap(),
-        block_b.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
-    ));
-    expected.push((
-        block_c
-            .header
-            .content
-            .compute_hash(&serialization_context)
-            .unwrap(),
-        block_c.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
-    ));
+    let obtained: Vec<BlockInfo> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<BlockInfo>::new();
+    expected.push(BlockInfo {
+        hash_slot: (
+            block_b
+                .header
+                .content
+                .compute_hash(&serialization_context)
+                .unwrap(),
+            block_b.header.content.slot,
+        )
+            .into(),
+        status: apimodel::StatusInfo::Final,
+        parents: Vec::new(),
+    });
+    expected.push(BlockInfo {
+        hash_slot: (
+            block_c
+                .header
+                .content
+                .compute_hash(&serialization_context)
+                .unwrap(),
+            block_c.header.content.slot,
+        )
+            .into(),
+        status: apimodel::StatusInfo::Final,
+        parents: Vec::new(),
+    });
+
+    println!("{:?}", expected);
+    println!("{:?}", obtained);
 
     for item in obtained.iter() {
         assert!(expected.contains(&item))
@@ -397,8 +406,8 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    let obtained: Vec<BlockInfo> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<BlockInfo>::new();
     expected.push((
         block_a
             .header
