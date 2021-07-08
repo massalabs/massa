@@ -52,15 +52,17 @@ impl DeserializeCompact for LedgerData {
 impl LedgerData {
     fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if change.balance_increment {
-            self.balance = self.balance + change.balance_delta;
+            self.balance = self.balance.checked_add(change.balance_delta).ok_or(
+                ConsensusError::LedgerOverflowError(
+                    "balance overflow in LedgerData::apply_change".into(),
+                ),
+            )?;
         } else {
-            if change.balance_delta > self.balance {
-                self.balance = self.balance - change.balance_delta;
-            } else {
-                return Err(ConsensusError::InvalidLedgerChange(
-                    "negative balance".to_string(),
-                ));
-            }
+            self.balance = self.balance.checked_sub(change.balance_delta).ok_or(
+                ConsensusError::LedgerOverflowError(
+                    "balance underflow in LedgerData::apply_change".into(),
+                ),
+            )?;
         }
         Ok(())
     }
@@ -75,12 +77,21 @@ pub struct LedgerChange {
 impl LedgerChange {
     fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
-            self.balance_delta = self.balance_delta + change.balance_delta;
+            self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
+                ConsensusError::LedgerOverflowError("overflow in LedgerChange::chain".into()),
+            )?;
+        } else if change.balance_delta > self.balance_delta {
+            self.balance_delta = change.balance_delta.checked_sub(self.balance_delta).ok_or(
+                ConsensusError::LedgerOverflowError("underflow in LedgerChange::chain".into()),
+            )?;
+            self.balance_increment = !self.balance_increment;
         } else {
-            if change.balance_delta > self.balance_delta {
-                self.balance_increment = !self.balance_increment;
-            }
-            self.balance_delta = change.balance_delta - self.balance_delta;
+            self.balance_delta = self.balance_delta.checked_sub(change.balance_delta).ok_or(
+                ConsensusError::LedgerOverflowError("underflow in LedgerChange::chain".into()),
+            )?;
+        }
+        if self.balance_delta == 0 {
+            self.balance_increment = true;
         }
         Ok(())
     }
@@ -306,5 +317,30 @@ impl Ledger {
             res.push(map);
         }
         Ok(res)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ledger_change_chain() {
+        for &v1 in &[-100i32, -10, 0, 10, 100] {
+            for &v2 in &[-100i32, -10, 0, 10, 100] {
+                let mut res = LedgerChange {
+                    balance_increment: (v1 >= 0),
+                    balance_delta: v1.abs() as u64,
+                };
+                res.chain(&LedgerChange {
+                    balance_increment: (v2 >= 0),
+                    balance_delta: v2.abs() as u64,
+                })
+                .unwrap();
+                let expect: i32 = v1 + v2;
+                assert_eq!(res.balance_increment, (expect >= 0));
+                assert_eq!(res.balance_delta, expect.abs() as u64);
+            }
+        }
     }
 }

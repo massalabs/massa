@@ -19,6 +19,8 @@ pub enum ConsensusError {
     SmallSeedError,
     #[error("time overflow")]
     TimeOverflowError,
+    #[error("ledger overflow: {0}")]
+    LedgerOverflowError(String),
     #[error("slot overflow")]
     SlotOverflowError,
     #[error("thread overflow")]
