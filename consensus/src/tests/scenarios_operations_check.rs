@@ -60,9 +60,7 @@ async fn test_operations_check() {
     ledger.insert(address_1, LedgerData { balance: 5 });
 
     let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
@@ -93,6 +91,7 @@ async fn test_operations_check() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,

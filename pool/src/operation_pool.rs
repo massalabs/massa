@@ -170,14 +170,24 @@ impl OperationPool {
         Ok(newly_added)
     }
 
-    pub fn new_final_operations(&mut self, ops: HashMap<OperationId, (u64, u8)>) {
+    pub fn new_final_operations(
+        &mut self,
+        ops: HashMap<OperationId, (u64, u8)>,
+    ) -> Result<(), PoolError> {
         for (id, _) in ops.iter() {
             if let Some(wrapped) = self.ops.remove(&id) {
                 self.ops_by_thread_and_interest[wrapped.thread as usize]
                     .remove(&(std::cmp::Reverse(wrapped.get_fee_density()), *id));
+                let addrs = wrapped.op.get_ledger_involved_addresses(None)?;
+                for addr in addrs {
+                    if let Some(old) = self.ops_by_address.get_mut(&addr) {
+                        old.remove(&id);
+                    }
+                }
             } // else final op wasnn't in pool.
         }
         self.final_operations.extend(ops);
+        Ok(())
     }
 
     pub fn update_current_slot(&mut self, slot: Slot) -> Result<(), PoolError> {

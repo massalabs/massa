@@ -169,7 +169,7 @@ impl PoolWorker {
                         .get_operations_involving_address(&address)?,
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
-            PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops),
+            PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops)?,
         }
         Ok(())
     }

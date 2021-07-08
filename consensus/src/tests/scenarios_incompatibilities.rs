@@ -12,7 +12,7 @@ use std::collections::{HashMap, VecDeque};
 #[serial]
 async fn test_thread_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -39,6 +39,7 @@ async fn test_thread_incompatibility() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -185,7 +186,7 @@ async fn test_thread_incompatibility() {
 #[serial]
 async fn test_grandpa_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -212,6 +213,7 @@ async fn test_grandpa_incompatibility() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,

@@ -17,7 +17,7 @@ use serial_test::serial;
 #[serial]
 async fn test_pruning_of_discarded_blocks() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -44,6 +44,7 @@ async fn test_pruning_of_discarded_blocks() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -91,7 +92,7 @@ async fn test_pruning_of_discarded_blocks() {
 #[serial]
 async fn test_pruning_of_awaiting_slot_blocks() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -118,6 +119,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
@@ -165,7 +167,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 #[serial]
 async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -192,6 +194,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
+            None,
             None,
             None,
             0,
