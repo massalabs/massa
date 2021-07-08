@@ -65,7 +65,7 @@ pub async fn start_consensus_controller(
     }
 
     // start worker
-    let block_db = BlockGraph::new(cfg.clone(), serialization_context.clone(), boot_graph)?;
+    let block_db = BlockGraph::new(cfg.clone(), serialization_context.clone(), boot_graph).await?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);

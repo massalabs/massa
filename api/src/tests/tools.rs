@@ -32,6 +32,7 @@ pub fn get_another_test_block_id() -> BlockId {
 
 pub fn get_consensus_config() -> ConsensusConfig {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
+    let tempdir2 = tempfile::tempdir().expect("cannot create temp dir");
     ConsensusConfig {
         genesis_timestamp: 0.into(),
         thread_count: 2,
@@ -57,6 +58,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         ledger_flush_interval: Some(200.into()),
         ledger_reset_at_startup: true,
         block_reward: 10,
+        initial_ledger_path: tempdir2.path().to_path_buf(),
     }
 }
 

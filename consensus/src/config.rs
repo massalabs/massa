@@ -44,7 +44,7 @@ pub struct ConsensusConfig {
     pub ledger_cache_capacity: u64,
     pub ledger_flush_interval: Option<UTime>,
     pub ledger_reset_at_startup: bool,
-
+    pub initial_ledger_path: PathBuf,
     pub block_reward: u64,
 
     /// If we want to generate blocks.

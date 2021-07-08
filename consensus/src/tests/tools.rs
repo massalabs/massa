@@ -1,10 +1,16 @@
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{block_graph::BlockGraphExport, ConsensusConfig};
+use crate::{block_graph::BlockGraphExport, ledger::LedgerData, ConsensusConfig};
 use communication::protocol::ProtocolCommand;
 use crypto::{hash::Hash, signature::PrivateKey};
-use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
-use std::collections::HashSet;
+use models::{
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot,
+};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 use storage::{StorageAccess, StorageConfig};
+use tempfile::NamedTempFile;
 use time::UTime;
 
 //return true if another block has been seen
@@ -327,7 +333,23 @@ pub fn create_block_with_merkle_root(
     (hash, block, private_key)
 }
 
-pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, SerializationContext) {
+/// generate a named temporary JSON ledger file
+pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedTempFile {
+    use std::io::prelude::*;
+    let ledger_file_named = NamedTempFile::new().expect("cannot create temp file");
+    serde_json::to_writer_pretty(ledger_file_named.as_file(), &ledger_vec)
+        .expect("unable to write ledger file");
+    ledger_file_named
+        .as_file()
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("could not seek file");
+    ledger_file_named
+}
+
+pub fn default_consensus_config(
+    nb_nodes: usize,
+    initial_ledger_path: &Path,
+) -> (ConsensusConfig, SerializationContext) {
     let genesis_key = crypto::generate_random_private_key();
     let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
@@ -340,7 +362,6 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
         })
         .collect();
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
-
     (
         ConsensusConfig {
             genesis_timestamp: UTime::now(0).unwrap(),
@@ -364,6 +385,7 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             ledger_flush_interval: Some(200.into()),
             ledger_reset_at_startup: true,
             block_reward: 1,
+            initial_ledger_path: initial_ledger_path.to_path_buf(),
         },
         SerializationContext {
             max_block_size,

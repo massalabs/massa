@@ -1,15 +1,18 @@
+use std::collections::HashMap;
+
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::start_consensus_controller;
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
 
 #[tokio::test]
 async fn test_invalid_block_notified_as_attack_attempt() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -65,7 +68,8 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 
 #[tokio::test]
 async fn test_invalid_header_notified_as_attack_attempt() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;

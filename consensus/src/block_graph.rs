@@ -747,6 +747,17 @@ enum BlockOperationsCheckOutcome {
     WaitForDependencies(HashSet<BlockId>),
 }
 
+async fn read_genesis_ledger(
+    cfg: &ConsensusConfig,
+    serialization_context: &SerializationContext,
+) -> Result<Ledger, ConsensusError> {
+    // load ledger from file
+    let ledger = serde_json::from_str::<HashMap<Address, LedgerData>>(
+        &tokio::fs::read_to_string(&cfg.initial_ledger_path).await?,
+    )?;
+    Ledger::new(cfg.clone(), serialization_context.clone(), Some(ledger))
+}
+
 /// Creates genesis block in given thread.
 ///
 /// # Arguments
@@ -771,6 +782,7 @@ fn create_genesis_block(
         },
         &serialization_context,
     )?;
+
     Ok((
         header_hash,
         Block {
@@ -786,7 +798,7 @@ impl BlockGraph {
     /// # Argument
     /// * cfg : consensus configuration.
     /// * serialization_context: SerializationContext instance
-    pub fn new(
+    pub async fn new(
         cfg: ConsensusConfig,
         serialization_context: SerializationContext,
         init: Option<BootsrapableGraph>,
@@ -796,7 +808,9 @@ impl BlockGraph {
         let mut block_hashes = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
             let (hash, block) = create_genesis_block(&cfg, &serialization_context, thread)
-                .map_err(|_err| ConsensusError::GenesisCreationError)?;
+                .map_err(|err| {
+                    ConsensusError::GenesisCreationError(format!("genesis error {:?}", err))
+                })?;
             block_hashes.push(hash);
             block_statuses.insert(
                 hash,
@@ -877,7 +891,7 @@ impl BlockGraph {
             }
             Ok(res_graph)
         } else {
-            let ledger = Ledger::new(cfg.clone(), serialization_context.clone())?;
+            let ledger = read_genesis_ledger(&cfg, &serialization_context).await?;
             Ok(BlockGraph {
                 cfg,
                 serialization_context,
@@ -2829,7 +2843,10 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
+    use tempfile::NamedTempFile;
     use time::UTime;
 
     pub fn get_export_active_test_block() -> ExportActiveBlock {
@@ -3017,10 +3034,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_clique_calculation() {
-        let (cfg, serialization_context) = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg, serialization_context, None).unwrap();
+    #[tokio::test]
+    async fn test_clique_calculation() {
+        let ledger_file = generate_ledger_file(&HashMap::new());
+        let (cfg, serialization_context) = example_consensus_config(ledger_file.path());
+        let mut block_graph = BlockGraph::new(cfg, serialization_context, None)
+            .await
+            .unwrap();
         let hashes: Vec<BlockId> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
@@ -3062,7 +3082,23 @@ mod tests {
             assert!(computed_sets.iter().any(|v| v == &expected));
         }
     }
-    fn example_consensus_config() -> (ConsensusConfig, SerializationContext) {
+
+    /// generate a named temporary JSON ledger file
+    pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedTempFile {
+        use std::io::prelude::*;
+        let ledger_file_named = NamedTempFile::new().expect("cannot create temp file");
+        serde_json::to_writer_pretty(ledger_file_named.as_file(), &ledger_vec)
+            .expect("unable to write ledger file");
+        ledger_file_named
+            .as_file()
+            .seek(std::io::SeekFrom::Start(0))
+            .expect("could not seek file");
+        ledger_file_named
+    }
+
+    fn example_consensus_config(
+        initial_ledger_path: &Path,
+    ) -> (ConsensusConfig, SerializationContext) {
         let genesis_key = crypto::generate_random_private_key();
         let mut nodes = Vec::new();
         for _ in 0..2 {
@@ -3098,6 +3134,7 @@ mod tests {
                 ledger_flush_interval: Some(200.into()),
                 ledger_reset_at_startup: true,
                 block_reward: 1,
+                initial_ledger_path: initial_ledger_path.to_path_buf(),
             },
             SerializationContext {
                 max_block_size,

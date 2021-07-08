@@ -1,18 +1,25 @@
+use std::collections::HashMap;
+
 use super::tools;
-use crate::ledger::{Ledger, LedgerChange};
+use crate::{
+    ledger::{Ledger, LedgerChange},
+    tests::tools::generate_ledger_file,
+};
 use models::Address;
 
 #[tokio::test]
 async fn test_ledger_init() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone());
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None);
     assert!(ledger.is_ok());
 }
 
 #[tokio::test]
 async fn test_ledger_initializes_get_latest_final_periods() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -28,8 +35,9 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_increment_new_address() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -52,8 +60,9 @@ async fn test_ledger_final_balance_increment_new_address() {
 
 #[tokio::test]
 async fn test_ledger_apply_change_wrong_thread() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -79,8 +88,9 @@ async fn test_ledger_apply_change_wrong_thread() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_increment_address_above_max() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -108,8 +118,9 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -147,8 +158,9 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -192,8 +204,9 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -209,8 +222,9 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_non_existing_address() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -227,8 +241,9 @@ async fn test_ledger_final_balance_non_existing_address() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_duplicate_address() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -249,8 +264,9 @@ async fn test_ledger_final_balance_duplicate_address() {
 
 #[tokio::test]
 async fn test_ledger_final_balance_multiple_addresses() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let mut addresses = vec![];
     for _ in 0..5 {
@@ -276,8 +292,9 @@ async fn test_ledger_final_balance_multiple_addresses() {
 
 #[tokio::test]
 async fn test_ledger_clear() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -310,8 +327,9 @@ async fn test_ledger_clear() {
 
 #[tokio::test]
 async fn test_ledger_read_whole() {
-    let (cfg, serialization_context) = tools::default_consensus_config(1);
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone()).unwrap();
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
