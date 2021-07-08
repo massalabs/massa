@@ -231,6 +231,7 @@ async fn main() {
         .module("communication")
         .module("consensus")
         .module("crypto")
+        .module("hang-monitor")
         .module("logging")
         .module("models")
         .module("time")
