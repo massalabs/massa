@@ -22,7 +22,7 @@ impl<'a> From<&'a CompiledBlock> for ExportCompiledBlock {
 
 #[derive(Debug, Clone)]
 pub struct ExportDiscardedBlocks {
-    pub map: HashMap<Hash, (DiscardReason, (u64, u8))>,
+    pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
     pub vec_deque: VecDeque<Hash>,
     pub max_size: usize,
 }
@@ -95,7 +95,7 @@ pub enum DiscardReason {
 
 #[derive(Debug, Clone)]
 struct DiscardedBlocks {
-    map: HashMap<Hash, (DiscardReason, (u64, u8))>,
+    map: HashMap<Hash, (DiscardReason, BlockHeader)>,
     vec_deque: VecDeque<Hash>,
     max_size: usize,
 }
@@ -116,14 +116,14 @@ impl DiscardedBlocks {
     fn insert(
         &mut self,
         hash: Hash,
-        slot: (u64, u8),
+        header: BlockHeader,
         reason: DiscardReason,
     ) -> Result<HashSet<Hash>, ConsensusError> {
         let mut definitively_discarded = HashSet::new();
         if self.max_size == 0 {
             return Ok(definitively_discarded); // discard pile has zero capacity
         }
-        if self.map.insert(hash, (reason, slot)).is_none() {
+        if self.map.insert(hash, (reason, header)).is_none() {
             // newly inserted
             while self.vec_deque.len() > self.max_size - 1 {
                 let h = self
@@ -158,7 +158,7 @@ impl DiscardedBlocks {
         self.map.contains_key(element)
     }
 
-    fn get(&self, element: &Hash) -> Option<(&crypto::hash::Hash, &(DiscardReason, (u64, u8)))> {
+    fn get(&self, element: &Hash) -> Option<(&crypto::hash::Hash, &(DiscardReason, BlockHeader))> {
         self.map.get_key_value(element)
     }
 }
@@ -347,10 +347,10 @@ impl BlockGraph {
         }
 
         // check if we already know about this block
-        if let Some((_, (reason, slot))) = self.discarded_blocks.get(&hash) {
-            let (reason, slot) = (*reason, *slot);
+        if let Some((_, (reason, header))) = self.discarded_blocks.get(&hash) {
+            let (reason, header) = (*reason, header.clone());
             // get the reason it was first discarded for
-            self.discarded_blocks.insert(hash, slot, reason)?; // promote to the front of the discard pile
+            self.discarded_blocks.insert(hash, header, reason)?; // promote to the front of the discard pile
             return Err(BlockAcknowledgeError::AlreadyDiscarded); // already discarded
         }
         if self.active_blocks.contains_key(&hash) {
@@ -365,11 +365,8 @@ impl BlockGraph {
             || block.header.period_number == 0
             || block.header.thread_number >= self.cfg.thread_count
         {
-            self.discarded_blocks.insert(
-                hash.clone(),
-                (block.header.period_number, block.header.thread_number),
-                DiscardReason::Invalid,
-            )?;
+            self.discarded_blocks
+                .insert(hash.clone(), block.header, DiscardReason::Invalid)?;
             return Err(BlockAcknowledgeError::InvalidFields);
         }
 
@@ -377,11 +374,8 @@ impl BlockGraph {
         if block.header.period_number
             <= self.latest_final_blocks_periods[block.header.thread_number as usize].1
         {
-            self.discarded_blocks.insert(
-                hash.clone(),
-                (block.header.period_number, block.header.thread_number),
-                DiscardReason::Invalid,
-            )?;
+            self.discarded_blocks
+                .insert(hash.clone(), block.header, DiscardReason::Invalid)?;
             return Err(BlockAcknowledgeError::TooOld);
         }
 
@@ -404,11 +398,8 @@ impl BlockGraph {
             != selector.draw((block.header.period_number, block.header.thread_number))
         {
             // it was not the creator's turn to create a block for this slot
-            self.discarded_blocks.insert(
-                hash.clone(),
-                (block.header.period_number, block.header.thread_number),
-                DiscardReason::Invalid,
-            )?;
+            self.discarded_blocks
+                .insert(hash.clone(), block.header, DiscardReason::Invalid)?;
             return Err(BlockAcknowledgeError::DrawMismatch);
         }
 
@@ -429,7 +420,7 @@ impl BlockGraph {
                 if self.discarded_blocks.contains(&parent_hash) {
                     self.discarded_blocks.insert(
                         hash.clone(),
-                        (block.header.period_number, block.header.thread_number),
+                        block.header,
                         DiscardReason::Invalid,
                     )?;
                     return Err(BlockAcknowledgeError::InvalidParents(
@@ -445,7 +436,7 @@ impl BlockGraph {
                         // a parent is in the wrong thread or has a slot not strictly before the block
                         self.discarded_blocks.insert(
                             hash.clone(),
-                            (block.header.period_number, block.header.thread_number),
+                            block.header,
                             DiscardReason::Invalid,
                         )?;
                         return Err(BlockAcknowledgeError::InvalidParents(
@@ -466,7 +457,7 @@ impl BlockGraph {
                             // found mutually incompatible parents
                             self.discarded_blocks.insert(
                                 hash.clone(),
-                                (block.header.period_number, block.header.thread_number),
+                                block.header,
                                 DiscardReason::Invalid,
                             )?;
                             return Err(BlockAcknowledgeError::InvalidParents(
@@ -484,7 +475,7 @@ impl BlockGraph {
                         // inconsistent parent topology
                         self.discarded_blocks.insert(
                             hash.clone(),
-                            (block.header.period_number, block.header.thread_number),
+                            block.header,
                             DiscardReason::Invalid,
                         )?;
                         return Err(BlockAcknowledgeError::InvalidParents(
@@ -1020,11 +1011,7 @@ impl BlockGraph {
                 DiscardReason::Final
             };
             self.discarded_blocks
-                .insert(
-                    h.clone(),
-                    (block.header.period_number, block.header.thread_number),
-                    reason,
-                )
+                .insert(h.clone(), block.header.clone(), reason)
                 .map(|_| ())
         })?;
 

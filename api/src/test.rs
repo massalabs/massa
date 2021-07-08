@@ -1,13 +1,16 @@
-use crate::get_filter;
+use crate::{config::ApiConfig, get_filter};
 use async_trait::async_trait;
 use communication::network::config::NetworkConfig;
-use consensus::BlockGraphExport;
 use consensus::ConsensusError;
 use consensus::{
     config::ConsensusConfig, consensus_controller::ConsensusControllerInterface,
     ExportDiscardedBlocks,
 };
-use crypto::{hash::Hash, signature::PrivateKey};
+use consensus::{BlockGraphExport, DiscardReason};
+use crypto::{
+    hash::Hash,
+    signature::{PrivateKey, SignatureEngine},
+};
 use models::block::{Block, BlockHeader};
 use serde_json::json;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -124,8 +127,35 @@ fn get_network_config() -> NetworkConfig {
         peers_file_dump_interval: UTime::from(10_000),
     }
 }
+
+fn get_api_config() -> ApiConfig {
+    ApiConfig {
+        max_return_invalid_blocks: 5,
+    }
+}
 pub fn mock_filter(interface: MockConsensusControllerInterface) -> BoxedFilter<(impl Reply,)> {
-    get_filter(interface, get_consensus_config(), get_network_config())
+    get_filter(
+        interface,
+        get_api_config(),
+        get_consensus_config(),
+        get_network_config(),
+    )
+}
+
+fn get_header(period_number: u64, thread_number: u8) -> BlockHeader {
+    let secp = SignatureEngine::new();
+    let private_key = SignatureEngine::generate_random_private_key();
+    let public_key = secp.derive_public_key(&private_key);
+    BlockHeader {
+        creator: public_key,
+        thread_number,
+        period_number,
+        roll_number: 0,
+        parents: Vec::new(),
+        endorsements: Vec::new(),
+        out_ledger_hash: get_test_hash(),
+        operation_merkle_root: get_another_test_hash(),
+    }
 }
 
 #[tokio::test]
@@ -180,6 +210,10 @@ async fn test_cliques() {
 
 fn get_test_hash() -> Hash {
     Hash::hash("test".as_bytes())
+}
+
+fn get_another_test_hash() -> Hash {
+    Hash::hash("another test".as_bytes())
 }
 
 #[tokio::test]
@@ -619,5 +653,92 @@ async fn test_state() {
         "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
         "time": time,
     });
+    assert_eq!(obtained, expected);
+}
+
+#[tokio::test]
+async fn test_last_stale() {
+    //test with empty final block
+    {
+        let mock_interface = MockConsensusControllerInterface::new();
+        let filter = mock_filter(mock_interface);
+        let res = warp::test::request()
+            .method("GET")
+            .path("/api/v1/last_stale")
+            .reply(&filter)
+            .await;
+        assert_eq!(res.status(), 200);
+        let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+        let expected: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+                .unwrap();
+        assert_eq!(obtained, expected);
+    }
+
+    //add default stale blocks
+    let mut mock_interface = MockConsensusControllerInterface::new();
+    mock_interface.graph.discarded_blocks.map.extend(vec![
+        (get_test_hash(), (DiscardReason::Invalid, get_header(1, 1))),
+        (
+            get_another_test_hash(),
+            (DiscardReason::Stale, get_header(2, 0)),
+        ),
+    ]);
+    let filter = mock_filter(mock_interface);
+    //valide url with final block.
+    let res = warp::test::request()
+        .method("GET")
+        .path("/api/v1/last_stale")
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let expected: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(&vec![(get_another_test_hash(), 2, 0)]).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(obtained, expected);
+}
+
+#[tokio::test]
+async fn test_last_invalid() {
+    //test with empty final block
+    {
+        let mock_interface = MockConsensusControllerInterface::new();
+        let filter = mock_filter(mock_interface);
+        let res = warp::test::request()
+            .method("GET")
+            .path("/api/v1/last_invalid")
+            .reply(&filter)
+            .await;
+        assert_eq!(res.status(), 200);
+        let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+        let expected: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+                .unwrap();
+        assert_eq!(obtained, expected);
+    }
+
+    //add default stale blocks
+    let mut mock_interface = MockConsensusControllerInterface::new();
+    mock_interface.graph.discarded_blocks.map.extend(vec![
+        (get_test_hash(), (DiscardReason::Invalid, get_header(1, 1))),
+        (
+            get_another_test_hash(),
+            (DiscardReason::Stale, get_header(2, 0)),
+        ),
+    ]);
+    let filter = mock_filter(mock_interface);
+    //valide url with final block.
+    let res = warp::test::request()
+        .method("GET")
+        .path("/api/v1/last_invalid")
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let expected: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&vec![(get_test_hash(), 1, 1)]).unwrap())
+            .unwrap();
     assert_eq!(obtained, expected);
 }

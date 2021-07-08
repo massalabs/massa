@@ -1,3 +1,4 @@
+use api::config::ApiConfig;
 use communication::network::config::NetworkConfig;
 use communication::protocol::config::ProtocolConfig;
 use consensus::config::ConsensusConfig;
@@ -15,6 +16,7 @@ pub struct Config {
     pub protocol: ProtocolConfig,
     pub network: NetworkConfig,
     pub consensus: ConsensusConfig,
+    pub api: ApiConfig,
 }
 
 impl Config {
