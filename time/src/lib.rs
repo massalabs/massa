@@ -10,6 +10,8 @@ use tokio::time::Instant;
 
 use serde::{Deserialize, Serialize};
 
+/// Time structure used every where.
+/// Millis since 01/01/1970.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UTime(u64);
 
@@ -20,6 +22,7 @@ impl fmt::Display for UTime {
 }
 
 impl From<u64> for UTime {
+    /// Conversion from u64, representing timestamp in millis.
     /// ```
     /// # use time::*;
     /// let time : UTime = UTime::from(42);
@@ -32,6 +35,7 @@ impl From<u64> for UTime {
 impl TryFrom<Duration> for UTime {
     type Error = TimeError;
 
+    /// Conversion from `std::time::Duration`.
     /// ```
     /// # use std::time::Duration;
     /// # use time::*;
@@ -51,6 +55,8 @@ impl TryFrom<Duration> for UTime {
 }
 
 impl Into<Duration> for UTime {
+    /// Conversion into `std::time::Duration`.
+    ///
     /// ```
     /// # use std::time::Duration;
     /// # use time::*;
@@ -68,8 +74,9 @@ impl Into<Duration> for UTime {
 impl FromStr for UTime {
     type Err = crate::TimeError;
 
+    /// Conversion from `&str`.
+    ///
     /// ```
-    /// # use std::time::Duration;
     /// # use time::*;
     /// # use std::str::FromStr;
     /// let duration: &str = "42";
@@ -85,6 +92,8 @@ impl FromStr for UTime {
 }
 
 impl UTime {
+    /// Gets current timestamp.
+    ///
     /// ```
     /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
     /// # use time::*;
@@ -106,6 +115,7 @@ impl UTime {
         ))
     }
 
+    /// Conversion to `std::time::Duration`.
     /// ```
     /// # use std::time::Duration;
     /// # use time::*;
@@ -118,6 +128,7 @@ impl UTime {
         Duration::from_millis(self.0)
     }
 
+    /// Conversion to u64, represting millis.
     /// ```
     /// # use time::*;
     /// let time : UTime = UTime::from(42);
