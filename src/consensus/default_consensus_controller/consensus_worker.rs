@@ -80,8 +80,19 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
 
                     // check if it is our turn to create a block
                     let block_creator = self.selector.draw(next_slot_thread, next_slot_number);
-                    if block_creator == self.cfg.current_node_index {
-                        // TODO create new block at slot (next_slot_thread, next_slot_number)
+                    if next_slot_number > 0 && block_creator == self.cfg.current_node_index {
+                        let block = self.block_db.create_block("block".to_string(), next_slot_thread, next_slot_number);
+
+                        let (is_to_propagate, hash) = self
+                        .block_db
+                        .acknowledge_new_block(&block, &mut self.selector);
+                        massa_trace!("created_block", { "block": block , "hash": hash});
+                        if is_to_propagate
+                        {
+                            self.protocol_controller
+                                .propagate_block(&block, None, None)
+                                .await;
+                        }
                     }
 
                     // reset timer for next slot
@@ -111,16 +122,6 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         match cmd {
             ConsensusCommand::CreateBlock(block) => {
                 // TODO remove ?
-                massa_trace!("created_block", { "block": block });
-                let block = self.block_db.create_block(block);
-                if self
-                    .block_db
-                    .acknowledge_new_block(&block, &mut self.selector)
-                {
-                    self.protocol_controller
-                        .propagate_block(&block, None, None)
-                        .await;
-                }
             }
         }
     }
@@ -128,16 +129,16 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     async fn process_protocol_event(&mut self, source_node_id: NodeId, event: ProtocolEventType) {
         match event {
             ProtocolEventType::ReceivedBlock(block) => {
-                if self
+                let (is_to_propagate, hash) = self
                     .block_db
-                    .acknowledge_new_block(&block, &mut self.selector)
-                {
-                    massa_trace!("received_block_ok", {"source_node_id": source_node_id, "block": block});
+                    .acknowledge_new_block(&block, &mut self.selector);
+                if is_to_propagate {
+                    massa_trace!("received_block_ok", {"source_node_id": source_node_id, "block": block, "hash": hash});
                     self.protocol_controller
                         .propagate_block(&block, Some(source_node_id), None)
                         .await;
                 } else {
-                    massa_trace!("received_block_ignore", {"source_node_id": source_node_id, "block": block});
+                    massa_trace!("received_block_ignore", {"source_node_id": source_node_id, "block": block, "hash": hash});
                 }
             }
             ProtocolEventType::ReceivedTransaction(transaction) => {

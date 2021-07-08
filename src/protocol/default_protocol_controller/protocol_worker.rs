@@ -91,7 +91,9 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                         block,
                         exclude_node,
                         restrict_to_node,
-                    }) => match restrict_to_node {
+                    }) => {
+                        massa_trace!("block_propagation", {"block": &block, "excluding": &exclude_node, "including": &restrict_to_node});
+                        match restrict_to_node {
                         Some(target_node_id) => {
                             let (_, node_command_tx, _) = self
                                 .active_nodes
@@ -112,6 +114,7 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                                 }
                             }
                         }
+                    }
                     }
                     // Some(_) => {}  // TODO
                     None => break  // finished

@@ -28,18 +28,12 @@ async fn run(cfg: config::Config) -> BoxResult<()> {
     let ptcl = DefaultProtocolController::new(cfg.protocol, network).await?;
     let mut cnss = DefaultConsensusController::new(&cfg.consensus, ptcl).await?;
 
-    let mut wait_init = tokio::time::sleep(tokio::time::Duration::from_millis(10000));
-
     // loop over messages
     loop {
         tokio::select! {
             evt = cnss.wait_event() => match evt {
                 _ => {}
             },
-            _ = &mut wait_init, if !wait_init.is_elapsed() => {
-                debug!("requiring random block generation");
-                cnss.generate_random_block().await;
-            }
         }
     }
 
