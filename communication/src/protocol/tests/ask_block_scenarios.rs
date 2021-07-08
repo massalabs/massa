@@ -76,7 +76,7 @@ async fn test_without_a_priori() {
     // 7. Make sure protocol did not send additional network commands.
 
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
     };
 
@@ -167,7 +167,7 @@ async fn test_someone_knows_it() {
 
     // 7. Make sure protocol did not send additional network commands.
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
     };
 
@@ -252,7 +252,7 @@ async fn test_dont_want_it_anymore() {
 
     // 7. Make sure protocol did not send additional network commands.
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
     };
 
@@ -342,7 +342,7 @@ async fn test_no_one_has_it() {
 
     // 7. Make sure protocol did not send additional network commands.
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
     };
 
