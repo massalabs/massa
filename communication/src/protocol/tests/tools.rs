@@ -110,7 +110,7 @@ pub async fn assert_hash_asked_to_node(
     network_controller: &mut MockNetworkController,
 ) {
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         b => {
             println!("{:?}", b);
             None
@@ -120,7 +120,7 @@ pub async fn assert_hash_asked_to_node(
         .wait_command(1000.into(), ask_for_block_cmd_filter)
         .await
     {
-        Some(NetworkCommand::AskForBlock(node_id, hash)) => (node_id, hash),
+        Some(NetworkCommand::AskForBlock { node, hash }) => (node, hash),
         cmd => panic!("Unexpected network command. {:?}", cmd),
     };
     assert_eq!(hash_1, asked_for_hash);
