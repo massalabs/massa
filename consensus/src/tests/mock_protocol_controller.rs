@@ -48,6 +48,21 @@ impl MockProtocolController {
         }
     }
 
+    // Ensure the event has been received,
+    // before the test can do anything else.
+    // This is useful to prevent task starvation
+    // in the context of the single-threaded runtime
+    // used by tests.
+    async fn await_event_receipt(&self) {
+        loop {
+            if self.protocol_event_tx.capacity() == CHANNEL_SIZE {
+                // The message has been received.
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    }
+
     // Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
         let block_id = block
@@ -62,6 +77,7 @@ impl MockProtocolController {
             })
             .await
             .expect("could not send protocol event");
+        self.await_event_receipt().await;
     }
 
     pub async fn receive_header(&mut self, header: BlockHeader) {
@@ -72,6 +88,7 @@ impl MockProtocolController {
             .send(ProtocolEvent::ReceivedBlockHeader { block_id, header })
             .await
             .expect("could not send protocol event");
+        self.await_event_receipt().await;
     }
 
     pub async fn receive_get_active_blocks(&mut self, list: Vec<BlockId>) {
@@ -79,6 +96,7 @@ impl MockProtocolController {
             .send(ProtocolEvent::GetBlocks(list))
             .await
             .expect("could not send protocol event");
+        self.await_event_receipt().await;
     }
 
     // ignore all commands while waiting for a futrue
