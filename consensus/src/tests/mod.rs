@@ -9,5 +9,6 @@ mod scenarios_note_attack_attempt;
 mod scenarios_parents;
 mod scenarios_pruning;
 mod scenarios_send_block;
+mod scenarios_wishlist;
 mod storage_scenarios;
 mod tools;

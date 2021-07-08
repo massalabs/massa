@@ -89,6 +89,27 @@ pub async fn validate_ask_for_block(
     }
 }
 
+pub async fn validate_wishlist(
+    protocol_controller: &mut MockProtocolController,
+    new: HashSet<Hash>,
+    remove: HashSet<Hash>,
+    timeout_ms: u64,
+) {
+    let param = protocol_controller
+        .wait_command(timeout_ms.into(), |cmd| match cmd {
+            ProtocolCommand::WishlistDelta { new, remove } => return Some((new, remove)),
+            _ => None,
+        })
+        .await;
+    match param {
+        Some((got_new, got_remove)) => {
+            assert_eq!(new, got_new);
+            assert_eq!(remove, got_remove);
+        }
+        None => panic!("Wishlist delta not sent for before timeout."),
+    }
+}
+
 pub async fn validate_does_not_ask_for_block(
     protocol_controller: &mut MockProtocolController,
     hash: &Hash,

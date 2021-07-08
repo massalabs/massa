@@ -378,7 +378,7 @@ impl ConsensusWorker {
 
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks = &new_wishlist - &self.wishlist;
-        let remove_blocks = &new_wishlist - &self.wishlist;
+        let remove_blocks = &self.wishlist - &new_wishlist;
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {
             self.protocol_command_sender
                 .send_wishlist_delta(new_blocks, remove_blocks)
