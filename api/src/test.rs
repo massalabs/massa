@@ -16,6 +16,7 @@ use serde_json::json;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use time::UTime;
+use tokio::sync::mpsc;
 use warp::{filters::BoxedFilter, Reply};
 
 #[derive(Debug, Clone)]
@@ -145,14 +146,17 @@ fn get_api_config() -> ApiConfig {
     ApiConfig {
         max_return_invalid_blocks: 5,
         selection_return_periods: 2,
+        bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3030),
     }
 }
 pub fn mock_filter(interface: MockConsensusControllerInterface) -> BoxedFilter<(impl Reply,)> {
+    let (evt_tx, _evt_rx) = mpsc::channel(1);
     get_filter(
         interface,
         get_api_config(),
         get_consensus_config(),
         get_network_config(),
+        evt_tx,
     )
 }
 
@@ -805,7 +809,7 @@ async fn test_staker_info() {
         let filter = mock_filter(mock_interface);
         let res = warp::test::request()
             .method("GET")
-            .path(&format!("/api/v1/staker_info/{}/1000/2", staker))
+            .path(&format!("/api/v1/staker_info/{}", staker))
             .reply(&filter)
             .await;
         assert_eq!(res.status(), 200);
@@ -847,7 +851,7 @@ async fn test_staker_info() {
     //valide url with final block.
     let res = warp::test::request()
         .method("GET")
-        .path(&format!("/api/v1/staker_info/{}/1000/2", staker))
+        .path(&format!("/api/v1/staker_info/{}", staker))
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);

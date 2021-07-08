@@ -89,14 +89,14 @@ impl<ProtocolControllerT: ProtocolController + 'static>
     }
 
     /// Stop the consensus controller
-    /// panices if the consensus controller is not reachable
-    async fn stop(mut self) -> Result<(), ConsensusError> {
+    pub async fn stop(mut self) -> Result<(), ConsensusError> {
         debug!("stopping consensus controller");
-        massa_trace!("begin", {});
+        massa_trace!("consensus_stop_begin", {});
+        drop(self.consensus_command_tx);
         while let Some(_) = self.consensus_event_rx.recv().await {}
         self.consensus_controller_handle.await?;
         debug!("consensus controller stopped");
-        massa_trace!("end", {});
+        massa_trace!("consensus_stop_end", {});
         Ok(())
     }
 }

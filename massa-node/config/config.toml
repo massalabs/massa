@@ -4,6 +4,7 @@ level = 4
 [api]
     max_return_invalid_blocks = 10
     selection_return_periods = 10
+    bind = "127.0.0.1:3030"
 
 [consensus]
     genesis_timestamp = 1607958448000
@@ -14,26 +15,27 @@ level = 4
     nodes = [
         ['4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb','LGXe9RrR1QNSsSn8bAEgrsYM8WwX67oHLjGj6e19bCW9ZKo6p'],
         ['6ZoZ46HVJMKVTU92a1QRQqWpERL5tTAJ4RjazPBRzFXLmMDu8g','PZZzhDKrdGiuQMGEazTGP5b164qofYXh9Yp4SQ4uZChxAQqtK'],
-        ['54VEbD2R2HkUz2G5NGHyxhaFDhrQFG62UqFLWsUywnHtDsM8qh','2eLQSjhrep9Grw7yDifXnDKgCc1WTXBCtdeREzuJd9jiSZuZmr']
+        ['54VEbD2R2HkUz2G5NGHyxhaFDhrQFG62UqFLWsUywnHtDsM8qh','2eLQSjhrep9Grw7yDifXnDKgCc1WTXBCtdeREzuJd9jiSZuZmr'],
+        ['5KdMBTJAU9JpJggACMx5gd8x8tSQFZEwfpxrzFV2Znz6M7FyAN','5nLsiHcZHCLSWnquQtrninDQRMJdXYKgt3fEyqBQ6ju6a2K6t']
     ]
     current_node_index = 0
-    max_discarded_blocks=10
-    future_block_processing_max_periods=100000
-    max_future_processing_blocks=32
-    max_dependency_blocks=10
-    delta_f0=32
+    max_discarded_blocks = 10
+    future_block_processing_max_periods = 100
+    max_future_processing_blocks = 320
+    max_dependency_blocks = 100
+    delta_f0 = 64
     
 
 [protocol]
-    message_timeout = 5
-    ask_peer_list_interval = 50
+    message_timeout = 5000
+    ask_peer_list_interval = 10000
 
 [network]
-    bind = "0.0.0.0:50000"
+    bind = "0.0.0.0:31234"
     routable_ip = "200.200.200.200"
-    protocol_port = 50000
-    connect_timeout = 5
-    wakeup_interval = 10
+    protocol_port = 31234
+    connect_timeout = 5000
+    wakeup_interval = 10000
     peers_file = "config/peers.json"
     target_out_connections = 20
     max_in_connections = 100
@@ -42,6 +44,6 @@ level = 4
     max_idle_peers = 1000
     max_banned_peers = 1000
     max_advertise_length = 100000
-    peers_file_dump_interval = 30
+    peers_file_dump_interval = 10000
     
 

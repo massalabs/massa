@@ -28,12 +28,13 @@ impl ReplHelper {
         }
     }
 
-    pub fn add_cmd(&mut self, cmd_name: String, max_nb_param: usize) {
+    pub fn add_cmd(&mut self, cmd_name: String, min_nb_param: usize, max_nb_param: usize) {
         self.completer.cmd_list.push(cmd_name.clone());
         self.hinter.cmd_list.push(cmd_name.clone());
         self.validator.cmd_list.push(HelperCommand {
             name: cmd_name.clone(),
             max_nb_param,
+            min_nb_param,
         });
     }
 }
@@ -72,6 +73,7 @@ fn recent_commands(line: &str, ctx: &Context, cmd_list: &[String]) -> Vec<Entry>
 struct HelperCommand {
     name: String,
     max_nb_param: usize,
+    min_nb_param: usize,
 }
 
 #[derive(Default)]
@@ -150,7 +152,9 @@ impl CommandValidator {
                         params.len(),
                         command.max_nb_param
                     );*/
-                    if params.len() <= command.max_nb_param + 1 {
+                    if params.len() >= command.min_nb_param + 1
+                        && params.len() <= command.max_nb_param + 1
+                    {
                         result = ValidationResult::Valid(None);
                     } else {
                         result =

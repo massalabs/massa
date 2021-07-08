@@ -14,6 +14,9 @@ toml = { version = "0.5" }
 clap = "2.33.3"
 thiserror = "1.0"
 crypto = {path = "../crypto"}
+bs58 = { version = "0.4", features = ["check"] }
+bitcoin_hashes = "0.9"
 models = {path = "../models"}
+communication = {path = "../communication"}
 serde_json = { version = "1.0" }
 

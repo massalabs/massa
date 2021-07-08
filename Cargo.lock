@@ -822,7 +822,10 @@ dependencies = [
 name = "massa-client"
 version = "0.1.0"
 dependencies = [
+ "bitcoin_hashes",
+ "bs58",
  "clap",
+ "communication",
  "crypto",
  "models",
  "reqwest",

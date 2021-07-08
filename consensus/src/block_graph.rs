@@ -876,9 +876,6 @@ impl BlockGraph {
         // prune final blocks
         pruned_blocks.extend(self.prune_blocks(final_blocks, true, false)?);
 
-        // print discarded
-        log::info!("discarded: {:?}", self.discarded_blocks.map);
-
         Ok(pruned_blocks)
     }
 
