@@ -938,6 +938,17 @@ impl BlockGraph {
         &self.best_parents
     }
 
+    pub fn get_ledger_data_export(
+        &self,
+        addresses: &HashSet<Address>,
+    ) -> Result<LedgerDataExport, ConsensusError> {
+        let best_parents = self.get_best_parents();
+        Ok(LedgerDataExport {
+            candidate_data: self.get_ledger_at_parents(best_parents, addresses)?,
+            final_data: self.ledger.get_final_ledger_subset(addresses)?,
+        })
+    }
+
     /// Gets whole compiled block corresponding to given hash, if it is active.
     ///
     /// # Argument
