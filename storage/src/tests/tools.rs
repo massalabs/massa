@@ -22,10 +22,10 @@ pub fn get_test_block() -> Block {
         }
 }
 
-pub fn get_test_config() -> StorageConfig {
+pub fn get_test_config(path: String) -> StorageConfig {
     StorageConfig {
         max_capacity: 100000,
-        path: "tmp/test".into(),
+        path,
         cache_capacity: 1000000,
         flush_every_ms: Some(200),
     }
