@@ -12,6 +12,7 @@ mod consensus_controller;
 mod consensus_worker;
 mod error;
 mod ledger;
+mod pos;
 mod random_selector;
 mod timeslots;
 pub use block_graph::BootsrapableGraph;

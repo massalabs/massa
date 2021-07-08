@@ -25,6 +25,7 @@ time= { path = "../time"}
 storage= { path = "../storage"}
 pool= { path = "../pool"}
 sled = "0.34.6"
+bitvec = "0.22.3"
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }
