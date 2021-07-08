@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};

@@ -155,12 +155,11 @@ use consensus::ConsensusStats;
 use consensus::ExportBlockStatus;
 use consensus::Status;
 use consensus::{
-    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
-    ConsensusConfig, ConsensusError, DiscardReason, LedgerDataExport,
+    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, AddressState, BlockGraphExport,
+    ConsensusConfig, ConsensusError, DiscardReason,
 };
 use logging::massa_trace;
 use models::Address;
-use models::AddressesRollState;
 use models::ModelsError;
 use models::Operation;
 use models::OperationId;
@@ -196,9 +195,9 @@ pub enum ApiEvent {
         response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
     },
     AddOperations(HashMap<OperationId, Operation>),
-    GetLedgerData {
+    GetAddressesInfo {
         addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<Result<LedgerDataExport, ConsensusError>>,
+        response_tx: oneshot::Sender<Result<HashMap<Address, AddressState>, ConsensusError>>,
     },
     GetRecentOperations {
         address: Address,
@@ -208,10 +207,6 @@ pub enum ApiEvent {
         operation_ids: HashSet<OperationId>,
         /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
-    },
-    GetRollState {
-        addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<AddressesRollState>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
 }
@@ -461,22 +456,13 @@ pub fn get_filter(
         .and_then(move |address| get_operations_involving_address(evt_tx.clone(), address));
 
     let evt_tx = event_tx.clone();
-    let address_data = warp::get()
+    let addresses_info = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
-        .and(warp::path("addresses_data"))
+        .and(warp::path("addresses_info"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| get_address_data(addrs, evt_tx.clone()));
-
-    let evt_tx = event_tx.clone();
-    let address_roll_state = warp::get()
-        .and(warp::path("api"))
-        .and(warp::path("v1"))
-        .and(warp::path("addresses_roll_state"))
-        .and(warp::path::end())
-        .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| get_addresses_roll_state(addrs, evt_tx.clone()));
+        .and_then(move |Addresses { addrs }| get_addresses_info(addrs, evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
     let stop_node = warp::post()
@@ -516,8 +502,7 @@ pub fn get_filter(
         .or(last_stale)
         .or(last_invalid)
         .or(staker_info)
-        .or(address_data)
-        .or(address_roll_state)
+        .or(addresses_info)
         .or(stop_node)
         .or(send_operations)
         .or(node_config)
@@ -580,34 +565,6 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
         )
         .into_response()),
     }
-}
-
-/// Returns the ledger data for an address (candidate and final)
-///
-async fn get_addresses_roll_state(
-    addresses: HashSet<Address>,
-    event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_addresses_roll_state", {
-        "addresses": addresses
-    });
-
-    let res = match retrieve_roll_state(addresses, &event_tx).await {
-        Ok(data) => data,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error during roll state retrieving : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-
-    //Add consensus command call. issue !414
-    //return a model::AddressesRollState
-    Ok(warp::reply::json(&res).into_response())
 }
 
 /// This function sends the new transaction outside the Api and
@@ -791,31 +748,6 @@ async fn retrieve_operations(
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve operation : {0}", e))
-    })
-}
-
-async fn retrieve_roll_state(
-    addresses: HashSet<Address>,
-    event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<AddressesRollState, ApiError> {
-    massa_trace!("api.filters.retrieve_operations", {
-        "addresses": addresses
-    });
-    let (response_tx, response_rx) = oneshot::channel();
-    event_tx
-        .send(ApiEvent::GetRollState {
-            addresses,
-            response_tx,
-        })
-        .await
-        .map_err(|e| {
-            ApiError::SendChannelError(format!(
-                "Could not send api event get retrieve_roll_state : {0}",
-                e
-            ))
-        })?;
-    response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!("Could not retrieve retrieve_roll_state : {0}", e))
     })
 }
 
@@ -1541,16 +1473,16 @@ async fn get_network_info(
     .into_response())
 }
 
-/// Returns the ledger data for an address (candidate and final)
+/// Returns state info for a set of addresses
 ///
-async fn get_address_data(
+async fn get_addresses_info(
     addresses: HashSet<Address>,
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_address_data", { "addresses": addresses });
+    massa_trace!("api.filters.get_addresses_info", { "addresses": addresses });
     let (response_tx, response_rx) = oneshot::channel();
     if let Err(err) = event_tx
-        .send(ApiEvent::GetLedgerData {
+        .send(ApiEvent::GetAddressesInfo {
             addresses,
             response_tx,
         })
@@ -1565,12 +1497,12 @@ async fn get_address_data(
         .into_response());
     }
 
-    let ledger_data_export = match response_rx.await {
-        Ok(Ok(ledger_export)) => ledger_export,
+    let addrs_info = match response_rx.await {
+        Ok(Ok(addrs_info)) => addrs_info,
         Ok(Err(err)) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error during exporting ledger data : {:?}", err)
+                    "message": format!("error during exporting addrs info: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1579,7 +1511,7 @@ async fn get_address_data(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error get ledger data : {:?}", err)
+                    "message": format!("error get addrs info: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1587,7 +1519,7 @@ async fn get_address_data(
         }
     };
 
-    Ok(warp::reply::json(&ledger_data_export).into_response())
+    Ok(warp::reply::json(&addrs_info).into_response())
 }
 
 /// Returns connected peers :

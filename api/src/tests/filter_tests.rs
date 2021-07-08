@@ -4,8 +4,8 @@ use crate::ApiEvent;
 use crate::OperationIds;
 use communication::network::PeerInfo;
 use consensus::ExportBlockStatus;
+use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
-use consensus::{LedgerChange, LedgerDataExport};
 use crypto::hash::Hash;
 use models::SerializeCompact;
 use models::{Address, Block, BlockHeader, BlockId, Slot};
@@ -181,9 +181,9 @@ async fn test_get_operations() {
 
 #[tokio::test]
 #[serial]
-async fn test_get_addresses_data() {
+async fn test_get_addresses_info() {
     initialize_context();
-    let serialization_context = models::get_serialization_context();
+    let _serialization_context = models::get_serialization_context();
 
     let search_address =
         Address::from_bs58_check("SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S").unwrap();
@@ -195,19 +195,18 @@ async fn test_get_addresses_data() {
         // no input operation ids
         let res = warp::test::request()
             .method("GET")
-            .path(&"/api/v1/addresses_data")
+            .path(&"/api/v1/addresses_info")
             .matches(&filter)
             .await;
         assert!(!res);
 
-        let parent_count = serialization_context.parent_count;
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
-                Some(ApiEvent::GetLedgerData { response_tx, .. }) => {
+                Some(ApiEvent::GetAddressesInfo { response_tx, .. }) => {
                     response_tx
-                        .send(Ok(LedgerDataExport::new(parent_count))) //LedgerDataExport
-                        .expect("failed to send block");
+                        .send(Ok(HashMap::new()))
+                        .expect("failed to send data");
                 }
 
                 _ => {}
@@ -220,7 +219,7 @@ async fn test_get_addresses_data() {
 
         //no provided addr.
         let url = format!(
-            "/api/v1/addresses_data?{}",
+            "/api/v1/addresses_info?{}",
             serde_qs::to_string(&search_addrs).unwrap(),
         );
         let res = warp::test::request()
@@ -235,7 +234,7 @@ async fn test_get_addresses_data() {
             addrs: vec![search_address].into_iter().collect(),
         };
         let url = format!(
-            "/api/v1/addresses_data?{}",
+            "/api/v1/addresses_info?{}",
             serde_qs::to_string(&search_addrs).unwrap(),
         );
         let res = warp::test::request()
@@ -244,45 +243,35 @@ async fn test_get_addresses_data() {
             .reply(&filter)
             .await;
         assert_eq!(res.status(), 200);
-        let obtained: LedgerDataExport = serde_json::from_slice(res.body()).unwrap();
-        assert_eq!(
-            obtained.candidate_data.data.len(),
-            serialization_context.parent_count as usize
-        );
-        assert_eq!(obtained.candidate_data.data[0].len(), 0);
-        assert_eq!(
-            obtained.final_data.data.len(),
-            serialization_context.parent_count as usize
-        );
-        assert_eq!(obtained.final_data.data[0].len(), 0);
+        let obtained: HashMap<Address, AddressState> = serde_json::from_slice(res.body()).unwrap();
+        assert_eq!(obtained.len(), 0);
+
         handle.await.unwrap();
     }
 
     //test one operation found for several addresses
     {
-        let mut ledger_export = LedgerDataExport::new(serialization_context.parent_count);
-        let change = LedgerChange {
-            balance_delta: 153,
-            balance_increment: true,
-        };
-        ledger_export
-            .candidate_data
-            .apply_change((&search_address, &change))
-            .unwrap();
-        ledger_export
-            .final_data
-            .apply_change((&search_address, &change))
-            .unwrap();
-
+        let mut addrs_info: HashMap<Address, AddressState> = HashMap::new();
+        addrs_info.insert(
+            search_address,
+            AddressState {
+                final_rolls: 1233,
+                active_rolls: Some(5748),
+                candidate_rolls: 7787,
+                locked_balance: 1745,
+                candidate_ledger_data: LedgerData { balance: 4788 },
+                final_ledger_data: LedgerData { balance: 11414 },
+            },
+        );
         let (filter, mut rx_api) = mock_filter(None);
-        let handle_ledger = ledger_export.clone();
+        let cpy_addr_info = addrs_info.clone();
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
-                Some(ApiEvent::GetLedgerData { response_tx, .. }) => {
+                Some(ApiEvent::GetAddressesInfo { response_tx, .. }) => {
                     response_tx
-                        .send(Ok(handle_ledger)) //LedgerDataExport
-                        .expect("failed to send block");
+                        .send(Ok(cpy_addr_info))
+                        .expect("failed to send data");
                 }
 
                 _ => {}
@@ -291,7 +280,7 @@ async fn test_get_addresses_data() {
 
         let search_addrs = Addresses {
             addrs: vec![
-                search_address,
+                search_address.clone(),
                 Address::from_bs58_check("veCeaKsQbwMa7nnRsgZ5qTEyThWCMNi73w5Za9wdsdiEEkZLM")
                     .unwrap(),
             ]
@@ -300,7 +289,7 @@ async fn test_get_addresses_data() {
         };
 
         let url = format!(
-            "/api/v1/addresses_data?{}",
+            "/api/v1/addresses_info?{}",
             serde_qs::to_string(&search_addrs).unwrap(),
         );
         let res = warp::test::request()
@@ -310,25 +299,27 @@ async fn test_get_addresses_data() {
             .await;
         assert_eq!(res.status(), 200);
 
-        let obtained: LedgerDataExport = serde_json::from_slice(res.body()).unwrap();
+        let obtained: HashMap<Address, AddressState> = serde_json::from_slice(res.body()).unwrap();
 
         assert_eq!(
-            obtained.candidate_data.data.len(),
-            serialization_context.parent_count as usize
-        );
-        assert_eq!(obtained.candidate_data.data[0].len(), 1);
-        assert_eq!(
-            obtained.candidate_data.data[0][&search_address].balance,
-            change.balance_delta
+            obtained[&search_address].final_rolls,
+            addrs_info[&search_address].final_rolls
         );
         assert_eq!(
-            obtained.final_data.data.len(),
-            serialization_context.parent_count as usize
+            obtained[&search_address].active_rolls,
+            addrs_info[&search_address].active_rolls
         );
-        assert_eq!(obtained.final_data.data[0].len(), 1);
         assert_eq!(
-            obtained.final_data.data[0][&search_address].balance,
-            change.balance_delta
+            obtained[&search_address].candidate_rolls,
+            addrs_info[&search_address].candidate_rolls
+        );
+        assert_eq!(
+            obtained[&search_address].candidate_ledger_data.balance,
+            addrs_info[&search_address].candidate_ledger_data.balance
+        );
+        assert_eq!(
+            obtained[&search_address].final_ledger_data.balance,
+            addrs_info[&search_address].final_ledger_data.balance
         );
         handle.await.unwrap();
     }

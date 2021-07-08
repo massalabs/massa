@@ -25,6 +25,12 @@ pub struct LedgerData {
     pub balance: u64,
 }
 
+impl Default for LedgerData {
+    fn default() -> Self {
+        LedgerData { balance: 0 }
+    }
+}
+
 impl SerializeCompact for LedgerData {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -311,7 +317,7 @@ impl Ledger {
                             })?
                             .0
                     } else {
-                        LedgerData { balance: 0 }
+                        LedgerData::default()
                     };
 
                     // Should never panic since we are operating on a set of addresses.
@@ -422,7 +428,7 @@ impl Ledger {
                     old
                 } else {
                     // creating new entry
-                    LedgerData { balance: 0 }
+                    LedgerData::default()
                 };
                 data.apply_change(&change).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
@@ -551,7 +557,7 @@ impl Ledger {
                         })?;
                     data[thread as usize].insert(addr.clone().clone(), ledger_data);
                 } else {
-                    data[thread as usize].insert(addr.clone().clone(), LedgerData { balance: 0 });
+                    data[thread as usize].insert(addr.clone().clone(), LedgerData::default());
                 }
             }
             Ok(data)
@@ -594,7 +600,7 @@ impl LedgerSubset {
         let thread_count = self.data.len() as u8;
         self.data[change_address.get_thread(thread_count) as usize]
             .entry(*change_address)
-            .or_insert_with(|| LedgerData { balance: 0 })
+            .or_insert_with(|| LedgerData::default())
             .apply_change(change)
     }
 

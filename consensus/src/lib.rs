@@ -23,7 +23,7 @@ pub use config::ConsensusConfig;
 pub use consensus_controller::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
 };
-pub use consensus_worker::{ConsensusCommand, ConsensusEvent, ConsensusStats};
+pub use consensus_worker::{AddressState, ConsensusCommand, ConsensusEvent, ConsensusStats};
 pub use error::ConsensusError;
 pub use ledger::{LedgerChange, LedgerData, LedgerExport};
 pub use pos::{ExportProofOfStake, ExportThreadCycleState, RollCounts, RollUpdate, RollUpdates};
