@@ -13,7 +13,9 @@ mod consensus_worker;
 mod error;
 mod random_selector;
 mod timeslots;
-pub use block_graph::DiscardReason;
+pub use block_graph::{
+    BlockGraphExport, DiscardReason, ExportCompiledBlock, ExportDiscardedBlocks,
+};
 pub use config::ConsensusConfig;
 pub use consensus_controller::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,

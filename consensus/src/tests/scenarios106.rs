@@ -214,12 +214,12 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     protocol_controller.receive_block(block3).await;
     assert!(!tools::validate_notpropagate_block(&mut protocol_controller, hash3, 2500).await);
 
-    //validate the block isn't final.
+    // Check that the block has been discarded for being too much in the future.
     let block_graph = consensus_command_sender
         .get_block_graph_status()
         .await
         .unwrap();
-    assert!(!block_graph.discarded_blocks.map.contains_key(&hash3));
+    assert!(block_graph.discarded_blocks.map.contains_key(&hash3));
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
@@ -429,20 +429,16 @@ async fn test_dep_in_back_order() {
     protocol_controller.receive_block(t0s3).await;
     protocol_controller.receive_block(t1s2).await;
 
-    //block t0s1 and t1s1 are propagated
-    let hash_list = vec![hasht0s1, hasht1s1];
+    // All blocks are propagated
+    let hash_list = vec![
+        hasht0s1, hasht1s1, hasht0s2, hasht1s2, hasht0s3, hasht1s3, hasht0s4, hasht1s4,
+    ];
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
-    //block t0s2 and t1s2 are propagated
-    let hash_list = vec![hasht0s2, hasht1s2];
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
-    //block t0s3 and t1s3 are propagated
-    let hash_list = vec![hasht0s3, hasht1s3];
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
-    //block t0s4 and t1s4 are propagated
-    let hash_list = vec![hasht0s4, hasht1s4];
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 4000).await;
 

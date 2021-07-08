@@ -27,7 +27,6 @@ async fn test_consensus_asks_for_block() {
         .await
         .expect("could not start consensus controller");
 
-    let start_slot = 3;
     let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
@@ -38,7 +37,7 @@ async fn test_consensus_asks_for_block() {
     let (hasht0s1, t0s1, _) = tools::create_block(
         &cfg,
         &serialization_context,
-        Slot::new(1 + start_slot, 0),
+        Slot::new(1, 0),
         genesis_hashes.clone(),
     );
 
