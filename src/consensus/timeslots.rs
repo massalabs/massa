@@ -2,7 +2,7 @@ use std::convert::TryInto;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{Duration, Instant};
 
-// warning: assumes thread_count >= 1, t0_millis >=1, t0_millis % thread_count == 0
+// warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 
 pub fn get_current_timestamp_millis() -> u64 {
     SystemTime::now()
@@ -32,7 +32,7 @@ pub fn get_block_slot_timestamp_millis(
 }
 
 // return the thread and block slot index of the latest block slot (inclusive), if any happened yet
-pub fn get_latest_block_slot(
+pub fn get_current_latest_block_slot(
     thread_count: u8,
     t0_millis: u64,
     genesis_timestamp_millis: u64,

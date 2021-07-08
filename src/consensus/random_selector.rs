@@ -10,7 +10,7 @@ pub const RANDOM_SELECTOR_MIN_SEED_LENGTH: usize = 32;
 pub struct RandomSelector {
     thread_generators: Vec<Xoshiro256PlusPlus>,
     distribution: WeightedIndex<u64>,
-    cache: Vec<Vec<u64>>,
+    cache: Vec<Vec<u32>>,
 }
 
 impl RandomSelector {
@@ -40,12 +40,12 @@ impl RandomSelector {
         }
     }
 
-    pub fn draw(&mut self, thread_index: u8, iteration: u64) -> u64 {
+    pub fn draw(&mut self, thread_index: u8, iteration: u64) -> u32 {
         while iteration >= (self.cache[thread_index as usize].len() as u64) {
             self.cache[thread_index as usize].push(
                 self.distribution
                     .sample(&mut self.thread_generators[thread_index as usize])
-                    as u64,
+                    as u32,
             );
         }
         self.cache[thread_index as usize][iteration as usize]
