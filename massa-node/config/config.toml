@@ -34,6 +34,12 @@
     block_reward = 1
     initial_ledger_path = "config/initial_ledger.json"
     operation_batch_size = 10
+    initial_rolls_path= "config/initial_rolls.json"
+    initial_draw_seed= "massa_genesis_seed"
+    periods_per_cycle= 100
+    pos_lookback_cycles= 2
+    pos_lock_cycles= 1
+    pos_draw_cached_cycles= 5
 
 
 [protocol]

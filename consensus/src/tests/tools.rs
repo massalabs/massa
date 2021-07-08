@@ -503,7 +503,7 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
         initial_rolls_path: tempdir3.path().to_path_buf(),
         initial_draw_seed: "genesis".into(),
         periods_per_cycle: 100,
-        pos_lookback_cycles: 4,
+        pos_lookback_cycles: 2,
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
         roll_price: 0,
