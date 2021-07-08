@@ -285,34 +285,6 @@ impl ConsensusWorker {
         }
     }
 
-    /// Checks if block is valid and coherent and add it to the underlying block database.
-    // Returns a new hashmap of blocks to re-acknowledge.
-    ///
-    /// # Arguments
-    /// * hash: block's header hash
-    /// * block: block to acknowledge
-    async fn acknowledge_block(&mut self, hash: Hash, block: Block) -> Result<(), ConsensusError> {
-        // if already in waiting structures, promote them if possible and quit
-        {
-            let (in_future, waiting_deps) = (
-                self.future_incoming_blocks.contains(&hash),
-                self.dependency_waiting_blocks.has_missing_deps(&hash),
-            );
-            if waiting_deps {
-                self.dependency_waiting_blocks.promote(&hash)?;
-            }
-            if in_future || waiting_deps {
-                return Ok(Default::default());
-            }
-        }
-
-        info!("Add block hash:{}", hash);
-        let header = block.header.clone();
-        self.block_db
-            .acknowledge_block(hash, block, &mut self.selector, self.current_slot);
-        Ok(())
-    }
-
     /// Manages received protocolevents.
     ///
     /// # Arguments
