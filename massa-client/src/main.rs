@@ -164,7 +164,7 @@ fn main() {
     )
     .new_command(
         "addresses_info",
-        "return the specified addresses balance for current final block and best parents parameters: list of addresses separated by , inside \"\"",
+        "return the specified addresses balance for current final block and best parents parameters: list of addresses separated by ,  (no space).",
         1,
         1, //max nb parameters
         true,
