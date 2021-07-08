@@ -8,6 +8,7 @@ use crate::network::connection_controller::{
 use futures::{
     future::try_join, future::FusedFuture, stream::FuturesUnordered, FutureExt, StreamExt,
 };
+use log::{debug, info};
 use rand::{rngs::StdRng, FromEntropy, RngCore};
 use std::collections::{hash_map, HashMap, HashSet};
 use std::error::Error;
@@ -21,8 +22,20 @@ use tokio::time::{timeout, Duration};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NodeId(PublicKey);
+
+impl std::fmt::Display for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl std::fmt::Debug for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 #[derive(Clone, Debug)]
 enum ProtocolCommand {}
@@ -61,9 +74,12 @@ pub struct ProtocolController {
 
 impl ProtocolController {
     pub async fn new(cfg: &ProtocolConfig) -> BoxResult<Self> {
+        debug!("starting protocol controller");
+
+        // instantiate connection controller
         let connection_controller = ConnectionController::new(&cfg.network).await?;
 
-        //generate our own random PublicKey (and therefore NodeId) and keep private key
+        // generate our own random PublicKey (and therefore NodeId) and keep private key
         let private_key;
         let self_node_id;
         {
@@ -72,6 +88,7 @@ impl ProtocolController {
             private_key = SignatureEngine::generate_random_private_key(&mut rng);
             self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
         }
+        debug!("local protocol node_id={:?}", self_node_id);
 
         // launch worker
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(1024);
@@ -88,6 +105,8 @@ impl ProtocolController {
             )
             .await;
         });
+
+        debug!("protocol controller ready");
 
         Ok(ProtocolController {
             protocol_event_rx,
@@ -107,11 +126,13 @@ impl ProtocolController {
 
     //stop the protocol controller
     pub async fn stop(mut self) {
+        debug!("stopping protocol controller");
         drop(self.protocol_command_tx);
         while let Some(_) = self.protocol_event_rx.next().await {}
         self.protocol_controller_handle
             .await
             .expect("failed joining protocol controller");
+        debug!("protocol controller stopped");
     }
 }
 
@@ -152,6 +173,9 @@ async fn protocol_controller_fn(
                     if !running_handshakes.insert(connection_id) {
                         panic!("expect that the id is not already in running_handshakes");
                     }
+
+                    debug!("starting handshake with connection_id={:?}", connection_id);
+
                     let messsage_timeout_copy = cfg.message_timeout;
                     let handshake_fn_handle = tokio::spawn(async move {
                         handshake_fn(
@@ -183,11 +207,14 @@ async fn protocol_controller_fn(
 
 
             // wait for a handshake future to complete
-            res = handshake_futures.next() => match res {
+            Some(res) = handshake_futures.next() => match res {
                 // a handshake finished, and succeeded
-                Some(Ok((new_connection_id, Ok((new_node_id, socket_reader, socket_writer))))) =>  {
+                Ok((new_connection_id, Ok((new_node_id, socket_reader, socket_writer)))) =>  {
+                    debug!("handshake with connection_id={:?} succeeded => node_id={:?}", new_connection_id, new_node_id);
+
                     // connection was banned in the meantime
                     if !running_handshakes.remove(&new_connection_id) {
+                        debug!("connection_id={:?}, node_id={:?} peer was banend while handshaking", new_connection_id, new_node_id);
                         connection_controller
                             .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                             .await;
@@ -197,12 +224,15 @@ async fn protocol_controller_fn(
                     match active_nodes.entry(new_node_id) {
                         // we already have this node ID
                         hash_map::Entry::Occupied(_) => {
+                            debug!("connection_id={:?}, node_id={:?} protocol channel would be redundant", new_connection_id, new_node_id);
                             connection_controller
                                 .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                                 .await;
                         },
                         // we don't have this node ID
                         hash_map::Entry::Vacant(entry) => {
+                            info!("established protocol channel with connection_id={:?} => node_id={:?}", new_connection_id, new_node_id);
+
                             // spawn node_controller_fn
                             let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1024);
                             let node_event_tx_clone = node_event_tx.clone();
@@ -223,46 +253,49 @@ async fn protocol_controller_fn(
                     }
                 },
                 // a handshake finished and failed
-                Some(Ok((connection_id, Err(err)))) => {
-                    log::error!("handshake:{:?} return an error:{:?}", connection_id, err);
+                Ok((connection_id, Err(err))) => {
+                    debug!("handshake failed with connection_id={:?}: {:?}", connection_id, err);
                     running_handshakes.remove(&connection_id);
                     connection_controller.connection_closed(connection_id, ConnectionClosureReason::Failed).await;
                 },
-                Some(Err(err)) => panic!("running handshake future await returned an error:{:?}", err),
-                None => (),
+                Err(err) => panic!("running handshake future await returned an error:{:?}", err)
             },
 
             // event received from a node
-            Some(NodeEvent(from_node_id, event)) = node_event_rx.next() =>  match event {
+            event = node_event_rx.next() =>  match event {
                 // received a list of peers
-                NodeEventType::ReceivedPeerList(lst) => {
+                Some(NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst))) => {
+                    debug!("node_id={:?} sent us a peer list: {:?}", from_node_id, lst);
                     let (connection_id, _, _) = active_nodes.get(&from_node_id).expect("event from msising node");
                     connection_controller.connection_alive(*connection_id).await;
                     connection_controller.merge_advertised_peer_list(lst).await;
                 }
                 // received block (TODO test only)
-                NodeEventType::ReceivedBlock(data) => controller_event_tx
+                Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => controller_event_tx
                     .send(ProtocolEvent::ReceivedBlock(data))
                     .await
                     .expect("controller event tx failed"),
                 // received transaction (TODO test only)
-                NodeEventType::ReceivedTransaction(data) => controller_event_tx
+                Some(NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data))) => controller_event_tx
                     .send(ProtocolEvent::ReceivedTransaction(data))
                     .await
                     .expect("controller event tx failed"),
                 // connection closed
-                NodeEventType::Closed(reason) => {
+                Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
                     let (connection_id, _, handle) = active_nodes.remove(&from_node_id).expect("event from msising node");
+                    info!("protocol channel closed peer_id={:?}", from_node_id);
                     connection_controller.connection_closed(connection_id, reason).await;
                     handle.await.expect("could not join node handle");
                 },
                 // asked peer list
-                NodeEventType::AskedPeerList => {
+                Some(NodeEvent(from_node_id, NodeEventType::AskedPeerList)) => {
+                    debug!("node_id={:?} asked us for peer list", from_node_id);
                     let (_, node_command_tx, _) = active_nodes.get(&from_node_id).expect("event received from missing node");
                     node_command_tx
                         .send(NodeCommand::SendPeerList(connection_controller.get_advertisable_peer_list().await))
                         .await.expect("controller event tx failed");
-                }
+                },
+                None => panic!("node_event_rx died")
             }
 
         } //end select!
@@ -392,8 +425,10 @@ async fn node_controller_fn(
     mut node_command_rx: Receiver<NodeCommand>,
     node_event_tx: Sender<NodeEvent>,
 ) {
+    debug!("node_controller_fn start node_id={:?}", node_id);
+
     let (writer_command_tx, writer_command_rx) = mpsc::channel::<Message>(1024);
-    let (writer_event_tx, writer_event_rx) = tokio::sync::oneshot::channel::<bool>(); // true = OK, false = ERROR
+    let (writer_event_tx, writer_event_rx) = oneshot::channel::<bool>(); // true = OK, false = ERROR
     let mut fused_writer_event_rx = writer_event_rx.fuse();
 
     let cfg_copy = cfg.clone();
@@ -465,6 +500,7 @@ async fn node_controller_fn(
             },
 
             _ = interval.tick() => {
+                debug!("timer-based asking node_id={:?} for peer list", node_id);
                 writer_command_tx.send(Message::AskPeerList).await.expect("writer disappeared");
             }
         }
@@ -486,12 +522,14 @@ async fn node_controller_fn(
         .send(NodeEvent(node_id, NodeEventType::Closed(exit_reason)))
         .await
         .expect("node_event_tx already closed");
+
+    debug!("node_controller_fn close node_id={:?}", node_id);
 }
 
 async fn node_writer_fn(
     cfg: ProtocolConfig,
     mut socket_writer: WriteBinder<OwnedWriteHalf>,
-    writer_event_tx: tokio::sync::oneshot::Sender<bool>,
+    writer_event_tx: oneshot::Sender<bool>,
     mut writer_command_rx: Receiver<Message>,
 ) {
     let write_timeout = cfg.message_timeout;

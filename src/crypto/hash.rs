@@ -31,8 +31,20 @@ impl std::fmt::Display for HashError {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
+
+impl std::fmt::Display for Hash {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
+
+impl std::fmt::Debug for Hash {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
 
 impl Hash {
     /// Construct a new engine.

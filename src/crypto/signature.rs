@@ -12,15 +12,27 @@ impl std::error::Error for SignatureError {}
 impl std::fmt::Display for SignatureError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            SignatureError::ParseError => write!(f, "Parse  Error"),
+            SignatureError::ParseError => write!(f, "Parse error"),
         }
     }
 }
 
 /// Private Key used to sign messages
 /// Generated using SignatureEngine.
-#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct PrivateKey(secp256k1::SecretKey);
+
+impl std::fmt::Display for PrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
+
+impl std::fmt::Debug for PrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
 
 impl PrivateKey {
     /// Serialize a PrivateKey using bs58 encoding with checksum.
@@ -204,8 +216,20 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
 /// Public key used to check if a message was encoded
 /// by the corresponding PublicKey.
 /// Generated from the PrivateKey using SignatureEngine
-#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct PublicKey(secp256k1::PublicKey);
+
+impl std::fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
+
+impl std::fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
 
 impl PublicKey {
     /// Serialize a PublicKey using bs58 encoding with checksum.
@@ -403,8 +427,20 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
 }
 
 /// Signature generated from a message and a privateKey.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Signature(secp256k1::Signature);
+
+impl std::fmt::Display for Signature {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
+
+impl std::fmt::Debug for Signature {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.serialize_bs58_check())
+    }
+}
 
 impl Signature {
     /// Serialize a Signature using bs58 encoding with checksum.
