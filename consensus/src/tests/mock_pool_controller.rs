@@ -10,7 +10,7 @@ use tokio::{
 const CHANNEL_SIZE: usize = 256;
 
 pub struct MockPoolController {
-    serialization_context: SerializationContext,
+    _serialization_context: SerializationContext,
     pub pool_command_rx: mpsc::Receiver<PoolCommand>,
 }
 
@@ -19,7 +19,7 @@ impl MockPoolController {
         let (pool_command_tx, pool_command_rx) = mpsc::channel::<PoolCommand>(CHANNEL_SIZE);
         (
             MockPoolController {
-                serialization_context,
+                _serialization_context: serialization_context,
                 pool_command_rx,
             },
             PoolCommandSender(pool_command_tx),
@@ -43,6 +43,7 @@ impl MockPoolController {
         }
     }
 
+    /*
     // ignore all commands while waiting for a futrue
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
         &mut self,
@@ -51,13 +52,14 @@ impl MockPoolController {
         loop {
             tokio::select!(
                 res = &mut future => return res,
-                cmd = self.wait_command(0.into(), |cmd| Some(cmd)) => match cmd {
+                cmd = self.pool_command_rx.recv() => match cmd {
                     Some(_) => {},
                     None => return future.await,  // if the controlled dies, wait for the future to finish
                 }
             );
         }
     }
+    */
 }
 
 // a structure that ignores pool commands
@@ -73,11 +75,16 @@ impl PoolCommandSink {
             tokio::pin!(stop_rx);
             loop {
                 tokio::select! {
-                    _ = &mut stop_rx => { break; },
-                    _ = mock_pool_controller.pool_command_rx.recv() => {}
+                    _ = &mut stop_rx => return mock_pool_controller,
+                    cmd = mock_pool_controller.pool_command_rx.recv() => match cmd {
+                        Some(_) => {},
+                        None => {
+                            let _  = stop_rx.await;
+                            return mock_pool_controller
+                        }
+                    }
                 }
             }
-            mock_pool_controller
         });
         PoolCommandSink { stop_tx, handle }
     }

@@ -84,9 +84,9 @@ impl MockProtocolController {
         loop {
             tokio::select!(
                 res = &mut future => return res,
-                cmd = self.wait_command(0.into(), |cmd| Some(cmd)) => match cmd {
+                cmd = self.protocol_command_rx.recv() => match cmd {
                     Some(_) => {},
-                    None => return future.await,  // if the network controlled dies, wait for the future to finish
+                    None => return future.await,  // if the protocol controlled dies, wait for the future to finish
                 }
             );
         }
