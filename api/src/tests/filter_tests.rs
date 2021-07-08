@@ -563,6 +563,103 @@ async fn test_get_block_interval() {
     assert_eq!(obtained, expected);
 
     drop(filter);
+
+    // test link with storage
+    let (storage_command_tx, _storage_manager) = start_storage_controller(StorageConfig {
+        max_stored_blocks: 10,
+        path: "test".to_string(),
+        cache_capacity: 500,
+        flush_every_ms: None,
+    })
+    .unwrap();
+
+    let mut cfg = get_consensus_config();
+    cfg.t0 = 1000.into();
+
+    let mut blocks = HashMap::new();
+    let mut block_a = get_test_block();
+    block_a.header.slot = Slot::new(1, 0);
+    blocks.insert(block_a.header.compute_hash().unwrap(), block_a);
+
+    let mut block_b = get_test_block();
+    block_b.header.slot = Slot::new(1, 1);
+    blocks.insert(block_b.header.compute_hash().unwrap(), block_b.clone());
+
+    let mut block_c = get_test_block();
+    block_c.header.slot = Slot::new(2, 0);
+    blocks.insert(block_c.header.compute_hash().unwrap(), block_c);
+
+    storage_command_tx
+        .add_multiple_blocks(blocks)
+        .await
+        .unwrap();
+
+    let (filter, mut rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+            None => {}
+            _ => {}
+        }
+    });
+
+    let start: UTime = 50.into();
+    let end: UTime = 1000.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let expected = Vec::<(Hash, Slot)>::new();
+    let expected: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
+    assert_eq!(obtained, expected);
+    handle.await.unwrap();
+
+    let (filter, mut rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+            None => {}
+            _ => {}
+        }
+    });
+
+    let start: UTime = 1500.into();
+    let end: UTime = 2500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let mut expected = Vec::<(Hash, Slot)>::new();
+    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
+    let expected: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
+    assert_eq!(obtained, expected);
+    handle.await.unwrap();
 }
 
 #[tokio::test]
