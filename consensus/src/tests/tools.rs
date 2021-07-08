@@ -16,15 +16,15 @@ pub async fn validate_notpropagate_block(
     not_propagated_hash: Hash,
     timeout_ms: u64,
 ) -> bool {
-    let cmd = protocol_controller
+    let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            cmd @ ProtocolCommand::PropagateBlockHeader { .. } => return Some(cmd),
+            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
-    match cmd {
-        Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => !(not_propagated_hash == hash),
-        Some(_) | None => false,
+    match param {
+        Some(hash) => !(not_propagated_hash == hash),
+        None => false,
     }
 }
 
@@ -34,17 +34,15 @@ pub async fn validate_notpropagate_block_in_list(
     not_propagated_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) -> bool {
-    let cmd = protocol_controller
+    let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            cmd @ ProtocolCommand::PropagateBlockHeader { .. } => return Some(cmd),
+            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
-    match cmd {
-        Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
-            !not_propagated_hashs.contains(&hash)
-        }
-        Some(_) | None => false,
+    match param {
+        Some(hash) => !not_propagated_hashs.contains(&hash),
+        None => false,
     }
 }
 
@@ -53,19 +51,19 @@ pub async fn validate_propagate_block_in_list(
     valid_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) -> Hash {
-    let cmd = protocol_controller
+    let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            cmd @ ProtocolCommand::PropagateBlockHeader { .. } => return Some(cmd),
+            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
-    match cmd {
-        Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
+    match param {
+        Some(hash) => {
             trace!("receive hash:{}", hash);
             assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
             hash
         }
-        Some(_) | None => panic!("Hash not propagated."),
+        None => panic!("Hash not propagated."),
     }
 }
 
@@ -74,14 +72,14 @@ pub async fn validate_ask_for_block(
     valid_hash: Hash,
     timeout_ms: u64,
 ) -> Hash {
-    let cmd = protocol_controller
+    let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            cmd @ ProtocolCommand::WishlistDelta { .. } => return Some(cmd),
+            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
             _ => None,
         })
         .await;
-    match cmd {
-        Some(ProtocolCommand::WishlistDelta { new, .. }) => {
+    match param {
+        Some(new) => {
             trace!("asking for hashes:{:?}", new);
             assert!(new.contains(&valid_hash), "not the valid hash asked for");
             assert_eq!(new.len(), 1);
@@ -96,19 +94,18 @@ pub async fn validate_does_not_ask_for_block(
     hash: &Hash,
     timeout_ms: u64,
 ) {
-    let cmd = protocol_controller
+    let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            cmd @ ProtocolCommand::WishlistDelta { .. } => return Some(cmd),
+            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
             _ => None,
         })
         .await;
-    match cmd {
-        Some(ProtocolCommand::WishlistDelta { new, .. }) => {
+    match param {
+        Some(new) => {
             if new.contains(hash) {
                 panic!("unexpected ask for block {:?}", hash);
             }
         }
-        Some(_) => {}
         None => {}
     }
 }
@@ -118,17 +115,14 @@ pub async fn validate_propagate_block(
     valid_hash: Hash,
     timeout_ms: u64,
 ) {
-    let cmd = protocol_controller
+    let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            cmd @ ProtocolCommand::PropagateBlockHeader { .. } => return Some(cmd),
+            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
-    match cmd {
-        Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
-            assert_eq!(valid_hash, hash, "not the valid hash propagated")
-        }
-        Some(_) => {}
+    match param {
+        Some(hash) => assert_eq!(valid_hash, hash, "not the valid hash propagated"),
         None => panic!("Block not propagated before timeout."),
     }
 }
@@ -153,17 +147,14 @@ pub async fn validate_send_block(
     valid_hash: Hash,
     timeout_ms: u64,
 ) {
-    let cmd = protocol_controller
+    let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            cmd @ ProtocolCommand::SendBlock { .. } => return Some(cmd),
+            ProtocolCommand::SendBlock { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
-    match cmd {
-        Some(ProtocolCommand::SendBlock { hash, .. }) => {
-            assert_eq!(valid_hash, hash, "not the valid hash propagated")
-        }
-        Some(_) => {}
+    match param {
+        Some(hash) => assert_eq!(valid_hash, hash, "not the valid hash propagated"),
         None => panic!("Block not propagated before timeout."),
     }
 }

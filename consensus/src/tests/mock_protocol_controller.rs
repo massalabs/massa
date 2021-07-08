@@ -32,13 +32,9 @@ impl MockProtocolController {
         )
     }
 
-    pub async fn wait_command<F>(
-        &mut self,
-        timeout: UTime,
-        filter_map: F,
-    ) -> Option<ProtocolCommand>
+    pub async fn wait_command<F, T>(&mut self, timeout: UTime, filter_map: F) -> Option<T>
     where
-        F: Fn(ProtocolCommand) -> Option<ProtocolCommand>,
+        F: Fn(ProtocolCommand) -> Option<T>,
     {
         let timer = sleep(timeout.into());
         tokio::pin!(timer);
