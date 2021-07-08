@@ -248,6 +248,17 @@ async fn run(cfg: config::Config) {
                             warn!("could not send get_stats response in api_event_receiver.wait_event");
                         }
                     },
+                Ok(ApiEvent::GetActiveStakers(response_tx)) => {
+                    massa_trace!("massa-node.main.run.select.api_event.get_active_stakers", {});
+                    if response_tx.send(
+                        consensus_command_sender
+                        .get_active_stakers()
+                            .await
+                            .expect("get_active_stakers failed in api_event_receiver.wait_event")
+                        ).is_err() {
+                            warn!("could not send get_active_stakers response in api_event_receiver.wait_event");
+                        }
+                }
                 Ok(ApiEvent::RegisterStakingPrivateKeys(key)) => {
                     massa_trace!("massa-node.main.run.select.api_event.register_staking_private_keys", {});
                     consensus_command_sender
@@ -272,7 +283,7 @@ async fn run(cfg: config::Config) {
                         ).is_err() {
                             warn!("could not send get_staking_addresses response in api_event_receiver.wait_event");
                         }
-                    },
+                },
                 Err(err) => {
                     error!("api communication error: {:?}", err);
                     break;

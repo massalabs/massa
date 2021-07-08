@@ -76,6 +76,7 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
+    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, u64>>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
     GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
@@ -716,6 +717,19 @@ impl ConsensusWorker {
                     ))
                 })
             }
+            ConsensusCommand::GetActiveStakers(response_tx) => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_active_stakers",
+                    {}
+                );
+                let res = self.get_active_stakers()?;
+                response_tx.send(res).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get_active_stakers response: {:?}",
+                        err
+                    ))
+                })
+            }
             ConsensusCommand::RegisterStakingPrivateKeys(keys) => {
                 for key in keys.into_iter() {
                     let public = crypto::derive_public_key(&key);
@@ -767,6 +781,21 @@ impl ConsensusWorker {
             stale_block_count,
             clique_count,
         })
+    }
+
+    fn get_active_stakers(&self) -> Result<Option<HashMap<Address, u64>>, ConsensusError> {
+        let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
+        let mut res: HashMap<Address, u64> = HashMap::new();
+        for thread in 0..self.cfg.thread_count {
+            match self.pos.get_lookback_roll_count(cur_cycle, thread) {
+                Ok(rolls) => {
+                    res.extend(&rolls.0);
+                }
+                Err(ConsensusError::PosCycleUnavailable(_)) => return Ok(None),
+                Err(err) => return Err(err),
+            }
+        }
+        Ok(Some(res))
     }
 
     fn get_addresses_info(

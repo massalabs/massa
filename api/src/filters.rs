@@ -210,6 +210,7 @@ pub enum ApiEvent {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
+    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, u64>>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
     GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
@@ -517,6 +518,14 @@ pub fn get_filter(
         .and_then(move || get_stats(evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
+    let get_active_stakers = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("active_stakers"))
+        .and(warp::path::end())
+        .and_then(move || get_active_stakers(evt_tx.clone()));
+
+    let evt_tx = event_tx.clone();
     let staking_addresses = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -547,6 +556,7 @@ pub fn get_filter(
         .or(operations)
         .or(next_draws)
         .or(get_stats)
+        .or(get_active_stakers)
         .or(staking_addresses)
         .or(register_staking_private_keys)
         .or(remove_staking_addresses)
@@ -2102,4 +2112,51 @@ async fn get_staking_addresses(
         Ok(addresses) => addresses,
     };
     Ok(warp::reply::json(&json!(addresses)).into_response())
+}
+
+async fn retrieve_active_stakers(
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<Option<HashMap<Address, u64>>, ApiError> {
+    massa_trace!("api.filters.retrieve_active_stakers", {});
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetActiveStakers(response_tx))
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get active stakers: {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve active stakers: {0}", e))
+    })
+}
+
+async fn get_active_stakers(
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_active_stakers", {});
+    let stats = match retrieve_active_stakers(&event_tx).await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving active stkaers: {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(None) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": "active staking cycle not available/complete"
+                })),
+                warp::http::StatusCode::NOT_FOUND,
+            )
+            .into_response())
+        }
+        Ok(Some(stats)) => stats,
+    };
+    Ok(warp::reply::json(&json!(stats)).into_response())
 }
