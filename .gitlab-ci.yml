@@ -45,7 +45,7 @@ build:
 
 # Use cargo to release build the project
 build:
-  stage: Release build
+  stage: build
   image: "rust:latest"
   script:
     - cargo build --release
