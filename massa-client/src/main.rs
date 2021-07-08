@@ -24,7 +24,7 @@ use clap::Arg;
 use communication::network::PeerInfo;
 use consensus::ExportBlockStatus;
 use consensus::LedgerDataExport;
-use crypto::hash::Hash;
+use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
 use models::AddressRollState;
@@ -442,9 +442,9 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
 
 fn wallet_new_privkey(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &mut data.wallet {
-        let priv_key = crypto::generate_random_private_key();
+        let priv_key = generate_random_private_key();
         wallet.add_private_key(priv_key)?;
-        let pub_key = crypto::derive_public_key(&priv_key);
+        let pub_key = derive_public_key(&priv_key);
         let addr = Address::from_public_key(&pub_key).map_err(|err| {
             ReplError::GeneralError(format!(
                 "internal error error during address generation:{}",
