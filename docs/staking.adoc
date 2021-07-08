@@ -46,3 +46,21 @@ You can check if your rolls are active with the same command:
 ----
 wallet_info
 ----
+
+
+## Selling rolls
+
+If you want to get back some or all of your coins, sell rolls the same way you bought them:
+----
+buy_rolls <address>  <roll count> <fee>
+----
+
+It should take some time again for your coins to be credited, and they will be frozen for 1 cycle before you can spend them, again check with:
+----
+wallet_info
+----
+
+
+## Next steps
+
+* link:transaction.adoc[Send transactions].
