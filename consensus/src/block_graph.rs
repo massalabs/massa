@@ -120,38 +120,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             })
             .collect::<Result<_, _>>()?;
 
-        let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
-        block
-            .block
-            .operations
-            .iter()
-            .map(|op| {
-                let addrs = op
-                    .get_involved_addresses(&Address::from_public_key(
-                        &block.block.header.content.creator,
-                    )?)
-                    .map_err(|err| {
-                        ModelsError::DeserializeError(
-                            "could not get invoolved addresses".to_string(),
-                        )
-                    })?;
-                let id = op.get_operation_id(&context)?;
-                for ad in addrs.iter() {
-                    if let Some(entry) = addresses_to_operations.get_mut(ad) {
-                        entry.insert(id);
-                    } else {
-                        let mut set = HashSet::new();
-                        set.insert(id);
-                        addresses_to_operations.insert(*ad, set);
-                    }
-                }
-                Ok(())
-            })
-            .collect::<Result<(), ModelsError>>()?;
-        let addresses_to_operations = addresses_to_operations
-            .into_iter()
-            .map(|(ad, vec)| (ad, vec.into_iter().collect()))
-            .collect();
+        let addresses_to_operations = block.block.involved_addresses(&context)?;
         Ok(ActiveBlock {
             block: block.block,
             parents: block.parents,
@@ -1458,24 +1427,7 @@ impl BlockGraph {
             }
         };
         let serialization_context = models::get_serialization_context();
-        let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
-        valid_block
-            .operations
-            .iter()
-            .map(|op| {
-                let addrs = op.get_involved_addresses(&Address::from_public_key(
-                    &valid_block.header.content.creator,
-                )?)?;
-                let id = op.get_operation_id(&serialization_context)?;
-                for ad in addrs.iter() {
-                    addresses_to_operations
-                        .entry(*ad)
-                        .or_insert_with(|| HashSet::with_capacity(1))
-                        .insert(id);
-                }
-                Ok(())
-            })
-            .collect::<Result<(), ConsensusError>>()?;
+        let addresses_to_operations = valid_block.involved_addresses(&serialization_context)?;
 
         // add block to graph
         self.add_block_to_graph(

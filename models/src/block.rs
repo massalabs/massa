@@ -1,7 +1,7 @@
 use crate::{
-    array_from_slice, u8_from_slice, with_serialization_context, DeserializeCompact,
-    DeserializeMinBEInt, ModelsError, Operation, SerializationContext, SerializeCompact,
-    SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
+    DeserializeMinBEInt, ModelsError, Operation, OperationId, SerializationContext,
+    SerializeCompact, SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -11,8 +11,11 @@ use crypto::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use std::str::FromStr;
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryInto,
+};
 
 pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
@@ -79,6 +82,39 @@ impl Block {
 
     pub fn bytes_count(&self, context: &SerializationContext) -> Result<u64, ModelsError> {
         Ok(self.to_bytes_compact(context)?.len() as u64)
+    }
+
+    pub fn involved_addresses(
+        &self,
+        context: &SerializationContext,
+    ) -> Result<HashMap<Address, HashSet<OperationId>>, ModelsError> {
+        let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
+        self.operations
+            .iter()
+            .map(|op| {
+                let addrs = op
+                    .get_involved_addresses(&Address::from_public_key(
+                        &self.header.content.creator,
+                    )?)
+                    .map_err(|err| {
+                        ModelsError::DeserializeError(
+                            "could not get invoolved addresses".to_string(),
+                        )
+                    })?;
+                let id = op.get_operation_id(&context)?;
+                for ad in addrs.iter() {
+                    if let Some(entry) = addresses_to_operations.get_mut(ad) {
+                        entry.insert(id);
+                    } else {
+                        let mut set = HashSet::new();
+                        set.insert(id);
+                        addresses_to_operations.insert(*ad, set);
+                    }
+                }
+                Ok(())
+            })
+            .collect::<Result<(), ModelsError>>()?;
+        Ok(addresses_to_operations)
     }
 }
 
