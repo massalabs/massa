@@ -195,10 +195,12 @@ impl MockEstablisherInterface {
             ))?)
     }
 
+    /*
     // purges/refuses all pending connection attempts from controller
     pub async fn purge_connection_attempts_from_controller(&mut self) {
         while let Ok((_, _, _, resp_tx)) = self.connection_connector_rx.try_recv() {
             let _ = resp_tx.send(false);
         }
     }
+    */
 }

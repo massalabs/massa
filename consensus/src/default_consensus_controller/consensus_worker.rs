@@ -167,14 +167,14 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     ) -> Result<HashMap<Hash, Block>, ConsensusError> {
         // if already in waiting structures, promote them if possible and quit
         {
-            let (in_future, in_dep) = (
+            let (in_future, waiting_deps) = (
                 self.future_incoming_blocks.contains(&hash),
-                self.dependency_waiting_blocks.contains(&hash),
+                self.dependency_waiting_blocks.has_missing_deps(&hash),
             );
-            if in_dep {
+            if waiting_deps {
                 self.dependency_waiting_blocks.promote(&hash)?;
             }
-            if in_future || in_dep {
+            if in_future || waiting_deps {
                 return Ok(HashMap::new());
             }
         }
@@ -333,7 +333,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                 // todo (see issue #108)
             }
             ProtocolEventType::AskedBlock(block_hash) => {
-                if let Some(block) = self.block_db.get_active_block(block_hash) {
+                if let Some(_block) = self.block_db.get_active_block(block_hash) {
                     massa_trace!("sending_block", {"dest_node_id": source_node_id, "block": block_hash});
                     /*
                         TODO send full block

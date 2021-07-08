@@ -127,8 +127,11 @@ impl DependencyWaitingBlocks {
             .collect()
     }
 
-    pub fn contains(&self, hash: &Hash) -> bool {
-        self.blocked_to_dep.contains_key(hash)
+    pub fn has_missing_deps(&self, hash: &Hash) -> bool {
+        if let Some((_, _, deps)) = self.blocked_to_dep.get(hash) {
+            return !deps.is_empty();
+        }
+        return false;
     }
 
     pub fn promote(&mut self, hash: &Hash) -> Result<(), ConsensusError> {
@@ -481,51 +484,6 @@ mod tests {
         assert!(hashset.contains(&hash_a));
         assert_eq!(hashset.len(), 1);
         assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
-    }
-
-    #[test]
-    fn test_insert_complex_chain_dependencies() {
-        let mut deps = DependencyWaitingBlocks::new(2);
-        let (hash_a, block_a) = create_standalone_block(1, 0);
-        let (hash_b, block_b) = create_standalone_block(2, 0);
-        let (hash_c, block_c) = create_standalone_block(3, 0);
-        let (hash_d, block_d) = create_standalone_block(1, 1);
-        let (hash_e, block_e) = create_standalone_block(2, 1);
-        let (hash_f, block_f) = create_standalone_block(3, 1);
-
-        let deps_b: HashSet<Hash> = vec![hash_a, hash_d].into_iter().collect();
-        let removed = deps.insert(hash_b, block_b, deps_b).unwrap();
-        assert_eq!(removed.len(), 0);
-        assert_eq!(deps.vec_blocked, vec![(1, hash_b)]);
-
-        let deps_f: HashSet<Hash> = vec![hash_b, hash_e].into_iter().collect();
-        let removed = deps.insert(hash_f, block_f, deps_f).unwrap();
-        assert_eq!(removed.len(), 0);
-        assert_eq!(deps.vec_blocked, vec![(3, hash_b), (4, hash_f)]);
-
-        let (b, hs) = deps.valid_block_obtained(&hash_a).unwrap();
-        assert!(b.is_none());
-        assert_eq!(deps.vec_blocked, vec![(3, hash_b), (4, hash_f)]);
-        assert_eq!(hs.len(), 1);
-        assert!(hs.contains(&hash_b));
-
-        let deps_c: HashSet<Hash> = vec![hash_b, hash_e].into_iter().collect();
-        let removed = deps.insert(hash_c, block_c, deps_c).unwrap();
-        assert_eq!(removed.len(), 1);
-        assert!(removed.contains_key(&hash_f));
-        assert_eq!(deps.vec_blocked, vec![(6, hash_b), (7, hash_c)]);
-
-        let deps_e: HashSet<Hash> = vec![hash_d].into_iter().collect();
-        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
-        assert!(removed.contains_key(&hash_c));
-        assert_eq!(removed.len(), 2); // from that point i'm not sure about sequence numbers
-        assert_eq!(deps.vec_blocked, vec![(9, hash_e)]);
-
-        let (b, hs) = deps.valid_block_obtained(&hash_d).unwrap();
-        assert!(b.is_none());
-        assert_eq!(deps.vec_blocked, vec![(9, hash_e)]);
-        assert_eq!(hs.len(), 1);
-        assert!(hs.contains(&hash_e));
     }
 
     #[test]
