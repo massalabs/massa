@@ -1,12 +1,21 @@
 use bs58;
 use failure::{bail, Error};
 use secp256k1;
-pub use secp256k1::PublicKey;
-pub use secp256k1::SecretKey;
+pub use secp256k1::{PublicKey,SecretKey,PublicKeyFormat};
+use sha2::{Sha256, Digest};
 
+/// Useful constants
+pub const SECRET_KEY_SIZE: usize = secp256k1::util::SECRET_KEY_SIZE;
+pub const COMPRESSED_PUBLIC_KEY_SIZE: usize = secp256k1::util::COMPRESSED_PUBLIC_KEY_SIZE;
+pub const SIGNATURE_SIZE: usize = secp256k1::util::SIGNATURE_SIZE;
+
+
+/// Trait representing an object that can be converted to base58
 pub trait B58able: Sized {
     type Err;
+    /// Convert to base58check string
     fn into_b58check(&self) -> String;
+    /// Parse from a base58check string
     fn from_b58check(in_str: &str) -> Result<Self, Self::Err>;
 }
 
@@ -17,13 +26,18 @@ impl B58able for SecretKey {
         bs58::encode(self.serialize().to_vec()).into_string()
     }
 
+    /// Convert to base58
+    ///
+    /// # Arguments
+    ///
+    /// * `in_str` - A string slice that holds the base58check encoding
+    ///
     fn from_b58check(in_str: &str) -> Result<SecretKey, Error> {
         let decoded = bs58::decode(in_str).into_vec()?;
-        const OUT_LEN: usize = 32;
-        if decoded.len() != OUT_LEN {
+        if decoded.len() != SECRET_KEY_SIZE {
             bail!("Wrong decoded length");
         }
-        let mut out_array: [u8; OUT_LEN] = [0; OUT_LEN];
+        let mut out_array = [0u8; SECRET_KEY_SIZE];
         out_array.copy_from_slice(decoded.as_slice());
         let res = SecretKey::parse(&out_array)?;
         Ok(res)
@@ -39,14 +53,49 @@ impl B58able for PublicKey {
 
     fn from_b58check(in_str: &str) -> Result<PublicKey, Error> {
         let decoded = bs58::decode(in_str).into_vec()?;
-        const OUT_LEN: usize = 33;
-        if decoded.len() != OUT_LEN {
+        if decoded.len() != COMPRESSED_PUBLIC_KEY_SIZE {
             bail!("Wrong decoded length");
         }
-        let mut out_array: [u8; OUT_LEN] = [0; OUT_LEN];
+        let mut out_array = [0u8; COMPRESSED_PUBLIC_KEY_SIZE];
         out_array.copy_from_slice(decoded.as_slice());
         let res = PublicKey::parse_compressed(&out_array)?;
         Ok(res)
+    }
+}
+
+/// Trait representing an object that can sign messages
+pub trait SignatureProducer {
+    /// Generate message signature
+    fn generate_signature(&self, data: &[u8]) -> Result<[u8 ; SIGNATURE_SIZE], Error>;
+}
+
+impl SignatureProducer for SecretKey {
+    fn generate_signature(&self, data: &[u8]) -> Result<[u8 ; SIGNATURE_SIZE], Error> {
+        let mut hasher = Sha256::new();
+        hasher.input(data);
+        let hashed = hasher.result();
+        let msg = secp256k1::Message::parse_slice(&hashed[..])?;
+        let (sig, _) = secp256k1::sign(&msg, &self);
+        Ok(sig.serialize())
+    }
+}
+
+/// Trait representing an object that can verify signed messages
+pub trait SignatureVerifier {
+    /// Verify message signature
+    fn verify_signature(&self, data: &[u8], sig: &[u8 ; SIGNATURE_SIZE]) -> Result<(), Error>;
+}
+
+impl SignatureVerifier for PublicKey {
+    fn verify_signature(&self, data: &[u8], sig: &[u8 ; SIGNATURE_SIZE]) -> Result<(), Error> {
+        let mut hasher = Sha256::new();
+        hasher.input(data);
+        let hashed = hasher.result();
+        let msg = secp256k1::Message::parse_slice(&hashed[..])?;
+        match secp256k1::verify(&msg, &secp256k1::Signature::parse(sig), &self) {
+            true => Ok(()),
+            false => bail!("Signature verification failed")
+        }
     }
 }
 

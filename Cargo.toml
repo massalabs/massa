@@ -23,7 +23,7 @@ incremental = false
 overflow-checks = false
 
 [dependencies]
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "0.2.13", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 toml = { version = "0.5" }
 failure = { version = "0.1" }
@@ -33,3 +33,4 @@ stderrlog = { version = "0.4" }
 libsecp256k1 = { version = "0.3" }
 bs58 = { version = "0.3", features=["check"] }
 rand = { version = "0.7" }
+sha2 = { version = "0.8.1" }

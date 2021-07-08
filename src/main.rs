@@ -19,8 +19,7 @@ async fn main() -> Result<(), failure::Error> {
         .get_matches();
 
     // load config
-    let config =
-        config::Config::from_toml(&std::fs::read_to_string(args.value_of("config").unwrap())?)?;
+    let config = config::Config::from_toml(&std::fs::read_to_string(args.value_of("config").unwrap())?)?;
 
     // setup logging
     stderrlog::new()
@@ -36,10 +35,8 @@ async fn main() -> Result<(), failure::Error> {
         .init()
         .unwrap();
 
-    // initialize rng
-
     // run network layer
-    network::run(&config.network).await?;
+    network::run(config.network).await?;
 
     // exit
     Ok(())
