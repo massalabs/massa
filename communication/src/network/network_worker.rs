@@ -35,6 +35,7 @@ pub enum NetworkCommand {
         header: BlockHeader,
     },
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
+    Ban(NodeId),
 }
 
 #[derive(Debug)]
@@ -427,34 +428,7 @@ impl NetworkWorker {
                 self.peer_info_db.peer_failed(&ip)?;
             }
             ConnectionClosureReason::Banned => {
-                self.peer_info_db.peer_banned(&ip)?;
-                // notify all other banned connections to close
-                // note: they must close using Normal reason or else risk of feedback loop
-                let target_ids =
-                    self.active_connections
-                        .iter()
-                        .filter_map(|(other_id, (other_ip, _))| {
-                            if *other_ip == ip {
-                                Some(other_id)
-                            } else {
-                                None
-                            }
-                        });
-                for target_id in target_ids {
-                    // connection_banned(connectionId)
-                    // remove the connectionId entry in running_handshakes
-                    self.running_handshakes.remove(&target_id);
-                    // find all active_node with this ConnectionId and send a NodeMessage::Close
-                    for (_, (c_id, node_tx, _)) in self.active_nodes.iter() {
-                        if c_id == target_id {
-                            node_tx.send(NodeCommand::Close).await.map_err(|_| {
-                                CommunicationError::ChannelError(
-                                    "node close command send failed".into(),
-                                )
-                            })?;
-                        }
-                    }
-                }
+                // nothing here, because peer_info_db.peer_banned called in NetworkCommand::Ban
             }
         }
         if is_outgoing {
@@ -478,6 +452,36 @@ impl NetworkWorker {
         cmd: NetworkCommand,
     ) -> Result<(), CommunicationError> {
         match cmd {
+            NetworkCommand::Ban(node) => {
+                // get all connection IDs to ban
+                let mut ban_connection_ids: HashSet<ConnectionId> = HashSet::new();
+                if let Some((orig_conn_id, _, _)) = self.active_nodes.get(&node) {
+                    if let Some((orig_ip, _)) = self.active_connections.get(orig_conn_id) {
+                        self.peer_info_db.peer_banned(orig_ip)?;
+                        for (target_conn_id, (target_ip, _)) in self.active_connections.iter() {
+                            if target_ip == orig_ip {
+                                ban_connection_ids.insert(*target_conn_id);
+                            }
+                        }
+                    }
+                }
+                for ban_conn_id in ban_connection_ids.iter() {
+                    // remove the connectionId entry in running_handshakes
+                    self.running_handshakes.remove(&ban_conn_id);
+                }
+                for (conn_id, node_command_tx, _) in self.active_nodes.values() {
+                    if ban_connection_ids.contains(conn_id) {
+                        node_command_tx
+                            .send(NodeCommand::Close(ConnectionClosureReason::Banned))
+                            .await
+                            .map_err(|_| {
+                                CommunicationError::ChannelError(
+                                    "close node command send failed".into(),
+                                )
+                            })?;
+                    }
+                }
+            }
             NetworkCommand::SendBlockHeader { node, header } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
                     node_command_tx

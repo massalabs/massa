@@ -3,6 +3,7 @@ use super::{
     establisher::Establisher,
     network_worker::{NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker},
     peer_info_database::*,
+    ConnectionClosureReason,
 };
 use crate::common::NodeId;
 use crate::error::CommunicationError;
@@ -87,6 +88,14 @@ pub async fn start_network_controller(
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
+    pub async fn ban(&mut self, node_id: NodeId) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::Ban(node_id))
+            .await
+            .map_err(|_| CommunicationError::ChannelError("cound not send Ban command".into()))?;
+        Ok(())
+    }
+
     /// Send the order to send block.
     pub async fn send_block(
         &mut self,

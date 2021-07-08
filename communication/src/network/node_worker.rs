@@ -21,7 +21,7 @@ pub enum NodeCommand {
     /// Ask for a block from that node.
     AskForBlock(Hash),
     /// Close the node worker.
-    Close,
+    Close(ConnectionClosureReason),
 }
 
 /// Event types that node worker can emit
@@ -163,7 +163,10 @@ impl NodeWorker {
 
                 // node command
                 cmd = self.node_command_rx.recv() => match cmd {
-                    Some(NodeCommand::Close) => break,
+                    Some(NodeCommand::Close(r)) => {
+                        exit_reason = r;
+                        break;
+                    },
                     Some(NodeCommand::SendPeerList(ip_vec)) => {
                         writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(
                             |_| CommunicationError::ChannelError("send peer list node command send failed".into())
