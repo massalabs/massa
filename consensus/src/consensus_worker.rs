@@ -194,8 +194,13 @@ impl ConsensusWorker {
         for (hash, block) in popped_blocks.into_iter() {
             match block {
                 QueuedBlock::HeaderOnly(header) => {
-                    self.waiting_header.0.insert(hash, header);
-                    // todo ask for block content and process it
+                    // TODO check header dependencies
+
+                    // if header wasn't already waiting
+                    if self.waiting_header.0.insert(hash, header).is_none() {
+                        // ask for block content and process it
+                        self.protocol_command_sender.ask_for_block(hash).await?;
+                    }
                 }
                 QueuedBlock::FullBLock(b) => {
                     self.rec_acknowledge_block(hash, b).await?;

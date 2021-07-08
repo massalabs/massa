@@ -89,7 +89,6 @@ impl ProtocolCommandSender {
     ///
     /// # Arguments
     /// * hash : hash of the block header.
-    /// * node: the id of the node to ask from.
     pub async fn ask_for_block(&mut self, hash: Hash) -> Result<(), CommunicationError> {
         massa_trace!("ask_for_block_order", { "block": hash });
         self.0
