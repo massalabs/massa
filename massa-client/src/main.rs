@@ -278,7 +278,8 @@ fn main() {
                 repl.data.wallet = Some(wallet);
                 repl.activate_command("wallet_info");
                 repl.activate_command("wallet_new_privkey");
-                repl.activate_command("send_transaction");
+                repl.activate_command("send_buy_roll");
+                repl.activate_command("send_sell_roll");
             }
             Err(err) => {
                 println!(
