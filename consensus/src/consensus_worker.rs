@@ -299,7 +299,10 @@ impl ConsensusWorker {
 
         match res {
             // block is valid and was acknowledged
-            Ok((discarded, finals_blocks)) => {
+            Ok(UpdateConsensusReturn {
+                pruned: discarded,
+                finals: finals_blocks,
+            }) => {
                 // cancel discarded dependencies
                 self.dependency_waiting_blocks
                     .cancel(discarded.keys().copied().collect())?;

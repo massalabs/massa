@@ -266,6 +266,11 @@ fn create_genesis_block(
     ))
 }
 
+pub struct UpdateConsensusReturn {
+    pub pruned: HashMap<crypto::hash::Hash, Block>,
+    pub finals: HashMap<crypto::hash::Hash, Block>,
+}
+
 impl BlockGraph {
     /// Creates a new block_graph.
     ///
@@ -416,13 +421,7 @@ impl BlockGraph {
         block: Block,
         selector: &mut RandomSelector,
         current_slot: (u64, u8),
-    ) -> Result<
-        (
-            HashMap<crypto::hash::Hash, Block>,
-            HashMap<crypto::hash::Hash, Block>,
-        ),
-        BlockAcknowledgeError,
-    > {
+    ) -> Result<UpdateConsensusReturn, BlockAcknowledgeError> {
         massa_trace!("start_ack_new_block", {
             "block": hash,
             "thread": block.header.thread_number,
@@ -681,13 +680,7 @@ impl BlockGraph {
         &mut self,
         hash: Hash,
         block: Block,
-    ) -> Result<
-        (
-            HashMap<crypto::hash::Hash, Block>,
-            HashMap<crypto::hash::Hash, Block>,
-        ),
-        ConsensusError,
-    > {
+    ) -> Result<UpdateConsensusReturn, ConsensusError> {
         // basic checks
         if block.header.parents.len() != self.cfg.thread_count as usize
             || block.header.period_number == 0
@@ -772,7 +765,10 @@ impl BlockGraph {
             // block is incompatible with some final blocks
             let mut pruned = HashMap::with_capacity(1);
             pruned.insert(hash, block);
-            return Ok((pruned, HashMap::new()));
+            return Ok(UpdateConsensusReturn {
+                pruned,
+                finals: HashMap::new(),
+            });
         }
 
         // add block to structure
@@ -979,7 +975,10 @@ impl BlockGraph {
         // prune final blocks
         pruned_blocks.extend(removed_finals.clone());
 
-        Ok((pruned_blocks, removed_finals))
+        Ok(UpdateConsensusReturn {
+            pruned: pruned_blocks,
+            finals: removed_finals,
+        })
     }
 
     /// Prunes blocks from graph.
