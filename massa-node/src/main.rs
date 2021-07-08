@@ -209,6 +209,16 @@ async fn run(cfg: config::Config) {
                             warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
                         }
                     },
+                Ok(ApiEvent::GetLedgerData {addresses, response_tx}) => {
+                    massa_trace!("massa-node.main.run.select.api_event.get_sledger_data", {});
+                    if response_tx.send(
+                        consensus_command_sender
+                            .get_ledger_data(addresses )
+                            .await
+                        ).is_err() {
+                            warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
+                        }
+                    },
 
                 Err(err) => {
                     error!("api communication error: {:?}", err);

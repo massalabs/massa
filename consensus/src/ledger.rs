@@ -589,7 +589,7 @@ impl Ledger {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LedgerSubset {
     pub data: Vec<HashMap<Address, LedgerData>>,
 }
