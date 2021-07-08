@@ -11,6 +11,13 @@ pub struct Block {
     pub signature: Signature,
 }
 
+impl Block {
+    pub fn into_bytes(&self) -> Vec<u8> {
+        let mut s = flexbuffers::FlexbufferSerializer::new();
+        self.serialize(&mut s).unwrap();
+        s.take_buffer()
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
     pub creator: PublicKey,
