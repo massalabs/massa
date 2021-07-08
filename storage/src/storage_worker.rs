@@ -1,5 +1,6 @@
 use crypto::hash::Hash;
 use models::{block::Block, slot::Slot};
+use sled::Transactional;
 use sled::{transaction::ConflictableTransactionError, Db};
 use tokio::sync::{mpsc, oneshot};
 
@@ -28,18 +29,11 @@ impl BlockStorage {
     }
 
     pub fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
-        self.db.transaction(|db| {
-            let hash_to_block = match self.db.open_tree("hash_to_block") {
-                Ok(tree) => tree,
-                Err(e) => {
-                    return Err(ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(e.to_string()),
-                    ));
-                }
-            };
-            let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-            hash_to_block.insert(&hash.to_bytes(), block.into_bytes().as_slice())?;
-            slot_to_hash.insert(
+        let hash_to_block = self.db.open_tree("hash_to_block")?;
+        let slot_to_hash = self.db.open_tree("slot_to_hash")?;
+        (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
+            hash_tx.insert(&hash.to_bytes(), block.into_bytes().as_slice())?;
+            slot_tx.insert(
                 Slot::new(block.header.period_number, block.header.thread_number).into_bytes(),
                 &hash.to_bytes(),
             )?;
