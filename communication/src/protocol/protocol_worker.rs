@@ -726,11 +726,8 @@ impl ProtocolWorker {
         for op in block.operations.iter() {
             // check validity period
             if !(op
-                .content
-                .expire_period
-                .saturating_sub(self.operation_validity_periods)
-                ..=op.content.expire_period)
-                .contains(&block.header.content.slot.period)
+                .get_validity_range(self.operation_validity_periods)
+                .contains(&block.header.content.slot.period))
             {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_period",
                     { "node": source_node_id,"block_id":block_id, "block": block, "op": op });
