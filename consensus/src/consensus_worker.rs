@@ -184,8 +184,10 @@ impl ConsensusWorker {
 
         // process queued blocks
         let popped_blocks = self.future_incoming_blocks.pop_until(self.current_slot)?;
-        for (hash, block) in popped_blocks.into_iter() {
-            self.rec_acknowledge_block(hash, block).await?;
+        for (hash, _header, block) in popped_blocks.into_iter() {
+            if let Some(b) = block {
+                self.rec_acknowledge_block(hash, b).await?;
+            }
         }
 
         // reset timer for next slot
@@ -353,8 +355,9 @@ impl ConsensusWorker {
             }
             // block is in the future: queue it
             Err(BlockAcknowledgeError::InTheFuture(block)) => {
-                if let Some((discarded_hash, _)) =
-                    self.future_incoming_blocks.insert(hash, block)?
+                if let Some((discarded_hash, _, _)) =
+                    self.future_incoming_blocks
+                        .insert(hash, block.header.clone(), Some(block))?
                 {
                     // cancel dependency wait of canceled timeslot wait
                     self.dependency_waiting_blocks
