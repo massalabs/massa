@@ -744,7 +744,7 @@ impl BlockGraph {
         if header.content.slot.period
             <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
-            return Ok(CheckOutcome::Ignore);
+            return Ok(CheckOutcome::Discard(DiscardReason::Stale));
         }
 
         // check if block slot is too much in the future
@@ -754,7 +754,7 @@ impl BlockGraph {
                     .period
                     .saturating_add(self.cfg.future_block_processing_max_periods)
             {
-                return Ok(CheckOutcome::Ignore);
+                return Ok(CheckOutcome::WaitForSlot);
             }
         }
 
@@ -811,7 +811,7 @@ impl BlockGraph {
                     // parent is missing or queued
                     if self.genesis_hashes.contains(&parent_hash) {
                         // forbid depending on discarded genesis block
-                        return Ok(CheckOutcome::Ignore);
+                        return Ok(CheckOutcome::Discard(DiscardReason::Stale));
                     }
                     missing_deps.insert(parent_hash);
                 }
@@ -863,7 +863,7 @@ impl BlockGraph {
                         _ => {
                             if self.genesis_hashes.contains(&gp_h) {
                                 // forbid depending on discarded genesis block
-                                return Ok(CheckOutcome::Ignore);
+                                return Ok(CheckOutcome::Discard(DiscardReason::Stale));
                             }
                             missing_deps.insert(gp_h);
                         }
