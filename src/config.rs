@@ -1,3 +1,4 @@
+use crate::consensus::config::ConsensusConfig;
 use crate::network::config::NetworkConfig;
 use crate::protocol::config::ProtocolConfig;
 use serde::Deserialize;
@@ -13,6 +14,7 @@ pub struct Config {
     pub logging: LoggingConfig,
     pub protocol: ProtocolConfig,
     pub network: NetworkConfig,
+    pub consensus: ConsensusConfig,
 }
 
 impl Config {

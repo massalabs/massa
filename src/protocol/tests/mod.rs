@@ -1,3 +1,3 @@
 mod mock_network_controller;
-mod scenarii;
+mod scenarios;
 mod tools;

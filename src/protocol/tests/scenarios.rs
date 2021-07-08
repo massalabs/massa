@@ -1,13 +1,10 @@
 //RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::super::{
-    handshake_worker::*, protocol_controller::NodeId, protocol_controller::ProtocolController,
-};
+use super::super::{handshake_worker::*, protocol_controller::ProtocolController};
 use super::{
     mock_network_controller::{self, MockNetworkCommand, MockNetworkController},
     tools,
 };
-use crate::logging::trace;
 use crate::DefaultProtocolController;
 use tokio::time::{timeout, Duration};
 

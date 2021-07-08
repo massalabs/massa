@@ -1,5 +1,6 @@
 pub use log::{debug, error, info, trace, warn};
 
+/*
 macro_rules! function_path {
     () => {{
         fn f() {}
@@ -10,13 +11,14 @@ macro_rules! function_path {
         &name[..name.len() - 3]
     }};
 }
+*/
 
 macro_rules! massa_trace {
     ($evt:expr, $params:tt) => {
         log::trace!(
             "massa_trace:{}",
             serde_json::json!({
-                "origin": function_path!(),
+                // "origin": function_path!(),
                 "event": $evt,
                 "parameters": $params
             })

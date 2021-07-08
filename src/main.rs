@@ -8,11 +8,12 @@ pub mod crypto;
 pub mod network;
 pub mod protocol;
 pub mod structures;
-use crate::logging::error;
+use crate::consensus::default_consensus_controller::DefaultConsensusController;
+use crate::logging::{debug, error};
 use crate::network::default_establisher::DefaultEstablisher;
 use crate::network::default_network_controller::DefaultNetworkController;
 use crate::protocol::default_protocol_controller::DefaultProtocolController;
-use crate::protocol::protocol_controller::{ProtocolController, ProtocolEvent, ProtocolEventType};
+use consensus::consensus_controller::ConsensusController;
 use std::error::Error;
 use tokio::fs::read_to_string;
 
@@ -22,23 +23,29 @@ async fn run(cfg: config::Config) -> BoxResult<()> {
     let establisher = DefaultEstablisher::new();
     let network = DefaultNetworkController::new(&cfg.network, establisher).await?;
 
-    // launch network controller
-    let mut protocol = DefaultProtocolController::new(cfg.protocol, network).await?;
+    // launch consensus controller
+    let ptcl = DefaultProtocolController::new(cfg.protocol, network).await?;
+    let mut cnss = DefaultConsensusController::new(&cfg.consensus, ptcl).await?;
+
+    let mut wait_init = tokio::time::sleep(tokio::time::Duration::from_millis(10000));
 
     // loop over messages
     loop {
         tokio::select! {
-            ProtocolEvent(source_node_id, evt) = protocol.wait_event() => match evt {
-                ProtocolEventType::ReceivedTransaction(data) => log::info!("reveice transcation with data:{}", data),
-                ProtocolEventType::ReceivedBlock(block) => log::info!("reveice a block {:?} from node {:?}", block, source_node_id),
-                ProtocolEventType::AskedBlock(hash) => log::info!("Node {:?} asked for block {:?}", source_node_id, hash),
-             }
+            evt = cnss.wait_event() => match evt {
+                _ => {}
+            },
+            _ = &mut wait_init, if !wait_init.is_elapsed() => {
+                debug!("requiring random block generation");
+                cnss.generate_random_block().await;
+            }
         }
     }
 
+    //Ok(())
     /* TODO uncomment when it becomes reachable again
-    if let Err(e) = protocol.stop().await {
-        warn!("graceful protocol shutdown failed: {}", e);
+    if let Err(e) = cnss.stop().await {
+        warn!("graceful shutdown failed: {}", e);
     }
     Ok(())
     */
