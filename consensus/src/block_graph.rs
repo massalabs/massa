@@ -860,7 +860,15 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
-            let ledger = Ledger::from_export(boot_graph.ledger, cfg.clone())?;
+            let ledger = Ledger::from_export(
+                boot_graph.ledger,
+                boot_graph
+                    .latest_final_blocks_periods
+                    .iter()
+                    .map(|(_id, period)| *period)
+                    .collect(),
+                cfg.clone(),
+            )?;
             let mut res_graph = BlockGraph {
                 cfg,
                 sequence_counter: 0,
@@ -3548,7 +3556,6 @@ mod tests {
                         },
                     )]),
                 ], // containing (Address, LedgerData)
-                latest_final_periods: vec![1, 2],
             },
         };
 
@@ -3681,7 +3688,6 @@ mod tests {
             .collect()],
             ledger: LedgerExport {
                 ledger_per_thread: Vec::new(),
-                latest_final_periods: Vec::new(),
             },
         };
 

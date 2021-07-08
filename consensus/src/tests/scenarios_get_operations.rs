@@ -81,7 +81,6 @@ async fn test_storage() {
 
     let boot_ledger = LedgerExport {
         ledger_per_thread: vec![vec![(address_a, LedgerData { balance: 100 })], vec![]],
-        latest_final_periods: vec![0, 0],
     };
 
     let (boot_graph, b1, b2) =

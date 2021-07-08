@@ -331,6 +331,7 @@ impl Ledger {
     /// If there is something in the ledger file, it is overwritten
     pub fn from_export(
         export: LedgerExport,
+        latest_final_periods: Vec<u64>,
         cfg: ConsensusConfig,
     ) -> Result<Ledger, ConsensusError> {
         let ledger = Ledger::new(cfg.clone(), None)?;
@@ -349,12 +350,13 @@ impl Ledger {
                 };
             }
         }
-        // fill final periods
-        for (period, thread) in export.latest_final_periods.iter().enumerate() {
-            ledger
-                .latest_final_periods
-                .insert(&[*thread as u8], &period.to_be_bytes())?;
-        }
+        // initilize final periods
+        ledger.latest_final_periods.transaction(|tree| {
+            for (thread, period) in latest_final_periods.iter().enumerate() {
+                tree.insert(&[thread as u8], &period.to_be_bytes())?;
+            }
+            Ok(())
+        })?;
         Ok(ledger)
     }
 
@@ -630,7 +632,6 @@ impl LedgerSubset {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerExport {
     pub ledger_per_thread: Vec<Vec<(Address, LedgerData)>>, // containing (Address, LedgerData)
-    pub latest_final_periods: Vec<u64>,
 }
 
 impl<'a> TryFrom<&'a Ledger> for LedgerExport {
@@ -639,7 +640,6 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
     fn try_from(value: &'a Ledger) -> Result<Self, Self::Error> {
         Ok(LedgerExport {
             ledger_per_thread: value.read_whole()?.iter().cloned().collect(),
-            latest_final_periods: value.get_latest_final_periods()?,
         })
     }
 }
@@ -649,7 +649,6 @@ impl LedgerExport {
     pub fn new(thread_count: u8) -> Self {
         LedgerExport {
             ledger_per_thread: vec![Vec::new(); thread_count as usize],
-            latest_final_periods: vec![0u64; thread_count as usize],
         }
     }
 }
@@ -680,8 +679,7 @@ impl SerializeCompact for LedgerExport {
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
-    /// assert_eq!(ledger.latest_final_periods, res.latest_final_periods);
-    /// for thread in 0..ledger.latest_final_periods.len() {
+    /// for thread in 0..2 {
     ///     for (address, data) in &ledger.ledger_per_thread[thread] {
     ///        assert!(res.ledger_per_thread[thread].iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
     ///     }
@@ -713,9 +711,6 @@ impl SerializeCompact for LedgerExport {
             }
         }
 
-        for period in self.latest_final_periods.iter() {
-            res.extend(period.to_varint_bytes());
-        }
         Ok(res)
     }
 }
@@ -745,20 +740,7 @@ impl DeserializeCompact for LedgerExport {
             ledger_per_thread.push(set);
         }
 
-        let mut latest_final_periods = Vec::new();
-        for _ in 0..thread_count {
-            let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            latest_final_periods.push(period);
-        }
-
-        Ok((
-            LedgerExport {
-                ledger_per_thread,
-                latest_final_periods,
-            },
-            cursor,
-        ))
+        Ok((LedgerExport { ledger_per_thread }, cursor))
     }
 }
 
