@@ -316,8 +316,12 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
     if let Some(resp) = request_data(data, &url)? {
         //println!("resp {:?}", resp.text());
         if resp.status() == StatusCode::OK {
-            let op = resp.json::<Vec<(OperationId, data::GetOperationContent)>>()?;
-            println!("{:?}", op);
+            let ops = resp.json::<Vec<(OperationId, data::GetOperationContent)>>()?;
+            for (op_id, op) in ops.into_iter() {
+                println!("Operation {}:", op_id);
+                println!("{}", op);
+                println!("");
+            }
         } else {
             println!("not ok status code: {:?}", resp);
         }

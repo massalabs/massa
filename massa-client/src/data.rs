@@ -70,7 +70,7 @@ impl std::fmt::Display for WrapperOperation {
             .map_err(|_| std::fmt::Error)?;
         write!(
             f,
-            "Operation: sender:{} fee:{} expire_period:{} {}",
+            "sender:{} fee:{} expire_period:{} {}",
             addr, self.0.content.fee, self.0.content.expire_period, op_type
         )
     }
@@ -78,20 +78,20 @@ impl std::fmt::Display for WrapperOperation {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct GetOperationContent {
-    pub operation: WrapperOperation,
+    pub op: WrapperOperation,
     pub in_pool: bool,
-    pub in_blocks: Vec<(BlockId, bool)>,
+    pub in_blocks: HashMap<BlockId, (usize, bool)>,
 }
 
 impl std::fmt::Display for GetOperationContent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "{} in pool:{}", self.operation, self.in_pool)?;
+        writeln!(f, "{} in pool:{}", self.op, self.in_pool)?;
         writeln!(
             f,
             "block list:{}",
             self.in_blocks
                 .iter()
-                .map(|(id, f)| format!("({}, final:{})", id, f))
+                .map(|(id, (_idx, f))| format!("({}, final:{})", id, f))
                 .collect::<Vec<String>>()
                 .join(" ")
         )
