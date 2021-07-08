@@ -1,4 +1,7 @@
-use std::{collections::HashMap, usize};
+use std::{
+    collections::{HashMap, HashSet},
+    usize,
+};
 
 use models::{Address, Slot};
 
@@ -122,7 +125,16 @@ async fn test_operations_check() {
     )
     .await;
 
-    // todo assert address 1 has 1 coin at blocks (A, genesis_ids[1]) (see #269)
+    // assert address 1 has 1 coin at blocks (A, genesis_ids[1]) (see #269)
+    let mut set = HashSet::new();
+    set.insert(address_1);
+    let res = consensus_command_sender
+        .get_ledger_data(set)
+        .await
+        .unwrap()
+        .candidate_data
+        .get_data(&address_1, cfg.thread_count);
+    assert_eq!(res.get_balance(), 1);
 
     // receive block b with invalid operation (not enough coins)
     let operation_2 = create_transaction(
@@ -168,7 +180,15 @@ async fn test_operations_check() {
     .await;
 
     // todo assert address 2 has 5 coins at block B (see #269)
-    // (block A taken in account in thread 2)
+    let mut set = HashSet::new();
+    set.insert(address_2);
+    let res = consensus_command_sender
+        .get_ledger_data(set)
+        .await
+        .unwrap()
+        .candidate_data
+        .get_data(&address_2, cfg.thread_count);
+    assert_eq!(res.get_balance(), 5);
 
     // receive block with reused operation
     let (_, block_1c, _) = create_block_with_operations(
