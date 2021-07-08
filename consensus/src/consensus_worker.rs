@@ -136,8 +136,8 @@ impl ConsensusWorker {
         // signal initial state to pool
         if let Some(previous_slot) = self.previous_slot {
             self.pool_command_sender
-            .update_current_slot(previous_slot)
-            .await?;
+                .update_current_slot(previous_slot)
+                .await?;
         }
         if let Some(final_periods) = self.block_db.get_changed_latest_final_blocks_periods() {
             self.pool_command_sender
