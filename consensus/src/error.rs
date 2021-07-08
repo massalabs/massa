@@ -69,6 +69,8 @@ pub enum ConsensusError {
     IOError(#[from] std::io::Error),
     #[error("serde error")]
     SerdeError(#[from] serde_json::Error),
+    #[error("oneshot recv error {0}")]
+    OneshotReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
 }
 
 #[derive(Error, Debug)]

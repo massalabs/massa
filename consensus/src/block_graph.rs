@@ -917,6 +917,7 @@ impl BlockGraph {
         &self,
         val: String,
         slot: Slot,
+        operations: Vec<Operation>,
     ) -> Result<(BlockId, Block), ConsensusError> {
         let (public_key, private_key) = self
             .cfg
@@ -927,7 +928,6 @@ impl BlockGraph {
 
         let example_hash = Hash::hash(&val.as_bytes());
 
-        let operations = self.get_best_operations();
         let operation_merkle_root = Hash::hash(
             &operations.iter().fold(Vec::new(), |acc, v| {
                 let res = [
@@ -953,10 +953,6 @@ impl BlockGraph {
         let res = (hash, Block { header, operations });
         massa_trace!("consensus.block_graph.create_block", {"hash": res.0, "block": res.1});
         Ok(res)
-    }
-
-    fn get_best_operations(&self) -> Vec<Operation> {
-        Vec::new() // todo
     }
 
     /// Gets lastest final blocks (hash, period) for each thread.

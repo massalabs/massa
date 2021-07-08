@@ -1,13 +1,18 @@
+use crate::ledger::OperationLedgerInterface;
+
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
     timeslots::*,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::signature::{derive_public_key, PublicKey};
-use models::{Block, BlockId, Slot};
+use models::{Address, Block, BlockId, Operation, OperationId, SerializationContext, Slot};
 use pool::PoolCommandSender;
-use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
+use std::{
+    collections::{HashMap, HashSet},
+    usize,
+};
 use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -75,6 +80,8 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
+    /// serialisation context
+    serialization_context: SerializationContext,
 }
 
 impl ConsensusWorker {
@@ -99,6 +106,7 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
+        serialization_context: SerializationContext,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
         let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
@@ -137,6 +145,7 @@ impl ConsensusWorker {
             latest_final_periods,
             clock_compensation,
             pool_command_sender,
+            serialization_context,
         })
     }
 
@@ -201,6 +210,38 @@ impl ConsensusWorker {
         Ok(self.protocol_event_receiver)
     }
 
+    async fn get_best_operations(
+        &mut self,
+        cur_slot: Slot,
+    ) -> Result<Vec<Operation>, ConsensusError> {
+        let ops = Vec::new();
+        let exclude: Vec<OperationId> = Vec::new();
+
+        let context = self.serialization_context.clone();
+        let get_ids = |op: &Operation| op.get_operation_id(&context);
+        while ops.len() < self.cfg.max_operations_per_block as usize {
+            let op_ids: Vec<OperationId> = ops
+                .iter()
+                .map(get_ids)
+                .collect::<Result<Vec<OperationId>, _>>()?;
+            let to_exclude = exclude.iter().cloned().chain(op_ids).collect();
+            let (response_tx, response_rx) = oneshot::channel();
+            self.pool_command_sender
+                .get_operation_batch(
+                    cur_slot,
+                    to_exclude,
+                    self.cfg.max_operations_per_block as usize - ops.len(),
+                    response_tx,
+                )
+                .await?;
+
+            let candidates = response_rx.await?;
+            // todo update ops
+        }
+
+        Ok(ops)
+    }
+
     async fn slot_tick(
         &mut self,
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
@@ -218,17 +259,18 @@ impl ConsensusWorker {
             && self.next_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
-            let (hash, block) = self.block_db.create_block("block".to_string(), cur_slot)?;
+            let operations = self.get_best_operations(cur_slot).await?;
+            let ids = operations
+                .iter()
+                .map(|op| op.get_operation_id(&self.serialization_context))
+                .collect::<Result<_, _>>()?;
+            let (hash, block) =
+                self.block_db
+                    .create_block("block".to_string(), cur_slot, operations)?;
             massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
 
-            // TODO: pass the actual operation set of the block.
-            self.block_db.incoming_block(
-                hash,
-                block,
-                Default::default(),
-                &mut self.selector,
-                Some(cur_slot),
-            )?;
+            self.block_db
+                .incoming_block(hash, block, ids, &mut self.selector, Some(cur_slot))?;
         }
 
         // signal tick to block graph
