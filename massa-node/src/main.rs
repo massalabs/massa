@@ -11,7 +11,7 @@ use communication::{
 use consensus::start_consensus_controller;
 use log::{error, info};
 use models::SerializationContext;
-use storage::start_storage_controller;
+use storage::start_storage;
 use tokio::{
     fs::read_to_string,
     signal::unix::{signal, SignalKind},
@@ -38,7 +38,7 @@ async fn run(cfg: config::Config) {
         .expect("could not start network controller");
 
     let (storage_command_sender, storage_manager) =
-        start_storage_controller(cfg.storage.clone(), serialization_context.clone())
+        start_storage(cfg.storage.clone(), serialization_context.clone())
             .expect("could not start storage controller");
 
     // launch protocol controller

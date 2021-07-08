@@ -1433,7 +1433,7 @@ impl BlockGraph {
 
             // fill up from the latest final block back to the earliest for each thread
             for thread in 0..self.cfg.thread_count {
-                let mut cursor = self.latest_final_blocks_periods[thread as usize].0;
+                let mut cursor = self.latest_final_blocks_periods[thread as usize].0; // hash of tha latest final in that thread
                 while let Some(c_block) = self.get_active_block(cursor) {
                     if c_block.header.content.slot.period
                         < earliest_retained_periods[thread as usize]

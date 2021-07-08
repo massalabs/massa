@@ -1,11 +1,11 @@
+mod block_storage;
 mod config;
 mod error;
-mod storage_controller;
-mod storage_worker;
+mod storage_access;
 
 pub use config::StorageConfig;
 pub use error::StorageError;
-pub use storage_controller::{start_storage_controller, StorageCommandSender, StorageManager};
+pub use storage_access::{start_storage, StorageAccess, StorageManager};
 
 #[cfg(test)]
 mod tests;

@@ -1,5 +1,5 @@
 use crate::ApiEvent;
-use storage::{start_storage_controller, StorageConfig};
+use storage::{start_storage, StorageConfig};
 
 use super::tools::*;
 use communication::network::PeerInfo;
@@ -1117,7 +1117,7 @@ async fn test_get_block() {
         flush_interval: None, //defaut
     };
     let (storage_command_tx, _storage_manager) =
-        start_storage_controller(storage_config, serialization_context.clone()).unwrap();
+        start_storage(storage_config, serialization_context.clone()).unwrap();
     let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {

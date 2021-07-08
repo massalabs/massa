@@ -11,7 +11,7 @@ use config::CHANNEL_SIZE;
 use consensus::ConsensusConfig;
 use filters::get_filter;
 use std::collections::VecDeque;
-use storage::StorageCommandSender;
+use storage::StorageAccess;
 use tokio::sync::mpsc;
 
 pub use error::ApiError;
@@ -31,7 +31,7 @@ pub async fn start_api_controller(
     consensus_config: ConsensusConfig,
     protocol_config: ProtocolConfig,
     network_config: NetworkConfig,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<(ApiEventReceiver, ApiManager), ApiError> {
     let (event_tx, event_rx) = mpsc::channel::<ApiEvent>(CHANNEL_SIZE);
     let (manager_tx, mut manager_rx) = mpsc::channel::<ApiManagementCommand>(1);
