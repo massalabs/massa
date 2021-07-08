@@ -152,6 +152,7 @@ use communication::{
     network::{NetworkConfig, PeerInfo},
     protocol::ProtocolConfig,
 };
+use consensus::Status;
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
     ConsensusConfig, ConsensusError, DiscardReason,
@@ -977,7 +978,7 @@ async fn get_graph_interval_process(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(Hash, Slot, String, Vec<Hash>)>, String> {
+) -> Result<Vec<(Hash, Slot, Status, Vec<Hash>)>, String> {
     //filter block from graph_export
     let mut res = retrieve_graph_export(&event_tx)
         .await
@@ -991,6 +992,7 @@ async fn get_graph_interval_process(
                 .into_iter()
                 .filter_map(|(hash, exported_block)| {
                     let header = exported_block.block;
+                    let status = exported_block.status;
                     get_block_slot_timestamp(
                         consensus_cfg.thread_count,
                         consensus_cfg.t0,
@@ -1000,21 +1002,14 @@ async fn get_graph_interval_process(
                     .map_err(|err| (format!("error getting time : {:?}", err)))
                     .map(|time| {
                         if start <= time && time < end {
-                            Some((
-                                hash,
-                                (
-                                    header.content.slot,
-                                    "active".to_string(),
-                                    header.content.parents,
-                                ),
-                            ))
+                            Some((hash, (header.content.slot, status, header.content.parents)))
                         } else {
                             None
                         }
                     })
                     .transpose()
                 })
-                .collect::<Result<Vec<(Hash, (Slot, String, Vec<Hash>))>, String>>()
+                .collect::<Result<Vec<(Hash, (Slot, Status, Vec<Hash>))>, String>>()
         })?;
 
     if let Some(storage) = opt_storage_command_sender {
@@ -1090,7 +1085,11 @@ async fn get_graph_interval_process(
         for (hash, block) in blocks {
             res.push((
                 hash,
-                (block.header.content.slot, "final".to_string(), Vec::new()),
+                (
+                    block.header.content.slot,
+                    Status::Final,
+                    block.header.content.parents.clone(),
+                ),
             ));
         }
     }

@@ -287,5 +287,6 @@ pub fn get_test_compiled_exported_block(
     ExportCompiledBlock {
         block: get_header(&serialization_context, slot, creator).1,
         children: Vec::new(),
+        status: consensus::Status::Active,
     }
 }

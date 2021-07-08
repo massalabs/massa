@@ -52,6 +52,7 @@
     max_message_size = 100
     message_timeout = 100
     ask_peer_list_interval = 10000
+    private_key_file="config/node_privkey.key"
 
 [storage]
     max_stored_blocks= 10000

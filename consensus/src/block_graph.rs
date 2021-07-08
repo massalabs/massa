@@ -272,6 +272,14 @@ pub struct ExportCompiledBlock {
     /// of blocks referencing exported block as a parent,
     /// in thread i.
     pub children: Vec<HashSet<Hash>>,
+    /// Active or final
+    pub status: Status,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Status {
+    Active,
+    Final,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -333,6 +341,11 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
                                         .collect::<HashSet<Hash>>()
                                 })
                                 .collect(),
+                            status: if block.is_final {
+                                Status::Final
+                            } else {
+                                Status::Active
+                            },
                         },
                     );
                 }

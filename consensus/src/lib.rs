@@ -15,7 +15,7 @@ mod random_selector;
 mod timeslots;
 pub use block_graph::BoostrapableGraph;
 pub use block_graph::{
-    BlockGraphExport, DiscardReason, ExportCompiledBlock, ExportDiscardedBlocks,
+    BlockGraphExport, DiscardReason, ExportCompiledBlock, ExportDiscardedBlocks, Status,
 };
 pub use config::ConsensusConfig;
 pub use consensus_controller::{
