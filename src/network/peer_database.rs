@@ -13,17 +13,12 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 #[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum PeerStatus {
     Idle,
+    InHandshaking,
+    InAlive,
     OutConnecting,
     OutHandshaking,
-    OutConnected,
-    InHandshaking,
-    InConnected,
+    OutAlive,
     Banned,
-}
-impl Default for PeerStatus {
-    fn default() -> Self {
-        PeerStatus::Idle
-    }
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
@@ -46,7 +41,7 @@ async fn load_peers(file_name: &String) -> BoxResult<HashMap<IpAddr, PeerInfo>> 
             .iter()
             .map(|p| match p.status {
                 PeerStatus::Idle | PeerStatus::Banned => Ok((p.ip, *p)),
-                _ => Err("invalid peer status in peers file"),
+                _ => Err(format!("invalid peer status in peers file")),
             })
             .collect::<Result<HashMap<IpAddr, PeerInfo>, _>>()?;
     if result.is_empty() {
@@ -185,15 +180,15 @@ impl PeerDatabase {
         target_outgoing_connections: usize,
         max_simultaneous_outgoing_connection_attempts: usize,
     ) -> HashSet<IpAddr> {
-        let n_current_attemtps = self.count_peers_with_status(PeerStatus::OutConnecting)
-            + self.count_peers_with_status(PeerStatus::OutHandshaking);
-
         let n_available_attempts = std::cmp::min(
             target_outgoing_connections
-                .saturating_sub(self.count_peers_with_status(PeerStatus::OutConnected)),
+                .saturating_sub(self.count_peers_with_status(PeerStatus::OutAlive)),
             max_simultaneous_outgoing_connection_attempts,
         )
-        .saturating_sub(n_current_attemtps);
+        .saturating_sub(
+            self.count_peers_with_status(PeerStatus::OutConnecting)
+                + self.count_peers_with_status(PeerStatus::OutHandshaking),
+        );
 
         if n_available_attempts == 0 {
             return HashSet::new(); // no connections needed or possible
@@ -206,18 +201,33 @@ impl PeerDatabase {
             here we use the sequential nature of tuples and the fact that Some<T> > None
             note: using unstable sorting because stability is not ensured by hashmap anyways
         */
-        let mut peers_sorted: Vec<PeerInfo> = self
+        let mut peers_sorted: Vec<IpAddr> = self
             .peers
             .values()
             .filter(|&p| p.status == PeerStatus::Idle)
-            .copied()
+            .map(|&p| p.ip)
             .collect();
+        peers_sorted.sort_unstable_by_key(|&ip| {
+            let p = self.peers.get(&ip).unwrap();
+            (std::cmp::Reverse(p.last_connection), p.last_failure)
+        });
         peers_sorted
-            .sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_connection), p.last_failure));
-        peers_sorted
-            .iter()
+            .into_iter()
             .take(n_available_attempts)
-            .map(|p| p.ip)
             .collect()
+    }
+
+    pub fn merge_candidate_peers(&mut self, new_peers: &HashSet<IpAddr>) {
+        for &new_peer_ip in new_peers {
+            if new_peer_ip.is_global() {
+                // check if IP is globally routable
+                self.peers.entry(new_peer_ip).or_insert(PeerInfo {
+                    ip: new_peer_ip.clone(),
+                    status: PeerStatus::Idle,
+                    last_connection: None,
+                    last_failure: None,
+                });
+            }
+        }
     }
 }

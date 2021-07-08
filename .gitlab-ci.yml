@@ -33,7 +33,7 @@ rustfmt:
 # run cargo audit to identify bad dependecies
 build:
   stage: test
-  image: "rust:latest"
+  image: "rustlang/rust:nightly"
   script:
     - cargo install cargo-audit
     - cargo-audit audit
@@ -41,7 +41,7 @@ build:
 # Use cargo to release build the project
 build:
   stage: build
-  image: "rust:latest"
+  image: "rustlang/rust:nightly"
   script:
     - cargo build --release
 

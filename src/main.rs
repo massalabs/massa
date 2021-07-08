@@ -1,3 +1,5 @@
+#![feature(ip)]
+
 mod config;
 mod network;
 
