@@ -97,6 +97,7 @@ async fn run(cfg: config::Config) {
 
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
+        network_command_sender.clone(),
         cfg.bootstrap,
         serialization_context.clone(),
         bootstrap::Establisher::new(),

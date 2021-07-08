@@ -10,6 +10,7 @@ edition = "2018"
 consensus = { path = "../consensus" }
 crypto = { path = "../crypto" }
 models = { path = "../models" }
+communication = { path = "../communication" }
 tokio = { version = "1.0", features = ["full"] }
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }

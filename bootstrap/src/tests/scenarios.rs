@@ -1,3 +1,4 @@
+use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::SerializeCompact;
 use std::str::FromStr;
@@ -15,13 +16,15 @@ use super::{
 
 #[tokio::test]
 async fn test_bootstrap_server() {
-    let (command_tx, mut command_rx) = mpsc::channel::<ConsensusCommand>(5);
+    let (consensus_command_tx, mut consensus_command_rx) = mpsc::channel::<ConsensusCommand>(5);
+    let (network_command_tx, mut network_command_rx) = mpsc::channel::<NetworkCommand>(5);
     let (private_key, public_key) = get_keys();
 
     let cfg = get_bootstrap_config(public_key);
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
-        ConsensusCommandSender(command_tx),
+        ConsensusCommandSender(consensus_command_tx),
+        NetworkCommandSender(network_command_tx),
         cfg.clone(),
         get_serialization_context(),
         bootstrap_establisher,
@@ -75,15 +78,16 @@ async fn test_bootstrap_server() {
     });
 
     // wait for bootstrap to ask consensus for bootstrap graph, send it
-    let response = match wait_consensus_command(&mut command_rx, 1000.into(), |cmd| match cmd {
-        ConsensusCommand::GetBootGraph(resp) => Some(resp),
-        _ => None,
-    })
-    .await
-    {
-        Some(resp) => resp,
-        None => panic!("timeout waiting for get boot graph consensus command"),
-    };
+    let response =
+        match wait_consensus_command(&mut consensus_command_rx, 1000.into(), |cmd| match cmd {
+            ConsensusCommand::GetBootGraph(resp) => Some(resp),
+            _ => None,
+        })
+        .await
+        {
+            Some(resp) => resp,
+            None => panic!("timeout waiting for get boot graph consensus command"),
+        };
     let sent_graph = get_boot_graph();
     response.send(sent_graph.clone()).unwrap();
 

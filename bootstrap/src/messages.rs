@@ -6,7 +6,7 @@ use models::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
+use std::{convert::TryInto, net::IpAddr};
 use time::UTime;
 
 pub const BOOTSTRAP_RANDOMNES_SIZE_BYTES: usize = 32;
@@ -33,6 +33,7 @@ pub enum BootstrapMessage {
         /// Signature of our random bytes + graph
         signature: Signature,
     },
+    PeerList(Vec<IpAddr>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -41,6 +42,7 @@ enum MessageTypeId {
     BootstrapInitiation = 0u32,
     BootstrapTime = 1,
     ConsensusState = 2,
+    PeerList = 3,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -63,6 +65,13 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(u32::from(MessageTypeId::ConsensusState).to_varint_bytes());
                 res.extend(&signature.to_bytes());
                 res.extend(&graph.to_bytes_compact(&context)?);
+            }
+            BootstrapMessage::PeerList(ip_vec) => {
+                res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
+                res.extend((ip_vec.len() as u64).to_varint_bytes());
+                for ip in ip_vec.into_iter() {
+                    res.extend(ip.to_bytes_compact(&context)?)
+                }
             }
         }
         Ok(res)
@@ -110,6 +119,22 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState { signature, graph }
+            }
+            MessageTypeId::PeerList => {
+                // length
+                let (length, delta) = u32::from_varint_bytes_bounded(
+                    &buffer[cursor..],
+                    context.max_peer_list_length,
+                )?;
+                cursor += delta;
+                // peer list
+                let mut peers: Vec<IpAddr> = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..], &context)?;
+                    cursor += delta;
+                    peers.push(ip);
+                }
+                BootstrapMessage::PeerList(peers)
             }
         };
         Ok((res, cursor))

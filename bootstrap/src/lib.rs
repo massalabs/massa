@@ -1,4 +1,5 @@
 use binders::{ReadBinder, WriteBinder};
+use communication::network::NetworkCommandSender;
 use consensus::{BoostrapableGraph, ConsensusCommandSender};
 use establisher::{ReadHalf, WriteHalf};
 use log::{debug, info, warn};
@@ -161,6 +162,7 @@ impl BootstrapManager {
 
 pub async fn start_bootstrap_server(
     consensus_command_sender: ConsensusCommandSender,
+    network_command_sender: NetworkCommandSender,
     cfg: BootstrapConfig,
     serialization_context: SerializationContext,
     establisher: Establisher,
@@ -172,6 +174,7 @@ pub async fn start_bootstrap_server(
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
                 consensus_command_sender,
+                network_command_sender,
                 serialization_context,
                 establisher,
                 manager_rx,
@@ -192,6 +195,7 @@ pub async fn start_bootstrap_server(
 
 struct BootstrapServer {
     consensus_command_sender: ConsensusCommandSender,
+    network_command_sender: NetworkCommandSender,
     serialization_context: SerializationContext,
     establisher: Establisher,
     manager_rx: mpsc::Receiver<()>,
