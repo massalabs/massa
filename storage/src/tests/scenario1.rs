@@ -31,7 +31,6 @@ async fn test_max_block_count() {
     };
 
     let (storage, manager) = start_storage(config, serialization_context).unwrap();
-    storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
     add_block(Slot::new(2, 1), &storage).await;
@@ -99,7 +98,6 @@ async fn test_max_nb_blocks() {
     };
 
     let (storage, manager) = start_storage(config, serialization_context).unwrap();
-    storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
     add_block(Slot::new(2, 1), &storage).await;
@@ -134,7 +132,6 @@ async fn test_max_nb_blocks() {
         }
         tokio::task::yield_now().await;
     }
-
     manager.stop().await.unwrap();
 }
 
@@ -167,7 +164,6 @@ async fn test_get_slot_range() {
     };
 
     let (storage, manager) = start_storage(config, serialization_context).unwrap();
-    storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //add block in this order depending on there periode and thread
     add_block(Slot::new(2, 1), &storage).await;

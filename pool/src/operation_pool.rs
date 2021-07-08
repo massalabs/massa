@@ -65,10 +65,6 @@ impl OperationPool {
         }
     }
 
-    pub fn contains(&self, op: OperationId) -> bool {
-        self.ops.contains_key(&op)
-    }
-
     /// Incomming operations. Returns newly added
     ///
     pub fn add_operations(

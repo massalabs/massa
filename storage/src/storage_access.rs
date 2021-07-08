@@ -4,11 +4,11 @@ use crate::{
     error::StorageError,
 };
 use logging::debug;
-use models::{Block, BlockId, SerializationContext, Slot};
+use models::{Block, BlockId, Operation, OperationId, SerializationContext, Slot};
 use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot::Sender, Notify};
+use tokio::sync::{mpsc, Notify};
 use tokio::task::JoinHandle;
 
 pub fn start_storage(
@@ -25,32 +25,34 @@ pub fn start_storage(
     if cfg.reset_at_startup {
         db.drop_tree("hash_to_block")?;
         db.drop_tree("slot_to_hash")?;
+        db.drop_tree("op_to_block")?;
     }
     let hash_to_block = db.open_tree("hash_to_block")?;
     let slot_to_hash = db.open_tree("slot_to_hash")?;
+    let op_to_block = db.open_tree("op_to_block")?;
 
-    let block_count = Arc::new(AtomicUsize::new(slot_to_hash.len()));
+    let block_count = Arc::new(AtomicUsize::new(hash_to_block.len()));
     let notify = Arc::new(Notify::new());
-    let (clear_tx, clear_rx) = mpsc::channel::<Sender<()>>(1);
+    let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>(1);
     let db = BlockStorage::open(
         cfg.clone(),
-        serialization_context,
+        serialization_context.clone(),
         hash_to_block.clone(),
         slot_to_hash.clone(),
+        op_to_block.clone(),
         block_count.clone(),
         notify.clone(),
-        clear_tx,
     )?;
 
-    let shutdown = Arc::new(Notify::new());
     let storage_cleaner = StorageCleaner::new(
         cfg.max_stored_blocks,
         notify.clone(),
-        shutdown.clone(),
-        clear_rx,
+        shutdown_rx,
         hash_to_block,
         slot_to_hash,
+        op_to_block,
         block_count,
+        serialization_context,
     )?;
     let join_handle = tokio::spawn(async move {
         let res = storage_cleaner.run_loop().await;
@@ -68,7 +70,7 @@ pub fn start_storage(
     Ok((
         StorageAccess(db.clone()),
         StorageManager {
-            shutdown,
+            shutdown_tx,
             join_handle,
         },
     ))
@@ -78,9 +80,6 @@ pub fn start_storage(
 pub struct StorageAccess(pub BlockStorage);
 
 impl StorageAccess {
-    pub async fn clear(&self) -> Result<(), StorageError> {
-        self.0.clear().await
-    }
     pub async fn len(&self) -> Result<usize, StorageError> {
         self.0.len().await
     }
@@ -109,16 +108,27 @@ impl StorageAccess {
     ) -> Result<HashMap<BlockId, Block>, StorageError> {
         self.0.get_slot_range(start, end).await
     }
+
+    /// returns Some(tuple) if found, or None if not found. Tuple:
+    ///  * the BlockId in which the op is included
+    ///  * its index in the block
+    ///  * the operation itself
+    pub async fn get_operation(
+        &self,
+        id: OperationId,
+    ) -> Result<Option<(BlockId, usize, Operation)>, StorageError> {
+        self.0.get_operation(id).await
+    }
 }
 
 pub struct StorageManager {
-    shutdown: Arc<Notify>,
+    shutdown_tx: mpsc::Sender<()>,
     join_handle: JoinHandle<Result<(), StorageError>>,
 }
 
 impl StorageManager {
     pub async fn stop(self) -> Result<(), StorageError> {
-        self.shutdown.notify_one();
+        drop(self.shutdown_tx);
         self.join_handle.await?
     }
 }

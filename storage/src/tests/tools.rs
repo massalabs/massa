@@ -1,7 +1,11 @@
 use crate::StorageConfig;
 use crypto::hash::Hash;
-use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
+use models::{
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    OperationId, OperationType, SerializationContext, Slot,
+};
 
+use models::SerializeCompact;
 pub fn get_test_block() -> Block {
     Block {
             header: BlockHeader {
@@ -20,6 +24,52 @@ pub fn get_test_block() -> Block {
             },
             operations: vec![]
         }
+}
+
+pub fn create_operation(context: &SerializationContext) -> Operation {
+    let sender_priv = crypto::generate_random_private_key();
+    let sender_pub = crypto::derive_public_key(&sender_priv);
+
+    let recv_priv = crypto::generate_random_private_key();
+    let recv_pub = crypto::derive_public_key(&recv_priv);
+
+    let op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        amount: 0,
+    };
+    let content = OperationContent {
+        fee: 0,
+        op,
+        sender_public_key: sender_pub,
+        expire_period: 0,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+
+    Operation { content, signature }
+}
+
+pub fn get_block_with_op(context: &SerializationContext) -> (Block, BlockId, OperationId) {
+    let op = create_operation(context);
+    let block = Block {
+        header: BlockHeader {
+            content: BlockHeaderContent{
+                creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                operation_merkle_root: Hash::hash(&Vec::new()),
+                parents: vec![
+                    BlockId::for_tests("parent1").unwrap(),
+                    BlockId::for_tests("parent2").unwrap(),
+                ],
+                slot: Slot::new(1, 0),
+            },
+            signature: crypto::signature::Signature::from_bs58_check(
+                "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+            ).unwrap()
+        },
+        operations: vec![op.clone()]
+    };
+    let id = block.header.compute_block_id(context).unwrap();
+    (block, id, op.get_operation_id(context).unwrap())
 }
 
 pub fn get_test_config() -> (StorageConfig, SerializationContext) {
