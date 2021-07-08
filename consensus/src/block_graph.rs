@@ -3517,8 +3517,18 @@ mod tests {
             /// Ledger at last final blocks
             ledger: LedgerExport {
                 ledger_per_thread: vec![
-                    (vec![(address_a, LedgerData::new_test(1_000_000_000))]),
-                    (vec![(address_b, LedgerData::new_test(2_000_000_000))]),
+                    (vec![(
+                        address_a,
+                        LedgerData {
+                            balance: 1_000_000_000,
+                        },
+                    )]),
+                    (vec![(
+                        address_b,
+                        LedgerData {
+                            balance: 2_000_000_000,
+                        },
+                    )]),
                 ], // containing (Address, LedgerData)
                 latest_final_periods: vec![1, 2],
             },
@@ -3544,10 +3554,10 @@ mod tests {
         // B: 1999999901 = 2000_000_000 - 99
         // C: 2048
         // D: 0
-        assert_eq!(res.data[0][&address_a].get_balance(), 999998224);
-        assert_eq!(res.data[1][&address_b].get_balance(), 1999999901);
-        assert_eq!(res.data[1][&address_c].get_balance(), 2048);
-        assert_eq!(res.data[1][&address_d].get_balance(), 0);
+        assert_eq!(res.data[0][&address_a].balance, 999998224);
+        assert_eq!(res.data[1][&address_b].balance, 1999999901);
+        assert_eq!(res.data[1][&address_c].balance, 2048);
+        assert_eq!(res.data[1][&address_d].balance, 0);
 
         //ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
         let res = block_graph
@@ -3565,7 +3575,7 @@ mod tests {
         // B: 1999999903
         // C: 2048
         // D: 0
-        assert_eq!(res.data[0][&address_a].get_balance(), 1000000160);
+        assert_eq!(res.data[0][&address_a].balance, 1000000160);
 
         //ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
         let res = block_graph.get_ledger_at_parents(
