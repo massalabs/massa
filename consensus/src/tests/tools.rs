@@ -644,6 +644,7 @@ pub fn default_consensus_config(
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
         roll_price: 0,
+        stats_timespan: 60000.into(),
     }
 }
 

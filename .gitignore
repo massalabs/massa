@@ -6,5 +6,6 @@ lcov.info
 !/testrun/Cargo.lock
 massa-client/config/history.txt
 massa-node/block_store/
+massa-node/ledger/
 massa-node/config/node_privkey.key
 massa-node/logs.txt

@@ -151,6 +151,7 @@ use communication::{
     network::{NetworkConfig, PeerInfo},
     protocol::ProtocolConfig,
 };
+use consensus::ConsensusStats;
 use consensus::ExportBlockStatus;
 use consensus::Status;
 use consensus::{
@@ -212,6 +213,7 @@ pub enum ApiEvent {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<AddressesRollState>,
     },
+    GetStats(oneshot::Sender<ConsensusStats>),
 }
 
 pub enum ApiManagementCommand {}
@@ -493,6 +495,14 @@ pub fn get_filter(
         .and(warp::body::json())
         .and_then(move |operations| send_operations(operations, evt_tx.clone()));
 
+    let evt_tx = event_tx.clone();
+    let get_stats = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("get_stats"))
+        .and(warp::path::end())
+        .and_then(move || get_stats(evt_tx.clone()));
+
     block
         .or(blockinterval)
         .or(current_parents)
@@ -516,6 +526,7 @@ pub fn get_filter(
         .or(operations_involving_address)
         .or(operations)
         .or(next_draws)
+        .or(get_stats)
         .boxed()
 }
 
@@ -2014,4 +2025,35 @@ async fn get_next_draws(
         .collect();
 
     Ok(warp::reply::json(&next_slots).into_response())
+}
+
+async fn retrieve_stats(event_tx: &mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, ApiError> {
+    massa_trace!("api.filters.retrieve_stats", {});
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetStats(response_tx))
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!("Could not send api event get stats: {0}", e))
+        })?;
+    response_rx
+        .await
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve stats: {0}", e)))
+}
+
+async fn get_stats(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_stats", {});
+    let stats = match retrieve_stats(&event_tx).await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving stats: {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(stats) => stats,
+    };
+    Ok(warp::reply::json(&json!(stats)).into_response())
 }

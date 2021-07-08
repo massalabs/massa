@@ -4,7 +4,8 @@ use super::{
     block_graph::*,
     config::{ConsensusConfig, CHANNEL_SIZE},
     consensus_worker::{
-        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusWorker,
+        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusStats,
+        ConsensusWorker,
     },
     error::ConsensusError,
     pos::ProofOfStake,
@@ -301,6 +302,20 @@ impl ConsensusCommandSender {
                 addresses,
                 response_tx,
             })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+        })
+    }
+
+    pub async fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_stats", {});
+        self.0
+            .send(ConsensusCommand::GetStats(response_tx))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))

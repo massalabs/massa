@@ -806,6 +806,7 @@ pub struct BlockGraph {
     to_propagate: HashMap<BlockId, Block>,
     attack_attempts: Vec<BlockId>,
     new_final_blocks: HashSet<BlockId>,
+    new_stale_blocks: HashMap<BlockId, Slot>,
     ledger: Ledger,
 }
 
@@ -962,6 +963,7 @@ impl BlockGraph {
                 attack_attempts: Default::default(),
                 ledger,
                 new_final_blocks: Default::default(),
+                new_stale_blocks: Default::default(),
             };
             // compute block descendants
             let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
@@ -1008,6 +1010,7 @@ impl BlockGraph {
                 attack_attempts: Default::default(),
                 ledger,
                 new_final_blocks: Default::default(),
+                new_stale_blocks: Default::default(),
             })
         }
     }
@@ -1516,6 +1519,10 @@ impl BlockGraph {
                     HeaderCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
                         massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"block_id": block_id, "reason": reason});
+                        // count stales
+                        if reason == DiscardReason::Stale {
+                            self.new_stale_blocks.insert(block_id, header.content.slot);
+                        }
                         // discard
                         self.block_statuses.insert(
                             block_id,
@@ -1605,7 +1612,11 @@ impl BlockGraph {
                     BlockCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
                         massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"block_id": block_id, "reason": reason});
-
+                        // count stales
+                        if reason == DiscardReason::Stale {
+                            self.new_stale_blocks
+                                .insert(block_id, block.header.content.slot);
+                        }
                         // add to discard
                         self.block_statuses.insert(
                             block_id,
@@ -3003,6 +3014,8 @@ impl BlockGraph {
                     "hash": stale_block_hash
                 });
                 // mark as stale
+                self.new_stale_blocks
+                    .insert(stale_block_hash, active_block.block.header.content.slot);
                 self.block_statuses.insert(
                     stale_block_hash,
                     BlockStatus::Discarded {
@@ -3370,8 +3383,6 @@ impl BlockGraph {
             }
         }
 
-        // TODO keep enough blocks in each thread to test for still-valid, non-reusable transactions
-
         // remove unused final active blocks
         let mut discarded_finals: HashMap<BlockId, Block> = HashMap::new();
         for discard_active_h in active_blocks.difference(&retain_active) {
@@ -3572,8 +3583,13 @@ impl BlockGraph {
                     HeaderOrBlock::Block(b, _) => b.header,
                 };
                 massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": hash, "reason": reason_opt});
-                // transition to Discarded only if there is a reason
+
                 if let Some(reason) = reason_opt {
+                    // add to stats if reason is Stale
+                    if reason == DiscardReason::Stale {
+                        self.new_stale_blocks.insert(hash, header.content.slot);
+                    }
+                    // transition to Discarded only if there is a reason
                     self.block_statuses.insert(
                         hash,
                         BlockStatus::Discarded {
@@ -3696,6 +3712,10 @@ impl BlockGraph {
         Ok(wishlist)
     }
 
+    pub fn get_clique_count(&self) -> usize {
+        self.max_cliques.len()
+    }
+
     // Get the headers to be propagated.
     // Must be called by the consensus worker within `block_db_changed`.
     pub fn get_blocks_to_propagate(&mut self) -> HashMap<BlockId, Block> {
@@ -3712,6 +3732,12 @@ impl BlockGraph {
     // Must be called by the consensus worker within `block_db_changed`.
     pub fn get_new_final_blocks(&mut self) -> HashSet<BlockId> {
         mem::take(&mut self.new_final_blocks)
+    }
+
+    // Get the ids of blocks that became stale.
+    // Must be called by the consensus worker within `block_db_changed`.
+    pub fn get_new_stale_blocks(&mut self) -> HashMap<BlockId, Slot> {
+        mem::take(&mut self.new_stale_blocks)
     }
 }
 
@@ -4303,6 +4329,7 @@ mod tests {
             pos_lock_cycles: 1,
             pos_draw_cached_cycles: 2,
             roll_price: 10,
+            stats_timespan: 60000.into(),
         }
     }
 }

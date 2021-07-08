@@ -58,6 +58,8 @@ pub struct ConsensusConfig {
     pub initial_rolls_path: PathBuf,
     pub initial_draw_seed: String,
     pub roll_price: u64,
+    // stats timespan
+    pub stats_timespan: UTime,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
