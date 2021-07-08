@@ -4,6 +4,7 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 use super::peer_info_database::*;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use log::debug;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
@@ -13,8 +14,20 @@ use tokio::time::{timeout, Duration};
 
 use super::config::NetworkConfig;
 
-#[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ConnectionId(u64);
+
+impl std::fmt::Display for ConnectionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl std::fmt::Debug for ConnectionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum ConnectionClosureReason {
@@ -45,6 +58,8 @@ pub struct ConnectionController {
 
 impl ConnectionController {
     pub async fn new(cfg: &NetworkConfig) -> BoxResult<Self> {
+        debug!("starting connection controller");
+
         // check that local IP is routable
         if let Some(self_ip) = cfg.routable_ip {
             if !self_ip.is_global() {
@@ -74,6 +89,8 @@ impl ConnectionController {
             .await;
         });
 
+        debug!("connection controller started");
+
         Ok(ConnectionController {
             connection_command_tx,
             connection_event_rx,
@@ -82,11 +99,13 @@ impl ConnectionController {
     }
 
     pub async fn stop(mut self) {
+        debug!("stopping connection controller");
         drop(self.connection_command_tx);
         while let Some(_) = self.connection_event_rx.next().await {}
         self.controller_fn_handle
             .await
             .expect("failed joining network controller");
+        debug!("connection controller stopped");
     }
 
     pub async fn wait_event(&mut self) -> ConnectionEvent {
@@ -143,6 +162,7 @@ async fn connection_controller_fn(
             // try to connect to candidate IPs
             let candidate_ips = peer_info_db.get_out_connection_candidate_ips();
             for ip in candidate_ips {
+                debug!("starting outgoing connection attempt towards ip={:?}", ip);
                 peer_info_db.new_out_connection_attempt(&ip);
                 out_connecting_futures.push(out_connector_fn(
                     SocketAddr::new(ip, cfg.protocol_port),
@@ -155,6 +175,7 @@ async fn connection_controller_fn(
             // peer feedback event
             res = connection_command_rx.next() => match res {
                 Some(ConnectionCommand::MergeAdvertisedPeerList(ips)) => {
+                    debug!("merging incoming peer list: {:?}", ips);
                     peer_info_db.merge_candidate_peers(&ips);
                 },
                 Some(ConnectionCommand::GetAdvertisablePeerList(response_tx)) => {
@@ -164,6 +185,7 @@ async fn connection_controller_fn(
                 },
                 Some(ConnectionCommand::ConnectionClosed((id, reason))) => {
                     let (ip, is_outgoing) = active_connections.remove(&id).expect("missing connection closed");
+                    debug!("connection closed connedtion_id={:?}, ip={:?}, reason={:?}", id, ip, reason);
                     match reason {
                         ConnectionClosureReason::Normal => {},
                         ConnectionClosureReason::Failed => { peer_info_db.peer_failed(&ip); },
@@ -202,13 +224,15 @@ async fn connection_controller_fn(
             Some((ip_addr, res)) = out_connecting_futures.next() => match res {
                 Ok(socket) => if peer_info_db.try_out_connection_attempt_success(&ip_addr) {  // outgoing connection established
                     let connection_id = cur_connection_id;
+                    debug!("outgoing connection towards ip={:?} established => connection_id={:?}", ip_addr, connection_id);
                     cur_connection_id.0 += 1;
                     active_connections.insert(connection_id, (ip_addr, true));
                     event_tx
                         .send(ConnectionEvent::NewConnection((connection_id, socket)))
                         .await.expect("could not send new out connection notification");
                 },
-                Err(_) => {
+                Err(err) => {
+                    debug!("outgoing connection attempt towards ip={:?} failed: {:?}", ip_addr, err);
                     peer_info_db.out_connection_attempt_failed(&ip_addr);
                 }
             },
@@ -217,13 +241,16 @@ async fn connection_controller_fn(
             res = listener.accept() => match res {
                 Ok((socket, remote_addr)) => if peer_info_db.try_new_in_connection(&remote_addr.ip()) {
                     let connection_id = cur_connection_id;
+                    debug!("inbound connection from addr={:?} succeeded => connection_id={:?}", remote_addr, connection_id);
                     cur_connection_id.0 += 1;
                     active_connections.insert(connection_id, (remote_addr.ip(), false));
                     event_tx
                         .send(ConnectionEvent::NewConnection((connection_id, socket)))
                         .await.expect("could not send new in connection notification");
                 },
-                Err(_) => {},
+                Err(err) => {
+                    debug!("connection accept failed: {:?}", err);
+                },
             }
         }
     }
