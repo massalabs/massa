@@ -264,7 +264,7 @@ pub fn get_filter(
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
-    let storage = opt_storage_command_sender.clone();
+    let storage = opt_storage_command_sender;
     let graph_interval = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -322,7 +322,7 @@ pub fn get_filter(
         .and_then(move || get_node_config(context_cfg.clone()));
 
     let evt_tx = event_tx.clone();
-    let network_cfg = network_config.clone();
+    let network_cfg = network_config;
     let consensus_cfg = consensus_config.clone();
     let state = warp::get()
         .and(warp::path("api"))
@@ -357,8 +357,8 @@ pub fn get_filter(
         .and_then(move || get_last_invalid(evt_tx.clone(), api_cfg.clone()));
 
     let evt_tx = event_tx.clone();
-    let api_cfg = api_config.clone();
-    let consensus_cfg = consensus_config.clone();
+    let api_cfg = api_config;
+    let consensus_cfg = consensus_config;
     let staker_info = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -383,8 +383,8 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || stop_node(evt_tx.clone()));
 
-    let evt_tx = event_tx.clone();
-    let op_context = context.clone();
+    let evt_tx = event_tx;
+    let op_context = context;
     let send_operations = warp::path("api")
         .and(warp::path("v1"))
         .and(warp::path("operations"))
@@ -657,7 +657,7 @@ async fn get_current_parents(
                 return Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
                         "message":
-                            format!("inconsistency error between best_parents and active_blocks")
+                            "inconsistency error between best_parents and active_blocks".to_string()
                     })),
                     warp::http::StatusCode::INTERNAL_SERVER_ERROR,
                 )
@@ -1240,7 +1240,7 @@ async fn get_cliques(
         } else {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("inconsticency error between cliques and active_blocks")
+                    "message": "inconsticency error between cliques and active_blocks".to_string()
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1254,7 +1254,7 @@ async fn get_cliques(
         for hash in clique.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
-                    set.insert((k.clone(), v.clone()));
+                    set.insert((k.clone(), *v));
                 }
                 None => {
                     return Ok(warp::reply::with_status(
@@ -1465,14 +1465,14 @@ async fn get_last_stale(
         Ok(graph) => graph,
     };
 
-    let discarded = graph.discarded_blocks.clone();
+    let discarded = graph.discarded_blocks;
     let mut discarded = discarded
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
         .map(|(hash, (_reason, header))| (hash, header.content.slot))
         .collect::<Vec<(&BlockId, Slot)>>();
-    if discarded.len() > 0 {
+    if !discarded.is_empty() {
         let min = min(discarded.len(), api_config.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
@@ -1499,7 +1499,7 @@ async fn get_last_invalid(
         }
         Ok(graph) => graph,
     };
-    let discarded = graph.discarded_blocks.clone();
+    let discarded = graph.discarded_blocks;
 
     let mut discarded = discarded
         .map
@@ -1507,7 +1507,7 @@ async fn get_last_invalid(
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Invalid)
         .map(|(hash, (_reason, header))| (hash, header.content.slot))
         .collect::<Vec<(&BlockId, Slot)>>();
-    if discarded.len() > 0 {
+    if !discarded.is_empty() {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
@@ -1553,7 +1553,7 @@ async fn get_staker_info(
         .map
         .iter()
         .filter(|(_hash, (_reason, header))| header.content.creator == creator)
-        .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
+        .map(|(hash, (reason, header))| (hash, *reason, header.clone()))
         .collect::<Vec<(&BlockId, DiscardReason, BlockHeader)>>();
     let cur_time = match UTime::now(clock_compensation) {
         Ok(time) => time,

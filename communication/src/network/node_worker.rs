@@ -284,7 +284,7 @@ impl NodeWorker {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
                             //cut operation list if it exceed max_operations_per_message
                             for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
-                                if writer_command_tx.send(Message::Operations(to_send_list.iter().cloned().collect())).await.is_err() {
+                                if writer_command_tx.send(Message::Operations(to_send_list.to_vec())).await.is_err() {
                                     break 'select_loop;
                                 }
                             }

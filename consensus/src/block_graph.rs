@@ -139,7 +139,7 @@ impl SerializeCompact for ExportActiveBlock {
 
         //parents
         // parents (note: there should be none if slot period=0)
-        if self.parents.len() == 0 {
+        if self.parents.is_empty() {
             res.push(0);
         } else {
             res.push(1);
@@ -153,7 +153,7 @@ impl SerializeCompact for ExportActiveBlock {
         let children_count: u32 = self.children.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many children in ActiveBlock: {:?}", err))
         })?;
-        res.extend(u32::from(children_count).to_varint_bytes());
+        res.extend(children_count.to_varint_bytes());
         for map in self.children.iter() {
             let map_count: u32 = map.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
@@ -161,7 +161,7 @@ impl SerializeCompact for ExportActiveBlock {
                     err
                 ))
             })?;
-            res.extend(u32::from(map_count).to_varint_bytes());
+            res.extend(map_count.to_varint_bytes());
             for (hash, period) in map {
                 res.extend(&hash.to_bytes());
                 res.extend(period.to_varint_bytes());
@@ -172,7 +172,7 @@ impl SerializeCompact for ExportActiveBlock {
         let dependencies_count: u32 = self.dependencies.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many dependencies in ActiveBlock: {:?}", err))
         })?;
-        res.extend(u32::from(dependencies_count).to_varint_bytes());
+        res.extend(dependencies_count.to_varint_bytes());
         for dep in self.dependencies.iter() {
             res.extend(&dep.to_bytes());
         }
@@ -185,7 +185,7 @@ impl SerializeCompact for ExportActiveBlock {
                     err
                 ))
             })?;
-        res.extend(u32::from(block_ledger_change_count).to_varint_bytes());
+        res.extend(block_ledger_change_count.to_varint_bytes());
         for map in self.block_ledger_change.iter() {
             let map_count: u32 = map.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
@@ -193,7 +193,7 @@ impl SerializeCompact for ExportActiveBlock {
                     err
                 ))
             })?;
-            res.extend(u32::from(map_count).to_varint_bytes());
+            res.extend(map_count.to_varint_bytes());
             for (address, ledger) in map {
                 res.extend(&address.to_bytes());
                 res.extend(ledger.to_bytes_compact(&context)?);
@@ -214,7 +214,7 @@ impl DeserializeCompact for ExportActiveBlock {
         //is_final
         let is_final_u8 = u8_from_slice(&buffer)?;
         cursor += 1;
-        let is_final = if is_final_u8 == 0 { false } else { true };
+        let is_final = is_final_u8 != 0;
 
         //block
         let (block, delta) = Block::from_bytes_compact(&buffer[cursor..], &context)?;
@@ -317,14 +317,7 @@ impl DeserializeCompact for ExportActiveBlock {
         }
 
         Ok((
-            ExportActiveBlock {
-                is_final,
-                block,
-                parents,
-                children,
-                dependencies,
-                block_ledger_change,
-            },
+            ExportActiveBlock { block, parents, children, dependencies, is_final, block_ledger_change },
             cursor,
         ))
     }
@@ -420,11 +413,11 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
                     export
                         .discarded_blocks
                         .map
-                        .insert(hash.clone(), (reason.clone(), header.clone()));
+                        .insert(*hash, (*reason, header.clone()));
                 }
                 BlockStatus::Active(block) => {
                     export.active_blocks.insert(
-                        hash.clone(),
+                        *hash,
                         ExportCompiledBlock {
                             block: block.block.header.clone(),
                             children: block
@@ -432,8 +425,7 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
                                 .iter()
                                 .map(|thread| {
                                     thread
-                                        .keys()
-                                        .map(|hash| hash.clone())
+                                        .keys().copied()
                                         .collect::<HashSet<BlockId>>()
                                 })
                                 .collect(),
@@ -523,7 +515,7 @@ impl SerializeCompact for BootsrapableGraph {
         if blocks_count > context.max_bootstrap_blocks {
             return Err(ModelsError::SerializeError(format!("too many blocks in active_blocks for serialization context in BootstrapableGraph: {:?}", blocks_count)));
         }
-        res.extend(u32::from(blocks_count).to_varint_bytes());
+        res.extend(blocks_count.to_varint_bytes());
         for (hash, block) in self.active_blocks.iter() {
             res.extend(&hash.to_bytes());
             res.extend(block.to_bytes_compact(&context)?);
@@ -544,7 +536,7 @@ impl SerializeCompact for BootsrapableGraph {
         let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many gi_head in BootsrapableGraph: {:?}", err))
         })?;
-        res.extend(u32::from(gi_head_count).to_varint_bytes());
+        res.extend(gi_head_count.to_varint_bytes());
         for (gihash, set) in self.gi_head.iter() {
             res.extend(&gihash.to_bytes());
             let set_count: u32 = set.len().try_into().map_err(|err| {
@@ -553,7 +545,7 @@ impl SerializeCompact for BootsrapableGraph {
                     err
                 ))
             })?;
-            res.extend(u32::from(set_count).to_varint_bytes());
+            res.extend(set_count.to_varint_bytes());
             for hash in set {
                 res.extend(&hash.to_bytes());
             }
@@ -569,7 +561,7 @@ impl SerializeCompact for BootsrapableGraph {
         if max_cliques_count > context.max_bootstrap_cliques {
             return Err(ModelsError::SerializeError(format!("too many blocks in max_cliques for serialization context in BootstrapableGraph: {:?}", max_cliques_count)));
         }
-        res.extend(u32::from(max_cliques_count).to_varint_bytes());
+        res.extend(max_cliques_count.to_varint_bytes());
         for set in self.max_cliques.iter() {
             let set_count: u32 = set.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
@@ -577,7 +569,7 @@ impl SerializeCompact for BootsrapableGraph {
                     err
                 ))
             })?;
-            res.extend(u32::from(set_count).to_varint_bytes());
+            res.extend(set_count.to_varint_bytes());
             for hash in set {
                 res.extend(&hash.to_bytes());
             }
@@ -898,7 +890,7 @@ impl BlockGraph {
                 sequence_counter: 0,
                 genesis_hashes: block_hashes.clone(),
                 block_statuses,
-                latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0 as u64)).collect(),
+                latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0_u64)).collect(),
                 best_parents: block_hashes,
                 gi_head: HashMap::new(),
                 max_cliques: vec![HashSet::new()],
@@ -922,8 +914,7 @@ impl BlockGraph {
         let (public_key, private_key) = self
             .cfg
             .nodes
-            .get(self.cfg.current_node_index as usize)
-            .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
+            .get(self.cfg.current_node_index as usize).map(|(public_key, private_key)| (*public_key, *private_key))
             .ok_or(ConsensusError::KeyError)?;
 
         let example_hash = Hash::hash(&val.as_bytes());
@@ -932,7 +923,7 @@ impl BlockGraph {
             &private_key,
             BlockHeaderContent {
                 creator: public_key,
-                slot: slot,
+                slot,
                 parents: self.best_parents.clone(),
                 out_ledger_hash: example_hash,
                 operation_merkle_root: Hash::hash(&Vec::new()),
@@ -1233,7 +1224,7 @@ impl BlockGraph {
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                header: header,
+                                header,
                                 reason,
                                 sequence_number: BlockGraph::new_sequence_number(
                                     &mut self.sequence_counter,
@@ -1414,7 +1405,7 @@ impl BlockGraph {
                 "block_id": block_id
             });
             self.to_propagate
-                .insert(block_id.clone(), active.block.clone());
+                .insert(block_id, active.block.clone());
             for (itm_block_id, itm_status) in self.block_statuses.iter_mut() {
                 if let BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -1439,7 +1430,7 @@ impl BlockGraph {
         // If invalid, note the attack attempt.
         match reason {
             &DiscardReason::Invalid => {
-                self.attack_attempts.push(hash.clone());
+                self.attack_attempts.push(*hash);
             }
             _ => {}
         }
@@ -1855,7 +1846,7 @@ impl BlockGraph {
                 }
                 dependencies.insert(current_block_id);
 
-                if current_block.parents.len() == 0 {
+                if current_block.parents.is_empty() {
                     //genesis block found
                     break;
                 }
@@ -1937,7 +1928,7 @@ impl BlockGraph {
 
                     // add change to block changes
                     if let Some(mut old) =
-                        block_changes[thread].insert(change.0.clone(), change.1.clone())
+                        block_changes[thread].insert(*change.0, change.1.clone())
                     {
                         if let Err(err) = old.chain(change.1) {
                             error!(
@@ -1948,7 +1939,7 @@ impl BlockGraph {
                                 DiscardReason::Invalid,
                             ));
                         }
-                        block_changes[thread].insert(change.0.clone(), old); // insert back old chained with new
+                        block_changes[thread].insert(*change.0, old); // insert back old chained with new
                     }
                 }
             }
@@ -1963,7 +1954,7 @@ impl BlockGraph {
     fn get_ledger_at_parents(
         &self,
         parents: &Vec<BlockId>,
-        query_addrs: &HashSet<Address>,
+        _query_addrs: &HashSet<Address>,
     ) -> CurrentBlockLedger {
         CurrentBlockLedger {
             data: vec![HashMap::new(); parents.len() as usize],
@@ -2383,7 +2374,7 @@ impl BlockGraph {
                 {
                     self.latest_final_blocks_periods
                         [final_block.header.content.slot.thread as usize] = (
-                        final_block_hash.clone(),
+                        final_block_hash,
                         final_block.header.content.slot.period,
                     );
                 }
@@ -2413,7 +2404,7 @@ impl BlockGraph {
         let latest_final_blocks: Vec<BlockId> = self
             .latest_final_blocks_periods
             .iter()
-            .map(|(hash, _)| hash.clone())
+            .map(|(hash, _)| *hash)
             .collect();
 
         // retain all non-final active blocks,
@@ -2443,7 +2434,7 @@ impl BlockGraph {
         retain_active.extend(
             self.latest_final_blocks_periods
                 .iter()
-                .map(|(h, _)| h.clone()),
+                .map(|(h, _)| *h),
         );
 
         // grow with parents & fill thread holes twice
@@ -2958,7 +2949,7 @@ mod tests {
                 ),
                 (
                     BlockId::for_tests("active13").unwrap(),
-                    active_block.clone(),
+                    active_block,
                 ),
             ]
             .into_iter()

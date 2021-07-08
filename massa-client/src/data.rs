@@ -53,7 +53,7 @@ pub fn from_hash_slot((hash, slot): (Hash, Slot)) -> (WrappedHash, WrappedSlot) 
 }
 
 pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlot)> {
-    list.into_iter().map(|v| from_hash_slot(*v)).collect()
+    list.iter().map(|v| from_hash_slot(*v)).collect()
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -247,7 +247,7 @@ impl From<PeerInfo> for WrappedPeerInfo {
 }
 impl From<&'_ PeerInfo> for WrappedPeerInfo {
     fn from(peer: &PeerInfo) -> Self {
-        WrappedPeerInfo(peer.clone())
+        WrappedPeerInfo(*peer)
     }
 }
 impl std::fmt::Display for WrappedPeerInfo {

@@ -122,7 +122,7 @@ impl PrivateKey {
     /// ```
     pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, CryptoError> {
         secp256k1::SecretKey::from_slice(&data[..])
-            .map(|key| PrivateKey(key))
+            .map(PrivateKey)
             .map_err(|err| {
                 CryptoError::ParsingError(format!("private key bytes parsing error: {:?}", err))
             })
@@ -345,7 +345,7 @@ impl PublicKey {
     /// ```
     pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, CryptoError> {
         secp256k1::PublicKey::from_slice(&data[..])
-            .map(|key| PublicKey(key))
+            .map(PublicKey)
             .map_err(|err| {
                 CryptoError::ParsingError(format!("public key bytes parsing error: {:?}", err))
             })
@@ -575,7 +575,7 @@ impl Signature {
     /// ```
     pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, CryptoError> {
         secp256k1::Signature::from_compact(&data[..])
-            .map(|signature| Signature(signature))
+            .map(Signature)
             .map_err(|err| {
                 CryptoError::ParsingError(format!("signature bytes parsing error: {:?}", err))
             })

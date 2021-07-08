@@ -149,7 +149,7 @@ impl OperationPool {
             .filter(|(_id, w_op)| {
                 w_op.op.content.expire_period <= self.last_final_periods[w_op.thread as usize]
             })
-            .map(|(id, _)| id.clone())
+            .map(|(id, _)| *id)
             .collect();
 
         self.remove_ops(ids);
@@ -191,7 +191,7 @@ impl OperationPool {
                         .contains(&block_slot.period) {
                         return None;
                     }
-                    Some(Ok((id.clone(), w_op.op.clone())))
+                    Some(Ok((*id, w_op.op.clone())))
                 } else {
                     Some(Err(PoolError::ContainerInconsistency(
                         format!("operation pool get_ops inconsistency: op_id={:?} is in ops_by_thread_and_interest but not in ops", id)

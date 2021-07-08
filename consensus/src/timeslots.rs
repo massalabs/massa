@@ -23,11 +23,11 @@ pub fn get_block_slot_timestamp(
     let shift: UTime = t0
         .checked_mul(slot.period)
         .or(Err(ConsensusError::TimeOverflowError))?;
-    Ok(genesis_timestamp
+    genesis_timestamp
         .checked_add(base)
         .or(Err(ConsensusError::TimeOverflowError))?
         .checked_add(shift)
-        .or(Err(ConsensusError::TimeOverflowError))?)
+        .or(Err(ConsensusError::TimeOverflowError))
 }
 
 /// Returns the thread and block period index of the latest block slot at a given timstamp (inclusive), if any happened

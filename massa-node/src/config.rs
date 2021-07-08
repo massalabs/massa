@@ -6,7 +6,7 @@ use consensus::ConsensusConfig;
 use pool::PoolConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
-use toml;
+
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LoggingConfig {

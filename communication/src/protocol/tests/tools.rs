@@ -57,7 +57,7 @@ pub fn create_block(
     let (_, header) = BlockHeader::new_signed(
         private_key,
         BlockHeaderContent {
-            creator: public_key.clone(),
+            creator: *public_key,
             slot: Slot::new(0, 0),
             parents: Vec::new(),
             out_ledger_hash: example_hash,

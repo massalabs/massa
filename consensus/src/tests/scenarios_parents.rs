@@ -136,7 +136,7 @@ async fn test_parents() {
         &cfg,
         &serialization_context,
         Slot::new(3, 0),
-        vec![hasht1s1, genesis_hashes[0].clone()],
+        vec![hasht1s1, genesis_hashes[0]],
         false,
         false,
     )

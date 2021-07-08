@@ -325,7 +325,7 @@ impl Repl {
             println!("Massa client help:");
             self.cmd_list
                 .iter()
-                .filter(|cmd| cmd.name.len() > 0)
+                .filter(|cmd| !cmd.name.is_empty())
                 .for_each(|cmd| println!(" - {}  :  {}", cmd.name, cmd.help));
         }
         Ok(false)

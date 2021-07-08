@@ -52,7 +52,7 @@ async fn test_bootstrap_server() {
     .await
     .expect("timeout waiting for connection attempt from remote")
     .expect("error receiving connection attempt from remote");
-    let expect_conn_addr = cfg.bootstrap_addr.unwrap().clone();
+    let expect_conn_addr = cfg.bootstrap_addr.unwrap();
     assert_eq!(
         conn_addr, expect_conn_addr,
         "client connected to wrong bootstrap ip"

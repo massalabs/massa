@@ -184,8 +184,7 @@ pub async fn rejected_connection_to_controller(
     .await;
 
     // wait for NetworkEvent::NewConnection or NetworkEvent::ConnectionClosed events to NOT happen
-    if let Some(_) =
-        wait_network_event(
+    if wait_network_event(
             network_event_receiver,
             event_timeout_ms.into(),
             |msg| match msg {
@@ -206,7 +205,7 @@ pub async fn rejected_connection_to_controller(
                 _ => None,
             },
         )
-        .await
+        .await.is_some()
     {
         panic!("unexpected node connection event detected");
     }

@@ -66,7 +66,7 @@ impl BlockStorage {
             res.remove_excess_blocks(&mut block_count_w)?;
         }
 
-        return Ok(res);
+        Ok(res)
     }
 
     pub fn add_block(&self, block_id: BlockId, block: Block) -> Result<(), StorageError> {
@@ -161,7 +161,7 @@ impl BlockStorage {
             .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
         self.hash_to_block
             .contains_key(block_id.to_bytes())
-            .map_err(|e| StorageError::from(e))
+            .map_err(StorageError::from)
     }
 
     pub fn get_block(&self, block_id: BlockId) -> Result<Option<Block>, StorageError> {

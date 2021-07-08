@@ -338,7 +338,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
     // 4. Simulate consensus sending block.
     let mut results = HashMap::new();
-    results.insert(expected_hash.clone(), Some(block));
+    results.insert(expected_hash, Some(block));
     protocol_command_sender
         .send_get_blocks_results(results)
         .await
@@ -346,7 +346,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
     // 5. Check that protocol sends the non-banned node the full block.
     let mut expecting_block = HashSet::new();
-    expecting_block.insert(nodes[0].id.clone());
+    expecting_block.insert(nodes[0].id);
     loop {
         match network_controller
             .wait_command(1000.into(), send_block_or_header_cmd_filter)

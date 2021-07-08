@@ -191,7 +191,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             &cfg,
             &serialization_context,
             Slot::new(i, 0),
-            vec![bad_parent.clone(), parents.clone()[0]],
+            vec![bad_parent, parents.clone()[0]],
             false,
             false,
         )

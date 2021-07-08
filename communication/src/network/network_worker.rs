@@ -582,7 +582,7 @@ impl NetworkWorker {
         let self_node_id = self.self_node_id;
         let private_key = self.private_key;
         let message_timeout = self.cfg.message_timeout;
-        let connection_id_copy = connection_id.clone();
+        let connection_id_copy = connection_id;
         let serialization_context = self.serialization_context.clone();
         let handshake_fn_handle = tokio::spawn(async move {
             (
@@ -781,7 +781,7 @@ impl NetworkWorker {
         message: NodeCommand,
     ) {
         if let Some((_, node_command_tx)) = self.active_nodes.get(&node) {
-            if !node_command_tx.send(message).await.is_ok() {
+            if node_command_tx.send(message).await.is_err() {
                 warn!(
                     "{}",
                     CommunicationError::ChannelError(
@@ -793,7 +793,7 @@ impl NetworkWorker {
             // We probably weren't able to send this event previously,
             // retry it now.
             let _ = self
-                .send_network_event(NetworkEvent::ConnectionClosed(node.clone()))
+                .send_network_event(NetworkEvent::ConnectionClosed(*node))
                 .await;
         }
     }

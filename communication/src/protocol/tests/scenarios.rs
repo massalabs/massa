@@ -183,7 +183,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
     // 4. Simulate consensus sending block.
     let mut results = HashMap::new();
-    results.insert(expected_hash.clone(), Some(block));
+    results.insert(expected_hash, Some(block));
     protocol_command_sender
         .send_get_blocks_results(results)
         .await
@@ -191,8 +191,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
     // 5. Check that protocol sends the nodes the full block.
     let mut expecting_block = HashSet::new();
-    expecting_block.insert(nodes[0].id.clone());
-    expecting_block.insert(nodes[1].id.clone());
+    expecting_block.insert(nodes[0].id);
+    expecting_block.insert(nodes[1].id);
     loop {
         match network_controller
             .wait_command(1000.into(), send_block_or_header_cmd_filter)
@@ -324,10 +324,10 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
     // node_c did nothing, it should receive the header
     // node_d was disconnected, so nothing should be send to it
     let mut expected_headers = HashSet::new();
-    expected_headers.insert(node_c.id.clone());
+    expected_headers.insert(node_c.id);
 
     let mut expected_full_blocks = HashSet::new();
-    expected_full_blocks.insert(node_b.id.clone());
+    expected_full_blocks.insert(node_b.id);
 
     loop {
         match network_controller

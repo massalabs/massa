@@ -132,7 +132,7 @@ impl MockEstablisher {
 
         Ok(MockConnector {
             connection_connector_tx: self.connection_connector_tx.clone(),
-            timeout_duration: timeout_duration,
+            timeout_duration,
         })
     }
 }
@@ -155,7 +155,7 @@ impl MockEstablisherInterface {
         ))?;
         let (response_tx, response_rx) = oneshot::channel::<(ReadHalf, WriteHalf)>();
         sender
-            .send((addr.clone(), response_tx))
+            .send((*addr, response_tx))
             .await
             .map_err(|_err| {
                 io::Error::new(

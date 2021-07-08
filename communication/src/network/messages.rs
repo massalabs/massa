@@ -95,7 +95,7 @@ impl SerializeCompact for Message {
                     )
                 })?;
                 res.extend(list_len.to_varint_bytes());
-                for hash in list.into_iter() {
+                for hash in list.iter() {
                     res.extend(&hash.to_bytes());
                 }
             }
@@ -105,7 +105,7 @@ impl SerializeCompact for Message {
             Message::PeerList(ip_vec) => {
                 res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
                 res.extend((ip_vec.len() as u64).to_varint_bytes());
-                for ip in ip_vec.into_iter() {
+                for ip in ip_vec.iter() {
                     res.extend(ip.to_bytes_compact(&context)?)
                 }
             }
@@ -116,7 +116,7 @@ impl SerializeCompact for Message {
             Message::Operations(operations) => {
                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
                 res.extend((operations.len() as u64).to_varint_bytes());
-                for op in operations.into_iter() {
+                for op in operations.iter() {
                     res.extend(op.to_bytes_compact(&context)?);
                 }
             }

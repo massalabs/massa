@@ -33,7 +33,7 @@ impl ReplHelper {
         self.completer.cmd_list.push(cmd_name.clone());
         self.hinter.cmd_list.push(cmd_name.clone());
         self.validator.cmd_list.push(HelperCommand {
-            name: cmd_name.clone(),
+            name: cmd_name,
             max_nb_param,
             min_nb_param,
         });
@@ -153,7 +153,7 @@ impl CommandValidator {
                         params.len(),
                         command.max_nb_param
                     );*/
-                    if params.len() >= command.min_nb_param + 1
+                    if params.len() > command.min_nb_param
                         && params.len() <= command.max_nb_param + 1
                     {
                         result = ValidationResult::Valid(None);

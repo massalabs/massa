@@ -121,7 +121,7 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
         Ok(ConsensusWorker {
-            cfg: cfg.clone(),
+            cfg,
             genesis_public_key,
             protocol_command_sender,
             protocol_event_receiver,

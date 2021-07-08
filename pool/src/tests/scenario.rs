@@ -55,7 +55,7 @@ async fn test_pool() {
             .unwrap();
 
         let newly_added = match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
+            .wait_command(250.into(), op_filter)
             .await
         {
             Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -74,7 +74,7 @@ async fn test_pool() {
             .unwrap();
 
         match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
+            .wait_command(250.into(), op_filter)
             .await
         {
             Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -160,7 +160,7 @@ async fn test_pool() {
         pool_command_sender.add_operations(ops).await.unwrap();
 
         match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
+            .wait_command(250.into(), op_filter)
             .await
         {
             Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -222,7 +222,7 @@ async fn test_pool_with_protocol_events() {
         protocol_controller.received_operations(ops.clone()).await;
 
         let newly_added = match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
+            .wait_command(250.into(), op_filter)
             .await
         {
             Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -238,7 +238,7 @@ async fn test_pool_with_protocol_events() {
         protocol_controller.received_operations(ops.clone()).await;
 
         match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
+            .wait_command(250.into(), op_filter)
             .await
         {
             Some(cmd) => panic!("unexpected protocol command {:?}", cmd),

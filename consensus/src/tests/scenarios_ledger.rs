@@ -11,7 +11,7 @@ use models::Address;
 async fn test_ledger_init() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None);
+    let ledger = Ledger::new(cfg, serialization_context, None);
     assert!(ledger.is_ok());
 }
 
@@ -19,11 +19,11 @@ async fn test_ledger_init() {
 async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let _address = Address::from_public_key(&public_key).unwrap();
 
     for latest_final in ledger
         .get_latest_final_periods()
@@ -37,7 +37,7 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 async fn test_ledger_final_balance_increment_new_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -46,7 +46,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 
     let change = LedgerChange::new(1, true);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -62,7 +62,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 async fn test_ledger_apply_change_wrong_thread() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -73,7 +73,7 @@ async fn test_ledger_apply_change_wrong_thread() {
 
     // Note: wrong thread.
     assert!(ledger
-        .apply_final_changes(thread + 1, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread + 1, vec![(address, change)], 1)
         .is_err());
 
     // Balance should still be zero.
@@ -90,7 +90,7 @@ async fn test_ledger_apply_change_wrong_thread() {
 async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -99,7 +99,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 
     let change = LedgerChange::new(1, true);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -112,7 +112,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 
     let change = LedgerChange::new(u64::MAX, true);
     assert!(ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .is_err());
 }
 
@@ -120,7 +120,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -130,7 +130,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     // Increment.
     let change = LedgerChange::new(1, true);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -144,7 +144,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     // Decrement.
     let change = LedgerChange::new(1, false);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -160,7 +160,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 async fn test_ledger_final_balance_decrement_address_below_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -170,7 +170,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     // Increment.
     let change = LedgerChange::new(1, true);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -184,7 +184,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     // Decrement.
     let change = LedgerChange::new(1, false);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -198,7 +198,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     // Try to decrement again.
     let change = LedgerChange::new(1, false);
     assert!(ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .is_err());
 }
 
@@ -206,7 +206,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 async fn test_ledger_final_balance_decrement_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -216,7 +216,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
     // Decrement.
     let change = LedgerChange::new(1, false);
     assert!(ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .is_err());
 }
 
@@ -224,7 +224,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 async fn test_ledger_final_balance_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -243,7 +243,7 @@ async fn test_ledger_final_balance_non_existing_address() {
 async fn test_ledger_final_balance_duplicate_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -266,7 +266,7 @@ async fn test_ledger_final_balance_duplicate_address() {
 async fn test_ledger_final_balance_multiple_addresses() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, serialization_context, None).unwrap();
 
     let mut addresses = vec![];
     for _ in 0..5 {
@@ -294,7 +294,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
 async fn test_ledger_clear() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -303,7 +303,7 @@ async fn test_ledger_clear() {
 
     let change = LedgerChange::new(1, true);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -329,7 +329,7 @@ async fn test_ledger_clear() {
 async fn test_ledger_read_whole() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg.clone(), serialization_context, None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -338,7 +338,7 @@ async fn test_ledger_read_whole() {
 
     let change = LedgerChange::new(1, true);
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, vec![(address, change)], 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
@@ -355,7 +355,7 @@ async fn test_ledger_read_whole() {
         .expect("Couldn't get ledger for thread.");
     let address_data = thread_ledger
         .iter()
-        .filter(|(addr, _)| addr.clone() == address)
+        .filter(|(addr, _)| *addr == address)
         .collect::<Vec<_>>()
         .pop()
         .expect("Couldn't find ledger data for address.")

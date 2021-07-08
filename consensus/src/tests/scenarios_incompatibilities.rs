@@ -104,7 +104,7 @@ async fn test_thread_incompatibility() {
 
     let mut current_period = 3;
     let mut parents = vec![hash_1, hash_2];
-    for _ in 0..3 as usize {
+    for _ in 0..3_usize {
         let hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
@@ -116,7 +116,7 @@ async fn test_thread_incompatibility() {
         )
         .await;
         current_period += 1;
-        parents[0] = hash.clone();
+        parents[0] = hash;
     }
 
     let status = consensus_command_sender
@@ -130,9 +130,9 @@ async fn test_thread_incompatibility() {
         panic!("missing block in clique")
     });
 
-    let mut parents = vec![status.best_parents[0].clone(), hash_2];
+    let mut parents = vec![status.best_parents[0], hash_2];
     let mut current_period = 8;
-    for _ in 0..30 as usize {
+    for _ in 0..30_usize {
         let (hash, b, _) = tools::create_block(
             &cfg,
             &serialization_context,
@@ -140,7 +140,7 @@ async fn test_thread_incompatibility() {
             parents.clone(),
         );
         current_period += 1;
-        parents[0] = hash.clone();
+        parents[0] = hash;
         protocol_controller.receive_block(b).await;
 
         // Note: higher timeout required.

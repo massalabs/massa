@@ -368,7 +368,7 @@ impl ProtocolWorker {
                     .active_nodes
                     .iter()
                     .filter_map(|(id, info)| match info.get_known_block(&block_id) {
-                        Some((true, _)) => Some(id.clone()),
+                        Some((true, _)) => Some(*id),
                         _ => None,
                     })
                     .collect();
@@ -450,7 +450,7 @@ impl ProtocolWorker {
                 let ops: Vec<Operation> = ops.into_values().collect();
                 for (node, _) in self.active_nodes.iter() {
                     self.network_command_sender
-                        .send_operations(node.clone(), ops.clone())
+                        .send_operations(*node, ops.clone())
                         .await?
                 }
             }
@@ -498,7 +498,7 @@ impl ProtocolWorker {
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
                 //map to remove the borrow on asked_blocks. Otherwise can't call insert_known_block
-                let ask_time_opt = node_info.asked_blocks.get(hash).map(|time| *time);
+                let ask_time_opt = node_info.asked_blocks.get(hash).copied();
                 let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
                     let t = ask_time
                         .checked_add(self.cfg.ask_block_timeout.into())
@@ -577,7 +577,7 @@ impl ProtocolWorker {
                 // add candidate node
                 candidate_nodes
                     .entry(*hash)
-                    .or_insert_with(|| Vec::new())
+                    .or_insert_with(Vec::new)
                     .push((candidate, *node_id));
             }
 
@@ -633,7 +633,7 @@ impl ProtocolWorker {
 
                 ask_block_list
                     .entry(best_node)
-                    .or_insert_with(|| vec![])
+                    .or_insert_with(std::vec::Vec::new)
                     .push(hash);
 
                 let timeout_at = now
@@ -669,7 +669,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
         self.network_command_sender
-            .ban(node_id.clone())
+            .ban(*node_id)
             .await
             .map_err(|_| CommunicationError::ChannelError("Ban node command send failed".into()))?;
         Ok(())
@@ -887,7 +887,7 @@ impl ProtocolWorker {
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
                     for hash in &list {
                         node_info.insert_wanted_blocks(
-                            hash.clone(),
+                            *hash,
                             self.cfg.max_node_wanted_blocks_size,
                         );
                     }

@@ -36,7 +36,7 @@ impl LedgerData {
 impl SerializeCompact for LedgerData {
     fn to_bytes_compact(
         &self,
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.balance.to_varint_bytes());
@@ -47,7 +47,7 @@ impl SerializeCompact for LedgerData {
 impl DeserializeCompact for LedgerData {
     fn from_bytes_compact(
         buffer: &[u8],
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
         let (balance, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -114,7 +114,7 @@ impl LedgerChange {
 impl SerializeCompact for LedgerChange {
     fn to_bytes_compact(
         &self,
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.balance_delta.to_varint_bytes());
@@ -130,7 +130,7 @@ impl SerializeCompact for LedgerChange {
 impl DeserializeCompact for LedgerChange {
     fn from_bytes_compact(
         buffer: &[u8],
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
         let (balance_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -138,11 +138,7 @@ impl DeserializeCompact for LedgerChange {
 
         let balance_increment_u8 = u8_from_slice(&buffer)?;
         cursor += 1;
-        let balance_increment = if balance_increment_u8 == 0 {
-            false
-        } else {
-            true
-        };
+        let balance_increment = balance_increment_u8 != 0;
 
         Ok((
             LedgerChange {
@@ -172,7 +168,7 @@ impl OperationLedgerInterface for Operation {
         fee_target: &Address,
     ) -> Result<HashSet<Address>, ConsensusError> {
         let mut res = HashSet::new();
-        res.insert(fee_target.clone());
+        res.insert(*fee_target);
         res.insert(Address::from_public_key(&self.content.sender_public_key)?);
         match self.content.op {
             models::OperationType::Transaction {
@@ -308,7 +304,7 @@ impl Ledger {
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
     pub fn get_final_datas(
         &self,
-        mut addresses: HashSet<&Address>,
+        addresses: HashSet<&Address>,
     ) -> Result<HashMap<Address, LedgerData>, ConsensusError> {
         // TODO: only run the transaction on a subset of relevant ledgers?
         self.ledger_per_thread
@@ -340,7 +336,7 @@ impl Ledger {
                     };
 
                     // Should never panic since we are operating on a set of addresses.
-                    assert!(result.insert((*address).clone(), data).is_none());
+                    assert!(result.insert(*(*address), data).is_none());
                 }
                 Ok(result)
             })
@@ -611,7 +607,7 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
 
     fn try_from(value: &'a Ledger) -> Result<Self, Self::Error> {
         Ok(LedgerExport {
-            ledger_per_thread: value.read_whole()?.iter().cloned().collect(),
+            ledger_per_thread: value.read_whole()?.to_vec(),
             latest_final_periods: value.get_latest_final_periods()?,
         })
     }
@@ -619,7 +615,7 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
 
 impl LedgerExport {
     /// Empty ledger export used for tests
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new(_thread_count: u8) -> Self {
         LedgerExport {
             ledger_per_thread: Vec::new(),
             latest_final_periods: Vec::new(),
@@ -669,7 +665,7 @@ impl SerializeCompact for LedgerExport {
                 err
             ))
         })?;
-        res.extend(u32::from(thread_count).to_varint_bytes());
+        res.extend(thread_count.to_varint_bytes());
         for thread_ledger in self.ledger_per_thread.iter() {
             let vec_count: u32 = thread_ledger.len().try_into().map_err(|err| {
                 models::ModelsError::SerializeError(format!(
@@ -678,7 +674,7 @@ impl SerializeCompact for LedgerExport {
                 ))
             })?;
 
-            res.extend(u32::from(vec_count).to_varint_bytes());
+            res.extend(vec_count.to_varint_bytes());
             for (address, data) in thread_ledger.iter() {
                 res.extend(address.to_bytes());
                 res.extend(data.to_bytes_compact(context)?);

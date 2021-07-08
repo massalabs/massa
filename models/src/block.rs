@@ -266,7 +266,7 @@ impl SerializeCompact for BlockHeaderContent {
 
         // parents (note: there should be none if slot period=0)
         // parents (note: there should be none if slot period=0)
-        if self.parents.len() == 0 {
+        if self.parents.is_empty() {
             res.push(0);
         } else {
             res.push(1);

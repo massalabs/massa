@@ -166,7 +166,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
     let expected_operation_id = operation.verify_integrity(&serialization_context).unwrap();
 
     let mut ops = HashMap::new();
-    ops.insert(expected_operation_id.clone(), operation);
+    ops.insert(expected_operation_id, operation);
     protocol_command_sender
         .propagate_operations(ops)
         .await

@@ -21,12 +21,12 @@ pub async fn validate_notpropagate_block(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
     match param {
-        Some(block_id) => !(not_propagated == block_id),
+        Some(block_id) => not_propagated != block_id,
         None => false,
     }
 }
@@ -39,7 +39,7 @@ pub async fn validate_notpropagate_block_in_list(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
@@ -56,7 +56,7 @@ pub async fn validate_propagate_block_in_list(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
@@ -76,7 +76,7 @@ pub async fn validate_ask_for_block(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
+            ProtocolCommand::WishlistDelta { new, .. } => Some(new),
             _ => None,
         })
         .await;
@@ -98,7 +98,7 @@ pub async fn validate_wishlist(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, remove } => return Some((new, remove)),
+            ProtocolCommand::WishlistDelta { new, remove } => Some((new, remove)),
             _ => None,
         })
         .await;
@@ -118,7 +118,7 @@ pub async fn validate_does_not_ask_for_block(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
+            ProtocolCommand::WishlistDelta { new, .. } => Some(new),
             _ => None,
         })
         .await;
@@ -139,7 +139,7 @@ pub async fn validate_propagate_block(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
@@ -156,7 +156,7 @@ pub async fn validate_notify_block_attack_attempt(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::AttackBlockDetected(hash) => return Some(hash),
+            ProtocolCommand::AttackBlockDetected(hash) => Some(hash),
             _ => None,
         })
         .await;
@@ -189,7 +189,7 @@ pub async fn validate_block_found(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => return Some(results),
+            ProtocolCommand::GetBlocksResults(results) => Some(results),
             _ => None,
         })
         .await;
@@ -215,7 +215,7 @@ pub async fn validate_block_not_found(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => return Some(results),
+            ProtocolCommand::GetBlocksResults(results) => Some(results),
             _ => None,
         })
         .await;
@@ -306,8 +306,7 @@ pub fn create_block_with_merkle_root(
 ) -> (BlockId, Block, PrivateKey) {
     let (public_key, private_key) = cfg
         .nodes
-        .get(0)
-        .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
+        .get(0).map(|(public_key, private_key)| (*public_key, *private_key))
         .unwrap();
 
     let example_hash = Hash::hash("default_val".as_bytes());
@@ -365,7 +364,7 @@ pub fn default_consensus_config(
     (
         ConsensusConfig {
             genesis_timestamp: UTime::now(0).unwrap(),
-            thread_count: thread_count,
+            thread_count,
             t0: 32000.into(),
             selection_rng_seed: 42,
             genesis_key,

@@ -73,7 +73,7 @@ impl HandshakeWorker {
         // send handshake init future
         let send_init_msg = Message::HandshakeInitiation {
             public_key: self.self_node_id.0,
-            random_bytes: self_random_bytes.clone(),
+            random_bytes: self_random_bytes,
         };
         let send_init_fut = self.writer.send(&send_init_msg);
 

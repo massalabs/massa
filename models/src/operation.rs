@@ -180,12 +180,7 @@ impl DeserializeCompact for OperationContent {
         cursor += delta;
 
         Ok((
-            OperationContent {
-                fee,
-                expire_period,
-                sender_public_key,
-                op,
-            },
+            OperationContent { sender_public_key, fee, expire_period, op },
             cursor,
         ))
     }
@@ -299,7 +294,7 @@ mod tests {
         let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
         let op = Operation {
-            content: content.clone(),
+            content: content,
             signature,
         };
 

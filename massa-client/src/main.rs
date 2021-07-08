@@ -160,7 +160,7 @@ fn main() {
                 })
                 .ok()
         })
-        .unwrap_or(cfg.default_node.clone());
+        .unwrap_or(cfg.default_node);
     repl.data.node_ip = node_ip;
 
     let short_hash = matches
@@ -269,8 +269,8 @@ fn cmd_create_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), Re
 }
 
 fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Err(_) = bool::from_str(&params[0].to_lowercase())
-        .map(|val| data::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed))
+    if bool::from_str(&params[0].to_lowercase())
+        .map(|val| data::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed)).is_err()
     {
         println!("Bad parameter:{}, not a boolean (true, false)", params[0]);
     };
@@ -371,7 +371,7 @@ fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
     if let Some(resp) = request_data(data, &url)? {
         let mut block: Vec<(data::WrappedHash, data::WrappedSlot)> =
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
-        if block.len() == 0 {
+        if block.is_empty() {
             println!("Not block found.");
         } else {
             block.sort_unstable_by_key(|v| (v.1, v.0));
@@ -433,7 +433,7 @@ fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
         if resp.content_length().unwrap() > 0 {
             let block = resp
                 .json::<Block>()
-                .map(|block| data::WrapperBlock::from(block))?;
+                .map(data::WrapperBlock::from)?;
             println!("block: {}", block);
         } else {
             println!("block not found.");
@@ -470,7 +470,7 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             block.iter().for_each(|(hash, slot, state, parents)| {
                 println!("Block: {} Slot: {} Status:{}", hash, slot, state);
                 println!("Block parents: {:?}", parents);
-                println!("");
+                println!();
             });
         } else {
             println!("Empty graph found.");
@@ -485,9 +485,7 @@ fn format_url_with_to_from(
     params: &[&str],
 ) -> Result<String, ReplError> {
     if let Some(p) = params
-        .iter()
-        .filter(|p| !p.starts_with("from=") && !p.starts_with("to="))
-        .next()
+        .iter().find(|p| !p.starts_with("from=") && !p.starts_with("to="))
     {
         return Err(ReplError::BadCommandParameter(p.to_string()));
     }
@@ -528,13 +526,11 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
             .unwrap();
         println!("The serveur answer status:{} an error:{}", status, message);
         Ok(None)
+    } else if data.cli {
+        println!("{}", resp.text()?);
+        Ok(None)
     } else {
-        if data.cli {
-            println!("{}", resp.text()?);
-            Ok(None)
-        } else {
-            Ok(Some(resp))
-        }
+        Ok(Some(resp))
     }
 }
 

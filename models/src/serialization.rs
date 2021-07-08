@@ -178,7 +178,7 @@ pub fn array_from_slice<const ARRAY_SIZE: usize>(
 }
 
 pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
-    if buffer.len() == 0 {
+    if buffer.is_empty() {
         return Err(ModelsError::BufferError(
             "could not read u8 from empty buffer".into(),
         ));

@@ -193,7 +193,7 @@ async fn test_current_parents() {
     let expected = (get_test_block_id(), get_test_block().header.content.slot);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
+        &serde_json::to_string(&vec![expected, expected]).unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -649,7 +649,7 @@ async fn test_last_final() {
                 .iter()
                 .enumerate()
                 .map(|(thread_number, (hash, period))| {
-                    (hash.clone(), Slot::new(*period, thread_number as u8))
+                    (*hash, Slot::new(*period, thread_number as u8))
                 })
                 .collect::<Vec<(BlockId, Slot)>>(),
         )
@@ -1580,7 +1580,7 @@ async fn test_staker_info() {
     };
 
     let staker = get_dummy_staker();
-    let cloned_staker = staker.clone();
+    let cloned_staker = staker;
     //test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1651,9 +1651,9 @@ async fn test_staker_info() {
     )];
     graph
         .active_blocks
-        .insert(staker_s_active[0].0.clone(), staker_s_active[0].1.clone());
+        .insert(staker_s_active[0].0, staker_s_active[0].1.clone());
 
-    let cloned_staker = staker.clone();
+    let cloned_staker = staker;
     let cloned_graph = graph.clone();
     let (filter, mut rx_api) = mock_filter(None);
 

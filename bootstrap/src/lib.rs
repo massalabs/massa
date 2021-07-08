@@ -56,7 +56,7 @@ async fn get_state_internal(
             )
             .into())
         }
-        Ok(Err(e)) => return Err(e.into()),
+        Ok(Err(e)) => return Err(e),
         Ok(Ok(_)) => {}
     }
 
@@ -320,7 +320,7 @@ impl BootstrapServer {
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::BootstrapTime {
                 server_time,
-                signature: signature.clone(),
+                signature,
             }),
         )
         .await
@@ -332,7 +332,7 @@ impl BootstrapServer {
                 )
                 .into())
             }
-            Ok(Err(e)) => return Err(e.into()),
+            Ok(Err(e)) => return Err(e),
             Ok(Ok(_)) => {}
         }
         let last_sig = signature;
@@ -348,7 +348,7 @@ impl BootstrapServer {
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::BootstrapPeers {
                 peers,
-                signature: signature.clone(),
+                signature,
             }),
         )
         .await
@@ -360,7 +360,7 @@ impl BootstrapServer {
                 )
                 .into())
             }
-            Ok(Err(e)) => return Err(e.into()),
+            Ok(Err(e)) => return Err(e),
             Ok(Ok(_)) => {}
         }
         let last_sig = signature;
@@ -376,7 +376,7 @@ impl BootstrapServer {
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::ConsensusState {
                 graph,
-                signature: signature.clone(),
+                signature,
             }),
         )
         .await
@@ -388,7 +388,7 @@ impl BootstrapServer {
                 )
                 .into())
             }
-            Ok(Err(e)) => return Err(e.into()),
+            Ok(Err(e)) => return Err(e),
             Ok(Ok(_)) => {}
         }
 

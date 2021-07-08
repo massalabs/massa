@@ -33,7 +33,7 @@ pub async fn start_pool_controller(
     // start worker
     let (command_tx, command_rx) = mpsc::channel::<PoolCommand>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<PoolManagementCommand>(1);
-    let cfg_copy = cfg.clone();
+    let cfg_copy = cfg;
     let join_handle = tokio::spawn(async move {
         let res = PoolWorker::new(
             cfg_copy,

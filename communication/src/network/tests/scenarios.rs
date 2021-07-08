@@ -411,12 +411,11 @@ async fn test_advertised_and_wakeup_interval() {
     };
 
     // 4) check that there are no further connection attempts from controller
-    if let Some(_) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+    if tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
             NetworkEvent::NewConnection(_) => Some(()),
             _ => None,
         })
-        .await
+        .await.is_some()
     {
         panic!("a connection event was emitted by controller while none were expected");
     }
@@ -597,12 +596,11 @@ async fn test_block_not_found() {
         .await
         .unwrap();
     // assert it is sent to protocol
-    if let Some(_) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+    if tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
             NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
             _ => None,
         })
-        .await
+        .await.is_some()
     {
         panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
     }

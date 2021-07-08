@@ -139,7 +139,7 @@ async fn test_block_not_processed_multiple_times() {
         parents.clone(),
     );
     protocol_controller.receive_block(block_1.clone()).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1.clone()], 1000)
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1], 1000)
         .await;
 
     // Send it again, it should not be propagated.
@@ -220,7 +220,7 @@ async fn test_queuing() {
         &cfg,
         &serialization_context,
         Slot::new(4, 0),
-        vec![hash_1.clone(), parents[1]],
+        vec![hash_1, parents[1]],
         false,
         false,
     )
