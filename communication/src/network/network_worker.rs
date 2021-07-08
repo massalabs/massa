@@ -501,51 +501,59 @@ impl NetworkWorker {
                 }
                 for (conn_id, node_command_tx, _) in self.active_nodes.values() {
                     if ban_connection_ids.contains(conn_id) {
-                        node_command_tx
+                        let res = node_command_tx
                             .send(NodeCommand::Close(ConnectionClosureReason::Banned))
-                            .await
-                            .map_err(|_| {
+                            .await;
+                        if res.is_err() {
+                            warn!(
+                                "{}",
                                 CommunicationError::ChannelError(
                                     "close node command send failed".into(),
                                 )
-                            })?;
+                            )
+                        };
                     }
                 }
             }
             NetworkCommand::SendBlockHeader { node, header } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
+                    let res = node_command_tx
                         .send(NodeCommand::SendBlockHeader(header))
-                        .await
-                        .map_err(|_| {
+                        .await;
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "send block header node command send failed".into(),
                             )
-                        })?;
+                        )
+                    };
                 }
             }
             NetworkCommand::AskForBlock { node, hash } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
-                        .send(NodeCommand::AskForBlock(hash))
-                        .await
-                        .map_err(|_| {
+                    let res = node_command_tx.send(NodeCommand::AskForBlock(hash)).await;
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "ask for block node command send failed".into(),
                             )
-                        })?;
+                        )
+                    };
                 }
             }
             NetworkCommand::SendBlock { node, block } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
-                        .send(NodeCommand::SendBlock(block))
-                        .await
-                        .map_err(|_| {
+                    let res = node_command_tx.send(NodeCommand::SendBlock(block)).await;
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "send block node command send failed".into(),
                             )
-                        })?;
+                        )
+                    };
                 }
             }
             NetworkCommand::GetPeers(response_tx) => {
@@ -559,14 +567,15 @@ impl NetworkWorker {
             }
             NetworkCommand::BlockNotFound { node, hash } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    node_command_tx
-                        .send(NodeCommand::BlockNotFound(hash))
-                        .await
-                        .map_err(|_| {
+                    let res = node_command_tx.send(NodeCommand::BlockNotFound(hash)).await;
+                    if res.is_err() {
+                        warn!(
+                            "{}",
                             CommunicationError::ChannelError(
                                 "send block not found node command send failed".into(),
                             )
-                        })?;
+                        )
+                    };
                 }
             }
         }
@@ -753,14 +762,17 @@ impl NetworkWorker {
                     .active_nodes
                     .get(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;
-                node_command_tx
+                let res = node_command_tx
                     .send(NodeCommand::SendPeerList(peer_list))
-                    .await
-                    .map_err(|_| {
+                    .await;
+                if res.is_err() {
+                    warn!(
+                        "{}",
                         CommunicationError::ChannelError(
                             "node command send send_peer_list failed".into(),
                         )
-                    })?
+                    )
+                };
             }
 
             NodeEvent(node, NodeEventType::BlockNotFound(hash)) => self
