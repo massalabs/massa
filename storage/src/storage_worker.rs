@@ -4,7 +4,7 @@ use sled::Transactional;
 use sled::{transaction::ConflictableTransactionError, Db};
 use tokio::sync::{mpsc, oneshot};
 
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use crate::{
     config::StorageConfig,
@@ -32,7 +32,15 @@ impl BlockStorage {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
         (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
-            hash_tx.insert(&hash.to_bytes(), block.into_bytes().as_slice())?;
+            let block_vec = match block.into_bytes() {
+                Ok(b) => b,
+                Err(e) => {
+                    return Err(ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!("error serializing block")),
+                    ))
+                }
+            };
+            hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
             slot_tx.insert(
                 Slot::new(block.header.period_number, block.header.thread_number).into_bytes(),
                 &hash.to_bytes(),
@@ -43,7 +51,22 @@ impl BlockStorage {
     }
 
     pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
-        todo!()
+        let hash_to_block = self.db.open_tree("hash_to_block")?;
+        hash_to_block
+            .get(&hash.to_bytes())
+            .map(|v| {
+                if let Some(b) = v {
+                    match Block::from_bytes(b.deref().into()) {
+                        Ok(b) => Ok(Some(b)),
+                        Err(e) => {
+                            return Err(e);
+                        }
+                    }
+                } else {
+                    Ok(None)
+                }
+            })?
+            .map_err(|e| StorageError::from(e))
     }
 
     pub fn get_slot_range(
