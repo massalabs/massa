@@ -29,6 +29,7 @@ pub async fn start_network_controller(
     serialization_context: SerializationContext,
     mut establisher: Establisher,
     clock_compensation: i64,
+    boot_peers: Option<Vec<IpAddr>>,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -82,7 +83,10 @@ pub async fn start_network_controller(
     let listener = establisher.get_listener(cfg.bind).await?;
 
     // load peer info database
-    let peer_info_db = PeerInfoDatabase::new(&cfg, clock_compensation).await?;
+    let mut peer_info_db = PeerInfoDatabase::new(&cfg, clock_compensation).await?;
+    if let Some(peers) = boot_peers {
+        peer_info_db.merge_candidate_peers(&peers)?;
+    }
 
     // launch controller
     let (command_tx, command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);

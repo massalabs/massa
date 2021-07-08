@@ -107,6 +107,7 @@ async fn test_multiple_connections_to_controller() {
         serialization_context.clone(),
         establisher,
         0,
+        None,
     )
     .await
     .expect("could not start network controller");
@@ -227,6 +228,7 @@ async fn test_peer_ban() {
             serialization_context.clone(),
             establisher,
             0,
+            None,
         )
         .await
         .expect("could not start network controller");
@@ -336,6 +338,7 @@ async fn test_advertised_and_wakeup_interval() {
         serialization_context.clone(),
         establisher,
         0,
+        None,
     )
     .await
     .expect("could not start network controller");
@@ -470,6 +473,7 @@ async fn test_block_not_found() {
             serialization_context.clone(),
             establisher,
             0,
+            None,
         )
         .await
         .expect("could not start network controller");
@@ -652,6 +656,7 @@ async fn test_retry_connection_closed() {
             serialization_context.clone(),
             establisher,
             0,
+            None,
         )
         .await
         .expect("could not start network controller");
