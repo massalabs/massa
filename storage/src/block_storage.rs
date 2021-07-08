@@ -187,6 +187,37 @@ impl StorageCleaner {
     }
 }
 
+fn op_to_block_from_ivec(
+    buffer: IVec,
+) -> Result<HashMap<OperationId, (BlockId, u64)>, StorageError> {
+    let entry_size = OPERATION_ID_SIZE_BYTES + BLOCK_ID_SIZE_BYTES + 8;
+    let entry_count = buffer.len() / entry_size;
+    let mut op_to_block = HashMap::with_capacity(entry_size as usize);
+    for index in 0..entry_count {
+        let mut cursor = entry_size * index;
+        let operation_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += OPERATION_ID_SIZE_BYTES;
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += BLOCK_ID_SIZE_BYTES;
+        let idx = u64::from_be_bytes(array_from_slice(&buffer[cursor..])?);
+        op_to_block.insert(operation_id, (block_id, idx));
+    }
+    Ok(op_to_block)
+}
+
+fn op_to_block_to_ivec(
+    op_to_block: &HashMap<OperationId, (BlockId, u64)>,
+) -> Result<IVec, StorageError> {
+    let entry_size = OPERATION_ID_SIZE_BYTES + BLOCK_ID_SIZE_BYTES + 8;
+    let mut res: Vec<u8> = Vec::with_capacity(entry_size * op_to_block.len());
+    for (op_id, (blockid, idx)) in op_to_block.iter() {
+        res.extend(op_id.to_bytes());
+        res.extend(blockid.to_bytes());
+        res.extend(idx.to_be_bytes());
+    }
+    Ok(res[..].into())
+}
+
 fn ops_from_ivec(buffer: IVec) -> Result<HashSet<OperationId>, StorageError> {
     let operation_count = buffer.len() / OPERATION_ID_SIZE_BYTES;
     let mut operations: HashSet<OperationId> = HashSet::with_capacity(operation_count as usize);
