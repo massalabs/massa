@@ -499,70 +499,70 @@ async fn test_dep_in_back_order() {
         &mut protocol_controller,
         vec![hasht0s1, hasht1s1].into_iter().collect(),
         HashSet::new(),
-        500,
+        1000,
     )
     .await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 1000).await;
 
     protocol_controller.receive_block(t1s3).await; // not propagated and no wishlist update
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 1000).await;
 
     protocol_controller.receive_block(t0s1).await; // we have its parents so it should be integrated right now and update wishlist
 
-    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 500).await;
+    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 1000).await;
     tools::validate_wishlist(
         &mut protocol_controller,
         HashSet::new(),
         vec![hasht0s1].into_iter().collect(),
-        200,
+        1000,
     )
     .await;
 
     protocol_controller.receive_block(t0s4).await; // not propagated and no wishlist update
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s4, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s4, 1000).await;
 
     protocol_controller.receive_block(t1s4).await; // not propagated and no wishlist update
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s4, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s4, 1000).await;
 
     protocol_controller.receive_block(t1s1).await; // assert t1s1 is integrated and t0s2 is integrated and wishlist updated
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &vec![hasht1s1, hasht0s2],
-        500,
+        1000,
     )
     .await;
 
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &vec![hasht1s1, hasht0s2],
-        300,
+        1000,
     )
     .await;
     tools::validate_wishlist(
         &mut protocol_controller,
         vec![].into_iter().collect(),
         vec![hasht1s1].into_iter().collect(),
-        300,
+        1000,
     )
     .await;
 
     protocol_controller.receive_block(t0s3).await; // not propagated and no wishlist update
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 1000).await;
 
     protocol_controller.receive_block(t1s2).await;
 
     // All remaining blocks are propagated
     let integrated = vec![hasht1s2, hasht0s3, hasht1s3, hasht0s4, hasht1s4];
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 500).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 300).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 300).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 300).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 300).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
     tools::validate_wishlist(
         &mut protocol_controller,
         HashSet::new(),
         vec![hasht1s2].into_iter().collect(),
-        300,
+        1000,
     )
     .await;
 
