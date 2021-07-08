@@ -208,6 +208,10 @@ struct TimeInterval {
     end: Option<UTime>,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+struct Addresses {
+    addrs: HashSet<Address>,
+}
 /// This function sets up all the routes that can be used
 /// and combines them into one filter
 ///
@@ -403,9 +407,9 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("address_data"))
-        .and(warp::path::param::<Address>())
         .and(warp::path::end())
-        .and_then(move |addr| get_address_data(addr, evt_tx.clone()));
+        .and(warp::query::<Addresses>())
+        .and_then(move |Addresses { addrs }| get_address_data(addrs, evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
     let stop_node = warp::post()
@@ -1368,11 +1372,10 @@ async fn get_network_info(
 /// Returns the ledger data for an address (candidate and final)
 ///
 async fn get_address_data(
-    address: Address,
+    addresses: HashSet<Address>,
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_address_data", { "address": address });
-    let addresses: HashSet<Address> = vec![address].into_iter().collect();
+    massa_trace!("api.filters.get_address_data", { "addresses": addresses });
     let (response_tx, response_rx) = oneshot::channel();
     if let Err(err) = event_tx
         .send(ApiEvent::GetLedgerData {
