@@ -54,11 +54,11 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     )
     .await;
 
-    // Send the hash
+    // Ask for the block to consensus.
     protocol_controller.receive_get_active_block(hasht0s1).await;
 
-    // Consensus should not ask for the block, so the time-out should be hit.
-    tools::validate_send_block(&mut protocol_controller, hasht0s1, 10).await;
+    // Consensus should send the block.
+    tools::validate_send_block(&mut protocol_controller, hasht0s1, 100).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);

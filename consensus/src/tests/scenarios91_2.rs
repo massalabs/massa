@@ -7,7 +7,7 @@ use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::Slot;
 use time::UTime;
-use tokio::time::{sleep_until, timeout};
+use tokio::time::sleep_until;
 
 #[tokio::test]
 async fn test_queueing() {
@@ -593,22 +593,22 @@ async fn test_block_creation() {
         )
         .await;
 
-        match timeout(
-            cfg.t0.checked_div_u64(2).unwrap().into(),
-            protocol_controller.wait_command(),
-        )
-        .await
-        {
-            Ok(Some(ProtocolCommand::PropagateBlockHeader {
-                header,
-                hash: _hash,
-            })) => {
+        let cmd = protocol_controller
+            .wait_command(cfg.t0.checked_div_u64(2).unwrap(), |cmd| match cmd {
+                ProtocolCommand::PropagateBlockHeader { header, .. } => Some(header),
+                _ => None,
+            })
+            .await;
+
+        match cmd {
+            Some(header) => {
                 assert_eq!(draw, 0);
                 assert_eq!(i + 1, header.content.slot.period as usize);
             }
-            Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-            Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-            Err(_) => assert_eq!(draw, 1),
+            Some(_) => {}
+            None => {
+                assert_eq!(draw, 1);
+            }
         };
     }
 
