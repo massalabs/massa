@@ -14,8 +14,6 @@ pub enum ReplError {
     NodeConnectionError(#[from] reqwest::Error),
     #[error("Bad input parameter : {0}")]
     BadCommandParameter(String),
-    #[error("Error unreconnized key")]
-    UnreconnizedKeyError,
     #[error("Error can't create address from specifed hash cause:: {0}")]
     AddressCreationError(String),
     #[error("IO error err:{0}")]

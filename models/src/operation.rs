@@ -12,7 +12,7 @@ use crypto::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, ops::Range};
+use std::convert::TryInto;
 use std::{ops::RangeInclusive, str::FromStr};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]

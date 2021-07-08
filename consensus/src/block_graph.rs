@@ -10,8 +10,8 @@ use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    DeserializeCompact, DeserializeVarInt, ModelsError, OperationId, SerializationContext,
-    SerializeCompact, SerializeVarInt, Slot,
+    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationId,
+    OperationSearchResult, SerializationContext, SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -62,6 +62,15 @@ impl ActiveBlock {
             })
         */
         1
+    }
+
+    fn get_operation(&self, op_id: OperationId) -> Option<(Operation, usize)> {
+        self.operation_set.get(&op_id).and_then(|index| {
+            self.block
+                .operations
+                .get(*index)
+                .map(|op| (op.clone(), *index))
+        })
     }
 }
 
@@ -955,6 +964,43 @@ impl BlockGraph {
     /// * block_id : block ID
     pub fn get_active_block(&self, block_id: &BlockId) -> Option<&ActiveBlock> {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
+    }
+
+    pub fn get_operations(
+        &self,
+        operation_ids: &HashSet<OperationId>,
+    ) -> HashMap<OperationId, OperationSearchResult> {
+        let mut res: HashMap<OperationId, OperationSearchResult> = HashMap::new();
+        // for each active block
+        for (block_id, block_status) in self.block_statuses.iter() {
+            if let BlockStatus::Active(ActiveBlock {
+                block,
+                operation_set,
+                is_final,
+                ..
+            }) = block_status
+            {
+                // check the intersection with the wanted operation ids, and update/insert into results
+                operation_ids
+                    .iter()
+                    .filter_map(|op_id| {
+                        operation_set
+                            .get(op_id)
+                            .map(|idx| (op_id, idx, &block.operations[*idx]))
+                    })
+                    .for_each(|(op_id, idx, op)| {
+                        let search_new = OperationSearchResult {
+                            op: op.clone(),
+                            in_pool: false,
+                            in_blocks: vec![(*block_id, (*idx, *is_final))].into_iter().collect(),
+                        };
+                        res.entry(*op_id)
+                            .and_modify(|search_old| search_old.extend(&search_new))
+                            .or_insert(search_new);
+                    });
+            }
+        }
+        return res;
     }
 
     // signal new slot

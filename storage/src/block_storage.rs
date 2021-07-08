@@ -4,11 +4,11 @@ use crate::{
 };
 use models::{
     array_from_slice, Block, BlockId, DeserializeCompact, Operation, OperationId,
-    SerializationContext, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES,
+    OperationSearchResult, SerializationContext, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES,
 };
 use sled::{self, transaction::TransactionalTree, Transactional};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     convert::TryInto,
     sync::atomic::{AtomicUsize, Ordering},
     sync::Arc,
@@ -306,38 +306,55 @@ impl BlockStorage {
         .collect::<Result<HashMap<BlockId, Block>, StorageError>>()
     }
 
-    pub async fn get_operation(
+    pub async fn get_operations(
         &self,
-        id: OperationId,
-    ) -> Result<Option<(BlockId, usize, Operation)>, StorageError> {
-        let ser_op_id = id.to_bytes();
-        let tx_func = |op_tx: &TransactionalTree,
-                       hash_tx: &TransactionalTree|
-         -> Result<Option<(BlockId, usize, Operation)>, StorageError> {
-            let (block_id, idx) = if let Some(buf) = op_tx.get(&ser_op_id)? {
-                let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
-                let idx: usize =
-                    u64::from_be_bytes(array_from_slice(&buf[BLOCK_ID_SIZE_BYTES..])?) as usize;
-                (block_id, idx)
-            } else {
-                return Ok(None); // not found
+        operation_ids: HashSet<OperationId>,
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
+        let tx_func =
+            |op_tx: &TransactionalTree,
+             hash_tx: &TransactionalTree|
+             -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
+                let mut res: HashMap<OperationId, OperationSearchResult> = HashMap::new();
+
+                for id in operation_ids.iter() {
+                    let ser_op_id = id.to_bytes();
+                    let (block_id, idx) = if let Some(buf) = op_tx.get(&ser_op_id)? {
+                        let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
+                        let idx: usize =
+                            u64::from_be_bytes(array_from_slice(&buf[BLOCK_ID_SIZE_BYTES..])?)
+                                as usize;
+                        (block_id, idx)
+                    } else {
+                        continue;
+                    };
+                    if let Some(s_block) = hash_tx.get(&block_id.to_bytes())? {
+                        let (mut block, _size) = Block::from_bytes_compact(
+                            s_block.as_ref(),
+                            &self.serialization_context,
+                        )?;
+                        if idx >= block.operations.len() {
+                            return Err(StorageError::DatabaseInconsistency(
+                                "operation index overflows block operations length".into(),
+                            ));
+                        }
+                        res.insert(
+                            *id,
+                            OperationSearchResult {
+                                op: block.operations.swap_remove(idx),
+                                in_pool: false,
+                                in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
+                            },
+                        );
+                    } else {
+                        return Err(StorageError::DatabaseInconsistency(
+                            "could not find a block referenced by operation index".into(),
+                        ));
+                    }
+                }
+
+                Ok(res)
             };
 
-            if let Some(s_block) = hash_tx.get(&block_id.to_bytes())? {
-                let (mut block, _size) =
-                    Block::from_bytes_compact(s_block.as_ref(), &self.serialization_context)?;
-                if idx >= block.operations.len() {
-                    return Err(StorageError::DatabaseInconsistency(
-                        "operation index overflows block operations length".into(),
-                    ));
-                }
-                Ok(Some((block_id, idx, block.operations.swap_remove(idx))))
-            } else {
-                return Err(StorageError::DatabaseInconsistency(
-                    "could not find a block referenced by operation index".into(),
-                ));
-            }
-        };
         (&self.op_to_block, &self.hash_to_block)
             .transaction(|(op_tx, hash_tx)| {
                 tx_func(op_tx, hash_tx).map_err(|err| {
@@ -347,7 +364,7 @@ impl BlockStorage {
                 })
             })
             .map_err(|err| {
-                StorageError::AddBlockError(format!("error getting operation: {:?}", err))
+                StorageError::OperationError(format!("error getting operatiosn: {:?}", err))
             })
     }
 }

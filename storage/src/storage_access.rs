@@ -4,8 +4,10 @@ use crate::{
     error::StorageError,
 };
 use logging::debug;
-use models::{Block, BlockId, Operation, OperationId, SerializationContext, Slot};
-use std::collections::HashMap;
+use models::{
+    Block, BlockId, Operation, OperationId, OperationSearchResult, SerializationContext, Slot,
+};
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Notify};
@@ -113,11 +115,11 @@ impl StorageAccess {
     ///  * the BlockId in which the op is included
     ///  * its index in the block
     ///  * the operation itself
-    pub async fn get_operation(
+    pub async fn get_operations(
         &self,
-        id: OperationId,
-    ) -> Result<Option<(BlockId, usize, Operation)>, StorageError> {
-        self.0.get_operation(id).await
+        operation_ids: HashSet<OperationId>,
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
+        self.0.get_operations(operation_ids).await
     }
 }
 
