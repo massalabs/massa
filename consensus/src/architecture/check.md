@@ -12,6 +12,7 @@ stateDiagram-v2
         InProcessingHeader --> InProcessingHeader: Check on event
         InProcessingHeader --> Header: ok
         Header --> CheckedHeader: ok
+        CheckedHeader --> [*]: Ask for full block
         Header --> [*]: Discarded
         CheckedHeader --> [*]: Header ready
     }
@@ -24,5 +25,5 @@ stateDiagram-v2
     WaitingBlock --> WaitingBlock: Transaction check (see 0.3)
     WaitingBlock --> [*]: Discarded
     WaitingBlock --> CheckedBlock: transaction check ok
-    CheckedBlock --> [*]: Block checked
+    CheckedBlock --> [*]: Block ready
 ```
