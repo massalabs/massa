@@ -1,3 +1,5 @@
+use crate::pool::Pool;
+
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
     timeslots::*,
@@ -72,6 +74,8 @@ pub struct ConsensusWorker {
     next_slot: Slot,
     /// blocks we want
     wishlist: HashSet<Hash>,
+    /// operation pool
+    pool: Pool,
 }
 
 impl ConsensusWorker {
@@ -124,6 +128,7 @@ impl ConsensusWorker {
             previous_slot,
             next_slot,
             wishlist: HashSet::new(),
+            pool: Pool::new(next_slot, cfg.clone()),
         })
     }
 
@@ -311,7 +316,19 @@ impl ConsensusWorker {
                     })
             }
             ConsensusCommand::CreatedOperation(operation) => {
-                todo!("add operation to pool")
+                if self.pool.new_operation(operation.clone()) {
+                    self.protocol_command_sender
+                        .propagate_operation(operation)
+                        .await
+                        .map_err(|err| {
+                            ConsensusError::SendChannelError(format!(
+                                "could not send propagate operation command:{:?}",
+                                err
+                            ))
+                        })
+                } else {
+                    Ok(())
+                }
             }
         }
     }
@@ -379,7 +396,11 @@ impl ConsensusWorker {
                     .await?;
             }
             ProtocolEvent::Operation(operation) => {
-                todo!("add operation to pool")
+                if self.pool.new_operation(operation.clone()) {
+                    self.protocol_command_sender
+                        .propagate_operation(operation)
+                        .await?;
+                }
             }
         }
         Ok(())
