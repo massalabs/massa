@@ -82,5 +82,6 @@
 
 [pool]
     max_pool_size_per_thread = 100000
+    max_operation_future_validity_start_periods = 100
 
 

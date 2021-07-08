@@ -69,13 +69,15 @@ impl OperationPool {
         self.ops.contains_key(&op)
     }
 
-    /// Incomming operations
+    /// Incomming operations. Returns newly added
     ///
     pub fn add_operations(
         &mut self,
-        operations: Vec<(OperationId, Operation)>,
+        operations: HashMap<OperationId, Operation>,
         context: &SerializationContext,
-    ) -> Result<(), PoolError> {
+    ) -> Result<HashSet<OperationId>, PoolError> {
+        let mut newly_added = HashSet::new();
+
         for (op_id, operation) in operations.into_iter() {
             // Already present
             if self.ops.contains_key(&op_id) {
@@ -84,6 +86,25 @@ impl OperationPool {
 
             // wrap
             let wrapped_op = WrappedOperation::new(operation, self.thread_count, context)?;
+
+            // check if too much in the future
+            if let Some(cur_slot) = self.current_slot {
+                let cur_period_in_thread = if cur_slot.thread >= wrapped_op.thread {
+                    cur_slot.period
+                } else {
+                    cur_slot.period.saturating_sub(1)
+                };
+                let validity_start_period = wrapped_op
+                    .op
+                    .content
+                    .expire_period
+                    .saturating_sub(self.operation_validity_periods);
+                if validity_start_period.saturating_sub(cur_period_in_thread)
+                    > self.cfg.max_operation_future_validity_start_periods
+                {
+                    continue;
+                }
+            }
 
             // check if expired
             if wrapped_op.op.content.expire_period
@@ -96,6 +117,7 @@ impl OperationPool {
             let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
             self.ops_by_thread_and_interest[wrapped_op.thread as usize].insert(interest);
             self.ops.insert(op_id, wrapped_op);
+            newly_added.insert(op_id);
         }
 
         // remove excess operations if pool is full
@@ -108,10 +130,11 @@ impl OperationPool {
                     .pop_last()
                     .unwrap(); // will not panic because of the while condition. complexity = log or better
                 self.ops.remove(&removed_id); // complexity: const
+                newly_added.remove(&removed_id);
             }
         }
 
-        Ok(())
+        Ok(newly_added)
     }
 
     pub fn update_current_slot(&mut self, slot: Slot) {
@@ -201,6 +224,7 @@ mod tests {
         (
             PoolConfig {
                 max_pool_size_per_thread: 100000,
+                max_operation_future_validity_start_periods: 200,
             },
             SerializationContext {
                 max_block_size,
@@ -270,12 +294,15 @@ mod tests {
             let (op, thread) = get_transaction(expire_period, fee, &context);
             let id = op.verify_integrity(&context, &sig_engine).unwrap();
 
-            pool.add_operations(vec![(id, op.clone())], &context)
-                .unwrap();
+            let mut ops = HashMap::new();
+            ops.insert(id, op.clone());
+
+            let newly_added = pool.add_operations(ops.clone(), &context).unwrap();
+            assert_eq!(newly_added, ops.keys().copied().collect());
 
             // duplicate
-            pool.add_operations(vec![(id, op.clone())], &context)
-                .unwrap();
+            let newly_added = pool.add_operations(ops, &context).unwrap();
+            assert_eq!(newly_added, HashSet::new());
 
             thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
         }
@@ -329,6 +356,23 @@ mod tests {
                         .take(max_count)
                         .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))));
             }
+        }
+
+        // add transactions with a high fee but too much in the future: should be ignored
+        {
+            pool.update_current_slot(Slot::new(10, 0));
+            let fee = 1000;
+            let expire_period: u64 = 300;
+            let (op, thread) = get_transaction(expire_period, fee, &context);
+            let id = op.verify_integrity(&context, &sig_engine).unwrap();
+            let mut ops = HashMap::new();
+            ops.insert(id, op);
+            let newly_added = pool.add_operations(ops, &context).unwrap();
+            assert_eq!(newly_added, HashSet::new());
+            let res = pool
+                .get_operation_batch(Slot::new(expire_period - 1, thread), HashSet::new(), 10)
+                .unwrap();
+            assert!(res.is_empty());
         }
     }
 }

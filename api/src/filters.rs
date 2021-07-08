@@ -192,7 +192,7 @@ pub enum ApiEvent {
         end: Slot,
         response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     },
-    AddOperations(Vec<(OperationId, Operation)>),
+    AddOperations(HashMap<OperationId, Operation>),
 }
 
 pub enum ApiManagementCommand {}
@@ -437,19 +437,13 @@ async fn send_operations(
     context: SerializationContext,
 ) -> Result<impl Reply, Rejection> {
     massa_trace!("api.filters.send_operations ", { "operation": operations });
-    //verify the operation
     let signature_engine = SignatureEngine::new();
-    let res: Result<Vec<(OperationId, Operation)>, ModelsError> = operations
+
+    let to_send: Result<HashMap<OperationId, Operation>, ModelsError> = operations
         .into_iter()
-        .map(|operation| {
-            operation
-                .verify_integrity(&context, &signature_engine)
-                .map(|operation_id| (operation_id, operation))
-        })
+        .map(|op| Ok((op.verify_integrity(&context, &signature_engine)?, op)))
         .collect();
-    //if one operation fails all operations fail.
-    let op_list = match res {
-        Ok(op_list) => op_list,
+    let to_send = match to_send {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -459,9 +453,10 @@ async fn send_operations(
             )
             .into_response())
         }
+        Ok(to_send) => to_send,
     };
 
-    match evt_tx.send(ApiEvent::AddOperations(op_list)).await {
+    match evt_tx.send(ApiEvent::AddOperations(to_send)).await {
         Ok(_) => Ok(warp::reply().into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
@@ -472,6 +467,7 @@ async fn send_operations(
         .into_response()),
     }
 }
+
 /// Returns block with given hash as a reply
 ///
 async fn get_block(
