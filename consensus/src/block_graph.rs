@@ -2146,6 +2146,7 @@ impl BlockGraph {
                     continue;
                 }
                 explore_parents = true;
+
                 for (addr, changes) in scan_b.block_ledger_change[thread as usize].iter() {
                     if !query_addrs.contains(addr) {
                         continue;
@@ -3188,7 +3189,9 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use crypto::generate_random_private_key;
+    use crypto::signature::PublicKey;
+    use std::{path::Path, usize};
 
     use super::*;
     use tempfile::NamedTempFile;
@@ -3258,6 +3261,292 @@ mod tests {
                     },
                 )],
             ],
+        }
+    }
+
+    #[tokio::test]
+    pub async fn test_get_ledger_at_parents() {
+        //     stderrlog::new()
+        // .verbosity(4)
+        // .timestamp(stderrlog::Timestamp::Millisecond)
+        // .init()
+        // .unwrap();
+        let thread_count: u8 = 2;
+        let active_block: ActiveBlock = get_export_active_test_block().into();
+        let ledger_file = generate_ledger_file(&HashMap::new());
+        let (mut cfg, serialization_context) = example_consensus_config(ledger_file.path());
+
+        cfg.block_reward = 1;
+        //to generate address and public keys
+        /*        let private_key = generate_random_private_key();
+        let public_key = derive_public_key(&private_key);
+
+        let add = Address::from_public_key(&public_key).unwrap();
+
+        println!(
+            "public key:{}, address:{}, th:{}",
+            public_key.to_bs58_check(),
+            add.to_bs58_check(),
+            add.get_thread(thread_count)
+        ); */
+
+        //define addresses use for the test
+        let pubkey_a =
+            PublicKey::from_bs58_check("5UvFn66yoQerrEmikCxDVvhkLvCo9R2hJAYFMh2pZfYUQDMuCE")
+                .unwrap();
+        let address_a = Address::from_public_key(&pubkey_a).unwrap();
+        assert_eq!(0, address_a.get_thread(thread_count));
+
+        let pubkey_b =
+            PublicKey::from_bs58_check("4uRbkzUvQwW19dD6cxQ9WiYo8BZTPQsmsCbBrFLxMiUYTSbo2p")
+                .unwrap();
+        let address_b = Address::from_public_key(&pubkey_b).unwrap();
+        assert_eq!(1, address_b.get_thread(thread_count));
+
+        let address_c =
+            Address::from_bs58_check("2cABaQpb4fgYjGE7z2TnbQ2DePsyh9KwwPbodS7fD9Pft9uS1p").unwrap();
+        assert_eq!(1, address_c.get_thread(thread_count));
+        let address_d =
+            Address::from_bs58_check("21bU2xruH7bFzfcUhJ6SGjnLmC9cMt1kxzqFr11eV58uj7Ui8h").unwrap();
+        assert_eq!(1, address_d.get_thread(thread_count));
+
+        let (hash_genesist0, block_genesist0) =
+            create_genesis_block(&cfg, &serialization_context, 0).unwrap();
+        let (hash_genesist1, block_genesist1) =
+            create_genesis_block(&cfg, &serialization_context, 1).unwrap();
+        let export_genesist0 = ExportActiveBlock {
+            block: block_genesist0,
+            parents: vec![],      // one (hash, period) per thread ( if not genesis )
+            children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
+            dependencies: vec![], // dependencies required for validity check
+            is_final: true,
+            block_ledger_change: vec![Vec::new(); thread_count as usize],
+        };
+        let export_genesist1 = ExportActiveBlock {
+            block: block_genesist1,
+            parents: vec![],      // one (hash, period) per thread ( if not genesis )
+            children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
+            dependencies: vec![], // dependencies required for validity check
+            is_final: true,
+            block_ledger_change: vec![Vec::new(); thread_count as usize],
+        };
+        //update ledget with inital content.
+        //   Thread 0  [at the output of block p0t0]:
+        //   A 1000000000
+        // Thread 1 [at the output of block p2t1]:
+        //   B: 2000000000
+
+        //block reward: 1
+
+        //create block p1t0
+        // block p1t0 [NON-FINAL]: creator A, parents [p0t0, p0t1] operations:
+        //   A -> B : 2, fee 4
+        //   => counted as [A += +1 - 2 - 4 + 4, B += +2]
+        let mut blockp1t0 = active_block.clone();
+        blockp1t0.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
+        blockp1t0.is_final = true;
+        blockp1t0.block.header.content.creator = pubkey_a.clone();
+        blockp1t0.block_ledger_change = vec![
+            vec![(address_a, LedgerChange::new(1, false))]
+                .into_iter()
+                .collect(),
+            vec![(address_b, LedgerChange::new(2, true))]
+                .into_iter()
+                .collect(),
+        ];
+        blockp1t0.block.header.content.slot = Slot::new(1, 0);
+
+        // block p1t1 [FINAL]: creator B, parents [p0t0, p0t1], operations:
+        //   B -> A : 128, fee 64
+        //   B -> A : 32, fee 16
+        // => counted as [A += 128 + 32] (B: -128 -32 + 16 + 64 -16 -64 +1=-159 not counted !!)
+        let mut blockp1t1 = active_block.clone();
+        blockp1t1.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
+        blockp1t1.is_final = true;
+        blockp1t1.block.header.content.creator = pubkey_b.clone();
+        blockp1t1.block_ledger_change = vec![
+            vec![(address_a, LedgerChange::new(160, true))] //(A->B: -2 Fee: +4)
+                .into_iter()
+                .collect(),
+            vec![(address_b, LedgerChange::new(159, false))]
+                .into_iter()
+                .collect(),
+        ];
+
+        blockp1t1.block.header.content.slot = Slot::new(1, 1);
+
+        // block p2t0 [NON-FINAL]: creator A, parents [p1t0, p0t1], operations:
+        //   A -> A : 512, fee 1024
+        // => counted as [A += 1]
+        let mut blockp2t0 = active_block.clone();
+        blockp2t0.parents = vec![
+            (BlockId::for_tests("blockp1t0").unwrap(), 1),
+            (hash_genesist1, 0),
+        ];
+        blockp2t0.is_final = false;
+        blockp2t0.block.header.content.creator = pubkey_a.clone();
+        blockp2t0.block_ledger_change = vec![
+            vec![(address_a, LedgerChange::new(1, true))] //A: 512 - 512 + 1024 -1024 + 1
+                .into_iter()
+                .collect(),
+            HashMap::new(),
+        ];
+        blockp2t0.block.header.content.slot = Slot::new(2, 0);
+
+        // block p2t1 [FINAL]: creator B, parents [p1t0, p1t1] operations:
+        //   B -> A : 10, fee 1
+        // => counted as [A += 10] (B not counted !)
+        let mut blockp2t1 = active_block.clone();
+        blockp2t1.parents = vec![
+            (BlockId::for_tests("blockp1t0").unwrap(), 1),
+            (BlockId::for_tests("blockp1t1").unwrap(), 1),
+        ];
+        blockp2t1.is_final = true;
+        blockp2t1.block.header.content.creator = pubkey_b.clone();
+        blockp2t1.block_ledger_change = vec![
+            vec![(address_a, LedgerChange::new(10, true))]
+                .into_iter()
+                .collect(),
+            vec![(address_b, LedgerChange::new(9, false))] //B: -10 + 1 -1 +1=-9 not counted
+                .into_iter()
+                .collect(),
+        ];
+
+        blockp2t1.block.header.content.slot = Slot::new(2, 1);
+
+        // block p3t0 [NON-FINAL]: creator A, parents [p2t0, p1t1] operations:
+        //   A -> C : 2048, fee 4096
+        // => counted as [A += 1 - 2048 - 4096 (+4096) ; C created to 2048]
+        let mut blockp3t0 = active_block.clone();
+        blockp3t0.parents = vec![
+            (BlockId::for_tests("blockp2t0").unwrap(), 2),
+            (BlockId::for_tests("blockp1t1").unwrap(), 1),
+        ];
+        blockp3t0.is_final = false;
+        blockp3t0.block.header.content.creator = pubkey_a.clone();
+        blockp3t0.block_ledger_change = vec![
+            vec![(address_a, LedgerChange::new(2047, false))]
+                .into_iter() //A: -2048 -4096 + 4096 + 1
+                .collect(),
+            vec![(address_c, LedgerChange::new(2048, true))] //C: 2048
+                .into_iter()
+                .collect(),
+        ];
+        blockp3t0.block.header.content.slot = Slot::new(3, 0);
+
+        // block p3t1 [NON-FINAL]: creator B, parents [p2t0, p2t1] operations:
+        //   B -> A : 100, fee 10
+        // => counted as [B += 1 - 100 - 10 + 10 ; A += 100]
+        let mut blockp3t1 = active_block.clone();
+        blockp3t1.parents = vec![
+            (BlockId::for_tests("blockp2t0").unwrap(), 2),
+            (BlockId::for_tests("blockp2t1").unwrap(), 2),
+        ];
+        blockp3t1.is_final = false;
+        blockp3t1.block.header.content.creator = pubkey_b.clone();
+        blockp3t1.block_ledger_change = vec![
+            vec![(address_a, LedgerChange::new(100, true))]
+                .into_iter()
+                .collect(),
+            vec![(address_b, LedgerChange::new(99, false))]
+                .into_iter()
+                .collect(),
+        ];
+
+        blockp3t1.block.header.content.slot = Slot::new(3, 1);
+
+        let export_graph = BootsrapableGraph {
+            /// Map of active blocks, were blocks are in their exported version.
+            active_blocks: vec![
+                (hash_genesist0, export_genesist0),
+                (hash_genesist1, export_genesist1),
+                (BlockId::for_tests("blockp1t0").unwrap(), blockp1t0.into()),
+                (BlockId::for_tests("blockp1t1").unwrap(), blockp1t1.into()),
+                (BlockId::for_tests("blockp2t0").unwrap(), blockp2t0.into()),
+                (BlockId::for_tests("blockp2t1").unwrap(), blockp2t1.into()),
+                (BlockId::for_tests("blockp3t0").unwrap(), blockp3t0.into()),
+                (BlockId::for_tests("blockp3t1").unwrap(), blockp3t1.into()),
+            ],
+            /// Best parents hashe in each thread.
+            best_parents: vec![
+                BlockId::for_tests("blockp3t0").unwrap(),
+                BlockId::for_tests("blockp3t1").unwrap(),
+            ],
+            /// Latest final period and block hash in each thread.
+            latest_final_blocks_periods: vec![
+                (BlockId::for_tests("blockp1t0").unwrap(), 1),
+                (BlockId::for_tests("blockp2t1").unwrap(), 2),
+            ],
+            /// Head of the incompatibility graph.
+            gi_head: vec![],
+            /// List of maximal cliques of compatible blocks.
+            max_cliques: vec![],
+            /// Ledger at last final blocks
+            ledger: LedgerExport {
+                ledger_per_thread: vec![
+                    (vec![(address_a, LedgerData::new_test(1_000_000_000))]),
+                    (vec![(address_b, LedgerData::new_test(2_000_000_000))]),
+                ], // containing (Address, LedgerData)
+                latest_final_periods: vec![1, 2],
+            },
+        };
+
+        let block_graph = BlockGraph::new(cfg, serialization_context, Some(export_graph))
+            .await
+            .unwrap();
+
+        //Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
+        let res = block_graph
+            .get_ledger_at_parents(
+                &vec![
+                    BlockId::for_tests("blockp3t0").unwrap(),
+                    BlockId::for_tests("blockp3t1").unwrap(),
+                ],
+                &vec![address_a, address_b, address_c, address_d]
+                    .into_iter()
+                    .collect(),
+            )
+            .unwrap();
+        println!("res: {:#?}", res.data);
+        // Result ledger:
+        // A: 999994127
+        // B: 1999999901 = 2000_000_000 - 99
+        // C: 2048
+        // D: 0
+        assert_eq!(res.data[0][&address_a].get_balance(), 999998224);
+        assert_eq!(res.data[1][&address_b].get_balance(), 1999999901);
+        assert_eq!(res.data[1][&address_c].get_balance(), 2048);
+        assert_eq!(res.data[1][&address_d].get_balance(), 0);
+
+        //ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
+        let res = block_graph
+            .get_ledger_at_parents(
+                &vec![
+                    BlockId::for_tests("blockp1t0").unwrap(),
+                    BlockId::for_tests("blockp1t1").unwrap(),
+                ],
+                &vec![address_a].into_iter().collect(),
+            )
+            .unwrap();
+        println!("res: {:#?}", res.data);
+        // Result ledger:
+        // A: 999994127
+        // B: 1999999903
+        // C: 2048
+        // D: 0
+        assert_eq!(res.data[0][&address_a].get_balance(), 1000000160);
+
+        //ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
+        let res = block_graph.get_ledger_at_parents(
+            &vec![
+                BlockId::for_tests("blockp1t0").unwrap(),
+                BlockId::for_tests("blockp1t1").unwrap(),
+            ],
+            &vec![address_a, address_b].into_iter().collect(),
+        );
+        println!("res: {:#?}", res);
+        if let Ok(_) = res {
+            panic!("get_ledger_at_parents should return an error");
         }
     }
 

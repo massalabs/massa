@@ -28,6 +28,10 @@ pub struct LedgerData {
 }
 
 impl LedgerData {
+    pub fn new_test(balance: u64) -> LedgerData {
+        LedgerData { balance }
+    }
+
     pub fn get_balance(&self) -> u64 {
         self.balance
     }
