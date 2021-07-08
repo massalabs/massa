@@ -8,7 +8,7 @@ use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
 use crypto::signature;
-use models::{get_serialization_context, BlockId};
+use models::BlockId;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
@@ -31,9 +31,8 @@ async fn test_node_worker_shutdown() {
     let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let serialization_context = get_serialization_context();
-    let reader = ReadBinder::new(duplex_mock_read, serialization_context.clone());
-    let writer = WriteBinder::new(duplex_mock_write, serialization_context.clone());
+    let reader = ReadBinder::new(duplex_mock_read);
+    let writer = WriteBinder::new(duplex_mock_write);
 
     // Note: both channels have size 1.
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
@@ -440,7 +439,7 @@ async fn test_block_not_found() {
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
-    let mut serialization_context = get_serialization_context();
+    let mut serialization_context = models::get_serialization_context();
     serialization_context.max_ask_blocks_per_message = 3;
     models::init_serialization_context(serialization_context);
 
@@ -717,7 +716,7 @@ async fn test_operation_messages() {
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
-    let mut serialization_context = get_serialization_context();
+    let mut serialization_context = models::get_serialization_context();
     serialization_context.max_ask_blocks_per_message = 3;
     models::init_serialization_context(serialization_context);
 
@@ -742,13 +741,9 @@ async fn test_operation_messages() {
     .await;
     //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-    let serialization_context = get_serialization_context();
-
     // Send tansaction message from connected peer
     let (transaction, _) = get_transaction(50, 10);
-    let ref_id = transaction
-        .verify_integrity(&serialization_context)
-        .unwrap();
+    let ref_id = transaction.verify_integrity().unwrap();
     conn1_w
         .send(&Message::Operations(vec![transaction.clone()]))
         .await
@@ -763,9 +758,7 @@ async fn test_operation_messages() {
         .await
     {
         assert_eq!(operations.len(), 1);
-        let res_id = operations[0]
-            .verify_integrity(&serialization_context)
-            .unwrap();
+        let res_id = operations[0].verify_integrity().unwrap();
         assert_eq!(ref_id, res_id);
         assert_eq!(node, conn1_id);
     } else {
@@ -773,9 +766,7 @@ async fn test_operation_messages() {
     }
 
     let (transaction2, _) = get_transaction(10, 50);
-    let ref_id2 = transaction2
-        .verify_integrity(&serialization_context)
-        .unwrap();
+    let ref_id2 = transaction2.verify_integrity().unwrap();
     // reply with another transaction
     network_command_sender
         .send_operations(conn1_id, vec![transaction2.clone()])
@@ -794,7 +785,7 @@ async fn test_operation_messages() {
                 match evt {
                 Message::Operations(op) => {
                     assert_eq!(op.len(), 1);
-                    let res_id = op[0].verify_integrity(&serialization_context).unwrap();
+                    let res_id = op[0].verify_integrity().unwrap();
                     assert_eq!(ref_id2, res_id);
                     break;}
                 _ => {}

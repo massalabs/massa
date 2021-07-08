@@ -13,10 +13,11 @@ use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
 use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
-use models::{Block, BlockHeader, BlockId, Operation, SerializationContext};
 use models::{
-    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt,
 };
+use models::{Block, BlockHeader, BlockId, Operation};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -95,10 +96,7 @@ pub enum NetworkManagementCommand {}
 pub struct BootstrapPeers(pub Vec<IpAddr>);
 
 impl SerializeCompact for BootstrapPeers {
-    fn to_bytes_compact(
-        &self,
-        context: &SerializationContext,
-    ) -> Result<Vec<u8>, models::ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         //peers
@@ -108,7 +106,9 @@ impl SerializeCompact for BootstrapPeers {
                 err
             ))
         })?;
-        if peers_count > context.max_peer_list_length {
+        let max_peer_list_length =
+            with_serialization_context(|context| context.max_peer_list_length);
+        if peers_count > max_peer_list_length {
             return Err(ModelsError::SerializeError(format!(
                 "too many peers for serialization context in BootstrapPeers: {:?}",
                 peers_count
@@ -116,7 +116,7 @@ impl SerializeCompact for BootstrapPeers {
         }
         res.extend(peers_count.to_varint_bytes());
         for peer in self.0.iter() {
-            res.extend(peer.to_bytes_compact(context)?);
+            res.extend(peer.to_bytes_compact()?);
         }
 
         Ok(res)
@@ -124,15 +124,14 @@ impl SerializeCompact for BootstrapPeers {
 }
 
 impl DeserializeCompact for BootstrapPeers {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), models::ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
 
         //peers
         let (peers_count, delta) = u32::from_varint_bytes(buffer)?;
-        if peers_count > context.max_peer_list_length {
+        let max_peer_list_length =
+            with_serialization_context(|context| context.max_peer_list_length);
+        if peers_count > max_peer_list_length {
             return Err(ModelsError::DeserializeError(format!(
                 "too many peers for deserialization context in BootstrapPeers: {:?}",
                 peers_count
@@ -141,7 +140,7 @@ impl DeserializeCompact for BootstrapPeers {
         cursor += delta;
         let mut peers: Vec<IpAddr> = Vec::with_capacity(peers_count as usize);
         for _ in 0..(peers_count as usize) {
-            let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..], context)?;
+            let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             peers.push(ip);
         }

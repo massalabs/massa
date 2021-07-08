@@ -2,22 +2,17 @@ use serial_test::serial;
 use std::collections::HashMap;
 
 use communication::protocol::ProtocolCommand;
-use crypto::{
-    hash::Hash,
-    signature::{PrivateKey, PublicKey},
-};
+use crypto::{hash::Hash, signature::PublicKey};
 use models::SerializeCompact;
 use models::{
-    get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation,
-    SerializationContext, Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, SerializationContext, Slot,
 };
 use pool::PoolCommand;
 use time::UTime;
-use tokio::time::sleep;
 
 use crate::{
     block_graph::ExportActiveBlock,
-    ledger::{LedgerChange, LedgerData, OperationLedgerInterface},
+    ledger::{LedgerData, OperationLedgerInterface},
     start_consensus_controller,
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
@@ -63,7 +58,6 @@ async fn test_order_of_inclusion() {
     ledger.insert(address_a, LedgerData { balance: 100 });
     let ledger_file = generate_ledger_file(&ledger);
     let mut cfg = tools::default_consensus_config(1, ledger_file.path());
-    let serialization_context = get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -120,21 +114,9 @@ async fn test_order_of_inclusion() {
             PoolCommand::GetOperationBatch { response_tx, .. } => {
                 response_tx
                     .send(vec![
-                        (
-                            op3.get_operation_id(&serialization_context).unwrap(),
-                            op3.clone(),
-                            50,
-                        ),
-                        (
-                            op2.get_operation_id(&serialization_context).unwrap(),
-                            op2.clone(),
-                            50,
-                        ),
-                        (
-                            op1.get_operation_id(&serialization_context).unwrap(),
-                            op1.clone(),
-                            50,
-                        ),
+                        (op3.get_operation_id().unwrap(), op3.clone(), 50),
+                        (op2.get_operation_id().unwrap(), op2.clone(), 50),
+                        (op1.get_operation_id().unwrap(), op1.clone(), 50),
                     ])
                     .unwrap();
                 Some(())
@@ -177,10 +159,8 @@ async fn test_order_of_inclusion() {
     assert_eq!(block.operations.len(), 2);
     for i in 0..2 {
         assert_eq!(
-            expected[i]
-                .get_operation_id(&serialization_context)
-                .unwrap(),
-            res[i].get_operation_id(&serialization_context).unwrap()
+            expected[i].get_operation_id().unwrap(),
+            res[i].get_operation_id().unwrap()
         );
     }
 
@@ -298,16 +278,8 @@ async fn test_with_two_cliques() {
             PoolCommand::GetOperationBatch { response_tx, .. } => {
                 response_tx
                     .send(vec![
-                        (
-                            op3.get_operation_id(&serialization_context).unwrap(),
-                            op3.clone(),
-                            50,
-                        ),
-                        (
-                            op2.get_operation_id(&serialization_context).unwrap(),
-                            op2.clone(),
-                            50,
-                        ),
+                        (op3.get_operation_id().unwrap(), op3.clone(), 50),
+                        (op2.get_operation_id().unwrap(), op2.clone(), 50),
                     ])
                     .unwrap();
                 Some(())
@@ -321,7 +293,7 @@ async fn test_with_two_cliques() {
     // no second pool batch request as we sent only 2 operations
 
     // wait for block
-    let (block_id, block) = protocol_controller
+    let (_block_id, block) = protocol_controller
         .wait_command(300.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
             _ => None,
@@ -333,10 +305,8 @@ async fn test_with_two_cliques() {
     assert_eq!(block.header.content.slot, Slot::new(4, 0));
     assert_eq!(block.operations.len(), 1);
     assert_eq!(
-        block.operations[0]
-            .get_operation_id(&serialization_context)
-            .unwrap(),
-        op2.get_operation_id(&serialization_context).unwrap()
+        block.operations[0].get_operation_id().unwrap(),
+        op2.get_operation_id().unwrap()
     );
 
     // stop controller while ignoring all commands
@@ -362,7 +332,7 @@ fn get_export_active_test_block(
                 creator: creator,
                 operation_merkle_root: Hash::hash(&operations.iter().map(|op|{
                     op
-                        .get_operation_id(context)
+                        .get_operation_id()
                         .unwrap()
                         .to_bytes()
                         .clone()
@@ -383,7 +353,7 @@ fn get_export_active_test_block(
 
     let mut block_ledger_change = vec![HashMap::new(); context.parent_count as usize];
     for op in operations.iter() {
-        let thread = Address::from_public_key(&op.content.sender_public_key)
+        let _thread = Address::from_public_key(&op.content.sender_public_key)
             .unwrap()
             .get_thread(context.parent_count);
         let mut changes = op
@@ -546,7 +516,6 @@ async fn test_block_filling() {
     );
     let ledger_file = generate_ledger_file(&ledger);
     let mut cfg = tools::default_consensus_config(1, ledger_file.path());
-    let serialization_context = get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -607,13 +576,7 @@ async fn test_block_filling() {
                 response_tx
                     .send(
                         ops.iter()
-                            .map(|op| {
-                                (
-                                    op.get_operation_id(&serialization_context).unwrap(),
-                                    op.clone(),
-                                    op_size,
-                                )
-                            })
+                            .map(|op| (op.get_operation_id().unwrap(), op.clone(), op_size))
                             .collect(),
                     )
                     .unwrap();
@@ -642,7 +605,7 @@ async fn test_block_filling() {
         .expect("timeout while waiting for 2nd operation batch request");
 
     // wait for block
-    let (block_id, block) = protocol_controller
+    let (_block_id, block) = protocol_controller
         .wait_command(300.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
             _ => None,
@@ -669,12 +632,7 @@ async fn test_block_filling() {
         operations: Vec::new(),
     };
     let remaining_block_space = (cfg.max_block_size as usize)
-        .checked_sub(
-            empty
-                .to_bytes_compact(&serialization_context)
-                .unwrap()
-                .len() as usize,
-        )
+        .checked_sub(empty.to_bytes_compact().unwrap().len() as usize)
         .unwrap();
 
     let nb = remaining_block_space / (op_size as usize);

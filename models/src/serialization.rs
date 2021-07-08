@@ -1,4 +1,4 @@
-use crate::{context::SerializationContext, error::ModelsError};
+use crate::error::ModelsError;
 use integer_encoding::VarInt;
 use std::convert::TryInto;
 use std::net::IpAddr;
@@ -187,18 +187,15 @@ pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
 }
 
 pub trait SerializeCompact {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError>;
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError>;
 }
 
 pub trait DeserializeCompact: Sized {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError>;
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
 }
 
 impl SerializeCompact for IpAddr {
-    fn to_bytes_compact(&self, _context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         Ok(match self {
             IpAddr::V4(ip_v4) => {
                 let mut res = Vec::with_capacity(1 + 4);
@@ -217,10 +214,7 @@ impl SerializeCompact for IpAddr {
 }
 
 impl DeserializeCompact for IpAddr {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        _context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         match u8_from_slice(buffer)? {
             4u8 => Ok((IpAddr::V4(array_from_slice(&buffer[1..])?.into()), 1 + 4)),
             6u8 => Ok((IpAddr::V6(array_from_slice(&buffer[1..])?.into()), 1 + 16)),
@@ -232,16 +226,13 @@ impl DeserializeCompact for IpAddr {
 }
 
 impl SerializeCompact for UTime {
-    fn to_bytes_compact(&self, _context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         Ok(self.to_millis().to_varint_bytes())
     }
 }
 
 impl DeserializeCompact for UTime {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        _context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
         Ok((res_u64.into(), delta))
     }

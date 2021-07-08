@@ -533,10 +533,9 @@ async fn send_operations(
     evt_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl Reply, Rejection> {
     massa_trace!("api.filters.send_operations ", { "operations": operations });
-    let context = models::with_serialization_context(|context| context.clone());
     let to_send: Result<HashMap<OperationId, Operation>, ModelsError> = operations
         .into_iter()
-        .map(|op| Ok((op.verify_integrity(&context)?, op)))
+        .map(|op| Ok((op.verify_integrity()?, op)))
         .collect();
     let to_send = match to_send {
         Err(err) => {

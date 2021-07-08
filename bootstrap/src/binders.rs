@@ -2,13 +2,14 @@
 use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::{ReadHalf, WriteHalf};
-use models::{DeserializeCompact, DeserializeMinBEInt, SerializationContext, SerializeCompact};
+use models::{
+    with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeCompact,
+};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
-    serialization_context: SerializationContext,
     write_half: WriteHalf,
     message_index: u64,
 }
@@ -20,9 +21,8 @@ impl WriteBinder {
     /// * write_half: writer half.
     /// * serialization_context: SerializationContext instance
     /// * max_message_size: max message size in bytes
-    pub fn new(write_half: WriteHalf, serialization_context: SerializationContext) -> Self {
+    pub fn new(write_half: WriteHalf) -> Self {
         WriteBinder {
-            serialization_context,
             write_half,
             message_index: 0,
         }
@@ -34,7 +34,7 @@ impl WriteBinder {
     /// * msg: date to transmit.
     pub async fn send(&mut self, msg: &BootstrapMessage) -> Result<u64, BootstrapError> {
         // serialize
-        let bytes_vec = msg.to_bytes_compact(&self.serialization_context)?;
+        let bytes_vec = msg.to_bytes_compact()?;
         let msg_size: u32 = bytes_vec
             .len()
             .try_into()
@@ -56,7 +56,6 @@ impl WriteBinder {
 
 /// Used to receive and deserialize data.
 pub struct ReadBinder {
-    serialization_context: SerializationContext,
     read_half: ReadHalf,
     message_index: u64,
     buf: Vec<u8>,
@@ -71,9 +70,8 @@ impl ReadBinder {
     /// * read_half: reader half.
     /// * serialization_context: SerializationContext instance
     /// * max_message_size: max message size in bytes
-    pub fn new(read_half: ReadHalf, serialization_context: SerializationContext) -> Self {
+    pub fn new(read_half: ReadHalf) -> Self {
         ReadBinder {
-            serialization_context,
             read_half,
             message_index: 0,
             buf: Vec::new(),
@@ -84,10 +82,12 @@ impl ReadBinder {
 
     /// Awaits the next incomming message and deserializes it. Async cancel-safe.
     pub async fn next(&mut self) -> Result<Option<(u64, BootstrapMessage)>, BootstrapError> {
+        let max_bootstrap_message_size =
+            with_serialization_context(|context| context.max_bootstrap_message_size);
+
         // read message size
         if self.msg_size.is_none() {
-            let size_field_len =
-                u32::be_bytes_min_length(self.serialization_context.max_bootstrap_message_size);
+            let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
             if self.buf.len() != size_field_len {
                 self.buf = vec![0u8; size_field_len];
             }
@@ -109,11 +109,7 @@ impl ReadBinder {
                     }
                 }
             }
-            let res_size = u32::from_be_bytes_min(
-                &self.buf,
-                self.serialization_context.max_bootstrap_message_size,
-            )?
-            .0;
+            let res_size = u32::from_be_bytes_min(&self.buf, max_bootstrap_message_size)?.0;
             self.msg_size = Some(res_size);
             if self.buf.len() != (res_size as usize) {
                 self.buf = vec![0u8; res_size as usize];
@@ -140,8 +136,7 @@ impl ReadBinder {
                 }
             }
         }
-        let (res_msg, _res_msg_len) =
-            BootstrapMessage::from_bytes_compact(&self.buf, &self.serialization_context)?;
+        let (res_msg, _res_msg_len) = BootstrapMessage::from_bytes_compact(&self.buf)?;
         self.cursor = 0;
         self.msg_size = None;
         self.buf.clear();

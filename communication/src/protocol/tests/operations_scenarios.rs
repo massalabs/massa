@@ -12,7 +12,6 @@ use std::collections::HashMap;
 #[serial]
 async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     let protocol_config = tools::create_protocol_config();
-    let serialization_context = get_serialization_context();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -36,7 +35,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     // 1. Create an operation
     let operation = tools::create_operation();
 
-    let expected_operation_id = operation.verify_integrity(&serialization_context).unwrap();
+    let expected_operation_id = operation.verify_integrity().unwrap();
 
     // 3. Send operation to protocol.
     network_controller
@@ -123,7 +122,6 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 #[serial]
 async fn test_protocol_propagates_operations_to_active_nodes() {
     let protocol_config = tools::create_protocol_config();
-    let serialization_context = get_serialization_context();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -167,7 +165,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
         _ => panic!("Unexpected or no protocol pool event."),
     };
 
-    let expected_operation_id = operation.verify_integrity(&serialization_context).unwrap();
+    let expected_operation_id = operation.verify_integrity().unwrap();
 
     let mut ops = HashMap::new();
     ops.insert(expected_operation_id.clone(), operation);
@@ -185,9 +183,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             .await
         {
             Some(NetworkCommand::SendOperations { node, operations }) => {
-                let id = operations[0]
-                    .verify_integrity(&serialization_context)
-                    .unwrap();
+                let id = operations[0].verify_integrity().unwrap();
                 assert_eq!(id, expected_operation_id);
                 nodes.retain(|node_info| node != node_info.id);
                 if nodes.is_empty() {

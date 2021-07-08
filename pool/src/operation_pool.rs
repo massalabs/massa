@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use models::{Address, Operation, OperationId, SerializationContext, SerializeCompact, Slot};
+use models::{Address, Operation, OperationId, SerializeCompact, Slot};
 use num::rational::Ratio;
 
 use crate::{PoolConfig, PoolError};
@@ -12,13 +12,9 @@ struct WrappedOperation {
 }
 
 impl WrappedOperation {
-    fn new(
-        op: Operation,
-        thread_count: u8,
-        context: &SerializationContext,
-    ) -> Result<Self, PoolError> {
+    fn new(op: Operation, thread_count: u8) -> Result<Self, PoolError> {
         Ok(WrappedOperation {
-            byte_count: op.to_bytes_compact(&context)?.len() as u64,
+            byte_count: op.to_bytes_compact()?.len() as u64,
             thread: Address::from_public_key(&op.content.sender_public_key)?
                 .get_thread(thread_count),
             op,
@@ -70,7 +66,6 @@ impl OperationPool {
     pub fn add_operations(
         &mut self,
         operations: HashMap<OperationId, Operation>,
-        context: &SerializationContext,
     ) -> Result<HashSet<OperationId>, PoolError> {
         let mut newly_added = HashSet::new();
 
@@ -84,7 +79,7 @@ impl OperationPool {
             }
 
             // wrap
-            let wrapped_op = WrappedOperation::new(operation, self.thread_count, context)?;
+            let wrapped_op = WrappedOperation::new(operation, self.thread_count)?;
 
             // check if too much in the future
             if let Some(cur_slot) = self.current_slot {
@@ -272,11 +267,7 @@ mod tests {
         )
     }
 
-    fn get_transaction(
-        expire_period: u64,
-        fee: u64,
-        context: &SerializationContext,
-    ) -> (Operation, u8) {
+    fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         let sender_priv = crypto::generate_random_private_key();
         let sender_pub = crypto::derive_public_key(&sender_priv);
 
@@ -293,7 +284,7 @@ mod tests {
             sender_public_key: sender_pub,
             expire_period,
         };
-        let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+        let hash = Hash::hash(&content.to_bytes_compact().unwrap());
         let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
         (
@@ -306,7 +297,6 @@ mod tests {
     #[serial]
     fn test_pool() {
         let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-        let context = models::get_serialization_context();
 
         let max_pool_size_per_thread = 10;
         cfg.max_pool_size_per_thread = max_pool_size_per_thread;
@@ -319,17 +309,17 @@ mod tests {
             let fee = 40 + i;
             let expire_period: u64 = 40 + i;
             let start_period = expire_period.saturating_sub(operation_validity_periods);
-            let (op, thread) = get_transaction(expire_period, fee, &context);
-            let id = op.verify_integrity(&context).unwrap();
+            let (op, thread) = get_transaction(expire_period, fee);
+            let id = op.verify_integrity().unwrap();
 
             let mut ops = HashMap::new();
             ops.insert(id, op.clone());
 
-            let newly_added = pool.add_operations(ops.clone(), &context).unwrap();
+            let newly_added = pool.add_operations(ops.clone()).unwrap();
             assert_eq!(newly_added, ops.keys().copied().collect());
 
             // duplicate
-            let newly_added = pool.add_operations(ops, &context).unwrap();
+            let newly_added = pool.add_operations(ops).unwrap();
             assert_eq!(newly_added, HashSet::new());
 
             thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
@@ -351,12 +341,12 @@ mod tests {
                     .unwrap();
                 assert!(res
                     .iter()
-                    .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
+                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
                     .eq(thread_tx_lists[target_slot.thread as usize]
                         .iter()
                         .filter(|(_, _, r)| r.contains(&target_slot.period))
                         .take(max_count)
-                        .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))));
+                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
             }
         }
 
@@ -377,12 +367,12 @@ mod tests {
                     .unwrap();
                 assert!(res
                     .iter()
-                    .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
+                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
                     .eq(thread_tx_lists[target_slot.thread as usize]
                         .iter()
                         .filter(|(_, _, r)| r.contains(&target_slot.period))
                         .take(max_count)
-                        .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))));
+                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
             }
         }
 
@@ -391,11 +381,11 @@ mod tests {
             pool.update_current_slot(Slot::new(10, 0));
             let fee = 1000;
             let expire_period: u64 = 300;
-            let (op, thread) = get_transaction(expire_period, fee, &context);
-            let id = op.verify_integrity(&context).unwrap();
+            let (op, thread) = get_transaction(expire_period, fee);
+            let id = op.verify_integrity().unwrap();
             let mut ops = HashMap::new();
             ops.insert(id, op);
-            let newly_added = pool.add_operations(ops, &context).unwrap();
+            let newly_added = pool.add_operations(ops).unwrap();
             assert_eq!(newly_added, HashSet::new());
             let res = pool
                 .get_operation_batch(

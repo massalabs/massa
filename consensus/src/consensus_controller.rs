@@ -9,7 +9,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
-use models::{Address, Block, BlockId, Operation, OperationId, OperationSearchResult, Slot};
+use models::{Address, Block, BlockId, OperationId, OperationSearchResult, Slot};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet, VecDeque};
 use storage::StorageAccess;
@@ -64,12 +64,7 @@ pub async fn start_consensus_controller(
     }
 
     // start worker
-    let block_db = BlockGraph::new(
-        cfg.clone(),
-        models::with_serialization_context(|ctx| ctx.clone()),
-        boot_graph,
-    )
-    .await?;
+    let block_db = BlockGraph::new(cfg.clone(), boot_graph).await?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);

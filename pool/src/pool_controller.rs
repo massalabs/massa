@@ -7,7 +7,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
-use models::{with_serialization_context, Operation, OperationId, Slot};
+use models::{Operation, OperationId, Slot};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -28,7 +28,6 @@ pub async fn start_pool_controller(
 ) -> Result<(PoolCommandSender, PoolManager), PoolError> {
     debug!("starting pool controller");
     massa_trace!("pool.pool_controller.start_pool_controller", {});
-    let context = models::with_serialization_context(|ctx| ctx.clone());
 
     // start worker
     let (command_tx, command_rx) = mpsc::channel::<PoolCommand>(CHANNEL_SIZE);
@@ -43,7 +42,6 @@ pub async fn start_pool_controller(
             protocol_pool_event_receiver,
             command_rx,
             manager_rx,
-            context,
         )?
         .run_loop()
         .await;

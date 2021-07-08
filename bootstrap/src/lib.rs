@@ -20,7 +20,7 @@ use crypto::{
 use error::BootstrapError;
 pub use establisher::Establisher;
 use messages::BootstrapMessage;
-use models::{with_serialization_context, SerializationContext, SerializeCompact};
+use models::SerializeCompact;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::convert::TryInto;
 use time::UTime;
@@ -29,7 +29,6 @@ use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 async fn get_state_internal(
     cfg: &BootstrapConfig,
     bootstrap_addr: SocketAddr,
-    serialization_context: &SerializationContext,
     establisher: &mut Establisher,
 ) -> Result<(BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
@@ -37,8 +36,8 @@ async fn get_state_internal(
     // create listener
     let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
     let (socket_reader, socket_writer) = connector.connect(bootstrap_addr).await?;
-    let mut reader = ReadBinder::new(socket_reader, serialization_context.clone());
-    let mut writer = WriteBinder::new(socket_writer, serialization_context.clone());
+    let mut reader = ReadBinder::new(socket_reader);
+    let mut writer = WriteBinder::new(socket_writer);
 
     let mut random_bytes = [0u8; 32];
     StdRng::from_entropy().fill_bytes(&mut random_bytes);
@@ -86,7 +85,7 @@ async fn get_state_internal(
 
     // Check signature.
     let mut signed_data = random_bytes.to_vec();
-    signed_data.extend(server_time.to_bytes_compact(&serialization_context)?);
+    signed_data.extend(server_time.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
     verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
 
@@ -134,7 +133,7 @@ async fn get_state_internal(
     };
     // Check signature.
     let mut signed_data = sig_prev.to_bytes().to_vec();
-    signed_data.extend(peers.to_bytes_compact(&serialization_context)?);
+    signed_data.extend(peers.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
     verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
     let sig_prev = sig;
@@ -157,7 +156,7 @@ async fn get_state_internal(
     };
     // check signature
     let mut signed_data = sig_prev.to_bytes().to_vec();
-    signed_data.extend(graph.to_bytes_compact(&serialization_context)?);
+    signed_data.extend(graph.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
     verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
 
@@ -169,10 +168,9 @@ pub async fn get_state(
     mut establisher: Establisher,
 ) -> Result<(Option<BootsrapableGraph>, i64, Option<BootstrapPeers>), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
-    let serialization_context = with_serialization_context(|ctx| ctx.clone());
     if let Some(addr) = cfg.bootstrap_addr.take() {
         loop {
-            match get_state_internal(&cfg, addr, &serialization_context, &mut establisher).await {
+            match get_state_internal(&cfg, addr, &mut establisher).await {
                 Err(e) => {
                     warn!("error {:?} while bootstraping", e);
                     sleep(cfg.retry_delay.into()).await;
@@ -284,9 +282,8 @@ impl BootstrapServer {
         (reader, writer, _remote_addr): (ReadHalf, WriteHalf, SocketAddr),
     ) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.manage_bootstrap", {});
-        let serialization_context = with_serialization_context(|ctx| ctx.clone());
-        let mut reader = ReadBinder::new(reader, serialization_context.clone());
-        let mut writer = WriteBinder::new(writer, serialization_context.clone());
+        let mut reader = ReadBinder::new(reader);
+        let mut writer = WriteBinder::new(writer);
 
         // Initiation
         let random_bytes = match tokio::time::timeout(self.read_timeout.into(), reader.next()).await
@@ -309,7 +306,7 @@ impl BootstrapServer {
         // First, sync clocks.
         let server_time = UTime::now(self.compensation_millis)?;
         let mut signed_data = random_bytes.to_vec();
-        signed_data.extend(server_time.to_bytes_compact(&serialization_context)?);
+        signed_data.extend(server_time.to_bytes_compact()?);
         let signed_data_hash = Hash::hash(&signed_data);
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
@@ -337,7 +334,7 @@ impl BootstrapServer {
         let peers = self.network_command_sender.get_bootstrap_peers().await?;
         let mut signed_data = vec![];
         signed_data.extend(&last_sig.into_bytes());
-        signed_data.extend(peers.to_bytes_compact(&serialization_context)?);
+        signed_data.extend(peers.to_bytes_compact()?);
         let signed_data_hash = Hash::hash(&signed_data);
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
@@ -365,7 +362,7 @@ impl BootstrapServer {
         let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
         let mut signed_data = vec![];
         signed_data.extend(&last_sig.into_bytes());
-        signed_data.extend(graph.to_bytes_compact(&serialization_context)?);
+        signed_data.extend(graph.to_bytes_compact()?);
         let signed_data_hash = Hash::hash(&signed_data);
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(

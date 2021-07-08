@@ -9,8 +9,7 @@ use std::{
 
 use crate::{ConsensusConfig, ConsensusError};
 use models::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    SerializationContext, SerializeCompact, SerializeVarInt,
+    array_from_slice, u8_from_slice, Address, DeserializeCompact, SerializeCompact, SerializeVarInt,
 };
 use models::{DeserializeVarInt, Operation};
 use serde::{Deserialize, Serialize};
@@ -19,7 +18,6 @@ pub struct Ledger {
     ledger_per_thread: Vec<Tree>, // containing (Address, LedgerData)
     latest_final_periods: Tree,   // containing (thread_number: u8, latest_final_period: u64)
     cfg: ConsensusConfig,
-    context: SerializationContext,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,10 +36,7 @@ impl LedgerData {
 }
 
 impl SerializeCompact for LedgerData {
-    fn to_bytes_compact(
-        &self,
-        _context: &models::SerializationContext,
-    ) -> Result<Vec<u8>, models::ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.balance.to_varint_bytes());
         Ok(res)
@@ -49,10 +44,7 @@ impl SerializeCompact for LedgerData {
 }
 
 impl DeserializeCompact for LedgerData {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        _context: &models::SerializationContext,
-    ) -> Result<(Self, usize), models::ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
         let (balance, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -116,10 +108,7 @@ impl LedgerChange {
 }
 
 impl SerializeCompact for LedgerChange {
-    fn to_bytes_compact(
-        &self,
-        _context: &models::SerializationContext,
-    ) -> Result<Vec<u8>, models::ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.balance_delta.to_varint_bytes());
         if self.balance_increment {
@@ -132,10 +121,7 @@ impl SerializeCompact for LedgerChange {
 }
 
 impl DeserializeCompact for LedgerChange {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        _context: &models::SerializationContext,
-    ) -> Result<(Self, usize), models::ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
         let (balance_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -242,7 +228,6 @@ impl Ledger {
         cfg: ConsensusConfig,
         datas: Option<HashMap<Address, LedgerData>>,
     ) -> Result<Ledger, ConsensusError> {
-        let context = models::with_serialization_context(|ctx| ctx.clone());
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
             .cache_capacity(cfg.ledger_cache_capacity)
@@ -267,7 +252,7 @@ impl Ledger {
                     let thread = address.get_thread(cfg.thread_count);
                     ledger[thread as usize].insert(
                         &address.to_bytes(),
-                        data.to_bytes_compact(&context).map_err(|err| {
+                        data.to_bytes_compact().map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
                                     "error serializing ledger data: {:?}",
@@ -284,7 +269,6 @@ impl Ledger {
             ledger_per_thread,
             latest_final_periods,
             cfg,
-            context,
         })
     }
 
@@ -308,7 +292,7 @@ impl Ledger {
                         ),
                     )?;
                     let data = if let Some(res) = ledger.get(address.to_bytes())? {
-                        LedgerData::from_bytes_compact(&res, &self.context)
+                        LedgerData::from_bytes_compact(&res)
                             .map_err(|err| {
                                 sled::transaction::ConflictableTransactionError::Abort(
                                     InternalError::TransactionError(format!(
@@ -360,11 +344,10 @@ impl Ledger {
         ledger.clear()?;
 
         // fill ledger per thread
-        let context = models::with_serialization_context(|ctx| ctx.clone());
         for thread in 0..cfg.thread_count {
             for (address, balance) in export.ledger_per_thread[thread as usize].iter() {
                 if let Some(_) = ledger.ledger_per_thread[thread as usize]
-                    .insert(address.into_bytes(), balance.to_bytes_compact(&context)?)?
+                    .insert(address.into_bytes(), balance.to_bytes_compact()?)?
                 {
                     return Err(ConsensusError::LedgerInconsistency(format!(
                         "adress {:?} already in ledger while bootsrapping",
@@ -386,9 +369,7 @@ impl Ledger {
     pub fn get_final_balance(&self, address: &Address) -> Result<u64, ConsensusError> {
         let thread = address.get_thread(self.cfg.thread_count);
         if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
-            Ok(LedgerData::from_bytes_compact(&res, &self.context)?
-                .0
-                .balance)
+            Ok(LedgerData::from_bytes_compact(&res)?.0.balance)
         } else {
             Ok(0)
         }
@@ -420,15 +401,14 @@ impl Ledger {
             for (address, change) in changes.iter() {
                 let address_bytes = address.to_bytes();
                 let mut data = if let Some(old_bytes) = &db.get(address_bytes)? {
-                    let (old, _) = LedgerData::from_bytes_compact(old_bytes, &self.context)
-                        .map_err(|err| {
-                            sled::transaction::ConflictableTransactionError::Abort(
-                                InternalError::TransactionError(format!(
-                                    "error deserializing ledger data: {:?}",
-                                    err
-                                )),
-                            )
-                        })?;
+                    let (old, _) = LedgerData::from_bytes_compact(old_bytes).map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error deserializing ledger data: {:?}",
+                                err
+                            )),
+                        )
+                    })?;
                     old
                 } else {
                     // creating new entry
@@ -448,7 +428,7 @@ impl Ledger {
                 } else {
                     db.insert(
                         &address_bytes,
-                        data.to_bytes_compact(&self.context).map_err(|err| {
+                        data.to_bytes_compact().map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
                                     "error serializing ledger data: {:?}",
@@ -527,7 +507,7 @@ impl Ledger {
             for element in tree.iter() {
                 let (addr, data) = element?;
                 let address = Address::from_bytes(addr.as_ref().try_into()?)?;
-                let (ledger_data, _) = LedgerData::from_bytes_compact(&data, &self.context)?;
+                let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
                 if let Some(val) = map.insert(address, ledger_data) {
                     return Err(ConsensusError::LedgerInconsistency(format!(
                         "address {:?} twice in ledger",
@@ -551,16 +531,14 @@ impl Ledger {
                 let thread = addr.get_thread(self.cfg.thread_count);
                 if let Some(data_bytes) = ledger_per_thread[thread as usize].get(addr.to_bytes())? {
                     let (ledger_data, _) =
-                        LedgerData::from_bytes_compact(&data_bytes, &self.context).map_err(
-                            |err| {
-                                sled::transaction::ConflictableTransactionError::Abort(
-                                    InternalError::TransactionError(format!(
-                                        "error deserializing ledger data: {:?}",
-                                        err
-                                    )),
-                                )
-                            },
-                        )?;
+                        LedgerData::from_bytes_compact(&data_bytes).map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(format!(
+                                    "error deserializing ledger data: {:?}",
+                                    err
+                                )),
+                            )
+                        })?;
                     data[thread as usize].insert(addr.clone().clone(), ledger_data);
                 } else {
                     data[thread as usize].insert(addr.clone().clone(), LedgerData { balance: 0 });
@@ -700,21 +678,17 @@ impl SerializeCompact for LedgerExport {
     /// #     max_operations_per_message: 1024,
     /// #     max_bootstrap_message_size: 100000000,
     /// # });
-    /// # let context = models::get_serialization_context();
-    /// let bytes = ledger.clone().to_bytes_compact(&context).unwrap();
-    /// let (res, _) = LedgerExport::from_bytes_compact(&bytes, &context).unwrap();
+    /// let bytes = ledger.clone().to_bytes_compact().unwrap();
+    /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
     /// assert_eq!(ledger.latest_final_periods, res.latest_final_periods);
     /// for thread in 0..ledger.latest_final_periods.len() {
     ///     for (address, data) in &ledger.ledger_per_thread[thread] {
-    ///        assert!(res.ledger_per_thread[thread].iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact(&context).unwrap() == data.to_bytes_compact(&context).unwrap()).count() == 1)
+    ///        assert!(res.ledger_per_thread[thread].iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
     ///     }
     ///     assert_eq!(ledger.ledger_per_thread[thread].len(), res.ledger_per_thread[thread].len());
     /// }
     /// ```
-    fn to_bytes_compact(
-        &self,
-        context: &SerializationContext,
-    ) -> Result<Vec<u8>, models::ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         let thread_count: u32 = self.ledger_per_thread.len().try_into().map_err(|err| {
@@ -735,7 +709,7 @@ impl SerializeCompact for LedgerExport {
             res.extend(u32::from(vec_count).to_varint_bytes());
             for (address, data) in thread_ledger.iter() {
                 res.extend(&address.to_bytes());
-                res.extend(&data.to_bytes_compact(context)?);
+                res.extend(&data.to_bytes_compact()?);
             }
         }
 
@@ -747,10 +721,7 @@ impl SerializeCompact for LedgerExport {
 }
 
 impl DeserializeCompact for LedgerExport {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), models::ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
 
         let (thread_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
@@ -766,7 +737,7 @@ impl DeserializeCompact for LedgerExport {
                 let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
 
-                let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..], context)?;
+                let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 set.push((address, data));
             }

@@ -1,7 +1,7 @@
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    DeserializeMinBEInt, ModelsError, Operation, OperationId, SerializationContext,
-    SerializeCompact, SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
+    DeserializeMinBEInt, ModelsError, Operation, OperationId, SerializeCompact, SerializeMinBEInt,
+    Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -63,30 +63,21 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn contains_operation(
-        &self,
-        op: &Operation,
-        context: &SerializationContext,
-    ) -> Result<bool, ModelsError> {
-        let op_id = op.get_operation_id(context)?;
+    pub fn contains_operation(&self, op: &Operation) -> Result<bool, ModelsError> {
+        let op_id = op.get_operation_id()?;
         Ok(self
             .operations
             .iter()
-            .find(|o| {
-                o.get_operation_id(context)
-                    .map(|id| id == op_id)
-                    .unwrap_or(false)
-            })
+            .find(|o| o.get_operation_id().map(|id| id == op_id).unwrap_or(false))
             .is_some())
     }
 
-    pub fn bytes_count(&self, context: &SerializationContext) -> Result<u64, ModelsError> {
-        Ok(self.to_bytes_compact(context)?.len() as u64)
+    pub fn bytes_count(&self) -> Result<u64, ModelsError> {
+        Ok(self.to_bytes_compact()?.len() as u64)
     }
 
     pub fn involved_addresses(
         &self,
-        context: &SerializationContext,
     ) -> Result<HashMap<Address, HashSet<OperationId>>, ModelsError> {
         let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
         self.operations
@@ -97,11 +88,12 @@ impl Block {
                         &self.header.content.creator,
                     )?)
                     .map_err(|err| {
-                        ModelsError::DeserializeError(
-                            "could not get invoolved addresses".to_string(),
-                        )
+                        ModelsError::DeserializeError(format!(
+                            "could not get invoolved addresses: {:?}",
+                            err
+                        ))
                     })?;
-                let id = op.get_operation_id(&context)?;
+                let id = op.get_operation_id()?;
                 for ad in addrs.iter() {
                     if let Some(entry) = addresses_to_operations.get_mut(ad) {
                         entry.insert(id);
@@ -133,19 +125,22 @@ pub struct BlockHeader {
 }
 
 impl SerializeCompact for Block {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         // header
-        res.extend(self.header.to_bytes_compact(&context)?);
+        res.extend(self.header.to_bytes_compact()?);
+
+        let max_block_operations =
+            with_serialization_context(|context| context.max_block_operations);
 
         // operations
         let operation_count: u32 = self.operations.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many operations: {:?}", err))
         })?;
-        res.extend(operation_count.to_be_bytes_min(context.max_block_operations)?);
+        res.extend(operation_count.to_be_bytes_min(max_block_operations)?);
         for operation in self.operations.iter() {
-            res.extend(operation.to_bytes_compact(&context)?);
+            res.extend(operation.to_bytes_compact()?);
         }
 
         Ok(res)
@@ -153,31 +148,32 @@ impl SerializeCompact for Block {
 }
 
 impl DeserializeCompact for Block {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
+        let (max_block_size, max_block_operations) = with_serialization_context(|context| {
+            (context.max_block_size, context.max_block_operations)
+        });
+
         // header
-        let (header, delta) = BlockHeader::from_bytes_compact(&buffer[cursor..], &context)?;
+        let (header, delta) = BlockHeader::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
-        if cursor > (context.max_block_size as usize) {
+        if cursor > (max_block_size as usize) {
             return Err(ModelsError::DeserializeError("block is too large".into()));
         }
 
         // operations
         let (operation_count, delta) =
-            u32::from_be_bytes_min(&buffer[cursor..], context.max_block_operations)?;
+            u32::from_be_bytes_min(&buffer[cursor..], max_block_operations)?;
         cursor += delta;
-        if cursor > (context.max_block_size as usize) {
+        if cursor > (max_block_size as usize) {
             return Err(ModelsError::DeserializeError("block is too large".into()));
         }
         let mut operations: Vec<Operation> = Vec::with_capacity(operation_count as usize);
         for _ in 0..(operation_count as usize) {
-            let (operation, delta) = Operation::from_bytes_compact(&buffer[cursor..], &context)?;
+            let (operation, delta) = Operation::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-            if cursor > (context.max_block_size as usize) {
+            if cursor > (max_block_size as usize) {
                 return Err(ModelsError::DeserializeError("block is too large".into()));
             }
             operations.push(operation);
@@ -193,17 +189,13 @@ impl BlockHeader {
     pub fn verify_integrity(&self) -> Result<BlockId, ModelsError> {
         let hash = self.content.compute_hash()?;
         self.verify_signature(&hash)?;
-        with_serialization_context(|context| {
-            Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
-        })
+        Ok(BlockId(Hash::hash(&self.to_bytes_compact()?)))
     }
 
     /// Generate the block id without verifying the integrity of the it,
     /// used only in tests.
     pub fn compute_block_id(&self) -> Result<BlockId, ModelsError> {
-        with_serialization_context(|context| {
-            Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
-        })
+        Ok(BlockId(Hash::hash(&self.to_bytes_compact()?)))
     }
 
     // Hash([slot, hash])
@@ -255,11 +247,11 @@ impl BlockHeader {
 }
 
 impl SerializeCompact for BlockHeader {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         // signed content
-        res.extend(self.content.to_bytes_compact(&context)?);
+        res.extend(self.content.to_bytes_compact()?);
 
         // signature
         res.extend(&self.signature.to_bytes());
@@ -269,14 +261,11 @@ impl SerializeCompact for BlockHeader {
 }
 
 impl DeserializeCompact for BlockHeader {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
         // signed content
-        let (content, delta) = BlockHeaderContent::from_bytes_compact(&buffer[cursor..], &context)?;
+        let (content, delta) = BlockHeaderContent::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         // signature
@@ -289,19 +278,19 @@ impl DeserializeCompact for BlockHeader {
 
 impl BlockHeaderContent {
     pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
-        with_serialization_context(|context| Ok(Hash::hash(&self.to_bytes_compact(&context)?)))
+        Ok(Hash::hash(&self.to_bytes_compact()?))
     }
 }
 
 impl SerializeCompact for BlockHeaderContent {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         // creator public key
         res.extend(&self.creator.to_bytes());
 
         // slot
-        res.extend(self.slot.to_bytes_compact(&context)?);
+        res.extend(self.slot.to_bytes_compact()?);
 
         // parents (note: there should be none if slot period=0)
         // parents (note: there should be none if slot period=0)
@@ -322,10 +311,7 @@ impl SerializeCompact for BlockHeaderContent {
 }
 
 impl DeserializeCompact for BlockHeaderContent {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
         // creator public key
@@ -333,15 +319,16 @@ impl DeserializeCompact for BlockHeaderContent {
         cursor += PUBLIC_KEY_SIZE_BYTES;
 
         // slot
-        let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..], &context)?;
+        let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;
+        let parent_count = with_serialization_context(|context| context.parent_count);
         let parents = if has_parents == 1 {
-            let mut parents: Vec<BlockId> = Vec::with_capacity(context.parent_count as usize);
-            for _ in 0..context.parent_count {
+            let mut parents: Vec<BlockId> = Vec::with_capacity(parent_count as usize);
+            for _ in 0..parent_count {
                 let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 parents.push(BlockId(parent_h));
@@ -379,7 +366,7 @@ mod test {
     #[test]
     #[serial]
     fn test_block_serialization() {
-        let ctx = SerializationContext {
+        let ctx = crate::SerializationContext {
             max_block_size: 1024 * 1024,
             max_block_operations: 1024,
             parent_count: 3,
@@ -393,7 +380,7 @@ mod test {
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         };
-        crate::init_serialization_context(ctx.clone());
+        crate::init_serialization_context(ctx);
         let private_key = crypto::generate_random_private_key();
         let public_key = crypto::derive_public_key(&private_key);
 
@@ -420,10 +407,10 @@ mod test {
         };
 
         // serialize block
-        let orig_bytes = orig_block.to_bytes_compact(&ctx).unwrap();
+        let orig_bytes = orig_block.to_bytes_compact().unwrap();
 
         // deserialize
-        let (res_block, res_size) = Block::from_bytes_compact(&orig_bytes, &ctx).unwrap();
+        let (res_block, res_size) = Block::from_bytes_compact(&orig_bytes).unwrap();
         assert_eq!(orig_bytes.len(), res_size);
 
         // check equality

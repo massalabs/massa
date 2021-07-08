@@ -1,8 +1,8 @@
 use super::{
-    context::SerializationContext,
     serialization::{
         u8_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
+    with_serialization_context,
 };
 use crate::error::ModelsError;
 use serde::{Deserialize, Serialize};
@@ -106,7 +106,6 @@ impl SerializeCompact for Slot {
     /// ## Example
     /// ```rust
     /// # use models::Slot;
-    /// # use models::SerializationContext;
     /// # use models::{DeserializeCompact, SerializeCompact};
     /// # models::init_serialization_context(models::SerializationContext {
     /// #    max_block_operations: 1024,
@@ -124,11 +123,11 @@ impl SerializeCompact for Slot {
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact(&context).unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser, &context).unwrap();
+    /// let ser = slot.to_bytes_compact().unwrap();
+    /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
     /// assert_eq!(slot, deser);
     /// ```
-    fn to_bytes_compact(&self, _context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::with_capacity(9);
         res.extend(self.period.to_varint_bytes());
         res.push(self.thread);
@@ -142,7 +141,6 @@ impl DeserializeCompact for Slot {
     /// ## Example
     /// ```rust
     /// # use models::Slot;
-    /// # use models::SerializationContext;
     /// # use models::{DeserializeCompact, SerializeCompact};
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
@@ -160,20 +158,18 @@ impl DeserializeCompact for Slot {
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact(&context).unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser, &context).unwrap();
+    /// let ser = slot.to_bytes_compact().unwrap();
+    /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
     /// assert_eq!(slot, deser);
     /// ```
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let parent_count = with_serialization_context(|context| context.parent_count);
         let mut cursor = 0usize;
         let (period, delta) = u64::from_varint_bytes(buffer)?;
         cursor += delta;
         let thread = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;
-        if thread >= context.parent_count {
+        if thread >= parent_count {
             return Err(ModelsError::DeserializeError(
                 "invalid thread number".into(),
             ));

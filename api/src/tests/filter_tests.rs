@@ -6,9 +6,9 @@ use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use consensus::{LedgerChange, LedgerDataExport};
 use crypto::hash::Hash;
+use models::SerializeCompact;
 use models::{Address, Block, BlockHeader, BlockId, Slot};
 use models::{Operation, OperationContent, OperationId, OperationSearchResult, OperationType};
-use models::{SerializationContext, SerializeCompact};
 use serde_json::json;
 use serial_test::serial;
 use std::{
@@ -18,7 +18,7 @@ use std::{
 use storage::{start_storage, StorageConfig};
 use time::UTime;
 
-pub fn create_operation(context: &SerializationContext) -> Operation {
+pub fn create_operation() -> Operation {
     let sender_priv = crypto::generate_random_private_key();
     let sender_pub = crypto::derive_public_key(&sender_priv);
 
@@ -35,7 +35,7 @@ pub fn create_operation(context: &SerializationContext) -> Operation {
         sender_public_key: sender_pub,
         expire_period: 0,
     };
-    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     Operation { content, signature }
@@ -44,7 +44,7 @@ pub fn create_operation(context: &SerializationContext) -> Operation {
 #[tokio::test]
 #[serial]
 async fn test_get_operations() {
-    let serialization_context = initialize_context();
+    initialize_context();
 
     //test no operation found
     {
@@ -115,8 +115,8 @@ async fn test_get_operations() {
     {
         let (filter, mut rx_api) = mock_filter(None);
 
-        let operation = create_operation(&serialization_context);
-        let operation_id = operation.get_operation_id(&serialization_context).unwrap();
+        let operation = create_operation();
+        let operation_id = operation.get_operation_id().unwrap();
         let op_response = OperationSearchResult {
             op: operation,
             in_pool: false,
@@ -165,15 +165,8 @@ async fn test_get_operations() {
         assert_eq!(obtained.len(), 1);
         assert_eq!(obtained[0].0, operation_id);
         assert_eq!(
-            obtained[0]
-                .1
-                .op
-                .get_operation_id(&serialization_context)
-                .unwrap(),
-            op_response
-                .op
-                .get_operation_id(&serialization_context)
-                .unwrap()
+            obtained[0].1.op.get_operation_id().unwrap(),
+            op_response.op.get_operation_id().unwrap()
         );
         assert_eq!(obtained[0].1.in_pool, op_response.in_pool);
         assert_eq!(obtained[0].1.in_blocks, op_response.in_blocks);
