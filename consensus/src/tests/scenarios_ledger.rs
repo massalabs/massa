@@ -359,6 +359,7 @@ async fn test_ledger_read_whole() {
         .collect::<Vec<_>>()
         .pop()
         .expect("Couldn't find ledger data for address.")
-        .1;
+        .1
+        .clone();
     assert_eq!(address_data.get_balance(), 1);
 }

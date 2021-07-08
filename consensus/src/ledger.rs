@@ -22,7 +22,7 @@ pub struct Ledger {
     context: SerializationContext,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LedgerData {
     pub balance: u64,
 }
@@ -715,7 +715,7 @@ impl SerializeCompact for LedgerExport {
     /// assert_eq!(ledger.latest_final_periods, res.latest_final_periods);
     /// for thread in 0..ledger.latest_final_periods.len() {
     ///     for (address, data) in &ledger.ledger_per_thread[thread] {
-    ///        assert!(res.ledger_per_thread[thread].contains(&(address.clone(), data.clone())))
+    ///        assert!(res.ledger_per_thread[thread].iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact(&context).unwrap() == data.to_bytes_compact(&context).unwrap()).count() == 1)
     ///     }
     ///     assert_eq!(ledger.ledger_per_thread[thread].len(), res.ledger_per_thread[thread].len());
     /// }
