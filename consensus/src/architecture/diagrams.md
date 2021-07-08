@@ -1,7 +1,8 @@
 ```mermaid
 stateDiagram-v2
 [*] --> HeaderCheck: phantom transition to make it pretty
-HeaderCheck --> BlockCheck: phantom transition to make it pretty
+HeaderCheck --> DBCheck: phantom transition to make it pretty
+DBCheck --> BlockCheck: phantom transition to make it pretty
 BlockCheck --> ConsensusUpdate: phantom transition to make it pretty
 
     state HeaderCheck{
@@ -54,5 +55,33 @@ state Discard {
     Moving --> Still
     Moving --> Crash
     Crash --> [*]
+}
+
+state DBCheck {
+    [*] --> DBHeader: DB check header
+    DBHeader --> KnownHeader
+    DBHeader --> UnknownHeader
+    state fork_state <<fork>>
+    KnownHeader --> fork_state
+    fork_state --> InConsensus
+    fork_state --> InDiscard
+    fork_state --> InProcessing
+    InConsensus --> [*]: Do nothing
+    InDiscard --> [*]: Discard
+    InProcessing --> [*]: Do nothing
+    UnknownHeader --> s1
+    s1 --> s1: check if too far away in the fuuture
+    s1 --> [*]: Discard
+    s1 --> s2
+    s2 --> s2: check if it's processing time
+    s2 --> [*]: incomplete check
+    s2 --> s3
+    s3 --> s3: check roll number
+    s3 --> [*]: Discard
+    s3 --> s4
+    s4 --> s4: check parents and dependencies
+    s4 --> [*]: if wrong discard
+    s4 --> [*]: if missing incomplete check
+    s4 --> [*]: else ok
 }
 ```
