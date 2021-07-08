@@ -528,6 +528,12 @@ impl PeerInfoDatabase {
         {
             return false;
         }
+        if let Some(our_ip) = self.cfg.routable_ip {
+            // avoid our own IP
+            if *ip == our_ip {
+                return false;
+            }
+        }
         let peer = self.peers.entry(*ip).or_insert(PeerInfo {
             ip: *ip,
             banned: false,
