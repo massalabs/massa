@@ -76,6 +76,27 @@ struct PendingAckBlockState {
 
 
 #### acknowledge block in block graph
+* check header
+* if ok update_consensus_with_new_block
+* return blocks to retry
+
+#### update_consensus_with_new_block
+* inherit incompatibilities from parents
+* check thread incompatibility      |
+* check grandpa incompatibility     | -> extend incompatibilies
+* check operation incompatibilities |
+* check if there is an incompatibility with a final block --> ToDiscardError
+* promote to Active ConsensusBlock
+* add incompatibilities to gi_head in both directions
+* Update max_cliques
+    * if there is more incompatibilities than those inherited from parents no need to re compute everything
+* Computes cliques fitnesses and keep the best
+* use it to update best parents
+* list stale blocks and prune them
+* list final blocks
+* find the latest and update latest_final_blocks
+* prune useless final blocks
+* return pruned blocks' hashes and discarded final blocks
 
 #### unlock dependencies
 
@@ -85,7 +106,7 @@ struct PendingAckBlockState {
 * check that it is newer than the latest final block in that thread -> ToDiscardError
 * check that it is not too far in the future (see future_block_processing_max_periods) -> ToDiscardError
 * check roll number -> ToDiscardError
-* check if time to process it has come (for now: is its slot in the past) -> Ok(HashMap::new())
+* check if time to process it has come (for now: is its slot in the past) -> InTheFutureError
 * check dependencies
     * check that no parent is discarded
     * check if a parent is in the wrong thread or has a slot not strictly before the block
@@ -151,3 +172,6 @@ graph LR
 * return definitively discarded blocks (we want to keep definitely discarded final blocks)
 
 Do we need to remove blocks one by one ?
+
+### into active
+* for parents : update children vec
