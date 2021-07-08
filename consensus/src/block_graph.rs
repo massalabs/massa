@@ -972,21 +972,43 @@ impl BlockGraph {
     pub fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> HashMap<OperationId, bool> {
-        let mut res = HashMap::new();
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, ConsensusError> {
+        let mut res: HashMap<OperationId, OperationSearchResult> = HashMap::new();
         for (_, block_status) in self.block_statuses.iter() {
             if let BlockStatus::Active(ActiveBlock {
                 addresses_to_operations,
                 is_final,
+                operation_set,
+                block,
                 ..
             }) = block_status
             {
                 if let Some(ops) = addresses_to_operations.get(address) {
-                    res.extend(ops.into_iter().map(|op| (op, is_final)))
+                    for op in ops.iter() {
+                        let (idx, _) =
+                            operation_set
+                                .get(op)
+                                .ok_or(ConsensusError::ContainerInconsistency(format!(
+                                    "op {:?} should be here",
+                                    op
+                                )))?;
+                        let search = OperationSearchResult {
+                            op: block.operations[*idx].clone(),
+                            in_pool: false,
+                            in_blocks: vec![(block.header.compute_block_id()?, (*idx, *is_final))]
+                                .into_iter()
+                                .collect(),
+                        };
+                        if let Some(old_search) = res.get_mut(op) {
+                            old_search.extend(&search);
+                        } else {
+                            res.insert(*op, search);
+                        }
+                    }
                 }
             }
         }
-        res
+        Ok(res)
     }
 
     /// Gets whole compiled block corresponding to given hash, if it is active.

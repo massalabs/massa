@@ -234,7 +234,7 @@ impl ConsensusCommandSender {
     pub async fn get_operations_involving_address(
         &self,
         address: Address,
-    ) -> Result<HashMap<OperationId, bool>, ConsensusError> {
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_operations_involving_address",

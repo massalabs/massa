@@ -10,7 +10,7 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 
-use models::{Address, Operation, OperationId, Slot};
+use models::{Address, Operation, OperationId, OperationSearchResult, Slot};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be proccessed by pool.
@@ -32,7 +32,7 @@ pub enum PoolCommand {
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<HashSet<OperationId>>,
+        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     FinalOperations(HashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
 }

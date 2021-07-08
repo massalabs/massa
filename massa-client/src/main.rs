@@ -13,12 +13,16 @@
 //!
 //! The help command display all available commands.
 
+use crate::data::GetOperationContent;
 use crate::data::WrappedHash;
 use crate::repl::error::ReplError;
 use crate::repl::ReplData;
+use crate::wallet::Wallet;
 use api::{Addresses, OperationIds};
 use clap::App;
 use clap::Arg;
+use communication::network::PeerInfo;
+use consensus::LedgerDataExport;
 use crypto::{hash::Hash, signature::derive_public_key};
 use log::trace;
 use models::Address;
@@ -32,17 +36,12 @@ use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Write;
-use std::string::ToString;
-
-use crate::wallet::Wallet;
-use communication::network::PeerInfo;
-use consensus::LedgerDataExport;
 use std::fs::read_to_string;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::string::ToString;
 use std::sync::atomic::Ordering;
-
 mod config;
 mod data;
 mod repl;
@@ -598,7 +597,7 @@ fn cmd_operations_involving_address(data: &mut ReplData, params: &[&str]) -> Res
         data.node_ip, params[0]
     );
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<HashMap<WrappedHash, bool>>()?;
+        let resp = resp.json::<HashMap<WrappedHash, GetOperationContent>>()?;
         println!("operations_involving_address:");
         for (op_id, is_final) in resp {
             println!("operation {} is final: {}", op_id, is_final);

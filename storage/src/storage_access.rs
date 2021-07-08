@@ -95,7 +95,7 @@ impl StorageAccess {
     pub async fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> Result<HashSet<OperationId>, StorageError> {
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
         self.0.get_operations_involving_address(address).await
     }
 
