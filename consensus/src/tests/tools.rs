@@ -193,7 +193,7 @@ pub async fn create_and_test_block(
     protocol_controller.receive_block(block).await;
     if valid {
         // Assert that the block is propagated.
-        validate_propagate_block(protocol_controller, block_hash, 1000).await;
+        validate_propagate_block(protocol_controller, block_hash, 2000).await;
     } else {
         // Assert that the the block is not propagated.
         validate_notpropagate_block(protocol_controller, block_hash, 500).await;
