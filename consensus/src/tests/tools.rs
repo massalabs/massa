@@ -315,6 +315,10 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             parent_count: thread_count,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
         },
     )
 }

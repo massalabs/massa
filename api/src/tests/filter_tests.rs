@@ -208,6 +208,10 @@ async fn test_get_graph_interval() {
         parent_count: 2,
         max_peer_list_length: 128,
         max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
     };
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -758,6 +762,10 @@ async fn test_get_block_interval() {
         parent_count: 2,
         max_peer_list_length: 128,
         max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
     };
 
     let mut graph = get_test_block_graph();
@@ -1048,6 +1056,10 @@ async fn test_get_block() {
         parent_count: 2,
         max_peer_list_length: 128,
         max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
     };
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -1360,6 +1372,10 @@ async fn test_last_stale() {
         parent_count: 2,
         max_peer_list_length: 128,
         max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
     };
 
     //test with empty stale block
@@ -1453,6 +1469,10 @@ async fn test_last_invalid() {
         parent_count: 2,
         max_peer_list_length: 128,
         max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
     };
 
     //test with empty final block
@@ -1543,6 +1563,10 @@ async fn test_staker_info() {
         parent_count: 2,
         max_peer_list_length: 128,
         max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
     };
 
     let staker = get_dummy_staker();

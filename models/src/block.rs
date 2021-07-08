@@ -279,6 +279,10 @@ mod test {
             parent_count: 3,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
         };
         let mut sig_engine = SignatureEngine::new();
         let private_key = SignatureEngine::generate_random_private_key();

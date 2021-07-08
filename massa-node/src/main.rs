@@ -26,6 +26,10 @@ async fn run(cfg: config::Config) {
         max_block_size: cfg.consensus.max_block_size,
         max_peer_list_length: cfg.network.max_advertise_length,
         max_message_size: cfg.network.max_message_size,
+        max_bootstrap_blocks: cfg.bootstrap.max_bootstrap_blocks,
+        max_bootstrap_cliques: cfg.bootstrap.max_bootstrap_cliques,
+        max_bootstrap_deps: cfg.bootstrap.max_bootstrap_deps,
+        max_bootstrap_children: cfg.bootstrap.max_bootstrap_children,
     };
 
     let (boot_graph, clock_compensation) = get_state(
