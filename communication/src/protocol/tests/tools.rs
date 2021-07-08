@@ -6,7 +6,7 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
-use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
+use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
 use std::collections::HashMap;
 use time::UTime;
 use tokio::time::sleep;
@@ -117,7 +117,7 @@ where
 }
 
 pub async fn assert_hash_asked_to_node(
-    hash_1: Hash,
+    hash_1: BlockId,
     node_id: NodeId,
     network_controller: &mut MockNetworkController,
 ) {
@@ -135,7 +135,7 @@ pub async fn assert_hash_asked_to_node(
 
 pub async fn asked_list(
     network_controller: &mut MockNetworkController,
-) -> HashMap<NodeId, Vec<Hash>> {
+) -> HashMap<NodeId, Vec<BlockId>> {
     let ask_for_block_cmd_filter = |cmd| match cmd {
         NetworkCommand::AskForBlocks { list } => Some(list),
         _ => None,

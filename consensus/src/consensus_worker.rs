@@ -3,8 +3,8 @@ use super::{
     timeslots::*,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
-use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::{Block, Slot};
+use crypto::{signature::PublicKey, signature::SignatureEngine};
+use models::{Block, BlockId, Slot};
 use std::collections::{HashMap, HashSet};
 use storage::StorageAccess;
 use tokio::{
@@ -19,7 +19,7 @@ pub enum ConsensusCommand {
     GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
     /// Returns through a channel full block with specified hash.
     GetActiveBlock {
-        hash: Hash,
+        block_id: BlockId,
         response_tx: oneshot::Sender<Option<Block>>,
     },
     /// Returns through a channel the list of slots with public key of the selected staker.
@@ -70,7 +70,7 @@ pub struct ConsensusWorker {
     /// Next slot
     next_slot: Slot,
     /// blocks we want
-    wishlist: HashSet<Hash>,
+    wishlist: HashSet<BlockId>,
 }
 
 impl ConsensusWorker {
@@ -243,13 +243,16 @@ impl ConsensusWorker {
                     })
             }
             //return full block with specified hash
-            ConsensusCommand::GetActiveBlock { hash, response_tx } => {
+            ConsensusCommand::GetActiveBlock {
+                block_id,
+                response_tx,
+            } => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_active_block",
                     {}
                 );
                 response_tx
-                    .send(self.block_db.get_active_block(hash).cloned())
+                    .send(self.block_db.get_active_block(block_id).cloned())
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBlock answer:{:?}",
@@ -318,20 +321,20 @@ impl ConsensusWorker {
     /// * event: event type to process.
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
         match event {
-            ProtocolEvent::ReceivedBlock { hash, block } => {
-                massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "hash": hash, "block": block });
+            ProtocolEvent::ReceivedBlock { block_id, block } => {
+                massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
                 self.block_db.incoming_block(
-                    hash,
+                    block_id,
                     block,
                     &mut self.selector,
                     self.previous_slot,
                 )?;
                 self.block_db_changed().await?;
             }
-            ProtocolEvent::ReceivedBlockHeader { hash, header } => {
-                massa_trace!("consensus.consensus_worker.process_protocol_event.received_header", { "hash": hash, "header": header });
+            ProtocolEvent::ReceivedBlockHeader { block_id, header } => {
+                massa_trace!("consensus.consensus_worker.process_protocol_event.received_header", { "block_id": block_id, "header": header });
                 self.block_db.incoming_header(
-                    hash,
+                    block_id,
                     header,
                     &mut self.selector,
                     self.previous_slot,

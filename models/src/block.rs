@@ -11,6 +11,50 @@ use crypto::{
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use std::str::FromStr;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct BlockId(Hash);
+
+impl std::fmt::Display for BlockId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_bs58_check())
+    }
+}
+
+impl FromStr for BlockId {
+    type Err = ModelsError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(BlockId(Hash::from_str(s)?))
+    }
+}
+
+impl BlockId {
+    /// Generate an id on the fly,
+    /// used in tests.
+    pub fn for_tests(s: &str) -> Result<Self, ModelsError> {
+        Ok(BlockId(Hash::hash(s.as_bytes())))
+    }
+
+    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
+        self.0.to_bytes()
+    }
+
+    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+        self.0.into_bytes()
+    }
+
+    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<BlockId, ModelsError> {
+        Ok(BlockId(
+            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
+        ))
+    }
+    pub fn from_bs58_check(data: &str) -> Result<BlockId, ModelsError> {
+        Ok(BlockId(
+            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
+        ))
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
@@ -22,7 +66,7 @@ pub struct Block {
 pub struct BlockHeaderContent {
     pub creator: PublicKey,
     pub slot: Slot,
-    pub parents: Vec<Hash>,
+    pub parents: Vec<BlockId>,
     pub out_ledger_hash: Hash,
     pub operation_merkle_root: Hash, // all operations hash
 }
@@ -89,6 +133,20 @@ impl DeserializeCompact for Block {
 }
 
 impl BlockHeader {
+    /// Verify the integrity of the block,
+    /// and generate a block id if ok.
+    pub fn verify_integrity(&self, context: &SerializationContext) -> Result<BlockId, ModelsError> {
+        let hash = self.content.compute_hash(context)?;
+        self.verify_signature(&hash, &SignatureEngine::new())?;
+        Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
+    }
+
+    /// Generate the block id without verifying the integrity of the it,
+    /// used only in tests.
+    pub fn compute_block_id(&self, context: &SerializationContext) -> Result<BlockId, ModelsError> {
+        Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
+    }
+
     // Hash([slot, hash])
     fn get_signature_message(slot: &Slot, hash: &Hash) -> Hash {
         let mut res = [0u8; SLOT_KEY_SIZE + HASH_SIZE_BYTES];
@@ -118,13 +176,15 @@ impl BlockHeader {
         private_key: &PrivateKey,
         content: BlockHeaderContent,
         context: &SerializationContext,
-    ) -> Result<(Hash, Self), ModelsError> {
+    ) -> Result<(BlockId, Self), ModelsError> {
         let hash = content.compute_hash(&context)?;
         let signature = sig_engine.sign(
             &BlockHeader::get_signature_message(&content.slot, &hash),
             private_key,
         )?;
-        Ok((hash, BlockHeader { content, signature }))
+        let header = BlockHeader { content, signature };
+        let block_id = header.compute_block_id(&context)?;
+        Ok((block_id, header))
     }
 
     pub fn verify_signature(
@@ -199,7 +259,7 @@ impl SerializeCompact for BlockHeaderContent {
             res.push(1);
         }
         for parent_h in self.parents.iter() {
-            res.extend(&parent_h.to_bytes());
+            res.extend(&parent_h.0.to_bytes());
         }
 
         // output ledger hash
@@ -231,11 +291,11 @@ impl DeserializeCompact for BlockHeaderContent {
         let has_parents = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;
         let parents = if has_parents == 1 {
-            let mut parents: Vec<Hash> = Vec::with_capacity(context.parent_count as usize);
+            let mut parents: Vec<BlockId> = Vec::with_capacity(context.parent_count as usize);
             for _ in 0..context.parent_count {
                 let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
-                parents.push(parent_h);
+                parents.push(BlockId(parent_h));
             }
             parents
         } else if has_parents == 0 {
@@ -291,16 +351,16 @@ mod test {
         let public_key = sig_engine.derive_public_key(&private_key);
 
         // create block header
-        let (orig_hash, orig_header) = BlockHeader::new_signed(
+        let (orig_id, orig_header) = BlockHeader::new_signed(
             &mut sig_engine,
             &private_key,
             BlockHeaderContent {
                 creator: public_key,
                 slot: Slot::new(1, 2),
                 parents: vec![
-                    Hash::hash("abc".as_bytes()),
-                    Hash::hash("def".as_bytes()),
-                    Hash::hash("ghi".as_bytes()),
+                    BlockId(Hash::hash("abc".as_bytes())),
+                    BlockId(Hash::hash("def".as_bytes())),
+                    BlockId(Hash::hash("ghi".as_bytes())),
                 ],
                 out_ledger_hash: Hash::hash("jkl".as_bytes()),
                 operation_merkle_root: Hash::hash("mno".as_bytes()),
@@ -323,8 +383,10 @@ mod test {
         assert_eq!(orig_bytes.len(), res_size);
 
         // check equality
-        let res_hash = res_block.header.content.compute_hash(&ctx).unwrap();
-        assert_eq!(orig_hash, res_hash);
+        let res_id = res_block.header.verify_integrity(&ctx).unwrap();
+        let generated_res_id = res_block.header.compute_block_id(&ctx).unwrap();
+        assert_eq!(orig_id, res_id);
+        assert_eq!(orig_id, generated_res_id);
         assert_eq!(res_block.header.signature, orig_block.header.signature);
     }
 }

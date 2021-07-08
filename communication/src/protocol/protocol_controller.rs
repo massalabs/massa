@@ -6,8 +6,7 @@ use crate::{
     error::CommunicationError,
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
-use crypto::hash::Hash;
-use models::{Block, SerializationContext};
+use models::{Block, BlockId, SerializationContext};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -83,13 +82,13 @@ impl ProtocolCommandSender {
     /// * hash : hash of the block header
     pub async fn integrated_block(
         &mut self,
-        hash: Hash,
+        block_id: BlockId,
         block: Block,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("protocol.command_sender.integrated_block", { "hash": hash, "block": block });
+        massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
         let res = self
             .0
-            .send(ProtocolCommand::IntegratedBlock { hash, block })
+            .send(ProtocolCommand::IntegratedBlock { block_id, block })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("block_integrated command send error".into())
@@ -98,13 +97,16 @@ impl ProtocolCommandSender {
     }
 
     /// Notify to protocol an attack attempt.
-    pub async fn notify_block_attack(&mut self, hash: Hash) -> Result<(), CommunicationError> {
+    pub async fn notify_block_attack(
+        &mut self,
+        block_id: BlockId,
+    ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.notify_block_attack", {
-            "hash": hash
+            "block_id": block_id
         });
         let res = self
             .0
-            .send(ProtocolCommand::AttackBlockDetected(hash))
+            .send(ProtocolCommand::AttackBlockDetected(block_id))
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("notify_block_attack command send error".into())
@@ -115,7 +117,7 @@ impl ProtocolCommandSender {
     /// Send the response to a ProtocolEvent::GetBlocks.
     pub async fn send_get_blocks_results(
         &mut self,
-        results: HashMap<Hash, Option<Block>>,
+        results: HashMap<BlockId, Option<Block>>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
             "results": results
@@ -134,8 +136,8 @@ impl ProtocolCommandSender {
 
     pub async fn send_wishlist_delta(
         &mut self,
-        new: HashSet<Hash>,
-        remove: HashSet<Hash>,
+        new: HashSet<BlockId>,
+        remove: HashSet<BlockId>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         let res = self

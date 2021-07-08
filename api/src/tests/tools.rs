@@ -8,7 +8,7 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
-use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
+use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -22,12 +22,12 @@ use tokio::{
 };
 use warp::{filters::BoxedFilter, reply::Reply};
 
-pub fn get_test_hash() -> Hash {
-    Hash::hash("test".as_bytes())
+pub fn get_test_block_id() -> BlockId {
+    BlockId::for_tests("test").unwrap()
 }
 
-pub fn get_another_test_hash() -> Hash {
-    Hash::hash("another test".as_bytes())
+pub fn get_another_test_block_id() -> BlockId {
+    BlockId::for_tests("another test").unwrap()
 }
 
 pub fn get_consensus_config() -> ConsensusConfig {
@@ -100,7 +100,7 @@ pub fn get_header(
     serialization_context: &SerializationContext,
     slot: Slot,
     creator: Option<PublicKey>,
-) -> (Hash, BlockHeader) {
+) -> (BlockId, BlockHeader) {
     let mut sig_engine = SignatureEngine::new();
     let private_key = SignatureEngine::generate_random_private_key();
     let public_key = sig_engine.derive_public_key(&private_key);
@@ -116,8 +116,8 @@ pub fn get_header(
             },
             slot,
             parents: Vec::new(),
-            out_ledger_hash: get_test_hash(),
-            operation_merkle_root: get_another_test_hash(),
+            out_ledger_hash: Hash::hash("test".as_bytes()),
+            operation_merkle_root: Hash::hash("another test".as_bytes()),
         },
         serialization_context,
     )
@@ -144,7 +144,7 @@ pub fn mock_filter(
 
 pub fn get_test_block_graph() -> BlockGraphExport {
     BlockGraphExport {
-        genesis_blocks: vec![get_test_hash(), get_another_test_hash()],
+        genesis_blocks: vec![get_test_block_id(), get_another_test_block_id()],
         active_blocks: HashMap::new(),
         discarded_blocks: ExportDiscardedBlocks {
             map: HashMap::new(),
@@ -197,8 +197,7 @@ pub async fn get_test_storage(
     blocks.insert(
         block_a
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_a.clone(),
     );
@@ -218,8 +217,7 @@ pub async fn get_test_storage(
     blocks.insert(
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.clone(),
     );
@@ -239,8 +237,7 @@ pub async fn get_test_storage(
     blocks.insert(
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.clone(),
     );
@@ -255,11 +252,11 @@ pub fn get_test_block() -> Block {
         header: BlockHeader {
             content: BlockHeaderContent {
                 creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
-                operation_merkle_root: get_test_hash(),
-                out_ledger_hash: get_test_hash(),
+                operation_merkle_root: Hash::hash("test".as_bytes()),
+                out_ledger_hash: Hash::hash("test".as_bytes()),
                 parents: vec![
-                    Hash::hash("parent1".as_bytes()),
-                    Hash::hash("parent2".as_bytes())
+                    BlockId::for_tests("parent1").unwrap(),
+                    BlockId::for_tests("parent2").unwrap(),
                 ],
                 slot: Slot::new(1, 0),
             },

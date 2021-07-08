@@ -49,8 +49,7 @@ async fn test_without_a_priori() {
     );
     let hash_1 = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .unwrap();
     // end set up
 
@@ -132,8 +131,7 @@ async fn test_someone_knows_it() {
     );
     let hash_1 = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .unwrap();
     // end set up
 
@@ -143,7 +141,7 @@ async fn test_someone_knows_it() {
         .await;
 
     match protocol_event_receiver.wait_event().await.unwrap() {
-        ProtocolEvent::ReceivedBlockHeader { hash: _, header: _ } => {}
+        ProtocolEvent::ReceivedBlockHeader { .. } => {}
         _ => panic!("unexpected protocol event"),
     };
 
@@ -223,8 +221,7 @@ async fn test_dont_want_it_anymore() {
     );
     let hash_1 = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .unwrap();
     // end set up
 
@@ -308,8 +305,7 @@ async fn test_no_one_has_it() {
     );
     let hash_1 = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .unwrap();
     // end set up
 
@@ -397,8 +393,7 @@ async fn test_multiple_blocks_without_a_priori() {
     );
     let hash_1 = block_1
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .unwrap();
 
     let block_2 = tools::create_block(
@@ -409,8 +404,7 @@ async fn test_multiple_blocks_without_a_priori() {
     );
     let hash_2 = block_2
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .unwrap();
 
     // node a is disconnected so no node knows about wanted blocks

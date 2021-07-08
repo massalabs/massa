@@ -2,9 +2,7 @@ use super::config::ProtocolConfig;
 use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
-use crypto::hash::Hash;
-use crypto::signature::SignatureEngine;
-use models::{Block, BlockHeader, SerializationContext};
+use models::{Block, BlockHeader, BlockId, SerializationContext};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -20,11 +18,14 @@ pub enum ProtocolEvent {
     /// A isolated transaction was received.
     ReceivedTransaction(String),
     /// A block with a valid signature has been received.
-    ReceivedBlock { hash: Hash, block: Block },
+    ReceivedBlock { block_id: BlockId, block: Block },
     /// A block header with a valid signature has been received.
-    ReceivedBlockHeader { hash: Hash, header: BlockHeader },
+    ReceivedBlockHeader {
+        block_id: BlockId,
+        header: BlockHeader,
+    },
     /// Ask for a list of blocks from consensus.
-    GetBlocks(Vec<Hash>),
+    GetBlocks(Vec<BlockId>),
 }
 
 /// Commands that protocol worker can process
@@ -32,18 +33,18 @@ pub enum ProtocolEvent {
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
-        hash: Hash,
+        block_id: BlockId,
         block: Block,
     },
     /// A block, or it's header, amounted to an attempted attack.
-    AttackBlockDetected(Hash),
+    AttackBlockDetected(BlockId),
     /// Wishlist delta
     WishlistDelta {
-        new: HashSet<Hash>,
-        remove: HashSet<Hash>,
+        new: HashSet<BlockId>,
+        remove: HashSet<BlockId>,
     },
     // The response to a ProtocolEvent::GetBlocks.
-    GetBlocksResults(HashMap<Hash, Option<Block>>),
+    GetBlocksResults(HashMap<BlockId, Option<Block>>),
 }
 
 #[derive(Debug, Serialize)]
@@ -51,7 +52,7 @@ pub enum ProtocolManagementCommand {}
 
 //put in a module to block private access from Protocol_worker.
 mod nodeinfo {
-    use crypto::hash::Hash;
+    use models::BlockId;
     use std::collections::HashMap;
     use tokio::time::Instant;
 
@@ -64,11 +65,11 @@ mod nodeinfo {
     pub struct NodeInfo {
         /// The blocks the node "knows about",
         /// defined as the one the node propagated headers to us for.
-        known_blocks: HashMap<Hash, (bool, Instant)>,
+        known_blocks: HashMap<BlockId, (bool, Instant)>,
         /// The blocks the node asked for.
-        wanted_blocks: HashMap<Hash, Instant>,
+        wanted_blocks: HashMap<BlockId, Instant>,
         /// Blocks we asked that node for
-        pub asked_blocks: HashMap<Hash, Instant>,
+        pub asked_blocks: HashMap<BlockId, Instant>,
         /// Instant when the node was added
         pub connection_instant: Instant,
     }
@@ -83,18 +84,18 @@ mod nodeinfo {
             }
         }
 
-        pub fn get_known_block(&self, hash: &Hash) -> Option<&(bool, Instant)> {
-            self.known_blocks.get(hash)
+        pub fn get_known_block(&self, block_id: &BlockId) -> Option<&(bool, Instant)> {
+            self.known_blocks.get(block_id)
         }
 
         pub fn insert_known_block(
             &mut self,
-            hash: Hash,
+            block_id: BlockId,
             val: bool,
             instant: Instant,
             max_node_known_blocks_size: usize,
         ) {
-            self.known_blocks.insert(hash, (val, instant));
+            self.known_blocks.insert(block_id, (val, instant));
             while self.known_blocks.len() > max_node_known_blocks_size {
                 //remove oldest item
                 let (&h, _) = self
@@ -106,8 +107,12 @@ mod nodeinfo {
             }
         }
 
-        pub fn insert_wanted_blocks(&mut self, hash: Hash, max_node_wanted_blocks_size: usize) {
-            self.wanted_blocks.insert(hash, Instant::now());
+        pub fn insert_wanted_blocks(
+            &mut self,
+            block_id: BlockId,
+            max_node_wanted_blocks_size: usize,
+        ) {
+            self.wanted_blocks.insert(block_id, Instant::now());
             while self.known_blocks.len() > max_node_wanted_blocks_size {
                 //remove oldest item
                 let (&h, _) = self
@@ -119,15 +124,15 @@ mod nodeinfo {
             }
         }
 
-        pub fn contains_wanted_block(&mut self, hash: &Hash) -> bool {
+        pub fn contains_wanted_block(&mut self, block_id: &BlockId) -> bool {
             self.wanted_blocks
-                .get_mut(hash)
+                .get_mut(block_id)
                 .map(|instant| *instant = Instant::now())
                 .is_some()
         }
 
-        pub fn remove_wanted_block(&mut self, hash: &Hash) -> bool {
-            self.wanted_blocks.remove(hash).is_some()
+        pub fn remove_wanted_block(&mut self, block_id: &BlockId) -> bool {
+            self.wanted_blocks.remove(block_id).is_some()
         }
     }
 }
@@ -150,7 +155,7 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     active_nodes: HashMap<NodeId, nodeinfo::NodeInfo>,
     /// List of wanted blocks.
-    block_wishlist: HashSet<Hash>,
+    block_wishlist: HashSet<BlockId>,
 }
 
 impl ProtocolWorker {
@@ -265,18 +270,18 @@ impl ProtocolWorker {
             "cmd": cmd
         });
         match cmd {
-            ProtocolCommand::IntegratedBlock { hash, block } => {
-                massa_trace!("protocol.protocol_worker.process_command.integrated_block.begin", { "hash": hash, "block": block });
+            ProtocolCommand::IntegratedBlock { block_id, block } => {
+                massa_trace!("protocol.protocol_worker.process_command.integrated_block.begin", { "block_id": block_id, "block": block });
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
-                    if node_info.remove_wanted_block(&hash) {
+                    if node_info.remove_wanted_block(&block_id) {
                         node_info.insert_known_block(
-                            hash,
+                            block_id,
                             true,
                             Instant::now(),
                             self.cfg.max_node_known_blocks_size,
                         );
-                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "hash": hash, "block": block });
+                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
                             .await
@@ -287,10 +292,10 @@ impl ProtocolWorker {
                             })?;
                     } else {
                         // node that aren't asking for that block
-                        let cond = node_info.get_known_block(&hash);
+                        let cond = node_info.get_known_block(&block_id);
                         // if we don't know if that node knowns that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
-                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "hash": hash, "header": block.header });
+                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id, "header": block.header });
                             self.network_command_sender
                                 .send_block_header(*node_id, block.header.clone())
                                 .await
@@ -300,7 +305,7 @@ impl ProtocolWorker {
                                     )
                                 })?;
                         } else {
-                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "node": node_id, "hash": hash });
+                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "node": node_id, "block_id": block_id });
                             // todo broadcast hash (see #202)
                         }
                     }
@@ -310,22 +315,22 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::AttackBlockDetected(hash) => {
+            ProtocolCommand::AttackBlockDetected(block_id) => {
                 // Ban all the nodes that sent us this object.
                 massa_trace!(
                     "protocol.protocol_worker.process_command.attack_block_detected.begin",
-                    { "hash": hash }
+                    { "block_id": block_id }
                 );
                 let to_ban: Vec<NodeId> = self
                     .active_nodes
                     .iter()
-                    .filter_map(|(id, info)| match info.get_known_block(&hash) {
+                    .filter_map(|(id, info)| match info.get_known_block(&block_id) {
                         Some((true, _)) => Some(id.clone()),
                         _ => None,
                     })
                     .collect();
                 for id in to_ban.iter() {
-                    massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "hash": hash });
+                    massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "block_id": block_id });
                     self.ban_node(id).await?;
                 }
                 massa_trace!(
@@ -334,20 +339,20 @@ impl ProtocolWorker {
                 );
             }
             ProtocolCommand::GetBlocksResults(results) => {
-                for (hash, block) in results.into_iter() {
-                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "hash": hash, "block": block });
+                for (block_id, block) in results.into_iter() {
+                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "block_id": block_id, "block": block });
                     match block {
                         Some(block) => {
                             // Send the block once to all nodes who asked for it.
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                                if node_info.remove_wanted_block(&hash) {
+                                if node_info.remove_wanted_block(&block_id) {
                                     node_info.insert_known_block(
-                                        hash,
+                                        block_id,
                                         true,
                                         Instant::now(),
                                         self.cfg.max_node_known_blocks_size,
                                     );
-                                    massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "hash": hash, "block": block });
+                                    massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                                     self.network_command_sender
                                         .send_block(*node_id, block.clone())
                                         .await
@@ -366,13 +371,13 @@ impl ProtocolWorker {
                         None => {
                             massa_trace!(
                                 "protocol.protocol_worker.process_command.block_not_found.begin",
-                                { "hash": hash }
+                                { "block_id": block_id }
                             );
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                                if node_info.contains_wanted_block(&hash) {
-                                    massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "hash": hash });
+                                if node_info.contains_wanted_block(&block_id) {
+                                    massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "block_id": block_id });
                                     self.network_command_sender
-                                        .block_not_found(*node_id, hash)
+                                        .block_not_found(*node_id, block_id)
                                         .await?
                                 }
                             }
@@ -401,7 +406,7 @@ impl ProtocolWorker {
 
     fn stop_asking_blocks(
         &mut self,
-        remove_hashes: HashSet<Hash>,
+        remove_hashes: HashSet<BlockId>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
             "remove": remove_hashes
@@ -429,8 +434,8 @@ impl ProtocolWorker {
             .ok_or(TimeError::TimeOverflowError)?;
 
         // list blocks to re-ask and gather candidate nodes to ask from
-        let mut candidate_nodes: HashMap<Hash, Vec<_>> = HashMap::new();
-        let mut ask_block_list: HashMap<NodeId, Vec<Hash>> = HashMap::new();
+        let mut candidate_nodes: HashMap<BlockId, Vec<_>> = HashMap::new();
+        let mut ask_block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
 
         // list blocks to re-ask and from whom
         for hash in self.block_wishlist.iter() {
@@ -620,26 +625,27 @@ impl ProtocolWorker {
         &mut self,
         header: &BlockHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<Hash>, CommunicationError> {
+    ) -> Result<Option<BlockId>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
-        if let Ok(hash) = header.content.compute_hash(&self.serialization_context) {
-            // check signature
-            if let Err(_err) = header.verify_signature(&hash, &SignatureEngine::new()) {
-                return self.ban_node(source_node_id).await.map(|_| None);
+        match header.verify_integrity(&self.serialization_context) {
+            Ok(block_id) => {
+                if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+                    node_info.insert_known_block(
+                        block_id,
+                        true,
+                        Instant::now(),
+                        self.cfg.max_node_known_blocks_size,
+                    );
+                    massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
+                    return Ok(Some(block_id));
+                }
+                Ok(None)
             }
-
-            if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-                node_info.insert_known_block(
-                    hash,
-                    true,
-                    Instant::now(),
-                    self.cfg.max_node_known_blocks_size,
-                );
-                massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"hash":hash, "header": header});
-                return Ok(Some(hash));
+            Err(_) => {
+                let _ = self.ban_node(source_node_id).await;
+                Ok(None)
             }
         }
-        Ok(None)
     }
 
     /// Manages network event
@@ -674,14 +680,14 @@ impl ProtocolWorker {
                 block,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
-                if let Some(hash) = self
+                if let Some(block_id) = self
                     .note_header_from_node(&block.header, &from_node_id)
                     .await?
                 {
                     let mut set = HashSet::with_capacity(1);
-                    set.insert(hash);
+                    set.insert(block_id);
                     self.stop_asking_blocks(set)?;
-                    self.send_protocol_event(ProtocolEvent::ReceivedBlock { hash, block })
+                    self.send_protocol_event(ProtocolEvent::ReceivedBlock { block_id, block })
                         .await;
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
@@ -714,9 +720,13 @@ impl ProtocolWorker {
                 header,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block_header", { "node": source_node_id, "header": header});
-                if let Some(hash) = self.note_header_from_node(&header, &source_node_id).await? {
-                    self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader { hash, header })
-                        .await;
+                if let Some(block_id) = self.note_header_from_node(&header, &source_node_id).await?
+                {
+                    self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
+                        block_id,
+                        header,
+                    })
+                    .await;
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
@@ -725,11 +735,11 @@ impl ProtocolWorker {
                     )
                 }
             }
-            NetworkEvent::BlockNotFound { node, hash } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.block_not_found", { "node": node, "hash": hash});
+            NetworkEvent::BlockNotFound { node, block_id } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.block_not_found", { "node": node, "block_id": block_id});
                 if let Some(info) = self.active_nodes.get_mut(&node) {
                     info.insert_known_block(
-                        hash,
+                        block_id,
                         false,
                         Instant::now(),
                         self.cfg.max_node_known_blocks_size,
@@ -753,7 +763,7 @@ mod tests {
         let mut nodeinfo = NodeInfo::new();
         let instant = Instant::now();
 
-        let hash_test = Hash::hash("test".as_bytes());
+        let hash_test = BlockId::for_tests("test").unwrap();
         nodeinfo.insert_known_block(hash_test, true, instant, max_node_known_blocks_size);
         let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
         assert!(val);
@@ -764,7 +774,7 @@ mod tests {
         assert_eq!(instant, *t);
 
         for index in 0..9 {
-            let hash = Hash::hash(index.to_string().as_bytes());
+            let hash = BlockId::for_tests(&index.to_string()).unwrap();
             nodeinfo.insert_known_block(hash, true, Instant::now(), max_node_known_blocks_size);
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }
@@ -774,7 +784,7 @@ mod tests {
 
         //add hash that triggers container pruning
         nodeinfo.insert_known_block(
-            Hash::hash("test2".as_bytes()),
+            BlockId::for_tests("test2").unwrap(),
             true,
             Instant::now(),
             max_node_known_blocks_size,
@@ -782,15 +792,15 @@ mod tests {
 
         //test should be present
         assert!(nodeinfo
-            .get_known_block(&Hash::hash("test".as_bytes()))
+            .get_known_block(&BlockId::for_tests("test").unwrap())
             .is_some());
         //0 should be remove because it's the oldest.
         assert!(nodeinfo
-            .get_known_block(&Hash::hash(0.to_string().as_bytes()))
+            .get_known_block(&BlockId::for_tests(&0.to_string()).unwrap())
             .is_none());
         //the other are still present.
         for index in 1..9 {
-            let hash = Hash::hash(index.to_string().as_bytes());
+            let hash = BlockId::for_tests(&index.to_string()).unwrap();
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }
     }
@@ -800,32 +810,35 @@ mod tests {
         let max_node_wanted_blocks_size = 10;
         let mut nodeinfo = NodeInfo::new();
 
-        let hash = Hash::hash("test".as_bytes());
+        let hash = BlockId::for_tests("test").unwrap();
         nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
         assert!(nodeinfo.contains_wanted_block(&hash));
         nodeinfo.remove_wanted_block(&hash);
         assert!(!nodeinfo.contains_wanted_block(&hash));
 
         for index in 0..9 {
-            let hash = Hash::hash(index.to_string().as_bytes());
+            let hash = BlockId::for_tests(&index.to_string()).unwrap();
             nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
             assert!(nodeinfo.contains_wanted_block(&hash));
         }
 
         // change the oldest time to now
-        assert!(nodeinfo.contains_wanted_block(&Hash::hash(0.to_string().as_bytes())));
+        assert!(nodeinfo.contains_wanted_block(&BlockId::for_tests(&0.to_string()).unwrap()));
         //add hash that triggers container pruning
-        nodeinfo.insert_wanted_blocks(Hash::hash("test2".as_bytes()), max_node_wanted_blocks_size);
+        nodeinfo.insert_wanted_blocks(
+            BlockId::for_tests("test2").unwrap(),
+            max_node_wanted_blocks_size,
+        );
 
         //0 is present because because its timestamp has been updated with contains_wanted_block
-        assert!(nodeinfo.contains_wanted_block(&Hash::hash(0.to_string().as_bytes())));
+        assert!(nodeinfo.contains_wanted_block(&BlockId::for_tests(&0.to_string()).unwrap()));
 
         //1 has been removed because it's the oldest.
-        assert!(nodeinfo.contains_wanted_block(&Hash::hash(1.to_string().as_bytes())));
+        assert!(nodeinfo.contains_wanted_block(&BlockId::for_tests(&1.to_string()).unwrap()));
 
         //Other blocks are present.
         for index in 2..9 {
-            let hash = Hash::hash(index.to_string().as_bytes());
+            let hash = BlockId::for_tests(&index.to_string()).unwrap();
             assert!(nodeinfo.contains_wanted_block(&hash));
         }
     }

@@ -3,11 +3,8 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{BootsrapableGraph, ConsensusCommand};
-use crypto::{
-    hash::Hash,
-    signature::{PrivateKey, PublicKey, SignatureEngine},
-};
-use models::SerializationContext;
+use crypto::signature::{PrivateKey, PublicKey, SignatureEngine};
+use models::{BlockId, SerializationContext};
 use time::UTime;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -106,12 +103,12 @@ pub fn get_boot_graph() -> BootsrapableGraph {
     BootsrapableGraph {
         active_blocks: Default::default(),
         best_parents: vec![
-            Hash::hash(&"parent1".as_bytes()),
-            Hash::hash(&"parent2".as_bytes()),
+            BlockId::for_tests("parent1").unwrap(),
+            BlockId::for_tests("parent2").unwrap(),
         ],
         latest_final_blocks_periods: vec![
-            (Hash::hash(&"parent1".as_bytes()), 10),
-            (Hash::hash(&"parent2".as_bytes()), 10),
+            (BlockId::for_tests("parent1").unwrap(), 10),
+            (BlockId::for_tests("parent2").unwrap(), 10),
         ],
         gi_head: Default::default(),
         max_cliques: vec![Vec::new()],

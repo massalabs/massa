@@ -5,7 +5,7 @@ mod operation;
 mod serialization;
 mod slot;
 
-pub use block::{Block, BlockHeader, BlockHeaderContent};
+pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId};
 pub use context::SerializationContext;
 pub use error::ModelsError;
 pub use operation::{Operation, TransactionContent};

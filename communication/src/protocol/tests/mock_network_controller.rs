@@ -1,7 +1,6 @@
 use crate::common::NodeId;
 use crate::network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
-use crypto::hash::Hash;
-use models::{Block, BlockHeader};
+use models::{Block, BlockHeader, BlockId};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -78,7 +77,7 @@ impl MockNetworkController {
             .expect("Couldn't send block to protocol.");
     }
 
-    pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: Vec<Hash>) {
+    pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: Vec<BlockId>) {
         self.network_event_tx
             .send(NetworkEvent::AskedForBlocks {
                 node: source_node_id,
@@ -88,11 +87,11 @@ impl MockNetworkController {
             .expect("Couldn't send ask for block to protocol.");
     }
 
-    pub async fn send_block_not_found(&mut self, source_node_id: NodeId, hash: Hash) {
+    pub async fn send_block_not_found(&mut self, source_node_id: NodeId, block_id: BlockId) {
         self.network_event_tx
             .send(NetworkEvent::BlockNotFound {
                 node: source_node_id,
-                hash,
+                block_id,
             })
             .await
             .expect("Couldn't send ask for block to protocol.");

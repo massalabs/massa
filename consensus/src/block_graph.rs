@@ -1,12 +1,12 @@
 //! All information concerning blocks, the block graph and cliques is managed here.
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::ConsensusError;
-use crypto::hash::Hash;
-use crypto::hash::HASH_SIZE_BYTES;
+use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::SignatureEngine;
 use models::{
-    array_from_slice, u8_from_slice, Block, BlockHeader, BlockHeaderContent, DeserializeCompact,
-    DeserializeVarInt, ModelsError, SerializationContext, SerializeCompact, SerializeVarInt, Slot,
+    array_from_slice, u8_from_slice, Block, BlockHeader, BlockHeaderContent, BlockId,
+    DeserializeCompact, DeserializeVarInt, ModelsError, SerializationContext, SerializeCompact,
+    SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeSet, HashMap, HashSet, VecDeque};
@@ -31,10 +31,10 @@ impl HeaderOrBlock {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
     block: Block,
-    parents: Vec<(Hash, u64)>, // one (hash, period) per thread ( if not genesis )
-    children: Vec<HashMap<Hash, u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    dependencies: HashSet<Hash>,       // dependencies required for validity check
-    descendants: HashSet<Hash>,
+    parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
+    children: Vec<HashMap<BlockId, u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
+    dependencies: HashSet<BlockId>,       // dependencies required for validity check
+    descendants: HashSet<BlockId>,
     is_final: bool,
 }
 
@@ -58,9 +58,9 @@ impl ActiveBlock {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
     block: Block,
-    parents: Vec<(Hash, u64)>, // one (hash, period) per thread ( if not genesis )
-    children: Vec<Vec<(Hash, u64)>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    dependencies: Vec<Hash>,         // dependencies required for validity check
+    parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
+    children: Vec<Vec<(BlockId, u64)>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
+    dependencies: Vec<BlockId>,         // dependencies required for validity check
     is_final: bool,
 }
 
@@ -177,9 +177,10 @@ impl DeserializeCompact for ExportActiveBlock {
         let has_parents = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;
         let parents = if has_parents == 1 {
-            let mut parents: Vec<(Hash, u64)> = Vec::with_capacity(context.parent_count as usize);
+            let mut parents: Vec<(BlockId, u64)> =
+                Vec::with_capacity(context.parent_count as usize);
             for _ in 0..context.parent_count {
-                let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
@@ -203,7 +204,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut children: Vec<Vec<(Hash, u64)>> = Vec::with_capacity(children_count as usize);
+        let mut children: Vec<Vec<(BlockId, u64)>> = Vec::with_capacity(children_count as usize);
         for _ in 0..(children_count as usize) {
             let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             if map_count > context.max_bootstrap_children {
@@ -212,9 +213,9 @@ impl DeserializeCompact for ExportActiveBlock {
                 ));
             }
             cursor += delta;
-            let mut map: Vec<(Hash, u64)> = Vec::with_capacity(map_count as usize);
+            let mut map: Vec<(BlockId, u64)> = Vec::with_capacity(map_count as usize);
             for _ in 0..(map_count as usize) {
-                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
@@ -231,9 +232,9 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut dependencies: Vec<Hash> = Vec::with_capacity(dependencies_count as usize);
+        let mut dependencies: Vec<BlockId> = Vec::with_capacity(dependencies_count as usize);
         for _ in 0..(dependencies_count as usize) {
-            let dep = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let dep = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             dependencies.push(dep);
         }
@@ -267,7 +268,7 @@ enum BlockStatus {
     WaitingForSlot(HeaderOrBlock),
     WaitingForDependencies {
         header_or_block: HeaderOrBlock,
-        unsatisfied_dependencies: HashSet<Hash>, // includes self if it's only a header
+        unsatisfied_dependencies: HashSet<BlockId>, // includes self if it's only a header
         sequence_number: u64,
     },
     Active(ActiveBlock),
@@ -288,7 +289,7 @@ pub struct ExportCompiledBlock {
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
     /// in thread i.
-    pub children: Vec<HashSet<Hash>>,
+    pub children: Vec<HashSet<BlockId>>,
     /// Active or final
     pub status: Status,
 }
@@ -301,25 +302,25 @@ pub enum Status {
 
 #[derive(Debug, Default, Clone)]
 pub struct ExportDiscardedBlocks {
-    pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
+    pub map: HashMap<BlockId, (DiscardReason, BlockHeader)>,
 }
 
 #[derive(Debug, Clone)]
 pub struct BlockGraphExport {
     /// Genesis blocks.
-    pub genesis_blocks: Vec<Hash>,
+    pub genesis_blocks: Vec<BlockId>,
     /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: HashMap<Hash, ExportCompiledBlock>,
+    pub active_blocks: HashMap<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
     pub discarded_blocks: ExportDiscardedBlocks,
     /// Best parents hashe in each thread.
-    pub best_parents: Vec<Hash>,
+    pub best_parents: Vec<BlockId>,
     /// Latest final period and block hash in each thread.
-    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
+    pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// Head of the incompatibility graph.
-    pub gi_head: HashMap<Hash, HashSet<Hash>>,
+    pub gi_head: HashMap<BlockId, HashSet<BlockId>>,
     /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<HashSet<Hash>>,
+    pub max_cliques: Vec<HashSet<BlockId>>,
 }
 
 impl<'a> From<&'a BlockGraph> for BlockGraphExport {
@@ -355,7 +356,7 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
                                     thread
                                         .keys()
                                         .map(|hash| hash.clone())
-                                        .collect::<HashSet<Hash>>()
+                                        .collect::<HashSet<BlockId>>()
                                 })
                                 .collect(),
                             status: if block.is_final {
@@ -377,15 +378,15 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootsrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: Vec<(Hash, ExportActiveBlock)>,
+    pub active_blocks: Vec<(BlockId, ExportActiveBlock)>,
     /// Best parents hashe in each thread.
-    pub best_parents: Vec<Hash>,
+    pub best_parents: Vec<BlockId>,
     /// Latest final period and block hash in each thread.
-    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
+    pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// Head of the incompatibility graph.
-    pub gi_head: Vec<(Hash, Vec<Hash>)>,
+    pub gi_head: Vec<(BlockId, Vec<BlockId>)>,
     /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<Vec<Hash>>,
+    pub max_cliques: Vec<Vec<BlockId>>,
 }
 
 impl<'a> From<&'a BlockGraph> for BootsrapableGraph {
@@ -517,10 +518,10 @@ impl DeserializeCompact for BootsrapableGraph {
             return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {:?}", active_blocks_count)));
         }
         cursor += delta;
-        let mut active_blocks: Vec<(Hash, ExportActiveBlock)> =
+        let mut active_blocks: Vec<(BlockId, ExportActiveBlock)> =
             Vec::with_capacity(active_blocks_count as usize);
         for _ in 0..(active_blocks_count as usize) {
-            let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             let (block, delta) =
                 ExportActiveBlock::from_bytes_compact(&buffer[cursor..], &context)?;
@@ -529,18 +530,18 @@ impl DeserializeCompact for BootsrapableGraph {
         }
 
         //best_parents
-        let mut best_parents: Vec<Hash> = Vec::with_capacity(context.parent_count as usize);
+        let mut best_parents: Vec<BlockId> = Vec::with_capacity(context.parent_count as usize);
         for _ in 0..context.parent_count {
-            let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             best_parents.push(parent_h);
         }
 
         //latest_final_blocks_periods
-        let mut latest_final_blocks_periods: Vec<(Hash, u64)> =
+        let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
             Vec::with_capacity(context.parent_count as usize);
         for _ in 0..context.parent_count {
-            let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
@@ -553,40 +554,40 @@ impl DeserializeCompact for BootsrapableGraph {
             return Err(ModelsError::DeserializeError(format!("too many blocks in gi_head for deserialization context in BootstrapableGraph: {:?}", gi_head_count)));
         }
         cursor += delta;
-        let mut gi_head: Vec<(Hash, Vec<Hash>)> = Vec::with_capacity(gi_head_count as usize);
+        let mut gi_head: Vec<(BlockId, Vec<BlockId>)> = Vec::with_capacity(gi_head_count as usize);
         for _ in 0..(gi_head_count as usize) {
-            let gihash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let gihash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             if set_count > context.max_bootstrap_blocks {
                 return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {:?}", set_count)));
             }
             cursor += delta;
-            let mut set: Vec<Hash> = Vec::with_capacity(set_count as usize);
+            let mut set: Vec<BlockId> = Vec::with_capacity(set_count as usize);
             for _ in 0..(set_count as usize) {
-                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 set.push(hash);
             }
             gi_head.push((gihash, set));
         }
 
-        //max_cliques: Vec<HashSet<Hash>>
+        //max_cliques: Vec<HashSet<BlockId>>
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if max_cliques_count > context.max_bootstrap_cliques {
             return Err(ModelsError::DeserializeError(format!("too many blocks in max_clilques for deserialization context in BootstrapableGraph: {:?}", max_cliques_count)));
         }
         cursor += delta;
-        let mut max_cliques: Vec<Vec<Hash>> = Vec::with_capacity(max_cliques_count as usize);
+        let mut max_cliques: Vec<Vec<BlockId>> = Vec::with_capacity(max_cliques_count as usize);
         for _ in 0..(max_cliques_count as usize) {
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             if set_count > context.max_bootstrap_blocks {
                 return Err(ModelsError::DeserializeError(format!("too many blocks in a clique for deserialization context in BootstrapableGraph: {:?}", set_count)));
             }
             cursor += delta;
-            let mut set: Vec<Hash> = Vec::with_capacity(set_count as usize);
+            let mut set: Vec<BlockId> = Vec::with_capacity(set_count as usize);
             for _ in 0..(set_count as usize) {
-                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 set.push(hash);
             }
@@ -609,28 +610,28 @@ impl DeserializeCompact for BootsrapableGraph {
 pub struct BlockGraph {
     cfg: ConsensusConfig,
     serialization_context: SerializationContext,
-    genesis_hashes: Vec<Hash>,
+    genesis_hashes: Vec<BlockId>,
     sequence_counter: u64,
-    block_statuses: HashMap<Hash, BlockStatus>,
-    latest_final_blocks_periods: Vec<(Hash, u64)>,
-    best_parents: Vec<Hash>,
-    gi_head: HashMap<Hash, HashSet<Hash>>,
-    max_cliques: Vec<HashSet<Hash>>,
-    to_propagate: HashMap<Hash, Block>,
-    attack_attempts: Vec<Hash>,
+    block_statuses: HashMap<BlockId, BlockStatus>,
+    latest_final_blocks_periods: Vec<(BlockId, u64)>,
+    best_parents: Vec<BlockId>,
+    gi_head: HashMap<BlockId, HashSet<BlockId>>,
+    max_cliques: Vec<HashSet<BlockId>>,
+    to_propagate: HashMap<BlockId, Block>,
+    attack_attempts: Vec<BlockId>,
 }
 
 #[derive(Debug)]
 enum CheckOutcome {
     Proceed {
-        parents_hash_period: Vec<(Hash, u64)>,
-        dependencies: HashSet<Hash>,
-        incompatibilities: HashSet<Hash>,
+        parents_hash_period: Vec<(BlockId, u64)>,
+        dependencies: HashSet<BlockId>,
+        incompatibilities: HashSet<BlockId>,
         inherited_incompatibilities_count: usize,
     },
     Discard(DiscardReason),
     WaitForSlot,
-    WaitForDependencies(HashSet<Hash>),
+    WaitForDependencies(HashSet<BlockId>),
 }
 
 /// Creates genesis block in given thread.
@@ -643,7 +644,7 @@ fn create_genesis_block(
     cfg: &ConsensusConfig,
     serialization_context: &SerializationContext,
     thread_number: u8,
-) -> Result<(Hash, Block), ConsensusError> {
+) -> Result<(BlockId, Block), ConsensusError> {
     let mut signature_engine = SignatureEngine::new();
     let private_key = cfg.genesis_key;
     let public_key = signature_engine.derive_public_key(&private_key);
@@ -727,7 +728,7 @@ impl BlockGraph {
                 attack_attempts: Default::default(),
             };
             // compute block descendants
-            let active_blocks_map: HashMap<Hash, Vec<Hash>> = res_graph
+            let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
                 .block_statuses
                 .iter()
                 .filter_map(|(h, s)| {
@@ -739,8 +740,8 @@ impl BlockGraph {
                 })
                 .collect();
             for (b_hash, b_parents) in active_blocks_map.into_iter() {
-                let mut ancestors: VecDeque<Hash> = b_parents.into_iter().collect();
-                let mut visited: HashSet<Hash> = HashSet::new();
+                let mut ancestors: VecDeque<BlockId> = b_parents.into_iter().collect();
+                let mut visited: HashSet<BlockId> = HashSet::new();
                 while let Some(ancestor_h) = ancestors.pop_back() {
                     if !visited.insert(ancestor_h) {
                         continue;
@@ -778,7 +779,11 @@ impl BlockGraph {
     /// # Arguments
     /// * val : dummy value used to generate dummy hash
     /// * slot : generated block is in slot slot.
-    pub fn create_block(&self, val: String, slot: Slot) -> Result<(Hash, Block), ConsensusError> {
+    pub fn create_block(
+        &self,
+        val: String,
+        slot: Slot,
+    ) -> Result<(BlockId, Block), ConsensusError> {
         let mut signature_engine = SignatureEngine::new();
         let (public_key, private_key) = self
             .cfg
@@ -814,7 +819,7 @@ impl BlockGraph {
     }
 
     /// Gets lastest final blocks (hash, period) for each thread.
-    pub fn get_latest_final_blocks_periods(&self) -> &Vec<(Hash, u64)> {
+    pub fn get_latest_final_blocks_periods(&self) -> &Vec<(BlockId, u64)> {
         &self.latest_final_blocks_periods
     }
 
@@ -822,7 +827,7 @@ impl BlockGraph {
     ///
     /// # Argument
     /// * hash : header's hash of the given block.
-    pub fn get_active_block(&self, hash: Hash) -> Option<&Block> {
+    pub fn get_active_block(&self, hash: BlockId) -> Option<&Block> {
         match BlockGraph::get_full_active_block(&self.block_statuses, hash) {
             Some(ActiveBlock { block, .. }) => Some(&block),
             _ => None,
@@ -836,7 +841,7 @@ impl BlockGraph {
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // list all elements for which the time has come
-        let to_process: BTreeSet<(Slot, Hash)> = self
+        let to_process: BTreeSet<(Slot, BlockId)> = self
             .block_statuses
             .iter()
             .filter_map(|(hash, block_status)| match block_status {
@@ -861,7 +866,7 @@ impl BlockGraph {
 
     pub fn incoming_header(
         &mut self,
-        hash: Hash,
+        hash: BlockId,
         header: BlockHeader,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
@@ -872,7 +877,7 @@ impl BlockGraph {
         }
 
         massa_trace!("consensus.block_graph.incoming_header", {"hash": hash, "header": header});
-        let mut to_ack: BTreeSet<(Slot, Hash)> = BTreeSet::new();
+        let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(hash) {
             // if absent => add as Incoming, call rec_ack on it
             hash_map::Entry::Vacant(vac) => {
@@ -902,22 +907,22 @@ impl BlockGraph {
 
     pub fn incoming_block(
         &mut self,
-        hash: Hash,
+        block_id: BlockId,
         block: Block,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // ignore genesis blocks
-        if self.genesis_hashes.contains(&hash) {
+        if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
 
-        massa_trace!("consensus.block_graph.incoming_block", {"hash": hash, "block": block});
-        let mut to_ack: BTreeSet<(Slot, Hash)> = BTreeSet::new();
-        match self.block_statuses.entry(hash) {
+        massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": block});
+        let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
+        match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
             hash_map::Entry::Vacant(vac) => {
-                to_ack.insert((block.header.content.slot, hash));
+                to_ack.insert((block.header.content.slot, block_id));
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block(block)));
             }
             hash_map::Entry::Occupied(mut occ) => match occ.get_mut() {
@@ -937,13 +942,13 @@ impl BlockGraph {
                     ..
                 } => {
                     // promote to full block and satisfy self-dependency
-                    if unsatisfied_dependencies.remove(&hash) {
+                    if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: process
-                        to_ack.insert((block.header.content.slot, hash));
+                        to_ack.insert((block.header.content.slot, block_id));
                     }
                     *header_or_block = HeaderOrBlock::Block(block);
                     // promote in dependencies
-                    self.promote_dep_tree(hash)?;
+                    self.promote_dep_tree(block_id)?;
                 }
                 _ => return Ok(()),
             },
@@ -964,7 +969,7 @@ impl BlockGraph {
     // acknowledge a set of items recursively
     fn rec_process(
         &mut self,
-        mut to_ack: BTreeSet<(Slot, Hash)>,
+        mut to_ack: BTreeSet<(Slot, BlockId)>,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
@@ -978,10 +983,10 @@ impl BlockGraph {
     // ack a single item, return a set of items to re-ack
     fn process(
         &mut self,
-        hash: Hash,
+        hash: BlockId,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
-    ) -> Result<BTreeSet<(Slot, Hash)>, ConsensusError> {
+    ) -> Result<BTreeSet<(Slot, BlockId)>, ConsensusError> {
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
 
@@ -1278,7 +1283,7 @@ impl BlockGraph {
     }
 
     /// Note an attack attempt if the discard reason indicates one.
-    fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &Hash) {
+    fn maybe_note_attack_attempt(&mut self, reason: &DiscardReason, hash: &BlockId) {
         massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
         // If invalid, note the attack attempt.
         match reason {
@@ -1294,8 +1299,8 @@ impl BlockGraph {
     /// # Argument
     /// * hash : header's hash of the given block.
     fn get_full_active_block(
-        block_statuses: &HashMap<Hash, BlockStatus>,
-        hash: Hash,
+        block_statuses: &HashMap<BlockId, BlockStatus>,
+        hash: BlockId,
     ) -> Option<&ActiveBlock> {
         match block_statuses.get(&hash) {
             Some(BlockStatus::Active(active_block)) => Some(&active_block),
@@ -1309,10 +1314,10 @@ impl BlockGraph {
     /// * hash : hash of the given block
     fn get_active_block_and_descendants(
         &self,
-        hash: Hash,
-    ) -> Result<HashSet<Hash>, ConsensusError> {
+        hash: BlockId,
+    ) -> Result<HashSet<BlockId>, ConsensusError> {
         let mut to_visit = vec![hash];
-        let mut result: HashSet<Hash> = HashSet::new();
+        let mut result: HashSet<BlockId> = HashSet::new();
         while let Some(visit_h) = to_visit.pop() {
             if !result.insert(visit_h) {
                 continue; // already visited
@@ -1328,13 +1333,13 @@ impl BlockGraph {
 
     fn check_header(
         &self,
-        hash: Hash,
+        hash: BlockId,
         header: &BlockHeader,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<CheckOutcome, ConsensusError> {
         massa_trace!("consensus.block_graph.check_header", { "hash": hash });
-        let mut parents: Vec<(Hash, u64)> = Vec::with_capacity(self.cfg.thread_count as usize);
+        let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(self.cfg.thread_count as usize);
         let mut deps = HashSet::new();
         let mut incomp = HashSet::new();
         let mut missing_deps = HashSet::new();
@@ -1385,7 +1390,7 @@ impl BlockGraph {
         // TODO denounce ? see issue #101
 
         // list parents and ensure they are present
-        let parent_set: HashSet<Hash> = header.content.parents.iter().copied().collect();
+        let parent_set: HashSet<BlockId> = header.content.parents.iter().copied().collect();
         deps.extend(&parent_set);
         for parent_thread in 0u8..self.cfg.thread_count {
             let parent_hash = header.content.parents[parent_thread as usize];
@@ -1578,7 +1583,7 @@ impl BlockGraph {
 
     fn check_block(
         &self,
-        hash: Hash,
+        hash: BlockId,
         block: &Block,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
@@ -1620,8 +1625,8 @@ impl BlockGraph {
     }
 
     /// Computes max cliques of compatible blocks
-    fn compute_max_cliques(&self) -> Vec<HashSet<Hash>> {
-        let mut max_cliques: Vec<HashSet<Hash>> = Vec::new();
+    fn compute_max_cliques(&self) -> Vec<HashSet<BlockId>> {
+        let mut max_cliques: Vec<HashSet<BlockId>> = Vec::new();
 
         // algorithm adapted from IK_GPX as summarized in:
         //   Cazals et al., "A note on the problem of reporting maximal cliques"
@@ -1629,7 +1634,7 @@ impl BlockGraph {
         //   https://doi.org/10.1016/j.tcs.2008.05.010
 
         // stack: r, p, x
-        let mut stack: Vec<(HashSet<Hash>, HashSet<Hash>, HashSet<Hash>)> = vec![(
+        let mut stack: Vec<(HashSet<BlockId>, HashSet<BlockId>, HashSet<BlockId>)> = vec![(
             HashSet::new(),
             self.gi_head.keys().cloned().collect(),
             HashSet::new(),
@@ -1650,12 +1655,12 @@ impl BlockGraph {
                 .unwrap(); // p was checked to be non-empty before
 
             // iterate over u_set = (p /\ Neighbors(u_p, GI))
-            let u_set: HashSet<Hash> =
+            let u_set: HashSet<BlockId> =
                 &p & &(&self.gi_head[&u_p] | &vec![u_p].into_iter().collect());
             for u_i in u_set.into_iter() {
                 p.remove(&u_i);
-                let u_i_set: HashSet<Hash> = vec![u_i].into_iter().collect();
-                let comp_n_u_i: HashSet<Hash> = &self.gi_head[&u_i] | &u_i_set;
+                let u_i_set: HashSet<BlockId> = vec![u_i].into_iter().collect();
+                let comp_n_u_i: HashSet<BlockId> = &self.gi_head[&u_i] | &u_i_set;
                 stack.push((&r | &u_i_set, &p - &comp_n_u_i, &x - &comp_n_u_i));
                 x.insert(u_i);
             }
@@ -1669,11 +1674,11 @@ impl BlockGraph {
 
     fn add_block_to_graph(
         &mut self,
-        hash: Hash,
-        parents_hash_period: Vec<(Hash, u64)>,
+        hash: BlockId,
+        parents_hash_period: Vec<(BlockId, u64)>,
         block: Block,
-        deps: HashSet<Hash>,
-        incomp: HashSet<Hash>,
+        deps: HashSet<BlockId>,
+        incomp: HashSet<BlockId>,
         inherited_incomp_count: usize,
     ) -> Result<(), ConsensusError> {
         // add block to status structure
@@ -1705,9 +1710,9 @@ impl BlockGraph {
 
         // add as descendant to ancestors. Note: descendants are never removed.
         {
-            let mut ancestors: VecDeque<Hash> =
+            let mut ancestors: VecDeque<BlockId> =
                 parents_hash_period.iter().map(|(h, _)| *h).collect();
-            let mut visited: HashSet<Hash> = HashSet::new();
+            let mut visited: HashSet<BlockId> = HashSet::new();
             while let Some(ancestor_h) = ancestors.pop_back() {
                 if !visited.insert(ancestor_h) {
                     continue;
@@ -1832,8 +1837,8 @@ impl BlockGraph {
             // iterate from largest to smallest to minimize reallocations
             let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
             indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].len()));
-            let mut high_set: HashSet<Hash> = HashSet::new();
-            let mut low_set: HashSet<Hash> = HashSet::new();
+            let mut high_set: HashSet<BlockId> = HashSet::new();
+            let mut low_set: HashSet<BlockId> = HashSet::new();
             let mut keep_mask = vec![true; self.max_cliques.len()];
             for clique_i in indices.into_iter() {
                 if clique_fitnesses[clique_i].0 >= fitnesss_threshold {
@@ -1948,7 +1953,7 @@ impl BlockGraph {
             indices.retain(|&i| clique_fitnesses[i].0 > self.cfg.delta_f0);
             indices.sort_unstable_by_key(|&i| std::cmp::Reverse(clique_fitnesses[i].0));
 
-            let mut final_blocks: HashSet<Hash> = HashSet::new();
+            let mut final_blocks: HashSet<BlockId> = HashSet::new();
             for clique_i in indices.into_iter() {
                 massa_trace!(
                     "consensus.block_graph.add_block_to_graph.list_final_blocks.loop",
@@ -2042,9 +2047,9 @@ impl BlockGraph {
     }
 
     // prune active blocks and return final blocks, return discarded final blocks
-    fn prune_active(&mut self) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    fn prune_active(&mut self) -> Result<HashMap<BlockId, Block>, ConsensusError> {
         // list all active blocks
-        let active_blocks: HashSet<Hash> = self
+        let active_blocks: HashSet<BlockId> = self
             .block_statuses
             .iter()
             .filter_map(|(h, bs)| match bs {
@@ -2053,9 +2058,9 @@ impl BlockGraph {
             })
             .collect();
 
-        let mut retain_active: HashSet<Hash> = HashSet::new();
+        let mut retain_active: HashSet<BlockId> = HashSet::new();
 
-        let latest_final_blocks: Vec<Hash> = self
+        let latest_final_blocks: Vec<BlockId> = self
             .latest_final_blocks_periods
             .iter()
             .map(|(hash, _)| hash.clone())
@@ -2150,7 +2155,7 @@ impl BlockGraph {
         // see issue #98
 
         // remove unused final active blocks
-        let mut discarded_finals: HashMap<Hash, Block> = HashMap::new();
+        let mut discarded_finals: HashMap<BlockId, Block> = HashMap::new();
         for discard_active_h in active_blocks.difference(&retain_active) {
             let discarded_active = if let Some(BlockStatus::Active(discarded_active)) =
                 self.block_statuses.remove(discard_active_h)
@@ -2187,9 +2192,9 @@ impl BlockGraph {
         Ok(discarded_finals)
     }
 
-    fn promote_dep_tree(&mut self, hash: Hash) -> Result<(), ConsensusError> {
+    fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), ConsensusError> {
         let mut to_explore = vec![hash];
-        let mut to_promote: HashMap<Hash, (Slot, u64)> = HashMap::new();
+        let mut to_promote: HashMap<BlockId, (Slot, u64)> = HashMap::new();
         while let Some(h) = to_explore.pop() {
             if to_promote.contains_key(&h) {
                 continue;
@@ -2208,7 +2213,7 @@ impl BlockGraph {
             }
         }
 
-        let mut to_promote: Vec<(Slot, u64, Hash)> = to_promote
+        let mut to_promote: Vec<(Slot, u64, BlockId)> = to_promote
             .into_iter()
             .map(|(h, (slot, seq))| (slot, seq, h))
             .collect();
@@ -2225,8 +2230,8 @@ impl BlockGraph {
     }
 
     fn prune_waiting_for_dependencies(&mut self) -> Result<(), ConsensusError> {
-        let mut to_discard: HashMap<Hash, Option<DiscardReason>> = HashMap::new();
-        let mut to_keep: HashMap<Hash, (u64, Slot)> = HashMap::new();
+        let mut to_discard: HashMap<BlockId, Option<DiscardReason>> = HashMap::new();
+        let mut to_keep: HashMap<BlockId, (u64, Slot)> = HashMap::new();
 
         // list items that are older than the latest final blocks in their threads or have deps that are discarded
         {
@@ -2369,7 +2374,7 @@ impl BlockGraph {
     }
 
     fn prune_slot_waiting(&mut self) {
-        let mut slot_waiting: Vec<(Slot, Hash)> = self
+        let mut slot_waiting: Vec<(Slot, BlockId)> = self
             .block_statuses
             .iter()
             .filter_map(|(hash, block_status)| {
@@ -2380,7 +2385,7 @@ impl BlockGraph {
             })
             .collect();
         slot_waiting.sort_unstable();
-        let retained: HashSet<Hash> = slot_waiting
+        let retained: HashSet<BlockId> = slot_waiting
             .into_iter()
             .take(self.cfg.max_future_processing_blocks)
             .map(|(_slot, hash)| hash)
@@ -2394,7 +2399,7 @@ impl BlockGraph {
     }
 
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
-        let mut discard_hashes: Vec<(u64, Hash)> = self
+        let mut discard_hashes: Vec<(u64, BlockId)> = self
             .block_statuses
             .iter()
             .filter_map(|(hash, block_status)| {
@@ -2422,7 +2427,7 @@ impl BlockGraph {
     }
 
     // prune and return final blocks, return discarded final blocks
-    pub fn prune(&mut self) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    pub fn prune(&mut self) -> Result<HashMap<BlockId, Block>, ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active()?;
@@ -2448,7 +2453,7 @@ impl BlockGraph {
     }
 
     // get the current block wishlist
-    pub fn get_block_wishlist(&self) -> Result<HashSet<Hash>, ConsensusError> {
+    pub fn get_block_wishlist(&self) -> Result<HashSet<BlockId>, ConsensusError> {
         let mut wishlist = HashSet::new();
         for block_status in self.block_statuses.values() {
             if let BlockStatus::WaitingForDependencies {
@@ -2475,13 +2480,13 @@ impl BlockGraph {
 
     // Get the headers to be propagated.
     // Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_blocks_to_propagate(&mut self) -> HashMap<Hash, Block> {
+    pub fn get_blocks_to_propagate(&mut self) -> HashMap<BlockId, Block> {
         mem::take(&mut self.to_propagate)
     }
 
     // Get the hashes of objects that were attack attempts.
     // Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_attack_attempts(&mut self) -> Vec<Hash> {
+    pub fn get_attack_attempts(&mut self) -> Vec<BlockId> {
         mem::take(&mut self.attack_attempts)
     }
 }
@@ -2499,8 +2504,8 @@ mod tests {
                     operation_merkle_root: Hash::hash("operation_merkle_root".as_bytes()),
                     out_ledger_hash: Hash::hash("out_ledger_hash".as_bytes()),
                     parents: vec![
-                        Hash::hash("parent1".as_bytes()),
-                        Hash::hash("parent2".as_bytes())
+                        BlockId::for_tests("parent1").unwrap(),
+                        BlockId::for_tests("parent2").unwrap(),
                     ],
                     slot: Slot::new(1, 0),
                 },
@@ -2513,20 +2518,20 @@ mod tests {
 
         ExportActiveBlock {
             parents: vec![
-                (Hash::hash("parent11".as_bytes()), 23),
-                (Hash::hash("parent12".as_bytes()), 24),
+                (BlockId::for_tests("parent11").unwrap(), 23),
+                (BlockId::for_tests("parent12").unwrap(), 24),
             ],
             dependencies: vec![
-                Hash::hash("dep11".as_bytes()),
-                Hash::hash("dep12".as_bytes()),
-                Hash::hash("dep13".as_bytes()),
+                BlockId::for_tests("dep11").unwrap(),
+                BlockId::for_tests("dep12").unwrap(),
+                BlockId::for_tests("dep13").unwrap(),
             ]
             .into_iter()
             .collect(),
             block,
             children: vec![vec![
-                (Hash::hash("child11".as_bytes()), 31),
-                (Hash::hash("child11".as_bytes()), 31),
+                (BlockId::for_tests("child11").unwrap(), 31),
+                (BlockId::for_tests("child11").unwrap(), 31),
             ]
             .into_iter()
             .collect()],
@@ -2564,43 +2569,52 @@ mod tests {
         let graph = BootsrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
             active_blocks: vec![
-                (Hash::hash("active11".as_bytes()), active_block.clone()),
-                (Hash::hash("active12".as_bytes()), active_block.clone()),
-                (Hash::hash("active13".as_bytes()), active_block.clone()),
+                (
+                    BlockId::for_tests("active11").unwrap(),
+                    active_block.clone(),
+                ),
+                (
+                    BlockId::for_tests("active12").unwrap(),
+                    active_block.clone(),
+                ),
+                (
+                    BlockId::for_tests("active13").unwrap(),
+                    active_block.clone(),
+                ),
             ]
             .into_iter()
             .collect(),
             /// Best parents hashe in each thread.
             best_parents: vec![
-                Hash::hash("parent11".as_bytes()),
-                Hash::hash("parent12".as_bytes()),
+                BlockId::for_tests("parent11").unwrap(),
+                BlockId::for_tests("parent12").unwrap(),
             ],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![
-                (Hash::hash("lfinal11".as_bytes()), 23),
-                (Hash::hash("lfinal12".as_bytes()), 24),
+                (BlockId::for_tests("lfinal11").unwrap(), 23),
+                (BlockId::for_tests("lfinal12").unwrap(), 24),
             ],
             /// Head of the incompatibility graph.
             gi_head: vec![
                 (
-                    Hash::hash("gi_head11".as_bytes()),
+                    BlockId::for_tests("gi_head11").unwrap(),
                     vec![
-                        Hash::hash("set11".as_bytes()),
-                        Hash::hash("set12".as_bytes()),
+                        BlockId::for_tests("set11").unwrap(),
+                        BlockId::for_tests("set12").unwrap(),
                     ],
                 ),
                 (
-                    Hash::hash("gi_head12".as_bytes()),
+                    BlockId::for_tests("gi_head12").unwrap(),
                     vec![
-                        Hash::hash("set21".as_bytes()),
-                        Hash::hash("set22".as_bytes()),
+                        BlockId::for_tests("set21").unwrap(),
+                        BlockId::for_tests("set22").unwrap(),
                     ],
                 ),
                 (
-                    Hash::hash("gi_head13".as_bytes()),
+                    BlockId::for_tests("gi_head13").unwrap(),
                     vec![
-                        Hash::hash("set31".as_bytes()),
-                        Hash::hash("set32".as_bytes()),
+                        BlockId::for_tests("set31").unwrap(),
+                        BlockId::for_tests("set32").unwrap(),
                     ],
                 ),
             ]
@@ -2609,8 +2623,8 @@ mod tests {
 
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![vec![
-                Hash::hash("max_cliques11".as_bytes()),
-                Hash::hash("max_cliques12".as_bytes()),
+                BlockId::for_tests("max_cliques11").unwrap(),
+                BlockId::for_tests("max_cliques12").unwrap(),
             ]
             .into_iter()
             .collect()],
@@ -2641,7 +2655,7 @@ mod tests {
     fn test_clique_calculation() {
         let (cfg, serialization_context) = example_consensus_config();
         let mut block_graph = BlockGraph::new(cfg, serialization_context, None).unwrap();
-        let hashes: Vec<Hash> = vec![
+        let hashes: Vec<BlockId> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
             "xtvLedxC7CigAPytS5qh9nbTuYyLbQKCfbX8finiHsKMWH6SG",
@@ -2651,7 +2665,7 @@ mod tests {
             "kfUeGj3ZgBprqFRiAQpE47dW5tcKTAueVaWXZquJW6SaPBd4G",
         ]
         .into_iter()
-        .map(|h| Hash::from_bs58_check(h).unwrap())
+        .map(|h| BlockId::from_bs58_check(h).unwrap())
         .collect();
         block_graph.gi_head = vec![
             (0, vec![1, 2, 3, 4]),
@@ -2667,7 +2681,7 @@ mod tests {
         .collect();
         let computed_sets = block_graph.compute_max_cliques();
 
-        let expected_sets: Vec<HashSet<Hash>> = vec![
+        let expected_sets: Vec<HashSet<BlockId>> = vec![
             vec![1, 2, 3, 4, 5],
             vec![1, 2, 3, 4, 6],
             vec![0, 5],

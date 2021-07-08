@@ -7,8 +7,8 @@ use crate::network::ConnectionClosureReason;
 use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
-use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
+use models::BlockId;
 use std::collections::HashMap;
 use std::{
     convert::TryInto,
@@ -492,7 +492,7 @@ async fn test_block_not_found() {
     //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
     // Send ask for block message from connected peer
-    let wanted_hash = Hash::hash("default_val".as_bytes());
+    let wanted_hash = BlockId::for_tests("default_val").unwrap();
     conn1_w
         .send(&Message::AskForBlocks(vec![wanted_hash]))
         .await
@@ -536,12 +536,12 @@ async fn test_block_not_found() {
     }
 
     //test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
-    let mut block_list: HashMap<NodeId, Vec<Hash>> = HashMap::new();
+    let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
     let mut hash_list = vec![];
-    hash_list.push(Hash::hash("default_val1".as_bytes()));
-    hash_list.push(Hash::hash("default_val2".as_bytes()));
-    hash_list.push(Hash::hash("default_val3".as_bytes()));
-    hash_list.push(Hash::hash("default_val4".as_bytes()));
+    hash_list.push(BlockId::for_tests("default_val1").unwrap());
+    hash_list.push(BlockId::for_tests("default_val2").unwrap());
+    hash_list.push(BlockId::for_tests("default_val3").unwrap());
+    hash_list.push(BlockId::for_tests("default_val4").unwrap());
     block_list.insert(conn1_id, hash_list);
 
     network_command_sender
@@ -557,9 +557,9 @@ async fn test_block_not_found() {
                 let evt = evt.unwrap().unwrap().1;
                 match evt {
                 Message::AskForBlocks(list1) => {
-                     assert!(list1.contains(&Hash::hash("default_val1".as_bytes())));
-                     assert!(list1.contains(&Hash::hash("default_val2".as_bytes())));
-                     assert!(list1.contains(&Hash::hash("default_val3".as_bytes())));
+                     assert!(list1.contains(&BlockId::for_tests("default_val1").unwrap()));
+                     assert!(list1.contains(&BlockId::for_tests("default_val2").unwrap()));
+                     assert!(list1.contains(&BlockId::for_tests("default_val3").unwrap()));
                      break;
                  }
                 _ => {}
@@ -574,7 +574,7 @@ async fn test_block_not_found() {
             evt = conn1_r.next() => {
                 let evt = evt.unwrap().unwrap().1;
                 match evt {
-                Message::AskForBlocks(list2) => {assert!(list2.contains(&Hash::hash("default_val4".as_bytes()))); break;}
+                Message::AskForBlocks(list2) => {assert!(list2.contains(&BlockId::for_tests("default_val4").unwrap())); break;}
                 _ => {}
             }},
             _ = &mut timer => panic!("timeout reached waiting for message")
@@ -583,10 +583,10 @@ async fn test_block_not_found() {
 
     //test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
     // the message is rejected by the receiver.
-    let wanted_hash1 = Hash::hash("default_val1".as_bytes());
-    let wanted_hash2 = Hash::hash("default_val2".as_bytes());
-    let wanted_hash3 = Hash::hash("default_val3".as_bytes());
-    let wanted_hash4 = Hash::hash("default_val4".as_bytes());
+    let wanted_hash1 = BlockId::for_tests("default_val1").unwrap();
+    let wanted_hash2 = BlockId::for_tests("default_val2").unwrap();
+    let wanted_hash3 = BlockId::for_tests("default_val3").unwrap();
+    let wanted_hash4 = BlockId::for_tests("default_val4").unwrap();
     conn1_w
         .send(&Message::AskForBlocks(vec![
             wanted_hash1,
@@ -693,7 +693,7 @@ async fn test_retry_connection_closed() {
 
     // Send a command for a node not found in active.
     network_command_sender
-        .block_not_found(node_id, Hash::hash("default_val".as_bytes()))
+        .block_not_found(node_id, BlockId::for_tests("default_val").unwrap())
         .await
         .unwrap();
 

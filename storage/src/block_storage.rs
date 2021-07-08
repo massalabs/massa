@@ -2,8 +2,7 @@ use crate::{
     config::StorageConfig,
     error::{InternalError, StorageError},
 };
-use crypto::hash::Hash;
-use models::{Block, DeserializeCompact, SerializationContext, SerializeCompact, Slot};
+use models::{Block, BlockId, DeserializeCompact, SerializationContext, SerializeCompact, Slot};
 use sled::{self, Transactional};
 use std::{
     collections::HashMap,
@@ -70,21 +69,21 @@ impl BlockStorage {
         return Ok(res);
     }
 
-    pub fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
+    pub fn add_block(&self, block_id: BlockId, block: Block) -> Result<(), StorageError> {
         //acquire W lock on block_count
-        massa_trace!("block_storage.add_block", {"hash": hash, "block": block});
+        massa_trace!("block_storage.add_block", {"block_id": block_id, "block": block});
         let mut block_count_w = self
             .block_count
             .write()
             .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
 
         //add the new block
-        self.add_block_internal(hash, block, &mut block_count_w)?;
+        self.add_block_internal(block_id, block, &mut block_count_w)?;
 
         Ok(())
     }
 
-    pub fn add_block_batch(&self, blocks: HashMap<Hash, Block>) -> Result<(), StorageError> {
+    pub fn add_block_batch(&self, blocks: HashMap<BlockId, Block>) -> Result<(), StorageError> {
         //acquire W lock on block_count
         let mut block_count_w = self
             .block_count
@@ -92,9 +91,9 @@ impl BlockStorage {
             .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
 
         //add the new blocks
-        for (hash, block) in blocks.into_iter() {
-            massa_trace!("block_storage.add_block_batch", {"hash": hash, "block": block});
-            self.add_block_internal(hash, block, &mut block_count_w)?;
+        for (block_id, block) in blocks.into_iter() {
+            massa_trace!("block_storage.add_block_batch", {"block_id": block_id, "block": block});
+            self.add_block_internal(block_id, block, &mut block_count_w)?;
         }
 
         Ok(())
@@ -102,7 +101,7 @@ impl BlockStorage {
 
     fn add_block_internal(
         &self,
-        hash: Hash,
+        block_id: BlockId,
         block: Block,
         block_count_w: &mut RwLockWriteGuard<usize>,
     ) -> Result<(), StorageError> {
@@ -118,8 +117,11 @@ impl BlockStorage {
                         )),
                     )
                 })?;
-            hash_tx.insert(&hash.to_bytes(), serialized_block.as_slice())?;
-            slot_tx.insert(&block.header.content.slot.to_bytes_key(), &hash.to_bytes())?;
+            hash_tx.insert(&block_id.to_bytes(), serialized_block.as_slice())?;
+            slot_tx.insert(
+                &block.header.content.slot.to_bytes_key(),
+                &block_id.to_bytes(),
+            )?;
             Ok(())
         })?;
         **block_count_w += 1;
@@ -155,19 +157,19 @@ impl BlockStorage {
             .map(|nb_stored_blocks| *nb_stored_blocks)
     }
 
-    pub fn contains(&self, hash: Hash) -> Result<bool, StorageError> {
+    pub fn contains(&self, block_id: BlockId) -> Result<bool, StorageError> {
         let _block_count_r = self
             .block_count
             .read()
             .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
         self.hash_to_block
-            .contains_key(hash.to_bytes())
+            .contains_key(block_id.to_bytes())
             .map_err(|e| StorageError::from(e))
     }
 
-    pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
-        massa_trace!("block_storage.get_block", { "hash": hash });
-        let hash_key = hash.to_bytes();
+    pub fn get_block(&self, block_id: BlockId) -> Result<Option<Block>, StorageError> {
+        massa_trace!("block_storage.get_block", { "block_id": block_id });
+        let hash_key = block_id.to_bytes();
 
         let _block_count_r = self
             .block_count
@@ -187,7 +189,7 @@ impl BlockStorage {
         &self,
         start: Option<Slot>,
         end: Option<Slot>,
-    ) -> Result<HashMap<Hash, Block>, StorageError> {
+    ) -> Result<HashMap<BlockId, Block>, StorageError> {
         let start_key = start.map(|v| v.to_bytes_key());
         let end_key = end.map(|v| v.to_bytes_key());
 
@@ -204,7 +206,7 @@ impl BlockStorage {
         }
         .map(|item| {
             let (_, s_hash) = item?;
-            let hash = Hash::from_bytes(&s_hash.as_ref().try_into().map_err(|err| {
+            let hash = BlockId::from_bytes(&s_hash.as_ref().try_into().map_err(|err| {
                 StorageError::DeserializationError(format!(
                     "wrong buffer size for hash deserialization: {:?}",
                     err
@@ -217,6 +219,6 @@ impl BlockStorage {
                 ))?;
             Ok((hash, block))
         })
-        .collect::<Result<HashMap<Hash, Block>, StorageError>>()
+        .collect::<Result<HashMap<BlockId, Block>, StorageError>>()
     }
 }

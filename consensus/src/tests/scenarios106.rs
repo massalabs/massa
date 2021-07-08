@@ -2,8 +2,7 @@
 
 use super::{mock_protocol_controller::MockProtocolController, tools};
 use crate::{start_consensus_controller, timeslots};
-use crypto::hash::Hash;
-use models::Slot;
+use models::{BlockId, Slot};
 use std::collections::HashSet;
 use time::UTime;
 
@@ -283,7 +282,7 @@ async fn test_too_many_blocks_in_the_future() {
         .genesis_blocks;
 
     // generate 5 blocks but there is only space for 2 in the waiting line
-    let mut expected_block_hashes: HashSet<Hash> = HashSet::new();
+    let mut expected_block_hashes: HashSet<BlockId> = HashSet::new();
     let mut max_period = 0;
     let slot = timeslots::get_current_latest_block_slot(
         cfg.thread_count,

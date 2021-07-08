@@ -158,8 +158,8 @@ use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
     ConsensusConfig, ConsensusError, DiscardReason,
 };
-use crypto::{hash::Hash, signature::PublicKey};
-use models::{Block, BlockHeader, Slot};
+use crypto::signature::PublicKey;
+use models::{Block, BlockHeader, BlockId, Slot};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
@@ -179,7 +179,7 @@ pub enum ApiEvent {
     AskStop,
     GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
     GetActiveBlock {
-        hash: Hash,
+        block_id: BlockId,
         response_tx: oneshot::Sender<Option<Block>>,
     },
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
@@ -217,7 +217,7 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("block"))
-        .and(warp::path::param::<Hash>()) //block hash
+        .and(warp::path::param::<BlockId>()) //block id
         .and(warp::path::end())
         .and_then(move |hash| get_block(evt_tx.clone(), hash, storage.clone()));
 
@@ -410,11 +410,11 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
 ///
 async fn get_block(
     event_tx: mpsc::Sender<ApiEvent>,
-    hash: Hash,
+    block_id: BlockId,
     opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<impl Reply, Rejection> {
-    massa_trace!("api.filters.get_block", { "hash": hash });
-    match retrieve_block(hash, &event_tx).await {
+    massa_trace!("api.filters.get_block", { "block_id": block_id });
+    match retrieve_block(block_id, &event_tx).await {
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
                 "message": format!("error retrieving active blocks : {:?}", err)
@@ -424,11 +424,11 @@ async fn get_block(
         .into_response()),
         Ok(None) => {
             if let Some(cmd_tx) = opt_storage_command_sender {
-                match cmd_tx.get_block(hash).await {
+                match cmd_tx.get_block(block_id).await {
                     Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
                     Ok(None) => Ok(warp::reply::with_status(
                         warp::reply::json(&json!({
-                            "message": format!("active block not found : {:?}", hash)
+                            "message": format!("active block not found : {:?}", block_id)
                         })),
                         warp::http::StatusCode::NOT_FOUND,
                     )
@@ -444,7 +444,7 @@ async fn get_block(
             } else {
                 Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
-                        "message": format!("active block not found : {:?}", hash)
+                        "message": format!("active block not found : {:?}", block_id)
                     })),
                     warp::http::StatusCode::NOT_FOUND,
                 )
@@ -482,13 +482,16 @@ async fn retrieve_graph_export(
 }
 
 async fn retrieve_block(
-    hash: Hash,
+    block_id: BlockId,
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Option<Block>, ApiError> {
-    massa_trace!("api.filters.retrieve_block", { "hash": hash });
+    massa_trace!("api.filters.retrieve_block", { "block_id": block_id });
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
-        .send(ApiEvent::GetActiveBlock { hash, response_tx })
+        .send(ApiEvent::GetActiveBlock {
+            block_id,
+            response_tx,
+        })
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!("Could not send api event get block : {0}", e))
@@ -544,7 +547,7 @@ async fn retrieve_selection_draw(
         })
 }
 
-/// Returns best parents as a Vec<Hash, Slot> wrapped in a reply.
+/// Returns best parents wrapped in a reply.
 /// The Slot represents the parent's slot.
 ///
 async fn get_current_parents(
@@ -585,7 +588,7 @@ async fn get_current_parents(
     Ok(warp::reply::json(&best).into_response())
 }
 
-/// Returns last final blocks as a Vec<(Hash, Slot)> wrapped in a reply.
+/// Returns last final blocks wrapped in a reply.
 ///
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -608,11 +611,11 @@ async fn get_last_final(
         .iter()
         .enumerate()
         .map(|(i, (hash, period))| (hash, Slot::new(*period, i as u8)))
-        .collect::<Vec<(&Hash, Slot)>>();
+        .collect::<Vec<(&BlockId, Slot)>>();
     Ok(warp::reply::json(&finals).into_response())
 }
 
-/// Returns all blocks in a time interval as a Vec<Hash, Slot> wrapped in a reply.
+/// Returns all blocks in a time interval wrapped in a reply.
 ///
 /// Note: both start time is included and end time is excluded
 async fn get_block_interval(
@@ -649,7 +652,7 @@ async fn get_block_from_graph(
     consensus_cfg: &ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
-) -> Result<Vec<(Hash, Slot)>, String> {
+) -> Result<Vec<(BlockId, Slot)>, String> {
     massa_trace!("api.filters.get_block_from_graph", {});
     retrieve_graph_export(&event_tx)
         .await
@@ -678,7 +681,7 @@ async fn get_block_from_graph(
                     })
                     .transpose()
                 })
-                .collect::<Result<Vec<(Hash, Slot)>, String>>()
+                .collect::<Result<Vec<(BlockId, Slot)>, String>>()
         })
 }
 
@@ -688,7 +691,7 @@ async fn get_block_interval_process(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(Hash, Slot)>, String> {
+) -> Result<Vec<(BlockId, Slot)>, String> {
     massa_trace!("api.filters.get_block_interval_process", {});
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
@@ -1002,7 +1005,7 @@ async fn get_graph_interval_process(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(Hash, Slot, Status, Vec<Hash>)>, String> {
+) -> Result<Vec<(BlockId, Slot, Status, Vec<BlockId>)>, String> {
     massa_trace!("api.filters.get_graph_interval_process", {});
     //filter block from graph_export
     let mut res = retrieve_graph_export(&event_tx)
@@ -1034,7 +1037,7 @@ async fn get_graph_interval_process(
                     })
                     .transpose()
                 })
-                .collect::<Result<Vec<(Hash, (Slot, Status, Vec<Hash>))>, String>>()
+                .collect::<Result<Vec<(BlockId, (Slot, Status, Vec<BlockId>))>, String>>()
         })?;
 
     if let Some(storage) = opt_storage_command_sender {
@@ -1244,7 +1247,7 @@ async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply,
 /// Returns a summary of the current state:
 /// * time in UTime
 /// * lastest slot (optional)
-/// * last final block as Vec<(&Hash, Slot UTime)>
+/// * last final block
 /// * number of cliques
 /// * number of connected peers
 ///
@@ -1336,7 +1339,7 @@ async fn get_state(
                 )?,
             ))
         })
-        .collect::<Result<Vec<(&Hash, Slot, UTime)>, consensus::ConsensusError>>()
+        .collect::<Result<Vec<(&BlockId, Slot, UTime)>, consensus::ConsensusError>>()
     {
         Ok(finals) => finals,
         Err(err) => {
@@ -1387,7 +1390,7 @@ async fn get_last_stale(
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
         .map(|(hash, (_reason, header))| (hash, header.content.slot))
-        .collect::<Vec<(&Hash, Slot)>>();
+        .collect::<Vec<(&BlockId, Slot)>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_config.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
@@ -1422,7 +1425,7 @@ async fn get_last_invalid(
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Invalid)
         .map(|(hash, (_reason, header))| (hash, header.content.slot))
-        .collect::<Vec<(&Hash, Slot)>>();
+        .collect::<Vec<(&BlockId, Slot)>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
@@ -1462,7 +1465,7 @@ async fn get_staker_info(
         .iter()
         .filter(|(_hash, block)| block.block.content.creator == creator)
         .map(|(hash, block)| (hash, block.block.clone()))
-        .collect::<Vec<(&Hash, BlockHeader)>>();
+        .collect::<Vec<(&BlockId, BlockHeader)>>();
 
     let discarded = graph
         .discarded_blocks
@@ -1470,7 +1473,7 @@ async fn get_staker_info(
         .iter()
         .filter(|(_hash, (_reason, header))| header.content.creator == creator)
         .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
-        .collect::<Vec<(&Hash, DiscardReason, BlockHeader)>>();
+        .collect::<Vec<(&BlockId, DiscardReason, BlockHeader)>>();
     let cur_time = match UTime::now(clock_compensation) {
         Ok(time) => time,
         Err(err) => {

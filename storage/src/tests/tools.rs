@@ -1,17 +1,17 @@
 use crate::StorageConfig;
 use crypto::hash::Hash;
-use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
+use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
 
 pub fn get_test_block() -> Block {
     Block {
             header: BlockHeader {
                 content: BlockHeaderContent{
                     creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
-                    operation_merkle_root: get_test_hash(),
-                    out_ledger_hash: get_test_hash(),
+                    operation_merkle_root: Hash::hash("test".as_bytes()),
+                    out_ledger_hash: Hash::hash("test".as_bytes()),
                     parents: vec![
-                        Hash::hash("parent1".as_bytes()),
-                        Hash::hash("parent2".as_bytes())
+                        BlockId::for_tests("parent1").unwrap(),
+						BlockId::for_tests("parent2").unwrap(),
                     ],
                     slot: Slot::new(1, 0),
                 },
@@ -49,10 +49,10 @@ pub fn get_test_config() -> (StorageConfig, SerializationContext) {
     )
 }
 
-pub fn get_test_hash() -> Hash {
-    Hash::hash("test".as_bytes())
+pub fn get_test_block_id() -> BlockId {
+    BlockId::for_tests("test").unwrap()
 }
 
-pub fn get_another_test_hash() -> Hash {
-    Hash::hash("another test".as_bytes())
+pub fn get_another_test_block_id() -> BlockId {
+    BlockId::for_tests("another test").unwrap()
 }

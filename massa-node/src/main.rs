@@ -133,11 +133,11 @@ async fn run(cfg: config::Config) {
                     info!("API asked node stop");
                     break;
                 },
-                Ok(ApiEvent::GetActiveBlock{hash, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_active_block", {"hash": hash});
+                Ok(ApiEvent::GetActiveBlock{block_id, response_tx}) => {
+                    massa_trace!("massa-node.main.run.select.api_event.get_active_block", {"block_id": block_id});
                     if response_tx.send(
                         consensus_command_sender
-                        .get_active_block(hash)
+                        .get_active_block(block_id)
                             .await
                             .expect("get_active_block failed in api_event_receiver.wait_event")
                         ).is_err() {

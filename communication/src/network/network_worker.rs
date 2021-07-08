@@ -11,10 +11,9 @@ use super::{
 use crate::common::NodeId;
 use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
-use crypto::hash::Hash;
 use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
-use models::{Block, BlockHeader, SerializationContext};
+use models::{Block, BlockHeader, BlockId, SerializationContext};
 use models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
@@ -34,7 +33,7 @@ use tokio::time::Duration;
 pub enum NetworkCommand {
     /// Ask for a block from a node.
     AskForBlocks {
-        list: HashMap<NodeId, Vec<Hash>>,
+        list: HashMap<NodeId, Vec<BlockId>>,
     },
     /// Send that block to node.
     SendBlock {
@@ -51,7 +50,7 @@ pub enum NetworkCommand {
     Ban(NodeId),
     BlockNotFound {
         node: NodeId,
-        hash: Hash,
+        block_id: BlockId,
     },
 }
 
@@ -72,12 +71,12 @@ pub enum NetworkEvent {
     /// Someone ask for block with given header hash.
     AskedForBlocks {
         node: NodeId,
-        list: Vec<Hash>,
+        list: Vec<BlockId>,
     },
     /// That node does not have this block
     BlockNotFound {
         node: NodeId,
-        hash: Hash,
+        block_id: BlockId,
     },
 }
 
@@ -741,14 +740,14 @@ impl NetworkWorker {
                     )
                 })?;
             }
-            NetworkCommand::BlockNotFound { node, hash } => {
+            NetworkCommand::BlockNotFound { node, block_id } => {
                 massa_trace!(
                     "network_worker.manage_network_command receive NetworkCommand::BlockNotFound",
-                    { "hash": hash, "node": node }
+                    { "block_id": block_id, "node": node }
                 );
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
-                    NodeCommand::BlockNotFound(hash),
+                    NodeCommand::BlockNotFound(block_id),
                 )
                 .await;
             }
@@ -954,9 +953,9 @@ impl NetworkWorker {
                 }
             }
 
-            NodeEvent(node, NodeEventType::BlockNotFound(hash)) => {
+            NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
                 let _ = self
-                    .send_network_event(NetworkEvent::BlockNotFound { node, hash })
+                    .send_network_event(NetworkEvent::BlockNotFound { node, block_id })
                     .await;
             }
         }
