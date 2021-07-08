@@ -92,7 +92,7 @@ async fn test_storage() {
     //extend first clique
     let mut parentt0sn_hash = valid_hasht0s1;
     let mut parentt1sn_hash = valid_hasht1s1;
-    for period in 3..=11 {
+    for period in 3..=12 {
         let block_hash_0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
