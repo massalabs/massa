@@ -1,7 +1,30 @@
+use sled::{Db, Tree};
 use tokio::sync::mpsc;
 
 use crate::{config::StorageConfig, error::StorageError};
 
+struct BlockStorage {
+    hash_to_block: Tree,
+    slot_to_hash: Tree,
+    db: Db,
+}
+
+impl BlockStorage {
+    pub fn open(cfg: StorageConfig) -> Result<BlockStorage, StorageError> {
+        let sled_config = sled::Config::default()
+            .path(cfg.path)
+            .cache_capacity(cfg.cache_capacity)
+            .flush_every_ms(cfg.flush_every_ms);
+        let db = sled_config.open()?;
+        let hash_to_block = db.open_tree("hash_to_block")?;
+        let slot_to_hash = db.open_tree("slot_to_hash")?;
+        Ok(BlockStorage {
+            hash_to_block,
+            slot_to_hash,
+            db,
+        })
+    }
+}
 #[derive(Debug)]
 pub enum StorageCommand {}
 

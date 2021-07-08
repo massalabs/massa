@@ -6,4 +6,6 @@ pub enum StorageError {
     ControllerEventError,
     #[error("join error {0}")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error("sled error {0}")]
+    SledError(#[from] sled::Error),
 }

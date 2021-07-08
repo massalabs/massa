@@ -6,7 +6,9 @@ mod storage_worker;
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_sled() {
+        let tree = sled::open("./tmp/test").unwrap();
+        print!("{:?}", tree);
+        tree.flush().unwrap();
     }
 }
