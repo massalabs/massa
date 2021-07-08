@@ -152,15 +152,44 @@ impl PeerDatabase {
         */
     }
 
-    pub fn get_connector_candidate_ips(&self) -> HashSet<IpAddr> {
+    pub fn get_connector_candidate_ips(
+        &self,
+        target_outgoing_connections: usize,
+        max_simultaneous_outgoing_connection_attempts: usize,
+    ) -> HashSet<IpAddr> {
+        let n_current_attemtps = self.count_peers_with_status(PeerStatus::OutConnecting)
+            + self.count_peers_with_status(PeerStatus::OutHandshaking);
+
+        let n_available_attempts = std::cmp::min(
+            target_outgoing_connections
+                .saturating_sub(self.count_peers_with_status(PeerStatus::OutConnected)),
+            max_simultaneous_outgoing_connection_attempts,
+        )
+        .saturating_sub(n_current_attemtps);
+
+        if n_available_attempts == 0 {
+            return HashSet::new(); // no connections needed or possible
+        }
         /*
-            TODO:
-                missing_out_connections = max(0, target_out_connections - count_peers_with_status(outconnected)) warning: usize is unsigned !
-                connection_slots_available = max(0, max_out_conn_attempts - count_peers_with_status(outconnecting) - count_peers_with_status(outhandshaking)) warning: usize is unsigned !
-                n_to_try = min(missing_out_connections, connection_slots_available)
-                => choose up to n_to_try candidates based on:
-                    most_ancient failure (None = most ancient)
+            sort peers:
+                creterion 1 = the most recent successful connection (None = oldest)
+                criterion 2 = the oldest failure (None = oldest)
+            then pick the n_available_attempts first options
+            here we use the sequential nature of tuples and the fact that Some<T> > None
+            note: using unstable sorting because stability is not ensured by hashmap anyways
         */
-        HashSet::new() //TODO compute
+        let mut peers_sorted: Vec<PeerInfo> = self
+            .peers
+            .values()
+            .filter(|&p| p.status == PeerStatus::Idle)
+            .copied()
+            .collect();
+        peers_sorted
+            .sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_connection), p.last_failure));
+        peers_sorted
+            .iter()
+            .take(n_available_attempts)
+            .map(|p| p.ip)
+            .collect()
     }
 }

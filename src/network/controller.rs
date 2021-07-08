@@ -143,7 +143,10 @@ async fn controller_fn(
 
         {
             // try to connect to candidate IPs
-            let connector_candidate_ips = peer_db.get_connector_candidate_ips();
+            let connector_candidate_ips = peer_db.get_connector_candidate_ips(
+                cfg.target_outgoing_connections,
+                cfg.max_simultaneous_outgoing_connection_attempts,
+            );
             for ip in connector_candidate_ips {
                 peer_db
                     .peers
