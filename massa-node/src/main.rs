@@ -69,7 +69,7 @@ async fn run(cfg: config::Config) {
         protocol_manager,
     ) = start_protocol_controller(
         cfg.protocol.clone(),
-        cfg.consensus.operation_validity_periods.clone(),
+        cfg.consensus.operation_validity_periods,
         network_command_sender.clone(),
         network_event_receiver,
     )
@@ -232,7 +232,7 @@ async fn run(cfg: config::Config) {
                         consensus_command_sender
                             .get_operations(operation_ids)
                             .await
-                            .expect("could not get operations".into())
+                            .expect("could not get operations")
                         ).is_err() {
                             warn!("could not send get_operations response in api_event_receiver.wait_event");
                         }

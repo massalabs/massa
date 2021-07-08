@@ -169,7 +169,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        Hash::from_bs58_check(&v_str).map_err(E::custom)
+                        Hash::from_bs58_check(v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -179,7 +179,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
                 where
                     E: ::serde::de::Error,
                 {
-                    Hash::from_bs58_check(&v).map_err(E::custom)
+                    Hash::from_bs58_check(v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)

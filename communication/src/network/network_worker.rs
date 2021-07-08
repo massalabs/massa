@@ -306,7 +306,7 @@ impl NetworkWorker {
                 // event received from a node
                 evt = self.node_event_rx.recv() => {
                     self.on_node_event(
-                        evt.ok_or(CommunicationError::ChannelError("node event rx failed".into()))?
+                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
                     ).await?
                 },
 
@@ -372,7 +372,7 @@ impl NetworkWorker {
         }
 
         // wait for out-connectors to finish
-        while let Some(_) = out_connecting_futures.next().await {}
+        while out_connecting_futures.next().await.is_some() {}
 
         // stop peer info db
         self.peer_info_db.stop().await?;
@@ -392,7 +392,7 @@ impl NetworkWorker {
             trace!("after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
         }
         // drain incoming node events
-        while let Some(_) = self.node_event_rx.recv().await {}
+        while self.node_event_rx.recv().await.is_some() {}
         // wait for node join handles
         while let Some(res) = self.node_worker_handles.next().await {
             match res {
@@ -416,7 +416,7 @@ impl NetworkWorker {
 
         // wait for all running handshakes
         self.running_handshakes.clear();
-        while let Some(_) = self.handshake_futures.next().await {}
+        while self.handshake_futures.next().await.is_some() {}
         Ok(())
     }
 
@@ -490,7 +490,7 @@ impl NetworkWorker {
                         let (ip, _) = self.active_connections.get(&new_connection_id).ok_or(
                             CommunicationError::ActiveConnectionMissing(new_connection_id),
                         )?;
-                        self.peer_info_db.peer_alive(&ip)?;
+                        self.peer_info_db.peer_alive(ip)?;
 
                         // spawn node_controller_fn
                         let (node_command_tx, node_command_rx) =
@@ -575,7 +575,7 @@ impl NetworkWorker {
         let self_node_id = self.self_node_id;
         let private_key = self.private_key;
         let message_timeout = self.cfg.message_timeout;
-        let connection_id_copy = connection_id.clone();
+        let connection_id_copy = connection_id;
         let handshake_fn_handle = tokio::spawn(async move {
             (
                 connection_id_copy,
@@ -658,7 +658,7 @@ impl NetworkWorker {
                 }
                 for ban_conn_id in ban_connection_ids.iter() {
                     // remove the connectionId entry in running_handshakes
-                    self.running_handshakes.remove(&ban_conn_id);
+                    self.running_handshakes.remove(ban_conn_id);
                 }
                 for (conn_id, node_command_tx) in self.active_nodes.values() {
                     if ban_connection_ids.contains(conn_id) {
@@ -765,8 +765,8 @@ impl NetworkWorker {
         node: &NodeId,
         message: NodeCommand,
     ) {
-        if let Some((_, node_command_tx)) = self.active_nodes.get(&node) {
-            if !node_command_tx.send(message).await.is_ok() {
+        if let Some((_, node_command_tx)) = self.active_nodes.get(node) {
+            if node_command_tx.send(message).await.is_err() {
                 warn!(
                     "{}",
                     CommunicationError::ChannelError(
@@ -778,7 +778,7 @@ impl NetworkWorker {
             // We probably weren't able to send this event previously,
             // retry it now.
             let _ = self
-                .send_network_event(NetworkEvent::ConnectionClosed(node.clone()))
+                .send_network_event(NetworkEvent::ConnectionClosed(*node))
                 .await;
         }
     }
@@ -928,7 +928,7 @@ impl NetworkWorker {
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlockHeader {
                         source_node_id,
-                        header: header,
+                        header,
                     })
                     .await;
             }

@@ -122,7 +122,7 @@ impl PrivateKey {
     /// ```
     pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, CryptoError> {
         secp256k1::SecretKey::from_slice(&data[..])
-            .map(|key| PrivateKey(key))
+            .map(PrivateKey)
             .map_err(|err| {
                 CryptoError::ParsingError(format!("private key bytes parsing error: {:?}", err))
             })
@@ -189,7 +189,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        PrivateKey::from_bs58_check(&v_str).map_err(E::custom)
+                        PrivateKey::from_bs58_check(v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -199,7 +199,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PrivateKey::from_bs58_check(&v).map_err(E::custom)
+                    PrivateKey::from_bs58_check(v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)
@@ -345,7 +345,7 @@ impl PublicKey {
     /// ```
     pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, CryptoError> {
         secp256k1::PublicKey::from_slice(&data[..])
-            .map(|key| PublicKey(key))
+            .map(PublicKey)
             .map_err(|err| {
                 CryptoError::ParsingError(format!("public key bytes parsing error: {:?}", err))
             })
@@ -416,7 +416,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        PublicKey::from_bs58_check(&v_str).map_err(E::custom)
+                        PublicKey::from_bs58_check(v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -426,7 +426,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PublicKey::from_bs58_check(&v).map_err(E::custom)
+                    PublicKey::from_bs58_check(v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)
@@ -575,7 +575,7 @@ impl Signature {
     /// ```
     pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, CryptoError> {
         secp256k1::Signature::from_compact(&data[..])
-            .map(|signature| Signature(signature))
+            .map(Signature)
             .map_err(|err| {
                 CryptoError::ParsingError(format!("signature bytes parsing error: {:?}", err))
             })
@@ -648,7 +648,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        Signature::from_bs58_check(&v_str).map_err(E::custom)
+                        Signature::from_bs58_check(v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -658,7 +658,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
                 where
                     E: ::serde::de::Error,
                 {
-                    Signature::from_bs58_check(&v).map_err(E::custom)
+                    Signature::from_bs58_check(v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)

@@ -38,9 +38,8 @@ pub trait DeserializeVarInt: Sized {
 
 impl DeserializeVarInt for u32 {
     fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u32::decode_var(buffer).ok_or(ModelsError::DeserializeError(
-            "could not deserialize varint".into(),
-        ))
+        u32::decode_var(buffer)
+            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
     }
 
     fn from_varint_bytes_bounded(
@@ -59,9 +58,8 @@ impl DeserializeVarInt for u32 {
 
 impl DeserializeVarInt for u64 {
     fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u64::decode_var(buffer).ok_or(ModelsError::DeserializeError(
-            "could not deserialize varint".into(),
-        ))
+        u64::decode_var(buffer)
+            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
     }
 
     fn from_varint_bytes_bounded(
@@ -178,7 +176,7 @@ pub fn array_from_slice<const ARRAY_SIZE: usize>(
 }
 
 pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
-    if buffer.len() == 0 {
+    if buffer.is_empty() {
         return Err(ModelsError::BufferError(
             "could not read u8 from empty buffer".into(),
         ));

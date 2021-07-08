@@ -55,7 +55,7 @@ async fn get_state_internal(
             )
             .into())
         }
-        Ok(Err(e)) => return Err(e.into()),
+        Ok(Err(e)) => return Err(e),
         Ok(Ok(_)) => {}
     }
 
@@ -91,7 +91,7 @@ async fn get_state_internal(
 
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
-        return Err(BootstrapError::GeneralBootstrapError(
+        return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
         ));
     }
@@ -107,7 +107,7 @@ async fn get_state_internal(
             .to_millis()
     };
     let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
-        BootstrapError::GeneralBootstrapError("Failed to convert compensation time into i64".into())
+        BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
     })?;
     debug!(
         "Server clock compensation set to: {:?}",
@@ -183,7 +183,7 @@ pub async fn get_state(
     BootstrapError,
 > {
     massa_trace!("bootstrap.lib.get_state", {});
-    if cfg.bootstrap_list.len() > 0 {
+    if !cfg.bootstrap_list.is_empty() {
         let mut idx = 0;
         loop {
             match get_state_internal(&cfg, cfg.bootstrap_list[idx], &mut establisher).await {
@@ -209,7 +209,7 @@ pub struct BootstrapManager {
 impl BootstrapManager {
     pub async fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        if let Err(_) = self.manager_tx.send(()).await {
+        if self.manager_tx.send(()).await.is_err() {
             warn!("bootstrap server  already dropped");
         }
         let _ = self.join_handle.await?;
@@ -330,7 +330,7 @@ impl BootstrapServer {
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::BootstrapTime {
                 server_time,
-                signature: signature.clone(),
+                signature,
             }),
         )
         .await
@@ -342,7 +342,7 @@ impl BootstrapServer {
                 )
                 .into())
             }
-            Ok(Err(e)) => return Err(e.into()),
+            Ok(Err(e)) => return Err(e),
             Ok(Ok(_)) => {}
         }
         let last_sig = signature;
@@ -356,10 +356,7 @@ impl BootstrapServer {
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
-            writer.send(&messages::BootstrapMessage::BootstrapPeers {
-                peers,
-                signature: signature.clone(),
-            }),
+            writer.send(&messages::BootstrapMessage::BootstrapPeers { peers, signature }),
         )
         .await
         {
@@ -370,7 +367,7 @@ impl BootstrapServer {
                 )
                 .into())
             }
-            Ok(Err(e)) => return Err(e.into()),
+            Ok(Err(e)) => return Err(e),
             Ok(Ok(_)) => {}
         }
         let last_sig = signature;
@@ -388,7 +385,7 @@ impl BootstrapServer {
             writer.send(&messages::BootstrapMessage::ConsensusState {
                 pos,
                 graph,
-                signature: signature.clone(),
+                signature,
             }),
         )
         .await
@@ -400,7 +397,7 @@ impl BootstrapServer {
                 )
                 .into())
             }
-            Ok(Err(e)) => return Err(e.into()),
+            Ok(Err(e)) => return Err(e),
             Ok(Ok(_)) => {}
         }
 

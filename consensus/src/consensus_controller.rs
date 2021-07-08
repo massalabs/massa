@@ -53,19 +53,19 @@ pub async fn start_consensus_controller(
 
     // ensure that the parameters are sane
     if cfg.thread_count == 0 {
-        return Err(ConsensusError::ConfigError(format!(
-            "thread_count shoud be strictly more than 0"
-        )));
+        return Err(ConsensusError::ConfigError(
+            "thread_count shoud be strictly more than 0".to_string(),
+        ));
     }
     if cfg.t0 == 0.into() {
-        return Err(ConsensusError::ConfigError(format!(
-            "t0 shoud be strictly more than 0"
-        )));
+        return Err(ConsensusError::ConfigError(
+            "t0 shoud be strictly more than 0".to_string(),
+        ));
     }
     if cfg.t0.checked_rem_u64(cfg.thread_count as u64)? != 0.into() {
-        return Err(ConsensusError::ConfigError(format!(
-            "thread_count should divide t0"
-        )));
+        return Err(ConsensusError::ConfigError(
+            "thread_count should divide t0".to_string(),
+        ));
     }
 
     // start worker
@@ -125,10 +125,10 @@ impl ConsensusCommandSender {
             .send(ConsensusCommand::GetBlockGraphStatus(response_tx))
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
     /// Gets the whole block and its status corresponding to given hash.
@@ -148,10 +148,10 @@ impl ConsensusCommandSender {
             })
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -172,10 +172,10 @@ impl ConsensusCommandSender {
             })
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -201,7 +201,7 @@ impl ConsensusCommandSender {
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
         let res = response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })?;
         res
     }
@@ -217,7 +217,7 @@ impl ConsensusCommandSender {
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -237,7 +237,7 @@ impl ConsensusCommandSender {
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -257,10 +257,10 @@ impl ConsensusCommandSender {
             })
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -281,10 +281,10 @@ impl ConsensusCommandSender {
             })
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -295,10 +295,10 @@ impl ConsensusCommandSender {
             .send(ConsensusCommand::GetStats(response_tx))
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -311,10 +311,10 @@ impl ConsensusCommandSender {
             .send(ConsensusCommand::GetActiveStakers(response_tx))
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 
@@ -329,7 +329,9 @@ impl ConsensusCommandSender {
         self.0
             .send(ConsensusCommand::RegisterStakingPrivateKeys(keys))
             .await
-            .map_err(|_| ConsensusError::SendChannelError(format!("send error consensus command")))
+            .map_err(|_| {
+                ConsensusError::SendChannelError("send error consensus command".to_string())
+            })
     }
 
     pub async fn remove_staking_addresses(
@@ -341,7 +343,9 @@ impl ConsensusCommandSender {
         self.0
             .send(ConsensusCommand::RemoveStakingAddresses(addresses))
             .await
-            .map_err(|_| ConsensusError::SendChannelError(format!("send error consensus command")))
+            .map_err(|_| {
+                ConsensusError::SendChannelError("send error consensus command".to_string())
+            })
     }
 
     pub async fn get_staking_addresses(&self) -> Result<HashSet<Address>, ConsensusError> {
@@ -351,10 +355,10 @@ impl ConsensusCommandSender {
             .send(ConsensusCommand::GetStakingAddressses(response_tx))
             .await
             .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+                ConsensusError::SendChannelError("send error consensus command".to_string())
             })?;
         response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
 }

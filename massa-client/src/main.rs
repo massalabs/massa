@@ -271,7 +271,7 @@ fn main() {
                 })
                 .ok()
         })
-        .unwrap_or(cfg.default_node.clone());
+        .unwrap_or(cfg.default_node);
     repl.data.node_ip = node_ip;
 
     //shorthash is a global parameter that determine the way hash are shown (long (normal) or short).
@@ -321,7 +321,7 @@ fn main() {
             let args: Vec<&str> = cmd_args
                 .values_of("")
                 .map(|list| list.collect())
-                .unwrap_or(vec![]);
+                .unwrap_or_default();
             repl.data.cli = true;
             repl.run_cmd(cmd, &args);
         }
@@ -357,9 +357,9 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
     if let Some(wallet) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let roll_count: u64 = FromStr::from_str(&params[1])
+        let roll_count: u64 = FromStr::from_str(params[1])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect roll buy count: {}", err)))?;
-        let fee: u64 = parse_amount(&params[2])
+        let fee: u64 = parse_amount(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
 
@@ -373,10 +373,10 @@ fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
     if let Some(wallet) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let roll_count: u64 = FromStr::from_str(&params[1]).map_err(|err| {
+        let roll_count: u64 = FromStr::from_str(params[1]).map_err(|err| {
             ReplError::GeneralError(format!("Incorrect roll sell count: {}", err))
         })?;
-        let fee: u64 = parse_amount(&params[2])
+        let fee: u64 = parse_amount(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollSell { roll_count };
 
@@ -424,7 +424,7 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
             for (op_id, op) in ops.into_iter() {
                 println!("Operation {}:", op_id);
                 println!("{}", op);
-                println!("");
+                println!();
             }
         } else {
             println!("not ok status code: {:?}", resp);
@@ -458,29 +458,27 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &data.wallet {
         //get wallet addresses balances
         let ordered_addrs = wallet.get_wallet_address_list();
-        let balances = query_addresses(&data, ordered_addrs.iter().cloned().collect())
+        let balances = query_addresses(data, ordered_addrs.iter().cloned().collect())
             .and_then(|resp| {
                 if resp.status() != StatusCode::OK {
                     Ok("balance not available.".to_string())
+                } else if data.cli {
+                    Ok(resp.text().unwrap())
                 } else {
-                    if data.cli {
-                        Ok(format!("{}", resp.text().unwrap()))
-                    } else {
-                        let mut s = String::new();
-                        let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
-                        writeln!(
-                            s,
-                            "{}",
-                            AddressStates {
-                                map: ledger,
-                                order: ordered_addrs
-                            }
-                        )?;
-                        Ok(s)
-                    }
+                    let mut s = String::new();
+                    let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
+                    writeln!(
+                        s,
+                        "{}",
+                        AddressStates {
+                            map: ledger,
+                            order: ordered_addrs
+                        }
+                    )?;
+                    Ok(s)
                 }
             })
-            .or::<ReplError>(Ok("balance not available.".to_string()))
+            .or_else::<ReplError, _>(|_| Ok("balance not available.".to_string()))
             .unwrap();
         if data.cli {
             println!(
@@ -509,8 +507,8 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let recipient_address = Address::from_bs58_check(params[1])
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let amount = parse_amount(params[2]).map_err(|e| ReplError::GeneralError(e))?;
-        let fee: u64 = parse_amount(&params[3])
+        let amount = parse_amount(params[2]).map_err(ReplError::GeneralError)?;
+        let fee: u64 = parse_amount(params[3])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::Transaction {
             recipient_address,
@@ -526,8 +524,9 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
 }
 
 fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Err(_) = bool::from_str(&params[0].to_lowercase())
+    if bool::from_str(&params[0].to_lowercase())
         .map(|val| data::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed))
+        .is_err()
     {
         println!("Bad parameter:{}, not a boolean (true, false)", params[0]);
     };
@@ -549,7 +548,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
         }
     };
 
-    let resp = query_addresses(&data, search_addresses.iter().copied().collect())?;
+    let resp = query_addresses(data, search_addresses.iter().copied().collect())?;
     if resp.status() != StatusCode::OK {
         let status = resp.status();
         let message = resp
@@ -558,19 +557,17 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
             .unwrap();
         println!("Server error response: {} - {}", status, message);
+    } else if data.cli {
+        println!("{}", resp.text().unwrap());
     } else {
-        if data.cli {
-            println!("{}", resp.text().unwrap());
-        } else {
-            let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
-            println!(
-                "{}",
-                AddressStates {
-                    map: ledger,
-                    order: search_addresses
-                }
-            )
-        }
+        let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
+        println!(
+            "{}",
+            AddressStates {
+                map: ledger,
+                order: search_addresses
+            }
+        )
     }
 
     Ok(())
@@ -776,7 +773,7 @@ fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
     if let Some(resp) = request_data(data, &url)? {
         let mut block: Vec<(data::WrappedHash, data::WrappedSlot)> =
             data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
-        if block.len() == 0 {
+        if block.is_empty() {
             println!("Block not found.");
         } else {
             block.sort_unstable_by_key(|v| (v.1, v.0));
@@ -815,19 +812,18 @@ fn cmd_cliques(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/cliques", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
         let (nb_cliques, clique_list) = resp.json::<(usize, Vec<Vec<(Hash, Slot)>>)>()?;
-        let wrapped_clique_list: Vec<Vec<(data::WrappedHash, data::WrappedSlot)>> = clique_list
-            .into_iter()
-            .map(|clique| data::from_vec_hash_slot(&clique))
-            .collect();
 
         println!("Nb of cliques: {}", nb_cliques);
         println!("Cliques: ");
-        wrapped_clique_list.into_iter().for_each(|mut clique| {
-            //use sort_unstable_by to prepare sort by slot
-            clique.sort_unstable_by_key(|v| (v.1, v.0));
-            let formatted = format_node_hash(&mut clique);
-            println!("{:#?}", formatted);
-        });
+        clique_list
+            .into_iter()
+            .map(|clique| data::from_vec_hash_slot(&clique))
+            .for_each(|mut clique| {
+                //use sort_unstable_by to prepare sort by slot
+                clique.sort_unstable_by_key(|v| (v.1, v.0));
+                let formatted = format_node_hash(&mut clique);
+                println!("{:#?}", formatted);
+            });
     }
     Ok(())
 }
@@ -838,7 +834,7 @@ fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
         if resp.status() == StatusCode::OK {
             let block = resp
                 .json::<ExportBlockStatus>()
-                .map(|block| data::WrappedBlockStatus::from(block))?;
+                .map(data::WrappedBlockStatus::from)?;
             println!("block: {}", block);
         } else {
             println!("block not found.");
@@ -875,7 +871,7 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             block.iter().for_each(|(hash, slot, state, parents)| {
                 println!("Block: {} Slot: {} Status:{}", hash, slot, state);
                 println!("Block parents: {:?}", parents);
-                println!("");
+                println!();
             });
         } else {
             println!("Empty graph found.");
@@ -899,24 +895,22 @@ fn send_operation(operation: Operation, data: &ReplData) -> Result<(), ReplError
             .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
             .unwrap();
         println!("Server response error. Status: {} - {}", status, message);
+    } else if data.cli {
+        println!("{}", resp.text().unwrap());
     } else {
-        if data.cli {
-            println!("{}", resp.text().unwrap());
-        } else {
-            let opid_list = resp.json::<Vec<OperationId>>()?;
-            if opid_list.len() == 0 {
-                return Err(ReplError::GeneralError(
-                    "Could not obtain the transaction ID".to_string(),
-                ));
-            }
-            println!("Operation created: {}", opid_list[0]);
+        let opid_list = resp.json::<Vec<OperationId>>()?;
+        if opid_list.is_empty() {
+            return Err(ReplError::GeneralError(
+                "Could not obtain the transaction ID".to_string(),
+            ));
         }
+        println!("Operation created: {}", opid_list[0]);
     }
 
     Ok(())
 }
 
-fn query_addresses<'a>(data: &'a ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
+fn query_addresses(data: &ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
     let url = format!(
         "http://{}/api/v1/addresses_info?{}",
         data.node_ip,
@@ -932,8 +926,7 @@ fn format_url_with_to_from(
 ) -> Result<String, ReplError> {
     if let Some(p) = params
         .iter()
-        .filter(|p| !p.starts_with("from=") && !p.starts_with("to="))
-        .next()
+        .find(|p| !p.starts_with("from=") && !p.starts_with("to="))
     {
         return Err(ReplError::BadCommandParameter(p.to_string()));
     }
@@ -974,13 +967,11 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
             .unwrap();
         println!("Server error response status: {} - {}", status, message);
         Ok(None)
+    } else if data.cli {
+        println!("{}", resp.text()?);
+        Ok(None)
     } else {
-        if data.cli {
-            println!("{}", resp.text()?);
-            Ok(None)
-        } else {
-            Ok(Some(resp))
-        }
+        Ok(Some(resp))
     }
 }
 

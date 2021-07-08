@@ -56,7 +56,7 @@ pub async fn start_network_controller(
                     format!("could not load node private key file: {:?}", err),
                 )
             })?;
-        PrivateKey::from_bs58_check(&private_key_bs58_check.trim()).map_err(|err| {
+        PrivateKey::from_bs58_check(private_key_bs58_check.trim()).map_err(|err| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!("node private key file corrupted: {:?}", err),
@@ -248,9 +248,11 @@ pub struct NetworkEventReceiver(pub mpsc::Receiver<NetworkEvent>);
 
 impl NetworkEventReceiver {
     pub async fn wait_event(&mut self) -> Result<NetworkEvent, CommunicationError> {
-        let res = self.0.recv().await.ok_or(CommunicationError::ChannelError(
-            "could not receive event".into(),
-        ));
+        let res = self
+            .0
+            .recv()
+            .await
+            .ok_or_else(|| CommunicationError::ChannelError("could not receive event".into()));
         res
     }
 

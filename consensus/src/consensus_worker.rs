@@ -17,7 +17,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, convert::TryFrom, path::PathBuf};
+use std::{collections::VecDeque, convert::TryFrom, path::Path};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -287,7 +287,7 @@ impl ConsensusWorker {
                 Ok(addr) => {
                     if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
                         massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                        Some((addr.clone(), pub_k.clone(), priv_k.clone()))
+                        Some((addr, *pub_k, *priv_k))
                     } else {
                         massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
                         None
@@ -341,7 +341,7 @@ impl ConsensusWorker {
         let (_block_id, header) = BlockHeader::new_signed(
             creator_private_key,
             BlockHeaderContent {
-                creator: creator_public_key.clone(),
+                creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&Vec::new()[..]),
@@ -357,9 +357,11 @@ impl ConsensusWorker {
         // initialize remaining block space and remaining operation count
         let mut remaining_block_space = (self.cfg.max_block_size as u64)
             .checked_sub(serialized_block.len() as u64)
-            .ok_or(ConsensusError::BlockCreationError(
-                "consensus config max_block_size is smaller than an ampty block".into(),
-            ))?;
+            .ok_or_else(|| {
+                ConsensusError::BlockCreationError(
+                    "consensus config max_block_size is smaller than an ampty block".into(),
+                )
+            })?;
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
         // exclude operations that were used in block ancestry
@@ -369,12 +371,15 @@ impl ConsensusWorker {
             .period
             .saturating_sub(self.cfg.operation_validity_periods);
         loop {
-            let ancestor = self.block_db.get_active_block(&ancestor_id).ok_or(
-                ConsensusError::ContainerInconsistency(format!(
-                    "missing ancestor to check operation reuse for block creation: {:?}",
-                    ancestor_id
-                )),
-            )?;
+            let ancestor = self
+                .block_db
+                .get_active_block(&ancestor_id)
+                .ok_or_else(|| {
+                    ConsensusError::ContainerInconsistency(format!(
+                        "missing ancestor to check operation reuse for block creation: {:?}",
+                        ancestor_id
+                    ))
+                })?;
             if ancestor.block.header.content.slot.period < stop_period {
                 break;
             }
@@ -388,12 +393,11 @@ impl ConsensusWorker {
         // get thread ledger and apply block reward
         let mut thread_ledger = LedgerSubset::new(self.cfg.thread_count);
         if creator_addr.get_thread(self.cfg.thread_count) == cur_slot.thread {
-            let mut fee_ledger = self.block_db.get_ledger_at_parents(
-                &parents,
-                &vec![creator_addr.clone()].into_iter().collect(),
-            )?;
+            let mut fee_ledger = self
+                .block_db
+                .get_ledger_at_parents(parents, &vec![*creator_addr].into_iter().collect())?;
             fee_ledger.apply_change((
-                &creator_addr,
+                creator_addr,
                 &LedgerChange {
                     balance_delta: self.cfg.block_reward,
                     balance_increment: true,
@@ -433,12 +437,12 @@ impl ConsensusWorker {
                 let mut thread_changes: Vec<HashMap<Address, LedgerChange>> =
                     vec![HashMap::new(); self.cfg.thread_count as usize];
                 thread_changes[cur_slot.thread as usize] = op
-                    .get_ledger_changes(&creator_addr, self.cfg.thread_count, self.cfg.roll_price)?
+                    .get_ledger_changes(creator_addr, self.cfg.thread_count, self.cfg.roll_price)?
                     .swap_remove(cur_slot.thread as usize);
 
                 // add missing entries to the ledger
                 let missing_entries = self.block_db.get_ledger_at_parents(
-                    &parents,
+                    parents,
                     &thread_changes[cur_slot.thread as usize]
                         .keys()
                         .filter(|addr| !thread_ledger.contains(addr, self.cfg.thread_count))
@@ -475,7 +479,7 @@ impl ConsensusWorker {
         let (block_id, header) = BlockHeader::new_signed(
             creator_private_key,
             BlockHeaderContent {
-                creator: creator_public_key.clone(),
+                creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&total_hash),
@@ -553,12 +557,12 @@ impl ConsensusWorker {
                 );
 
                 let mut found_block = self.block_db.get_export_block_status(&block_id);
-                if let None = found_block {
+                if found_block.is_none() {
                     if let Some(storage) = &self.opt_storage_command_sender {
                         found_block = storage
                             .get_block(block_id)
                             .await?
-                            .map(|block| ExportBlockStatus::Stored(block));
+                            .map(ExportBlockStatus::Stored);
                     }
                 }
 
@@ -819,9 +823,9 @@ impl ConsensusWorker {
             let final_data = self
                 .pos
                 .get_final_roll_data(self.pos.get_last_final_block_cycle(thread), thread)
-                .ok_or(ConsensusError::PosCycleUnavailable(
-                    "final cycle unavaible".to_string(),
-                ))?;
+                .ok_or_else(|| {
+                    ConsensusError::PosCycleUnavailable("final cycle unavaible".to_string())
+                })?;
             let candidate_data = self.block_db.get_roll_data_at_parent(
                 self.block_db.get_best_parents()[thread as usize],
                 Some(&addresses_by_thread[thread as usize]),
@@ -838,11 +842,7 @@ impl ConsensusWorker {
                     *addr,
                     AddressState {
                         final_rolls: *final_data.roll_count.0.get(addr).unwrap_or(&0),
-                        active_rolls: if let Some(data) = lookback_data {
-                            Some(*data.0.get(addr).unwrap_or(&0))
-                        } else {
-                            None
-                        },
+                        active_rolls: lookback_data.map(|data| *data.0.get(addr).unwrap_or(&0)),
                         candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&0),
                         locked_balance: locked_rolls
                             .get(addr)
@@ -1095,7 +1095,7 @@ impl ConsensusWorker {
 }
 
 async fn load_initial_staking_keys(
-    path: &PathBuf,
+    path: &Path,
 ) -> Result<HashMap<Address, (PublicKey, PrivateKey)>, ConsensusError> {
     if !std::path::Path::is_file(path) {
         return Ok(HashMap::new());
@@ -1103,10 +1103,10 @@ async fn load_initial_staking_keys(
     serde_json::from_str::<Vec<PrivateKey>>(&tokio::fs::read_to_string(path).await?)?
         .iter()
         .map(|private_key| {
-            let public_key = derive_public_key(&private_key);
+            let public_key = derive_public_key(private_key);
             Ok((
                 Address::from_public_key(&public_key)?,
-                (public_key, private_key.clone()),
+                (public_key, *private_key),
             ))
         })
         .collect()

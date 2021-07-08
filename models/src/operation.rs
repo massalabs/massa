@@ -253,7 +253,7 @@ impl Operation {
     ) -> Result<HashSet<Address>, ModelsError> {
         let mut res = HashSet::new();
         if let Some(target) = fee_target {
-            res.insert(target.clone());
+            res.insert(target);
         }
         let emitter_address = Address::from_public_key(&self.content.sender_public_key)?;
         res.insert(emitter_address);
