@@ -116,7 +116,11 @@ impl ConsensusWorker {
             s.get_next_slot(cfg.thread_count)
         })?;
 
-        let periods = block_db.get_latest_final_blocks_periods().iter().map(|(_, period)| *period).collect();
+        let periods = block_db
+            .get_latest_final_blocks_periods()
+            .iter()
+            .map(|(_, period)| *period)
+            .collect();
         massa_trace!("consensus.consensus_worker.new", {});
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
@@ -483,8 +487,13 @@ impl ConsensusWorker {
         }
 
         // Update lastest final block slot in operation_pool
-        let periods = self.block_db.get_latest_final_blocks_periods().iter().map(|(_, period)| *period).collect();
-        self.operation_pool.ack_final_block(periods, HashSet::new());
+        let periods = self
+            .block_db
+            .get_latest_final_blocks_periods()
+            .iter()
+            .map(|(_, period)| *period)
+            .collect();
+        self.operation_pool.ack_final_block(periods);
 
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks = &new_wishlist - &self.wishlist;

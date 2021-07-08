@@ -1,15 +1,16 @@
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BTreeSet, BinaryHeap, HashMap, HashSet};
 
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::{Operation, SerializationContext, Slot};
+use models::{Operation, SerializationContext, SerializeCompact, Slot};
+use num::rational::Ratio;
 
 use crate::{ConsensusConfig, ConsensusError};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Debug)]
-pub struct Adress(Hash); // Public key hash
+pub struct Address(Hash); // Public key hash
 
-impl Adress {
-    fn from_public_key(key: PublicKey) -> Adress {
+impl Address {
+    fn new(key: PublicKey) -> Address {
         todo!()
     }
 
@@ -18,13 +19,45 @@ impl Adress {
     }
 }
 
+struct WrappedOperation {
+    op: Operation,
+    byte_count: u64,
+    thread: u8,
+}
+
+impl WrappedOperation {
+    fn new(
+        op: Operation,
+        thread_count: u8,
+        context: &SerializationContext,
+    ) -> Result<Self, ConsensusError> {
+        Ok(WrappedOperation {
+            byte_count: op.to_bytes_compact(&context)?.len() as u64,
+            thread: Address::new(op.content.creator_public_key).get_thread(thread_count),
+            op,
+        })
+    }
+
+    fn get_fee_density(&self) -> Ratio<u64> {
+        Ratio::new(self.op.content.fee, self.byte_count)
+    }
+
+    fn is_valid_at_period(&self, period: u64, operation_validity_periods: u64) -> bool {
+        let start = self.op.content.expiration_period - operation_validity_periods;
+        Slot::new(period, self.thread) >= Slot::new(start, self.thread)
+            && Slot::new(self.op.content.expiration_period, self.thread)
+                >= Slot::new(period, self.thread)
+    }
+}
+
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Debug)]
 pub struct OperationId(Hash); // Signature hash
 
 pub struct OperationPool {
-    map: HashMap<OperationId, Operation>,
+    ops: HashMap<OperationId, WrappedOperation>,
     /// one vec per thread
-    vec: Vec<BinaryHeap<(u64, OperationId)>>, // fee operation hash
+    ops_by_thread_and_interest:
+        Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
     current_periods: Vec<u64>,
     cfg: ConsensusConfig,
 }
@@ -32,8 +65,8 @@ pub struct OperationPool {
 impl OperationPool {
     pub fn new(current_periods: Vec<u64>, cfg: ConsensusConfig) -> OperationPool {
         OperationPool {
-            map: HashMap::new(),
-            vec: vec![BinaryHeap::new(); cfg.thread_count as usize],
+            ops: HashMap::new(),
+            ops_by_thread_and_interest: vec![BTreeSet::new(); cfg.thread_count as usize],
             current_periods,
             cfg,
         }
@@ -53,34 +86,51 @@ impl OperationPool {
         operation: Operation,
         context: &SerializationContext,
     ) -> Result<bool, ConsensusError> {
+        let op_id = OperationId(Hash::hash(&operation.signature.to_bytes()));
+        if self.ops.contains_key(&op_id) {
+            return Ok(false);
+        }
+
+        let wrapped_op = WrappedOperation::new(operation, self.cfg.thread_count, context)?;
+        let thread = wrapped_op.thread;
+        let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
+
         let signature_engine = SignatureEngine::new();
-        let hash = operation.content.compute_hash(context)?;
+        let hash = wrapped_op.op.content.compute_hash(context)?;
+
         // period validity check
-        let start = operation.content.expiration_period - self.cfg.operation_validity_periods;
-        let thread = get_thread(operation.content.creator_public_key);
-        if Slot::new(self.current_periods[thread as usize], thread) < Slot::new(start, thread)
-            || Slot::new(operation.content.expiration_period, thread) < Slot::new(self.current_periods[thread as usize], thread) {
+        if !wrapped_op.is_valid_at_period(
+            self.current_periods[wrapped_op.thread as usize],
+            self.cfg.operation_validity_periods,
+        ) {
             return Ok(false);
         }
         signature_engine.verify(
             &hash,
-            &operation.signature,
-            &operation.content.creator_public_key,
+            &wrapped_op.op.signature,
+            &wrapped_op.op.content.creator_public_key,
         )?;
-        let id = OperationId(Hash::hash(&operation.signature.to_bytes()));
-        if let None = self.map.insert(id, operation.clone()) {
-            self.vec[thread as usize].push((operation.content.fee, id));
-            Ok(true)
-        } else {
-            // already present
-            Ok(false)
+
+        self.ops_by_thread_and_interest[thread as usize].insert(interest);
+        self.ops.insert(op_id, wrapped_op);
+        // remove excess
+        while self.ops_by_thread_and_interest[thread as usize].len()
+            > self.cfg.max_operations_per_block as usize
+        {
+            // normalement 1 seule itération
+            let (_removed_rentability, removed_id) = self.ops_by_thread_and_interest
+                [thread as usize]
+                .pop_last()
+                .unwrap(); // will not panic because of the while condition. complexité = log ou mieux
+            self.ops.remove(&removed_id); // complexité: const
         }
-        // todo!() // see #270
+
+        Ok(true)
     }
 
     /// Update current_slot and discard invalid or integrated operation
-    pub fn ack_final_block(&mut self, periods: Vec<u64>, thread_final_ops: HashSet<Hash>) {
-        todo!() // see #270
+    pub fn ack_final_block(&mut self, periods: Vec<u64>) -> Result<(), ConsensusError> {
+        todo!()
     }
 
     /// Get max_count operation for thread block_slot.thread
@@ -91,32 +141,25 @@ impl OperationPool {
         exclude: HashSet<OperationId>,
         max_count: usize,
     ) -> Result<Vec<(OperationId, Operation)>, ConsensusError> {
-        let mut res = self.vec[block_slot.thread as usize]
-            .clone()
-            .into_iter_sorted()
-            .filter(|(_, hash)| !exclude.contains(hash))
-            .map(|(_, hash)| {
-                Ok((
-                    hash,
-                    self.map
-                        .get(&hash)
-                        .ok_or(ConsensusError::ContainerInconsistency(
-                            "inconsistency between vec pool and map pool".into(),
-                        ))?
-                        .clone(),
-                ))
-            });
-        if let Some(err) = res.find_map(|r: Result<(OperationId, Operation), ConsensusError>| {
-            if r.is_err() {
-                Some(r.unwrap_err())
-            } else {
-                None
-            }
-        }) {
-            Err(err)
-        } else {
-            Ok(res.flatten().collect::<Vec<_>>()[0..max_count].into())
-        }
+        Ok(self.ops_by_thread_and_interest[block_slot.thread as usize]
+            .iter()
+            .filter_map(|(_rentability, id)| {
+                if exclude.contains(id) {
+                    return None;
+                }
+                if let Some(op) = self.ops.get(id) {
+                    if op.is_valid_at_period(block_slot.period, self.cfg.operation_validity_periods)
+                    {
+                        Some((id.clone(), op.op.clone()))
+                    } else {
+                        None
+                    }
+                } else {
+                    None // container inconsistency but don't know how to return the error from the filter
+                }
+            })
+            .take(max_count)
+            .collect::<Vec<(OperationId, Operation)>>())
     }
 }
 
