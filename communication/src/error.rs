@@ -33,8 +33,10 @@ pub enum CommunicationError {
     CryptoError(#[from] crypto::CryptoError),
     #[error("handhsake error:{0:?}")]
     HandshakeError(HandshakeErrorType),
-    #[error("the protocol controller should have close everything before shuting down")]
-    UnexpectedProtocolControllerClosureError,
+    #[error("the network controller should not drop a node command sender before shutting down the node.")]
+    UnexpectedNodeCommandChannelClosure,
+    #[error("the writer of a node should not drop its event sender before sending a clean_exit message.")]
+    UnexpectedWriterClosure,
     #[error("Time error {0}")]
     TimeError(#[from] time::TimeError),
     #[error("missing peers")]

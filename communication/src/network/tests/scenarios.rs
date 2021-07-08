@@ -1,10 +1,14 @@
 //to start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::{mock_establisher, tools};
+use crate::network::binders::{ReadBinder, WriteBinder};
 use crate::network::messages::Message;
+use crate::network::node_worker::{NodeCommand, NodeEvent, NodeWorker};
+use crate::network::ConnectionClosureReason;
 use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
 use crypto::hash::Hash;
+use crypto::signature::SignatureEngine;
 use std::collections::HashMap;
 use std::{
     convert::TryInto,
@@ -12,7 +16,63 @@ use std::{
     time::{Duration, Instant},
 };
 use time::UTime;
+use tokio::sync::mpsc;
 use tokio::time::sleep;
+
+/// Test that a node worker can shutdown even if the event channel is full,
+/// and that sending additional node commands during shutdown does not deadlock.
+#[tokio::test]
+async fn test_node_worker_shutdown() {
+    let bind_port: u16 = 50_000;
+    let temp_peers_file = super::tools::generate_peers_file(&vec![]);
+    let (network_conf, serialization_context) =
+        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
+    let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
+    let reader = ReadBinder::new(duplex_mock_read, serialization_context.clone());
+    let writer = WriteBinder::new(duplex_mock_write, serialization_context.clone());
+
+    // Note: both channels have size 1.
+    let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
+    let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
+
+    let sig_engine = SignatureEngine::new();
+    let private_key = SignatureEngine::generate_random_private_key();
+    let public_key = sig_engine.derive_public_key(&private_key);
+    let mock_node_id = NodeId(public_key);
+    let node_fn_handle = tokio::spawn(async move {
+        NodeWorker::new(
+            network_conf,
+            mock_node_id,
+            reader,
+            writer,
+            node_command_rx,
+            node_event_tx,
+        )
+        .run_loop(serialization_context)
+        .await
+    });
+
+    // Shutdown the worker.
+    node_command_tx
+        .send(NodeCommand::Close(ConnectionClosureReason::Normal))
+        .await
+        .unwrap();
+
+    // Send a bunch of additional commands until the channel is closed,
+    // which would deadlock if not properly handled by the worker.
+    loop {
+        if node_command_tx
+            .send(NodeCommand::Close(ConnectionClosureReason::Normal))
+            .await
+            .is_err()
+        {
+            break;
+        }
+    }
+
+    node_fn_handle.await.unwrap().unwrap();
+}
 
 // test connecting two different peers simultaneously to the controller
 // then attempt to connect to controller from an already connected peer to test max_in_connections_per_ip
