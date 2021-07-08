@@ -8,9 +8,15 @@ use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
     signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES},
 };
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 
-const TRANSACTION_TYPE_ID: u32 = 0;
+#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+enum OperationTypeId {
+    Transaction = 0,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Operation {
@@ -97,7 +103,7 @@ impl SerializeCompact for Operation {
         let mut res: Vec<u8> = Vec::new();
         match self {
             Operation::Transaction { content, signature } => {
-                res.extend(TRANSACTION_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(OperationTypeId::Transaction).to_varint_bytes());
                 res.extend(content.to_bytes_compact(&context)?);
                 res.extend(&signature.to_bytes());
             }
@@ -114,11 +120,15 @@ impl DeserializeCompact for Operation {
         let mut cursor = 0;
 
         // type id
-        let (type_id, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
+        let type_id: OperationTypeId = type_id_raw
+            .try_into()
+            .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
+
         let res = match type_id {
-            TRANSACTION_TYPE_ID => {
+            OperationTypeId::Transaction => {
                 // Transaction
                 let (content, delta) =
                     TransactionContent::from_bytes_compact(&buffer[cursor..], &context)?;
@@ -126,11 +136,6 @@ impl DeserializeCompact for Operation {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += delta;
                 Operation::Transaction { content, signature }
-            }
-            _ => {
-                return Err(ModelsError::DeserializeError(
-                    "unsupported operation type".into(),
-                ))
             }
         };
         Ok((res, cursor))

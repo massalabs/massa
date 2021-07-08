@@ -17,6 +17,7 @@ serde_json = { version = "1.0" }
 itertools = "0.10"
 rand = { version = "0.8"}
 thiserror = "1.0"
+num_enum = "0.5"
 
 logging = { path = "../logging" }
 crypto = { path = "../crypto" }

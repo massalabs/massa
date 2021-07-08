@@ -6,8 +6,10 @@ use models::{
     array_from_slice, Block, BlockHeader, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializationContext, SerializeCompact, SerializeVarInt,
 };
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
+
+use std::{convert::TryInto, net::IpAddr};
 
 pub const HANDSHAKE_RANDOMNES_SIZE_BYTES: usize = 32;
 
@@ -43,13 +45,17 @@ pub enum Message {
     PeerList(Vec<IpAddr>),
 }
 
-const HANDSHAKE_INITIATION_TYPE_ID: u32 = 0;
-const HANDSHAKE_REPLY_TYPE_ID: u32 = 1;
-const BLOCK_TYPE_ID: u32 = 2;
-const BLOCK_HEADER_TYPE_ID: u32 = 3;
-const ASK_FOR_BLOCK_TYPE_ID: u32 = 4;
-const ASK_PEER_LIST_TYPE_ID: u32 = 5;
-const PEER_LIST_TYPE_ID: u32 = 6;
+#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+enum MessageTypeId {
+    HandshakeInitiation = 0u32,
+    HandshakeReply = 1,
+    Block = 2,
+    BlockHeader = 3,
+    AskForBlock = 4,
+    AskPeerList = 5,
+    PeerList = 6,
+}
 
 impl SerializeCompact for Message {
     fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
@@ -59,31 +65,31 @@ impl SerializeCompact for Message {
                 public_key,
                 random_bytes,
             } => {
-                res.extend(HANDSHAKE_INITIATION_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
                 res.extend(&public_key.to_bytes());
                 res.extend(random_bytes);
             }
             Message::HandshakeReply { signature } => {
-                res.extend(HANDSHAKE_REPLY_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
                 res.extend(&signature.to_bytes());
             }
             Message::Block(block) => {
-                res.extend(BLOCK_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
                 res.extend(&block.to_bytes_compact(&context)?);
             }
             Message::BlockHeader(header) => {
-                res.extend(BLOCK_HEADER_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
                 res.extend(&header.to_bytes_compact(&context)?);
             }
             Message::AskForBlock(hash) => {
-                res.extend(ASK_FOR_BLOCK_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(MessageTypeId::AskForBlock).to_varint_bytes());
                 res.extend(&hash.to_bytes());
             }
             Message::AskPeerList => {
-                res.extend(ASK_PEER_LIST_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(MessageTypeId::AskPeerList).to_varint_bytes());
             }
             Message::PeerList(ip_vec) => {
-                res.extend(PEER_LIST_TYPE_ID.to_varint_bytes());
+                res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
                 res.extend((ip_vec.len() as u64).to_varint_bytes());
                 for ip in ip_vec.into_iter() {
                     res.extend(ip.to_bytes_compact(&context)?)
@@ -101,11 +107,15 @@ impl DeserializeCompact for Message {
     ) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
-        let (type_id, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
+        let type_id: MessageTypeId = type_id_raw
+            .try_into()
+            .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
+
         let res = match type_id {
-            HANDSHAKE_INITIATION_TYPE_ID => {
+            MessageTypeId::HandshakeInitiation => {
                 // public key
                 let public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += PUBLIC_KEY_SIZE_BYTES;
@@ -119,28 +129,28 @@ impl DeserializeCompact for Message {
                     random_bytes,
                 }
             }
-            HANDSHAKE_REPLY_TYPE_ID => {
+            MessageTypeId::HandshakeReply => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
                 Message::HandshakeReply { signature }
             }
-            BLOCK_TYPE_ID => {
+            MessageTypeId::Block => {
                 let (block, delta) = Block::from_bytes_compact(&buffer[cursor..], &context)?;
                 cursor += delta;
                 Message::Block(block)
             }
-            BLOCK_HEADER_TYPE_ID => {
+            MessageTypeId::BlockHeader => {
                 let (header, delta) = BlockHeader::from_bytes_compact(&buffer[cursor..], &context)?;
                 cursor += delta;
                 Message::BlockHeader(header)
             }
-            ASK_FOR_BLOCK_TYPE_ID => {
+            MessageTypeId::AskForBlock => {
                 let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 Message::AskForBlock(hash)
             }
-            ASK_PEER_LIST_TYPE_ID => Message::AskPeerList,
-            PEER_LIST_TYPE_ID => {
+            MessageTypeId::AskPeerList => Message::AskPeerList,
+            MessageTypeId::PeerList => {
                 // length
                 let (length, delta) = u32::from_varint_bytes_bounded(
                     &buffer[cursor..],
@@ -155,11 +165,6 @@ impl DeserializeCompact for Message {
                     peers.push(ip);
                 }
                 Message::PeerList(peers)
-            }
-            _ => {
-                return Err(ModelsError::DeserializeError(
-                    "unsupported message type".into(),
-                ))
             }
         };
         Ok((res, cursor))
