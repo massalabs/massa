@@ -18,7 +18,7 @@ impl Block {
         Ok(s.take_buffer())
     }
 
-    pub fn from_bytes(data: Vec<u8>) -> Result<Block, ModelsError> {
+    pub fn from_bytes(data: &[u8]) -> Result<Block, ModelsError> {
         let r = flexbuffers::Reader::get_root(&data)?;
         Block::deserialize(r).map_err(|e| ModelsError::from(e))
     }
