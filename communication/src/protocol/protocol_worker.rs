@@ -556,8 +556,8 @@ impl ProtocolWorker {
                 })
                 .min_by_key(|(knowledge, node_id)| {
                     (
-                        //*active_block_req_count.get(node_id).unwrap_or(&0), // active requests
-                        *knowledge, // block knowledge
+                        *knowledge,                                                 // block knowledge
+                        *active_block_req_count.get(node_id).unwrap_or(&0), // active requests
                         self.active_nodes.get(node_id).unwrap().connection_instant, // node age (will not panic, already checked)
                         *node_id,                                                   // node ID
                     )
