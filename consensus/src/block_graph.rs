@@ -959,7 +959,7 @@ impl BlockGraph {
     /// * val : dummy value used to generate dummy hash
     /// * slot : generated block is in slot slot.
     pub fn create_block(
-        &self,
+        &mut self,
         operations: Vec<Operation>,
         operation_merkle_root: Hash,
     ) -> Result<(BlockId, Block), ConsensusError> {
@@ -976,6 +976,7 @@ impl BlockGraph {
             .ok_or(ConsensusError::BlockCreationError(
                 "No prepared block avaible".to_string(),
             ))?;
+        self.next_block = None;
 
         let (hash, header) = BlockHeader::new_signed(
             &private_key,
