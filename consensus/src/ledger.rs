@@ -427,21 +427,41 @@ impl Ledger {
 
     /// returns the final periods.
     pub fn get_latest_final_periods(&self) -> Result<Vec<u64>, ConsensusError> {
-        let mut res = Vec::new();
-        for thread in 0..self.cfg.thread_count {
-            if let Some(val) = self.latest_final_periods.get([thread])? {
-                res.push(u64::from_be_bytes(array_from_slice(&val)?));
-            } else {
-                // Note: this should never happen,
-                // since they are initialized in ::new().
-                panic!("Unitialized latest final periods.");
-            }
-        }
-        Ok(res)
+        self.latest_final_periods
+            .transaction(|db| {
+                let mut res = Vec::with_capacity(self.cfg.thread_count as usize);
+                for thread in 0..self.cfg.thread_count {
+                    if let Some(val) = db.get([thread])? {
+                        let latest = array_from_slice(&val).map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(format!(
+                                    "error getting latest final period for thread: {:?}",
+                                    thread
+                                )),
+                            )
+                        })?;
+                        res.push(u64::from_be_bytes(latest));
+                    } else {
+                        // Note: this should never happen,
+                        // since they are initialized in ::new().
+                        return Err(sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error getting latest final period for thread: {:?}",
+                                thread
+                            )),
+                        ));
+                    }
+                }
+                Ok(res)
+            })
+            .map_err(|_| {
+                ConsensusError::LedgerInconsistency("Unable to fetch latest final periods.".into())
+            })
     }
 
-    /// To empty the db
+    /// To empty the db.
     pub fn clear(&self) -> Result<(), ConsensusError> {
+        // Note: this cannot be done transactionally.
         for db in self.ledger_per_thread.iter() {
             db.clear()?;
         }
@@ -449,9 +469,10 @@ impl Ledger {
         Ok(())
     }
 
-    /// Used for bootstrap
+    /// Used for bootstrap.
     pub fn read_whole(&self) -> Result<Vec<HashMap<Address, LedgerData>>, ConsensusError> {
-        let mut res = Vec::new();
+        // Note: this cannot be done transactionally.
+        let mut res = Vec::with_capacity(self.cfg.thread_count as usize);
         for tree in self.ledger_per_thread.iter() {
             let mut map = HashMap::new();
             for element in tree.iter() {
