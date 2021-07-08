@@ -2766,6 +2766,36 @@ impl BlockGraph {
                 .map(|(h, _)| h.clone()),
         );
 
+        for (thread, id) in latest_final_blocks.iter().enumerate() {
+            let mut current_block_id = *id;
+            loop {
+                //get block to process.
+                let current_block = match self.get_active_block(&current_block_id) {
+                    Some(b) => b,
+                    None => break,
+                };
+
+                // stop traversing when reaching a block with period number low enough
+                // so that any of its operations will have their validity period expired at the latest final block in thread
+                if current_block.header.content.slot.period
+                    < self.latest_final_blocks_periods[thread]
+                        .1
+                        .saturating_sub(self.cfg.operation_validity_periods)
+                {
+                    break;
+                }
+
+                // retain block
+                retain_active.insert(current_block_id);
+
+                // if not genesis, traverse parent
+                if current_block.header.content.parents.is_empty() {
+                    break;
+                }
+                current_block_id = current_block.header.content.parents[thread as usize];
+            }
+        }
+
         // grow with parents & fill thread holes twice
         for _ in 0..2 {
             // retain the parents of the selected blocks
