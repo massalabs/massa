@@ -111,50 +111,6 @@ async fn perform_handshake(
     Ok(remote_pubkey)
 }
 
-/* TODO
-    struct FramedReader {  // maintain reading state
-        cursor_pos
-        type
-        chan
-        totsize
-        ...
-    }
-    method : update_from_data(new_data)
-    => returns last parsed data chunk if any (with channel number, total size, offset, ...)
-    => when finished, return
-    => when cancelled, return reason if any
-    => if anything failed, return error
-
-
-    TODO
-
-    struct FramedSender {
-        send_cursor=0
-        feed_cursor=0
-        total_len=xx
-        chan = X
-        buffer
-    }
-    method: start_new_object(chan, tot_size) {
-        allocate buffer to tot_size
-        set send_cursor=feed_cursor=0
-    }
-    method: feed(data) {
-        write to buffer
-        move feed_cursor
-    }
-    method: get_some() {
-        send_cur
-        return PENDING if still waiting for data
-        return FINISHED if finished
-        return STOPPED if stopped
-    }
-    method: stop() {
-        mark to be stopped
-    }
-
-*/
-
 async fn channel_event_loop(
     network_config: &NetworkConfig,
     secret_key: &SecretKey,
