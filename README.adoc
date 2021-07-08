@@ -6,23 +6,26 @@ With the breakthrough multithreaded technology, we’re set for mass adoption.
 
 ## Introduction
 
-link:massa.net[Massa] is a new blockchain reaching a high transaction throughput in a fully decentralized network, thanks to a parallel block technology. 
-Our research is published in this link:https://arxiv.org/pdf/1803.09029[technical paper] showing that a throughput of 10'000 transactions per second is reached even in a decentralized network with thousands of nodes.
+link:massa.net[Massa] is a new blockchain reaching a high transaction throughput in a decentralized network. 
+Our research is published in this link:https://arxiv.org/pdf/1803.09029[technical paper].
+It shows that a throughput of 10'000 transactions per second is reached even in a fully decentralized network with thousands of nodes.
 
-An easy-to-read blog post introduction is written link:https://massa.net/blog/post/0/)[here].
+An easy-to-read blog post introduction with videos is written link:https://massa.net/blog/post/0/)[here].
 
 We are now releasing the **Massa testnet** in this Gitlab repository, with its explorer available at link:test.massa.net[test.massa.net].
 
-In the next months, we will be constantly improving the testnet software, which will lead to bugs and reboots. A stable demo of Massa written in Python is live on link:demo.massa.net[demo.massa.net] in the meantime.
 
 ## Testnet Incentives
 
-As decentralization is our core value, we would like to help you start and run a Massa node. Running a node during the testnet phase helps us find bugs and improve usability, so it will be rewarded with real Massa on mainnet launch. The mechanics and amounts of those rewards are currently in discussion. 
+As decentralization is our core value, we would like to help you start and run a Massa node. 
+Running a node during the testnet phase also helps us finding bugs and improving usability, so it will be rewarded with real Massa on mainnet launch. 
+The mechanics and amounts of those rewards are currently in discussion, the main idea is that the more block rewards you receive, the more Massa you will get at launch, with a per-person cap.
+ 
 
 ## Testnet Discussions
 
-Come to our link:https://discord.com/invite/TnsJQzXkRN[Discord] for testnet discussions, in the testnet channel.
-We mainly use link:https://t.me/joinchat/WbAhso_0YhE4NTg0[Telegram] for project announcements. 
+Please come to our link:https://discord.com/invite/TnsJQzXkRN[Discord] for testnet discussions, in the testnet channel.
+For project announcements we mainly use link:https://t.me/massanetwork[Telegram]. 
 
 ## Install on ubuntu
 
@@ -53,4 +56,7 @@ We mainly use link:https://t.me/joinchat/WbAhso_0YhE4NTg0[Telegram] for project 
 
 
 ### Tutorial
-Here is a tutorial for creating a wallet, staking, sending transactions: link:docs/tuto.adoc[testnet tutorial].
+Here is a set of tutorials:
+* link:docs/wallet.adoc[creating a wallet]
+* link:docs/staking.adoc[staking]
+* link:docs/transaction.adoc[sending transactions]
