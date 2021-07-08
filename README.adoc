@@ -60,7 +60,7 @@ cd massa-client/
 cargo run --release
 ----
 
-### Tutorial
+## Tutorials
 
 Here is a set of tutorials:
 
