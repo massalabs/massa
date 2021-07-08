@@ -8,7 +8,6 @@ use std::{
     time::{Duration, Instant},
 };
 use time::UTime;
-use tokio::time::timeout;
 
 // test connecting two different peers simultaneously to the controller
 // then attempt to connect to controller from an already connected peer to test max_in_connections_per_ip
@@ -59,7 +58,7 @@ async fn test_multiple_connections_to_controller() {
         serialization_context.clone(),
     )
     .await;
-    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
+    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l110
 
     // 2) connect peer2 to controller
     let (conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
@@ -76,9 +75,9 @@ async fn test_multiple_connections_to_controller() {
         conn1_id, conn2_id,
         "IDs of simultaneous connections should be different"
     );
-    let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
+    let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l109
 
-    // 3) try to establish an extra connection from peer1 to controller
+    // 3) try to establish an extra connection from peer1 to controller with max_in_connections_per_ip = 1
     tools::rejected_connection_to_controller(
         &mut network_event_receiver,
         &mut mock_interface,
@@ -87,11 +86,10 @@ async fn test_multiple_connections_to_controller() {
         1_000u64,
         1_000u64,
         serialization_context.clone(),
-        None,
     )
     .await;
 
-    // 4) try to establish an third connection to controller
+    // 4) try to establish an third connection to controller with max_in_connections = 2
     tools::rejected_connection_to_controller(
         &mut network_event_receiver,
         &mut mock_interface,
@@ -100,7 +98,6 @@ async fn test_multiple_connections_to_controller() {
         1_000u64,
         1_000u64,
         serialization_context.clone(),
-        None,
     )
     .await;
 
@@ -176,15 +173,14 @@ async fn test_peer_ban() {
         1_000u64,
         1_000u64,
         serialization_context.clone(),
-        None,
     )
     .await;
-    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
+    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l220
 
     trace!("test_peer_ban first connection done");
 
-    // connect to peeer to controller
-    let (conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
+    // connect peer to controller
+    let (_conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
         &mut network_event_receiver,
         &mut mock_interface,
         mock_addr,
@@ -194,7 +190,7 @@ async fn test_peer_ban() {
         serialization_context.clone(),
     )
     .await;
-    let _conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
+    let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l221
     trace!("test_peer_ban second connection done");
 
     //ban connection1.
@@ -212,10 +208,6 @@ async fn test_peer_ban() {
         1_000u64,
         1_000u64,
         serialization_context.clone(),
-        Some(vec![
-            NetworkEvent::ConnectionClosed(conn1_id),
-            NetworkEvent::ConnectionClosed(conn2_id),
-        ]),
     )
     .await;
 
@@ -226,6 +218,7 @@ async fn test_peer_ban() {
         .expect("error while stopping network");
 
     tools::incoming_message_drain_stop(conn1_drain).await;
+    tools::incoming_message_drain_stop(conn2_drain).await;
 
     temp_peers_file.close().unwrap();
 }
@@ -279,8 +272,8 @@ async fn test_advertised_and_wakeup_interval() {
     .await
     .expect("could not start network controller");
 
-    // 1) open and close a connection and wait the reconnection.
-    let conn2_id = {
+    // 1) open a connection, advertize peer, disconnect
+    {
         let (conn2_id, conn2_r, mut conn2_w) = tools::full_connection_to_controller(
             &mut network_event_receiver,
             &mut mock_interface,
@@ -292,26 +285,42 @@ async fn test_advertised_and_wakeup_interval() {
         )
         .await;
         tools::advertise_peers_in_connection(&mut conn2_w, vec![mock_addr.ip()]).await;
-        //wait advertising end
-        let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
-        tools::incoming_message_drain_stop(conn2_drain).await;
-        conn2_id
+        // drop the connection
+        drop(conn2_r);
+        drop(conn2_w);
+        // wait for the message signalling the closure of the connection
+        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+            NetworkEvent::ConnectionClosed(closed_node_id) => {
+                if closed_node_id == conn2_id {
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .await
+        .expect("connection closure message not received");
     };
 
     // 2) refuse the first connection attempt coming from controller towards advertised peer
     {
-        let (_, _, addr, accept_tx) = mock_interface
-            .wait_connection_attempt_from_controller()
-            .await
-            .expect("wait_connection_attempt_from_controller failed");
+        let (_, _, addr, accept_tx) = tokio::time::timeout(
+            Duration::from_millis(1000),
+            mock_interface.wait_connection_attempt_from_controller(),
+        )
+        .await
+        .expect("wait_connection_attempt_from_controller timed out")
+        .expect("wait_connection_attempt_from_controller failed");
         assert_eq!(addr, mock_addr, "unexpected connection attempt address");
         accept_tx.send(false).expect("accept_tx failed");
     }
 
     // 3) Next connection attempt from controller, accept connection
-    let (_conn_id, conn1_drain) = {
+    let (_conn_id, _conn1_w, conn1_drain) = {
+        // drained l357
         let start_instant = Instant::now();
-        let (conn_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+        let (conn_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
             &mut network_event_receiver,
             &mut mock_interface,
             mock_addr,
@@ -321,32 +330,30 @@ async fn test_advertised_and_wakeup_interval() {
             1_000u64,
             1_000u64,
             serialization_context.clone(),
-            Some(vec![NetworkEvent::ConnectionClosed(conn2_id)]),
         )
         .await;
         if start_instant.elapsed() < network_conf.wakeup_interval.to_duration() {
             panic!("controller tried to reconnect after a too short delay");
         }
-        (conn_id, tools::incoming_message_drain_start(conn1_r).await)
+        let drain_h = tools::incoming_message_drain_start(conn1_r).await; // drained l357
+        (conn_id, conn1_w, drain_h)
     };
 
     // 4) check that there are no further connection attempts from controller
-    {
-        // no event should occur / have occurred
-        if let Ok(_) = timeout(
-            Duration::from_millis(2_000u64),
-            network_event_receiver.wait_event(),
-        )
+    if let Some(_) =
+        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+            NetworkEvent::NewConnection(_) => Some(()),
+            _ => None,
+        })
         .await
-        {
-            panic!("an event was emitted by controller while none were expected");
-        }
+    {
+        panic!("a connection event was emitted by controller while none were expected");
     }
 
     network_manager
         .stop(network_event_receiver)
         .await
-        .expect("error while closing connection");
+        .expect("error while closing");
 
     tools::incoming_message_drain_stop(conn1_drain).await;
 

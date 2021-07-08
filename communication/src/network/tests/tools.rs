@@ -15,9 +15,11 @@ use tempfile::NamedTempFile;
 use time::UTime;
 use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 
+use tokio::time::sleep;
+
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
-// generate a named temporary JSON peers file
+/// generate a named temporary JSON peers file
 pub fn generate_peers_file(peer_vec: &Vec<PeerInfo>) -> NamedTempFile {
     use std::io::prelude::*;
     let peers_file_named = NamedTempFile::new().expect("cannot create temp file");
@@ -30,7 +32,7 @@ pub fn generate_peers_file(peer_vec: &Vec<PeerInfo>) -> NamedTempFile {
     peers_file_named
 }
 
-// create a NetworkConfig with typical values
+/// create a NetworkConfig with typical values
 pub fn create_network_config(
     network_controller_port: u16,
     peers_file_path: &Path,
@@ -67,8 +69,15 @@ pub fn create_network_config(
     )
 }
 
-// establish a full alive connection to the controller
-// note: panics if any other NetworkEvent is received before NewConnection
+/// Establish a full alive connection to the controller
+///
+/// * establishes connection
+/// * performs handshake
+/// * waits for NetworkEvent::NewConnection with returned node
+///
+/// Returns:
+/// * nodeid we just connected to
+/// * binders used to communicate with that node
 pub async fn full_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
@@ -105,26 +114,27 @@ pub async fn full_connection_to_controller(
     .expect("handshake failed");
 
     // wait for a NetworkEvent::NewConnection event
-    let event_node_id = match timeout(
-        Duration::from_millis(event_timeout_ms),
-        network_event_receiver.wait_event(),
+    wait_network_event(
+        network_event_receiver,
+        event_timeout_ms.into(),
+        |msg| match msg {
+            NetworkEvent::NewConnection(conn_node_id) => {
+                if conn_node_id == mock_node_id {
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        },
     )
     .await
-    {
-        Ok(Ok(NetworkEvent::NewConnection(node_id))) => node_id,
-        Ok(Ok(evt)) => panic!("unexpected event sent by controller: {:?}", evt),
-        Ok(Err(_)) => panic!("could not receive event"),
-        Err(_) => panic!("timeout while waiting for NewConnection event"),
-    };
-    assert_eq!(
-        event_node_id, mock_node_id,
-        "wrong node id sent in NewConnection event"
-    );
+    .expect("did not receive NewConnection event with expected node id");
 
     (mock_node_id, read_binder, write_binder)
 }
 
-// try to establish a connection to the controller and expect rejection
+/// try to establish a connection to the controller and expect rejection
 pub async fn rejected_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
@@ -133,7 +143,6 @@ pub async fn rejected_connection_to_controller(
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
     serialization_context: SerializationContext,
-    accepted_event_list: Option<Vec<NetworkEvent>>,
 ) {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
@@ -160,43 +169,45 @@ pub async fn rejected_connection_to_controller(
     .run()
     .await;
 
-    // wait for a NetworkEvent::NewConnection event
-    match timeout(
-        Duration::from_millis(event_timeout_ms),
-        network_event_receiver.wait_event(),
-    )
-    .await
-    {
-        Ok(Ok(evt)) => {
-            if let Some(ref events) = accepted_event_list {
-                let found = events
-                    .iter()
-                    .find(|base_event| match base_event {
-                        NetworkEvent::ConnectionClosed(base_nodeid) => {
-                            if let NetworkEvent::ConnectionClosed(nodeid) = evt {
-                                *base_nodeid == nodeid
-                            } else {
-                                false
-                            }
-                        }
-                        //other event aren't needed here.
-                        _ => false,
-                    })
-                    .is_some();
-                if !found {
-                    panic!("unexpected event sent by controller: {:?}", evt)
+    // wait for NetworkEvent::NewConnection or NetworkEvent::ConnectionClosed events to NOT happen
+    if let Some(_) =
+        wait_network_event(
+            network_event_receiver,
+            event_timeout_ms.into(),
+            |msg| match msg {
+                NetworkEvent::NewConnection(conn_node_id) => {
+                    if conn_node_id == mock_node_id {
+                        Some(())
+                    } else {
+                        None
+                    }
                 }
-            }
-        }
-
-        Ok(Err(_)) => panic!("could not receive event"),
-        Err(_) => return, // rejection at
+                NetworkEvent::ConnectionClosed(conn_node_id) => {
+                    if conn_node_id == mock_node_id {
+                        Some(())
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+        )
+        .await
+    {
+        panic!("unexpected node connection event detected");
     }
 }
 
-// establish a full alive connection from the network controller
-// note: fails if the controller attempts a connection to another IP first
-// note: panics if any other NetworkEvent is received before NewConnection
+/// establish a full alive connection from the network controller
+/// note: fails if the controller attempts a connection to another IP first
+
+/// * wait for the incoming connection attempt, check address and accept
+/// * perform handshake
+/// * wait for a NetworkEvent::NewConnection event
+///
+/// Returns:
+/// * nodeid we just connected to
+/// * binders used to communicate with that node
 pub async fn full_connection_from_controller(
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
@@ -205,7 +216,6 @@ pub async fn full_connection_from_controller(
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
     serialization_context: SerializationContext,
-    accepted_event_list: Option<Vec<NetworkEvent>>,
 ) -> (NodeId, ReadBinder, WriteBinder) {
     // wait for the incoming connection attempt, check address and accept
     let (mock_read_half, mock_write_half, ctl_addr, resp_tx) = timeout(
@@ -236,45 +246,45 @@ pub async fn full_connection_from_controller(
     .expect("handshake failed");
 
     // wait for a NetworkEvent::NewConnection event
-    let event_node_id = loop {
-        match timeout(
-            Duration::from_millis(event_timeout_ms),
-            network_event_receiver.wait_event(),
-        )
-        .await
-        {
-            Ok(Ok(NetworkEvent::NewConnection(node_id))) => break node_id,
-            Ok(Ok(evt)) => {
-                if let Some(ref events) = accepted_event_list {
-                    let found = events
-                        .iter()
-                        .find(|base_event| match base_event {
-                            NetworkEvent::ConnectionClosed(base_nodeid) => {
-                                if let NetworkEvent::ConnectionClosed(nodeid) = evt {
-                                    *base_nodeid == nodeid
-                                } else {
-                                    false
-                                }
-                            }
-                            //other event aren't needed here.
-                            _ => false,
-                        })
-                        .is_some();
-                    if !found {
-                        panic!("unexpected event sent by controller: {:?}", evt)
-                    }
+    wait_network_event(
+        network_event_receiver,
+        event_timeout_ms.into(),
+        |evt| match evt {
+            NetworkEvent::NewConnection(node_id) => {
+                if node_id == mock_node_id {
+                    Some(())
+                } else {
+                    None
                 }
             }
-            Ok(Err(_)) => panic!("could not receive event"),
-            Err(_) => panic!("timeout while waiting for NewConnection event"),
-        };
-    };
-    assert_eq!(
-        event_node_id, mock_node_id,
-        "wrong node id sent in NewConnection event"
-    );
+            _ => None,
+        },
+    )
+    .await
+    .expect("did not receive expected node connection event");
 
     (mock_node_id, read_binder, write_binder)
+}
+
+pub async fn wait_network_event<F, T>(
+    network_event_receiver: &mut NetworkEventReceiver,
+    timeout: UTime,
+    filter_map: F,
+) -> Option<T>
+where
+    F: Fn(NetworkEvent) -> Option<T>,
+{
+    let timer = sleep(timeout.into());
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            evt_opt = network_event_receiver.wait_event() => match evt_opt {
+                Ok(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
+                _ => panic!("network event channel died")
+            },
+            _ = &mut timer => return None
+        }
+    }
 }
 
 pub async fn incoming_message_drain_start(
