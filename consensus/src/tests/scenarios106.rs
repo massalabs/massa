@@ -1,8 +1,9 @@
 //RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
 use super::super::{
-    consensus_controller::ConsensusController,
-    default_consensus_controller::DefaultConsensusController, timeslots,
+    consensus_controller::{ConsensusController, ConsensusControllerInterface},
+    default_consensus_controller::DefaultConsensusController,
+    timeslots,
 };
 use super::mock_protocol_controller::{self};
 use super::tools;
@@ -28,9 +29,10 @@ async fn test_unsorted_block() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
+    let cnss_cmd = cnss.get_interface();
 
     let start_slot = 3;
-    let genesis_hashes = cnss
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -131,9 +133,10 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("could not create consensus controller");
+    let cnss_cmd = cnss.get_interface();
 
     //create test blocks
-    let genesis_hashes = cnss
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -180,7 +183,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     );
 
     //validate the block isn't final.
-    let block_graph = cnss.get_block_graph_status().await.unwrap();
+    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     assert!(!block_graph.discarded_blocks.set.contains(&hash3));
 }
 
@@ -202,9 +205,10 @@ async fn test_too_many_blocks_in_the_future() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("could not create consensus controller");
+    let cnss_cmd = cnss.get_interface();
 
     //get genesis block hashes
-    let genesis_hashes = cnss
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -250,7 +254,7 @@ async fn test_too_many_blocks_in_the_future() {
         < (max_period + 1, 0)
     {}
     // ensure that the graph contains only what we expect
-    let graph = cnss
+    let graph = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status");
@@ -283,7 +287,8 @@ async fn test_dep_in_back_order() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -375,7 +380,8 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -458,8 +464,9 @@ async fn test_add_block_that_depends_on_invalid_block() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
+    let cnss_cmd = cnss.get_interface();
 
-    let genesis_hashes = cnss
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")

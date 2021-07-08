@@ -7,7 +7,6 @@ use super::establisher::Establisher;
 use super::network_controller::*;
 use super::peer_info_database::*;
 use async_trait::async_trait;
-use futures::StreamExt;
 pub use network_worker::{NetworkCommand, NetworkWorker};
 use std::net::IpAddr;
 use tokio::sync::{mpsc, oneshot};
@@ -86,7 +85,7 @@ impl<EstablisherT: Establisher> NetworkController for DefaultNetworkController<E
         debug!("stopping network controller");
         massa_trace!("begin", {});
         drop(self.network_command_tx);
-        while let Some(_) = self.network_event_rx.next().await {}
+        while let Some(_) = self.network_event_rx.recv().await {}
         self.controller_fn_handle.await?;
         debug!("network controller stopped");
         massa_trace!("end", {});

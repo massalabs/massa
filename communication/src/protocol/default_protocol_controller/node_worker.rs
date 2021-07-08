@@ -6,7 +6,7 @@ use super::super::{
 };
 use crate::error::{ChannelError, CommunicationError};
 use crate::network::network_controller::ConnectionClosureReason;
-use futures::{future::FusedFuture, FutureExt, StreamExt};
+use futures::{future::FusedFuture, FutureExt};
 use models::block::Block;
 use std::net::IpAddr;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -93,7 +93,7 @@ where
         let node_writer_handle = tokio::spawn(async move {
             let mut clean_exit = true;
             loop {
-                match writer_command_rx.next().await {
+                match writer_command_rx.recv().await {
                     Some(msg) => {
                         if let Err(_) =
                             timeout(write_timeout.to_duration(), socket_writer.send(&msg)).await
@@ -145,7 +145,7 @@ where
                 },
 
                 // node command
-                cmd = self.node_command_rx.next() => match cmd {
+                cmd = self.node_command_rx.recv() => match cmd {
                     Some(NodeCommand::Close) => break,
                     Some(NodeCommand::SendPeerList(ip_vec)) => {
                         writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(|err| ChannelError::from(err))?;

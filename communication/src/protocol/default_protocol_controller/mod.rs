@@ -7,7 +7,6 @@ use crate::error::{ChannelError, CommunicationError};
 use crate::network::network_controller::NetworkController;
 use async_trait::async_trait;
 use crypto::{hash::Hash, signature::SignatureEngine};
-use futures::StreamExt;
 use models::block::Block;
 pub use node_worker::{NodeCommand, NodeEvent};
 pub use protocol_worker::ProtocolCommand;
@@ -97,7 +96,7 @@ impl<NetworkControllerT: NetworkController> ProtocolController
         debug!("stopping protocol controller");
         massa_trace!("begin", {});
         drop(self.protocol_command_tx);
-        while let Some(_) = self.protocol_event_rx.next().await {}
+        while let Some(_) = self.protocol_event_rx.recv().await {}
         self.protocol_controller_handle.await?;
         debug!("protocol controller stopped");
         massa_trace!("end", {});

@@ -14,6 +14,7 @@ level = 4
     ]
     current_node_index = 0
     max_discarded_blocks = 1000
+    max_dependency_blocks = 100
     future_block_processing_max_periods = 3
     max_future_processing_blocks = 100
     delta_f0 = 576

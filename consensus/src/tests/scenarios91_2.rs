@@ -1,13 +1,16 @@
 use crypto::hash::Hash;
+use std::time::Duration;
 use time::UTime;
+use tokio::time::timeout;
 
 use crate::{
-    consensus_controller::ConsensusController,
+    consensus_controller::{ConsensusController, ConsensusControllerInterface},
     default_consensus_controller::DefaultConsensusController,
+    random_selector::RandomSelector,
 };
 
 use super::{
-    mock_protocol_controller,
+    mock_protocol_controller::{self, MockProtocolCommand},
     tools::{self, create_block_with_merkle_root},
 };
 
@@ -35,7 +38,8 @@ async fn test_queueing() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -165,7 +169,8 @@ async fn test_doubles() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -239,7 +244,7 @@ async fn test_doubles() {
     )
     .await;
 
-    if let Some(block) = cnss.get_active_block(valid_hasht0).await.unwrap() {
+    if let Some(block) = cnss_cmd.get_active_block(valid_hasht0).await.unwrap() {
         tools::propagate_block(
             &mut protocol_controler_interface,
             node_ids[0].1.clone(),
@@ -274,7 +279,8 @@ async fn test_double_staking() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -368,7 +374,7 @@ async fn test_double_staking() {
     )
     .await;
 
-    let graph = cnss.get_block_graph_status().await.unwrap();
+    let graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let cliques_1 = tools::get_cliques(&graph, hash_1);
     let cliques_2 = tools::get_cliques(&graph, hash_2);
     assert!(cliques_1.is_disjoint(&cliques_2));
@@ -398,7 +404,8 @@ async fn test_test_parents() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -483,4 +490,49 @@ async fn test_test_parents() {
         false,
     )
     .await;
+}
+
+#[tokio::test]
+async fn test_block_creation() {
+    let node_ids = tools::create_node_ids(2);
+
+    let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
+    let mut cfg = tools::default_consensus_config(&node_ids);
+    cfg.t0 = 500.into();
+    cfg.delta_f0 = 32;
+    cfg.disable_block_creation = false;
+    cfg.thread_count = 1;
+
+    let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
+    let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
+    let mut selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights).unwrap();
+    let mut expected_slots = Vec::new();
+    for i in 1..11 {
+        expected_slots.push(selector.draw((i, 0)))
+    }
+
+    //to avoid timing pb for block in the future
+    cfg.genesis_timestamp = UTime::now().unwrap();
+
+    let _cnss = DefaultConsensusController::new(&cfg, protocol_controller)
+        .await
+        .expect("Could not create consensus controller");
+
+    let timeout_ms = 500;
+
+    for (i, &draw) in expected_slots.iter().enumerate() {
+        match timeout(
+            Duration::from_millis(timeout_ms),
+            protocol_controler_interface.wait_command(),
+        )
+        .await
+        {
+            Ok(Some(MockProtocolCommand::PropagateBlock { hash: _, block })) => {
+                assert_eq!(draw, 0);
+                assert_eq!(i + 1, block.header.period_number as usize);
+            }
+            Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
+            Err(_) => assert_eq!(draw, 1),
+        };
+    }
 }

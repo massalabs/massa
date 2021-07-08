@@ -1,5 +1,6 @@
 use crate::error::CryptoError;
 use bitcoin_hashes;
+use std::str::FromStr;
 pub const HASH_SIZE_BYTES: usize = 32;
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
@@ -218,6 +219,13 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
 
             d.deserialize_bytes(BytesVisitor)
         }
+    }
+}
+
+impl FromStr for Hash {
+    type Err = CryptoError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Hash::from_bs58_check(s)
     }
 }
 

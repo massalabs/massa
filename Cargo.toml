@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+	"api",
     "crypto",
     "logging",
     "models",

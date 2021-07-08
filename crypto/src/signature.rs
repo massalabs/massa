@@ -2,6 +2,7 @@ use super::hash::Hash;
 use crate::error::CryptoError;
 use bs58;
 use secp256k1::{Message, Secp256k1};
+use std::str::FromStr;
 
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 33;
@@ -21,6 +22,13 @@ impl std::fmt::Display for PrivateKey {
 impl std::fmt::Debug for PrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
+    }
+}
+
+impl FromStr for PrivateKey {
+    type Err = CryptoError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        PrivateKey::from_bs58_check(s)
     }
 }
 
@@ -256,6 +264,13 @@ impl std::fmt::Display for PublicKey {
 impl std::fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
+    }
+}
+
+impl FromStr for PublicKey {
+    type Err = CryptoError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        PublicKey::from_bs58_check(s)
     }
 }
 
@@ -507,6 +522,13 @@ impl std::fmt::Display for Signature {
 impl std::fmt::Debug for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
+    }
+}
+
+impl FromStr for Signature {
+    type Err = CryptoError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Signature::from_bs58_check(s)
     }
 }
 

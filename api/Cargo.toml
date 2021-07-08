@@ -1,5 +1,5 @@
 [package]
-name = "consensus"
+name = "api"
 version = "0.1.0"
 authors = ["Massa Labs <contact@massa.network>"]
 edition = "2018"
@@ -8,24 +8,13 @@ edition = "2018"
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
-tokio-util = { version = "0.6", features = ["codec"] }
-futures = { version = "0.3" }
-async-trait = "0.1.42"
-rand_xoshiro = "0.6"
-crypto = {path = "../crypto"}
-communication = {path = "../communication"}
+warp = "0.2.5"
 logging = { path = "../logging" }
-rand = { version = "0.8"}
 serde = { version = "1.0", features = ["derive"] }
 models = {path = "../models"}
-flexbuffers = { version = "0.2" }
+consensus = {path = "../consensus"}
+crypto = {path = "../crypto"}
 serde_json = { version = "1.0" }
 log = { version = "0.4" }
 thiserror = "1.0"
-num = "0.3.1"
-time= { path = "../time"}
-
-[dev-dependencies]
-stderrlog = { version = "0.5" }
-pretty_assertions = "0.6"
-tempfile = "3.2"
+time = {path = "../time"}

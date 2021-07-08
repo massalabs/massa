@@ -182,7 +182,8 @@ impl PeerInfoDatabase {
         let peers_file_dump_interval = cfg.peers_file_dump_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {
-            let mut delay = sleep(Duration::from_millis(0));
+            let delay = sleep(Duration::from_millis(0));
+            tokio::pin!(delay);
             let mut pending: Option<HashMap<IpAddr, PeerInfo>> = None;
             loop {
                 tokio::select! {
@@ -198,7 +199,7 @@ impl PeerInfoDatabase {
                             } else {
                                 pending = None;
                             }
-                            delay = sleep(peers_file_dump_interval.to_duration());
+                            delay.set(sleep(peers_file_dump_interval.to_duration()));
                         },
                         _ => break
                     },
