@@ -1610,6 +1610,31 @@ impl BlockGraph {
         Ok(())
     }
 
+    fn prune_slot_waiting(&mut self) {
+        let mut slot_waiting: Vec<(Slot, Hash)> = self
+            .block_statuses
+            .iter()
+            .filter_map(|(hash, block_status)| {
+                if let BlockStatus::WaitingForSlot(header_or_block) = block_status {
+                    return Some((header_or_block.get_slot(), *hash));
+                }
+                None
+            })
+            .collect();
+        slot_waiting.sort_unstable();
+        let retained: HashSet<Hash> = slot_waiting
+            .into_iter()
+            .take(self.cfg.max_future_processing_blocks)
+            .map(|(_slot, hash)| hash)
+            .collect();
+        self.block_statuses.retain(|hash, block_status| {
+            if let BlockStatus::WaitingForSlot(_) = block_status {
+                return retained.contains(hash);
+            }
+            true
+        });
+    }
+
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
         let mut discard_hashes: Vec<(u64, Hash)> = self
             .block_statuses
@@ -1646,10 +1671,13 @@ impl BlockGraph {
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active(current_slot)?;
 
-        // Step 2: prune dependency waiting blocks
+        // Step 2: prune slot waiting blocks
+        self.prune_slot_waiting();
+
+        // Step 3: prune dependency waiting blocks
         self.prune_waiting_for_dependencies()?;
 
-        // Step 3: prune discarded
+        // Step 4: prune discarded
         self.prune_discarded()?;
 
         Ok(discarded_finals)
