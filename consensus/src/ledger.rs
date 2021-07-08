@@ -208,6 +208,10 @@ impl OperationLedgerInterface for Operation {
                     },
                 )?;
             }
+            // roll operations are handled separately
+            // because of compensations, lock delays etc...
+            models::OperationType::RollBuy { .. } => {}
+            models::OperationType::RollSell { .. } => {}
         }
 
         Ok(changes)
