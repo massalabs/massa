@@ -36,7 +36,7 @@ impl OperationSearchResult {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AddressRollState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,

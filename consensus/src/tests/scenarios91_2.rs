@@ -288,7 +288,7 @@ async fn test_doubles() {
         .await
         .unwrap()
     {
-        tools::propagate_block(&mut protocol_controller, block, false).await;
+        tools::propagate_block(&mut protocol_controller, block, false, 1000).await;
     };
 
     // stop controller while ignoring all commands
@@ -413,7 +413,7 @@ async fn test_double_staking() {
         vec![valid_hasht0, valid_hasht1],
         cfg.staking_keys[0].clone(),
     );
-    tools::propagate_block(&mut protocol_controller, block_1, true).await;
+    tools::propagate_block(&mut protocol_controller, block_1, true, 150).await;
 
     let operation_merkle_root = Hash::hash("so long and thanks for all the fish".as_bytes());
     let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
@@ -423,7 +423,7 @@ async fn test_double_staking() {
         vec![valid_hasht0, valid_hasht1],
         cfg.staking_keys[0].clone(),
     );
-    tools::propagate_block(&mut protocol_controller, block_2, true).await;
+    tools::propagate_block(&mut protocol_controller, block_2, true, 150).await;
 
     let graph = consensus_command_sender
         .get_block_graph_status()

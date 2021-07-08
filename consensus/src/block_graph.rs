@@ -2274,7 +2274,6 @@ impl BlockGraph {
         roll_involved_addresses.retain(|addr| {
             addr.get_thread(self.cfg.thread_count) == block_to_check.header.content.slot.thread
         });
-
         let mut current_ledger = match self.get_ledger_at_parents(
             &block_to_check.header.content.parents,
             &ledger_involved_addresses,
@@ -2303,8 +2302,10 @@ impl BlockGraph {
             .content
             .slot
             .get_cycle(self.cfg.periods_per_cycle);
+
         let (mut roll_counts, mut cycle_roll_updates) =
             self.get_roll_data_at_parent(parent_id, Some(&roll_involved_addresses), pos)?;
+
         if block_to_check
             .header
             .content
@@ -2426,6 +2427,7 @@ impl BlockGraph {
         // (including step 6 in consensus/pos.md)
         for operation in block_to_check.operations.iter() {
             let op_roll_updates = operation.get_roll_updates()?;
+
             // (step 6.1 in consensus/pos.md)
             if let Err(err) = roll_counts.apply_subset(&op_roll_updates, None) {
                 warn!("could not apply roll update in block: {}", err);
