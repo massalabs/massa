@@ -638,7 +638,7 @@ mod tests {
         let wakeup_interval = chrono::Duration::from_std(cfg.wakeup_interval)
             .expect("NetworkCOnfig.wakeup_interval overflows chrono");
 
-        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
+        let (saver_watch_tx, saver_watch_rx) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
         PeerInfoDatabase {
             cfg,
