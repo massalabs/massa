@@ -5,6 +5,7 @@ use crate::{
 };
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
+use models::slot::Slot;
 use time::UTime;
 use tokio::time::{sleep_until, timeout};
 
@@ -54,8 +55,7 @@ async fn test_queueing() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -67,8 +67,7 @@ async fn test_queueing() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -81,8 +80,7 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            0,
-            i + 2,
+            Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -94,8 +92,7 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            1,
-            i + 2,
+            Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -104,15 +101,14 @@ async fn test_queueing() {
     }
 
     let (missed_hash, _missed_block, _missed_key) =
-        tools::create_block(&cfg, 0, 32, vec![valid_hasht0, valid_hasht1]);
+        tools::create_block(&cfg, Slot::new(32, 0), vec![valid_hasht0, valid_hasht1]);
 
     //create 1 block in thread 0 slot 33 with missed block as parent
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        33,
+        Slot::new(33, 0),
         vec![missed_hash, valid_hasht1],
         false,
         false,
@@ -125,8 +121,7 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            0,
-            i + 34,
+            Slot::new(i + 34, 0),
             vec![valid_hasht0, valid_hasht1],
             false,
             false,
@@ -138,8 +133,7 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            1,
-            i + 34,
+            Slot::new(i + 34, 1),
             vec![valid_hasht0, valid_hasht1],
             false,
             false,
@@ -202,8 +196,7 @@ async fn test_doubles() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -215,8 +208,7 @@ async fn test_doubles() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -229,8 +221,7 @@ async fn test_doubles() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            0,
-            i + 2,
+            Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -242,8 +233,7 @@ async fn test_doubles() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            1,
-            i + 2,
+            Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -256,8 +246,7 @@ async fn test_doubles() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        41,
+        Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
         true,
         false,
@@ -333,8 +322,7 @@ async fn test_double_staking() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -346,8 +334,7 @@ async fn test_double_staking() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -360,8 +347,7 @@ async fn test_double_staking() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            0,
-            i + 2,
+            Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -373,8 +359,7 @@ async fn test_double_staking() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            1,
-            i + 2,
+            Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -387,8 +372,7 @@ async fn test_double_staking() {
     let (hash_1, block_1, _key) = tools::create_block_with_merkle_root(
         &cfg,
         operation_merkle_root,
-        0,
-        41,
+        Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
     );
     tools::propagate_block(
@@ -403,8 +387,7 @@ async fn test_double_staking() {
     let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
         &cfg,
         operation_merkle_root,
-        0,
-        41,
+        Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
     );
     tools::propagate_block(
@@ -478,8 +461,7 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -491,8 +473,7 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -504,8 +485,7 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        2,
+        Slot::new(2, 0),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
         false,
@@ -517,8 +497,7 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        2,
+        Slot::new(2, 1),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
         false,
@@ -531,8 +510,7 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        3,
+        Slot::new(3, 0),
         vec![valid_hasht0s2, genesis_hashes[1]],
         false,
         false,
@@ -544,8 +522,7 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        3,
+        Slot::new(3, 1),
         vec![genesis_hashes[0], genesis_hashes[0]],
         false,
         false,
@@ -576,7 +553,7 @@ async fn test_block_creation() {
     let mut selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights).unwrap();
     let mut expected_slots = Vec::new();
     for i in 1..11 {
-        expected_slots.push(selector.draw((i, 0)))
+        expected_slots.push(selector.draw(Slot::new(i, 0)))
     }
 
     //to avoid timing pb for block in the future
@@ -602,7 +579,7 @@ async fn test_block_creation() {
                 cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
-                ((i + 1usize) as u64, 0),
+                Slot::new((i + 1usize) as u64, 0),
             )
             .unwrap()
             .estimate_instant()
@@ -618,7 +595,7 @@ async fn test_block_creation() {
         {
             Ok(Some(ProtocolCommand::PropagateBlock { hash: _, block })) => {
                 assert_eq!(draw, 0);
-                assert_eq!(i + 1, block.header.period_number as usize);
+                assert_eq!(i + 1, block.header.slot.period as usize);
             }
             // Ok(Some(_)) => panic!("unexpected command"),
             Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),

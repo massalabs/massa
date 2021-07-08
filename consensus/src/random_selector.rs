@@ -1,4 +1,5 @@
 use crypto::hash::Hash;
+use models::slot::Slot;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -56,15 +57,16 @@ impl RandomSelector {
     /// For given selector and node, the result is deterministic.
     ///
     /// # Argument
-    /// * slot: we want to know staker for that slot.
-    pub fn draw(&mut self, slot: (u64, u8)) -> u32 {
-        while slot.0 >= (self.cache[slot.1 as usize].len() as u64) {
-            self.cache[slot.1 as usize].push(
+    /// * slot: we want to know which staker is selected for that slot.
+    pub fn draw(&mut self, slot: Slot) -> u32 {
+        while slot.period >= (self.cache[slot.thread as usize].len() as u64) {
+            self.cache[slot.thread as usize].push(
                 self.distribution
-                    .sample(&mut self.thread_generators[slot.1 as usize]) as u32,
+                    .sample(&mut self.thread_generators[slot.thread as usize])
+                    as u32,
             );
         }
-        self.cache[slot.1 as usize][slot.0 as usize]
+        self.cache[slot.thread as usize][slot.period as usize]
     }
 }
 
@@ -84,8 +86,8 @@ mod tests {
         let mut selector2 = get_3thread_4participant_random_selector();
 
         for index in 0..1000 {
-            let rnd1 = selector1.draw((1210 + index, 1));
-            let rnd2 = selector2.draw((1210 + index, 1));
+            let rnd1 = selector1.draw(Slot::new(1210 + index, 1));
+            let rnd2 = selector2.draw(Slot::new(1210 + index, 1));
             assert_eq!(rnd1, rnd2, "determinism problem")
         }
     }
@@ -97,8 +99,8 @@ mod tests {
         let mut overlaps = 0;
         let trials: u64 = 1000;
         for index in 0..trials {
-            let rnd1 = selector.draw((1210 + index, 0));
-            let rnd2 = selector.draw((1210 + index, 1));
+            let rnd1 = selector.draw(Slot::new(1210 + index, 0));
+            let rnd2 = selector.draw(Slot::new(1210 + index, 1));
             if rnd1 == rnd2 {
                 overlaps += 1;
             }
@@ -114,9 +116,9 @@ mod tests {
         let mut selector = get_3thread_4participant_random_selector();
         let mut overlaps = 0;
         let trials: u64 = 1000;
-        let mut prev = selector.draw((1210, 2));
+        let mut prev = selector.draw(Slot::new(1210, 2));
         for index in 1..trials {
-            let new = selector.draw((1210 + index, 2));
+            let new = selector.draw(Slot::new(1210 + index, 2));
             if new == prev {
                 overlaps += 1;
             }
@@ -132,9 +134,9 @@ mod tests {
     fn test_same_draw() {
         let mut selector = get_3thread_4participant_random_selector();
         let trials: u64 = 1000;
-        let prev = selector.draw((1210, 2));
+        let prev = selector.draw(Slot::new(1210, 2));
         for _ in 1..trials {
-            let new = selector.draw((1210, 2));
+            let new = selector.draw(Slot::new(1210, 2));
             assert_eq!(
                 prev, new,
                 "consecutive draws of the same iteration are not be the same"

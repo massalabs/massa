@@ -13,7 +13,7 @@ use chrono::Local;
 use chrono::TimeZone;
 use crypto::signature::PublicKey;
 use crypto::signature::Signature;
-use models::operation::Operation;
+use models::{operation::Operation, slot::Slot};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -23,16 +23,6 @@ use time::UTime;
 
 pub const HASH_SIZE_BYTES: usize = 32;
 pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true); //never set to zero.
-
-pub fn compare_hash(
-    (hash1, (slot1, _thread1)): &(Hash, (u64, u8)),
-    (hash2, (slot2, _thread2)): &(Hash, (u64, u8)),
-) -> std::cmp::Ordering {
-    match slot1.cmp(&slot2) {
-        std::cmp::Ordering::Equal => hash1.cmp(&hash2),
-        val @ _ => val,
-    }
-}
 
 #[derive(Clone, Debug, Deserialize)]
 pub enum DiscardReason {
@@ -62,8 +52,7 @@ impl std::fmt::Display for Block {
 #[derive(Debug, Clone, Deserialize)]
 pub struct BlockHeader {
     pub creator: PublicKey,
-    pub thread_number: u8,
-    pub period_number: u64,
+    pub slot: Slot,
     pub roll_number: u32,
     pub parents: Vec<Hash>,
     pub endorsements: Vec<Option<Signature>>,
@@ -80,10 +69,10 @@ impl std::fmt::Display for BlockHeader {
         };
         writeln!(
             f,
-            "creator: {} periode:{} th:{} roll:{} ledger:{} merkle_root:{} parents:{:?} endorsements:{:?}",
+            "creator: {} period:{} thread:{} roll:{} ledger:{} merkle_root:{} parents:{:?} endorsements:{:?}",
             pk,
-            self.period_number,
-            self.thread_number,
+            self.slot.period,
+            self.slot.thread,
             self.roll_number,
             self.out_ledger_hash,
             self.operation_merkle_root,
@@ -98,9 +87,9 @@ impl std::fmt::Display for BlockHeader {
 #[derive(Clone, Deserialize)]
 pub struct State {
     time: UTime,
-    latest_slot: Option<(u64, u8)>,
+    latest_slot: Option<Slot>,
     our_ip: Option<IpAddr>,
-    last_final: Vec<(Hash, u64, u8, UTime)>,
+    last_final: Vec<(Hash, Slot, UTime)>,
     nb_cliques: usize,
     nb_peers: usize,
 }
@@ -114,7 +103,7 @@ impl std::fmt::Display for State {
             "  Time: {:?} Latest:{}",
             date,
             self.latest_slot
-                .map(|(sl, th)| format!("Period {} Thread {}", sl, th))
+                .map(|s| format!("Slot {:?}", s))
                 .unwrap_or("None".to_string())
         )?;
         write!(
@@ -125,8 +114,8 @@ impl std::fmt::Display for State {
                 .map(|i| i.to_string())
                 .unwrap_or("None".to_string())
         )?;
-        let mut final_blocks: Vec<&(Hash, u64, u8, UTime)> = self.last_final.iter().collect();
-        final_blocks.sort_unstable_by(|a, b| compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2))));
+        let mut final_blocks: Vec<&(Hash, Slot, UTime)> = self.last_final.iter().collect();
+        final_blocks.sort_unstable_by_key(|v| (v.1, v.0));
 
         write!(
             f,
@@ -134,11 +123,10 @@ impl std::fmt::Display for State {
             self.nb_cliques,
             final_blocks
                 .iter()
-                .map(|(hash, slot, th, date)| format!(
-                    " {} per:{} th:{} {:?}",
+                .map(|(hash, slot, date)| format!(
+                    " {} slot:{:?} {:?}",
                     hash,
                     slot,
-                    th,
                     Local.timestamp(Into::<Duration>::into(*date).as_secs() as i64, 0)
                 ))
                 .collect::<Vec<String>>()
@@ -150,30 +138,20 @@ impl std::fmt::Display for State {
 pub struct StakerInfo {
     staker_active_blocks: Vec<(Hash, BlockHeader)>,
     staker_discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,
-    staker_next_draws: Vec<(u64, u8)>,
+    staker_next_draws: Vec<Slot>,
 }
 impl std::fmt::Display for StakerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "  active blocks:")?;
         let mut blocks: Vec<&(Hash, BlockHeader)> = self.staker_active_blocks.iter().collect();
-        blocks.sort_unstable_by(|a, b| {
-            compare_hash(
-                &(a.0, (a.1.period_number, a.1.thread_number)),
-                &(b.0, (b.1.period_number, b.1.thread_number)),
-            )
-        });
+        blocks.sort_unstable_by_key(|v| (v.1.slot, v.0));
         for (hash, block) in &blocks {
             write!(f, "    block: hash:{} header: {}", hash, block)?;
         }
         writeln!(f, "  discarded blocks:")?;
         let mut blocks: Vec<&(Hash, DiscardReason, BlockHeader)> =
             self.staker_discarded_blocks.iter().collect();
-        blocks.sort_unstable_by(|a, b| {
-            compare_hash(
-                &(a.0, (a.2.period_number, a.2.thread_number)),
-                &(b.0, (b.2.period_number, b.2.thread_number)),
-            )
-        });
+        blocks.sort_unstable_by_key(|v| (v.2.slot, v.0));
         for (hash, reason, block) in &blocks {
             write!(
                 f,
@@ -186,7 +164,7 @@ impl std::fmt::Display for StakerInfo {
             "  staker_next_draws{:?}:",
             self.staker_next_draws
                 .iter()
-                .map(|(slot, th)| format!("(per:{},th:{})", slot, th))
+                .map(|slot| format!("(slot:{})", slot))
                 .collect::<Vec<String>>()
         )
     }
@@ -344,6 +322,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use models::slot::Slot;
     use std::net::Ipv4Addr;
 
     #[test]
@@ -355,7 +334,7 @@ mod tests {
         let block_string = serde_json::to_string(&base_block).unwrap();
         let p: super::Block = serde_json::from_str(&block_string).unwrap();
         assert_eq!(p.header.creator, public_key);
-        assert_eq!(p.header.thread_number, 0);
+        assert_eq!(p.header.slot.thread, 0);
         assert_eq!(
             p.header.parents,
             vec![deserilized_hash.clone(), deserilized_hash.clone(),]
@@ -398,8 +377,7 @@ mod tests {
 
         let header = models::block::BlockHeader {
             creator: public_key,
-            thread_number: 0,
-            period_number: 1,
+            slot: Slot::new(1, 0),
             roll_number: 2,
             parents: vec![
                 crypto::hash::Hash::hash("default_val".as_bytes()),

@@ -3,6 +3,7 @@
 use super::{mock_protocol_controller::MockProtocolController, tools};
 use crate::start_consensus_controller;
 use crypto::{hash::Hash, signature::SignatureEngine};
+use models::slot::Slot;
 use time::UTime;
 
 //use time::UTime;
@@ -44,8 +45,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        2,
+        Slot::new(2, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -57,8 +57,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        2,
-        1,
+        Slot::new(1, 2),
         genesis_hashes.clone(),
         false,
         false,
@@ -70,8 +69,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        0,
+        Slot::new(0, 0),
         genesis_hashes.clone(),
         false,
         false,
@@ -83,8 +81,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         vec![valid_block_p2t0, genesis_hashes[1]],
         false,
         false,
@@ -93,7 +90,7 @@ async fn test_block_validity() {
 
     //create block with wrong signature
     let (invalid_hash, mut invalid_block, block_private_key) =
-        tools::create_block(&cfg, 0, 15, genesis_hashes.clone());
+        tools::create_block(&cfg, Slot::new(15, 0), genesis_hashes.clone());
     let signature_engine = SignatureEngine::new();
     //use other hash
     invalid_block.signature = signature_engine
@@ -107,7 +104,7 @@ async fn test_block_validity() {
 
     //create block with wrong public key (creator)
     let (invalid_hash, mut invalid_block, block_private_key) =
-        tools::create_block(&cfg, 0, 15, genesis_hashes.clone());
+        tools::create_block(&cfg, Slot::new(15, 0), genesis_hashes.clone());
     //change creator and rehash
     invalid_block.header.creator = signature_engine.derive_public_key(&cfg.genesis_key);
     let signature_engine = SignatureEngine::new();
@@ -126,8 +123,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -139,8 +135,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -151,8 +146,7 @@ async fn test_block_validity() {
     let (block_clique_hash, valid_block, _) = tools::create_block_with_merkle_root(
         &cfg,
         Hash::hash("Other hash!".as_bytes()),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
     );
     protocol_controller
@@ -162,7 +156,7 @@ async fn test_block_validity() {
 
     //validate block with parent in same slot same thread
     let (child_clique_hash2, valid_block, _) =
-        tools::create_block(&cfg, 0, 3, vec![valid_hash1, block_clique_hash]);
+        tools::create_block(&cfg, Slot::new(3, 0), vec![valid_hash1, block_clique_hash]);
     protocol_controller
         .receive_block(node_ids[0].1.clone(), valid_block)
         .await;
@@ -178,8 +172,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        2,
+        Slot::new(2, 0),
         vec![valid_hash1, valid_hash2],
         true,
         false,
@@ -191,8 +184,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        2,
+        Slot::new(2, 1),
         vec![block_clique_hash, valid_hash2],
         true,
         false,
@@ -200,8 +192,11 @@ async fn test_block_validity() {
     .await;
 
     //create a block with parent on the different clique.
-    let (child_clique_hash2, valid_block, _) =
-        tools::create_block(&cfg, 0, 3, vec![child_clique_hash1, child_clique_hash2]);
+    let (child_clique_hash2, valid_block, _) = tools::create_block(
+        &cfg,
+        Slot::new(3, 0),
+        vec![child_clique_hash1, child_clique_hash2],
+    );
     protocol_controller
         .receive_block(node_ids[0].1.clone(), valid_block)
         .await;
@@ -216,8 +211,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        3,
+        Slot::new(3, 0),
         vec![child_clique_hash1, valid_hash2],
         true,
         false,
@@ -229,8 +223,7 @@ async fn test_block_validity() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        4,
+        Slot::new(4, 0),
         vec![valid_hash1, valid_hash2],
         true,
         false,
@@ -294,8 +287,7 @@ async fn test_ti() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -307,8 +299,7 @@ async fn test_ti() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -330,8 +321,7 @@ async fn test_ti() {
     let (fork_block_hash, block, _) = tools::create_block_with_merkle_root(
         &cfg,
         Hash::hash("Other hash!".as_bytes()),
-        0,
-        2,
+        Slot::new(2, 0),
         genesis_hashes.clone(),
     );
 
@@ -358,13 +348,12 @@ async fn test_ti() {
 
     //extend first clique
     let mut parentt0sn_hash = valid_hasht0s1;
-    for slot in 3..=35 {
+    for period in 3..=35 {
         let block_hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            0,
-            slot,
+            Slot::new(period, 0),
             vec![parentt0sn_hash, valid_hasht1s1],
             true,
             false,
@@ -384,7 +373,7 @@ async fn test_ti() {
 
     //create new block in other clique
     let (invalid_block_hasht1s2, block, _) =
-        tools::create_block(&cfg, 1, 2, vec![fork_block_hash, valid_hasht1s1]);
+        tools::create_block(&cfg, Slot::new(2, 1), vec![fork_block_hash, valid_hasht1s1]);
     protocol_controller
         .receive_block(node_ids[0].1.clone(), block)
         .await;
@@ -459,8 +448,7 @@ async fn test_gpi() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -472,8 +460,7 @@ async fn test_gpi() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -497,8 +484,7 @@ async fn test_gpi() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        2,
+        Slot::new(2, 0),
         vec![valid_hasht0s1, genesis_hashes[1]],
         true,
         false,
@@ -509,8 +495,7 @@ async fn test_gpi() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        2,
+        Slot::new(2, 1),
         vec![genesis_hashes[0], valid_hasht1s1],
         true,
         false,
@@ -541,13 +526,12 @@ async fn test_gpi() {
     // * continue with 33 additional blocks in thread 0, that extend the clique of the block in t0s2:
     //    - a block in slot t0sX has parents (t0sX-1, t1s1), for X from 3 to 35
     let mut parentt0sn_hash = valid_hasht0s2;
-    for slot in 3..=35 {
+    for period in 3..=35 {
         let block_hash = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            0,
-            slot,
+            Slot::new(period, 0),
             vec![parentt0sn_hash, valid_hasht1s1],
             true,
             false,
@@ -560,8 +544,7 @@ async fn test_gpi() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        3,
+        Slot::new(3, 1),
         vec![valid_hasht0s1, valid_hasht1s2],
         false,
         false,
@@ -639,8 +622,7 @@ async fn test_old_stale() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -652,8 +634,7 @@ async fn test_old_stale() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        1,
-        1,
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -666,8 +647,7 @@ async fn test_old_stale() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            0,
-            i + 2,
+            Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -679,8 +659,7 @@ async fn test_old_stale() {
             &mut protocol_controller,
             &cfg,
             node_ids[0].1.clone(),
-            1,
-            i + 2,
+            Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -693,8 +672,7 @@ async fn test_old_stale() {
         &mut protocol_controller,
         &cfg,
         node_ids[0].1.clone(),
-        0,
-        1,
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         false,
         false,

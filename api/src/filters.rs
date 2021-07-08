@@ -146,6 +146,7 @@
 //! ```
 
 use crate::ApiError;
+use models::slot::Slot;
 
 use super::config::ApiConfig;
 use communication::{
@@ -178,9 +179,9 @@ pub enum ApiEvent {
     GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
     GetSelectionDraw(
-        (u64, u8),
-        (u64, u8),
-        oneshot::Sender<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>,
+        Slot,
+        Slot,
+        oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     ),
 }
 
@@ -450,10 +451,10 @@ async fn retrieve_peers(
 }
 
 async fn retrieve_selection_draw(
-    start: (u64, u8),
-    end: (u64, u8),
+    start: Slot,
+    end: Slot,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Vec<((u64, u8), PublicKey)>, ApiError> {
+) -> Result<Vec<(Slot, PublicKey)>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
         .send(ApiEvent::GetSelectionDraw(start, end, response_tx))
@@ -474,8 +475,8 @@ async fn retrieve_selection_draw(
         })
 }
 
-/// Returns best parents as a Vec<Hash, (u64, u8)> wrapped in a reply.
-/// The (u64, u8) tuple represents the parent's slot.
+/// Returns best parents as a Vec<Hash, Slot> wrapped in a reply.
+/// The Slot represents the parent's slot.
 ///
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -497,9 +498,7 @@ async fn get_current_parents(
     let mut best = Vec::new();
     for hash in parents {
         match graph.active_blocks.get_key_value(&hash) {
-            Some((_, block)) => {
-                best.push((hash, (block.block.period_number, block.block.thread_number)))
-            }
+            Some((_, block)) => best.push((hash, block.block.slot)),
             None => {
                 return Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
@@ -516,8 +515,7 @@ async fn get_current_parents(
     Ok(warp::reply::json(&best).into_response())
 }
 
-/// Returns last final blocks as a Vec<Hash, (u64, u8)> wrapped in a reply.
-/// The (u64, u8) tuple represents the block's slot.
+/// Returns last final blocks as a Vec<(Hash, Slot)> wrapped in a reply.
 ///
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -543,8 +541,7 @@ async fn get_last_final(
     Ok(warp::reply::json(&finals).into_response())
 }
 
-/// Returns all blocks in a time interval as a Vec<Hash, (u64, u8)> wrapped in a reply.
-/// The (u64, u8) tuple represents the block's slot.
+/// Returns all blocks in a time interval as a Vec<Hash, Slot> wrapped in a reply.
 ///
 /// Note: both start time is included and end time is excluded
 async fn get_block_interval(
@@ -572,7 +569,7 @@ async fn get_block_interval(
             consensus_cfg.thread_count,
             consensus_cfg.t0,
             consensus_cfg.genesis_timestamp,
-            (header.period_number, header.thread_number),
+            header.slot,
         ) {
             Ok(time) => time,
             Err(err) => {
@@ -586,7 +583,7 @@ async fn get_block_interval(
             }
         };
         if start <= time && time < end {
-            res.push((hash, (header.period_number, header.thread_number)));
+            res.push((hash, header.slot));
         }
     }
 
@@ -624,7 +621,7 @@ async fn get_graph_interval(
             consensus_cfg.thread_count,
             consensus_cfg.t0,
             consensus_cfg.genesis_timestamp,
-            (header.period_number, header.thread_number),
+            header.slot,
         ) {
             Ok(time) => time,
             Err(err) => {
@@ -639,21 +636,13 @@ async fn get_graph_interval(
         };
 
         if start <= time && time < end {
-            res.insert(
-                hash,
-                (
-                    header.period_number,
-                    header.thread_number,
-                    "active",
-                    header.parents,
-                ),
-            );
+            res.insert(hash, (header.slot, "active", header.parents));
         }
     }
     let mut final_blocks = HashMap::new();
-    for (hash, (period, thread, _, parents)) in res.iter() {
+    for (hash, (slot, _, parents)) in res.iter() {
         if !graph.gi_head.contains_key(&hash) {
-            final_blocks.insert(hash.clone(), (*period, *thread, "final", parents.clone()));
+            final_blocks.insert(hash.clone(), (*slot, "final", parents.clone()));
         }
     }
 
@@ -666,7 +655,7 @@ async fn get_graph_interval(
             consensus_cfg.thread_count,
             consensus_cfg.t0,
             consensus_cfg.genesis_timestamp,
-            (header.period_number, header.thread_number),
+            header.slot,
         ) {
             Ok(time) => time,
             Err(err) => {
@@ -688,23 +677,13 @@ async fn get_graph_interval(
                 DiscardReason::Stale => status = "stale",
                 DiscardReason::Final => status = "final",
             }
-            res.insert(
-                hash,
-                (
-                    header.period_number,
-                    header.thread_number,
-                    status,
-                    header.parents,
-                ),
-            );
+            res.insert(hash, (header.slot, status, header.parents));
         }
     }
     let res = res
         .iter()
-        .map(|(hash, (period, thread, status, parents))| {
-            (hash.clone(), *period, *thread, *status, parents.clone())
-        })
-        .collect::<Vec<(Hash, u64, u8, &str, Vec<Hash>)>>();
+        .map(|(hash, (slot, status, parents))| (hash.clone(), *slot, *status, parents.clone()))
+        .collect::<Vec<(Hash, Slot, &str, Vec<Hash>)>>();
     Ok(warp::reply::json(&res).into_response())
 }
 
@@ -735,7 +714,7 @@ async fn get_cliques(
     let mut hashes_map = HashMap::new();
     for hash in hashes.iter() {
         if let Some((_, block)) = graph.active_blocks.get_key_value(hash) {
-            hashes_map.insert(hash, (block.block.period_number, block.block.thread_number));
+            hashes_map.insert(hash, block.block.slot);
         } else {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -912,7 +891,7 @@ async fn get_state(
                     consensus_cfg.thread_count,
                     consensus_cfg.t0,
                     consensus_cfg.genesis_timestamp,
-                    (*period, thread as u8),
+                    Slot::new(*period, thread as u8),
                 )?,
             ))
         })
@@ -941,8 +920,7 @@ async fn get_state(
     .into_response())
 }
 
-/// Returns a number of last stale blocks as a Vec<Hash, u64, u8> wrapped in a reply.
-/// The (u64, u8) tuple represents the block's slot.
+/// Returns a number of last stale blocks as a Vec<(Hash, Slot)> wrapped in a reply.
 ///
 async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -966,8 +944,8 @@ async fn get_last_stale(
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
-        .map(|(hash, (_reason, header))| (hash, header.period_number, header.thread_number))
-        .collect::<Vec<(&Hash, u64, u8)>>();
+        .map(|(hash, (_reason, header))| (hash, header.slot))
+        .collect::<Vec<(&Hash, Slot)>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_config.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
@@ -976,8 +954,7 @@ async fn get_last_stale(
     Ok(warp::reply::json(&json!(discarded)).into_response())
 }
 
-/// Returns a number of last invalid blocks as a Vec<Hash, u64, u8> wrapped in a reply.
-/// The (u64, u8) tuple represents the block's slot.
+/// Returns a number of last invalid blocks as a Vec<(Hash, Slot)> wrapped in a reply.
 ///
 async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -1001,8 +978,8 @@ async fn get_last_invalid(
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Invalid)
-        .map(|(hash, (_reason, header))| (hash, header.period_number, header.thread_number))
-        .collect::<Vec<(&Hash, u64, u8)>>();
+        .map(|(hash, (_reason, header))| (hash, header.slot))
+        .collect::<Vec<(&Hash, Slot)>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
@@ -1014,7 +991,7 @@ async fn get_last_invalid(
 /// Returns
 /// * a number of discarded blocks by the staker as a Vec<(&Hash, DiscardReason, BlockHeader)>
 /// * a number of active blocks by the staker as a Vec<(&Hash, BlockHeader)>
-/// * next slots that are for the staker as a Vec<(u64, u8)>
+/// * next slots that are for the staker as a Vec<Slot>
 ///
 async fn get_staker_info(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -1079,15 +1056,15 @@ async fn get_staker_info(
             .into_response())
         }
     }
-    .unwrap_or((0, 0));
-    let end_slot = (
+    .unwrap_or(Slot::new(0, 0));
+    let end_slot = Slot::new(
         start_slot
-            .0
+            .period
             .saturating_add(api_cfg.selection_return_periods),
-        start_slot.1,
+        start_slot.thread,
     );
 
-    let next_slots_by_creator: Vec<(u64, u8)> =
+    let next_slots_by_creator: Vec<Slot> =
         match retrieve_selection_draw(start_slot, end_slot, &event_tx).await {
             Ok(slot) => slot,
             Err(err) => {
