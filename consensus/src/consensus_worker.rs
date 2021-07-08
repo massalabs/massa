@@ -7,6 +7,7 @@ use crypto::signature::{derive_public_key, PublicKey};
 use models::{Block, BlockId, Slot};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet};
+use std::convert::TryFrom;
 use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -334,7 +335,7 @@ impl ConsensusWorker {
                     {}
                 );
                 response_tx
-                    .send(BootsrapableGraph::from(&self.block_db))
+                    .send(BootsrapableGraph::try_from(&self.block_db)?)
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBootGraph answer:{:?}",

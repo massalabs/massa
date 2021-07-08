@@ -336,7 +336,11 @@ async fn test_ledger_read_whole() {
         .get(thread as usize)
         .expect("Couldn't get ledger for thread.");
     let address_data = thread_ledger
-        .get(&address)
-        .expect("Couldn't find ledger data for address.");
+        .iter()
+        .filter(|(addr, _)| addr.clone() == address)
+        .collect::<Vec<_>>()
+        .pop()
+        .expect("Couldn't find ledger data for address.")
+        .1;
     assert_eq!(address_data.get_balance(), 1);
 }

@@ -1,8 +1,9 @@
 use crate::error::InternalError;
+use crypto::hash::HASH_SIZE_BYTES;
 use sled::{Transactional, Tree};
 use std::{
     collections::{hash_map, HashMap, HashSet},
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     usize,
 };
 
@@ -21,7 +22,7 @@ pub struct Ledger {
     context: SerializationContext,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub struct LedgerData {
     balance: u64,
 }
@@ -253,6 +254,7 @@ impl OperationLedgerInterface for Operation {
 
 impl Ledger {
     /// if no latest_final_periods in file, they are initialized at 0u64
+    /// if there is a ledger in the given file, it is loaded
     pub fn new(
         cfg: ConsensusConfig,
         context: SerializationContext,
@@ -343,6 +345,49 @@ impl Ledger {
             )));
         }
         Ok(())
+    }
+
+    /// If there is something in the ledger file, it is overwritten
+    pub fn from_export(
+        export: LedgerExport,
+        cfg: ConsensusConfig,
+        context: SerializationContext,
+    ) -> Result<Ledger, ConsensusError> {
+        let ledger = Ledger::new(cfg.clone(), context.clone())?;
+        ledger.clear()?;
+
+        // fill ledger per thread
+        for thread in 0..cfg.thread_count {
+            for (address, balance) in export.ledger_per_thread[thread as usize].iter() {
+                if let Some(_) = ledger.ledger_per_thread[thread as usize]
+                    .insert(address.into_bytes(), balance.to_bytes_compact(&context)?)?
+                {
+                    return Err(ConsensusError::LedgerInconsistency(format!(
+                        "adress {:?} already in ledger while bootsrapping",
+                        address
+                    )));
+                };
+            }
+        }
+        // fill final periods
+        for (period, thread) in export.latest_final_periods.iter().enumerate() {
+            ledger
+                .latest_final_periods
+                .insert(&[*thread as u8], &period.to_be_bytes())?;
+        }
+        Ok(ledger)
+    }
+
+    /// Returns the final balance of an address. 0 if the address does not exist.
+    pub fn get_final_balance(&self, address: &Address) -> Result<u64, ConsensusError> {
+        let thread = address.get_thread(self.cfg.thread_count);
+        if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
+            Ok(LedgerData::from_bytes_compact(&res, &self.context)?
+                .0
+                .balance)
+        } else {
+            Ok(0)
+        }
     }
 
     /// Atomically apply a batch of changes to the ledger.
@@ -470,8 +515,8 @@ impl Ledger {
     }
 
     /// Used for bootstrap.
-    pub fn read_whole(&self) -> Result<Vec<HashMap<Address, LedgerData>>, ConsensusError> {
-        // Note: this cannot be done transactionally.
+    // Note: this cannot be done transactionally.
+    pub fn read_whole(&self) -> Result<Vec<Vec<(Address, LedgerData)>>, ConsensusError> {
         let mut res = Vec::with_capacity(self.cfg.thread_count as usize);
         for tree in self.ledger_per_thread.iter() {
             let mut map = HashMap::new();
@@ -486,7 +531,7 @@ impl Ledger {
                     )));
                 }
             }
-            res.push(map);
+            res.push(map.into_iter().collect());
         }
         Ok(res)
     }
@@ -531,6 +576,141 @@ impl CurrentBlockLedger {
                 balance_increment: true,
             });
         block_change.chain(change.1)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LedgerExport {
+    pub ledger_per_thread: Vec<Vec<(Address, LedgerData)>>, // containing (Address, LedgerData)
+    pub latest_final_periods: Vec<u64>,
+}
+
+impl<'a> TryFrom<&'a Ledger> for LedgerExport {
+    type Error = ConsensusError;
+
+    fn try_from(value: &'a Ledger) -> Result<Self, Self::Error> {
+        Ok(LedgerExport {
+            ledger_per_thread: value.read_whole()?.iter().cloned().collect(),
+            latest_final_periods: value.get_latest_final_periods()?,
+        })
+    }
+}
+
+impl LedgerExport {
+    /// Empty ledger export used for tests
+    pub fn new(thread_count: u8) -> Self {
+        LedgerExport {
+            ledger_per_thread: Vec::new(),
+            latest_final_periods: Vec::new(),
+        }
+    }
+}
+
+impl SerializeCompact for LedgerExport {
+    /// ## Example
+    /// ```rust
+    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext};
+    /// # use consensus::LedgerExport;
+    /// # let ledger = LedgerExport::new(2);
+    /// #    let context = SerializationContext {
+    /// #        max_block_size: 100000,
+    /// #        max_block_operations: 1000000,
+    /// #        parent_count: 2,
+    /// #        max_peer_list_length: 128,
+    /// #        max_message_size: 3 * 1024 * 1024,
+    /// #        max_bootstrap_blocks: 100,
+    /// #        max_bootstrap_cliques: 100,
+    /// #        max_bootstrap_deps: 100,
+    /// #        max_bootstrap_children: 100,
+    /// #        max_ask_blocks_per_message: 10,
+    /// #        max_operations_per_message: 1024,
+    /// #        max_bootstrap_message_size: 100000000,
+    /// #    };
+    /// let bytes = ledger.clone().to_bytes_compact(&context).unwrap();
+    /// let (res, _) = LedgerExport::from_bytes_compact(&bytes, &context).unwrap();
+    /// assert_eq!(ledger.latest_final_periods, res.latest_final_periods);
+    /// for thread in 0..ledger.latest_final_periods.len() {
+    ///     for (address, data) in &ledger.ledger_per_thread[thread] {
+    ///        assert!(res.ledger_per_thread[thread].contains(&(address.clone(), data.clone())))
+    ///     }
+    ///     assert_eq!(ledger.ledger_per_thread[thread].len(), res.ledger_per_thread[thread].len());
+    /// }
+    /// ```
+    fn to_bytes_compact(
+        &self,
+        context: &SerializationContext,
+    ) -> Result<Vec<u8>, models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        let thread_count: u32 = self.ledger_per_thread.len().try_into().map_err(|err| {
+            models::ModelsError::SerializeError(format!(
+                "too many threads in LedgerExport: {:?}",
+                err
+            ))
+        })?;
+        res.extend(u32::from(thread_count).to_varint_bytes());
+        for thread_ledger in self.ledger_per_thread.iter() {
+            let vec_count: u32 = thread_ledger.len().try_into().map_err(|err| {
+                models::ModelsError::SerializeError(format!(
+                    "too many threads in LedgerExport: {:?}",
+                    err
+                ))
+            })?;
+
+            res.extend(u32::from(vec_count).to_varint_bytes());
+            for (address, data) in thread_ledger.iter() {
+                res.extend(address.to_bytes());
+                res.extend(data.to_bytes_compact(context)?);
+            }
+        }
+
+        for period in self.latest_final_periods.iter() {
+            res.extend(period.to_varint_bytes());
+        }
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for LedgerExport {
+    fn from_bytes_compact(
+        buffer: &[u8],
+        context: &SerializationContext,
+    ) -> Result<(Self, usize), models::ModelsError> {
+        let mut cursor = 0usize;
+
+        let (thread_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        let ledger_per_thread = vec![Vec::new(); thread_count as usize];
+        for _ in 0..(thread_count as usize) {
+            let (vec_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            let mut set: Vec<(Address, LedgerData)> = Vec::with_capacity(vec_count as usize);
+
+            for _ in 0..(vec_count as usize) {
+                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+
+                let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..], context)?;
+                cursor += delta;
+                set.push((address, data));
+            }
+        }
+
+        let mut latest_final_periods = Vec::new();
+        for _ in 0..thread_count {
+            let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            latest_final_periods.push(period);
+        }
+
+        Ok((
+            LedgerExport {
+                ledger_per_thread,
+                latest_final_periods,
+            },
+            cursor,
+        ))
     }
 }
 
