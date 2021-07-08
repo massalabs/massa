@@ -100,6 +100,21 @@ impl ProtocolCommandSender {
                 CommunicationError::ChannelError("propagate_block command send error".into())
             })
     }
+
+    pub async fn send_block(
+        &mut self,
+        target: NodeId,
+        block: &Block,
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("block_propagation_order", { "target": target });
+        self.0
+            .send(ProtocolCommand::SendBlock {
+                target,
+                block: block.clone(),
+            })
+            .await
+            .map_err(|_| CommunicationError::ChannelError("send_block command send error".into()))
+    }
 }
 
 pub struct ProtocolEventReceiver(pub mpsc::Receiver<ProtocolEvent>);

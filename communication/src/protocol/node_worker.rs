@@ -5,6 +5,7 @@ use super::{
     messages::Message,
 };
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
+use crypto::hash::Hash;
 use models::block::Block;
 use std::net::IpAddr;
 use tokio::{sync::mpsc, time::timeout};
@@ -25,6 +26,7 @@ pub enum NodeCommand {
 /// Event types that node worker can emit
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
+    AskedBlock(Hash),
     /// Node we are conneced to asked for advertized peers
     AskedPeerList,
     /// Node we are conneced to sent peer list

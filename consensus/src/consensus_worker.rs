@@ -471,16 +471,23 @@ impl ConsensusWorker {
             ProtocolEvent::ReceivedTransaction(_source_node_id, _transaction) => {
                 // todo (see issue #108)
             }
-            ProtocolEvent::AskedBlock(source_node_id, block_hash) => {
-                if let Some(_block) = self.block_db.get_active_block(block_hash) {
-                    massa_trace!("sending_block", {"dest_node_id": source_node_id, "block": block_hash});
-                    /*
-                        TODO send full block
-                        self.protocol_controller
-                            .send_block(block, source_node_id)
-                            .await?;
-                    */ // (see issue #109)
+            ProtocolEvent::AskedBlock(block_hash, response_tx) => {
+                if let Err(b) = response_tx.send(
+                    self.block_db
+                        .get_active_block(block_hash)
+                        .map(|b| b.clone()),
+                ) {
+                    return Err(ConsensusError::SendChannelError(format!(
+                        "could not send block {:?}",
+                        b
+                    )));
                 }
+
+                // TODO send full block
+                // self.protocol_command_sender
+                //     .send_block(source_node_id, block)
+                //     .await?;
+                // (see issue #109)
             }
         }
         Ok(())

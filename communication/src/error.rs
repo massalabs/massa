@@ -1,4 +1,4 @@
-use crate::network::ConnectionId;
+use crate::{network::ConnectionId, protocol::ProtocolEvent};
 use std::net::IpAddr;
 use thiserror::Error;
 
@@ -10,6 +10,10 @@ pub enum CommunicationError {
     ChannelError(String),
     #[error("A tokio task has crashed err:{0}")]
     TokioTaskJoinError(#[from] tokio::task::JoinError),
+    #[error("error receiving oneshot response : {0}")]
+    TokieRecvError(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error("error sending protocol event: {0}")]
+    TokioSendError(#[from] tokio::sync::mpsc::error::SendError<ProtocolEvent>),
     #[error("Error during netwrok connection:`{0:?}`")]
     PeerConnectionError(NetworkConnectionErrorType),
     #[error("The ip:`{0}` address is not valid")]
@@ -34,6 +38,8 @@ pub enum CommunicationError {
     TimeError(#[from] time::TimeError),
     #[error("missing peers")]
     MissingPeersError,
+    #[error("storage error {0}")]
+    StorageError(#[from] storage::error::StorageError),
 }
 
 #[derive(Error, Debug)]

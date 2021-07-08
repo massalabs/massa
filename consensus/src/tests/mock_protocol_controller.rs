@@ -3,7 +3,7 @@ use communication::protocol::{
 };
 use crypto::hash::Hash;
 use models::block::Block;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 const CHANNEL_SIZE: usize = 16;
 
@@ -49,8 +49,9 @@ impl MockProtocolController {
     }
 
     pub async fn receive_block_ask(&mut self, source_node_id: NodeId, hash: Hash) {
+        let (response_tx, response_rx) = oneshot::channel();
         self.protocol_event_tx
-            .send(ProtocolEvent::AskedBlock(source_node_id, hash))
+            .send(ProtocolEvent::AskedBlock(hash, response_tx))
             .await
             .expect("could not send protocol event");
     }

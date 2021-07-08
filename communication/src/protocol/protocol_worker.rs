@@ -13,17 +13,20 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use models::block::Block;
 use std::collections::{hash_map, HashMap, HashSet};
 use storage::storage_controller::StorageCommandSender;
-use tokio::{sync::mpsc, task::JoinHandle};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 
 /// Possible types of events that can happen.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum ProtocolEvent {
     /// A isolated transaction was received.
     ReceivedTransaction(NodeId, String),
     /// A block was received
     ReceivedBlock(NodeId, Block),
     /// Someone ask for block with given header hash.
-    AskedBlock(NodeId, Hash),
+    AskedBlock(Hash, oneshot::Sender<Option<Block>>),
 }
 
 /// Commands that protocol worker can process
@@ -31,6 +34,8 @@ pub enum ProtocolEvent {
 pub enum ProtocolCommand {
     /// Propagate given block
     PropagateBlock { hash: Hash, block: Block },
+    /// Send block to given node
+    SendBlock { target: NodeId, block: Block },
 }
 
 #[derive(Debug)]
@@ -185,6 +190,19 @@ impl ProtocolWorker {
                 for (_, (_, node_command_tx, _)) in self.active_nodes.iter() {
                     node_command_tx
                         .send(NodeCommand::SendBlock(block.clone()))
+                        .await
+                        .map_err(|_| {
+                            CommunicationError::ChannelError(
+                                "block propagate node command send failed".into(),
+                            )
+                        })?;
+                }
+            }
+            ProtocolCommand::SendBlock { target, block } => {
+                if let Some((_, (_, node_command_tx, _))) = self.active_nodes.get_key_value(&target)
+                {
+                    node_command_tx
+                        .send(NodeCommand::SendBlock(block))
                         .await
                         .map_err(|_| {
                             CommunicationError::ChannelError(
@@ -442,6 +460,42 @@ impl ProtocolWorker {
                             "node command send send_peer_list failed".into(),
                         )
                     })?
+            }
+
+            NodeEvent(from_node_id, NodeEventType::AskedBlock(hash)) => {
+                debug!("node_id={:?} asked us for block", from_node_id);
+                massa_trace!("node_asked_block", { "node_id": from_node_id, "hash": hash });
+                let (_, node_command_tx, _) = self
+                    .active_nodes
+                    .get(&from_node_id)
+                    .ok_or(CommunicationError::MissingNodeError)?;
+                let (response_tx, response_rx) = oneshot::channel();
+                self.controller_event_tx
+                    .send(ProtocolEvent::AskedBlock(hash, response_tx))
+                    .await?;
+                if let Some(block) = response_rx.await? {
+                    node_command_tx
+                        .send(NodeCommand::SendBlock(block))
+                        .await
+                        .map_err(|_| {
+                            CommunicationError::ChannelError(
+                                "node command send send_peer_list failed".into(),
+                            )
+                        })?
+                } else {
+                    if let Some(storage_controller) = &self.opt_storage_command_sender {
+                        if let Some(block) = storage_controller.get_block(hash).await? {
+                            node_command_tx
+                                .send(NodeCommand::SendBlock(block))
+                                .await
+                                .map_err(|_| {
+                                    CommunicationError::ChannelError(
+                                        "node command send send_peer_list failed".into(),
+                                    )
+                                })?
+                        }
+                    }
+                }
             }
         }
         Ok(())
