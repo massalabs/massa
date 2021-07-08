@@ -53,6 +53,8 @@ pub struct ConsensusConfig {
     pub initial_ledger_path: PathBuf,
     pub block_reward: u64,
     pub operation_batch_size: usize,
+    pub initial_rolls_path: PathBuf,
+    pub initial_draw_seed: String,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.

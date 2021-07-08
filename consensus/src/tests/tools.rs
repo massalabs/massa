@@ -482,6 +482,8 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
         .collect();
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
+    let tempdir3 = tempfile::tempdir().expect("cannot create temp dir");
+
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
     models::init_serialization_context(models::SerializationContext {
@@ -523,6 +525,11 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
         block_reward: 1,
         initial_ledger_path: initial_ledger_path.to_path_buf(),
         operation_batch_size: 100,
+        initial_rolls_path: tempdir3.path().to_path_buf(),
+        initial_draw_seed: "genesis".into(),
+        periods_per_cycle: 100,
+        pos_lookback_cycles: 4,
+        pos_lock_cycles: 1,
     }
 }
 
