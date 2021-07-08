@@ -50,6 +50,12 @@ impl<'a> std::fmt::Display for WrapperOperationType<'a> {
                 "Transaction: recipient:{} amount:{}",
                 recipient_address, amount
             ),
+            OperationType::RollBuy { roll_count } => {
+                write!(f, "RollBuy: roll_count:{}", roll_count)
+            }
+            OperationType::RollSell { roll_count } => {
+                write!(f, "RollSell: roll_count:{}", roll_count)
+            }
         }
     }
 }
