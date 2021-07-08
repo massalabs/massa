@@ -264,8 +264,6 @@ impl Ledger {
         context: SerializationContext,
         datas: Option<HashMap<Address, LedgerData>>,
     ) -> Result<Ledger, ConsensusError> {
-        trace!("ledger new:{:?}", datas);
-
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
             .cache_capacity(cfg.ledger_cache_capacity)
@@ -303,7 +301,6 @@ impl Ledger {
                 Ok(())
             })?;
         }
-        trace!("ledger ledger_per_thread:{:?}", ledger_per_thread);
         Ok(Ledger {
             ledger_per_thread,
             latest_final_periods,

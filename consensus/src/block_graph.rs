@@ -69,7 +69,7 @@ impl ActiveBlock {
         op_id: OperationId,
         context: &SerializationContext,
     ) -> Result<Option<Operation>, ConsensusError> {
-        if self.operation_set.contains(&op_id) {
+        if self.operation_set.contains_key(&op_id) {
             for op in self.block.operations.iter() {
                 if op.get_operation_id(context)? == op_id {
                     return Ok(Some(op.clone()));
@@ -972,20 +972,13 @@ impl BlockGraph {
         let mut res = HashMap::new();
         let mut op = None;
         for (id, block) in active_blocks {
-            match block {
-                BlockStatus::Active(active_block) => {
-                    if active_block.operation_set.contains(&op_id) {
-                        // op should never be none
-                        // as we checked it's here before
-                        // maybe add a consistency check
-                        op = active_block.get_operation(op_id, &self.serialization_context)?;
-                        res.insert(*id, active_block.is_final);
-                    }
-                }
-                _ => {
-                    return Err(ConsensusError::ContainerInconsistency(
-                        "that block should still be active".to_string(),
-                    ))
+            if let BlockStatus::Active(active_block) = block {
+                if active_block.operation_set.contains_key(&op_id) {
+                    // op should never be none
+                    // as we checked it's here before
+                    // maybe add a consistency check
+                    op = active_block.get_operation(op_id, &self.serialization_context)?;
+                    res.insert(*id, active_block.is_final);
                 }
             }
         }

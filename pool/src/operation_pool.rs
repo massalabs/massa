@@ -79,7 +79,7 @@ impl OperationPool {
 
             // Already present
             if self.ops.contains_key(&op_id) {
-                massa_trace!("pool add_operations self.ops.contains_key(&op_id)", {});
+                massa_trace!("pool add_operations  op already present.)", {});
                 continue;
             }
 
@@ -215,12 +215,8 @@ impl OperationPool {
             .collect()
     }
 
-    pub fn get_operation(&self, id: OperationId) -> Result<Option<Operation>, PoolError> {
-        if let Some(wrapped_op) = self.ops.get(&id) {
-            Ok(Some(wrapped_op.op.clone()))
-        } else {
-            Ok(None)
-        }
+    pub fn get_operation(&self, id: OperationId) -> Option<Operation> {
+        self.ops.get(&id).map(|wrapped_op| wrapped_op.op.clone())
     }
 }
 

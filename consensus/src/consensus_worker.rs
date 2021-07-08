@@ -335,9 +335,6 @@ impl ConsensusWorker {
 
         // get thread ledger and apply block reward
         let mut thread_ledger = LedgerSubset::new(self.cfg.thread_count);
-        massa_trace!("create block creator_addr.get_thread(self.cfg.thread_count)", {
-            "th": creator_addr.get_thread(self.cfg.thread_count)
-        });
         if creator_addr.get_thread(self.cfg.thread_count) == cur_slot.thread {
             let mut fee_ledger = self
                 .block_db
@@ -351,9 +348,6 @@ impl ConsensusWorker {
             ))?;
             thread_ledger.extend(fee_ledger);
         }
-        massa_trace!("create block exclude_operations", {
-            "op": exclude_operations
-        });
 
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
@@ -372,10 +366,6 @@ impl ConsensusWorker {
                 )
                 .await?;
             finished = operation_batch.len() < self.cfg.operation_batch_size;
-
-            massa_trace!("create block get_operation_batch", {
-                "batch": operation_batch
-            });
 
             for (op_id, op, op_size) in operation_batch.into_iter() {
                 // exclude operation from future batches
@@ -405,7 +395,11 @@ impl ConsensusWorker {
                 thread_ledger.extend(missing_entries);
 
                 // try to apply the changes caused by the op in the block's thread
-                if thread_ledger.try_apply_changes(&thread_changes).is_err() {
+                if let Err(err) = thread_ledger.try_apply_changes(&thread_changes) {
+                    massa_trace!("create block thread_ledger.try_apply_changes error", {
+                        "error:": err.to_string(),
+                        "ledger:": thread_ledger,
+                    });
                     continue;
                 }
 
@@ -605,11 +599,8 @@ impl ConsensusWorker {
         let pool_res = self.pool_command_sender.get_operation(id).await?;
 
         let is_in_pool = pool_res.is_some();
-        let pool = if let Some(op) = pool_res {
-            Ok(Some((op, true, HashMap::new())))
-        } else {
-            Ok(None)
-        };
+
+        let pool = pool_res.map(|op| (op, true, HashMap::new()));
 
         if let Some((op, map)) = consensus_res {
             Ok(Some((op, is_in_pool, map)))
@@ -620,10 +611,10 @@ impl ConsensusWorker {
                     map.insert(block_id, true);
                     Ok(Some((op, is_in_pool, map)))
                 } else {
-                    pool
+                    Ok(pool)
                 }
             } else {
-                pool
+                Ok(pool)
             }
         }
     }
