@@ -39,16 +39,18 @@ Add a field:
 
 ### Principle
 
-To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of ThreadCycleState.rng_seed for all threads in increasing order)`, then draw an index among the cumsum of the `cycle_states.roll_count` for cycle `N-3` among all threads. THe complexity of a draw should be in `O(log(K))` where K is the roll ledger size. 
+To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of ThreadCycleState.rng_seed for all threads in increasing order)`, then draw an index among the cumsum of the `cycle_states.roll_count` for cycle `N-3` among all threads.
 
-### Special case: if N-3 < 0
+> The complexity of a draw should be in `O(log(K))` where K is the roll ledger size.
 
-If the lookback aims at a cycle `-N` below zero, use:
-* the initial roll registry as the roll count source
-* `sha256^N(cfg.initial_draw_seed)` as the seed, where `sha256^N` means that we apply the sha256 hash function N times consecutively
-### Special case: genesis blocks
+* if the lookback cycle N-3 < 0:
+  * use the initial (genesis) roll registry as the roll count source
+  * `sha256^N(cfg.initial_draw_seed)` as the seed, where `sha256^N` means that we apply the sha256 hash function N times consecutively 
 
-For genesis blocks, force the draw to yield the genesis creator's address.
+*  if the draw is being performed for a genesis slot, force the draw outcome to match the genesis creator's address to keep draws consistent
+
+> For consistency, genesis block bits are also fed to the RNG seed bitfields
+
 ### Cache
 
 When computing draws for a cycle, draw the whole cycle and leave it in cache.
@@ -62,37 +64,34 @@ Whenever cache is computed or read for a given cycle, set its sequence number to
 
 `get_roll_data_at_parent(BlockId, HashSet<Address>) -> RollCounts` returns the RollCounts addresses had at the output of BlockId.
 
-Algo:
-* start from BlockId, and explore itself and its ancestors backwars in the same thread:
-  * if a final block is explored, break + save final_cycle 
-  * otherwise, stack the explored block ID
-* set cur_rolls = the latest final roll state at final_cycle for the selected addresses
-* while block_id = stack.pop():
-  * apply active_block[block_id].roll_updates to cur_rolls
-* return cur_rolls
+1. start from BlockId, and explore itself and its ancestors backwards in the same thread:
+	1. if a final block is explored, break + save final_cycle 
+	2. otherwise, stack the explored block ID
+2. set cur_rolls = the latest final roll state at final_cycle for the selected addresses
+3. while block_id = stack.pop():
+	1. apply active_block[block_id].roll_updates to cur_rolls
+4. return cur_rolls
 
 ### block reception process
 
-* check that the draw matches the block creator
-* get the list of `roll_involved_addresses` buying/selling rolls in the block
-* set `cur_rolls = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
-* set `B.roll_updates = new()`
-* if the block is the first of a new cycle N for thread Tau:
-  * credit `roll_price * cycle_states[Tau][4].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
-* parse the operations of the block in order:
-  * try apply roll changes to cur_rolls. If failure => block invalid
-  * try chain roll changes to `B.roll_updates`. If failure => block invalid
+1. check that the draw matches the block creator
+2. get the list of `roll_involved_addresses` buying/selling rolls in the block
+3. set `cur_rolls = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
+4. set `B.roll_updates = new()`
+5. if the block is the first of a new cycle N for thread Tau:
+	1. credit `roll_price * cycle_states[Tau][4].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
+6. parse the operations of the block in order:
+	1. Apply roll changes to cur_rolls. If the new roll count under/over-flows u64 => block invalid
+	2. try chain roll changes to `B.roll_updates`. If the new roll delta under/over-flows u64 => block invalid
 
 ## When a block B in thread Tau and cycle N becomes final
 
-* step 1:
-  * if N > cycle_states[thread][0].cycle:
-    * push front a new element in cycle_states that represents cycle N:
-      * inherit ThreadCycleState.roll_count from cycle N-1
-      * empty ThreadCycleState.cycle_updates, ThreadCycleState.rng_seed
-    * pop back for cycle_states[thread] to keep it the right size
-* step 2:
-  * if there were misses between B and its parent, for each of them in order:
-    * push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in cycle_states[thread].rng_seed
-  * push the 1st bit of BlockId in cycle_states[thread].rng_seed
-  * update the ThreadCycleState roll counts at cycle N with by applying ActiveBlock.roll_updates 
+1. if N > cycle_states[thread][0].cycle:
+	1. push front a new element in cycle_states that represents cycle N:
+		1. inherit ThreadCycleState.roll_count from cycle N-1
+		2. empty ThreadCycleState.cycle_updates, ThreadCycleState.rng_seed
+	2. pop back for cycle_states[thread] to keep it the right size
+2. if there were misses between B and its parent, for each of them in order:
+	1. push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in cycle_states[thread].rng_seed
+3. update the ThreadCycleState roll counts at cycle N with by applying ActiveBlock.roll_updates 
+4. push the 1st bit of BlockId in cycle_states[thread].rng_seed
