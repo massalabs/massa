@@ -73,6 +73,7 @@ impl RandomSelector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     fn get_3thread_4participant_random_selector() -> RandomSelector {
         let seed = vec![0u8; RANDOM_SELECTOR_MIN_SEED_LENGTH];
@@ -81,6 +82,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_same_node_multiple_init() {
         let mut selector1 = get_3thread_4participant_random_selector();
         let mut selector2 = get_3thread_4participant_random_selector();
@@ -93,6 +95,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_selected_node_diff_between_threads() {
         let mut selector = get_3thread_4participant_random_selector();
 
@@ -112,6 +115,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_consecutive_draws() {
         let mut selector = get_3thread_4participant_random_selector();
         let mut overlaps = 0;
@@ -131,6 +135,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_same_draw() {
         let mut selector = get_3thread_4participant_random_selector();
         let trials: u64 = 1000;

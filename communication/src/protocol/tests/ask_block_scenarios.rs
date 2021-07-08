@@ -2,10 +2,12 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolEvent;
+use serial_test::serial;
 use std::collections::HashSet;
 use tools::{asked_list, assert_hash_asked_to_node};
 
 #[tokio::test]
+#[serial]
 async fn test_without_a_priori() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
@@ -86,6 +88,7 @@ async fn test_without_a_priori() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_someone_knows_it() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
@@ -174,6 +177,7 @@ async fn test_someone_knows_it() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_dont_want_it_anymore() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
@@ -256,6 +260,7 @@ async fn test_dont_want_it_anymore() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_no_one_has_it() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
@@ -342,6 +347,7 @@ async fn test_no_one_has_it() {
         .expect("Failed to shutdown protocol.");
 }
 #[tokio::test]
+#[serial]
 async fn test_multiple_blocks_without_a_priori() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();

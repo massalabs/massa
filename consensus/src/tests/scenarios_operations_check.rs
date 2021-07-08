@@ -17,8 +17,10 @@ use crate::{
         },
     },
 };
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_operations_check() {
     // setup logging
     /*

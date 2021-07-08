@@ -3184,6 +3184,7 @@ impl BlockGraph {
 mod tests {
     use crypto::generate_random_private_key;
     use crypto::signature::PublicKey;
+    use serial_test::serial;
     use std::{path::Path, usize};
 
     use super::*;
@@ -3258,6 +3259,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     pub async fn test_get_ledger_at_parents() {
         //     stderrlog::new()
         // .verbosity(4)
@@ -3544,6 +3546,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_bootsrapable_graph_serialize_compact() {
         //test with 2 thread
         let serialization_context = SerializationContext {
@@ -3661,6 +3664,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_clique_calculation() {
         let ledger_file = generate_ledger_file(&HashMap::new());
         let (cfg, serialization_context) = example_consensus_config(ledger_file.path());

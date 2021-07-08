@@ -206,6 +206,7 @@ mod tests {
     use super::*;
     use crypto::hash::Hash;
     use models::{Operation, OperationContent, OperationType};
+    use serial_test::serial;
 
     fn example_pool_config() -> (PoolConfig, SerializationContext, u8, u64) {
         let mut nodes = Vec::new();
@@ -273,6 +274,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_pool() {
         let (mut cfg, context, thread_count, operation_validity_periods) = example_pool_config();
 

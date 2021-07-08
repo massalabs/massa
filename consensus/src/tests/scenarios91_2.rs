@@ -12,10 +12,12 @@ use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::Slot;
 use pool::PoolCommand;
+use serial_test::serial;
 use time::UTime;
 use tokio::time::sleep;
 
 #[tokio::test]
+#[serial]
 async fn test_queueing() {
     // setup logging
     // stderrlog::new()
@@ -169,6 +171,7 @@ async fn test_queueing() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_doubles() {
     // setup logging
     // stderrlog::new()
@@ -302,6 +305,7 @@ async fn test_doubles() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_double_staking() {
     // setup logging
     // stderrlog::new()
@@ -452,6 +456,7 @@ async fn test_double_staking() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_test_parents() {
     // // setup logging
     // stderrlog::new()
@@ -582,6 +587,7 @@ async fn test_test_parents() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_block_creation() {
     //     // setup logging
     // stderrlog::new()

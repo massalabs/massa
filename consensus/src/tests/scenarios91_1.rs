@@ -10,11 +10,13 @@ use super::{
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
+use serial_test::serial;
 use time::UTime;
 
 //use time::UTime;
 
 #[tokio::test]
+#[serial]
 async fn test_ti() {
     /*    stderrlog::new()
     .verbosity(4)
@@ -183,6 +185,7 @@ async fn test_ti() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_gpi() {
     // // setup logging
     /*stderrlog::new()
@@ -364,6 +367,7 @@ async fn test_gpi() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_old_stale() {
     // // setup logging
     // stderrlog::new()

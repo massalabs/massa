@@ -26,3 +26,4 @@ pool = {path = "../pool"}
 stderrlog = { version = "0.5" }
 pretty_assertions = "0.6"
 tempfile = "3.2"
+serial_test = "0.5.1"

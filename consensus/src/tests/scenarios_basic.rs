@@ -8,8 +8,10 @@ use super::{
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_old_stale_not_propagated_and_discarded() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -97,6 +99,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_block_not_processed_multiple_times() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -168,6 +171,7 @@ async fn test_block_not_processed_multiple_times() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_queuing() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -244,6 +248,7 @@ async fn test_queuing() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_double_staking_does_not_propagate() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());

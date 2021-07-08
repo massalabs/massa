@@ -2,9 +2,11 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::protocol::{start_protocol_controller, ProtocolEvent};
 use crate::{network::NetworkCommand, protocol::ProtocolPoolEvent};
 use models::Slot;
+use serial_test::serial;
 use std::collections::{HashMap, HashSet};
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -63,6 +65,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -120,6 +123,7 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -210,6 +214,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -308,6 +313,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -444,6 +450,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -543,6 +550,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_removes_banned_node_on_disconnection() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 

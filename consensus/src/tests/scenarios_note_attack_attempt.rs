@@ -8,8 +8,10 @@ use super::{
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_invalid_block_notified_as_attack_attempt() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -68,6 +70,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_invalid_header_notified_as_attack_attempt() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());

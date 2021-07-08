@@ -6,6 +6,7 @@ use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use models::{Block, BlockHeader, BlockId, SerializationContext, Slot};
 use serde_json::json;
+use serial_test::serial;
 use std::{
     collections::{HashMap, HashSet},
     net::{IpAddr, Ipv4Addr},
@@ -13,6 +14,7 @@ use std::{
 use time::UTime;
 
 #[tokio::test]
+#[serial]
 async fn test_cliques() {
     {
         //test with no cliques
@@ -111,6 +113,7 @@ async fn test_cliques() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_current_parents() {
     //test with empty parents
     {
@@ -202,6 +205,7 @@ async fn test_current_parents() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_graph_interval() {
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -574,6 +578,7 @@ async fn test_get_graph_interval() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_last_final() {
     //test with empty final block
     {
@@ -662,6 +667,7 @@ async fn test_last_final() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_peers() {
     //test with empty final peers
     {
@@ -756,6 +762,7 @@ async fn test_peers() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_block_interval() {
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -1047,6 +1054,7 @@ async fn test_get_block_interval() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_block() {
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -1166,6 +1174,7 @@ async fn test_get_block() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_network_info() {
     //test with empty peer list
     {
@@ -1254,6 +1263,7 @@ async fn test_network_info() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_state() {
     //test with empty final peers
     {
@@ -1366,6 +1376,7 @@ async fn test_state() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_last_stale() {
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -1466,6 +1477,7 @@ async fn test_last_stale() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_last_invalid() {
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -1563,6 +1575,7 @@ async fn test_last_invalid() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_staker_info() {
     let serialization_context = SerializationContext {
         max_block_size: 1024 * 1024,

@@ -145,8 +145,10 @@ mod tests {
     use consensus::LedgerExport;
     use models::BlockId;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_message_serialize_compact() {
         //test with 2 thread
         let serialization_context = SerializationContext {

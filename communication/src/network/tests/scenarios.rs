@@ -9,6 +9,7 @@ use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
 use crypto::signature;
 use models::BlockId;
+use serial_test::serial;
 use std::collections::HashMap;
 use std::{
     convert::TryInto,
@@ -23,6 +24,7 @@ use tools::get_transaction;
 /// Test that a node worker can shutdown even if the event channel is full,
 /// and that sending additional node commands during shutdown does not deadlock.
 #[tokio::test]
+#[serial]
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
@@ -78,6 +80,7 @@ async fn test_node_worker_shutdown() {
 // then attempt to connect to controller from an already connected peer to test max_in_connections_per_ip
 // then try to connect a third peer to test max_in_connection
 #[tokio::test]
+#[serial]
 async fn test_multiple_connections_to_controller() {
     // setup logging
     /*stderrlog::new()
@@ -189,6 +192,7 @@ async fn test_multiple_connections_to_controller() {
 // attempt to connect banned peer to controller : must fail
 // make sure there are no connection attempts incoming from peer
 #[tokio::test]
+#[serial]
 async fn test_peer_ban() {
     // setup logging
     /*stderrlog::new()
@@ -301,6 +305,7 @@ async fn test_peer_ban() {
 //   (accept the connection)
 //   then check that thare are no further connection attempts at all
 #[tokio::test]
+#[serial]
 async fn test_advertised_and_wakeup_interval() {
     // setup logging
     /*stderrlog::new()
@@ -326,8 +331,8 @@ async fn test_advertised_and_wakeup_interval() {
     }]);
     let (mut network_conf, serialization_context) =
         super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.wakeup_interval = UTime::from(2000);
-    network_conf.connect_timeout = UTime::from(1000);
+    network_conf.wakeup_interval = UTime::from(500);
+    network_conf.connect_timeout = UTime::from(2000);
 
     // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
@@ -377,7 +382,7 @@ async fn test_advertised_and_wakeup_interval() {
     // 2) refuse the first connection attempt coming from controller towards advertised peer
     {
         let (_, _, addr, accept_tx) = tokio::time::timeout(
-            Duration::from_millis(2000),
+            Duration::from_millis(1500),
             mock_interface.wait_connection_attempt_from_controller(),
         )
         .await
@@ -432,6 +437,7 @@ async fn test_advertised_and_wakeup_interval() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_block_not_found() {
     // setup logging
     /*stderrlog::new()
@@ -618,6 +624,7 @@ async fn test_block_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_retry_connection_closed() {
     // setup logging
     /*stderrlog::new()
@@ -719,6 +726,7 @@ async fn test_retry_connection_closed() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_operation_messages() {
     // setup logging
     /*stderrlog::new()

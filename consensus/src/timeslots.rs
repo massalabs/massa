@@ -79,6 +79,7 @@ pub fn get_current_latest_block_slot(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::convert::TryInto;
     use time::UTime;
 
@@ -148,6 +149,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_time_range_to_slot_range() {
         let thread_count = 3u8;
         let t0: UTime = 30.into();

@@ -4,9 +4,11 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolEvent;
+use serial_test::serial;
 use std::collections::{HashMap, HashSet};
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -108,6 +110,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_sends_blocks_when_asked_for() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -233,6 +236,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -366,6 +370,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -425,6 +430,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_block_not_found() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 

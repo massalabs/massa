@@ -21,7 +21,7 @@ test:
   stage: build
   image: "xd009642/tarpaulin:latest-nightly"
   script:
-    - cargo tarpaulin -v --run-types Tests Doctests
+    - cargo tarpaulin --verbose --run-types Tests Doctests
   coverage: /\d+.\d+% coverage/
 
 

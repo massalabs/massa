@@ -779,8 +779,10 @@ pub fn verify_signature(
 mod tests {
     use super::*;
     use crate::hash::Hash;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_example() {
         let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
@@ -791,6 +793,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_serde_private_key() {
         let private_key = generate_random_private_key();
         let serialized =
@@ -801,6 +804,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_serde_public_key() {
         let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
@@ -812,6 +816,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_serde_signature() {
         let private_key = generate_random_private_key();
         let message = "Hello World!".as_bytes();

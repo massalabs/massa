@@ -10,8 +10,10 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools::{example_pool_config, get_transaction},
 };
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_pool() {
     let (mut cfg, context, thread_count, operation_validity_periods) = example_pool_config();
 
@@ -176,6 +178,7 @@ async fn test_pool() {
     pool_manager.stop().await.unwrap();
 }
 #[tokio::test]
+#[serial]
 async fn test_pool_with_protocol_events() {
     let (mut cfg, context, thread_count, operation_validity_periods) = example_pool_config();
 

@@ -4,9 +4,11 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolPoolEvent;
+use serial_test::serial;
 use std::collections::HashMap;
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -62,6 +64,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
@@ -117,6 +120,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 }
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_propagates_operations_to_active_nodes() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 

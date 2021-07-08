@@ -1,8 +1,10 @@
 use super::tools;
 use crate::{start_storage, StorageAccess, StorageConfig};
 use models::{BlockId, SerializationContext, Slot};
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_max_block_count() {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
@@ -70,6 +72,7 @@ async fn test_max_block_count() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_max_nb_blocks() {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
@@ -136,6 +139,7 @@ async fn test_max_nb_blocks() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_slot_range() {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 

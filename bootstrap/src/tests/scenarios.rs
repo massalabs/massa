@@ -1,6 +1,7 @@
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::SerializeCompact;
+use serial_test::serial;
 use std::str::FromStr;
 use tokio::sync::mpsc;
 
@@ -15,6 +16,7 @@ use super::{
 };
 
 #[tokio::test]
+#[serial]
 async fn test_bootstrap_server() {
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
