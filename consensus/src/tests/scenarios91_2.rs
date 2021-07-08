@@ -38,6 +38,7 @@ async fn test_queueing() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -186,6 +187,7 @@ async fn test_doubles() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -317,6 +319,7 @@ async fn test_double_staking() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -462,6 +465,7 @@ async fn test_test_parents() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -592,6 +596,7 @@ async fn test_block_creation() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");

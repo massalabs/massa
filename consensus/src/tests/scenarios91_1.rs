@@ -29,6 +29,7 @@ async fn test_block_validity() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -279,6 +280,7 @@ async fn test_ti() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -443,6 +445,7 @@ async fn test_gpi() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -623,6 +626,7 @@ async fn test_old_stale() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");

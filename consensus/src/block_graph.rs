@@ -416,7 +416,13 @@ impl BlockGraph {
         block: Block,
         selector: &mut RandomSelector,
         current_slot: (u64, u8),
-    ) -> Result<HashMap<Hash, Block>, BlockAcknowledgeError> {
+    ) -> Result<
+        (
+            HashMap<crypto::hash::Hash, Block>,
+            HashMap<crypto::hash::Hash, Block>,
+        ),
+        BlockAcknowledgeError,
+    > {
         massa_trace!("start_ack_new_block", {
             "block": hash,
             "thread": block.header.thread_number,
@@ -666,7 +672,7 @@ impl BlockGraph {
     }
 
     /// Updates the consensus state by taking a new block into account
-    /// if ok, returns the hashmap of pruned blocks.
+    /// if ok, returns the hashmap of pruned blocks. and of final pruned blocks
     ///
     /// # Argument
     /// * hash: hash of the given block
@@ -675,7 +681,13 @@ impl BlockGraph {
         &mut self,
         hash: Hash,
         block: Block,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    ) -> Result<
+        (
+            HashMap<crypto::hash::Hash, Block>,
+            HashMap<crypto::hash::Hash, Block>,
+        ),
+        ConsensusError,
+    > {
         // basic checks
         if block.header.parents.len() != self.cfg.thread_count as usize
             || block.header.period_number == 0
@@ -760,7 +772,7 @@ impl BlockGraph {
             // block is incompatible with some final blocks
             let mut pruned = HashMap::with_capacity(1);
             pruned.insert(hash, block);
-            return Ok(pruned);
+            return Ok((pruned, HashMap::new()));
         }
 
         // add block to structure
@@ -963,10 +975,11 @@ impl BlockGraph {
             }
         }
 
+        let removed_finals = self.prune_blocks(final_blocks.clone(), true, false)?;
         // prune final blocks
-        pruned_blocks.extend(self.prune_blocks(final_blocks, true, false)?);
+        pruned_blocks.extend(removed_finals.clone());
 
-        Ok(pruned_blocks)
+        Ok((pruned_blocks, removed_finals))
     }
 
     /// Prunes blocks from graph.

@@ -10,6 +10,7 @@ use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEven
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
 use models::block::Block;
 use std::collections::HashMap;
+use storage::storage_controller::StorageCommandSender;
 use tokio::{
     sync::{mpsc, oneshot},
     time::{sleep_until, Sleep},
@@ -48,6 +49,8 @@ pub struct ConsensusWorker {
     protocol_command_sender: ProtocolCommandSender,
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
+    /// Associated storage command sender. If we want to have long term final blocks storage.
+    opt_storage_command_sender: Option<StorageCommandSender>,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
     /// Channel receiving consensus commands.
@@ -81,6 +84,7 @@ impl ConsensusWorker {
         cfg: ConsensusConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
+        opt_storage_command_sender: Option<StorageCommandSender>,
         block_db: BlockGraph,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
@@ -99,6 +103,7 @@ impl ConsensusWorker {
             genesis_public_key: SignatureEngine::new().derive_public_key(&cfg.genesis_key),
             protocol_command_sender,
             protocol_event_receiver,
+            opt_storage_command_sender,
             block_db,
             controller_command_rx,
             controller_event_tx,
@@ -259,7 +264,13 @@ impl ConsensusWorker {
         &mut self,
         hash: Hash,
         block: Block,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    ) -> Result<
+        (
+            HashMap<crypto::hash::Hash, Block>,
+            HashMap<crypto::hash::Hash, Block>,
+        ),
+        ConsensusError,
+    > {
         // if already in waiting structures, promote them if possible and quit
         {
             let (in_future, waiting_deps) = (
@@ -270,7 +281,7 @@ impl ConsensusWorker {
                 self.dependency_waiting_blocks.promote(&hash)?;
             }
             if in_future || waiting_deps {
-                return Ok(HashMap::new());
+                return Ok((HashMap::new(), HashMap::new()));
             }
         }
 
@@ -288,7 +299,7 @@ impl ConsensusWorker {
 
         match res {
             // block is valid and was acknowledged
-            Ok(discarded) => {
+            Ok((discarded, finals_blocks)) => {
                 // cancel discarded dependencies
                 self.dependency_waiting_blocks
                     .cancel(discarded.keys().copied().collect())?;
@@ -310,7 +321,11 @@ impl ConsensusWorker {
                         .await?;
 
                     // unlock dependencies
-                    self.dependency_waiting_blocks
+                    let res: Result<
+                        HashMap<crypto::hash::Hash, models::block::Block>,
+                        ConsensusError,
+                    > = self
+                        .dependency_waiting_blocks
                         .valid_block_obtained(&hash)?
                         .1
                         .into_iter()
@@ -323,9 +338,10 @@ impl ConsensusWorker {
                                     .clone(),
                             ))
                         })
-                        .collect()
+                        .collect();
+                    Ok((res?, finals_blocks))
                 } else {
-                    Ok(HashMap::new())
+                    Ok((HashMap::new(), finals_blocks))
                 }
             }
             // block is in the future: queue it
@@ -337,7 +353,7 @@ impl ConsensusWorker {
                     self.dependency_waiting_blocks
                         .cancel(vec![discarded_hash].into_iter().collect())?;
                 }
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::MissingDependencies(block, dependencies)) => {
                 self.dependency_waiting_blocks
@@ -345,51 +361,51 @@ impl ConsensusWorker {
                 // TODO ask for dependencies that have not been asked yet
                 //      but only if the dependency is not already in timeslot waiting line
                 // (see issue #105)
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::TooMuchInTheFuture) => {
                 // do nothing (DO NO DISCARD OR IT COULD BE USED TO PERFORM A FINALITY FORK)
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::AlreadyAcknowledged) => {
                 // do nothing: we already have this block
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::AlreadyDiscarded) => {
                 //  do nothing: we already have discarded this block
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::WrongSignature) => {
                 // the signature is wrong: ignore and do not cancel anything
                 // TODO in the future, ban sender node
                 // TODO re-ask ? (see issue #107)
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::InvalidFields) => {
                 // do nothing: block is invalid
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::DrawMismatch) => {
                 // do nothing: wrong draw number
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::InvalidParents(_)) => {
                 // do nothing: invalid choice of parents
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::TooOld) => {
                 // do nothing: we already have discarded this block
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok((HashMap::new(), HashMap::new()))
             }
             Err(BlockAcknowledgeError::CryptoError(e)) => Err(ConsensusError::CryptoError(e)),
             Err(BlockAcknowledgeError::TimeError(e)) => Err(ConsensusError::TimeError(e)),
@@ -412,10 +428,18 @@ impl ConsensusWorker {
     ) -> Result<(), ConsensusError> {
         // acknowledge incoming block
         let mut ack_map: HashMap<Hash, Block> = HashMap::new();
+        let mut finals = HashMap::new();
         ack_map.insert(hash, block);
         while let Some(bh) = ack_map.keys().next().cloned() {
             if let Some(b) = ack_map.remove(&bh) {
-                ack_map.extend(self.acknowledge_block(bh, b).await?);
+                let (res, next_finals) = self.acknowledge_block(bh, b).await?;
+                ack_map.extend(res);
+                finals.extend(next_finals);
+            }
+        }
+        if let Some(cmd_tx) = &self.opt_storage_command_sender {
+            for (hash, block) in finals {
+                cmd_tx.add_block(hash, block).await?
             }
         }
         Ok(())

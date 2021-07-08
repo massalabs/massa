@@ -30,6 +30,7 @@ async fn test_unsorted_block() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -144,6 +145,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -232,6 +234,7 @@ async fn test_too_many_blocks_in_the_future() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -329,6 +332,7 @@ async fn test_dep_in_back_order() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -431,6 +435,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -532,6 +537,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");

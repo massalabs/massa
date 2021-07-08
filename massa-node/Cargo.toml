@@ -18,6 +18,7 @@ logging = { path = "../logging" }
 communication = { path = "../communication" }
 consensus = { path = "../consensus" }
 api = { path = "../api" }
+storage = { path = "../storage" }
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }
