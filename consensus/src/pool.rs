@@ -25,16 +25,16 @@ pub struct OperationPool {
     map: HashMap<OperationId, Operation>,
     /// one vec per thread
     vec: Vec<BinaryHeap<(u64, OperationId)>>, // fee operation hash
-    current_slot: Slot,
+    current_periods: Vec<u64>,
     cfg: ConsensusConfig,
 }
 
 impl OperationPool {
-    pub fn new(slot: Slot, cfg: ConsensusConfig) -> OperationPool {
+    pub fn new(current_periods: Vec<u64>, cfg: ConsensusConfig) -> OperationPool {
         OperationPool {
             map: HashMap::new(),
             vec: vec![BinaryHeap::new(); cfg.thread_count as usize],
-            current_slot: slot,
+            current_periods,
             cfg,
         }
     }
@@ -58,9 +58,8 @@ impl OperationPool {
         // period validity check
         let start = operation.content.expiration_period - self.cfg.operation_validity_periods;
         let thread = get_thread(operation.content.creator_public_key);
-        if self.current_slot < Slot::new(start, thread)
-            || Slot::new(operation.content.expiration_period, thread) < self.current_slot
-        {
+        if Slot::new(self.current_periods[thread as usize], thread) < Slot::new(start, thread)
+            || Slot::new(operation.content.expiration_period, thread) < Slot::new(self.current_periods[thread as usize], thread) {
             return Ok(false);
         }
         signature_engine.verify(
@@ -80,7 +79,7 @@ impl OperationPool {
     }
 
     /// Update current_slot and discard invalid or integrated operation
-    pub fn ack_final_block(&mut self, block_slot: Slot, thread_final_ops: HashSet<Hash>) {
+    pub fn ack_final_block(&mut self, periods: Vec<u64>, thread_final_ops: HashSet<Hash>) {
         todo!() // see #270
     }
 

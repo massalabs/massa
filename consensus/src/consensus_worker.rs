@@ -116,6 +116,7 @@ impl ConsensusWorker {
             s.get_next_slot(cfg.thread_count)
         })?;
 
+        let periods = block_db.get_latest_final_blocks_periods().iter().map(|(_, period)| *period).collect();
         massa_trace!("consensus.consensus_worker.new", {});
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
@@ -131,7 +132,7 @@ impl ConsensusWorker {
             previous_slot,
             next_slot,
             wishlist: HashSet::new(),
-            operation_pool: OperationPool::new(next_slot, cfg.clone()),
+            operation_pool: OperationPool::new(periods, cfg.clone()),
             context,
         })
     }
@@ -482,16 +483,8 @@ impl ConsensusWorker {
         }
 
         // Update lastest final block slot in operation_pool
-        let slot = self
-            .block_db
-            .get_latest_final_blocks_periods()
-            .iter()
-            .enumerate()
-            .fold((0, 0), |(acc_period, acc_thread), (period, (_, thread))| {
-                std::cmp::max((acc_period, acc_thread), (period, *thread))
-            });
-        let slot = Slot::new(slot.0 as u64, slot.1 as u8);
-        self.operation_pool.ack_final_block(slot, HashSet::new());
+        let periods = self.block_db.get_latest_final_blocks_periods().iter().map(|(_, period)| *period).collect();
+        self.operation_pool.ack_final_block(periods, HashSet::new());
 
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks = &new_wishlist - &self.wishlist;
