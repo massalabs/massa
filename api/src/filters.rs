@@ -628,7 +628,7 @@ async fn get_block_interval(
                 .into_response())
             }
         };
-        if start <= time && time <= end {
+        if start <= time && time < end {
             res.insert(hash, header.slot);
         }
     }
@@ -846,7 +846,7 @@ async fn get_graph_interval(
                 .into_response())
             }
         };
-        if start <= time && time <= end {
+        if start <= time && time < end {
             let status;
             match reason {
                 DiscardReason::Invalid => {
