@@ -242,11 +242,14 @@ impl Ledger {
             .cache_capacity(cfg.ledger_cache_capacity)
             .flush_every_ms(cfg.ledger_flush_interval.map(|v| v.to_millis()));
         let db = sled_config.open()?;
+
         let mut ledger_per_thread = Vec::new();
         for thread in 0..cfg.thread_count {
+            db.drop_tree(format!("ledger_thread_{:?}", thread))?;
             let current_tree = db.open_tree(format!("ledger_thread_{:?}", thread))?;
             ledger_per_thread.push(current_tree);
         }
+        db.drop_tree(format!("latest_final_periods"))?;
         let latest_final_periods = db.open_tree("latest_final_periods")?;
         if latest_final_periods.is_empty() {
             for thread in 0..cfg.thread_count {
