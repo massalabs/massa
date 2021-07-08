@@ -659,7 +659,8 @@ impl SerializeCompact for LedgerExport {
 
             res.extend(u32::from(vec_count).to_varint_bytes());
             for (address, data) in thread_ledger.iter() {
-                res.extend(&address.to_bytes());
+				// Check if it compiles.
+                res.extend(address.to_bytes());
                 res.extend(data.to_bytes_compact(context)?);
             }
         }
