@@ -427,9 +427,7 @@ impl NetworkWorker {
             ConnectionClosureReason::Failed => {
                 self.peer_info_db.peer_failed(&ip)?;
             }
-            ConnectionClosureReason::Banned => {
-                self.peer_info_db.peer_banned(&ip)?;
-            }
+            ConnectionClosureReason::Banned => {}
         }
         if is_outgoing {
             self.peer_info_db.out_connection_closed(&ip)?;
