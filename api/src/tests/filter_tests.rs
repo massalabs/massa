@@ -3,7 +3,7 @@ use storage::{start_storage, StorageConfig};
 
 use super::tools::*;
 use communication::network::PeerInfo;
-use consensus::{DiscardReason, ExportCompiledBlock};
+use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
 use models::{Block, BlockHeader, SerializationContext, Slot};
 use serde_json::json;
@@ -58,6 +58,7 @@ async fn test_cliques() {
         ExportCompiledBlock {
             block: get_test_block().header,
             children: Vec::new(),
+            status: consensus::Status::Active,
         },
     );
     graph.active_blocks = active_blocks;
@@ -151,6 +152,7 @@ async fn test_current_parents() {
         ExportCompiledBlock {
             block: get_test_block().header,
             children: Vec::new(),
+            status: consensus::Status::Active,
         },
     );
     graph.active_blocks = active_blocks;
@@ -304,7 +306,7 @@ async fn test_get_graph_interval() {
     let expected = vec![(
         get_test_hash(),
         block.block.content.slot,
-        "active", // in tests there are no blocks in gi_head, so no just active blocks
+        Status::Active,
         block.block.content.parents.clone(),
     )];
     let expected: serde_json::Value =
@@ -336,8 +338,8 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
     expected.push((
         block_b
             .header
@@ -345,8 +347,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_b.header.content.parents.clone(),
     ));
     expected.push((
         block_c
@@ -355,8 +357,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_c.header.content.parents.clone(),
     ));
 
     for item in obtained.iter() {
@@ -383,8 +385,8 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
     expected.push((
         block_a
             .header
@@ -392,8 +394,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_a.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_a.header.content.parents.clone(),
     ));
     expected.push((
         block_b
@@ -402,8 +404,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_b.header.content.parents.clone(),
     ));
     expected.push((
         block_c
@@ -412,8 +414,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_c.header.content.parents.clone(),
     ));
     for item in obtained.iter() {
         assert!(expected.contains(&item))
@@ -439,8 +441,8 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
     expected.push((
         block_a
             .header
@@ -448,8 +450,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_a.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_a.header.content.parents.clone(),
     ));
     expected.push((
         block_b
@@ -458,8 +460,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_b.header.content.parents.clone(),
     ));
     expected.push((
         block_c
@@ -468,8 +470,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_c.header.content.parents.clone(),
     ));
     for item in obtained.iter() {
         assert!(expected.contains(&item))
@@ -495,8 +497,8 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
 
     expected.push((
         block_b
@@ -505,8 +507,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_b.header.content.parents.clone(),
     ));
 
     assert_eq!(obtained, expected);
@@ -528,8 +530,8 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
 
     expected.push((
         block_c
@@ -538,8 +540,8 @@ async fn test_get_graph_interval() {
             .compute_hash(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
-        "final".to_string(),
-        Vec::new(),
+        Status::Final,
+        block_c.header.content.parents.clone(),
     ));
 
     assert_eq!(obtained, expected);
@@ -561,8 +563,8 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 }
@@ -767,6 +769,7 @@ async fn test_get_block_interval() {
         ExportCompiledBlock {
             block: get_test_block().header,
             children: Vec::new(),
+            status: consensus::Status::Active,
         },
     );
     graph.active_blocks = active_blocks;
