@@ -200,7 +200,11 @@ impl OperationPool {
     }
 
     pub fn get_operation(&self, id: OperationId) -> Result<Option<Operation>, PoolError> {
-        todo!()
+        if let Some(wrapped_op) = self.ops.get(&id) {
+            Ok(Some(wrapped_op.op.clone()))
+        } else {
+            Ok(None)
+        }
     }
 }
 
