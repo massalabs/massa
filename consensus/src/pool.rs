@@ -5,7 +5,7 @@ use models::{Operation, SerializationContext, Slot};
 
 use crate::{ConsensusConfig, ConsensusError};
 
-pub struct Pool {
+pub struct OperationPool {
     map: HashMap<Hash, Operation>,
     /// one vec per thread
     vec: Vec<BinaryHeap<(u64, Hash)>>, // fee operation hash
@@ -13,9 +13,9 @@ pub struct Pool {
     cfg: ConsensusConfig,
 }
 
-impl Pool {
-    pub fn new(slot: Slot, cfg: ConsensusConfig) -> Pool {
-        Pool {
+impl OperationPool {
+    pub fn new(slot: Slot, cfg: ConsensusConfig) -> OperationPool {
+        OperationPool {
             map: HashMap::new(),
             vec: vec![BinaryHeap::new(); cfg.thread_count as usize],
             current_slot: slot,

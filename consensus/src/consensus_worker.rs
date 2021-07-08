@@ -1,4 +1,4 @@
-use crate::pool::Pool;
+use crate::pool::OperationPool;
 
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
@@ -75,7 +75,7 @@ pub struct ConsensusWorker {
     /// blocks we want
     wishlist: HashSet<Hash>,
     /// operation pool
-    pool: Pool,
+    operation_pool: OperationPool,
     /// serialization_context
     context: SerializationContext,
 }
@@ -131,7 +131,7 @@ impl ConsensusWorker {
             previous_slot,
             next_slot,
             wishlist: HashSet::new(),
-            pool: Pool::new(next_slot, cfg.clone()),
+            operation_pool: OperationPool::new(next_slot, cfg.clone()),
             context,
         })
     }
@@ -320,7 +320,10 @@ impl ConsensusWorker {
                     })
             }
             ConsensusCommand::CreatedOperation(operation) => {
-                if let Ok(true) = self.pool.new_operation(operation.clone(), &self.context) {
+                if let Ok(true) = self
+                    .operation_pool
+                    .new_operation(operation.clone(), &self.context)
+                {
                     self.protocol_command_sender
                         .propagate_operation(operation)
                         .await
@@ -393,7 +396,10 @@ impl ConsensusWorker {
                     .await?;
             }
             ProtocolEvent::ReceivedOperation(operation) => {
-                if let Ok(true) = self.pool.new_operation(operation.clone(), &self.context) {
+                if let Ok(true) = self
+                    .operation_pool
+                    .new_operation(operation.clone(), &self.context)
+                {
                     self.protocol_command_sender
                         .propagate_operation(operation)
                         .await?;
