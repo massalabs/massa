@@ -1238,7 +1238,6 @@ impl BlockGraph {
                         block_changes,
                     } => {
                         // block is valid: remove it from Incoming and return it
-
                         massa_trace!("consensus.block_graph.process.incomming_block.valid", {
                             "block_id": block_id
                         });
@@ -1538,8 +1537,11 @@ impl BlockGraph {
                     {
                         return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                             format!(
-                                "Bad parent thread:{} or slot:{}.",
-                                parent_thread, parent.block.header.content.slot
+                                "Bad parent {} in thread:{} or slot:{} for {}.",
+                                parent_hash,
+                                parent_thread,
+                                parent.block.header.content.slot,
+                                header.content.slot
                             ),
                         )));
                     }
@@ -2612,13 +2614,10 @@ impl BlockGraph {
             .latest_final_blocks_periods
             .iter()
             .enumerate()
-            .filter_map(|(thread, b_id_period)| {
-                if b_id_period.0 != old_latest_final_blocks_periods[thread].0 {
-                    return Some((
-                        thread as u8,
-                        b_id_period.0,
-                        old_latest_final_blocks_periods[thread].1,
-                    ));
+            .filter_map(|(thread, (b_id, _b_period))| {
+                let (old_b_id, old_period) = &old_latest_final_blocks_periods[thread];
+                if b_id != old_b_id {
+                    return Some((thread as u8, old_b_id, old_period));
                 }
                 None
             });
@@ -2639,7 +2638,7 @@ impl BlockGraph {
             // Init the stop backtrack stop periods
             let mut stop_backtrack_periods = vec![0u64; self.cfg.thread_count as usize];
             for limit_thread in 0u8..self.cfg.thread_count {
-                if limit_thread == limit_thread {
+                if limit_thread == changed_thread {
                     // in the same thread, set the stop backtrack period to B1.period + 1
                     stop_backtrack_periods[limit_thread as usize] = old_period + 1;
                 } else if !old_block.parents.is_empty() {
@@ -2673,13 +2672,7 @@ impl BlockGraph {
                 {
                     continue;
                 }
-                for (addr, changes) in scan_b.block_ledger_change
-                    [scan_b.block.header.content.slot.thread as usize]
-                    .iter()
-                    .filter(|(addr, _changes)| {
-                        addr.get_thread(self.cfg.thread_count) == changed_thread
-                    })
-                {
+                for (addr, changes) in scan_b.block_ledger_change[changed_thread as usize].iter() {
                     match accumulated_changes.entry(*addr) {
                         hash_map::Entry::Occupied(mut occ) => {
                             occ.get_mut().chain(changes)?;
