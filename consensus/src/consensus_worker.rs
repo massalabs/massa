@@ -473,17 +473,33 @@ impl ConsensusWorker {
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
         match event {
             ProtocolEvent::ReceivedBlock { hash, block } => {
+                self.waiting_header.0.remove(&hash);
                 self.rec_acknowledge_block(hash, block).await?;
             }
             ProtocolEvent::ReceivedBlockHeader { hash, header } => {
-                let header_check = self.block_db.check_header(
+                let deps = match self.block_db.check_header(
                     &hash,
                     &header,
                     &mut self.selector,
                     self.current_slot,
-                );
-                if header_check.is_ok() {
-                    self.protocol_command_sender.ask_for_block(hash).await?;
+                ) {
+                    Ok(deps) => deps,
+                    Err(BlockAcknowledgeError::AlreadyAcknowledged) => {
+                        return Ok(());
+                    }
+                    Err(e) => return Err(ConsensusError::HeaderCheckError(e.to_string())),
+                };
+                if deps.len() > 0 {
+                    self.dependency_waiting_blocks.insert(
+                        hash,
+                        QueuedBlock::HeaderOnly(header),
+                        deps,
+                    )?;
+                } else {
+                    if let None = self.waiting_header.0.insert(hash, header) {
+                        // Asking for block only if we don't already have it
+                        self.protocol_command_sender.ask_for_block(hash).await?;
+                    }
                 }
             }
             ProtocolEvent::ReceivedTransaction(_transaction) => {
