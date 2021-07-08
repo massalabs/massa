@@ -14,11 +14,13 @@ struct BlockDatabase{
 }
 
 enum ConsensusBlock {
+    NotReceivedYet(PendingAckBlockState)
     HeaderOnly(Header, PendingAckBlockState),
     FullBlock(Block, PendingAckBlockState),
     Discarded(Header, DiscardReason),
     Genesis(Block),
     Active(CompiledBlock),
+    Final(Block),
 }
 
 struct PendingAckBlockState {
@@ -38,6 +40,15 @@ struct PendingAckBlockState {
 * reset timer
 
 ### Protocol event
+* ReceivedBlock
+    * rec_acknoledge block
+* Received blockHeader
+    * check header (in block graph)
+    * update PendingAckBlockState in block_db
+* Received transaction
+    * see milestone 0.3
+* Get Block
+    * just look in block_db
 
 ### Detailed methods and functions
 
@@ -50,7 +61,7 @@ struct PendingAckBlockState {
 * if there is a storage command sender, send it blocks that became final
 
 #### acknowledge block in consensus worker
-* check if already in block_db, update sequence_number if needed
+* check if already in block_db, update sequence_number if needed, or transition from HeaderOnly to FullBlock
 * go to block graph acknowledge block
     * if it is now an active block
         * discard waiting blocks that are older than latest_final_blocks_periods
@@ -66,4 +77,23 @@ struct PendingAckBlockState {
 
 #### acknowledge block in block graph
 
-#### unlock dependencies
+#### unlock
+
+#### check header
+
+## Transitions between ConsensusBlock states
+```mermaid
+graph LR
+    F[ProtocolEvent] --> B
+    F --> C
+    A(NotReceivedYet) --> B(HeaderOnly)
+    A --> C(FullBlock)
+    B --> C
+    H(Genesis)
+    C --> D(Active)
+    D --> E(Final)
+    E --> G(Discarded)
+    B --> G
+    C --> G
+    D --> G
+```
