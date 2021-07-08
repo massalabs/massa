@@ -3,6 +3,7 @@ use communication::network::NetworkConfig;
 use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
 use serde::Deserialize;
+use storage::StorageConfig;
 use toml;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -17,6 +18,7 @@ pub struct Config {
     pub network: NetworkConfig,
     pub consensus: ConsensusConfig,
     pub api: ApiConfig,
+    pub storage: StorageConfig,
 }
 
 impl Config {

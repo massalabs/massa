@@ -23,6 +23,7 @@ log = { version = "0.4" }
 thiserror = "1.0"
 num = "0.3.1"
 time= { path = "../time"}
+storage= { path = "../storage"}
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }

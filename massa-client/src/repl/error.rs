@@ -14,4 +14,6 @@ pub enum ReplError {
     NodeConnectionError(#[from] reqwest::Error),
     #[error("Hash parse error : {0}")]
     HashParseError(String),
+    #[error("Bad input parameter : {0}")]
+    BadCommandParameter(String),
 }

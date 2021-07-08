@@ -128,6 +128,39 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
 
         self
     }
+
+    pub fn new_command_with_optional_parameters<S, F>(
+        mut self,
+        name: S,
+        help: S,
+        optional_params: &[&str],
+        func: F,
+    ) -> Self
+    where
+        S: ToString,
+        F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
+    {
+        self.repl.cmd_list.push(Command {
+            name: name.to_string(),
+            max_nb_param: optional_params.len(),
+            min_nb_param: 0,
+            help: help.to_string(),
+            func: Box::new(func),
+        });
+
+        self.app = self.app.subcommand(
+            clap::SubCommand::with_name(&name.to_string())
+                .about("")
+                .arg(
+                    clap::Arg::with_name("")
+                        .required(false)
+                        .min_values(0)
+                        .max_values(optional_params.len() as u64),
+                ),
+        );
+
+        self
+    }
 }
 
 ///Main struct to manager user's typed command.

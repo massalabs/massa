@@ -15,7 +15,7 @@ use std::collections::{hash_map, HashMap, HashSet};
 use tokio::{sync::mpsc, task::JoinHandle};
 
 /// Possible types of events that can happen.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum ProtocolEvent {
     /// A isolated transaction was received.
     ReceivedTransaction(String),
@@ -26,8 +26,8 @@ pub enum ProtocolEvent {
         signature: Signature,
         header: BlockHeader,
     },
-    /// Ask for an active block from consensus.
-    GetActiveBlock(Hash),
+    /// Ask for a block from consensus.
+    GetBlock(Hash),
 }
 
 /// Commands that protocol worker can process
@@ -498,7 +498,7 @@ impl ProtocolWorker {
                     .ok_or(CommunicationError::MissingNodeError)?;
                 node_info.wanted_blocks.insert(data.clone());
                 self.controller_event_tx
-                    .send(ProtocolEvent::GetActiveBlock(data))
+                    .send(ProtocolEvent::GetBlock(data))
                     .await
                     .map_err(|_| {
                         CommunicationError::ChannelError(

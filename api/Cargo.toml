@@ -19,3 +19,9 @@ log = { version = "0.4" }
 thiserror = "1.0"
 time = {path = "../time"}
 communication = {path = "../communication"}
+storage = {path = "../storage"}
+
+[dev-dependencies]
+stderrlog = { version = "0.5" }
+pretty_assertions = "0.6"
+tempfile = "3.2"

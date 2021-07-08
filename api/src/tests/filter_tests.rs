@@ -1,4 +1,6 @@
 use crate::ApiEvent;
+use models::slot::Slot;
+use storage::{start_storage_controller, StorageConfig};
 
 use super::tools::*;
 use communication::network::PeerInfo;
@@ -16,7 +18,7 @@ use time::UTime;
 async fn test_cliques() {
     {
         //test with no cliques
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
 
@@ -62,7 +64,7 @@ async fn test_cliques() {
     graph.active_blocks = active_blocks;
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
 
@@ -95,16 +97,8 @@ async fn test_cliques() {
     handle.await.unwrap();
     let expected = hash_set
         .iter()
-        .map(|hash| {
-            (
-                hash,
-                (
-                    get_test_block().header.period_number,
-                    get_test_block().header.thread_number,
-                ),
-            )
-        })
-        .collect::<Vec<(&Hash, (u64, u8))>>();
+        .map(|hash| (hash, get_test_block().header.slot))
+        .collect::<Vec<(&Hash, Slot)>>();
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
         &serde_json::to_string(&(2, vec![expected.clone(), expected.clone()])).unwrap(),
@@ -119,7 +113,7 @@ async fn test_cliques() {
 async fn test_current_parents() {
     //test with empty parents
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
 
@@ -163,7 +157,7 @@ async fn test_current_parents() {
     graph.active_blocks = active_blocks;
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -194,13 +188,7 @@ async fn test_current_parents() {
     assert_eq!(res.status(), 200);
 
     handle.await.unwrap();
-    let expected = (
-        get_test_hash(),
-        (
-            get_test_block().header.period_number,
-            get_test_block().header.thread_number,
-        ),
-    );
+    let expected = (get_test_hash(), get_test_block().header.slot);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
         &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
@@ -213,7 +201,7 @@ async fn test_current_parents() {
 
 #[tokio::test]
 async fn test_get_graph_interval() {
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -234,7 +222,21 @@ async fn test_get_graph_interval() {
         .matches(&filter)
         .await;
 
-    assert!(!matches);
+    assert!(matches);
+    let (filter, mut rx_api) = mock_filter(None);
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+
+            _ => {}
+        }
+    });
 
     // block not found
     let start: UTime = 0.into();
@@ -258,11 +260,11 @@ async fn test_get_graph_interval() {
     let mut expected = get_test_block_graph();
     expected.active_blocks.insert(
         get_test_hash(),
-        get_test_compiled_exported_block(1, 0, None),
+        get_test_compiled_exported_block(Slot::new(1, 0), None),
     );
     let cloned = expected.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -292,9 +294,8 @@ async fn test_get_graph_interval() {
     let block = expected.active_blocks.get(&get_test_hash()).unwrap();
     let expected = vec![(
         get_test_hash(),
-        block.block.period_number,
-        block.block.thread_number,
-        "final", // in tests there are no blocks in gi_head, so no just active blocks
+        block.block.slot,
+        "active", // in tests there are no blocks in gi_head, so no just active blocks
         block.block.parents.clone(),
     )];
     let expected: serde_json::Value =
@@ -302,13 +303,225 @@ async fn test_get_graph_interval() {
     assert_eq!(obtained, expected);
 
     drop(filter);
+
+    // test link with storage
+    let mut cfg = get_consensus_config();
+    cfg.t0 = 2000.into();
+
+    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 2500.into();
+    let end: UTime = 9000.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    expected.push((
+        block_b.header.compute_hash().unwrap(),
+        block_b.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+    expected.push((
+        block_c.header.compute_hash().unwrap(),
+        block_c.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 50.into();
+    let end: UTime = 4500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    expected.push((
+        block_a.header.compute_hash().unwrap(),
+        block_a.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+    expected.push((
+        block_b.header.compute_hash().unwrap(),
+        block_b.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+    expected.push((
+        block_c.header.compute_hash().unwrap(),
+        block_c.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 50.into();
+    let end: UTime = 4500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    expected.push((
+        block_a.header.compute_hash().unwrap(),
+        block_a.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+    expected.push((
+        block_b.header.compute_hash().unwrap(),
+        block_b.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+    expected.push((
+        block_c.header.compute_hash().unwrap(),
+        block_c.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 2500.into();
+    let end: UTime = 3500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+
+    expected.push((
+        block_b.header.compute_hash().unwrap(),
+        block_b.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+
+    assert_eq!(obtained, expected);
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 3500.into();
+    let end: UTime = 4500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+
+    expected.push((
+        block_c.header.compute_hash().unwrap(),
+        block_c.header.slot,
+        "final".to_string(),
+        Vec::new(),
+    ));
+
+    assert_eq!(obtained, expected);
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 50.into();
+    let end: UTime = 2000.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
+    let expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
+    assert_eq!(obtained, expected);
+    handle.await.unwrap();
 }
 
 #[tokio::test]
 async fn test_last_final() {
     //test with empty final block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -331,7 +544,7 @@ async fn test_last_final() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -342,7 +555,7 @@ async fn test_last_final() {
     expected.latest_final_blocks_periods = vec![(get_test_hash(), 10), (get_test_hash(), 21)];
     let cloned_expected = expected.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -378,8 +591,10 @@ async fn test_last_final() {
                 .latest_final_blocks_periods
                 .iter()
                 .enumerate()
-                .map(|(thread_number, (hash, period))| (hash.clone(), *period, thread_number as u8))
-                .collect::<Vec<(Hash, u64, u8)>>(),
+                .map(|(thread_number, (hash, period))| {
+                    (hash.clone(), Slot::new(*period, thread_number as u8))
+                })
+                .collect::<Vec<(Hash, Slot)>>(),
         )
         .unwrap(),
     )
@@ -393,7 +608,7 @@ async fn test_last_final() {
 async fn test_peers() {
     //test with empty final peers
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -445,7 +660,7 @@ async fn test_peers() {
         .collect::<HashMap<IpAddr, PeerInfo>>();
     let cloned = peers.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -465,7 +680,6 @@ async fn test_peers() {
         .path(&"/api/v1/peers/123")
         .matches(&filter)
         .await;
-    println!("matches:{:?}", matches);
     assert!(!matches);
 
     //valide url with peers.
@@ -499,7 +713,7 @@ async fn test_get_block_interval() {
     );
     graph.active_blocks = active_blocks;
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -513,14 +727,15 @@ async fn test_get_block_interval() {
             _ => {}
         }
     });
-
     // invalid hash: filter mismatch
     let matches = warp::test::request()
         .method("GET")
         .path(&"/api/v1/blockinterval")
         .matches(&filter)
         .await;
-    assert!(!matches);
+    assert!(matches);
+
+    let (filter, mut rx_api) = mock_filter(None);
 
     // block not found
     let start: UTime = 0.into();
@@ -536,12 +751,11 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, (u64, u8))>::new()).unwrap())
-            .unwrap();
+        serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap()).unwrap();
     assert_eq!(obtained, expected);
-    handle.await.unwrap();
+    //handle.await.unwrap();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -565,27 +779,158 @@ async fn test_get_block_interval() {
         ))
         .reply(&filter)
         .await;
-    handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let mut expected = Vec::new();
-    expected.push((
-        get_test_hash(),
-        (
-            get_test_block().header.period_number,
-            get_test_block().header.thread_number,
-        ),
-    ));
+    expected.push((get_test_hash(), get_test_block().header.slot));
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
+
+    // test link with storage
+
+    let mut cfg = get_consensus_config();
+    cfg.t0 = 2000.into();
+
+    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 50.into();
+    let end: UTime = 2000.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let expected = Vec::<(Hash, Slot)>::new();
+    let expected: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
+    assert_eq!(obtained, expected);
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 2500.into();
+    let end: UTime = 3500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let mut expected = Vec::<(Hash, Slot)>::new();
+    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
+    let expected: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
+    assert_eq!(obtained, expected);
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 50.into();
+    let end: UTime = 4500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot)>::new();
+    expected.push((block_a.header.compute_hash().unwrap(), block_a.header.slot));
+    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
+    expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 3500.into();
+    let end: UTime = 4500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot)>::new();
+    expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
+
+    let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = get_empty_graph_handle(rx_api);
+
+    let start: UTime = 2500.into();
+    let end: UTime = 9000.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot)>::new();
+    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
+    expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
 }
 
 #[tokio::test]
 async fn test_get_block() {
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -616,7 +961,7 @@ async fn test_get_block() {
     assert_eq!(res.status(), 404);
     handle.await.unwrap();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -643,13 +988,53 @@ async fn test_get_block() {
     assert_eq!(obtained, expected);
     handle.await.unwrap();
     drop(filter);
+
+    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
+
+    let storage_config = StorageConfig {
+        /// Max number of bytes we want to store
+        max_stored_blocks: 5,
+        /// path to db
+        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
+        cache_capacity: 256,  //little to force flush cache
+        flush_interval: None, //defaut
+    };
+    let (storage_command_tx, _storage_manager) = start_storage_controller(storage_config).unwrap();
+    let (filter, mut rx_api) = mock_filter(None);
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetActiveBlock(_hash, response_sender_tx)) => {
+                response_sender_tx.send(None).expect("failed to send block");
+            }
+
+            _ => {}
+        }
+    });
+
+    // block not found
+    let other_hash = Hash::hash("something else".as_bytes());
+
+    storage_command_tx
+        .add_block(other_hash, get_test_block())
+        .await
+        .unwrap();
+
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!("/api/v1/block/{}", other_hash))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 404);
+    handle.await.unwrap();
 }
 
 #[tokio::test]
 async fn test_network_info() {
     //test with empty peer list
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
 
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
@@ -701,7 +1086,7 @@ async fn test_network_info() {
         })
         .collect::<HashMap<IpAddr, PeerInfo>>();
     let cloned = peers.clone();
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
@@ -737,7 +1122,7 @@ async fn test_network_info() {
 async fn test_state() {
     //test with empty final peers
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
 
         let handle = tokio::spawn(async move {
             loop {
@@ -803,7 +1188,7 @@ async fn test_state() {
         .collect::<HashMap<IpAddr, PeerInfo>>();
     let cloned = peers.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         loop {
@@ -849,7 +1234,7 @@ async fn test_state() {
 async fn test_last_stale() {
     //test with empty stale block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -871,7 +1256,7 @@ async fn test_last_stale() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -883,16 +1268,16 @@ async fn test_last_stale() {
     graph.discarded_blocks.map.extend(vec![
         (
             get_test_hash(),
-            (DiscardReason::Invalid, get_header(1, 1, None)),
+            (DiscardReason::Invalid, get_header(Slot::new(1, 1), None)),
         ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0, None)),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
         ),
     ]);
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -906,7 +1291,7 @@ async fn test_last_stale() {
         }
     });
 
-    //valide url with final block.
+    // valid url with final block.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/last_stale")
@@ -916,7 +1301,7 @@ async fn test_last_stale() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![(get_another_test_hash(), 2, 0)]).unwrap(),
+        &serde_json::to_string(&vec![(get_another_test_hash(), Slot::new(2, 0))]).unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -928,7 +1313,7 @@ async fn test_last_stale() {
 async fn test_last_invalid() {
     //test with empty final block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
@@ -950,7 +1335,7 @@ async fn test_last_invalid() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -962,16 +1347,16 @@ async fn test_last_invalid() {
     graph.discarded_blocks.map.extend(vec![
         (
             get_test_hash(),
-            (DiscardReason::Invalid, get_header(1, 1, None)),
+            (DiscardReason::Invalid, get_header(Slot::new(1, 1), None)),
         ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0, None)),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
         ),
     ]);
     let cloned = graph.clone();
 
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
@@ -994,7 +1379,7 @@ async fn test_last_invalid() {
     handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected = serde_json::to_value(&vec![(get_test_hash(), 1, 1)]).unwrap();
+    let expected = serde_json::to_value(&vec![(get_test_hash(), Slot::new(1, 1))]).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
@@ -1006,7 +1391,7 @@ async fn test_staker_info() {
     let cloned_staker = staker.clone();
     //test with empty final block
     {
-        let (filter, mut rx_api) = mock_filter();
+        let (filter, mut rx_api) = mock_filter(None);
 
         let handle = tokio::spawn(async move {
             loop {
@@ -1014,7 +1399,7 @@ async fn test_staker_info() {
                 match evt {
                     Some(ApiEvent::GetSelectionDraw(_start, _stop, response_sender_tx)) => {
                         response_sender_tx
-                            .send(Ok(vec![((0, 0), cloned_staker)]))
+                            .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
                             .expect("failed to send slection draw");
                     }
                     Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
@@ -1042,7 +1427,7 @@ async fn test_staker_info() {
         assert_eq!(obtained["staker_discarded_blocks"], empty_vec);
         assert_eq!(
             obtained["staker_next_draws"],
-            serde_json::to_value(vec![(0u64, 0u8)]).unwrap()
+            serde_json::to_value(vec![Slot::new(0u64, 0u8)]).unwrap()
         );
 
         drop(filter);
@@ -1052,19 +1437,22 @@ async fn test_staker_info() {
 
     let staker_s_discarded = vec![(
         get_test_hash(),
-        (DiscardReason::Invalid, get_header(1, 1, Some(staker))),
+        (
+            DiscardReason::Invalid,
+            get_header(Slot::new(1, 1), Some(staker)),
+        ),
     )];
     graph.discarded_blocks.map.extend(vec![
         staker_s_discarded[0].clone(),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0, None)),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
         ),
     ]);
 
     let staker_s_active = vec![(
         get_another_test_hash(),
-        get_test_compiled_exported_block(2, 1, Some(staker)),
+        get_test_compiled_exported_block(Slot::new(2, 1), Some(staker)),
     )];
     graph
         .active_blocks
@@ -1072,7 +1460,7 @@ async fn test_staker_info() {
 
     let cloned_staker = staker.clone();
     let cloned_graph = graph.clone();
-    let (filter, mut rx_api) = mock_filter();
+    let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
         loop {
@@ -1081,7 +1469,7 @@ async fn test_staker_info() {
             match evt {
                 Some(ApiEvent::GetSelectionDraw(_start, _stop, response_sender_tx)) => {
                     response_sender_tx
-                        .send(Ok(vec![((0, 0), cloned_staker)]))
+                        .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
                         .expect("failed to send selection draw");
                 }
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {

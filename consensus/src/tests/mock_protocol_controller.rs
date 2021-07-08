@@ -55,7 +55,7 @@ impl MockProtocolController {
 
     pub async fn receive_get_active_block(&mut self, _source_node_id: NodeId, hash: Hash) {
         self.protocol_event_tx
-            .send(ProtocolEvent::GetActiveBlock(hash))
+            .send(ProtocolEvent::GetBlock(hash))
             .await
             .expect("could not send protocol event");
     }

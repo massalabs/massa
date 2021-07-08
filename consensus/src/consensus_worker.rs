@@ -8,8 +8,9 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::block::Block;
+use models::{block::Block, slot::Slot};
 use std::collections::HashMap;
+use storage::StorageCommandSender;
 use tokio::{
     sync::{mpsc, oneshot},
     time::{sleep_until, Sleep},
@@ -24,9 +25,9 @@ pub enum ConsensusCommand {
     GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
     /// Returns through a channel the list of slots with public key of the selected staker.
     GetSelectionDraws(
-        (u64, u8),
-        (u64, u8),
-        oneshot::Sender<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>,
+        Slot,
+        Slot,
+        oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     ),
 }
 
@@ -48,6 +49,8 @@ pub struct ConsensusWorker {
     protocol_command_sender: ProtocolCommandSender,
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
+    /// Associated storage command sender. If we want to have long term final blocks storage.
+    opt_storage_command_sender: Option<StorageCommandSender>,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
     /// Channel receiving consensus commands.
@@ -63,7 +66,16 @@ pub struct ConsensusWorker {
     /// Sophisticated queue of blocks wainting for dependencies.
     dependency_waiting_blocks: DependencyWaitingBlocks,
     /// Current slot.
-    current_slot: (u64, u8),
+    current_slot: Slot,
+}
+
+/// Returned by acknowledge_block
+#[derive(Default, Debug)]
+struct AcknowledgeBlockReturn {
+    /// Blocks that were depending on freshly acknowledged block, that we can try to acknowledge again
+    pub to_retry: HashMap<crypto::hash::Hash, Block>,
+    /// Final blocks that we may send to storage
+    pub finals: HashMap<crypto::hash::Hash, Block>,
 }
 
 impl ConsensusWorker {
@@ -81,6 +93,7 @@ impl ConsensusWorker {
         cfg: ConsensusConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
+        opt_storage_command_sender: Option<StorageCommandSender>,
         block_db: BlockGraph,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
@@ -91,14 +104,15 @@ impl ConsensusWorker {
         let selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights)?;
         let current_slot =
             get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)?
-                .map_or(Ok((0u64, 0u8)), |s| {
-                    get_next_block_slot(cfg.thread_count, s)
+                .map_or(Ok(Slot::new(0u64, 0u8)), |s| {
+                    s.get_next_slot(cfg.thread_count)
                 })?;
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
             genesis_public_key: SignatureEngine::new().derive_public_key(&cfg.genesis_key),
             protocol_command_sender,
             protocol_event_receiver,
+            opt_storage_command_sender,
             block_db,
             controller_command_rx,
             controller_event_tx,
@@ -153,14 +167,13 @@ impl ConsensusWorker {
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
         massa_trace!("slot_timer", {
-            "thread": self.current_slot.1,
-            "period": self.current_slot.0
+            "slot": self.current_slot,
         });
         let block_creator = self.selector.draw(self.current_slot);
 
         // create a block if enabled and possible
         if !self.cfg.disable_block_creation
-            && self.current_slot.0 > 0
+            && self.current_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
             let (hash, block) = self
@@ -176,7 +189,7 @@ impl ConsensusWorker {
         }
 
         // reset timer for next slot
-        self.current_slot = get_next_block_slot(self.cfg.thread_count, self.current_slot)?;
+        self.current_slot = self.current_slot.get_next_slot(self.cfg.thread_count)?;
         next_slot_timer.set(sleep_until(
             get_block_slot_timestamp(
                 self.cfg.thread_count,
@@ -217,24 +230,23 @@ impl ConsensusWorker {
                     ))
                 }),
             ConsensusCommand::GetSelectionDraws(slot_start, slot_end, response_tx) => {
-                let mut result: Result<Vec<((u64, u8), PublicKey)>, ConsensusError> =
-                    Ok(Vec::new());
+                let mut result: Result<Vec<(Slot, PublicKey)>, ConsensusError> = Ok(Vec::new());
                 let mut cur_slot = slot_start;
                 while cur_slot < slot_end {
                     if let Ok(res) = result.as_mut() {
                         res.push((
                             cur_slot,
-                            if cur_slot.0 == 0 {
+                            if cur_slot.period == 0 {
                                 self.genesis_public_key
                             } else {
                                 self.cfg.nodes[self.selector.draw(cur_slot) as usize].0
                             },
                         ));
                     }
-                    cur_slot = match get_next_block_slot(self.cfg.thread_count, cur_slot) {
+                    cur_slot = match cur_slot.get_next_slot(self.cfg.thread_count) {
                         Ok(next_slot) => next_slot,
-                        Err(err) => {
-                            result = Err(err);
+                        Err(_) => {
+                            result = Err(ConsensusError::SlotOverflowError);
                             break;
                         }
                     }
@@ -259,7 +271,7 @@ impl ConsensusWorker {
         &mut self,
         hash: Hash,
         block: Block,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    ) -> Result<AcknowledgeBlockReturn, ConsensusError> {
         // if already in waiting structures, promote them if possible and quit
         {
             let (in_future, waiting_deps) = (
@@ -270,7 +282,7 @@ impl ConsensusWorker {
                 self.dependency_waiting_blocks.promote(&hash)?;
             }
             if in_future || waiting_deps {
-                return Ok(HashMap::new());
+                return Ok(Default::default());
             }
         }
 
@@ -290,10 +302,12 @@ impl ConsensusWorker {
 
         match res {
             // block is valid and was acknowledged
-            Ok(discarded) => {
+            Ok(UpdateConsensusReturn {
+                pruned: discarded,
+                finals: final_blocks,
+            }) => {
                 // cancel discarded dependencies
-                self.dependency_waiting_blocks
-                    .cancel(discarded.keys().copied().collect())?;
+                self.dependency_waiting_blocks.cancel(discarded)?;
                 // cancel dependency_waiting_blocks for which the slot number is now inferior or equal to the latest final block in their thread
                 let last_finals = self
                     .block_db
@@ -312,7 +326,8 @@ impl ConsensusWorker {
                         .await?;
 
                     // unlock dependencies
-                    self.dependency_waiting_blocks
+                    let res = self
+                        .dependency_waiting_blocks
                         .valid_block_obtained(&hash)?
                         .1
                         .into_iter()
@@ -325,9 +340,16 @@ impl ConsensusWorker {
                                     .clone(),
                             ))
                         })
-                        .collect()
+                        .collect::<Result<HashMap<Hash, Block>, ConsensusError>>()?;
+                    Ok(AcknowledgeBlockReturn {
+                        to_retry: res,
+                        finals: final_blocks,
+                    })
                 } else {
-                    Ok(HashMap::new())
+                    Ok(AcknowledgeBlockReturn {
+                        to_retry: HashMap::new(),
+                        finals: final_blocks,
+                    })
                 }
             }
             // block is in the future: queue it
@@ -339,7 +361,7 @@ impl ConsensusWorker {
                     self.dependency_waiting_blocks
                         .cancel(vec![discarded_hash].into_iter().collect())?;
                 }
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::MissingDependencies(block, dependencies)) => {
                 self.dependency_waiting_blocks
@@ -347,51 +369,51 @@ impl ConsensusWorker {
                 // TODO ask for dependencies that have not been asked yet
                 //      but only if the dependency is not already in timeslot waiting line
                 // (see issue #105)
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::TooMuchInTheFuture) => {
                 // do nothing (DO NO DISCARD OR IT COULD BE USED TO PERFORM A FINALITY FORK)
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::AlreadyAcknowledged) => {
                 // do nothing: we already have this block
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::AlreadyDiscarded) => {
                 //  do nothing: we already have discarded this block
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::WrongSignature) => {
                 // the signature is wrong: ignore and do not cancel anything
                 // TODO in the future, ban sender node
                 // TODO re-ask ? (see issue #107)
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::InvalidFields) => {
                 // do nothing: block is invalid
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::DrawMismatch) => {
                 // do nothing: wrong draw number
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::InvalidParents(_)) => {
                 // do nothing: invalid choice of parents
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::TooOld) => {
                 // do nothing: we already have discarded this block
                 self.dependency_waiting_blocks
                     .cancel([hash].iter().copied().collect())?;
-                Ok(HashMap::new())
+                Ok(Default::default())
             }
             Err(BlockAcknowledgeError::CryptoError(e)) => Err(ConsensusError::CryptoError(e)),
             Err(BlockAcknowledgeError::TimeError(e)) => Err(ConsensusError::TimeError(e)),
@@ -414,11 +436,17 @@ impl ConsensusWorker {
     ) -> Result<(), ConsensusError> {
         // acknowledge incoming block
         let mut ack_map: HashMap<Hash, Block> = HashMap::new();
+        let mut finals = HashMap::new();
         ack_map.insert(hash, block);
         while let Some(bh) = ack_map.keys().next().cloned() {
             if let Some(b) = ack_map.remove(&bh) {
-                ack_map.extend(self.acknowledge_block(bh, b).await?);
+                let ack_out = self.acknowledge_block(bh, b).await?;
+                ack_map.extend(ack_out.to_retry);
+                finals.extend(ack_out.finals);
             }
+        }
+        if let Some(cmd_tx) = &self.opt_storage_command_sender {
+            cmd_tx.add_block_batch(finals).await?
         }
         Ok(())
     }
@@ -451,12 +479,17 @@ impl ConsensusWorker {
             ProtocolEvent::ReceivedTransaction(_transaction) => {
                 // todo (see issue #108)
             }
-            ProtocolEvent::GetActiveBlock(block_hash) => {
+            ProtocolEvent::GetBlock(block_hash) => {
                 if let Some(block) = self.block_db.get_active_block(block_hash) {
-                    massa_trace!("sending_block", { "block_hash": block_hash });
                     self.protocol_command_sender
                         .send_block(block_hash, block.clone())
                         .await?;
+                } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
+                    if let Some(block) = storage_command_sender.get_block(block_hash).await? {
+                        self.protocol_command_sender
+                            .send_block(block_hash, block)
+                            .await?;
+                    }
                 }
             }
         }

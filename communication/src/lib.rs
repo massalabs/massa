@@ -9,3 +9,4 @@ pub mod network;
 pub mod protocol;
 
 pub use error::{CommunicationError, HandshakeErrorType};
+pub use network::PeerInfo;

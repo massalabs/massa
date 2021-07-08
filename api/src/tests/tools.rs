@@ -1,18 +1,28 @@
 use crate::{get_filter, ApiConfig, ApiEvent};
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-use consensus::{BlockGraphExport, ConsensusConfig, ExportCompiledBlock, ExportDiscardedBlocks};
+use consensus::{
+    get_block_slot_timestamp, BlockGraphExport, ConsensusConfig, ExportCompiledBlock,
+    ExportDiscardedBlocks,
+};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
-use models::block::{Block, BlockHeader};
+use models::{
+    block::{Block, BlockHeader},
+    slot::Slot,
+};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     vec,
 };
+use storage::{start_storage_controller, StorageCommandSender, StorageConfig};
 use time::UTime;
-use tokio::sync::mpsc::{self, Receiver};
+use tokio::{
+    sync::mpsc::{self, Receiver},
+    task::JoinHandle,
+};
 use warp::{filters::BoxedFilter, reply::Reply};
 
 pub fn get_test_hash() -> Hash {
@@ -78,11 +88,7 @@ pub fn get_api_config() -> ApiConfig {
     }
 }
 
-pub fn get_header(
-    period_number: u64,
-    thread_number: u8,
-    creator: Option<PublicKey>,
-) -> BlockHeader {
+pub fn get_header(slot: Slot, creator: Option<PublicKey>) -> BlockHeader {
     let secp = SignatureEngine::new();
     let private_key = SignatureEngine::generate_random_private_key();
     let public_key = secp.derive_public_key(&private_key);
@@ -92,8 +98,7 @@ pub fn get_header(
         } else {
             creator.unwrap()
         },
-        thread_number,
-        period_number,
+        slot,
         roll_number: 0,
         parents: Vec::new(),
         endorsements: Vec::new(),
@@ -102,7 +107,9 @@ pub fn get_header(
     }
 }
 
-pub fn mock_filter() -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
+pub fn mock_filter(
+    storage_cmd: Option<StorageCommandSender>,
+) -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
     let (evt_tx, evt_rx) = mpsc::channel(1);
     (
         get_filter(
@@ -111,6 +118,7 @@ pub fn mock_filter() -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
             get_protocol_config(),
             get_network_config(),
             evt_tx,
+            storage_cmd,
         ),
         evt_rx,
     )
@@ -136,6 +144,69 @@ pub fn get_dummy_staker() -> PublicKey {
     signature_engine.derive_public_key(&private_key)
 }
 
+pub async fn get_test_storage(
+    cfg: ConsensusConfig,
+) -> (StorageCommandSender, (Block, Block, Block)) {
+    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
+
+    let storage_config = StorageConfig {
+        /// Max number of bytes we want to store
+        max_stored_blocks: 5,
+        /// path to db
+        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
+        cache_capacity: 256,  //little to force flush cache
+        flush_interval: None, //defaut
+    };
+    let (storage_command_tx, _storage_manager) = start_storage_controller(storage_config).unwrap();
+
+    let mut blocks = HashMap::new();
+    let mut block_a = get_test_block();
+    block_a.header.slot = Slot::new(1, 0);
+    assert_eq!(
+        get_block_slot_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            block_a.header.slot
+        )
+        .unwrap(),
+        2000.into()
+    );
+    blocks.insert(block_a.header.compute_hash().unwrap(), block_a.clone());
+
+    let mut block_b = get_test_block();
+    block_b.header.slot = Slot::new(1, 1);
+    assert_eq!(
+        get_block_slot_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            block_b.header.slot
+        )
+        .unwrap(),
+        3000.into()
+    );
+    blocks.insert(block_b.header.compute_hash().unwrap(), block_b.clone());
+
+    let mut block_c = get_test_block();
+    block_c.header.slot = Slot::new(2, 0);
+    assert_eq!(
+        get_block_slot_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            block_c.header.slot
+        )
+        .unwrap(),
+        4000.into()
+    );
+    blocks.insert(block_c.header.compute_hash().unwrap(), block_c.clone());
+
+    storage_command_tx.add_block_batch(blocks).await.unwrap();
+
+    (storage_command_tx, (block_a, block_b, block_c))
+}
+
 pub fn get_test_block() -> Block {
     Block {
             header: BlockHeader {
@@ -144,8 +215,7 @@ pub fn get_test_block() -> Block {
                 operation_merkle_root: get_test_hash(),
                 out_ledger_hash: get_test_hash(),
                 parents: vec![],
-                period_number: 1,
-                thread_number: 0,
+                slot: Slot::new(1, 0),
                 roll_number: 0,
             },
             operations: vec![],
@@ -155,13 +225,26 @@ pub fn get_test_block() -> Block {
         }
 }
 
+pub fn get_empty_graph_handle(mut rx_api: Receiver<ApiEvent>) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+            None => {}
+            _ => {}
+        }
+    })
+}
 pub fn get_test_compiled_exported_block(
-    period: u64,
-    thread: u8,
+    slot: Slot,
     creator: Option<PublicKey>,
 ) -> ExportCompiledBlock {
     ExportCompiledBlock {
-        block: get_header(period, thread, creator),
+        block: get_header(slot, creator),
         children: Vec::new(),
     }
 }

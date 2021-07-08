@@ -50,6 +50,8 @@ pub enum ConsensusError {
     SendChannelError(String),
     #[error("Receive  channel error : {0}")]
     ReceiveChannelError(String),
+    #[error("Storage error : {0}")]
+    StorageError(#[from] storage::StorageError),
 }
 
 #[derive(Error, Debug)]

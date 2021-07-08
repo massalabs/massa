@@ -3,6 +3,7 @@
 
 extern crate logging;
 mod config;
+use storage::start_storage_controller;
 
 use api::{start_api_controller, ApiEvent};
 use communication::{
@@ -23,6 +24,9 @@ async fn run(cfg: config::Config) {
             .await
             .expect("could not start network controller");
 
+    let (storage_command_sender, storage_manager) =
+        start_storage_controller(cfg.storage.clone()).expect("could not start storage controller");
+
     // launch protocol controller
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
@@ -39,6 +43,7 @@ async fn run(cfg: config::Config) {
             cfg.consensus.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            Some(storage_command_sender.clone()),
         )
         .await
         .expect("could not start consensus controller");
@@ -49,6 +54,7 @@ async fn run(cfg: config::Config) {
         cfg.consensus.clone(),
         cfg.protocol.clone(),
         cfg.network.clone(),
+        Some(storage_command_sender),
     )
     .await
     .expect("could not start API controller");
@@ -130,6 +136,12 @@ async fn run(cfg: config::Config) {
         .stop(protocol_event_receiver)
         .await
         .expect("protocol shutdown failed");
+
+    //stop storage controller
+    storage_manager
+        .stop()
+        .await
+        .expect("storage shutdown failed");
 
     // stop network controller
     network_manager

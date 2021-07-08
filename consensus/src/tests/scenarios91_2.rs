@@ -5,6 +5,7 @@ use crate::{
 };
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
+use models::slot::Slot;
 use time::UTime;
 use tokio::time::{sleep_until, timeout};
 
@@ -38,6 +39,7 @@ async fn test_queueing() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -53,8 +55,8 @@ async fn test_queueing() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -65,8 +67,8 @@ async fn test_queueing() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        1,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -78,8 +80,8 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            0,
-            i + 2,
+            node_ids[0].1.clone(),
+            Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -90,8 +92,8 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            1,
-            i + 2,
+            node_ids[0].1.clone(),
+            Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -100,14 +102,14 @@ async fn test_queueing() {
     }
 
     let (missed_hash, _missed_block, _missed_key) =
-        tools::create_block(&cfg, 0, 32, vec![valid_hasht0, valid_hasht1]);
+        tools::create_block(&cfg, Slot::new(32, 0), vec![valid_hasht0, valid_hasht1]);
 
     //create 1 block in thread 0 slot 33 with missed block as parent
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        33,
+        node_ids[0].1.clone(),
+        Slot::new(33, 0),
         vec![missed_hash, valid_hasht1],
         false,
         false,
@@ -119,8 +121,8 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            0,
-            i + 34,
+            node_ids[0].1.clone(),
+            Slot::new(i + 34, 0),
             vec![valid_hasht0, valid_hasht1],
             false,
             false,
@@ -131,8 +133,8 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            1,
-            i + 34,
+            node_ids[0].1.clone(),
+            Slot::new(i + 34, 1),
             vec![valid_hasht0, valid_hasht1],
             false,
             false,
@@ -179,6 +181,7 @@ async fn test_doubles() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -194,8 +197,8 @@ async fn test_doubles() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -206,8 +209,8 @@ async fn test_doubles() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        1,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -219,8 +222,8 @@ async fn test_doubles() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            0,
-            i + 2,
+            node_ids[0].1.clone(),
+            Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -231,8 +234,8 @@ async fn test_doubles() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            1,
-            i + 2,
+            node_ids[0].1.clone(),
+            Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -244,8 +247,8 @@ async fn test_doubles() {
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        41,
+        node_ids[0].1.clone(),
+        Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
         true,
         false,
@@ -299,6 +302,7 @@ async fn test_double_staking() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -314,8 +318,8 @@ async fn test_double_staking() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -326,8 +330,8 @@ async fn test_double_staking() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        1,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -339,8 +343,8 @@ async fn test_double_staking() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            0,
-            i + 2,
+            node_ids[0].1.clone(),
+            Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -351,8 +355,8 @@ async fn test_double_staking() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            1,
-            i + 2,
+            node_ids[0].1.clone(),
+            Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
             false,
@@ -365,8 +369,7 @@ async fn test_double_staking() {
     let (hash_1, block_1, _key) = tools::create_block_with_merkle_root(
         &cfg,
         operation_merkle_root,
-        0,
-        41,
+        Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
     );
     tools::propagate_block(&mut protocol_controller, block_1, true).await;
@@ -375,8 +378,7 @@ async fn test_double_staking() {
     let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
         &cfg,
         operation_merkle_root,
-        0,
-        41,
+        Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
     );
     tools::propagate_block(&mut protocol_controller, block_2, true).await;
@@ -428,6 +430,7 @@ async fn test_test_parents() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -443,8 +446,8 @@ async fn test_test_parents() {
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
         false,
@@ -455,8 +458,8 @@ async fn test_test_parents() {
     let valid_hasht1s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        1,
-        1,
+        node_ids[0].1.clone(),
+        Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
         false,
@@ -467,8 +470,8 @@ async fn test_test_parents() {
     let valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        2,
+        node_ids[0].1.clone(),
+        Slot::new(2, 0),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
         false,
@@ -479,8 +482,8 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        1,
-        2,
+        node_ids[0].1.clone(),
+        Slot::new(2, 1),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
         false,
@@ -492,9 +495,9 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        0,
-        3,
-        vec![valid_hasht0s2, genesis_hashes[1]],
+        node_ids[0].1.clone(),
+        Slot::new(3, 0),
+        vec![valid_hasht0s2, genesis_hashes[1usize]],
         false,
         false,
     )
@@ -504,9 +507,9 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        1,
-        3,
-        vec![genesis_hashes[0], genesis_hashes[0]],
+        node_ids[0].1.clone(),
+        Slot::new(3, 1),
+        vec![genesis_hashes[0usize], genesis_hashes[0usize]],
         false,
         false,
     )
@@ -536,7 +539,7 @@ async fn test_block_creation() {
     let mut selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights).unwrap();
     let mut expected_slots = Vec::new();
     for i in 1..11 {
-        expected_slots.push(selector.draw((i, 0)))
+        expected_slots.push(selector.draw(Slot::new(i, 0)))
     }
 
     //to avoid timing pb for block in the future
@@ -552,6 +555,7 @@ async fn test_block_creation() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -562,7 +566,7 @@ async fn test_block_creation() {
                 cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
-                ((i + 1usize) as u64, 0),
+                Slot::new((i + 1usize) as u64, 0),
             )
             .unwrap()
             .estimate_instant()
@@ -582,7 +586,7 @@ async fn test_block_creation() {
                 hash,
             })) => {
                 assert_eq!(draw, 0);
-                assert_eq!(i + 1, header.period_number as usize);
+                assert_eq!(i + 1, header.slot.period as usize);
             }
             Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
             Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
