@@ -616,6 +616,7 @@ impl SerializeCompact for BootsrapableGraph {
             }
         }
 
+        // ledger
         res.extend(self.ledger.to_bytes_compact()?);
 
         Ok(res)
@@ -716,8 +717,8 @@ impl DeserializeCompact for BootsrapableGraph {
         }
 
         let (ledger, delta) = LedgerExport::from_bytes_compact(&buffer[cursor..])?;
-
         cursor += delta;
+
         Ok((
             BootsrapableGraph {
                 active_blocks,
