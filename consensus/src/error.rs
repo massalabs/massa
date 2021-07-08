@@ -40,7 +40,7 @@ pub enum ConsensusError {
     #[error("missing block")]
     MissingBlock,
     #[error("there was an inconsistency between containers")]
-    ContainerInconsistency,
+    ContainerInconsistency(String),
     #[error("fitness overflow")]
     FitnessOverflow,
     #[error("Send  channel error : {0}")]

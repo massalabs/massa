@@ -23,8 +23,6 @@ pub enum CommunicationError {
     InvalidIpError(IpAddr),
     #[error("Active connection missing:`{0}`")]
     ActiveConnectionMissing(ConnectionId),
-    #[error("Event from missign node")]
-    MissingNodeError,
     #[error("IO error : {0}")]
     IOError(#[from] std::io::Error),
     #[error("Serde error : {0}")]
@@ -51,7 +49,7 @@ pub enum CommunicationError {
 pub enum HandshakeErrorType {
     HandshakeIdAlreadyExistError(String),
     HandshakeTimeoutError,
-    HandshakeInterruptionError,
+    HandshakeInterruptionError(String),
     HandshakeWrongMessageError,
     HandshakeKeyError,
     HandshakeInvalidSignatureError,

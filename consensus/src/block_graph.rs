@@ -986,7 +986,10 @@ impl BlockGraph {
                 {
                     header
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency);
+                    return Err(ConsensusError::ContainerInconsistency(format!(
+                        "inconsistency inside block statuses removing incomming header {:?}",
+                        hash
+                    )));
                 };
                 match self.check_header(hash, &header, selector, current_slot)? {
                     CheckOutcome::Proceed { .. } => {
@@ -1073,7 +1076,10 @@ impl BlockGraph {
                 {
                     block
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency);
+                    return Err(ConsensusError::ContainerInconsistency(format!(
+                        "inconsistency inside block statuses removing incomming block {:?}",
+                        hash
+                    )));
                 };
                 match self.check_block(hash, &block, selector, current_slot)? {
                     CheckOutcome::Proceed {
@@ -1171,7 +1177,7 @@ impl BlockGraph {
                     );
                     return Ok(reprocess);
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency);
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot block or header {:?}", hash)));
                 };
             }
 
@@ -1200,7 +1206,7 @@ impl BlockGraph {
                     );
                     return Ok(reprocess);
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency);
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot header or block {:?}", hash)));
                 }
             }
         };
@@ -1278,7 +1284,7 @@ impl BlockGraph {
                 continue; // already visited
             }
             BlockGraph::get_full_active_block(&self.block_statuses, visit_h)
-                .ok_or(ConsensusError::ContainerInconsistency)?
+                .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {:?} - missing {:?}", hash, visit_h)))?
                 .children
                 .iter()
                 .for_each(|thread_children| to_visit.extend(thread_children.keys()));
@@ -1395,9 +1401,12 @@ impl BlockGraph {
             let mut gp_max_slots = vec![0u64; self.cfg.thread_count as usize];
             for parent_i in 0..self.cfg.thread_count {
                 let (parent_h, parent_period) = parents[parent_i as usize];
-                let parent = self
-                    .get_active_block(parent_h)
-                    .ok_or(ConsensusError::ContainerInconsistency)?;
+                let parent = self.get_active_block(parent_h).ok_or(
+                    ConsensusError::ContainerInconsistency(format!(
+                        "inconsistency inside block statuses searching parent {:?} of block {:?}",
+                        parent_h, hash
+                    )),
+                )?;
                 if parent_period < gp_max_slots[parent_i as usize] {
                     // a parent is earlier than a block known by another parent in that thread
                     return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
@@ -1448,7 +1457,10 @@ impl BlockGraph {
             &self.block_statuses,
             parents[header.content.slot.thread as usize].0,
         )
-        .ok_or(ConsensusError::ContainerInconsistency)?;
+        .ok_or(ConsensusError::ContainerInconsistency(format!(
+            "inconsistency inside block statuses searching parent {:?} in own thread of block {:?}",
+            parents[header.content.slot.thread as usize].0, hash
+        )))?;
 
         // thread incompatibility test
         parent_in_own_thread.children[header.content.slot.thread as usize]
@@ -1466,7 +1478,7 @@ impl BlockGraph {
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
                 let cur_b = BlockGraph::get_full_active_block(&self.block_statuses, cur_h)
-                    .ok_or(ConsensusError::ContainerInconsistency)?;
+                    .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} while checking gradpa incompatibility of block {:?}",cur_h,  hash)))?;
 
                 // traverse but do not check up to generation 1
                 if cur_gen <= 1 {
@@ -1484,7 +1496,7 @@ impl BlockGraph {
                     &self.block_statuses,
                     cur_b.block.header.content.parents[header.content.slot.thread as usize],
                 )
-                .ok_or(ConsensusError::ContainerInconsistency)?
+                .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking gradpa incompatibility of block {:?}",cur_b.block.header.content.parents[header.content.slot.thread as usize],  hash)))?
                 .block
                 .header
                 .content
@@ -1647,7 +1659,10 @@ impl BlockGraph {
                 a_parent.children[block.header.content.slot.thread as usize]
                     .insert(hash, block.header.content.slot.period);
             } else {
-                return Err(ConsensusError::ContainerInconsistency);
+                return Err(ConsensusError::ContainerInconsistency(format!(
+                    "inconsistency inside block statuses adding child {:?} of block {:?}",
+                    hash, parent_h
+                )));
             }
         }
 
@@ -1702,7 +1717,7 @@ impl BlockGraph {
                 sum_fit = sum_fit
                     .checked_add(
                         BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
-                            .ok_or(ConsensusError::ContainerInconsistency)?
+                            .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {:?} - missing {:?}", hash, block_h)))?
                             .fitness(),
                     )
                     .ok_or(ConsensusError::FitnessOverflow)?;
@@ -1721,7 +1736,7 @@ impl BlockGraph {
             let mut parents_updated = 0u8;
             for block_h in blockclique.iter() {
                 let block_a = BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
-                    .ok_or(ConsensusError::ContainerInconsistency)?;
+                    .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {:?} - missing {:?}", hash, block_h)))?;
                 if blockclique.is_disjoint(
                     &block_a.children[block_a.block.header.content.slot.thread as usize]
                         .keys()
@@ -1781,7 +1796,7 @@ impl BlockGraph {
                 self.block_statuses.remove(&stale_block_hash)
             {
                 if active_block.is_final {
-                    return Err(ConsensusError::ContainerInconsistency);
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} was already final", hash, stale_block_hash)));
                 }
 
                 // remove from gi_head
@@ -1827,7 +1842,7 @@ impl BlockGraph {
                     },
                 );
             } else {
-                return Err(ConsensusError::ContainerInconsistency);
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} is missing", hash, stale_block_hash)));
             }
         }
 
@@ -1931,7 +1946,7 @@ impl BlockGraph {
                     );
                 }
             } else {
-                return Err(ConsensusError::ContainerInconsistency);
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", hash, final_block_hash)));
             }
         }
 
@@ -1985,7 +2000,7 @@ impl BlockGraph {
             for retain_h in retain_clone.into_iter() {
                 retain_active.extend(
                     self.get_active_block(retain_h)
-                        .ok_or(ConsensusError::ContainerInconsistency)?
+                        .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and retaining the parents of the selected blocks - {:?} is missing", retain_h)))?
                         .header
                         .content
                         .parents
@@ -2003,7 +2018,7 @@ impl BlockGraph {
             for retain_h in retain_active.iter() {
                 let retain_slot = &self
                     .get_active_block(*retain_h)
-                    .ok_or(ConsensusError::ContainerInconsistency)?
+                    .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and finding earliest kept slots in each thread - {:?} is missing", retain_h)))?
                     .header
                     .content
                     .slot;
@@ -2043,7 +2058,7 @@ impl BlockGraph {
             {
                 discarded_active
             } else {
-                return Err(ConsensusError::ContainerInconsistency);
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and removing unused final active blocks - {:?} is missing", discard_active_h)));
             };
 
             // remove from parent's children
