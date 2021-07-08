@@ -107,7 +107,7 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
             func: Box::new(func),
         });
 
-        self.app = if min_nb_param > 0 {
+        self.app = if min_nb_param > 0 || max_nb_param > 0 {
             self.app.subcommand(
                 clap::SubCommand::with_name(&name.to_string())
                     .about("")

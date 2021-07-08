@@ -79,7 +79,6 @@ fn main() {
         "get current parents",
         cmd_current_parents,
     )
-    .new_command_noargs("last_final", "get last finals blocks", cmd_last_final)
     .new_command(
         "block",
         "get the block with the specifed hash. Parameter: block hash",
@@ -108,6 +107,7 @@ fn main() {
         cmd_network_info,
     )
     .new_command_noargs("state", "summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes", cmd_state)
+    .new_command_noargs("last_final", "get last finals blocks", cmd_last_final)
     .new_command_noargs(
         "last_stale",
         "(hash, thread, slot) for last stale blocks",

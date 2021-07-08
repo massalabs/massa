@@ -98,11 +98,16 @@ impl Display for WrappedBlockHeader {
             pk,
             self.0.content.slot.period,
             self.0.content.slot.thread,
-            self.0.content.out_ledger_hash,
-            self.0.content.operation_merkle_root,
-            self.0.content.parents,
+            WrappedHash::from(self.0.content.out_ledger_hash),
+            WrappedHash::from(self.0.content.operation_merkle_root),
+            &self
+                .0
+                .content
+                .parents
+                .iter()
+                .map(|hash| WrappedHash::from(hash).to_string())
+                .collect::<Vec<String>>(),
         )
-        //        writeln!(f, "  parents:{:?}", self.parents)?;
         //        writeln!(f, "  endorsements:{:?}", self.endorsements)
     }
 }
@@ -152,7 +157,7 @@ impl Display for StakerInfo {
             write!(
                 f,
                 "    block: hash:{} header: {}",
-                hash,
+                WrappedHash::from(hash),
                 WrappedBlockHeader::from(block)
             )?;
         }
@@ -164,7 +169,7 @@ impl Display for StakerInfo {
             write!(
                 f,
                 "    block: hash:{} reason:{:?} header: {}",
-                hash,
+                WrappedHash::from(hash),
                 reason,
                 WrappedBlockHeader::from(block)
             )?;
