@@ -10,8 +10,8 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
-    OperationType, SerializationContext, SerializeCompact, Slot,
+    with_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
+    Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -360,7 +360,6 @@ pub fn get_export_active_test_block(
     parents: Vec<(BlockId, u64)>,
     operations: Vec<Operation>,
     slot: Slot,
-    context: &SerializationContext,
     is_final: bool,
 ) -> (ExportActiveBlock, BlockId) {
     let block = Block {
@@ -388,16 +387,11 @@ pub fn get_export_active_test_block(
         operations: operations.clone(),
     };
 
-    let mut block_ledger_change = vec![HashMap::new(); context.parent_count as usize];
+    let parent_count = with_serialization_context(|context| context.parent_count);
+    let mut block_ledger_change = vec![HashMap::new(); parent_count as usize];
     for op in operations.iter() {
-        let thread = Address::from_public_key(&op.content.sender_public_key)
-            .unwrap()
-            .get_thread(context.parent_count);
         let mut changes = op
-            .get_changes(
-                &Address::from_public_key(&creator).unwrap(),
-                context.parent_count,
-            )
+            .get_changes(&Address::from_public_key(&creator).unwrap(), parent_count)
             .unwrap();
         for i in 0..changes.len() {
             for (address, change) in changes[i].iter_mut() {

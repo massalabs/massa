@@ -1,11 +1,10 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use crypto::{hash::Hash, signature::PublicKey};
 use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationSearchResult,
-    SerializationContext, SerializeCompact, Slot,
+    Slot,
 };
-use pool::PoolCommand;
 use serial_test::serial;
 use time::UTime;
 
@@ -64,8 +63,6 @@ async fn test_storage() {
     cfg.max_operations_per_block = 50;
     cfg.disable_block_creation = true;
 
-    let serialization_context = models::get_serialization_context();
-
     //to avoid timing pb for block in the future
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
@@ -87,12 +84,8 @@ async fn test_storage() {
         latest_final_periods: vec![0, 0],
     };
 
-    let (boot_graph, b1, b2) = get_bootgraph(
-        cfg.nodes[0].0,
-        &serialization_context,
-        vec![op2.clone(), op3.clone()],
-        boot_ledger,
-    );
+    let (boot_graph, b1, b2) =
+        get_bootgraph(cfg.nodes[0].0, vec![op2.clone(), op3.clone()], boot_ledger);
     // there is only one node so it should be drawn at every slot
 
     // start storage
@@ -259,32 +252,18 @@ async fn test_storage() {
 
 fn get_bootgraph(
     creator: PublicKey,
-    context: &SerializationContext,
     operations: Vec<Operation>,
     ledger: LedgerExport,
 ) -> (BootsrapableGraph, BlockId, BlockId) {
-    let (genesis_0, g0_id) = get_export_active_test_block(
-        creator.clone(),
-        vec![],
-        vec![],
-        Slot::new(0, 0),
-        context,
-        true,
-    );
-    let (genesis_1, g1_id) = get_export_active_test_block(
-        creator.clone(),
-        vec![],
-        vec![],
-        Slot::new(0, 1),
-        context,
-        true,
-    );
+    let (genesis_0, g0_id) =
+        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
+    let (genesis_1, g1_id) =
+        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 1), true);
     let (p1t0, p1t0_id) = get_export_active_test_block(
         creator.clone(),
         vec![(g0_id, 0), (g1_id, 0)],
         vec![operations[0].clone()],
         Slot::new(1, 0),
-        context,
         true,
     );
     let (p1t1, p1t1_id) = get_export_active_test_block(
@@ -292,7 +271,6 @@ fn get_bootgraph(
         vec![(g0_id, 0), (g1_id, 0)],
         vec![],
         Slot::new(1, 1),
-        context,
         false,
     );
     let (p2t0, p2t0_id) = get_export_active_test_block(
@@ -300,7 +278,6 @@ fn get_bootgraph(
         vec![(p1t0_id, 1), (p1t1_id, 1)],
         vec![operations[1].clone()],
         Slot::new(2, 0),
-        context,
         false,
     );
     (
