@@ -38,7 +38,7 @@ pub enum ConnectionClosureReason {
 }
 
 #[derive(Debug)]
-enum ConnectionCommand {
+enum NetworkCommand {
     MergeAdvertisedPeerList(Vec<IpAddr>),
     GetAdvertisablePeerList(oneshot::Sender<Vec<IpAddr>>),
     ConnectionClosed((ConnectionId, ConnectionClosureReason)),
@@ -46,27 +46,27 @@ enum ConnectionCommand {
 }
 
 #[derive(Debug)]
-pub enum ConnectionEvent {
+pub enum NetworkEvent {
     NewConnection((ConnectionId, TcpStream)),
     ConnectionBanned(ConnectionId),
 }
 
-pub struct ConnectionController {
-    connection_command_tx: mpsc::Sender<ConnectionCommand>,
-    connection_event_rx: mpsc::Receiver<ConnectionEvent>,
+pub struct NetworkController {
+    network_command_tx: mpsc::Sender<NetworkCommand>,
+    network_event_rx: mpsc::Receiver<NetworkEvent>,
     controller_fn_handle: JoinHandle<()>,
 }
 
-impl ConnectionController {
-    /// Starts a new ConnectionController from NetworkConfig
+impl NetworkController {
+    /// Starts a new NetworkController from NetworkConfig
     /// can panic if :
     /// - config routable_ip IP is not routable
     pub async fn new(cfg: &NetworkConfig) -> BoxResult<Self> {
-        debug!("starting connection controller");
+        debug!("starting network controller");
         trace!(
             "massa_trace:{}",
             serde_json::json!({
-                "origin": concat!(module_path!(), "::ConnectionController::new"),
+                "origin": concat!(module_path!(), "::NetworkController::new"),
                 "event": "start"
             })
             .to_string()
@@ -86,110 +86,109 @@ impl ConnectionController {
         let peer_info_db = PeerInfoDatabase::new(&cfg).await?;
 
         // launch controller
-        let (connection_command_tx, connection_command_rx) =
-            mpsc::channel::<ConnectionCommand>(1024);
-        let (connection_event_tx, connection_event_rx) = mpsc::channel::<ConnectionEvent>(1024);
+        let (network_command_tx, network_command_rx) = mpsc::channel::<NetworkCommand>(1024);
+        let (network_event_tx, network_event_rx) = mpsc::channel::<NetworkEvent>(1024);
         let cfg_copy = cfg.clone();
         let controller_fn_handle = tokio::spawn(async move {
-            connection_controller_fn(
+            network_controller_fn(
                 cfg_copy,
                 listener,
                 peer_info_db,
-                connection_command_rx,
-                connection_event_tx,
+                network_command_rx,
+                network_event_tx,
             )
             .await;
         });
 
-        debug!("connection controller started");
+        debug!("network controller started");
         trace!(
             "massa_trace:{}",
             serde_json::json!({
-                "origin": concat!(module_path!(), "::ConnectionController::new"),
+                "origin": concat!(module_path!(), "::NetworkController::new"),
                 "event": "ready"
             })
             .to_string()
         );
 
-        Ok(ConnectionController {
-            connection_command_tx,
-            connection_event_rx,
+        Ok(NetworkController {
+            network_command_tx,
+            network_event_rx,
             controller_fn_handle,
         })
     }
 
-    /// Stops the connectionController properly
+    /// Stops the NetworkController properly
     /// can panic if network controller is not reachable
     pub async fn stop(mut self) {
-        debug!("stopping connection controller");
+        debug!("stopping network controller");
         trace!(
             "massa_trace:{}",
             serde_json::json!({
-                "origin": concat!(module_path!(), "::ConnectionController::stop"),
+                "origin": concat!(module_path!(), "::NetworkController::stop"),
                 "event": "begin"
             })
             .to_string()
         );
-        drop(self.connection_command_tx);
-        while let Some(_) = self.connection_event_rx.next().await {}
+        drop(self.network_command_tx);
+        while let Some(_) = self.network_event_rx.next().await {}
         self.controller_fn_handle
             .await
             .expect("failed joining network controller");
-        debug!("connection controller stopped");
+        debug!("network controller stopped");
         trace!(
             "massa_trace:{}",
             serde_json::json!({
-                "origin": concat!(module_path!(), "::ConnectionController::stop"),
+                "origin": concat!(module_path!(), "::NetworkController::stop"),
                 "event": "end"
             })
             .to_string()
         );
     }
 
-    pub async fn wait_event(&mut self) -> ConnectionEvent {
-        self.connection_event_rx
+    pub async fn wait_event(&mut self) -> NetworkEvent {
+        self.network_event_rx
             .recv()
             .await
             .expect("failed retrieving network controller event")
     }
 
     pub async fn merge_advertised_peer_list(&mut self, ips: Vec<IpAddr>) {
-        self.connection_command_tx
-            .send(ConnectionCommand::MergeAdvertisedPeerList(ips))
+        self.network_command_tx
+            .send(NetworkCommand::MergeAdvertisedPeerList(ips))
             .await
             .expect("network controller disappeared");
     }
 
     pub async fn get_advertisable_peer_list(&mut self) -> Vec<IpAddr> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<IpAddr>>();
-        self.connection_command_tx
-            .send(ConnectionCommand::GetAdvertisablePeerList(response_tx))
+        self.network_command_tx
+            .send(NetworkCommand::GetAdvertisablePeerList(response_tx))
             .await
             .expect("network controller disappeared");
         response_rx.await.expect("network controller disappeared")
     }
 
     pub async fn connection_closed(&mut self, id: ConnectionId, reason: ConnectionClosureReason) {
-        self.connection_command_tx
-            .send(ConnectionCommand::ConnectionClosed((id, reason)))
+        self.network_command_tx
+            .send(NetworkCommand::ConnectionClosed((id, reason)))
             .await
             .expect("network controller disappeared");
     }
 
     pub async fn connection_alive(&mut self, id: ConnectionId) {
-        self.connection_command_tx
-            .send(ConnectionCommand::ConnectionAlive(id))
+        self.network_command_tx
+            .send(NetworkCommand::ConnectionAlive(id))
             .await
             .expect("network controller disappeared");
     }
 }
 
-async fn connection_controller_fn(
+async fn network_controller_fn(
     cfg: NetworkConfig,
     listener: TcpListener,
     mut peer_info_db: PeerInfoDatabase,
-    mut connection_command_rx: mpsc::Receiver<ConnectionCommand>,
-    event_tx: mpsc::Sender<ConnectionEvent>,
+    mut network_command_rx: mpsc::Receiver<NetworkCommand>,
+    event_tx: mpsc::Sender<NetworkEvent>,
 ) {
     let mut out_connecting_futures = FuturesUnordered::new();
     let mut cur_connection_id = ConnectionId::default();
@@ -203,7 +202,7 @@ async fn connection_controller_fn(
             for ip in candidate_ips {
                 debug!("starting outgoing connection attempt towards ip={:?}", ip);
                 trace!("massa_trace:{}", serde_json::json!({
-                    "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"), 
+                    "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"), 
                     "event": "out_connection_attempt_start",
                     "parameters": {
                         "ip": ip
@@ -222,11 +221,11 @@ async fn connection_controller_fn(
             _ = wakeup_interval.tick() => {}
 
             // peer feedback event
-            res = connection_command_rx.next() => match res {
-                Some(ConnectionCommand::MergeAdvertisedPeerList(ips)) => {
+            res = network_command_rx.next() => match res {
+                Some(NetworkCommand::MergeAdvertisedPeerList(ips)) => {
                     debug!("merging incoming peer list: {:?}", ips);
                     trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                        "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                         "event": "merge_incoming_peer_list",
                         "parameters": {
                             "ips": ips
@@ -234,16 +233,16 @@ async fn connection_controller_fn(
                     }).to_string());
                     peer_info_db.merge_candidate_peers(&ips);
                 },
-                Some(ConnectionCommand::GetAdvertisablePeerList(response_tx)) => {
+                Some(NetworkCommand::GetAdvertisablePeerList(response_tx)) => {
                     response_tx.send(
                         peer_info_db.get_advertisable_peer_ips()
                     ).expect("upstream disappeared");
                 },
-                Some(ConnectionCommand::ConnectionClosed((id, reason))) => {
+                Some(NetworkCommand::ConnectionClosed((id, reason))) => {
                     let (ip, is_outgoing) = active_connections.remove(&id).expect("missing connection closed");
                     debug!("connection closed connedtion_id={:?}, ip={:?}, reason={:?}", id, ip, reason);
                     trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                        "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                         "event": "connection_closed",
                         "parameters": {
                             "connnection_id": id,
@@ -267,7 +266,7 @@ async fn connection_controller_fn(
                             });
                             for target_id in target_ids {
                                 event_tx
-                                    .send(ConnectionEvent::ConnectionBanned(*target_id))
+                                    .send(NetworkEvent::ConnectionBanned(*target_id))
                                     .await.expect("could not send connection banned notification upstream");
                             }
                         }
@@ -278,7 +277,7 @@ async fn connection_controller_fn(
                         peer_info_db.in_connection_closed(&ip);
                     }
                 },
-                Some(ConnectionCommand::ConnectionAlive(id) ) => {
+                Some(NetworkCommand::ConnectionAlive(id) ) => {
                     let (ip, _) = active_connections.get(&id).expect("missing connection alive");
                     peer_info_db.peer_alive(&ip);
                 }
@@ -292,7 +291,7 @@ async fn connection_controller_fn(
                         let connection_id = cur_connection_id;
                         debug!("out connection towards ip={:?} established => connection_id={:?}", ip_addr, connection_id);
                         trace!("massa_trace:{}", serde_json::json!({
-                            "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                            "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                             "event": "out_connection_established",
                             "parameters": {
                                 "ip": ip_addr,
@@ -302,12 +301,12 @@ async fn connection_controller_fn(
                         cur_connection_id.0 += 1;
                         active_connections.insert(connection_id, (ip_addr, true));
                         event_tx
-                            .send(ConnectionEvent::NewConnection((connection_id, socket)))
+                            .send(NetworkEvent::NewConnection((connection_id, socket)))
                             .await.expect("could not send new out connection notification");
                     } else {
                         debug!("out connection towards ip={:?} refused", ip_addr);
                         trace!("massa_trace:{}", serde_json::json!({
-                            "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                            "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                             "event": "out_connection_refused",
                             "parameters": {
                                 "ip": ip_addr
@@ -318,7 +317,7 @@ async fn connection_controller_fn(
                 Err(err) => {
                     debug!("outgoing connection attempt towards ip={:?} failed: {:?}", ip_addr, err);
                     trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                        "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                         "event": "out_connection_attempt_failed",
                         "parameters": {
                             "ip": ip_addr,
@@ -336,7 +335,7 @@ async fn connection_controller_fn(
                         let connection_id = cur_connection_id;
                         debug!("inbound connection from addr={:?} succeeded => connection_id={:?}", remote_addr, connection_id);
                         trace!("massa_trace:{}", serde_json::json!({
-                            "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                            "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                             "event": "in_connection_established",
                             "parameters": {
                                 "ip": remote_addr.ip(),
@@ -346,12 +345,12 @@ async fn connection_controller_fn(
                         cur_connection_id.0 += 1;
                         active_connections.insert(connection_id, (remote_addr.ip(), false));
                         event_tx
-                            .send(ConnectionEvent::NewConnection((connection_id, socket)))
+                            .send(NetworkEvent::NewConnection((connection_id, socket)))
                             .await.expect("could not send new in connection notification");
                     } else {
                         debug!("inbound connection from addr={:?} refused", remote_addr);
                         trace!("massa_trace:{}", serde_json::json!({
-                            "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                            "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                             "event": "in_connection_refused",
                             "parameters": {
                                 "ip": remote_addr.ip()
@@ -362,7 +361,7 @@ async fn connection_controller_fn(
                 Err(err) => {
                     debug!("connection accept failed: {:?}", err);
                     trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::ConnectionController::connection_controller_fn"),
+                        "origin": concat!(module_path!(), "::NetworkController::network_controller_fn"),
                         "event": "in_connection_failed",
                         "parameters": {
                             "err": err.to_string()

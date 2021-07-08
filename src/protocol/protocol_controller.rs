@@ -2,8 +2,8 @@ use super::binders::{ReadBinder, WriteBinder};
 use super::config::ProtocolConfig;
 use super::messages::Message;
 use crate::crypto::signature::{PrivateKey, PublicKey, SignatureEngine};
-use crate::network::connection_controller::{
-    ConnectionClosureReason, ConnectionController, ConnectionEvent, ConnectionId,
+use crate::network::network_controller::{
+    ConnectionClosureReason, ConnectionId, NetworkController, NetworkEvent,
 };
 use futures::{
     future::try_join, future::FusedFuture, stream::FuturesUnordered, FutureExt, StreamExt,
@@ -87,12 +87,15 @@ pub struct ProtocolController {
 }
 
 impl ProtocolController {
-    /// initiate a new ProtocolCOntroller from a ProtocolConfig
+    /// initiate a new ProtocolController from a ProtocolConfig
     /// - generate public / private key
     /// - create protocol_command/protocol_event channels
     /// - lauch protocol_controller_fn in an other task
     /// returns the ProtocolController in a BoxResult once it is ready
-    pub async fn new(cfg: &ProtocolConfig) -> BoxResult<Self> {
+    pub async fn new(
+        cfg: &ProtocolConfig,
+        network_controller: NetworkController,
+    ) -> BoxResult<Self> {
         debug!("starting protocol controller");
         trace!(
             "massa_trace:{}",
@@ -102,9 +105,6 @@ impl ProtocolController {
             })
             .to_string()
         );
-
-        // instantiate connection controller
-        let connection_controller = ConnectionController::new(&cfg.network).await?;
 
         // generate our own random PublicKey (and therefore NodeId) and keep private key
         let private_key;
@@ -137,7 +137,7 @@ impl ProtocolController {
                 cfg_copy,
                 self_node_id,
                 private_key,
-                connection_controller,
+                network_controller,
                 protocol_event_tx,
                 protocol_command_rx,
             )
@@ -215,7 +215,7 @@ impl ProtocolController {
 /// It is mostly a tokio::select inside a loop
 /// wainting on :
 /// - controller_command_rx
-/// - connection_controller
+/// - network_controller
 /// - handshake_futures
 /// - node_event_rx
 /// And at the end every thing is close properly
@@ -231,14 +231,14 @@ async fn protocol_controller_fn(
     cfg: ProtocolConfig,
     self_node_id: NodeId,
     private_key: PrivateKey,
-    mut connection_controller: ConnectionController,
+    mut network_controller: NetworkController,
     controller_event_tx: Sender<ProtocolEvent>,
     mut controller_command_rx: Receiver<ProtocolCommand>,
 ) {
     // number of running handshakes for each connection ID
     let mut running_handshakes: HashSet<ConnectionId> = HashSet::new();
 
-    //list of currently running handshake response futures (see fn_handshake)
+    //list of currently running handshake response futures (see handshake_fn)
     let mut handshake_futures = FuturesUnordered::new();
 
     // list of active nodes we are connected to
@@ -258,11 +258,11 @@ async fn protocol_controller_fn(
                 None => break  // finished
             },
 
-            // listen to connection controller event
-            evt = connection_controller.wait_event() => match evt {
-                ConnectionEvent::NewConnection((connection_id, socket)) => {
+            // listen to network controller event
+            evt = network_controller.wait_event() => match evt {
+                NetworkEvent::NewConnection((connection_id, socket)) => {
                     // add connection ID to running_handshakes
-                    // launch async fn_handshake(connectionId, socket)
+                    // launch async handshake_fn(connectionId, socket)
                     // add its handle to handshake_futures
                     if !running_handshakes.insert(connection_id) {
                         panic!("expect that the id is not already in running_handshakes");
@@ -290,7 +290,7 @@ async fn protocol_controller_fn(
                     });
                     handshake_futures.push(handshake_fn_handle);
                 }
-                ConnectionEvent::ConnectionBanned(connection_id) => {
+                NetworkEvent::ConnectionBanned(connection_id) => {
                     // connection_banned(connectionId)
                     // remove the connectionId entry in running_handshakes
                     running_handshakes.remove(&connection_id);
@@ -332,7 +332,7 @@ async fn protocol_controller_fn(
                                 "node_id": new_node_id
                             }
                         }).to_string());
-                        connection_controller
+                        network_controller
                             .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                             .await;
                         continue;
@@ -350,7 +350,7 @@ async fn protocol_controller_fn(
                                     "node_id": new_node_id
                                 }
                             }).to_string());
-                            connection_controller
+                            network_controller
                                 .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                                 .await;
                         },
@@ -396,7 +396,7 @@ async fn protocol_controller_fn(
                         }
                     }).to_string());
                     running_handshakes.remove(&connection_id);
-                    connection_controller.connection_closed(connection_id, ConnectionClosureReason::Failed).await;
+                    network_controller.connection_closed(connection_id, ConnectionClosureReason::Failed).await;
                 },
                 Err(err) => panic!("running handshake future await returned an error:{:?}", err)
             },
@@ -415,8 +415,8 @@ async fn protocol_controller_fn(
                         }
                     }).to_string());
                     let (connection_id, _, _) = active_nodes.get(&from_node_id).expect("event from missing node");
-                    connection_controller.connection_alive(*connection_id).await;
-                    connection_controller.merge_advertised_peer_list(lst).await;
+                    network_controller.connection_alive(*connection_id).await;
+                    network_controller.merge_advertised_peer_list(lst).await;
                 }
                 // received block (TODO test only)
                 Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => controller_event_tx
@@ -438,7 +438,7 @@ async fn protocol_controller_fn(
                             "reason": reason
                         }
                     }).to_string());
-                    connection_controller.connection_closed(connection_id, reason).await;
+                    network_controller.connection_closed(connection_id, reason).await;
                     handle.await.expect("controller event tx failed");
                 },
                 // asked peer list
@@ -453,7 +453,7 @@ async fn protocol_controller_fn(
                     }).to_string());
                     let (_, node_command_tx, _) = active_nodes.get(&from_node_id).expect("event received from missing node");
                     node_command_tx
-                        .send(NodeCommand::SendPeerList(connection_controller.get_advertisable_peer_list().await))
+                        .send(NodeCommand::SendPeerList(network_controller.get_advertisable_peer_list().await))
                         .await.expect("controller event tx failed");
                 },
                 None => panic!("node_event_rx died")
@@ -477,8 +477,8 @@ async fn protocol_controller_fn(
     running_handshakes.clear();
     while let Some(_) = handshake_futures.next().await {}
 
-    // stop connection controller
-    connection_controller.stop().await;
+    // stop network controller
+    network_controller.stop().await;
 }
 
 /// This function is lauched in a new task
