@@ -181,9 +181,12 @@ impl ConsensusWorker {
             };
 
             // 2. Run an ack checkpoint.
-            self.block_db.run_ack_checkpoint(&current_slot);
+            let finals = self.block_db.run_ack_checkpoint(&current_slot);
+	        if let Some(cmd_tx) = &self.opt_storage_command_sender {
+	            cmd_tx.add_block_batch(finals).await?
+	        }
 
-            // 3. Run a pruning checkpoint.
+            // 3. Run a pruning checkpoint(prunes queues, active are pruned at 2).
             self.block_db.run_pruning_checkpoint(&current_slot);
         }
         // end loop
@@ -206,12 +209,6 @@ impl ConsensusWorker {
         {
             self.block_db
                 .create_block("block".to_string(), self.current_slot)?;
-        }
-
-        // process queued blocks
-        let popped_blocks = self.future_incoming_blocks.pop_until(self.current_slot)?;
-        for (hash, block) in popped_blocks.into_iter() {
-            self.rec_acknowledge_block(hash, block).await?;
         }
 
         // reset timer for next slot
@@ -313,26 +310,6 @@ impl ConsensusWorker {
         let header = block.header.clone();
         self.block_db
             .acknowledge_block(hash, block, &mut self.selector, self.current_slot);
-        Ok(())
-    }
-
-    /// Recursively acknowledges blocks while some are available.
-    ///
-    /// # Arguments
-    /// * hash: block's header hash
-    /// * block: block to acknowledge
-    async fn rec_acknowledge_block(
-        &mut self,
-        hash: Hash,
-        block: Block,
-    ) -> Result<(), ConsensusError> {
-        // acknowledge incoming block
-        let mut ack_map: HashMap<Hash, Block> = HashMap::new();
-        let mut finals = HashMap::new();
-        self.acknowledge_block(hash, block).await?;
-        if let Some(cmd_tx) = &self.opt_storage_command_sender {
-            cmd_tx.add_block_batch(finals).await?
-        }
         Ok(())
     }
 

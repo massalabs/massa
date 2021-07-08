@@ -97,6 +97,25 @@ impl Blocks {
         active
     }
 
+    pub fn get_all_ready_for_ack(&self, slot: &Slot) -> Vec<(Hash, Block)> {
+        let mut ready = Vec::new();
+        for (hash, block) in self.blocks.iter() {
+            let awaiting = match block {
+                ConsensusBlock::AwaitingAck(awaiting) => awaiting,
+                _ => continue,
+            };
+            match awaiting {
+                AwaitingAckBlock::HeaderOnly(_, _) => continue,
+                AwaitingAckBlock::FullBlock(block, queue) => {
+                    if queue.missing_dependencies.is_empty() && &queue.slot <= slot {
+                        ready.push((hash.clone(), block.clone()));
+                    }
+                }
+            }
+        }
+        ready
+    }
+
     pub fn insert_active(&mut self, hash: Hash, block: Block, thread_count: usize) {
         for parent_h in block.header.content.parents.iter() {
             match self.blocks.get_mut(parent_h) {
@@ -114,7 +133,10 @@ impl Blocks {
             block,
             children: vec![HashSet::new(); thread_count],
         };
-        self.blocks.insert(hash, ConsensusBlock::Active(compiled));
+        match self.blocks.insert(hash, ConsensusBlock::Active(compiled)) {
+            Some(ConsensusBlock::AwaitingAck(AwaitingAckBlock::FullBlock(_, _))) => {}
+            _ => panic!("Unexpected transition to active."),
+        }
     }
 
     pub fn insert_header_only(
@@ -574,7 +596,14 @@ impl BlockGraph {
         })
     }
 
-    pub fn run_ack_checkpoint(&mut self, slot: &Slot) {}
+    pub fn run_ack_checkpoint(&mut self, slot: &Slot) -> HashMap<Hash, Block> {
+        // Ack all ready blocks
+        for (hash, block) in self.blocks.get_all_ready_for_ack(slot) {
+            self.update_consensus_with_new_block(hash, block);
+        }
+
+        HashMap::new()
+    }
 
     pub fn run_pruning_checkpoint(&mut self, slot: &Slot) {
         self.blocks.prune();
