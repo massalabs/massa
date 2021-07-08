@@ -1,6 +1,6 @@
 //! The goal of this API is to retrieve information
 //! on the current state of our node and interact with it.
-//! In version 0.1, we can get some informations
+//! In version 0.1, we can get some information
 //! and stop the node through the API.
 //!
 //! # Examples
@@ -182,7 +182,7 @@ use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
 /// Events that are transmitted outside the API
 #[derive(Debug)]
 pub enum ApiEvent {
-    /// API received stop signal and wants to fordward it
+    /// API received stop signal and wants to forward it
     AskStop,
     GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
     GetBlockStatus {
@@ -213,7 +213,7 @@ pub enum ApiEvent {
     GetActiveStakers(oneshot::Sender<Option<HashMap<Address, u64>>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
-    GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
+    GetStakingAddresses(oneshot::Sender<HashSet<Address>>),
 }
 
 pub enum ApiManagementCommand {}
@@ -571,9 +571,9 @@ async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::R
     })))
 }
 
-/// Returns our ip adress
+/// Returns our ip address
 ///
-/// Note: as our ip adress is in the config,
+/// Note: as our ip address is in the config,
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
 async fn get_node_config() -> Result<impl warp::Reply, warp::Rejection> {
@@ -768,9 +768,9 @@ async fn get_operations(
     }
 }
 
-/// Returns our ip adress
+/// Returns our ip address
 ///
-/// Note: as our ip adress is in the config,
+/// Note: as our ip address is in the config,
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
 async fn get_our_ip(network_cfg: NetworkConfig) -> Result<impl warp::Reply, warp::Rejection> {
@@ -1494,7 +1494,7 @@ async fn get_cliques(
         } else {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("inconsticency error between cliques and active_blocks")
+                    "message": format!("inconstancy error between cliques and active_blocks")
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1671,7 +1671,7 @@ async fn get_operations_involving_address(
 
 /// Returns a summary of the current state:
 /// * time in UTime
-/// * lastest slot (optional)
+/// * latest slot (optional)
 /// * last final block
 /// * number of cliques
 /// * number of connected peers
@@ -2082,7 +2082,7 @@ async fn retrieve_staking_addresses(
     massa_trace!("api.filters.retrieve_staking_addresses", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
-        .send(ApiEvent::GetStakingAddressses(response_tx))
+        .send(ApiEvent::GetStakingAddresses(response_tx))
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!(
@@ -2141,7 +2141,7 @@ async fn get_active_stakers(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error retrieving active stkaers: {:?}", err)
+                    "message": format!("error retrieving active stakers: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )

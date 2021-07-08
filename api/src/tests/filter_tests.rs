@@ -217,7 +217,7 @@ async fn test_get_addresses_info() {
             addrs: vec![].into_iter().collect(),
         };
 
-        //no provided addr.
+        //no provided address.
         let url = format!(
             "/api/v1/addresses_info?{}",
             serde_qs::to_string(&search_addrs).unwrap(),
@@ -229,7 +229,7 @@ async fn test_get_addresses_info() {
             .await;
         assert_eq!(res.status(), 500);
 
-        //addr provided but balance found.
+        //address provided but balance found.
         let search_addrs = Addresses {
             addrs: vec![search_address].into_iter().collect(),
         };
@@ -401,7 +401,7 @@ async fn test_cliques() {
         .await;
     assert!(!matches);
 
-    //valide url with cliques.
+    //valid url with cliques.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/cliques")
@@ -495,7 +495,7 @@ async fn test_current_parents() {
     println!("matches:{:?}", matches);
     assert!(!matches);
 
-    //valide url with parents.
+    //valid url with parents.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/current_parents")
@@ -906,7 +906,7 @@ async fn test_last_final() {
     println!("matches:{:?}", matches);
     assert!(!matches);
 
-    //valide url with final block.
+    //valid url with final block.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/last_final")
@@ -1012,7 +1012,7 @@ async fn test_peers() {
         .await;
     assert!(!matches);
 
-    //valide url with peers.
+    //valid url with peers.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/peers")
@@ -1357,9 +1357,9 @@ async fn test_get_block() {
         /// Max number of bytes we want to store
         max_stored_blocks: 5,
         /// path to db
-        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,    //little to force flush cache
-        flush_interval: None,   //defaut
+        path: tempdir.path().to_path_buf(), // in target to be ignored by git and different file between test.
+        cache_capacity: 256,    // little to force flush cache
+        flush_interval: None,   // default
         reset_at_startup: true, // if there was something in storage, it is not the case anymore
     };
     let (storage_command_tx, _storage_manager) = start_storage(storage_config).unwrap();
@@ -1465,7 +1465,7 @@ async fn test_network_info() {
         }
     });
 
-    //valide url with peers.
+    //valid url with peers.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/network_info")
@@ -1747,7 +1747,7 @@ async fn test_last_invalid() {
         }
     });
 
-    //valide url with final block.
+    //valid url with final block.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/last_invalid")
@@ -1783,7 +1783,7 @@ async fn test_staker_info() {
                                 Slot::new(0, 0),
                                 Address::from_public_key(&cloned_staker).unwrap(),
                             )]))
-                            .expect("failed to send slection draw");
+                            .expect("failed to send selection draw");
                     }
                     Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
                         response_tx
@@ -1871,7 +1871,7 @@ async fn test_staker_info() {
         }
     });
 
-    //valide url with final block.
+    //valid url with final block.
     let res = warp::test::request()
         .method("GET")
         .path(&format!(
@@ -1882,7 +1882,6 @@ async fn test_staker_info() {
         .await;
     handle.abort();
 
-    // TODO: fails on a 405.
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected_active: serde_json::Value = serde_json::from_str(

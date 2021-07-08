@@ -22,7 +22,7 @@ pub enum BootstrapMessage {
     },
     /// Sync clocks,
     BootstrapTime {
-        /// The curren time on the bootstrap server.
+        /// The current time on the bootstrap server.
         server_time: UTime,
         /// Signature of [BootstrapInitiation.random_bytes + server_time].
         signature: Signature,

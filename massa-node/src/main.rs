@@ -273,7 +273,7 @@ async fn run(cfg: config::Config) {
                         .await
                         .expect("remove_staking_addresses failed in api_event_receiver.wait_event")
                 },
-                Ok(ApiEvent::GetStakingAddressses(response_tx)) =>{
+                Ok(ApiEvent::GetStakingAddresses(response_tx)) =>{
                     massa_trace!("massa-node.main.run.select.api_event.get_staking_addresses", {});
                     if response_tx.send(
                         consensus_command_sender

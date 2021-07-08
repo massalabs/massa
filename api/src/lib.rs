@@ -41,7 +41,7 @@ pub async fn start_api_controller(
     let (manager_tx, mut manager_rx) = mpsc::channel::<ApiManagementCommand>(1);
     massa_trace!("api.lib.start_api_controller", {});
     let bind = cfg.bind;
-    let (_addr, server) = warp::serve(get_filter(
+    let (_, server) = warp::serve(get_filter(
         cfg,
         consensus_config,
         protocol_config,

@@ -52,7 +52,7 @@ pub struct DefaultConnector(UTime);
 
 #[cfg(not(test))]
 impl DefaultConnector {
-    /// Tries to connect to addr
+    /// Tries to connect to address
     ///
     /// # Argument
     /// * addr: SocketAddr we are trying to connect to.
