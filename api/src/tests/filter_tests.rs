@@ -1,5 +1,5 @@
 use crate::ApiEvent;
-use apimodel::HashSlot;
+use apimodel::{BlockInfo, HashSlot};
 use storage::{start_storage_controller, StorageConfig};
 
 use super::tools::*;

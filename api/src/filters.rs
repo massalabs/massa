@@ -147,7 +147,7 @@
 
 use crate::ApiError;
 
-use apimodel::{self, HashSlot};
+use apimodel::{self, BlockInfo, HashSlot};
 
 use super::config::ApiConfig;
 use communication::{
@@ -655,7 +655,7 @@ async fn get_graph_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageCommandSender>,
-) -> Result<Vec<(Hash, Slot, String, Vec<Hash>)>, ApiError> {
+) -> Result<Vec<BlockInfo>, ApiError> {
     //filter block from graph_export
     let mut res = retrieve_graph_export(&event_tx).await.and_then(|graph| {
         let start = start_opt.unwrap_or(UTime::from(0));
@@ -675,21 +675,18 @@ async fn get_graph_interval(
                 .map_err(|err| ApiError::from(err))
                 .map(|time| {
                     if start <= time && time < end {
-                        Some((
-                            hash,
-                            (
-                                header.content.slot,
-                                "active".to_string(),
-                                header.content.parents,
-                            ),
-                        ))
+                        Some(BlockInfo {
+                            hash_slot: (hash, header.content.slot).into(),
+                            status: "active".to_string(),
+                            parents: header.content.parents,
+                        })
                     } else {
                         None
                     }
                 })
                 .transpose()
             })
-            .collect::<Result<Vec<(Hash, (Slot, String, Vec<Hash>))>, ApiError>>()
+            .collect::<Result<Vec<BlockInfo>, ApiError>>()
     })?;
 
     if let Some(storage) = opt_storage_command_sender {
@@ -702,16 +699,14 @@ async fn get_graph_interval(
         )?;
         let blocks = storage.get_slot_range(start_slot, end_slot).await?;
         for (hash, block) in blocks {
-            res.push((
-                hash,
-                (block.header.content.slot, "final".to_string(), Vec::new()),
-            ));
+            res.push(BlockInfo {
+                hash_slot: (hash, block.header.content.slot).into(),
+                status: " final".to_string(),
+                parents: Vec::new(),
+            });
         }
     }
-    Ok(res
-        .into_iter()
-        .map(|(hash, (slot, status, parents))| (hash, slot, status, parents))
-        .collect())
+    Ok(res)
 }
 
 /// Returns number of cliques and current cliques as Vec<HashSet<(hash, (period, thread))>>

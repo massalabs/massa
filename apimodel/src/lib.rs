@@ -145,12 +145,18 @@ pub struct BlockInterval {
     pub content: Vec<HashSlot>,
 }*/
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BlockInfo {
     pub hash_slot: HashSlot,
     pub status: String,
     pub parents: Vec<Hash>,
 }
+
+// impl From<(Hash, Slot, String, Vec<Hash>)> for BlockInfo {
+//     fn from((hash, slot, status, parents): (Hash, Slot, String, Vec<Hash>)) -> Self {
+//         BlockInfo{ hash_slot: (hash, slot).into(), status, parents}
+//     }
+// }
 
 impl std::fmt::Display for BlockInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
