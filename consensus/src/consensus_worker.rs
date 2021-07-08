@@ -72,7 +72,7 @@ impl ConsensusWorker {
     ///
     /// # Arguments
     /// * cfg: consensus configuration.
-    /// * protocol_controller: associated protocol controller
+    /// * protocol_command_sender: associated protocol controller
     /// * block_db: Database containing all information about blocks, the blockgraph and cliques.
     /// * controller_command_rx: Channel receiving consensus commands.
     /// * controller_event_tx: Channel sending out consensus events.
@@ -275,6 +275,8 @@ impl ConsensusWorker {
         }
 
         info!("Add block hash:{}", hash);
+        let header = block.header.clone();
+        let signature = block.signature.clone();
         let res =
             self.block_db
                 .acknowledge_block(hash, block, &mut self.selector, self.current_slot);
@@ -303,10 +305,10 @@ impl ConsensusWorker {
                 self.dependency_waiting_blocks.cancel(too_old)?;
 
                 // get block (if not discarded)
-                if let Some(block) = self.block_db.get_active_block(hash) {
+                if self.block_db.get_active_block(hash).is_some() {
                     // propagate block
                     self.protocol_command_sender
-                        .propagate_block(hash, &block)
+                        .propagate_block_header(hash, signature, header)
                         .await?;
 
                     // unlock dependencies
@@ -431,18 +433,36 @@ impl ConsensusWorker {
                 self.rec_acknowledge_block(block.header.compute_hash()?, block)
                     .await?;
             }
+            ProtocolEvent::ReceivedBlockHeader {
+                source_node_id,
+                signature,
+                header,
+            } => {
+                let hash = header
+                    .compute_hash()
+                    .map_err(|err| ConsensusError::HeaderHashError(err))?;
+                let header_check = self.block_db.check_header(
+                    &hash,
+                    &signature,
+                    &header,
+                    &mut self.selector,
+                    self.current_slot,
+                );
+                if header_check.is_ok() {
+                    self.protocol_command_sender
+                        .ask_for_block(hash, source_node_id)
+                        .await?;
+                }
+            }
             ProtocolEvent::ReceivedTransaction(_source_node_id, _transaction) => {
                 // todo (see issue #108)
             }
-            ProtocolEvent::AskedBlock(source_node_id, block_hash) => {
-                if let Some(_block) = self.block_db.get_active_block(block_hash) {
-                    massa_trace!("sending_block", {"dest_node_id": source_node_id, "block": block_hash});
-                    /*
-                        TODO send full block
-                        self.protocol_controller
-                            .send_block(block, source_node_id)
-                            .await?;
-                    */ // (see issue #109)
+            ProtocolEvent::AskedForBlock(source_node_id, block_hash) => {
+                if let Some(block) = self.block_db.get_active_block(block_hash) {
+                    massa_trace!("sending_block", {"dest_node_id": source_node_id, "block_hash": block_hash});
+                    self.protocol_command_sender
+                        .send_block(block_hash, block.clone(), source_node_id)
+                        .await?;
                 }
             }
         }

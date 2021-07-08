@@ -1,5 +1,6 @@
+use crypto::hash::Hash;
 use crypto::signature::{PublicKey, Signature};
-use models::block::Block;
+use models::block::{Block, BlockHeader};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
@@ -24,6 +25,13 @@ pub enum Message {
     },
     /// Whole block structure.
     Block(Block),
+    /// Hash of block header
+    BlockHeader {
+        signature: Signature,
+        header: BlockHeader,
+    },
+    /// Message asking the peer for a block.
+    AskForBlock(Hash),
     /// Isolated transaction that should be included in a block eventually.
     Transaction(String),
     /// Message asking the peer for its advertisable peers list.

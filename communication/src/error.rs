@@ -1,4 +1,5 @@
 use crate::network::ConnectionId;
+use models::error::ModelsError;
 use std::net::IpAddr;
 use thiserror::Error;
 
@@ -34,6 +35,8 @@ pub enum CommunicationError {
     TimeError(#[from] time::TimeError),
     #[error("missing peers")]
     MissingPeersError,
+    #[error("Could not hash block header: {0}")]
+    HeaderHashError(#[from] ModelsError),
 }
 
 #[derive(Error, Debug)]

@@ -1,7 +1,8 @@
 //! All information concerning blocks, the block graph and cliques is managed here.
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::{BlockAcknowledgeError, ConsensusError};
-use crypto::{hash::Hash, signature::SignatureEngine};
+use crypto::hash::Hash;
+use crypto::signature::{Signature, SignatureEngine};
 use models::block::Block;
 use models::block::BlockHeader;
 use serde::{Deserialize, Serialize};
@@ -402,6 +403,162 @@ impl BlockGraph {
         ))
     }
 
+    /// Checks a block header
+    /// Returns a set of hashes of missing dependencies
+    ///
+    /// # Arguments
+    /// * hash : hash of the given block
+    /// * header : header to check
+    /// * selector: selector to draw staker for slot
+    /// * current_slot: current slot
+    pub fn check_header(
+        &mut self,
+        hash: &Hash,
+        signature: &Signature,
+        header: &BlockHeader,
+        selector: &mut RandomSelector,
+        current_slot: (u64, u8),
+    ) -> Result<HashSet<Hash>, BlockAcknowledgeError> {
+        // check signature
+        if !SignatureEngine::new().verify(&hash, &signature, &header.creator)? {
+            return Err(BlockAcknowledgeError::WrongSignature);
+            // the block may still be valid, but badly signed
+            // don't add it to discard pile to prevent attackers from discarding arbitrary blocks
+        }
+
+        // check if we already know about this block
+        if let Some((_, (reason, header))) = self.discarded_blocks.get(&hash) {
+            let (reason, header) = (*reason, header.clone());
+            // get the reason it was first discarded for
+            self.discarded_blocks.insert(hash.clone(), header, reason)?; // promote to the front of the discard pile
+            return Err(BlockAcknowledgeError::AlreadyDiscarded); // already discarded
+        }
+        if self.active_blocks.contains_key(&hash) {
+            return Err(BlockAcknowledgeError::AlreadyAcknowledged); // already an active block
+        }
+        if self.genesis_blocks.contains(&hash) {
+            return Err(BlockAcknowledgeError::AlreadyAcknowledged); // it's a genesis block
+        }
+
+        // basic structural checks
+        if header.parents.len() != (self.cfg.thread_count as usize)
+            || header.period_number == 0
+            || header.thread_number >= self.cfg.thread_count
+        {
+            self.discarded_blocks
+                .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
+            return Err(BlockAcknowledgeError::InvalidFields);
+        }
+
+        // check that is newer than the latest final block in that thread
+        if header.period_number <= self.latest_final_blocks_periods[header.thread_number as usize].1
+        {
+            self.discarded_blocks
+                .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
+            return Err(BlockAcknowledgeError::TooOld);
+        }
+
+        // check if block slot is too much in the future
+        if (header.period_number, header.thread_number)
+            > (
+                current_slot
+                    .0
+                    .saturating_add(self.cfg.future_block_processing_max_periods),
+                current_slot.1,
+            )
+        {
+            return Err(BlockAcknowledgeError::TooMuchInTheFuture);
+        }
+
+        // check if it was the creator's turn to create this block
+        // note: do this AFTER TooMuchInTheFuture checks
+        //       to avoid doing too many draws to check blocks in the distant future
+        if header.roll_number != selector.draw((header.period_number, header.thread_number)) {
+            // it was not the creator's turn to create a block for this slot
+            self.discarded_blocks
+                .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
+            return Err(BlockAcknowledgeError::DrawMismatch);
+        }
+
+        // TODO check if we already have a block for that slot
+        // TODO denounce ? see issue #101
+
+        // ensure parents presence and validity
+        let mut missing_dependencies = HashSet::new();
+        for parent_thread in 0u8..self.cfg.thread_count {
+            let parent_hash = header.parents[parent_thread as usize];
+            if self.discarded_blocks.contains(&parent_hash) {
+                self.discarded_blocks.insert(
+                    hash.clone(),
+                    header.clone(),
+                    DiscardReason::Invalid,
+                )?;
+                return Err(BlockAcknowledgeError::InvalidParents(
+                    "discarded parent".to_string(),
+                )); // a parent is discarded
+            }
+            if let Some(parent) = self.active_blocks.get(&parent_hash) {
+                // check that the parent is from an earlier slot in the right thread
+                if parent.block.header.thread_number != parent_thread
+                    || (parent.block.header.period_number, parent_thread)
+                        >= (header.period_number, header.thread_number)
+                {
+                    // a parent is in the wrong thread or has a slot not strictly before the block
+                    self.discarded_blocks.insert(
+                        hash.clone(),
+                        header.clone(),
+                        DiscardReason::Invalid,
+                    )?;
+                    return Err(BlockAcknowledgeError::InvalidParents(
+                        "wrong thread or slot number".to_string(),
+                    ));
+                }
+            } else {
+                // a parent is missing
+                missing_dependencies.insert(parent_hash);
+            }
+        }
+        // check that the parents are mutually compatible
+        {
+            let parent_hashes: HashSet<Hash> = header.parents.iter().cloned().collect();
+            for parent_h in parent_hashes.iter() {
+                if let Some(incomp) = self.gi_head.get(&parent_h) {
+                    if !incomp.is_disjoint(&parent_hashes) {
+                        // found mutually incompatible parents
+                        self.discarded_blocks.insert(
+                            hash.clone(),
+                            header.clone(),
+                            DiscardReason::Invalid,
+                        )?;
+                        return Err(BlockAcknowledgeError::InvalidParents(
+                            "mutually incompatible parents".to_string(),
+                        ));
+                    }
+                }
+            }
+        }
+        // check the topological consistency of the parents
+        if missing_dependencies.is_empty() {
+            match self.check_block_parents_topological_order(&header.parents) {
+                Ok(true) => {}
+                Ok(false) => {
+                    // inconsistent parent topology
+                    self.discarded_blocks.insert(
+                        hash.clone(),
+                        header.clone(),
+                        DiscardReason::Invalid,
+                    )?;
+                    return Err(BlockAcknowledgeError::InvalidParents(
+                        "Inconsistent parent topology".to_string(),
+                    ));
+                }
+                Err(missing) => missing_dependencies.extend(missing), // blocks missing to decide on parent consistency
+            }
+        }
+
+        Ok(missing_dependencies)
+    }
+
     /// Acknowledges a block.
     /// Returns discarded blocks
     ///
@@ -423,166 +580,31 @@ impl BlockGraph {
             "period": block.header.period_number
         });
 
-        // check signature
-        if !SignatureEngine::new().verify(&hash, &block.signature, &block.header.creator)? {
-            return Err(BlockAcknowledgeError::WrongSignature);
-            // the block may still be valid, but badly signed
-            // don't add it to discard pile to prevent attackers from discarding arbitrary blocks
-        }
-
-        // check if we already know about this block
-        if let Some((_, (reason, header))) = self.discarded_blocks.get(&hash) {
-            let (reason, header) = (*reason, header.clone());
-            // get the reason it was first discarded for
-            self.discarded_blocks.insert(hash, header, reason)?; // promote to the front of the discard pile
-            return Err(BlockAcknowledgeError::AlreadyDiscarded); // already discarded
-        }
-        if self.active_blocks.contains_key(&hash) {
-            return Err(BlockAcknowledgeError::AlreadyAcknowledged); // already an active block
-        }
-        if self.genesis_blocks.contains(&hash) {
-            return Err(BlockAcknowledgeError::AlreadyAcknowledged); // it's a genesis block
-        }
-
-        // basic structural checks
-        if block.header.parents.len() != (self.cfg.thread_count as usize)
-            || block.header.period_number == 0
-            || block.header.thread_number >= self.cfg.thread_count
-        {
-            self.discarded_blocks
-                .insert(hash.clone(), block.header, DiscardReason::Invalid)?;
-            return Err(BlockAcknowledgeError::InvalidFields);
-        }
-
-        // check that is newer than the latest final block in that thread
-        if block.header.period_number
-            <= self.latest_final_blocks_periods[block.header.thread_number as usize].1
-        {
-            self.discarded_blocks
-                .insert(hash.clone(), block.header, DiscardReason::Invalid)?;
-            return Err(BlockAcknowledgeError::TooOld);
-        }
-
-        // check if block slot is too much in the future
-        if (block.header.period_number, block.header.thread_number)
-            > (
-                current_slot
-                    .0
-                    .saturating_add(self.cfg.future_block_processing_max_periods),
-                current_slot.1,
-            )
-        {
-            return Err(BlockAcknowledgeError::TooMuchInTheFuture);
-        }
-
-        // check if it was the creator's turn to create this block
-        // note: do this AFTER TooMuchInTheFuture checks
-        //       to avoid doing too many draws to check blocks in the distant future
-        if block.header.roll_number
-            != selector.draw((block.header.period_number, block.header.thread_number))
-        {
-            // it was not the creator's turn to create a block for this slot
-            self.discarded_blocks
-                .insert(hash.clone(), block.header, DiscardReason::Invalid)?;
-            return Err(BlockAcknowledgeError::DrawMismatch);
-        }
-
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
         if (block.header.period_number, block.header.thread_number) > current_slot {
             return Err(BlockAcknowledgeError::InTheFuture(block));
         }
 
-        // TODO check if we already have a block for that slot
-        // TODO denounce ? see issue #101
-
-        // ensure parents presence and validity
-        {
-            let mut missing_dependencies = HashSet::new();
-            for parent_thread in 0u8..self.cfg.thread_count {
-                let parent_hash = block.header.parents[parent_thread as usize];
-                if self.discarded_blocks.contains(&parent_hash) {
-                    self.discarded_blocks.insert(
-                        hash.clone(),
-                        block.header,
-                        DiscardReason::Invalid,
-                    )?;
-                    return Err(BlockAcknowledgeError::InvalidParents(
-                        "discarded parent".to_string(),
-                    )); // a parent is discarded
-                }
-                if let Some(parent) = self.active_blocks.get(&parent_hash) {
-                    // check that the parent is from an earlier slot in the right thread
-                    if parent.block.header.thread_number != parent_thread
-                        || (parent.block.header.period_number, parent_thread)
-                            >= (block.header.period_number, block.header.thread_number)
-                    {
-                        // a parent is in the wrong thread or has a slot not strictly before the block
-                        self.discarded_blocks.insert(
-                            hash.clone(),
-                            block.header,
-                            DiscardReason::Invalid,
-                        )?;
-                        return Err(BlockAcknowledgeError::InvalidParents(
-                            "wrong thread or slot number".to_string(),
-                        ));
-                    }
-                } else {
-                    // a parent is missing
-                    missing_dependencies.insert(parent_hash);
-                }
-            }
-            // check that the parents are mutually compatible
-            {
-                let parent_hashes: HashSet<Hash> = block.header.parents.iter().cloned().collect();
-                for parent_h in parent_hashes.iter() {
-                    if let Some(incomp) = self.gi_head.get(&parent_h) {
-                        if !incomp.is_disjoint(&parent_hashes) {
-                            // found mutually incompatible parents
-                            self.discarded_blocks.insert(
-                                hash.clone(),
-                                block.header,
-                                DiscardReason::Invalid,
-                            )?;
-                            return Err(BlockAcknowledgeError::InvalidParents(
-                                "mutually incompatible parents".to_string(),
-                            ));
-                        }
-                    }
-                }
-            }
-            // check the topological consistency of the parents
-            if missing_dependencies.is_empty() {
-                match self.check_block_parents_topological_order(&block.header.parents) {
-                    Ok(true) => {}
-                    Ok(false) => {
-                        // inconsistent parent topology
-                        self.discarded_blocks.insert(
-                            hash.clone(),
-                            block.header,
-                            DiscardReason::Invalid,
-                        )?;
-                        return Err(BlockAcknowledgeError::InvalidParents(
-                            "Inconsistent parent topology".to_string(),
-                        ));
-                    }
-                    Err(missing) => missing_dependencies.extend(missing), // blocks missing to decide on parent consistency
-                }
-            }
-            if !missing_dependencies.is_empty() {
-                // there are missing dependencies
-                if !missing_dependencies.is_disjoint(&self.genesis_blocks.iter().copied().collect())
-                {
-                    // some of the missing dependencies are genesis: consider it as badly chosen parents
-                    return Err(BlockAcknowledgeError::InvalidParents(
-                        "depends on a discarded genesis block".to_string(),
-                    ));
-                }
-                return Err(BlockAcknowledgeError::MissingDependencies(
-                    block,
-                    missing_dependencies,
+        let missing_dependencies = self.check_header(
+            &hash,
+            &block.signature,
+            &block.header,
+            selector,
+            current_slot,
+        )?;
+        if !missing_dependencies.is_empty() {
+            // there are missing dependencies
+            if !missing_dependencies.is_disjoint(&self.genesis_blocks.iter().copied().collect()) {
+                // some of the missing dependencies are genesis: consider it as badly chosen parents
+                return Err(BlockAcknowledgeError::InvalidParents(
+                    "depends on a discarded genesis block".to_string(),
                 ));
             }
+            return Err(BlockAcknowledgeError::MissingDependencies(
+                block,
+                missing_dependencies,
+            ));
         }
 
         //TODO check that the block is compatible with all its parents (see issue #102)

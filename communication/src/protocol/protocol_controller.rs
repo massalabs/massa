@@ -7,8 +7,9 @@ use crate::{
     error::CommunicationError,
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
-use crypto::{hash::Hash, signature::SignatureEngine};
-use models::block::Block;
+use crypto::hash::Hash;
+use crypto::signature::{Signature, SignatureEngine};
+use models::block::{Block, BlockHeader};
 use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -76,26 +77,64 @@ pub async fn start_protocol_controller(
 pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
 
 impl ProtocolCommandSender {
-    /// Sends the order to propagate that block
+    /// Sends the order to propagate the header of a block
     ///
     /// # Arguments
     /// * hash : hash of the block header
-    /// * block : block we want to propagate
-    pub async fn propagate_block(
+    pub async fn propagate_block_header(
         &mut self,
         hash: Hash,
-        block: &Block,
+        signature: Signature,
+        header: BlockHeader,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("block_propagation_order", { "block": hash });
+        massa_trace!("block_header_propagation_order", { "block": hash });
         self.0
-            .send(ProtocolCommand::PropagateBlock {
+            .send(ProtocolCommand::PropagateBlockHeader {
+                signature,
                 hash,
-                block: block.clone(),
+                header,
             })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("propagate_block command send error".into())
+                CommunicationError::ChannelError("propagate_block_header command send error".into())
             })
+    }
+
+    /// Sends the order to ask for a block
+    ///
+    /// # Arguments
+    /// * hash : hash of the block header.
+    /// * node: the id of the node to ask from.
+    pub async fn ask_for_block(
+        &mut self,
+        hash: Hash,
+        node: NodeId,
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("ask_for_block_order", { "block": hash });
+        self.0
+            .send(ProtocolCommand::AskForBlock { hash, node })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("ask_for_block command send error".into())
+            })
+    }
+
+    /// Sends a block to a peer.
+    ///
+    /// # Arguments
+    /// * block : the block.
+    /// * node: the id of the node to send the block to.
+    pub async fn send_block(
+        &mut self,
+        hash: Hash,
+        block: Block,
+        node: NodeId,
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("send_block_order", { "block": block });
+        self.0
+            .send(ProtocolCommand::SendBlock { hash, block, node })
+            .await
+            .map_err(|_| CommunicationError::ChannelError("send_block command send error".into()))
     }
 }
 
