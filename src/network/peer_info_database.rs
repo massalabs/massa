@@ -48,6 +48,7 @@ pub struct PeerInfoDatabase {
     active_out_connection_attempts: usize,
     active_out_connections: usize,
     active_in_connections: usize,
+    wakeup_interval: chrono::Duration,
 }
 
 /// Saves banned, advertised and bootstrap peers to a file.
@@ -164,6 +165,10 @@ impl PeerInfoDatabase {
     /// Can fail reading the file containing peers.
     /// will only emit a warning if peers dumping failed.
     pub async fn new(cfg: &NetworkConfig) -> BoxResult<Self> {
+        // wakeup interval
+        let wakeup_interval = chrono::Duration::from_std(cfg.wakeup_interval)
+            .expect("NetworkCOnfig.wakeup_interval overflows chrono");
+
         // load from file
         let mut peers = serde_json::from_str::<Vec<PeerInfo>>(
             &tokio::fs::read_to_string(&cfg.peers_file).await?,
@@ -221,6 +226,7 @@ impl PeerInfoDatabase {
             active_out_connection_attempts: 0,
             active_out_connections: 0,
             active_in_connections: 0,
+            wakeup_interval,
         })
     }
 
@@ -269,6 +275,7 @@ impl PeerInfoDatabase {
         if available_slots == 0 {
             return Vec::new();
         }
+        let now = Utc::now();
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
             .values()
@@ -282,10 +289,7 @@ impl PeerInfoDatabase {
                             return true;
                         }
                     }
-                    return (Utc::now() - last_failure)
-                        .to_std()
-                        .expect("chrono duration unsupported by std")
-                        > self.cfg.wakeup_interval;
+                    return now.signed_duration_since(last_failure) > self.wakeup_interval;
                 }
                 true
             })
@@ -641,6 +645,8 @@ mod tests {
         let cfg = example_network_config();
         let peers_file = cfg.peers_file.clone();
         let peers_file_dump_interval = cfg.peers_file_dump_interval;
+        let wakeup_interval = chrono::Duration::from_std(cfg.wakeup_interval)
+            .expect("NetworkCOnfig.wakeup_interval overflows chrono");
 
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
@@ -652,6 +658,7 @@ mod tests {
             active_out_connection_attempts: 0,
             active_out_connections: 0,
             active_in_connections: 0,
+            wakeup_interval,
         }
     }
 
