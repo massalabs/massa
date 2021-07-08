@@ -4,22 +4,21 @@ use super::{
     node_controller::NodeId,
 };
 use crate::{
-    crypto::signature::PrivateKey, crypto::signature::SignatureEngine,
-    network::network_controller::ConnectionId,
+    crypto::signature::PrivateKey,
+    crypto::signature::SignatureEngine,
+    network::network_controller::{ConnectionId, NetworkController},
 };
 use futures::future::try_join;
 use rand::{rngs::StdRng, FromEntropy, RngCore};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration};
 
-pub type HandshakeReturnType = (
+pub type HandshakeReturnType<NetworkControllerT: NetworkController> = (
     ConnectionId,
     Result<
         (
             NodeId,
-            ReadBinder<OwnedReadHalf>,
-            WriteBinder<OwnedWriteHalf>,
+            ReadBinder<NetworkControllerT::ReaderT>,
+            WriteBinder<NetworkControllerT::WriterT>,
         ),
         String,
     >,
@@ -30,19 +29,17 @@ pub type HandshakeReturnType = (
 /// Will not panic
 /// Returns a tuple (ConnectionId, Result)
 /// Creates the binders to communicate with that node
-pub async fn handshake_fn(
+pub async fn handshake_fn<NetworkControllerT: NetworkController>(
     connection_id: ConnectionId,
-    socket: TcpStream,
+    socket_reader: NetworkControllerT::ReaderT,
+    socket_writer: NetworkControllerT::WriterT,
     self_node_id: NodeId, // NodeId.0 is our PublicKey
     private_key: PrivateKey,
     timeout_duration: Duration,
-) -> HandshakeReturnType {
+) -> HandshakeReturnType<NetworkControllerT> {
     // split socket, bind reader and writer
-    let (socket_reader, socket_writer) = socket.into_split();
-    let (mut reader, mut writer) = (
-        ReadBinder::new(socket_reader),
-        WriteBinder::new(socket_writer),
-    );
+    let mut reader = ReadBinder::new(socket_reader);
+    let mut writer = WriteBinder::new(socket_writer);
 
     // generate random bytes
     let mut self_random_bytes = vec![0u8; 64];

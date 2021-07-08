@@ -9,7 +9,9 @@ pub mod network;
 pub mod protocol;
 pub mod structures;
 use crate::logging::error;
-use crate::network::network_controller::NetworkController;
+use crate::network::default_establisher::DefaultEstablisher;
+use crate::network::default_network_controller::DefaultNetworkController;
+use crate::protocol::default_protocol_controller::DefaultProtocolController;
 use crate::protocol::protocol_controller::{ProtocolController, ProtocolEvent, ProtocolEventType};
 use std::error::Error;
 use tokio::fs::read_to_string;
@@ -17,10 +19,11 @@ use tokio::fs::read_to_string;
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 async fn run(cfg: config::Config) -> BoxResult<()> {
-    let network = NetworkController::new(&cfg.network).await?;
+    let establisher = DefaultEstablisher::new();
+    let network = DefaultNetworkController::new(&cfg.network, establisher).await?;
 
     // launch network controller
-    let mut protocol = ProtocolController::new(&cfg.protocol, network).await?;
+    let mut protocol = DefaultProtocolController::new(&cfg.protocol, network).await?;
 
     // loop over messages
     loop {

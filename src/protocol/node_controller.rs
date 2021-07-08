@@ -8,7 +8,7 @@ use crate::structures::block::Block;
 use futures::{future::FusedFuture, FutureExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
@@ -61,14 +61,17 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 /// - writer_evt_tx already closed
 /// - node_writer_handle already closed
 /// - node_event_tx already closed
-pub async fn node_controller_fn(
+pub async fn node_controller_fn<ReaderT, WriterT: 'static>(
     cfg: ProtocolConfig,
     node_id: NodeId,
-    mut socket_reader: ReadBinder<OwnedReadHalf>,
-    socket_writer: WriteBinder<OwnedWriteHalf>,
+    mut socket_reader: ReadBinder<ReaderT>,
+    socket_writer: WriteBinder<WriterT>,
     mut node_command_rx: Receiver<NodeCommand>,
     node_event_tx: Sender<NodeEvent>,
-) {
+) where
+    ReaderT: AsyncRead + Send + Sync + Unpin,
+    WriterT: AsyncWrite + Send + Sync + Unpin,
+{
     let (writer_command_tx, writer_command_rx) = mpsc::channel::<Message>(1024);
     let (writer_event_tx, writer_event_rx) = oneshot::channel::<bool>(); // true = OK, false = ERROR
     let mut fused_writer_event_rx = writer_event_rx.fuse();
@@ -172,9 +175,9 @@ pub async fn node_controller_fn(
 /// through writer and writer event channels
 /// Can panic if writer_event_tx died
 /// Manages timeout while talking to anouther node
-async fn node_writer_fn(
+async fn node_writer_fn<WriterT: AsyncWrite + Send + Sync + Unpin>(
     cfg: ProtocolConfig,
-    mut socket_writer: WriteBinder<OwnedWriteHalf>,
+    mut socket_writer: WriteBinder<WriterT>,
     writer_event_tx: oneshot::Sender<bool>,
     mut writer_command_rx: Receiver<Message>,
 ) {
