@@ -458,7 +458,7 @@ async fn test_block_filling() {
     ledger.insert(
         address_a,
         LedgerData {
-            balance: 1000_000_000,
+            balance: 1_000_000_000,
         },
     );
     let ledger_file = generate_ledger_file(&ledger);
@@ -471,8 +471,6 @@ async fn test_block_filling() {
     cfg.operation_batch_size = 500;
     cfg.max_operations_per_block = 5000;
     cfg.max_block_size = 500;
-    //to avoid timing pb for block in the future
-    cfg.genesis_timestamp = UTime::now(0).unwrap();
     let mut ops = Vec::new();
     for _ in 0..500 {
         ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
@@ -486,6 +484,7 @@ async fn test_block_filling() {
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
     // launch consensus controller
+    cfg.genesis_timestamp = UTime::now(0).unwrap();
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -553,14 +552,13 @@ async fn test_block_filling() {
 
     // wait for block
     let (_block_id, block) = protocol_controller
-        .wait_command(300.into(), |cmd| match cmd {
+        .wait_command(500.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
             _ => None,
         })
         .await
         .expect("timeout while waiting for block");
 
-    // assert it's the expected block
     // assert it's the expected block
     assert_eq!(block.header.content.slot, Slot::new(1, 0));
     // create empty block
