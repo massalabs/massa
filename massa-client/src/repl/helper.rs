@@ -21,6 +21,7 @@ pub struct ReplHelper {
 }
 
 impl ReplHelper {
+    /// Creates a new ReplHelper
     pub fn new() -> ReplHelper {
         ReplHelper {
             completer: CommandCompleter::new(),
@@ -29,6 +30,7 @@ impl ReplHelper {
         }
     }
 
+    /// adds given command name to ReplHelper
     pub fn add_cmd(&mut self, cmd_name: String, min_nb_param: usize, max_nb_param: usize) {
         self.completer.cmd_list.push(cmd_name.clone());
         self.hinter.cmd_list.push(cmd_name.clone());

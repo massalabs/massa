@@ -47,6 +47,10 @@ mod wallet;
 
 ///Start the massa-client.
 fn main() {
+    //client has to run mode:
+    // * cli mode where a command is provided in client parameters, the cmd is executed and the result return as a json data.
+    // * a REPL moode where the command are typed and executed directly inside the client.
+    //declare client parameters common for all modes.
     let app = App::new("Massa CLI")
         .version("1.0")
         .author("Massa Labs <contact@massa.network>")
@@ -83,7 +87,10 @@ fn main() {
     let config_path = "config/config.toml";
     let cfg = config::Config::from_toml(&read_to_string(config_path).unwrap()).unwrap();
 
-    //add commands
+    //add client commands that can be executed.
+    // The Repl struct manage command registration for cli mode with clap and REPL mode with rustyline
+    //A command can have parameters or not. The number of parameters (min/max) are decalared to detect bad command typing before its execution.
+    //Detection is done by clap for cli mode and rustlyline in REPL mode.
     let (mut repl, app) = repl::Repl::new().new_command(
         "set_short_hash",
         "set displayed hash short: Parameter: bool: true (short), false(long)",
@@ -189,6 +196,7 @@ fn main() {
 
     let matches = app.get_matches();
 
+    //ip address of the node to connect.
     let node_ip = matches
         .value_of("nodeip")
         .and_then(|node| {
@@ -202,6 +210,7 @@ fn main() {
         .unwrap_or(cfg.default_node.clone());
     repl.data.node_ip = node_ip;
 
+    //shorthash is a global parameter that determine the way hash are shown (long (normal) or short).
     let short_hash = matches
         .value_of("shorthash")
         .and_then(|val| {
@@ -218,6 +227,7 @@ fn main() {
         data::FORMAT_SHORT_HASH.swap(false, Ordering::Relaxed);
     }
 
+    //filename of the wallet file. There's no security around the wallet file.
     let wallet_file_param = matches.value_of("wallet");
     if let Some(file_name) = wallet_file_param {
         println!("open wallet");
@@ -253,6 +263,14 @@ fn main() {
         }
     }
 }
+
+//General cmd execution
+//When user type a command, it's associated to a method bellow.
+//Cmd method, get its data from ReplData or provided params (command parameters)
+//The cmd is send to the node with a Rest call.
+//The node answer is converted to display for REPL using display trait
+//Or the return json is printed in cli mode.
+//The request_data method manage Node request/answer and cli printing.
 
 fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     //convert specified ops to OperationId

@@ -24,12 +24,14 @@ impl FromStr for Address {
 }
 
 impl Address {
+    /// Gets the associated tread. Depends on the thread_count
     pub fn get_thread(&self, thread_count: u8) -> u8 {
         (self.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
     }
 
+    /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Result<Self, ModelsError> {
         Ok(Address(Hash::hash(&public_key.to_bytes())))
     }
