@@ -1,13 +1,7 @@
-use std::collections::HashSet;
-
-use models::{Operation, OperationId, Slot};
-use pool::{PoolCommand, PoolCommandSender, PoolError};
+use pool::{PoolCommand, PoolCommandSender};
 use time::UTime;
 use tokio::{
-    sync::{
-        mpsc,
-        oneshot::{self, Sender},
-    },
+    sync::{mpsc, oneshot},
     task::JoinHandle,
     time::sleep,
 };
@@ -95,6 +89,8 @@ impl PoolCommandSink {
 
     pub async fn stop(self) -> MockPoolController {
         drop(self.stop_tx);
-        self.handle.await.unwrap()
+        self.handle
+            .await
+            .expect("Failed to stop pool command sink.")
     }
 }

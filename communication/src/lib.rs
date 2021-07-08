@@ -1,6 +1,5 @@
 #![feature(drain_filter)]
 #![feature(ip)]
-#![feature(map_into_keys_values)]
 
 #[macro_use]
 extern crate logging;

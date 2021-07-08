@@ -6,12 +6,10 @@ use crate::protocol::{
     tests::{
         mock_network_controller::MockNetworkController,
         tools::{
-            create_and_connect_nodes, create_block, create_block_with_operations,
+            create_and_connect_nodes, create_block_with_operations,
             create_operation_with_expire_period, create_protocol_config, send_and_propagate_block,
-            wait_protocol_event,
         },
     },
-    ProtocolEvent,
 };
 use serial_test::serial;
 

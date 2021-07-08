@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    usize,
-};
+use std::collections::{HashMap, HashSet};
 
 use models::{Address, Slot};
 
@@ -77,7 +74,7 @@ async fn test_operations_check() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -172,4 +169,5 @@ async fn test_operations_check() {
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    pool_sink.stop().await;
 }

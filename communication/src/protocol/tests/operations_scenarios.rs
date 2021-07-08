@@ -4,7 +4,6 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolPoolEvent;
-use models::get_serialization_context;
 use serial_test::serial;
 use std::collections::HashMap;
 

@@ -12,7 +12,7 @@ use crypto::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, convert::TryInto, ops::Range};
+use std::{collections::HashSet, convert::TryInto};
 use std::{ops::RangeInclusive, str::FromStr};
 
 pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;

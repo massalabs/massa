@@ -28,7 +28,6 @@ use models::{Block, Slot};
 use models::{OperationContent, OperationType};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::string::ToString;
 

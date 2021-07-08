@@ -21,7 +21,7 @@ build:
 # Use tarpaulin to test the project
 test:
   stage: build
-  image: "xd009642/tarpaulin:latest-nightly"
+  image: "xd009642/tarpaulin:develop-nightly"
   script:
     - cargo update
     - cargo tarpaulin --verbose --run-types Tests Doctests
