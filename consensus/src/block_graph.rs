@@ -2102,7 +2102,7 @@ impl BlockGraph {
             vec![HashMap::new(); self.cfg.thread_count as usize];
 
         // credit roll sales after lock
-        // TODO credit all roll sales that happened at N-1-loocback-lock
+        // TODO credit all roll sales that happened at N-1-lookback-lock
 
         // block constant reward
         let creator_thread = block_creator_address.get_thread(self.cfg.thread_count);
@@ -3870,6 +3870,7 @@ mod tests {
         let max_block_size = 1024 * 1024;
         let max_operations_per_block = 1024;
         let tempdir = tempfile::tempdir().expect("cannot create temp dir");
+        let tempdir3 = tempfile::tempdir().expect("cannot create temp dir");
 
         models::init_serialization_context(models::SerializationContext {
             max_block_operations: 1024,
@@ -3910,6 +3911,11 @@ mod tests {
             block_reward: 1,
             initial_ledger_path: initial_ledger_path.to_path_buf(),
             operation_batch_size: 100,
+            initial_rolls_path: tempdir3.path().to_path_buf(),
+            initial_draw_seed: "genesis".into(),
+            periods_per_cycle: 100,
+            pos_lookback_cycles: 4,
+            pos_lock_cycles: 1,
         }
     }
 }

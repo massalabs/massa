@@ -1,10 +1,10 @@
 use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
 use models::{Address, Block, BlockId, Operation, Slot};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crypto::hash::Hash;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, VecDeque};
 
 pub trait OperationPosInterface {
     /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
@@ -72,6 +72,12 @@ struct ProofOfStake {
     cfg: ConsensusConfig,
     /// Index by thread and cycle number
     final_roll_data: Vec<VecDeque<FinalRollThreadData>>,
+    /// Initial rolls: we keep them as long as negative cycle draws are needed
+    initial_rolls: Vec<Option<BTreeMap<Address, u64>>>,
+    // Initial seeds: they are lightweight, we always keep them
+    // the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed
+    // the seeds are indexed from -1 to -N
+    initial_seeds: Vec<Vec<u8>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -97,8 +103,56 @@ struct ExportFinalRollThreadData {
 }
 
 impl ProofOfStake {
-    pub fn new() -> ProofOfStake {
-        todo!()
+    pub async fn new(cfg: ConsensusConfig) -> Result<ProofOfStake, ConsensusError> {
+        let mut final_roll_data = Vec::with_capacity(cfg.thread_count as usize);
+        let mut initial_rolls: Vec<Option<BTreeMap<Address, u64>>> =
+            Vec::with_capacity(cfg.thread_count as usize);
+        let initial_roll_count = ProofOfStake::get_initial_rolls(&cfg).await?;
+        for (thread, thread_rolls) in initial_roll_count.into_iter().enumerate() {
+            // initial rolls
+            initial_rolls.push(Some(thread_rolls.clone()));
+            // init thread history with one cycle
+            // note that the genesis blocks are not taken into account in the rng_seed
+            let mut history = VecDeque::with_capacity(
+                (cfg.pos_lock_cycles + cfg.pos_lock_cycles + 2 + 1) as usize,
+            );
+            let frtd = FinalRollThreadData {
+                cycle: 0,
+                last_final_slot: Slot::new(0, thread as u8),
+                roll_count: thread_rolls,
+                cycle_purchases: HashMap::new(),
+                cycle_sales: HashMap::new(),
+                rng_seed: BitVec::new(),
+            };
+            history.push_front(frtd);
+            final_roll_data.push(history);
+        }
+        // generate object
+        Ok(ProofOfStake {
+            final_roll_data,
+            initial_rolls,
+            initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
+            cfg,
+        })
+    }
+
+    async fn get_initial_rolls(
+        cfg: &ConsensusConfig,
+    ) -> Result<Vec<BTreeMap<Address, u64>>, ConsensusError> {
+        Ok(serde_json::from_str::<Vec<BTreeMap<Address, u64>>>(
+            &tokio::fs::read_to_string(&cfg.initial_rolls_path).await?,
+        )?)
+    }
+
+    fn generate_initial_seeds(cfg: &ConsensusConfig) -> Vec<Vec<u8>> {
+        let mut cur_seed = cfg.initial_draw_seed.as_bytes().to_vec();
+        let mut initial_seeds =
+            Vec::with_capacity((cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1) as usize);
+        for _ in 0..(cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1) {
+            cur_seed = Hash::hash(&cur_seed).to_bytes().to_vec();
+            initial_seeds.push(cur_seed.clone());
+        }
+        initial_seeds
     }
 
     pub fn export(&self) -> ExportProofOfStake {
@@ -115,19 +169,42 @@ impl ProofOfStake {
         }
     }
 
-    pub fn from_export(cfg: ConsensusConfig, export: ExportProofOfStake) -> ProofOfStake {
-        ProofOfStake {
-            cfg,
-            final_roll_data: export
-                .final_roll_data
-                .into_iter()
-                .map(|vec| {
-                    vec.into_iter()
-                        .map(|frtd| FinalRollThreadData::from_export(frtd))
-                        .collect::<VecDeque<FinalRollThreadData>>()
-                })
-                .collect(),
+    pub async fn from_export(
+        cfg: ConsensusConfig,
+        export: ExportProofOfStake,
+    ) -> Result<ProofOfStake, ConsensusError> {
+        let final_roll_data: Vec<VecDeque<FinalRollThreadData>> = export
+            .final_roll_data
+            .into_iter()
+            .map(|vec| {
+                vec.into_iter()
+                    .map(|frtd| FinalRollThreadData::from_export(frtd))
+                    .collect::<VecDeque<FinalRollThreadData>>()
+            })
+            .collect();
+
+        // if initial rolls are still needed for some threads, load them
+        let needed_initial_rolls: Vec<bool> = final_roll_data
+            .iter()
+            .map(|v| v[0].cycle < cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1)
+            .collect();
+        let mut initial_rolls = vec![None; cfg.thread_count as usize];
+        if needed_initial_rolls.iter().any(|v| *v) {
+            let initial_roll_count = ProofOfStake::get_initial_rolls(&cfg).await?;
+            for (thread, rolls) in initial_roll_count.into_iter().enumerate() {
+                if needed_initial_rolls[thread as usize] {
+                    initial_rolls[thread as usize] = Some(rolls);
+                }
+            }
         }
+
+        // generate object
+        Ok(ProofOfStake {
+            final_roll_data,
+            initial_rolls,
+            initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
+            cfg,
+        })
     }
 
     pub fn draw(&self, slot: Slot) -> Result<Address, ConsensusError> {
@@ -181,7 +258,7 @@ impl ProofOfStake {
                     });
                     // If final_roll_data becomes longer than pos_lookback_cycles+pos_lock_cycles+1, truncate it by removing the back elements
                     self.final_roll_data[thread as usize].truncate(
-                        (self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1) as usize,
+                        (self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 2) as usize,
                     );
                 }
 
@@ -200,16 +277,19 @@ impl ProofOfStake {
                         .extend(&a_block.roll_updates.cycle_purchases);
                     entry.cycle_sales.extend(&a_block.roll_updates.cycle_sales);
                     // append the 1st bit of the block's hash to the RNG seed bitfield
-                    entry
-                        .rng_seed
-                        .push(Hash::hash(&block_id.to_bytes()).to_bytes()[0] >> 7 == 1);
+                    entry.rng_seed.push(block_id.get_first_bit());
                 } else {
                     // we are applying a miss
                     // append the 1st bit of the hash of the slot of the miss to the RNG seed bitfield
-                    entry
-                        .rng_seed
-                        .push(Hash::hash(&slot.to_bytes_key()).to_bytes()[0] >> 7 == 1);
+                    entry.rng_seed.push(slot.get_first_bit());
                 }
+            }
+        }
+
+        // if initial rolls are not needed in some threads, remove them to free memory
+        for (thread, final_rolls) in self.final_roll_data.iter().enumerate() {
+            if final_rolls[0].cycle >= self.cfg.pos_lock_cycles + self.cfg.pos_lock_cycles + 1 {
+                self.initial_rolls[thread] = None;
             }
         }
     }
