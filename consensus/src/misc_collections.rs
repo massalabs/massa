@@ -4,15 +4,27 @@ use models::{Block, BlockHeader, Slot};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::iter::FromIterator;
 
+pub enum QueuedBlock {
+    HeaderOnly(BlockHeader),
+    FullBLock(Block),
+}
+
+impl QueuedBlock {
+    fn header(&self) -> &BlockHeader {
+        match self {
+            QueuedBlock::HeaderOnly(h) => h,
+            QueuedBlock::FullBLock(b) => &b.header,
+        }
+    }
+}
+
 /// Sophisticated queue containing blocks with slotsd in the near future.
 pub struct FutureIncomingBlocks {
     /// The queue as a vecdeque of (slot, header's hash).
     struct_deque: VecDeque<(Slot, Hash)>,
     /// The queue as a map linking header's hash and the whole block.
-    blocks: HashMap<Hash, Block>,
+    map: HashMap<Hash, QueuedBlock>,
     /// The queue as a map linking header's hash and the block header.
-    headers: HashMap<Hash, BlockHeader>,
-    /// Maximum number of blocks we allow in the queue.
     max_size: usize,
 }
 
@@ -24,8 +36,7 @@ impl FutureIncomingBlocks {
     pub fn new(max_size: usize) -> Self {
         FutureIncomingBlocks {
             struct_deque: VecDeque::with_capacity(max_size.saturating_add(1)),
-            blocks: HashMap::with_capacity(max_size),
-            headers: HashMap::with_capacity(max_size),
+            map: HashMap::with_capacity(max_size),
             max_size,
         }
     }
@@ -41,18 +52,17 @@ impl FutureIncomingBlocks {
     pub fn insert(
         &mut self,
         hash: Hash,
-        header: BlockHeader,
-        block: Option<Block>,
-    ) -> Result<Option<(Hash, BlockHeader, Option<Block>)>, ConsensusError> {
+        block: QueuedBlock,
+    ) -> Result<Option<(Hash, QueuedBlock)>, ConsensusError> {
         if self.max_size == 0 {
-            return Ok(Some((hash, header, block)));
+            return Ok(Some((hash, block)));
         }
-        let map_entry = match self.headers.entry(hash) {
+        let map_entry = match self.map.entry(hash) {
             hash_map::Entry::Occupied(_) => return Ok(None), // already present
             hash_map::Entry::Vacant(vac) => vac,
         };
         // add into queue
-        let slot = header.content.slot;
+        let slot = block.header().content.slot;
         let pos: usize = self
             .struct_deque
             .binary_search(&(slot, hash))
@@ -60,26 +70,23 @@ impl FutureIncomingBlocks {
             .ok_or(ConsensusError::ContainerInconsistency)?;
         if pos > self.max_size {
             // beyond capacity
-            return Ok(Some((hash, header, block)));
+            return Ok(Some((hash, block)));
         }
         self.struct_deque.insert(pos, (slot, hash));
         // add into map
-        map_entry.insert(header);
-        if let Some(b) = block {
-            self.blocks.insert(hash, b);
-        }
+        map_entry.insert(block);
+
         // remove over capacity
         if self.struct_deque.len() > self.max_size {
             let (_, rem_hash) = self
                 .struct_deque
                 .pop_back()
                 .ok_or(ConsensusError::ContainerInconsistency)?;
-            let rem_header = self
-                .headers
+            let rem_block = self
+                .map
                 .remove(&rem_hash)
                 .ok_or(ConsensusError::ContainerInconsistency)?;
-            let rem_block = self.blocks.remove(&rem_hash);
-            Ok(Some((rem_hash, rem_header, rem_block)))
+            Ok(Some((rem_hash, rem_block)))
         } else {
             Ok(None)
         }
@@ -95,8 +102,8 @@ impl FutureIncomingBlocks {
     pub fn pop_until(
         &mut self,
         until_slot: Slot,
-    ) -> Result<Vec<(Hash, BlockHeader, Option<Block>)>, ConsensusError> {
-        let mut res: Vec<(Hash, BlockHeader, Option<Block>)> = Vec::new();
+    ) -> Result<Vec<(Hash, QueuedBlock)>, ConsensusError> {
+        let mut res: Vec<(Hash, QueuedBlock)> = Vec::new();
         while let Some(&(slot, hash)) = self.struct_deque.front() {
             if slot > until_slot {
                 break;
@@ -107,10 +114,9 @@ impl FutureIncomingBlocks {
                 .ok_or(ConsensusError::ContainerInconsistency)?;
             res.push((
                 hash,
-                self.headers
+                self.map
                     .remove(&hash)
                     .ok_or(ConsensusError::ContainerInconsistency)?,
-                self.blocks.remove(&hash),
             ));
         }
         Ok(res)
@@ -121,7 +127,7 @@ impl FutureIncomingBlocks {
     /// # Argument
     /// * hash: we want to know if this hash is in the structure.
     pub fn contains(&self, hash: &Hash) -> bool {
-        return self.headers.contains_key(hash);
+        return self.map.contains_key(hash);
     }
 }
 
@@ -640,19 +646,20 @@ mod tests {
         let (hash_d, block_d) = create_standalone_block(Slot::new(4, 0));
 
         assert!(future
-            .insert(hash_a, block_a.header, None)
+            .insert(hash_a, QueuedBlock::FullBLock(block_a))
             .unwrap()
             .is_none());
         assert!(future
-            .insert(hash_b, block_b.header, None)
+            .insert(hash_b, QueuedBlock::FullBLock(block_b))
             .unwrap()
             .is_none());
         assert!(future
-            .insert(hash_c, block_c.header, None)
+            .insert(hash_c, QueuedBlock::FullBLock(block_c))
             .unwrap()
             .is_none());
-        if let Some((removed_hash, _removed_hash, removed_blockd)) =
-            future.insert(hash_d, block_d.header, None).unwrap()
+        if let Some((removed_hash, removed_blockd)) = future
+            .insert(hash_d, QueuedBlock::FullBLock(block_d))
+            .unwrap()
         {
             assert_eq!(removed_hash, hash_d);
             assert_eq!(future.struct_deque.len(), 3);
@@ -670,19 +677,20 @@ mod tests {
         let (hash_d, block_d) = create_standalone_block(Slot::new(4, 0));
 
         assert!(future
-            .insert(hash_d, block_d.header, None)
+            .insert(hash_d, QueuedBlock::FullBLock(block_d))
             .unwrap()
             .is_none());
         assert!(future
-            .insert(hash_b, block_b.header, None)
+            .insert(hash_b, QueuedBlock::FullBLock(block_b))
             .unwrap()
             .is_none());
         assert!(future
-            .insert(hash_c, block_c.header, None)
+            .insert(hash_c, QueuedBlock::FullBLock(block_c))
             .unwrap()
             .is_none());
-        if let Some((removed_hash, removed_header, _removed_block)) =
-            future.insert(hash_a, block_a.header, None).unwrap()
+        if let Some((removed_hash, _removed_block)) = future
+            .insert(hash_a, QueuedBlock::FullBLock(block_a))
+            .unwrap()
         {
             assert_eq!(removed_hash, hash_d);
             assert_eq!(future.struct_deque.len(), 3);
@@ -700,25 +708,25 @@ mod tests {
         let (hash_d, block_d) = create_standalone_block(Slot::new(4, 0));
 
         assert!(future
-            .insert(hash_a, block_a.header, None)
+            .insert(hash_a, QueuedBlock::FullBLock(block_a))
             .unwrap()
             .is_none());
         assert!(future
-            .insert(hash_b, block_b.header, None)
+            .insert(hash_b, QueuedBlock::FullBLock(block_b))
             .unwrap()
             .is_none());
         assert!(future
-            .insert(hash_c, block_c.header, None)
+            .insert(hash_c, QueuedBlock::FullBLock(block_c))
             .unwrap()
             .is_none());
         assert!(future
-            .insert(hash_d, block_d.header, None)
+            .insert(hash_d, QueuedBlock::FullBLock(block_d))
             .unwrap()
             .is_none());
 
         let popped = future.pop_until(Slot::new(3, 0)).unwrap();
         assert_eq!(
-            popped.iter().map(|(h, _, _)| h).collect::<Vec<&Hash>>(),
+            popped.iter().map(|(h, _)| h).collect::<Vec<&Hash>>(),
             vec![&hash_a, &hash_b, &hash_c]
         )
     }
