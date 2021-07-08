@@ -151,6 +151,7 @@ use communication::{
     network::{NetworkConfig, PeerInfo},
     protocol::ProtocolConfig,
 };
+use consensus::ExportBlockStatus;
 use consensus::Status;
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
@@ -163,7 +164,7 @@ use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
-use models::{Block, BlockHeader, BlockId, Slot};
+use models::{BlockHeader, BlockId, Slot};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -183,9 +184,9 @@ pub enum ApiEvent {
     /// API received stop signal and wants to fordward it
     AskStop,
     GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
-    GetActiveBlock {
+    GetBlockStatus {
         block_id: BlockId,
-        response_tx: oneshot::Sender<Option<Block>>,
+        response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
     },
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
     GetSelectionDraw {
@@ -743,11 +744,11 @@ async fn retrieve_graph_export(
 async fn retrieve_block(
     block_id: BlockId,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Option<Block>, ApiError> {
+) -> Result<Option<ExportBlockStatus>, ApiError> {
     massa_trace!("api.filters.retrieve_block", { "block_id": block_id });
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
-        .send(ApiEvent::GetActiveBlock {
+        .send(ApiEvent::GetBlockStatus {
             block_id,
             response_tx,
         })

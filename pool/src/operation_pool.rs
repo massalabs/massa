@@ -1,6 +1,9 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use models::{Address, Operation, OperationId, OperationSearchResult, SerializeCompact, Slot};
+use models::{
+    Address, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
+    SerializeCompact, Slot,
+};
 use num::rational::Ratio;
 
 use crate::{PoolConfig, PoolError};
@@ -300,6 +303,7 @@ impl OperationPool {
                                     op: op.op.clone(),
                                     in_pool: true,
                                     in_blocks: HashMap::new(),
+                                    status: OperationSearchResultStatus::Pending,
                                 },
                             )
                         })

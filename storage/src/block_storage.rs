@@ -4,7 +4,8 @@ use crate::{
 };
 use models::{
     array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
-    OperationSearchResult, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
+    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
+    SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
 };
 use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{
@@ -489,6 +490,9 @@ impl BlockStorage {
                                 op: block.operations.swap_remove(idx),
                                 in_pool: false,
                                 in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
+                                status: OperationSearchResultStatus::InBlock(
+                                    OperationSearchResultBlockStatus::Stored,
+                                ),
                             },
                         );
                     } else {
@@ -555,6 +559,9 @@ impl BlockStorage {
                                     op: block.operations[idx].clone(),
                                     in_pool: false,
                                     in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
+                                    status: OperationSearchResultStatus::InBlock(
+                                        OperationSearchResultBlockStatus::Stored,
+                                    ),
                                 },
                             ))
                         })

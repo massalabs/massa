@@ -22,15 +22,16 @@ use api::{Addresses, OperationIds};
 use clap::App;
 use clap::Arg;
 use communication::network::PeerInfo;
+use consensus::ExportBlockStatus;
 use consensus::LedgerDataExport;
-use crypto::{hash::Hash, signature::derive_public_key};
+use crypto::hash::Hash;
 use log::trace;
 use models::Address;
 use models::AddressRollState;
 use models::Operation;
 use models::OperationId;
-use models::{Block, Slot};
-use models::{OperationContent, OperationType};
+use models::OperationType;
+use models::Slot;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -763,8 +764,8 @@ fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
     if let Some(resp) = request_data(data, &url)? {
         if resp.status() == StatusCode::OK {
             let block = resp
-                .json::<Block>()
-                .map(|block| data::WrapperBlock::from(block))?;
+                .json::<ExportBlockStatus>()
+                .map(|block| data::WrappedBlockStatus::from(block))?;
             println!("block: {}", block);
         } else {
             println!("block not found.");

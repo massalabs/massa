@@ -13,7 +13,8 @@ use crypto::{
 };
 use models::{
     Address, AddressRollState, AddressesRollState, Block, BlockHeader, BlockHeaderContent, BlockId,
-    Operation, OperationId, OperationSearchResult, SerializeCompact, Slot,
+    Operation, OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact,
+    Slot,
 };
 use pool::PoolCommandSender;
 use std::convert::TryFrom;
@@ -36,6 +37,11 @@ pub enum ConsensusCommand {
     GetActiveBlock {
         block_id: BlockId,
         response_tx: oneshot::Sender<Option<Block>>,
+    },
+    /// Returns through a channel full block and status with specified hash.
+    GetBlockStatus {
+        block_id: BlockId,
+        response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
     },
     /// Returns through a channel the list of slots with the address of the selected staker.
     GetSelectionDraws {
@@ -514,6 +520,33 @@ impl ConsensusWorker {
                         ))
                     })
             }
+            //return full block and status with specified hash
+            ConsensusCommand::GetBlockStatus {
+                block_id,
+                response_tx,
+            } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_block_status",
+                    {}
+                );
+
+                let mut found_block = self.block_db.get_export_block_status(&block_id);
+                if let None = found_block {
+                    if let Some(storage) = &self.opt_storage_command_sender {
+                        found_block = storage
+                            .get_block(block_id)
+                            .await?
+                            .map(|block| ExportBlockStatus::Stored(block));
+                    }
+                }
+
+                response_tx.send(found_block).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send GetBlock Status answer:{:?}",
+                        err
+                    ))
+                })
+            }
             ConsensusCommand::GetSelectionDraws {
                 start,
                 end,
@@ -737,6 +770,7 @@ impl ConsensusWorker {
                         op,
                         in_pool: true,
                         in_blocks: HashMap::new(),
+                        status: OperationSearchResultStatus::Pending,
                     },
                 )
             })

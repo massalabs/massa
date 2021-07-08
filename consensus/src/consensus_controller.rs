@@ -131,6 +131,29 @@ impl ConsensusCommandSender {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
         })
     }
+    /// Gets the whole block and its status corresponding to given hash.
+    ///
+    /// # Arguments
+    /// * hash: hash corresponding to the block we want.
+    pub async fn get_block_status(
+        &self,
+        block_id: BlockId,
+    ) -> Result<Option<ExportBlockStatus>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<Option<ExportBlockStatus>>();
+        massa_trace!("consensus.consensus_controller.get_active_block", {});
+        self.0
+            .send(ConsensusCommand::GetBlockStatus {
+                block_id,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+        })
+    }
 
     /// Gets the whole block corresponding to given hash.
     ///
