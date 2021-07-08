@@ -1,13 +1,10 @@
 use super::{mock_protocol_controller::MockProtocolController, tools};
-use crate::{
-    random_selector::RandomSelector, start_consensus_controller,
-    timeslots::get_block_slot_timestamp,
-};
+use crate::{random_selector::RandomSelector, start_consensus_controller};
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::Slot;
 use time::UTime;
-use tokio::time::sleep_until;
+use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_queueing() {
@@ -585,35 +582,35 @@ async fn test_block_creation() {
         .expect("could not start consensus controller");
 
     for (i, &draw) in expected_slots.iter().enumerate() {
-        sleep_until(
-            get_block_slot_timestamp(
-                cfg.thread_count,
-                cfg.t0,
-                cfg.genesis_timestamp,
-                Slot::new((i + 1usize) as u64, 0),
-            )
-            .unwrap()
-            .estimate_instant()
-            .unwrap(),
-        )
-        .await;
+        let timer = sleep(UTime::from(5000).into());
+        tokio::pin!(timer);
+        loop {
+            tokio::select! {
+                cmd = protocol_controller
+                .wait_command(cfg.t0.checked_div_u64(2).unwrap(), |cmd| match cmd {
+                    ProtocolCommand::IntegratedBlock { block, .. } => Some(block.header),
+                    _ => None,
+                })
+                 =>  {
+                     match cmd {
+                         Some(header) => {
+                             assert_eq!(draw, 0);
+                             assert_eq!(i + 1, header.content.slot.period as usize);
+                             // Go to the next slot.
+                             break;
 
-        let cmd = protocol_controller
-            .wait_command(cfg.t0.checked_div_u64(2).unwrap(), |cmd| match cmd {
-                ProtocolCommand::IntegratedBlock { block, .. } => Some(block.header),
-                _ => None,
-            })
-            .await;
-
-        match cmd {
-            Some(header) => {
-                assert_eq!(draw, 0);
-                assert_eq!(i + 1, header.content.slot.period as usize);
+                         }
+                         None => {
+                             if draw == 1 {
+                                // Go to the next slot.
+                                break;
+                             }
+                         }
+                     };
+                },
+                _ = &mut timer => panic!("Block not integrated before timeout.")
             }
-            None => {
-                assert_eq!(draw, 1);
-            }
-        };
+        }
     }
 
     // stop controller while ignoring all commands

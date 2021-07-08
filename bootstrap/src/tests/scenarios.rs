@@ -1,15 +1,14 @@
-use std::{os::linux::raw::time_t, str::FromStr};
-
-use consensus::{BoostrapableGraph, ConsensusCommand, ConsensusCommandSender};
+use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::SerializeCompact;
-use tokio::{io::AsyncWriteExt, sync::mpsc};
+use std::str::FromStr;
+use tokio::sync::mpsc;
 
-use crate::{get_state, start_bootstrap_server, Establisher};
+use crate::{get_state, start_bootstrap_server};
 
 use super::{
-    mock_establisher::{self, MockEstablisher},
+    mock_establisher,
     tools::{
-        bridge_mock_streams, get_boot_graph, get_bootstrap_addr, get_bootstrap_config, get_keys,
+        bridge_mock_streams, get_boot_graph, get_bootstrap_config, get_keys,
         get_serialization_context, wait_consensus_command,
     },
 };
@@ -20,7 +19,7 @@ async fn test_bootstrap_server() {
     let (private_key, public_key) = get_keys();
 
     let cfg = get_bootstrap_config(public_key);
-    let (bootstrap_establisher, mut bootstrap_interface) = mock_establisher::new();
+    let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
         ConsensusCommandSender(command_tx),
         cfg.clone(),
@@ -90,7 +89,6 @@ async fn test_bootstrap_server() {
     {
         Some(resp) => resp,
         None => panic!("timeout waiting for get boot graph consensus command"),
-        _ => panic!("unexpected consensus command"),
     };
     let sent_graph = get_boot_graph();
     response.send(sent_graph.clone()).unwrap();

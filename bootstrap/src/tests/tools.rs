@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
+    net::{IpAddr, Ipv4Addr},
 };
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
@@ -13,7 +13,7 @@ use models::SerializationContext;
 use time::UTime;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    sync::mpsc::{Receiver, Sender},
+    sync::mpsc::Receiver,
     time::sleep,
 };
 
@@ -31,10 +31,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         bootstrap_time_after_genesis: 100.into(),
         retry_delay: 200.into(),
     }
-}
-
-pub fn get_bootstrap_addr(cfg: BootstrapConfig) -> SocketAddr {
-    SocketAddr::new(cfg.bootstrap_ip, cfg.bootstrap_port)
 }
 
 pub fn get_keys() -> (PrivateKey, PublicKey) {
