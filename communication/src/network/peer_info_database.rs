@@ -1448,6 +1448,8 @@ mod tests {
             max_advertise_length: 5,
             peers_file_dump_interval: UTime::from(10_000),
             max_message_size: 3 * 10241024,
+            message_timeout: UTime::from(5000u64),
+            ask_peer_list_interval: UTime::from(50000u64),
         }
     }
 

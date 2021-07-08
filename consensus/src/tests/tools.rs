@@ -1,6 +1,7 @@
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{block_graph::BlockGraphExport, ConsensusConfig};
-use communication::protocol::{NodeId, ProtocolCommand};
+use communication::protocol::ProtocolCommand;
+use communication::NodeId;
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, SignatureEngine},

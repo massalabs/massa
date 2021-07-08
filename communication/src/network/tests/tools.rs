@@ -1,7 +1,9 @@
 use super::mock_establisher::MockEstablisherInterface;
+use crate::common::NodeId;
 use crate::network::{
     ConnectionId, NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo,
 };
+use models::SerializationContext;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -34,26 +36,37 @@ pub fn generate_peers_file(peer_vec: &Vec<PeerInfo>) -> NamedTempFile {
 pub fn create_network_config(
     network_controller_port: u16,
     peers_file_path: &Path,
-) -> NetworkConfig {
-    NetworkConfig {
-        bind: format!("0.0.0.0:{}", network_controller_port)
-            .parse()
-            .unwrap(),
-        routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
-        protocol_port: network_controller_port,
-        connect_timeout: UTime::from(3000),
-        peers_file: peers_file_path.to_path_buf(),
-        target_out_connections: 10,
-        wakeup_interval: UTime::from(3000),
-        max_in_connections: 100,
-        max_in_connections_per_ip: 100,
-        max_out_connnection_attempts: 100,
-        max_idle_peers: 100,
-        max_banned_peers: 100,
-        max_advertise_length: 10,
-        peers_file_dump_interval: UTime::from(30000),
-        max_message_size: 3 * 1024 * 1024,
-    }
+) -> (NetworkConfig, SerializationContext) {
+    (
+        NetworkConfig {
+            bind: format!("0.0.0.0:{}", network_controller_port)
+                .parse()
+                .unwrap(),
+            routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
+            protocol_port: network_controller_port,
+            connect_timeout: UTime::from(3000),
+            peers_file: peers_file_path.to_path_buf(),
+            target_out_connections: 10,
+            wakeup_interval: UTime::from(3000),
+            max_in_connections: 100,
+            max_in_connections_per_ip: 100,
+            max_out_connnection_attempts: 100,
+            max_idle_peers: 100,
+            max_banned_peers: 100,
+            max_advertise_length: 10,
+            peers_file_dump_interval: UTime::from(30000),
+            max_message_size: 3 * 1024 * 1024,
+            message_timeout: UTime::from(5000u64),
+            ask_peer_list_interval: UTime::from(50000u64),
+        },
+        SerializationContext {
+            max_block_size: 1024 * 1024,
+            max_block_operations: 1024,
+            parent_count: 2,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+        },
+    )
 }
 
 // ensures that the reader and writer can communicate
@@ -95,7 +108,7 @@ pub async fn full_connection_to_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
-) -> ConnectionId {
+) -> NodeId {
     // establish connection towards controller
     let (mut mock_reader, mut mock_writer) = timeout(
         Duration::from_millis(connect_timeout_ms),
@@ -106,39 +119,19 @@ pub async fn full_connection_to_controller(
     .expect("connection towards controller failed");
 
     // wait for a NetworkEvent::NewConnection event
-    let conn_id = match timeout(
+    let node_id = match timeout(
         Duration::from_millis(event_timeout_ms),
         network_event_receiver.wait_event(),
     )
     .await
     .expect("Failed waiting for a network event")
     {
-        Ok(NetworkEvent::NewConnection((c_id, mut controller_reader, mut controller_writer))) => {
-            expect_reader_writer_communication(
-                &mut controller_reader,
-                &mut mock_writer,
-                rw_timeout_ms,
-            )
-            .await;
-            expect_reader_writer_communication(
-                &mut mock_reader,
-                &mut controller_writer,
-                rw_timeout_ms,
-            )
-            .await;
-            c_id
-        }
+        Ok(NetworkEvent::NewConnection((node_id))) => node_id,
         event @ Ok(_) => panic!("unexpected event sent by controller: {:?}", event),
         Err(_) => panic!("timeout while waiting for NewConnection event"),
     };
 
-    // notify the controller that the connection is alive
-    network_command_sender
-        .connection_alive(conn_id)
-        .await
-        .expect("Error while connection alive");
-
-    conn_id
+    node_id
 }
 
 // establish a full alive connection from the network controller
@@ -152,7 +145,7 @@ pub async fn full_connection_from_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
-) -> ConnectionId {
+) -> NodeId {
     // wait for the incoming connection attempt, check address and accept
     let (mut mock_reader, mut mock_writer, ctl_addr, resp_tx) = timeout(
         Duration::from_millis(connect_timeout_ms),
@@ -165,37 +158,17 @@ pub async fn full_connection_from_controller(
     resp_tx.send(true).expect("resp_tx failed");
 
     // wait for a NetworkEvent::NewConnection event
-    let conn_id = match timeout(
+    let node_id = match timeout(
         Duration::from_millis(event_timeout_ms),
         network_event_receiver.wait_event(),
     )
     .await
     .expect("Failed waiting for a network event")
     {
-        Ok(NetworkEvent::NewConnection((c_id, mut controller_reader, mut controller_writer))) => {
-            expect_reader_writer_communication(
-                &mut controller_reader,
-                &mut mock_writer,
-                rw_timeout_ms,
-            )
-            .await;
-            expect_reader_writer_communication(
-                &mut mock_reader,
-                &mut controller_writer,
-                rw_timeout_ms,
-            )
-            .await;
-            c_id
-        }
+        Ok(NetworkEvent::NewConnection((node_id))) => node_id,
         event @ Ok(_) => panic!("unexpected event sent by controller: {:?}", event),
         Err(_) => panic!("timeout while waiting for NewConnection event"),
     };
 
-    // notify the controller that the connection is alive
-    network_command_sender
-        .connection_alive(conn_id)
-        .await
-        .expect("Error while connection alive");
-
-    conn_id
+    node_id
 }

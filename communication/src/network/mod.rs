@@ -1,9 +1,13 @@
 //! Manages a connection with a node
+mod binders;
 mod common;
 mod config;
 mod establisher;
+mod handshake_worker;
+mod messages;
 mod network_controller;
 mod network_worker;
+mod node_worker;
 mod peer_info_database;
 
 pub use common::{ConnectionClosureReason, ConnectionId};

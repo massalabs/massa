@@ -1,4 +1,5 @@
-use crate::protocol::{NodeId, ProtocolConfig};
+use crate::common::NodeId;
+use crate::protocol::ProtocolConfig;
 use crypto::signature::{PrivateKey, SignatureEngine};
 use models::SerializationContext;
 use time::UTime;
@@ -14,10 +15,7 @@ pub fn generate_node_keys() -> (PrivateKey, NodeId) {
 // create a ProtocolConfig with typical values
 pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
     (
-        ProtocolConfig {
-            message_timeout: UTime::from(5000u64),
-            ask_peer_list_interval: UTime::from(50000u64),
-        },
+        ProtocolConfig {},
         SerializationContext {
             max_block_size: 1024 * 1024,
             max_block_operations: 1024,

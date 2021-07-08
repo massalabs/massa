@@ -1,11 +1,13 @@
 use super::{
-    common::{ConnectionClosureReason, ConnectionId},
     config::{NetworkConfig, CHANNEL_SIZE},
     establisher::Establisher,
     network_worker::{NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker},
     peer_info_database::*,
 };
+use crate::common::NodeId;
 use crate::error::CommunicationError;
+use crypto::{hash::Hash, signature::SignatureEngine};
+use models::{Block, BlockHeader, SerializationContext};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -21,6 +23,7 @@ use tokio::{
 /// * cfg : network configuration
 pub async fn start_network_controller(
     cfg: NetworkConfig,
+    serialization_context: SerializationContext,
     mut establisher: Establisher,
 ) -> Result<(NetworkCommandSender, NetworkEventReceiver, NetworkManager), CommunicationError> {
     debug!("starting network controller");
@@ -31,6 +34,14 @@ pub async fn start_network_controller(
             return Err(CommunicationError::InvalidIpError(self_ip));
         }
     }
+
+    // generate our own random PublicKey (and therefore NodeId) and keep private key
+    let signature_engine = SignatureEngine::new();
+    let private_key = SignatureEngine::generate_random_private_key();
+    let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
+
+    debug!("local network node_id={:?}", self_node_id);
+    massa_trace!("self_node_id", { "node_id": self_node_id });
 
     // create listener
     let listener = establisher.get_listener(cfg.bind).await?;
@@ -46,6 +57,9 @@ pub async fn start_network_controller(
     let join_handle = tokio::spawn(async move {
         NetworkWorker::new(
             cfg_copy,
+            serialization_context,
+            private_key,
+            self_node_id,
             listener,
             establisher,
             peer_info_db,
@@ -73,41 +87,49 @@ pub async fn start_network_controller(
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
-    /// Transmit the order to merge the peer list.
-    ///
-    /// # Argument
-    /// ips : vec of advertized ips
-    pub async fn merge_advertised_peer_list(
+    /// Send the order to send block.
+    pub async fn send_block(
         &mut self,
-        ips: Vec<IpAddr>,
+        node_id: NodeId,
+        block: Block,
     ) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::MergeAdvertisedPeerList(ips))
+            .send(NetworkCommand::SendBlock(node_id, block))
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError(
-                    "cound not send MergeAdvertisedPeerList command".into(),
-                )
+                CommunicationError::ChannelError("cound not send SendBlock command".into())
             })?;
         Ok(())
     }
 
-    /// Send the order to get advertisable peer list.
-    pub async fn get_advertisable_peer_list(&mut self) -> Result<Vec<IpAddr>, CommunicationError> {
-        let (response_tx, response_rx) = oneshot::channel::<Vec<IpAddr>>();
+    /// Send the order to ask for a block.
+    pub async fn ask_for_block(
+        &mut self,
+        node_id: NodeId,
+        hash: Hash,
+    ) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::GetAdvertisablePeerList(response_tx))
+            .send(NetworkCommand::AskForBlock(node_id, hash))
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError(
-                    "cound not send GetAdvertisablePeerList command".into(),
-                )
+                CommunicationError::ChannelError("cound not send AskForBlock command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
-            CommunicationError::ChannelError(
-                "could not send GetAdvertisablePeerList upstream".into(),
-            )
-        })?)
+        Ok(())
+    }
+
+    /// Send the order to send block header.
+    pub async fn send_block_header(
+        &mut self,
+        node: NodeId,
+        header: BlockHeader,
+    ) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::SendBlockHeader { node, header })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("cound not send SendBlockHeader command".into())
+            })?;
+        Ok(())
     }
 
     /// Send the order to get peers.
@@ -124,39 +146,6 @@ impl NetworkCommandSender {
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
             )
         })?)
-    }
-
-    /// Send the information that the connection has been closed for given reason.
-    ///
-    /// # Arguments
-    /// * id : connenction id of the closed connection
-    /// * reason : connection closure reason
-    pub async fn connection_closed(
-        &mut self,
-        id: ConnectionId,
-        reason: ConnectionClosureReason,
-    ) -> Result<(), CommunicationError> {
-        self.0
-            .send(NetworkCommand::ConnectionClosed((id, reason)))
-            .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("cound not send ConnectionClosed command".into())
-            })?;
-        Ok(())
-    }
-
-    /// Send the information that the connection is alive.
-    ///
-    /// # Arguments
-    /// * id : connenction id
-    pub async fn connection_alive(&mut self, id: ConnectionId) -> Result<(), CommunicationError> {
-        self.0
-            .send(NetworkCommand::ConnectionAlive(id))
-            .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("cound not send ConnectionAlive command".into())
-            })?;
-        Ok(())
     }
 }
 

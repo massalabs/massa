@@ -1,9 +1,9 @@
 use super::{
     binders::{ReadBinder, WriteBinder},
-    common::NodeId,
-    config::{ProtocolConfig, CHANNEL_SIZE},
+    config::{NetworkConfig, CHANNEL_SIZE},
     messages::Message,
 };
+use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use crypto::hash::Hash;
 use models::{Block, BlockHeader};
@@ -50,7 +50,7 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 /// One worker per node.
 pub struct NodeWorker {
     /// Protocol configuration.
-    cfg: ProtocolConfig,
+    cfg: NetworkConfig,
     /// Node id associated to that worker.
     node_id: NodeId,
     /// Reader for incomming data.
@@ -75,7 +75,7 @@ impl NodeWorker {
     /// * node_command_rx: Channel to receive node commands.
     /// * node_event_tx: Channel to send node events.
     pub fn new(
-        cfg: ProtocolConfig,
+        cfg: NetworkConfig,
         node_id: NodeId,
         socket_reader: ReadBinder,
         socket_writer: WriteBinder,

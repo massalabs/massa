@@ -54,10 +54,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
 }
 
 pub fn get_protocol_config() -> ProtocolConfig {
-    ProtocolConfig {
-        message_timeout: 10_000u64.into(),
-        ask_peer_list_interval: 10_000u64.into(),
-    }
+    ProtocolConfig {}
 }
 
 pub fn get_network_config() -> NetworkConfig {
@@ -77,6 +74,8 @@ pub fn get_network_config() -> NetworkConfig {
         max_advertise_length: 5,
         peers_file_dump_interval: UTime::from(10_000),
         max_message_size: 3 * 1024 * 1024,
+        message_timeout: UTime::from(5000u64),
+        ask_peer_list_interval: UTime::from(50000u64),
     }
 }
 
