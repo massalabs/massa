@@ -6,7 +6,7 @@ pub struct NetworkConfig {
     pub bind: SocketAddr,
     pub routable_ip: Option<IpAddr>,
     pub protocol_port: u16,
-    pub connect_timeout_seconds: f32,
+    pub connect_timeout: std::time::Duration,
     pub peers_file: std::path::PathBuf,
     pub target_out_connections: usize,
     pub max_in_connections: usize,
@@ -15,5 +15,5 @@ pub struct NetworkConfig {
     pub max_idle_peers: usize,
     pub max_banned_peers: usize,
     pub max_advertise_length: usize,
-    pub peers_file_dump_interval_seconds: f32,
+    pub peers_file_dump_interval: std::time::Duration,
 }

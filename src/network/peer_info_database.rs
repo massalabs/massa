@@ -177,7 +177,7 @@ impl PeerInfoDatabase {
 
         // setup saver
         let peers_file = cfg.peers_file.clone();
-        let peers_file_dump_interval_seconds = cfg.peers_file_dump_interval_seconds;
+        let peers_file_dump_interval = cfg.peers_file_dump_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {
             let mut delay = sleep(Duration::from_secs_f32(0.0));
@@ -195,7 +195,7 @@ impl PeerInfoDatabase {
                             } else {
                                 pending = None;
                             }
-                            delay = sleep(Duration::from_secs_f32(peers_file_dump_interval_seconds));
+                            delay = sleep(peers_file_dump_interval);
                         },
                         _ => break
                     },
@@ -551,7 +551,7 @@ mod tests {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
             routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             protocol_port: 0,
-            connect_timeout_seconds: 180.0,
+            connect_timeout: std::time::Duration::from_secs_f32(180.0),
             peers_file: std::path::PathBuf::new(),
             target_out_connections: 10,
             max_in_connections: 5,
@@ -560,7 +560,7 @@ mod tests {
             max_idle_peers: 3,
             max_banned_peers: 3,
             max_advertise_length: 5,
-            peers_file_dump_interval_seconds: 30.0,
+            peers_file_dump_interval: std::time::Duration::from_secs_f32(30.0),
         }
     }
 
@@ -605,7 +605,7 @@ mod tests {
         }
         let cfg = example_network_config();
         let peers_file = cfg.peers_file.clone();
-        let peers_file_dump_interval_seconds = cfg.peers_file_dump_interval_seconds;
+        let peers_file_dump_interval = cfg.peers_file_dump_interval;
 
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
