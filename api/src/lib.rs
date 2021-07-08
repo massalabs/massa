@@ -7,9 +7,13 @@ use models::block::BlockHeader;
 use serde_json::json;
 use std::{cmp::min, collections::HashSet, net::IpAddr};
 use time::UTime;
+use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, reject, Filter, Rejection, Reply};
 
 pub mod config;
+pub mod error;
+
+pub use error::*;
 
 #[derive(Debug)]
 struct InternalError {
@@ -23,6 +27,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
     api_config: ApiConfig,
     consensus_config: ConsensusConfig,
     network_config: NetworkConfig,
+    evt_tx: mpsc::Sender<ApiEvent>,
 ) -> BoxedFilter<(impl Reply,)> {
     let interface = consensus_controller_interface.clone();
     let block = warp::get()
@@ -30,7 +35,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("v1"))
         .and(warp::path("block"))
         .and(warp::path::param::<Hash>()) //block hash
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move |hash| get_block(hash, interface.clone()));
 
     let interface = consensus_controller_interface.clone();
@@ -41,7 +46,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("blockinterval"))
         .and(warp::path::param::<UTime>()) //start
         .and(warp::path::param::<UTime>()) //end
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move |start, end| block_interval(interface.clone(), cfg.clone(), start, end));
 
     let interface = consensus_controller_interface.clone();
@@ -68,7 +73,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("graph_interval"))
         .and(warp::path::param::<UTime>()) //start
         .and(warp::path::param::<UTime>()) //end
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move |start, end| graph_interval(interface.clone(), cfg.clone(), start, end));
 
     let interface = consensus_controller_interface.clone();
@@ -100,7 +105,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("network_info"))
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move || network_info(interface.clone(), cfg.clone()));
 
     let interface = consensus_controller_interface.clone();
@@ -110,7 +115,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("state"))
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move || {
             state(
                 interface.clone(),
@@ -125,7 +130,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("last_stale"))
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move || last_stale(api_cfg.clone(), interface.clone()));
 
     let interface = consensus_controller_interface.clone();
@@ -134,7 +139,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("last_invalid"))
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move || last_invalid(api_cfg.clone(), interface.clone()));
 
     let interface = consensus_controller_interface.clone();
@@ -145,7 +150,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("v1"))
         .and(warp::path("staker_info"))
         .and(warp::path::param::<PublicKey>())
-        //.and(warp::path::end())
+        .and(warp::path::end())
         .and_then(move |creator| {
             staker_info(
                 creator,
@@ -154,6 +159,14 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
                 interface.clone(),
             )
         });
+
+    let event_tx = evt_tx.clone();
+    let stop_node = warp::post()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("stop_node"))
+        .and(warp::path::end())
+        .and_then(move || stop_node(event_tx.clone()));
 
     block
         .or(blockinterval)
@@ -168,23 +181,79 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .or(last_stale)
         .or(last_invalid)
         .or(staker_info)
+        .or(stop_node)
+        .or_else(|_| async move { Err(warp::reject::not_found()) })
         .boxed()
 }
 
-pub async fn serve<ConsensusControllerInterfaceT: ConsensusControllerInterface + 'static>(
+pub struct ApiHandle {
+    stop_tx: oneshot::Sender<()>,
+    join_handle: tokio::task::JoinHandle<()>,
+    evt_rx: mpsc::Receiver<ApiEvent>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ApiEvent {
+    AskStop,
+}
+
+impl ApiHandle {
+    pub async fn stop(self) -> Result<(), ApiError> {
+        self.stop_tx
+            .send(())
+            .map_err(|_| ApiError::SendChannelError("cannot send stop command".into()))?;
+        self.join_handle
+            .await
+            .map_err(|err| ApiError::JoinError(err))?;
+        Ok(())
+    }
+
+    pub async fn wait_event(&mut self) -> Result<ApiEvent, ApiError> {
+        self.evt_rx
+            .recv()
+            .await
+            .ok_or(ApiError::SendChannelError(format!(
+                "could not receive api event"
+            )))
+    }
+}
+
+pub async fn spawn_server<ConsensusControllerInterfaceT: ConsensusControllerInterface + 'static>(
     consensus_controller_interface: ConsensusControllerInterfaceT,
     api_config: ApiConfig,
     consensus_config: ConsensusConfig,
     network_config: NetworkConfig,
-) {
-    warp::serve(get_filter(
+) -> Result<ApiHandle, warp::Error> {
+    let (stop_tx, stop_rx) = oneshot::channel();
+    let (evt_tx, evt_rx) = mpsc::channel(1024);
+
+    let (_addr, server) = warp::serve(get_filter(
         consensus_controller_interface,
-        api_config,
+        api_config.clone(),
         consensus_config,
         network_config,
+        evt_tx,
     ))
-    .run(([127, 0, 0, 1], 3030))
-    .await;
+    .try_bind_with_graceful_shutdown(api_config.bind.clone(), async {
+        stop_rx.await.ok();
+    })?;
+
+    let join_handle = tokio::task::spawn(server);
+
+    Ok(ApiHandle {
+        stop_tx,
+        join_handle,
+        evt_rx,
+    })
+}
+
+async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
+    match evt_tx.send(ApiEvent::AskStop).await {
+        Ok(_) => Ok(warp::reply()),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            message: format!("could not send stop messasge: {:?}", err),
+        })),
+    }
 }
 
 async fn get_block<ConsensusControllerInterfaceT: ConsensusControllerInterface>(

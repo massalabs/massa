@@ -4,12 +4,17 @@
 extern crate logging;
 pub mod config;
 
+use api::ApiEvent;
 use communication::network::default_establisher::DefaultEstablisher;
 use communication::network::default_network_controller::DefaultNetworkController;
 use communication::protocol::default_protocol_controller::DefaultProtocolController;
 use consensus::consensus_controller::ConsensusController;
 use consensus::default_consensus_controller::DefaultConsensusController;
-use tokio::fs::read_to_string;
+use log::{error, info, warn};
+use tokio::{
+    fs::read_to_string,
+    signal::unix::{signal, SignalKind},
+};
 
 async fn run(cfg: config::Config) -> () {
     let establisher = DefaultEstablisher::new();
@@ -25,32 +30,47 @@ async fn run(cfg: config::Config) -> () {
 
     // spawn API
     let cnss_interface = cnss.get_interface();
-    let api_handle = tokio::spawn(async move {
-        api::serve(
-            cnss_interface,
-            cfg.api.clone(),
-            cfg.consensus.clone(),
-            cfg.network.clone(),
-        )
-        .await;
-    });
+    let mut api_handle = api::spawn_server(
+        cnss_interface,
+        cfg.api.clone(),
+        cfg.consensus.clone(),
+        cfg.network.clone(),
+    )
+    .await
+    .expect("could not start API");
 
+    let mut stop_signal = signal(SignalKind::interrupt()).unwrap();
     // loop over messages
     loop {
         tokio::select! {
             evt = cnss.wait_event() => match evt {
                 _ => {}
             },
+
+            evt = api_handle.wait_event() => match evt {
+                Ok(ApiEvent::AskStop) => {
+                    info!("shutting down node");
+                    break;
+                },
+                Err(err) => {
+                    error!("api communication error: {:?}", err);
+                    break;
+                }
+            },
+
+            _ = stop_signal.recv() => {
+                info!("shutting down node");
+                break;
+            }
         }
     }
 
-    //Ok(())
-    /* TODO uncomment when it becomes reachable again
-    if let Err(e) = cnss.stop().await {
-        warn!("graceful shutdown failed: {}", e);
+    if let Err(e) = api_handle.stop().await {
+        warn!("graceful api shutdown failed: {:?}", e);
     }
-    Ok(())
-    */
+    if let Err(e) = cnss.stop().await {
+        warn!("graceful shutdown failed: {:?}", e);
+    }
 }
 
 #[tokio::main]
