@@ -24,7 +24,7 @@ async fn test_new_connection() {
 
     // test configuration
     let (mock_private_key, mock_node_id) = tools::generate_node_keys();
-    let protocol_config = tools::create_protocol_config();
+    let (protocol_config, serialization_context) = tools::create_protocol_config();
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -32,6 +32,7 @@ async fn test_new_connection() {
     let (_protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config.clone(),
+            serialization_context.clone(),
             network_command_sender.clone(),
             network_event_receiver,
         )
@@ -45,6 +46,7 @@ async fn test_new_connection() {
 
         // perform handshake with controller
         let (_controller_node_id, _mock_reader, _mock_writer) = HandshakeWorker::new(
+            serialization_context,
             mock_sock_read,
             mock_sock_write,
             mock_node_id,

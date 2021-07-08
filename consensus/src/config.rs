@@ -33,6 +33,10 @@ pub struct ConsensusConfig {
     pub max_dependency_blocks: usize,
     /// Threshold for fitness.
     pub delta_f0: u64,
+    /// Maximum number of operations per block
+    pub max_operations_per_block: u32,
+    /// Maximum block size in bytes
+    pub max_block_size: u32,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.

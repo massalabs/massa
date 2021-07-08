@@ -1,20 +1,19 @@
-use flexbuffers::{DeserializationError, ReaderError, SerializationError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ModelsError {
-    #[error("Header is not hashable")]
-    HeaderhashError,
-    #[error("conversion error {0}")]
-    ConversionError(String),
-    #[error("serialization error {0}")]
-    SerializationError(#[from] SerializationError),
-    #[error("reader error {0}")]
-    ReaderError(#[from] ReaderError),
-    #[error("deserialization error {0}")]
-    DeserializationError(#[from] DeserializationError),
-    #[error("slot overflow")]
-    SlotOverflowError,
-    #[error("thread overflow")]
+    #[error("hashing error")]
+    HashError,
+    #[error("Derialization error:{0}")]
+    SerializeError(String),
+    #[error("Derialization error:{0}")]
+    DeserializeError(String),
+    #[error("buffer error: {0}")]
+    BufferError(String),
+    #[error("crypto error: {0}")]
+    CryptoError(#[from] crypto::CryptoError),
+    #[error("thread overflow error")]
     ThreadOverflowError,
+    #[error("period overflow error")]
+    PeriodOverflowError,
 }

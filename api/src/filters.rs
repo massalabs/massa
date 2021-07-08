@@ -146,7 +146,6 @@
 //! ```
 
 use crate::ApiError;
-use models::slot::Slot;
 
 use super::config::ApiConfig;
 use communication::{
@@ -158,7 +157,7 @@ use consensus::{
     ConsensusConfig, ConsensusError, DiscardReason,
 };
 use crypto::{hash::Hash, signature::PublicKey};
-use models::block::{Block, BlockHeader};
+use models::{Block, BlockHeader, Slot};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
@@ -542,7 +541,7 @@ async fn get_current_parents(
     let mut best = Vec::new();
     for hash in parents {
         match graph.active_blocks.get_key_value(&hash) {
-            Some((_, block)) => best.push((hash, block.block.slot)),
+            Some((_, block)) => best.push((hash, block.block.content.slot)),
             None => {
                 return Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
@@ -637,12 +636,12 @@ async fn get_block_from_graph(
                         consensus_cfg.thread_count,
                         consensus_cfg.t0,
                         consensus_cfg.genesis_timestamp,
-                        exported_block.block.slot,
+                        exported_block.block.content.slot,
                     )
                     .map_err(|err| (format!("error getting time : {:?}", err)))
                     .map(|time| {
                         if start <= time && time < end {
-                            Some((hash, exported_block.block.slot))
+                            Some((hash, exported_block.block.content.slot))
                         } else {
                             None
                         }
@@ -671,8 +670,8 @@ async fn get_block_interval_process(
     let mut res = get_block_from_graph(event_tx, &consensus_cfg, start_opt, end_opt).await?;
 
     if let Some(ref storage) = opt_storage_command_sender {
-        let start = start_opt.unwrap_or(UTime::from(0));
-        let end = end_opt.unwrap_or(UTime::from(u64::MAX));
+        let _start = start_opt.unwrap_or(UTime::from(0));
+        let _end = end_opt.unwrap_or(UTime::from(u64::MAX));
         //add block from storage
         //get first slot
 
@@ -752,7 +751,7 @@ async fn get_block_interval_process(
                 res.append(
                     &mut blocks
                         .into_iter()
-                        .map(|(hash, block)| (hash, block.header.slot))
+                        .map(|(hash, block)| (hash, block.header.content.slot))
                         .collect(),
                 )
             })
@@ -989,12 +988,19 @@ async fn get_graph_interval_process(
                         consensus_cfg.thread_count,
                         consensus_cfg.t0,
                         consensus_cfg.genesis_timestamp,
-                        header.slot,
+                        header.content.slot,
                     )
                     .map_err(|err| (format!("error getting time : {:?}", err)))
                     .map(|time| {
                         if start <= time && time < end {
-                            Some((hash, (header.slot, "active".to_string(), header.parents)))
+                            Some((
+                                hash,
+                                (
+                                    header.content.slot,
+                                    "active".to_string(),
+                                    header.content.parents,
+                                ),
+                            ))
                         } else {
                             None
                         }
@@ -1075,7 +1081,10 @@ async fn get_graph_interval_process(
             .await
             .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
         for (hash, block) in blocks {
-            res.push((hash, (block.header.slot, "final".to_string(), Vec::new())));
+            res.push((
+                hash,
+                (block.header.content.slot, "final".to_string(), Vec::new()),
+            ));
         }
     }
     Ok(res
@@ -1111,7 +1120,7 @@ async fn get_cliques(
     let mut hashes_map = HashMap::new();
     for hash in hashes.iter() {
         if let Some((_, block)) = graph.active_blocks.get_key_value(hash) {
-            hashes_map.insert(hash, block.block.slot);
+            hashes_map.insert(hash, block.block.content.slot);
         } else {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -1340,7 +1349,7 @@ async fn get_last_stale(
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
-        .map(|(hash, (_reason, header))| (hash, header.slot))
+        .map(|(hash, (_reason, header))| (hash, header.content.slot))
         .collect::<Vec<(&Hash, Slot)>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_config.max_return_invalid_blocks);
@@ -1374,7 +1383,7 @@ async fn get_last_invalid(
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Invalid)
-        .map(|(hash, (_reason, header))| (hash, header.slot))
+        .map(|(hash, (_reason, header))| (hash, header.content.slot))
         .collect::<Vec<(&Hash, Slot)>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
@@ -1411,7 +1420,7 @@ async fn get_staker_info(
     let blocks = graph
         .active_blocks
         .iter()
-        .filter(|(_hash, block)| block.block.creator == creator)
+        .filter(|(_hash, block)| block.block.content.creator == creator)
         .map(|(hash, block)| (hash, block.block.clone()))
         .collect::<Vec<(&Hash, BlockHeader)>>();
 
@@ -1419,7 +1428,7 @@ async fn get_staker_info(
         .discarded_blocks
         .map
         .iter()
-        .filter(|(_hash, (_reason, header))| header.creator == creator)
+        .filter(|(_hash, (_reason, header))| header.content.creator == creator)
         .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
         .collect::<Vec<(&Hash, DiscardReason, BlockHeader)>>();
     let cur_time = match UTime::now() {

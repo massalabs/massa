@@ -1,6 +1,6 @@
 use crate::error::CryptoError;
 use bitcoin_hashes;
-use std::str::FromStr;
+use std::{convert::TryInto, str::FromStr};
 pub const HASH_SIZE_BYTES: usize = 32;
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
@@ -80,11 +80,16 @@ impl Hash {
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
     pub fn from_bs58_check(data: &str) -> Result<Hash, CryptoError> {
-        bs58::decode(data)
+        let decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
-            .map_err(|err| CryptoError::HashParseError(format!("{:?}", err)))
-            .and_then(|s| Hash::from_bytes(&s))
+            .map_err(|err| CryptoError::ParsingError(format!("{:?}", err)))?;
+        Hash::from_bytes(
+            &decoded_bs58_check
+                .as_slice()
+                .try_into()
+                .map_err(|err| CryptoError::ParsingError(format!("{:?}", err)))?,
+        )
     }
 
     /// Deserialize a Hash as bytes.
@@ -97,13 +102,12 @@ impl Hash {
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<Hash, CryptoError> {
+    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Hash, CryptoError> {
         use bitcoin_hashes::Hash;
-        use std::convert::TryInto;
-        let res_inner: Result<<bitcoin_hashes::sha256::Hash as Hash>::Inner, _> = data.try_into();
-        res_inner
-            .map(|inner| Hash(bitcoin_hashes::sha256::Hash::from_inner(inner)))
-            .map_err(|err| CryptoError::HashParseError(format!("{:?}", err)))
+        Ok(Hash(
+            bitcoin_hashes::sha256::Hash::from_slice(&data[..])
+                .map_err(|err| CryptoError::ParsingError(format!("{:?}", err)))?,
+        ))
     }
 }
 
@@ -123,15 +127,6 @@ impl ::serde::Serialize for Hash {
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
     /// ```
     ///
-    /// Not human readable serialization :
-    /// ```
-    /// # use serde::{Deserialize, Serialize};
-    /// # use crypto::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// hash.serialize(&mut s).unwrap();
-    /// let serialized = s.take_buffer();
-    /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
             s.collect_str(&self.to_bs58_check())
@@ -158,17 +153,6 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
     /// let deserialized: Hash = serde_json::from_str(&serialized).unwrap();
     /// ```
     ///
-    /// Not human readable deserialization :
-    /// ```
-    /// # use crypto::hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// let hash = Hash::hash(&"hello world".as_bytes());
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// hash.serialize(&mut s).unwrap();
-    /// let serialized = s.take_buffer();
-    /// let r = flexbuffers::Reader::get_root(&serialized).unwrap();
-    /// let deserialized: Hash = Hash::deserialize(r).unwrap();
-    /// ```
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Hash, D::Error> {
         if d.is_human_readable() {
             struct Base58CheckVisitor;
@@ -213,7 +197,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
                 where
                     E: ::serde::de::Error,
                 {
-                    Hash::from_bytes(v).map_err(E::custom)
+                    Hash::from_bytes(v.try_into().map_err(E::custom)?).map_err(E::custom)
                 }
             }
 
@@ -232,7 +216,6 @@ impl FromStr for Hash {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::{Deserialize, Serialize};
 
     fn example() -> Hash {
         Hash::hash(&"hello world".as_bytes())
@@ -244,16 +227,6 @@ mod tests {
         let serialized = serde_json::to_string(&hash).unwrap();
         let deserialized = serde_json::from_str(&serialized).unwrap();
         assert_eq!(hash, deserialized)
-    }
-
-    #[test]
-    fn test_flexbuffers() {
-        let mut s = flexbuffers::FlexbufferSerializer::new();
-        let hash = example();
-        hash.serialize(&mut s).unwrap();
-        let r = flexbuffers::Reader::get_root(s.view()).unwrap();
-        let deserialized = Hash::deserialize(r).unwrap();
-        assert_eq!(deserialized, hash)
     }
 
     #[test]

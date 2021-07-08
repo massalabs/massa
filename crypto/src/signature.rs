@@ -2,7 +2,7 @@ use super::hash::Hash;
 use crate::error::CryptoError;
 use bs58;
 use secp256k1::{Message, Secp256k1};
-use std::str::FromStr;
+use std::{convert::TryInto, str::FromStr};
 
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 33;
@@ -39,7 +39,6 @@ impl PrivateKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     ///
@@ -55,7 +54,6 @@ impl PrivateKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     ///
@@ -71,7 +69,6 @@ impl PrivateKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     ///
@@ -87,7 +84,6 @@ impl PrivateKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     ///
@@ -98,8 +94,20 @@ impl PrivateKey {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
-            .map_err(|err| CryptoError::PrivateKeyParseError(format!("{:?}", err)))
-            .and_then(|key| PrivateKey::from_bytes(&key))
+            .map_err(|err| {
+                CryptoError::ParsingError(format!(
+                    "private key bs58_check parsing error: {:?}",
+                    err
+                ))
+            })
+            .and_then(|key| {
+                PrivateKey::from_bytes(&key.try_into().map_err(|err| {
+                    CryptoError::ParsingError(format!(
+                        "private key bs58_check parsing error: {:?}",
+                        err
+                    ))
+                })?)
+            })
     }
 
     /// Deserialize a PrivateKey from bytes.
@@ -108,17 +116,18 @@ impl PrivateKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     ///
     /// let serialized = private_key.to_bytes();
     /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<PrivateKey, CryptoError> {
-        secp256k1::SecretKey::from_slice(&data)
+    pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, CryptoError> {
+        secp256k1::SecretKey::from_slice(&data[..])
             .map(|key| PrivateKey(key))
-            .map_err(|err| CryptoError::PrivateKeyParseError(format!("{:?}", err)))
+            .map_err(|err| {
+                CryptoError::ParsingError(format!("private key bytes parsing error: {:?}", err))
+            })
     }
 }
 
@@ -134,25 +143,12 @@ impl ::serde::Serialize for PrivateKey {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     ///
     /// let serialized: String = serde_json::to_string(&private_key).unwrap();
     /// ```
     ///
-    /// Not human readable serialization :
-    /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
-    /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
-    /// # use serde::{Deserialize, Serialize};
-    /// let private_key = SignatureEngine::generate_random_private_key();
-    ///
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// private_key.serialize(&mut s).unwrap();
-    /// let serialized = s.take_buffer();
-    /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
             s.collect_str(&self.to_bs58_check())
@@ -174,7 +170,6 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     ///
@@ -182,20 +177,6 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
     /// let deserialized: PrivateKey = serde_json::from_str(&serialized).unwrap();
     /// ```
     ///
-    /// Not human readable deserialization :
-    /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
-    /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
-    /// # use serde::{Deserialize, Serialize};
-    /// let private_key = SignatureEngine::generate_random_private_key();
-    ///
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// private_key.serialize(&mut s).unwrap();
-    ///
-    /// let r = flexbuffers::Reader::get_root(s.view()).unwrap();
-    /// let deserialized: PrivateKey = PrivateKey::deserialize(r).unwrap();
-    /// ```
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<PrivateKey, D::Error> {
         if d.is_human_readable() {
             struct Base58CheckVisitor;
@@ -240,7 +221,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PrivateKey::from_bytes(v).map_err(E::custom)
+                    PrivateKey::from_bytes(&v.try_into().map_err(E::custom)?).map_err(E::custom)
                 }
             }
 
@@ -281,7 +262,6 @@ impl PublicKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -299,7 +279,6 @@ impl PublicKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -317,7 +296,6 @@ impl PublicKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -335,7 +313,6 @@ impl PublicKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -348,8 +325,17 @@ impl PublicKey {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
-            .map_err(|err| CryptoError::PublicKeyParseError(format!("{:?}", err)))
-            .and_then(|key| PublicKey::from_bytes(&key))
+            .map_err(|err| {
+                CryptoError::ParsingError(format!("public key bs58_check parsing error: {:?}", err))
+            })
+            .and_then(|key| {
+                PublicKey::from_bytes(&key.try_into().map_err(|err| {
+                    CryptoError::ParsingError(format!(
+                        "public key bs58_check parsing error: {:?}",
+                        err
+                    ))
+                })?)
+            })
     }
 
     /// Deserialize a PublicKey from bytes.
@@ -358,7 +344,6 @@ impl PublicKey {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -367,10 +352,12 @@ impl PublicKey {
     /// let serialized = public_key.into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<PublicKey, CryptoError> {
-        secp256k1::PublicKey::from_slice(data)
+    pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, CryptoError> {
+        secp256k1::PublicKey::from_slice(&data[..])
             .map(|key| PublicKey(key))
-            .map_err(|err| CryptoError::PublicKeyParseError(format!("{:?}", err)))
+            .map_err(|err| {
+                CryptoError::ParsingError(format!("public key bytes parsing error: {:?}", err))
+            })
     }
 }
 
@@ -386,7 +373,6 @@ impl ::serde::Serialize for PublicKey {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -395,20 +381,6 @@ impl ::serde::Serialize for PublicKey {
     /// let serialized: String = serde_json::to_string(&public_key).unwrap();
     /// ```
     ///
-    /// Not human readable serialization :
-    /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
-    /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
-    /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
-    ///
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// public_key.serialize(&mut s).unwrap();
-    /// let serialized = s.take_buffer();
-    /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
             s.collect_str(&self.to_bs58_check())
@@ -430,7 +402,6 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -440,22 +411,6 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     /// let deserialized: PublicKey = serde_json::from_str(&serialized).unwrap();
     /// ```
     ///
-    /// Not human readable deserialization :
-    /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
-    /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
-    /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
-    ///
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// public_key.serialize(&mut s).unwrap();
-    ///
-    /// let r = flexbuffers::Reader::get_root(s.view()).unwrap();
-    /// let deserialized: PublicKey = PublicKey::deserialize(r).unwrap();
-    /// ```
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<PublicKey, D::Error> {
         if d.is_human_readable() {
             struct Base58CheckVisitor;
@@ -500,7 +455,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PublicKey::from_bytes(v).map_err(E::custom)
+                    PublicKey::from_bytes(v.try_into().map_err(E::custom)?).map_err(E::custom)
                 }
             }
 
@@ -539,7 +494,6 @@ impl Signature {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -558,7 +512,6 @@ impl Signature {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -577,7 +530,6 @@ impl Signature {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -596,7 +548,6 @@ impl Signature {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -610,8 +561,17 @@ impl Signature {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
-            .map_err(|err| CryptoError::SignatureParseError(format!("{:?}", err)))
-            .and_then(|signature| Signature::from_bytes(&signature))
+            .map_err(|err| {
+                CryptoError::ParsingError(format!("signature bs58_check parsing error: {:?}", err))
+            })
+            .and_then(|signature| {
+                Signature::from_bytes(&signature.try_into().map_err(|err| {
+                    CryptoError::ParsingError(format!(
+                        "signature bs58_check parsing error: {:?}",
+                        err
+                    ))
+                })?)
+            })
     }
 
     /// Deserialize a Signature from bytes.
@@ -620,7 +580,6 @@ impl Signature {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -630,10 +589,12 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<Signature, CryptoError> {
-        secp256k1::Signature::from_compact(data)
+    pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, CryptoError> {
+        secp256k1::Signature::from_compact(&data[..])
             .map(|signature| Signature(signature))
-            .map_err(|err| CryptoError::SignatureParseError(format!("{:?}", err)))
+            .map_err(|err| {
+                CryptoError::ParsingError(format!("signature bytes parsing error: {:?}", err))
+            })
     }
 }
 
@@ -649,7 +610,6 @@ impl ::serde::Serialize for Signature {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -659,21 +619,6 @@ impl ::serde::Serialize for Signature {
     /// let serialized: String = serde_json::to_string(&signature).unwrap();
     /// ```
     ///
-    /// Not human readable serialization :
-    /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
-    /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
-    /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
-    ///
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// signature.serialize(&mut s).unwrap();
-    /// let serialized = s.take_buffer();
-    /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
             s.collect_str(&self.to_bs58_check())
@@ -695,7 +640,6 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -706,23 +650,6 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// let deserialized: Signature = serde_json::from_str(&serialized).unwrap();
     /// ```
     ///
-    /// Not human readable deserialization :
-    /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
-    /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
-    /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
-    ///
-    /// let mut s = flexbuffers::FlexbufferSerializer::new();
-    /// signature.serialize(&mut s).unwrap();
-    ///
-    /// let r = flexbuffers::Reader::get_root(s.view()).unwrap();
-    /// let deserialized: Signature = Signature::deserialize(r).unwrap();
-    /// ```
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Signature, D::Error> {
         if d.is_human_readable() {
             struct Base58CheckVisitor;
@@ -767,7 +694,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
                 where
                     E: ::serde::de::Error,
                 {
-                    Signature::from_bytes(v).map_err(E::custom)
+                    Signature::from_bytes(v.try_into().map_err(E::custom)?).map_err(E::custom)
                 }
             }
 
@@ -788,7 +715,6 @@ impl SignatureEngine {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp: SignatureEngine = SignatureEngine::new();
     /// ```
@@ -801,7 +727,6 @@ impl SignatureEngine {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key: PrivateKey = SignatureEngine::generate_random_private_key();
     /// ```
@@ -819,7 +744,6 @@ impl SignatureEngine {
     /// ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -839,7 +763,6 @@ impl SignatureEngine {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
@@ -859,32 +782,29 @@ impl SignatureEngine {
     ///  ```
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
-    /// # use flexbuffers;
     /// # use serde::{Deserialize, Serialize};
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key: PublicKey = secp.derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
     /// let signature = secp.sign(&data, &private_key).unwrap();
-    /// let verification: bool = secp.verify(&data, &signature, &public_key).unwrap();
+    /// let verification: bool = secp.verify(&data, &signature, &public_key).is_ok();
     /// ```
     pub fn verify(
         &self,
         hash: &Hash,
         signature: &Signature,
         public_key: &PublicKey,
-    ) -> Result<bool, CryptoError> {
+    ) -> Result<(), CryptoError> {
         let message = Message::from_slice(&hash.to_bytes())?;
-        Ok(self.0.verify(&message, &signature.0, &public_key.0).is_ok())
+        Ok(self.0.verify(&message, &signature.0, &public_key.0)?)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::hash::Hash;
-    use crate::signature::{PrivateKey, PublicKey, Signature, SignatureEngine};
-    use flexbuffers;
-    use serde::{Deserialize, Serialize};
+    use crate::signature::SignatureEngine;
 
     #[test]
     fn test_example() {
@@ -894,7 +814,7 @@ mod tests {
         let message = "Hello World!".as_bytes();
         let hash = Hash::hash(&message);
         let signature = secp.sign(&hash, &private_key).unwrap();
-        assert!(secp.verify(&hash, &signature, &public_key).unwrap())
+        assert!(secp.verify(&hash, &signature, &public_key).is_ok())
     }
 
     #[test]
@@ -931,46 +851,5 @@ mod tests {
         let deserialized =
             serde_json::from_str(&serialized).expect("could not deserialize signature key");
         assert_eq!(signature, deserialized);
-    }
-
-    #[test]
-    fn test_serde_buf_public_key() {
-        let mut s = flexbuffers::FlexbufferSerializer::new();
-        let secp = SignatureEngine::new();
-        let private_key = SignatureEngine::generate_random_private_key();
-        let public_key = secp.derive_public_key(&private_key);
-        public_key
-            .serialize(&mut s)
-            .expect("could not serialize public key");
-        let r = flexbuffers::Reader::get_root(s.view()).expect("could not read buffer");
-        let deserialized = PublicKey::deserialize(r).expect("could not deserialize public key");
-        assert_eq!(public_key, deserialized);
-    }
-
-    #[test]
-    fn test_serde_buf_signature() {
-        let mut s = flexbuffers::FlexbufferSerializer::new();
-        let secp = SignatureEngine::new();
-        let private_key = SignatureEngine::generate_random_private_key();
-        let data = "Hello World!".as_bytes();
-        let signature = secp.sign(&Hash::hash(&data), &private_key).unwrap();
-        signature
-            .serialize(&mut s)
-            .expect("could not serialize signature key");
-        let r = flexbuffers::Reader::get_root(s.view()).expect("could not read buffer");
-        let deserialized = Signature::deserialize(r).expect("could not deserialize signature key");
-        assert_eq!(signature, deserialized);
-    }
-
-    #[test]
-    fn test_serde_buf_private_key() {
-        let mut s = flexbuffers::FlexbufferSerializer::new();
-        let private_key = SignatureEngine::generate_random_private_key();
-        private_key
-            .serialize(&mut s)
-            .expect("could not serialize private key");
-        let r = flexbuffers::Reader::get_root(s.view()).expect("could not read buffer");
-        let deserialized = PrivateKey::deserialize(r).expect("could not deserialize private key");
-        assert_eq!(private_key, deserialized);
     }
 }

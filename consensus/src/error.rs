@@ -1,7 +1,6 @@
 use communication::CommunicationError;
 use crypto::hash::Hash;
-use models::block::Block;
-use models::error::ModelsError;
+use models::{Block, ModelsError};
 use rand::distributions::WeightedError;
 use std::collections::HashSet;
 use thiserror::Error;

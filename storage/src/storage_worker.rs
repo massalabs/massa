@@ -1,21 +1,20 @@
-use crypto::hash::Hash;
-use models::{block::Block, slot::Slot};
-use sled::Transactional;
-
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::RwLock;
-
 use crate::{
     config::StorageConfig,
     error::{InternalError, StorageError},
 };
-use sled;
-use std::sync::RwLockWriteGuard;
+use crypto::hash::Hash;
+use models::{Block, DeserializeCompact, SerializationContext, SerializeCompact, Slot};
+use sled::{self, Transactional};
+use std::{
+    collections::HashMap,
+    convert::TryInto,
+    sync::{Arc, RwLock, RwLockWriteGuard},
+};
 
 #[derive(Clone)]
 pub struct BlockStorage {
     cfg: StorageConfig,
+    serialization_context: SerializationContext,
     db: sled::Db,
     block_count: Arc<RwLock<usize>>,
     hash_to_block: sled::Tree,
@@ -38,7 +37,10 @@ impl BlockStorage {
         Ok(())
     }
 
-    pub fn open(cfg: StorageConfig) -> Result<BlockStorage, StorageError> {
+    pub fn open(
+        cfg: StorageConfig,
+        serialization_context: SerializationContext,
+    ) -> Result<BlockStorage, StorageError> {
         let sled_config = sled::Config::default()
             .path(&cfg.path)
             .cache_capacity(cfg.cache_capacity)
@@ -50,6 +52,7 @@ impl BlockStorage {
 
         let res = BlockStorage {
             cfg,
+            serialization_context,
             db,
             block_count: block_count.clone(),
             hash_to_block,
@@ -103,13 +106,18 @@ impl BlockStorage {
     ) -> Result<(), StorageError> {
         //add the new block
         (&self.hash_to_block, &self.slot_to_hash).transaction(|(hash_tx, slot_tx)| {
-            let serialized_block = block.into_bytes().map_err(|err| {
-                sled::transaction::ConflictableTransactionError::Abort(
-                    InternalError::TransactionError(format!("error serializing block: {:?}", err)),
-                )
-            })?;
+            let serialized_block = block
+                .to_bytes_compact(&self.serialization_context)
+                .map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!(
+                            "error serializing block: {:?}",
+                            err
+                        )),
+                    )
+                })?;
             hash_tx.insert(&hash.to_bytes(), serialized_block.as_slice())?;
-            slot_tx.insert(&block.header.slot.to_bytes_key(), &hash.to_bytes())?;
+            slot_tx.insert(&block.header.content.slot.to_bytes_key(), &hash.to_bytes())?;
             Ok(())
         })?;
         **block_count_w += 1;
@@ -164,7 +172,9 @@ impl BlockStorage {
             .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
 
         if let Some(s_block) = self.hash_to_block.get(hash_key)? {
-            Ok(Some(Block::from_bytes(&s_block)?))
+            Ok(Some(
+                Block::from_bytes_compact(s_block.as_ref(), &self.serialization_context)?.0,
+            ))
         } else {
             Ok(None)
         }
@@ -191,7 +201,12 @@ impl BlockStorage {
         }
         .map(|item| {
             let (_, s_hash) = item?;
-            let hash = Hash::from_bytes(&s_hash)?;
+            let hash = Hash::from_bytes(&s_hash.as_ref().try_into().map_err(|err| {
+                StorageError::DeserializationError(format!(
+                    "wrong buffer size for hash deserialization: {:?}",
+                    err
+                ))
+            })?)?;
             let block = self
                 .get_block(hash)?
                 .ok_or(StorageError::DatabaseInconsistency(

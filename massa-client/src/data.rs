@@ -13,9 +13,7 @@ use communication::network::PeerInfo;
 use consensus::DiscardReason;
 use crypto::hash::Hash;
 use crypto::signature::Signature;
-use models::block::Block;
-use models::block::BlockHeader;
-use models::{operation::Operation, slot::Slot};
+use models::{Block, BlockHeader, Operation, Slot};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -69,9 +67,9 @@ pub struct WrapperBlock {
 impl From<Block> for WrapperBlock {
     fn from(block: Block) -> Self {
         WrapperBlock {
-            header: block.header.into(),
             operations: block.operations,
-            signature: block.signature,
+            signature: block.header.signature,
+            header: block.header.into(),
         }
     }
 }
@@ -104,7 +102,7 @@ impl From<&'_ BlockHeader> for WrappedBlockHeader {
 
 impl std::fmt::Display for WrappedBlockHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let pk = self.0.creator.to_string();
+        let pk = self.0.content.creator.to_string();
         let pk = if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
             &pk[..4]
         } else {
@@ -112,15 +110,13 @@ impl std::fmt::Display for WrappedBlockHeader {
         };
         writeln!(
             f,
-            "creator: {} period:{} thread:{} roll:{} ledger:{} merkle_root:{} parents:{:?} endorsements:{:?}",
+            "creator: {} period:{} thread:{} ledger:{} merkle_root:{} parents:{:?}",
             pk,
-            self.0.slot.period,
-            self.0.slot.thread,
-            self.0.roll_number,
-            self.0.out_ledger_hash,
-            self.0.operation_merkle_root,
-            self.0.parents,
-            self.0.endorsements
+            self.0.content.slot.period,
+            self.0.content.slot.thread,
+            self.0.content.out_ledger_hash,
+            self.0.content.operation_merkle_root,
+            self.0.content.parents,
         )
         //        writeln!(f, "  parents:{:?}", self.parents)?;
         //        writeln!(f, "  endorsements:{:?}", self.endorsements)
@@ -187,7 +183,7 @@ impl std::fmt::Display for StakerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "  active blocks:")?;
         let mut blocks: Vec<&(Hash, BlockHeader)> = self.staker_active_blocks.iter().collect();
-        blocks.sort_unstable_by_key(|v| (v.1.slot, v.0));
+        blocks.sort_unstable_by_key(|v| (v.1.content.slot, v.0));
         for (hash, block) in &blocks {
             write!(
                 f,
@@ -199,7 +195,7 @@ impl std::fmt::Display for StakerInfo {
         writeln!(f, "  discarded blocks:")?;
         let mut blocks: Vec<&(Hash, DiscardReason, BlockHeader)> =
             self.staker_discarded_blocks.iter().collect();
-        blocks.sort_unstable_by_key(|v| (v.2.slot, v.0));
+        blocks.sort_unstable_by_key(|v| (v.2.content.slot, v.0));
         for (hash, reason, block) in &blocks {
             write!(
                 f,

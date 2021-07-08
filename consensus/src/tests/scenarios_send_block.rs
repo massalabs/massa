@@ -1,29 +1,27 @@
 //RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
 use super::{mock_protocol_controller::MockProtocolController, tools};
-use crate::{start_consensus_controller, timeslots};
-use crypto::hash::Hash;
-use models::slot::Slot;
-use std::collections::HashSet;
-use time::UTime;
+use crate::start_consensus_controller;
+use models::Slot;
 
 #[tokio::test]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let node_ids = tools::create_node_ids(2);
 
-    let mut cfg = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(serialization_context.clone());
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
@@ -39,9 +37,12 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
         .genesis_blocks;
 
     //create test blocks
-    let (hasht0s1, t0s1, _) =
-        tools::create_block(&cfg, Slot::new(1 + start_slot, 0), genesis_hashes.clone());
-    let header = t0s1.header.clone();
+    let (hasht0s1, t0s1, _) = tools::create_block(
+        &cfg,
+        &serialization_context,
+        Slot::new(1 + start_slot, 0),
+        genesis_hashes.clone(),
+    );
 
     // Send the actual block.
     protocol_controller.receive_block(t0s1).await;

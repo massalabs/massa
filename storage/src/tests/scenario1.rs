@@ -1,7 +1,7 @@
 use super::tools;
 use crate::{start_storage_controller, StorageCommandSender, StorageConfig};
 use crypto::hash::Hash;
-use models::slot::Slot;
+use models::{SerializationContext, Slot};
 
 #[tokio::test]
 async fn test_max_block_count() {
@@ -15,8 +15,15 @@ async fn test_max_block_count() {
         cache_capacity: 256,  //little to force flush cache
         flush_interval: None, //defaut
     };
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
 
-    let (storage, manager) = start_storage_controller(config).unwrap();
+    let (storage, manager) = start_storage_controller(config, serialization_context).unwrap();
     storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
@@ -59,8 +66,15 @@ async fn test_max_nb_blocks() {
         cache_capacity: 256,  //little to force flush cache
         flush_interval: None, //defaut
     };
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
 
-    let (storage, manager) = start_storage_controller(config).unwrap();
+    let (storage, manager) = start_storage_controller(config, serialization_context).unwrap();
     storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
@@ -103,8 +117,15 @@ async fn test_get_slot_range() {
         cache_capacity: 256,  //little to force flush cache
         flush_interval: None, //defaut
     };
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
 
-    let (storage, manager) = start_storage_controller(config).unwrap();
+    let (storage, manager) = start_storage_controller(config, serialization_context).unwrap();
     storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //add block in this order depending on there periode and thread
@@ -173,7 +194,7 @@ async fn test_get_slot_range() {
 
 async fn add_block(slot: Slot, storage: &StorageCommandSender) {
     let mut block = tools::get_test_block();
-    block.header.slot = slot;
+    block.header.content.slot = slot;
     let hash = Hash::hash(format!("{}", slot).as_bytes());
     storage.add_block(hash, block).await.unwrap();
 }

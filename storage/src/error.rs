@@ -18,6 +18,8 @@ pub enum StorageError {
     MutexPoisonedError(String),
     #[error("Database inconsistency error: {0}")]
     DatabaseInconsistency(String),
+    #[error("deserialization error: {0}")]
+    DeserializationError(String),
 }
 
 #[derive(Error, Debug)]

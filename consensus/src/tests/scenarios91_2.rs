@@ -5,7 +5,7 @@ use crate::{
 };
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
-use models::slot::Slot;
+use models::Slot;
 use time::UTime;
 use tokio::time::{sleep_until, timeout};
 
@@ -20,7 +20,7 @@ async fn test_queueing() {
 
     let node_ids = tools::create_node_ids(1);
 
-    let mut cfg = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -31,12 +31,13 @@ async fn test_queueing() {
 
     // mock protocol
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(serialization_context.clone());
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
@@ -55,6 +56,7 @@ async fn test_queueing() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
@@ -67,6 +69,7 @@ async fn test_queueing() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
@@ -80,6 +83,7 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
@@ -92,6 +96,7 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
@@ -101,13 +106,18 @@ async fn test_queueing() {
         .await;
     }
 
-    let (missed_hash, _missed_block, _missed_key) =
-        tools::create_block(&cfg, Slot::new(32, 0), vec![valid_hasht0, valid_hasht1]);
+    let (missed_hash, _missed_block, _missed_key) = tools::create_block(
+        &cfg,
+        &serialization_context,
+        Slot::new(32, 0),
+        vec![valid_hasht0, valid_hasht1],
+    );
 
     //create 1 block in thread 0 slot 33 with missed block as parent
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(33, 0),
         vec![missed_hash, valid_hasht1],
@@ -121,6 +131,7 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 34, 0),
             vec![valid_hasht0, valid_hasht1],
@@ -133,6 +144,7 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 34, 1),
             vec![valid_hasht0, valid_hasht1],
@@ -162,7 +174,7 @@ async fn test_doubles() {
 
     let node_ids = tools::create_node_ids(1);
 
-    let mut cfg = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -173,12 +185,13 @@ async fn test_doubles() {
 
     // mock protocol
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(serialization_context.clone());
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
@@ -197,6 +210,7 @@ async fn test_doubles() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
@@ -209,6 +223,7 @@ async fn test_doubles() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
@@ -222,6 +237,7 @@ async fn test_doubles() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
@@ -234,6 +250,7 @@ async fn test_doubles() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
@@ -247,6 +264,7 @@ async fn test_doubles() {
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
@@ -260,7 +278,13 @@ async fn test_doubles() {
         .await
         .unwrap()
     {
-        tools::propagate_block(&mut protocol_controller, block, false).await;
+        tools::propagate_block(
+            &serialization_context,
+            &mut protocol_controller,
+            block,
+            false,
+        )
+        .await;
     };
 
     // stop controller while ignoring all commands
@@ -283,7 +307,7 @@ async fn test_double_staking() {
 
     let node_ids = tools::create_node_ids(1);
 
-    let mut cfg = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -294,12 +318,13 @@ async fn test_double_staking() {
 
     // mock protocol
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(serialization_context.clone());
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
@@ -318,6 +343,7 @@ async fn test_double_staking() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
@@ -330,6 +356,7 @@ async fn test_double_staking() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
@@ -343,6 +370,7 @@ async fn test_double_staking() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
@@ -355,6 +383,7 @@ async fn test_double_staking() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
+            &serialization_context,
             node_ids[0].1.clone(),
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
@@ -368,20 +397,34 @@ async fn test_double_staking() {
     let operation_merkle_root = Hash::hash("42".as_bytes());
     let (hash_1, block_1, _key) = tools::create_block_with_merkle_root(
         &cfg,
+        &serialization_context,
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
     );
-    tools::propagate_block(&mut protocol_controller, block_1, true).await;
+    tools::propagate_block(
+        &serialization_context,
+        &mut protocol_controller,
+        block_1,
+        true,
+    )
+    .await;
 
     let operation_merkle_root = Hash::hash("so long and thanks for all the fish".as_bytes());
     let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
         &cfg,
+        &serialization_context,
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
     );
-    tools::propagate_block(&mut protocol_controller, block_2, true).await;
+    tools::propagate_block(
+        &serialization_context,
+        &mut protocol_controller,
+        block_2,
+        true,
+    )
+    .await;
 
     let graph = consensus_command_sender
         .get_block_graph_status()
@@ -411,7 +454,7 @@ async fn test_test_parents() {
 
     let node_ids = tools::create_node_ids(1);
 
-    let mut cfg = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -422,12 +465,13 @@ async fn test_test_parents() {
 
     // mock protocol
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(serialization_context.clone());
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
@@ -446,6 +490,7 @@ async fn test_test_parents() {
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
@@ -458,6 +503,7 @@ async fn test_test_parents() {
     let valid_hasht1s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
@@ -470,6 +516,7 @@ async fn test_test_parents() {
     let valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(2, 0),
         vec![valid_hasht0s1, valid_hasht1s1],
@@ -482,6 +529,7 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(2, 1),
         vec![valid_hasht0s1, valid_hasht1s1],
@@ -495,6 +543,7 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(3, 0),
         vec![valid_hasht0s2, genesis_hashes[1usize]],
@@ -507,6 +556,7 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
+        &serialization_context,
         node_ids[0].1.clone(),
         Slot::new(3, 1),
         vec![genesis_hashes[0usize], genesis_hashes[0usize]],
@@ -528,7 +578,7 @@ async fn test_test_parents() {
 async fn test_block_creation() {
     let node_ids = tools::create_node_ids(2);
 
-    let mut cfg = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -547,12 +597,13 @@ async fn test_block_creation() {
 
     // mock protocol
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(serialization_context.clone());
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
@@ -581,12 +632,11 @@ async fn test_block_creation() {
         .await
         {
             Ok(Some(ProtocolCommand::PropagateBlockHeader {
-                signature: _,
                 header,
-                hash,
+                hash: _hash,
             })) => {
                 assert_eq!(draw, 0);
-                assert_eq!(i + 1, header.slot.period as usize);
+                assert_eq!(i + 1, header.content.slot.period as usize);
             }
             Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
             Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),

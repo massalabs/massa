@@ -1,36 +1,45 @@
 use crate::StorageConfig;
 use crypto::hash::Hash;
-use models::{
-    block::{Block, BlockHeader},
-    slot::Slot,
-};
+use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 
 pub fn get_test_block() -> Block {
     Block {
             header: BlockHeader {
-                creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
-                endorsements: vec![],
-                operation_merkle_root: get_test_hash(),
-                out_ledger_hash: get_test_hash(),
-                parents: vec![],
-                slot: Slot::new(1, 0),
-                roll_number: 0,
+                content: BlockHeaderContent{
+                    creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                    operation_merkle_root: get_test_hash(),
+                    out_ledger_hash: get_test_hash(),
+                    parents: vec![
+                        Hash::hash("parent1".as_bytes()),
+                        Hash::hash("parent2".as_bytes())
+                    ],
+                    slot: Slot::new(1, 0),
+                },
+                signature: crypto::signature::Signature::from_bs58_check(
+                    "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+                ).unwrap()
             },
-            operations: vec![],
-            signature: crypto::signature::Signature::from_bs58_check(
-                "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
-            ).unwrap()
+            operations: vec![]
         }
 }
 
-pub fn get_test_config() -> StorageConfig {
+pub fn get_test_config() -> (StorageConfig, SerializationContext) {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
-    StorageConfig {
-        max_stored_blocks: 100000,
-        path: tempdir.path().to_path_buf(),
-        cache_capacity: 1000000,
-        flush_interval: Some(200.into()),
-    }
+    (
+        StorageConfig {
+            max_stored_blocks: 100000,
+            path: tempdir.path().to_path_buf(),
+            cache_capacity: 1000000,
+            flush_interval: Some(200.into()),
+        },
+        SerializationContext {
+            max_block_size: 1024 * 1024,
+            max_block_operations: 1024,
+            parent_count: 2,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+        },
+    )
 }
 
 pub fn get_test_hash() -> Hash {
