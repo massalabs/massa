@@ -26,6 +26,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -127,6 +128,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -245,6 +247,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -373,6 +376,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config.clone(),
+            5u64,
             serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
@@ -435,6 +439,7 @@ async fn test_protocol_block_not_found() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,

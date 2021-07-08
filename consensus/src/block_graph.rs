@@ -2,7 +2,7 @@
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::{
     error::ConsensusError,
-    ledger::{Ledger, LedgerChange, LedgerData},
+    ledger::{CurrentBlockLedger, Ledger, LedgerChange, OperationLedgerInterface},
 };
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
@@ -693,7 +693,20 @@ pub struct BlockGraph {
 }
 
 #[derive(Debug)]
-enum CheckOutcome {
+enum HeaderCheckOutcome {
+    Proceed {
+        parents_hash_period: Vec<(BlockId, u64)>,
+        dependencies: HashSet<BlockId>,
+        incompatibilities: HashSet<BlockId>,
+        inherited_incompatibilities_count: usize,
+    },
+    Discard(DiscardReason),
+    WaitForSlot,
+    WaitForDependencies(HashSet<BlockId>),
+}
+
+#[derive(Debug)]
+enum BlockCheckOutcome {
     Proceed {
         parents_hash_period: Vec<(BlockId, u64)>,
         dependencies: HashSet<BlockId>,
@@ -703,6 +716,16 @@ enum CheckOutcome {
     },
     Discard(DiscardReason),
     WaitForSlot,
+    WaitForDependencies(HashSet<BlockId>),
+}
+
+#[derive(Debug)]
+enum BlockOperationsCheckOutcome {
+    Proceed {
+        dependencies: HashSet<BlockId>,
+        block_changes: Vec<HashMap<Address, LedgerChange>>,
+    },
+    Discard(DiscardReason),
     WaitForDependencies(HashSet<BlockId>),
 }
 
@@ -766,7 +789,7 @@ impl BlockGraph {
                     dependencies: HashSet::new(),
                     descendants: HashSet::new(),
                     is_final: true,
-                    block_ledger_change: Vec::new(), // todo add initial coin repartition see #311
+                    block_ledger_change: vec![HashMap::new(); cfg.thread_count as usize], // todo add initial coin repartition see #311
                 }),
             );
         }
@@ -1055,14 +1078,14 @@ impl BlockGraph {
     // ack a single item, return a set of items to re-ack
     fn process(
         &mut self,
-        hash: BlockId,
+        block_id: BlockId,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<BTreeSet<(Slot, BlockId)>, ConsensusError> {
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
 
-        massa_trace!("consensus.block_graph.process", { "hash": hash });
+        massa_trace!("consensus.block_graph.process", { "block_id": block_id });
         // control all the waiting states and try to get a valid block
         let (
             valid_block,
@@ -1071,44 +1094,48 @@ impl BlockGraph {
             valid_block_incomp,
             valid_block_inherited_incomp_count,
             valid_block_changes,
-        ) = match self.block_statuses.get(&hash) {
+        ) = match self.block_statuses.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
             // discarded: do nothing
             Some(BlockStatus::Discarded { .. }) => {
-                massa_trace!("consensus.block_graph.process.discarded", { "hash": hash });
+                massa_trace!("consensus.block_graph.process.discarded", {
+                    "block_id": block_id
+                });
                 return Ok(BTreeSet::new());
             }
 
             // already active: do nothing
             Some(BlockStatus::Active(_)) => {
-                massa_trace!("consensus.block_graph.process.active", { "hash": hash });
+                massa_trace!("consensus.block_graph.process.active", {
+                    "block_id": block_id
+                });
                 return Ok(BTreeSet::new());
             }
 
             // incoming header
             Some(BlockStatus::Incoming(HeaderOrBlock::Header(_))) => {
                 massa_trace!("consensus.block_graph.process.incomming_header", {
-                    "hash": hash
+                    "block_id": block_id
                 });
                 // remove header
                 let header = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
-                    self.block_statuses.remove(&hash)
+                    self.block_statuses.remove(&block_id)
                 {
                     header
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
                         "inconsistency inside block statuses removing incomming header {:?}",
-                        hash
+                        block_id
                     )));
                 };
-                match self.check_header(hash, &header, selector, current_slot)? {
-                    CheckOutcome::Proceed { .. } => {
+                match self.check_header(&block_id, &header, selector, current_slot)? {
+                    HeaderCheckOutcome::Proceed { .. } => {
                         // set as waiting dependencies
                         let mut dependencies = HashSet::new();
-                        dependencies.insert(hash); // add self as unsatisfied
+                        dependencies.insert(block_id); // add self as unsatisfied
                         self.block_statuses.insert(
-                            hash,
+                            block_id,
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Header(header),
                                 unsatisfied_dependencies: dependencies,
@@ -1117,21 +1144,21 @@ impl BlockGraph {
                                 ),
                             },
                         );
-                        self.promote_dep_tree(hash)?;
+                        self.promote_dep_tree(block_id)?;
 
                         massa_trace!(
                             "consensus.block_graph.process.incomming_header.waiting_for_self",
-                            { "hash": hash }
+                            { "block_id": block_id }
                         );
                         return Ok(BTreeSet::new());
                     }
-                    CheckOutcome::WaitForDependencies(mut dependencies) => {
+                    HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
                         // set as waiting dependencies
-                        dependencies.insert(hash); // add self as unsatisfied
-                        massa_trace!("consensus.block_graph.process.incomming_header.waiting_for_dependencies", {"hash": hash, "dependencies": dependencies});
+                        dependencies.insert(block_id); // add self as unsatisfied
+                        massa_trace!("consensus.block_graph.process.incomming_header.waiting_for_dependencies", {"block_id": block_id, "dependencies": dependencies});
 
                         self.block_statuses.insert(
-                            hash,
+                            block_id,
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Header(header),
                                 unsatisfied_dependencies: dependencies,
@@ -1140,29 +1167,29 @@ impl BlockGraph {
                                 ),
                             },
                         );
-                        self.promote_dep_tree(hash)?;
+                        self.promote_dep_tree(block_id)?;
 
                         return Ok(BTreeSet::new());
                     }
-                    CheckOutcome::WaitForSlot => {
+                    HeaderCheckOutcome::WaitForSlot => {
                         // make it wait for slot
                         self.block_statuses.insert(
-                            hash,
+                            block_id,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
                         );
 
                         massa_trace!(
                             "consensus.block_graph.process.incomming_header.waiting_for_slot",
-                            { "hash": hash }
+                            { "block_id": block_id }
                         );
                         return Ok(BTreeSet::new());
                     }
-                    CheckOutcome::Discard(reason) => {
-                        self.maybe_note_attack_attempt(&reason, &hash);
+                    HeaderCheckOutcome::Discard(reason) => {
+                        self.maybe_note_attack_attempt(&reason, &block_id);
 
                         // discard
                         self.block_statuses.insert(
-                            hash,
+                            block_id,
                             BlockStatus::Discarded {
                                 header: header,
                                 reason,
@@ -1172,7 +1199,7 @@ impl BlockGraph {
                             },
                         );
 
-                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"hash": hash, "reason": reason});
+                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"block_id": block_id, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
@@ -1181,20 +1208,20 @@ impl BlockGraph {
             // incoming block
             Some(BlockStatus::Incoming(HeaderOrBlock::Block(_))) => {
                 massa_trace!("consensus.block_graph.process.incomming_block", {
-                    "hash": hash
+                    "block_id": block_id
                 });
                 let block = if let Some(BlockStatus::Incoming(HeaderOrBlock::Block(block))) =
-                    self.block_statuses.remove(&hash)
+                    self.block_statuses.remove(&block_id)
                 {
                     block
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
                         "inconsistency inside block statuses removing incomming block {:?}",
-                        hash
+                        block_id
                     )));
                 };
-                match self.check_block(hash, &block, selector, current_slot)? {
-                    CheckOutcome::Proceed {
+                match self.check_block(&block_id, &block, selector, current_slot)? {
+                    BlockCheckOutcome::Proceed {
                         parents_hash_period,
                         dependencies,
                         incompatibilities,
@@ -1204,7 +1231,7 @@ impl BlockGraph {
                         // block is valid: remove it from Incoming and return it
 
                         massa_trace!("consensus.block_graph.process.incomming_block.valid", {
-                            "hash": hash
+                            "block_id": block_id
                         });
                         (
                             block,
@@ -1215,10 +1242,10 @@ impl BlockGraph {
                             block_changes,
                         )
                     }
-                    CheckOutcome::WaitForDependencies(dependencies) => {
+                    BlockCheckOutcome::WaitForDependencies(dependencies) => {
                         // set as waiting dependencies
                         self.block_statuses.insert(
-                            hash,
+                            block_id,
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Block(block),
                                 unsatisfied_dependencies: dependencies,
@@ -1227,29 +1254,29 @@ impl BlockGraph {
                                 ),
                             },
                         );
-                        self.promote_dep_tree(hash)?;
-                        massa_trace!("consensus.block_graph.process.incomming_block.waiting_for_dependencies", {"hash": hash});
+                        self.promote_dep_tree(block_id)?;
+                        massa_trace!("consensus.block_graph.process.incomming_block.waiting_for_dependencies", {"block_id": block_id});
                         return Ok(BTreeSet::new());
                     }
-                    CheckOutcome::WaitForSlot => {
+                    BlockCheckOutcome::WaitForSlot => {
                         // set as waiting for slot
                         self.block_statuses.insert(
-                            hash,
+                            block_id,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Block(block)),
                         );
 
                         massa_trace!(
                             "consensus.block_graph.process.incomming_block.waiting_for_slot",
-                            { "hash": hash }
+                            { "block_id": block_id }
                         );
                         return Ok(BTreeSet::new());
                     }
-                    CheckOutcome::Discard(reason) => {
-                        self.maybe_note_attack_attempt(&reason, &hash);
+                    BlockCheckOutcome::Discard(reason) => {
+                        self.maybe_note_attack_attempt(&reason, &block_id);
 
                         // add to discard
                         self.block_statuses.insert(
-                            hash,
+                            block_id,
                             BlockStatus::Discarded {
                                 header: block.header,
                                 reason,
@@ -1259,7 +1286,7 @@ impl BlockGraph {
                             },
                         );
 
-                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"hash": hash, "reason": reason});
+                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"block_id": block_id, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
@@ -1267,31 +1294,31 @@ impl BlockGraph {
 
             Some(BlockStatus::WaitingForSlot(header_or_block)) => {
                 massa_trace!("consensus.block_graph.process.waiting_for_slot", {
-                    "hash": hash
+                    "block_id": block_id
                 });
                 let slot = header_or_block.get_slot();
                 if Some(slot) > current_slot {
                     massa_trace!(
                         "consensus.block_graph.process.waiting_for_slot.in_the_future",
-                        { "hash": hash }
+                        { "block_id": block_id }
                     );
                     // in the future: ignore
                     return Ok(BTreeSet::new());
                 }
                 // send back as incoming and ask for reprocess
                 if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
-                    self.block_statuses.remove(&hash)
+                    self.block_statuses.remove(&block_id)
                 {
                     self.block_statuses
-                        .insert(hash, BlockStatus::Incoming(header_or_block));
-                    reprocess.insert((slot, hash));
+                        .insert(block_id, BlockStatus::Incoming(header_or_block));
+                    reprocess.insert((slot, block_id));
                     massa_trace!(
                         "consensus.block_graph.process.waiting_for_slot.reprocess",
-                        { "hash": hash }
+                        { "block_id": block_id }
                     );
                     return Ok(reprocess);
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot block or header {:?}", hash)));
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot block or header {:?}", block_id)));
                 };
             }
 
@@ -1300,7 +1327,7 @@ impl BlockGraph {
                 ..
             }) => {
                 massa_trace!("consensus.block_graph.process.waiting_for_dependencies", {
-                    "hash": hash
+                    "block_id": block_id
                 });
                 if !unsatisfied_dependencies.is_empty() {
                     // still has unsatisfied depdendencies: ignore
@@ -1309,25 +1336,25 @@ impl BlockGraph {
                 // send back as incoming and ask for reprocess
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block, ..
-                }) = self.block_statuses.remove(&hash)
+                }) = self.block_statuses.remove(&block_id)
                 {
-                    reprocess.insert((header_or_block.get_slot(), hash));
+                    reprocess.insert((header_or_block.get_slot(), block_id));
                     self.block_statuses
-                        .insert(hash, BlockStatus::Incoming(header_or_block));
+                        .insert(block_id, BlockStatus::Incoming(header_or_block));
                     massa_trace!(
                         "consensus.block_graph.process.waiting_for_dependencies.reprocess",
-                        { "hash": hash }
+                        { "block_id": block_id }
                     );
                     return Ok(reprocess);
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot header or block {:?}", hash)));
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot header or block {:?}", block_id)));
                 }
             }
         };
 
         // add block to graph
         self.add_block_to_graph(
-            hash,
+            block_id,
             valid_block_parents_hash_period,
             valid_block,
             valid_block_deps,
@@ -1337,19 +1364,22 @@ impl BlockGraph {
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active(active)) = self.block_statuses.get(&hash) {
-            massa_trace!("consensus.block_graph.process.is_active", { "hash": hash });
-            self.to_propagate.insert(hash.clone(), active.block.clone());
-            for (itm_hash, itm_status) in self.block_statuses.iter_mut() {
+        if let Some(BlockStatus::Active(active)) = self.block_statuses.get(&block_id) {
+            massa_trace!("consensus.block_graph.process.is_active", {
+                "block_id": block_id
+            });
+            self.to_propagate
+                .insert(block_id.clone(), active.block.clone());
+            for (itm_block_id, itm_status) in self.block_statuses.iter_mut() {
                 if let BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
                     ..
                 } = itm_status
                 {
-                    if unsatisfied_dependencies.remove(&hash) {
+                    if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: retry
-                        reprocess.insert((header_or_block.get_slot(), *itm_hash));
+                        reprocess.insert((header_or_block.get_slot(), *itm_block_id));
                     }
                 }
             }
@@ -1409,12 +1439,14 @@ impl BlockGraph {
 
     fn check_header(
         &self,
-        hash: BlockId,
+        block_id: &BlockId,
         header: &BlockHeader,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
-    ) -> Result<CheckOutcome, ConsensusError> {
-        massa_trace!("consensus.block_graph.check_header", { "hash": hash });
+    ) -> Result<HeaderCheckOutcome, ConsensusError> {
+        massa_trace!("consensus.block_graph.check_header", {
+            "block_id": block_id
+        });
         let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(self.cfg.thread_count as usize);
         let mut deps = HashSet::new();
         let mut incomp = HashSet::new();
@@ -1425,7 +1457,7 @@ impl BlockGraph {
             || header.content.slot.period == 0
             || header.content.slot.thread >= self.cfg.thread_count
         {
-            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
         }
 
         // check that is older than the latest final block in that thread
@@ -1433,7 +1465,7 @@ impl BlockGraph {
         if header.content.slot.period
             <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
-            return Ok(CheckOutcome::Discard(DiscardReason::Stale));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
         }
 
         // check if block slot is too much in the future
@@ -1443,7 +1475,7 @@ impl BlockGraph {
                     .period
                     .saturating_add(self.cfg.future_block_processing_max_periods)
             {
-                return Ok(CheckOutcome::WaitForSlot);
+                return Ok(HeaderCheckOutcome::WaitForSlot);
             }
         }
 
@@ -1452,14 +1484,14 @@ impl BlockGraph {
         //       to avoid doing too many draws to check blocks in the distant future
         if header.content.creator != self.cfg.nodes[selector.draw(header.content.slot) as usize].0 {
             // it was not the creator's turn to create a block for this slot
-            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
         }
 
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
         // note: Some(x) > None
         if Some(header.content.slot) > current_slot {
-            return Ok(CheckOutcome::WaitForSlot);
+            return Ok(HeaderCheckOutcome::WaitForSlot);
         }
 
         // TODO check if we already have a block for that slot
@@ -1473,7 +1505,7 @@ impl BlockGraph {
             match self.block_statuses.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
-                    return Ok(CheckOutcome::Discard(*reason));
+                    return Ok(HeaderCheckOutcome::Discard(*reason));
                 }
                 Some(BlockStatus::Active(parent)) => {
                     // parent is active
@@ -1482,14 +1514,14 @@ impl BlockGraph {
                     if parent.block.header.content.slot.thread != parent_thread
                         || parent.block.header.content.slot >= header.content.slot
                     {
-                        return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
                     }
 
                     // inherit parent incompatibilities
                     // and ensure parents are mutually compatible
                     if let Some(p_incomp) = self.gi_head.get(&parent_hash) {
                         if !p_incomp.is_disjoint(&parent_set) {
-                            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
                         }
                         incomp.extend(p_incomp);
                     }
@@ -1500,14 +1532,14 @@ impl BlockGraph {
                     // parent is missing or queued
                     if self.genesis_hashes.contains(&parent_hash) {
                         // forbid depending on discarded genesis block
-                        return Ok(CheckOutcome::Discard(DiscardReason::Stale));
+                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
                     }
                     missing_deps.insert(parent_hash);
                 }
             }
         }
         if !missing_deps.is_empty() {
-            return Ok(CheckOutcome::WaitForDependencies(missing_deps));
+            return Ok(HeaderCheckOutcome::WaitForDependencies(missing_deps));
         }
         let inherited_incomp_count = incomp.len();
 
@@ -1519,12 +1551,12 @@ impl BlockGraph {
                 let parent = self.get_active_block(parent_h).ok_or(
                     ConsensusError::ContainerInconsistency(format!(
                         "inconsistency inside block statuses searching parent {:?} of block {:?}",
-                        parent_h, hash
+                        parent_h, block_id
                     )),
                 )?;
                 if parent_period < gp_max_slots[parent_i as usize] {
                     // a parent is earlier than a block known by another parent in that thread
-                    return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
                 }
                 gp_max_slots[parent_i as usize] = parent_period;
                 if parent_period == 0 {
@@ -1540,13 +1572,13 @@ impl BlockGraph {
                     match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
-                            return Ok(CheckOutcome::Discard(*reason));
+                            return Ok(HeaderCheckOutcome::Discard(*reason));
                         }
                         // this grandpa is active
                         Some(BlockStatus::Active(gp)) => {
                             if gp.block.header.content.slot.period > gp_max_slots[gp_i as usize] {
                                 if gp_i < parent_i {
-                                    return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
                                 }
                                 gp_max_slots[gp_i as usize] = gp.block.header.content.slot.period;
                             }
@@ -1555,7 +1587,7 @@ impl BlockGraph {
                         _ => {
                             if self.genesis_hashes.contains(&gp_h) {
                                 // forbid depending on discarded genesis block
-                                return Ok(CheckOutcome::Discard(DiscardReason::Stale));
+                                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
                             }
                             missing_deps.insert(gp_h);
                         }
@@ -1564,7 +1596,7 @@ impl BlockGraph {
             }
         }
         if !missing_deps.is_empty() {
-            return Ok(CheckOutcome::WaitForDependencies(missing_deps));
+            return Ok(HeaderCheckOutcome::WaitForDependencies(missing_deps));
         }
 
         // get parent in own thread
@@ -1574,13 +1606,13 @@ impl BlockGraph {
         )
         .ok_or(ConsensusError::ContainerInconsistency(format!(
             "inconsistency inside block statuses searching parent {:?} in own thread of block {:?}",
-            parents[header.content.slot.thread as usize].0, hash
+            parents[header.content.slot.thread as usize].0, block_id
         )))?;
 
         // thread incompatibility test
         parent_in_own_thread.children[header.content.slot.thread as usize]
             .keys()
-            .filter(|&sibling_h| *sibling_h != hash)
+            .filter(|&sibling_h| sibling_h != block_id)
             .try_for_each(|&sibling_h| {
                 incomp.extend(self.get_active_block_and_descendants(sibling_h)?);
                 Result::<(), ConsensusError>::Ok(())
@@ -1593,7 +1625,7 @@ impl BlockGraph {
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
                 let cur_b = BlockGraph::get_full_active_block(&self.block_statuses, cur_h)
-                    .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} while checking gradpa incompatibility of block {:?}",cur_h,  hash)))?;
+                    .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} while checking gradpa incompatibility of block {:?}",cur_h,  block_id)))?;
 
                 // traverse but do not check up to generation 1
                 if cur_gen <= 1 {
@@ -1611,7 +1643,7 @@ impl BlockGraph {
                     &self.block_statuses,
                     cur_b.block.header.content.parents[header.content.slot.thread as usize],
                 )
-                .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking gradpa incompatibility of block {:?}",cur_b.block.header.content.parents[header.content.slot.thread as usize],  hash)))?
+                .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking gradpa incompatibility of block {:?}",cur_b.block.header.content.parents[header.content.slot.thread as usize],  block_id)))?
                 .block
                 .header
                 .content
@@ -1627,7 +1659,7 @@ impl BlockGraph {
 
         // check if the block is incompatible with a parent
         if !incomp.is_disjoint(&parents.iter().map(|(h, _p)| *h).collect()) {
-            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
         }
 
         // check if the block is incompatible with a final block
@@ -1645,40 +1677,42 @@ impl BlockGraph {
                 })
                 .collect(),
         ) {
-            return Ok(CheckOutcome::Discard(DiscardReason::Stale));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
         }
-        massa_trace!("consensus.block_graph.check_header.ok", { "hash": hash });
+        massa_trace!("consensus.block_graph.check_header.ok", {
+            "block_id": block_id
+        });
 
-        Ok(CheckOutcome::Proceed {
+        Ok(HeaderCheckOutcome::Proceed {
             parents_hash_period: parents,
             dependencies: deps,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
-            block_changes: Vec::new(), // we do not have operations yet
         })
     }
 
     fn check_block(
         &self,
-        hash: BlockId,
+        block_id: &BlockId,
         block: &Block,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
-    ) -> Result<CheckOutcome, ConsensusError> {
-        massa_trace!("consensus.block_graph.check_block", { "hash": hash });
-        let deps;
+    ) -> Result<BlockCheckOutcome, ConsensusError> {
+        massa_trace!("consensus.block_graph.check_block", {
+            "block_id": block_id
+        });
+        let mut deps;
         let incomp;
         let parents;
         let inherited_incomp_count;
 
         // check header
-        match self.check_header(hash, &block.header, selector, current_slot)? {
-            CheckOutcome::Proceed {
+        match self.check_header(block_id, &block.header, selector, current_slot)? {
+            HeaderCheckOutcome::Proceed {
                 parents_hash_period,
                 dependencies,
                 incompatibilities,
                 inherited_incompatibilities_count,
-                block_changes,
             } => {
                 // block_changes can be ignored as it is empty, (maybe add an error if not)
                 parents = parents_hash_period;
@@ -1686,17 +1720,33 @@ impl BlockGraph {
                 incomp = incompatibilities;
                 inherited_incomp_count = inherited_incompatibilities_count;
             }
-            outcome => return Ok(outcome),
+            HeaderCheckOutcome::Discard(reason) => return Ok(BlockCheckOutcome::Discard(reason)),
+            HeaderCheckOutcome::WaitForDependencies(deps) => {
+                return Ok(BlockCheckOutcome::WaitForDependencies(deps))
+            }
+            HeaderCheckOutcome::WaitForSlot => return Ok(BlockCheckOutcome::WaitForSlot),
         }
 
-        //TODO check block
+        // check operations
+        let (operations_deps, block_changes) = match self.check_operations(block)? {
+            BlockOperationsCheckOutcome::Proceed {
+                dependencies,
+                block_changes,
+            } => (dependencies, block_changes),
+            BlockOperationsCheckOutcome::Discard(reason) => {
+                return Ok(BlockCheckOutcome::Discard(reason))
+            }
+            BlockOperationsCheckOutcome::WaitForDependencies(deps) => {
+                return Ok(BlockCheckOutcome::WaitForDependencies(deps))
+            }
+        };
+        deps.extend(operations_deps);
 
-        // TODO operation incompatibility test (see issue #102)
-        let block_changes = self.check_operations(&block)?;
+        massa_trace!("consensus.block_graph.check_block.ok", {
+            "block_id": block_id
+        });
 
-        massa_trace!("consensus.block_graph.check_block.ok", { "hash": hash });
-
-        Ok(CheckOutcome::Proceed {
+        Ok(BlockCheckOutcome::Proceed {
             parents_hash_period: parents,
             dependencies: deps,
             incompatibilities: incomp,
@@ -1710,17 +1760,170 @@ impl BlockGraph {
     /// Returns changes done by that block to the ledger (one hashmap per thread)
     fn check_operations(
         &self,
-        block: &Block,
-    ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError> {
-        Ok(Vec::new()) // todo see #266 ##Process
+        block_to_check: &Block,
+    ) -> Result<BlockOperationsCheckOutcome, ConsensusError> {
+        // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
+        let mut dependencies: HashSet<BlockId> = HashSet::new();
+        for operation in block_to_check.operations.iter() {
+            // get thread
+            let op_thread = match Address::from_public_key(&operation.content.sender_public_key) {
+                Ok(addr) => addr.get_thread(self.cfg.thread_count),
+                Err(err) => {
+                    error!(
+                        "block graph check_operations error, bad operation sender_public_key address :{}",
+                        err
+                    );
+                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                }
+            };
+            let op_start_validity_period = operation
+                .content
+                .expire_period
+                .saturating_sub(self.cfg.operation_validity_periods);
+
+            let mut current_block_id = block_to_check.header.content.parents[op_thread as usize]; // non-genesis => has parents
+            loop {
+                //get block to process.
+                let current_block = match self.block_statuses.get(&current_block_id) {
+                    Some(block) => match block {
+                        BlockStatus::Active(block) => block,
+                        _ => return Err(ConsensusError::ContainerInconsistency(format!("block {:?} is not active but is an ancestor of a potentially active block", current_block_id))),
+                    },
+                    None => {
+                        let mut missing_deps = HashSet::with_capacity(1);
+                        missing_deps.insert(current_block_id);
+                        return Ok(BlockOperationsCheckOutcome::WaitForDependencies(missing_deps));
+                    }
+                };
+
+                // stop at op validity start
+                if current_block.block.header.content.slot.period < op_start_validity_period {
+                    break; //next op.
+                }
+
+                // check if present
+                if current_block
+                    .block
+                    .contains_operation(&operation, &self.serialization_context)?
+                {
+                    error!("block graph check_operations error, block operation already integrated in another block");
+                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                }
+                dependencies.insert(current_block_id);
+
+                if current_block.parents.len() == 0 {
+                    //genesis block found
+                    break;
+                }
+
+                current_block_id = current_block.parents[op_thread as usize].0;
+            }
+        }
+
+        //union for operation in block { operation.get_involved_adresses(block.creator.address) } union block.creator.address;
+        let block_creator_address =
+            match Address::from_public_key(&block_to_check.header.content.creator) {
+                Ok(addr) => addr,
+                Err(err) => {
+                    error!(
+                        "block graph check_operations error, bad block creator address :{}",
+                        err
+                    );
+                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                }
+            };
+        let mut involved_addresses: HashSet<Address> = match block_to_check
+            .operations
+            .iter()
+            .map(|op| op.get_involved_addresses(&block_creator_address))
+            .collect::<Result<Vec<HashSet<Address>>, ConsensusError>>()
+        {
+            Ok(addrs) => addrs,
+            Err(err) => {
+                error!(
+                    "block graph check_operations error, error during get_involved_addresses :{}",
+                    err
+                );
+                return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+            }
+        }
+        .into_iter()
+        .flatten()
+        .collect();
+        involved_addresses.insert(block_creator_address);
+
+        let mut current_ledger =
+            self.get_ledger_at_parents(&block_to_check.header.content.parents, &involved_addresses);
+
+        let mut block_changes: Vec<HashMap<Address, LedgerChange>> =
+            vec![HashMap::new(); self.cfg.thread_count as usize];
+
+        // reward
+        let reward_ledger_change = LedgerChange {
+            balance_delta: self.cfg.block_reward,
+            balance_increment: true,
+        };
+        let reward_change = (&block_creator_address, &reward_ledger_change);
+
+        if let Err(err) = current_ledger.apply_change(reward_change, self.cfg.thread_count) {
+            error!("block graph check_operations error, can't apply reward_change to block current_ledger :{}", err);
+            return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+        }
+
+        // all operations
+        for operation in block_to_check.operations.iter() {
+            let changes = match operation.get_changes(&block_creator_address, self.cfg.thread_count)
+            {
+                Err(err) => {
+                    error!(
+                        "block graph check_operations error, can't get changes :{}",
+                        err
+                    );
+                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                }
+                Ok(changes) => changes,
+            };
+            for thread in 0..(self.cfg.thread_count as usize) {
+                for change in changes[thread].iter() {
+                    // apply change to ledger and check if ok
+                    if let Err(err) = current_ledger.apply_change(change, self.cfg.thread_count) {
+                        error!("block graph check_operations error, can't apply change to block current_ledger :{}", err);
+                        return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    }
+
+                    // add change to block changes
+                    if let Some(mut old) =
+                        block_changes[thread].insert(change.0.clone(), change.1.clone())
+                    {
+                        if let Err(err) = old.chain(change.1) {
+                            error!(
+                                "block graph check_operations error, can't chain change :{}",
+                                err
+                            );
+                            return Ok(BlockOperationsCheckOutcome::Discard(
+                                DiscardReason::Invalid,
+                            ));
+                        }
+                        block_changes[thread].insert(change.0.clone(), old); // insert back old chained with new
+                    }
+                }
+            }
+        }
+
+        Ok(BlockOperationsCheckOutcome::Proceed {
+            dependencies,
+            block_changes,
+        })
     }
 
     fn get_ledger_at_parents(
         &self,
         parents: &Vec<BlockId>,
         query_addrs: &HashSet<Address>,
-    ) -> Vec<HashMap<Address, LedgerData>> {
-        todo!()
+    ) -> CurrentBlockLedger {
+        CurrentBlockLedger {
+            data: vec![HashMap::new(); parents.len() as usize],
+        }
     }
 
     /// Computes max cliques of compatible blocks
@@ -2858,6 +3061,7 @@ mod tests {
                 ledger_cache_capacity: 1000000,
                 ledger_flush_interval: Some(200.into()),
                 ledger_reset_at_startup: true,
+                block_reward: 1,
             },
             SerializationContext {
                 max_block_size,

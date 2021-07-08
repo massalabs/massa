@@ -24,6 +24,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 /// * network_event_receiver: the NetworkEventReceiver we interact with
 pub async fn start_protocol_controller(
     cfg: ProtocolConfig,
+    operation_validity_periods: u64,
     serialization_context: SerializationContext,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
@@ -46,6 +47,7 @@ pub async fn start_protocol_controller(
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
             cfg,
+            operation_validity_periods,
             serialization_context,
             network_command_sender,
             network_event_receiver,

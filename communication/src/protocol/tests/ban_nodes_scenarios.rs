@@ -15,6 +15,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
     let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config.clone(),
+            5u64,
             serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
@@ -72,6 +73,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config.clone(),
+            5u64,
             serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
@@ -170,6 +172,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -268,6 +271,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -397,6 +401,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -491,6 +496,7 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
     let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config.clone(),
+            5u64,
             serialization_context.clone(),
             network_command_sender,
             network_event_receiver,

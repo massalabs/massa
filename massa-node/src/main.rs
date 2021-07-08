@@ -70,6 +70,7 @@ async fn run(cfg: config::Config) {
         protocol_manager,
     ) = start_protocol_controller(
         cfg.protocol.clone(),
+        cfg.consensus.operation_validity_periods.clone(),
         serialization_context.clone(),
         network_command_sender.clone(),
         network_event_receiver,

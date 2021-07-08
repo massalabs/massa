@@ -21,7 +21,7 @@ pub struct Ledger {
     context: SerializationContext,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LedgerData {
     balance: u64,
 }
@@ -88,7 +88,7 @@ impl LedgerChange {
         }
     }
 
-    fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
+    pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
             self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
                 ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into()),
@@ -153,7 +153,7 @@ impl DeserializeCompact for LedgerChange {
     }
 }
 
-trait OperationLedgerInterface {
+pub trait OperationLedgerInterface {
     fn get_involved_addresses(
         &self,
         fee_target: &Address,
@@ -489,6 +489,48 @@ impl Ledger {
             res.push(map);
         }
         Ok(res)
+    }
+}
+
+pub struct CurrentBlockLedger {
+    pub data: Vec<HashMap<Address, LedgerData>>,
+}
+
+impl CurrentBlockLedger {
+    pub fn apply_change(
+        &mut self,
+        (change_adrress, change): (&Address, &LedgerChange),
+        thread_count: u8,
+    ) -> Result<(), ConsensusError> {
+        let ledger_data = self.data[change_adrress.get_thread(thread_count) as usize]
+            .entry(*change_adrress)
+            .or_insert_with(|| LedgerData { balance: 0 });
+        ledger_data.apply_change(change)
+    }
+
+    pub fn apply_change_to_block_changes(
+        &mut self,
+        block_creator_address: Address,
+        block_changes: &mut [HashMap<Address, LedgerChange>],
+        change: (&Address, &LedgerChange),
+        thread_count: u8,
+    ) -> Result<(), ConsensusError> {
+        //apply block change to the current block ledger.
+        if let Err(err) = self.apply_change(change, thread_count) {
+            // if it fails block is discarded as invalid
+            error!("block graph check_operations error, can't apply reward_change to block current_ledger :{}", err);
+            //TODO discard block
+            return Ok(());
+        }
+
+        //chain reward_change to block_change;
+        let block_change = block_changes[block_creator_address.get_thread(thread_count) as usize]
+            .entry(block_creator_address)
+            .or_insert_with(|| LedgerChange {
+                balance_delta: 0,
+                balance_increment: true,
+            });
+        block_change.chain(change.1)
     }
 }
 
