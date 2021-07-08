@@ -290,7 +290,7 @@ impl NodeWorker {
         while let Some(_) = writer_event_rx.recv().await {}
         node_writer_handle.await?;
 
-        // Notify protocol controller of closure, while ignoring incoming commands to prevent deadlock.
+        // Notify network controller of closure, while ignoring incoming commands to prevent deadlock.
         loop {
             tokio::select! {
                 _ = self
