@@ -30,6 +30,18 @@ impl<ProtocolControllerT: ProtocolController + 'static>
         debug!("starting consensus controller");
         massa_trace!("start", {});
 
+        // ensure that the parameters are sane
+        if cfg.thread_count == 0 {
+            panic!("config thread_count shoud be strictly more than 0");
+        }
+        if cfg.t0_millis == 0 {
+            panic!("config t0_millis shoud be strictly more than 0");
+        }
+        if cfg.t0_millis % (cfg.thread_count as u64) != 0 {
+            panic!("config thread_count should divide t0_millis");
+        }
+
+        // start worker
         let block_db = BlockDatabase::new(cfg);
         let (consensus_command_tx, consensus_command_rx) = mpsc::channel::<ConsensusCommand>(1024);
         let (consensus_event_tx, consensus_event_rx) = mpsc::channel::<ConsensusEvent>(1024);
