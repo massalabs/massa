@@ -22,4 +22,8 @@ chrono = "0.4.19"
 time = { path = "../time" }
 models = {path = "../models"}
 
+[dev-dependencies]
+communication = {path = "../communication"}
+
+
 

@@ -1,3 +1,8 @@
+//! Rustyline integration to manager uer input and command typing and execution.
+//!
+//! Command are registered with new_command_noargs or new_command repl functions.
+//! repl API register all elements in Rustyline and Claps.
+
 use crate::repl::helper::HISTORY_FILE;
 use core::convert::TryFrom;
 use rustyline::error::ReadlineError;
@@ -23,6 +28,15 @@ impl Default for ReplData {
 
 pub type CmdFn = Box<dyn Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync>;
 
+///Define a command that can be executed.
+///
+/// name: typed name of the command
+///
+/// min_nb_param, max_nb_param: min and max number of parameters of the command
+///
+/// help: display help
+///
+/// func: executed function when the command is typed.
 pub struct Command {
     name: String,
     max_nb_param: usize,
@@ -50,10 +64,102 @@ impl<'a> TryFrom<&'a str> for TypedCommand<'a> {
     }
 }
 
+/// The builder part of Repl to register the command with clap.
+pub struct BuilderRepl<'a, 'b> {
+    repl: Repl,
+    app: clap::App<'a, 'b>,
+}
+
+impl<'a, 'b> BuilderRepl<'a, 'b> {
+    fn new(repl: Repl, app: clap::App<'a, 'b>) -> Self {
+        BuilderRepl { repl, app }
+    }
+
+    pub fn split(self) -> (Repl, clap::App<'a, 'b>) {
+        (self.repl, self.app)
+    }
+
+    pub fn new_command_noargs<S, F>(self, name: S, help: S, func: F) -> Self
+    where
+        S: ToString,
+        F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
+    {
+        self.new_command(name, help, 0, 0, func)
+    }
+
+    pub fn new_command<S, F>(
+        mut self,
+        name: S,
+        help: S,
+        min_nb_param: usize,
+        max_nb_param: usize,
+        func: F,
+    ) -> Self
+    where
+        S: ToString,
+        F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
+    {
+        self.repl.cmd_list.push(Command {
+            name: name.to_string(),
+            max_nb_param,
+            min_nb_param,
+            help: help.to_string(),
+            func: Box::new(func),
+        });
+
+        self.app = if min_nb_param > 0 {
+            self.app.subcommand(
+                clap::SubCommand::with_name(&name.to_string())
+                    .about("")
+                    .arg(
+                        clap::Arg::with_name("")
+                            .required(true)
+                            .min_values(min_nb_param as u64)
+                            .max_values(max_nb_param as u64),
+                    ),
+            )
+        } else {
+            self.app.subcommand(
+                clap::SubCommand::with_name(&name.to_string())
+                    .about("")
+                    .arg(clap::Arg::with_name("").required(false)),
+            )
+        };
+
+        self
+    }
+}
+
+///Main struct to manager user's typed command.
+///
+/// Command are registered using a builder pattern with the new_command_noargs or new_command function.
+/// The BuilderRepl struct implement the builder pattern and the slip function is call
+/// after registering all the command to get Repl and Clap structures.
+///
+/// # Example
+///
+///
+/// ```
+///     let (mut repl, app) = repl::Repl::new().new_command(
+///        "cmd1",
+///        "help of cmd1",
+///        1,
+///        2,
+///        cmd1_call_function,
+///        app //Clap structure
+///    )
+///    .new_command_noargs("cmd2", "help cmd2", cmd2_call_function)
+///    .split();
+/// ```
+/// function example:
+/// ```
+/// fn cmd1_call_function(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+///    Ok(())
+/// }
+/// ```
 pub struct Repl {
     pub data: ReplData,
     cmd_list: Vec<Command>,
-    //set to true if the command is executed as a command line.
 }
 
 impl Repl {
@@ -88,60 +194,37 @@ impl Repl {
         repl
     }
 
-    pub fn new_command_noargs<'a, 'b, S, F>(
-        &mut self,
-        name: S,
-        help: S,
-        func: F,
-        app: clap::App<'a, 'b>,
-    ) -> clap::App<'a, 'b>
-    where
-        S: ToString,
-        F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
-    {
-        self.new_command(name, help, 0, 0, func, app)
-    }
+    /* not use in currrent massa_client
+    ///create a new command with no args.
+     pub fn new_command_noargs<'a, 'b, S, F>(
+         self,
+         name: S,
+         help: S,
+         func: F,
+         app: clap::App<'a, 'b>,
+     ) -> BuilderRepl<'a, 'b>
+     where
+         S: ToString,
+         F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
+     {
+         BuilderRepl::new(self, app).new_command(name, help, 0, 0, func)
+     }*/
 
-    //max_nb_param is the max number of parameters that the command can take.
+    ///create a new command with min and max args.
     pub fn new_command<'a, 'b, S, F>(
-        &mut self,
+        self,
         name: S,
         help: S,
         min_nb_param: usize,
         max_nb_param: usize,
         func: F,
         app: clap::App<'a, 'b>,
-    ) -> clap::App<'a, 'b>
+    ) -> BuilderRepl<'a, 'b>
     where
         S: ToString,
         F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
     {
-        self.cmd_list.push(Command {
-            name: name.to_string(),
-            max_nb_param,
-            min_nb_param,
-            help: help.to_string(),
-            func: Box::new(func),
-        });
-
-        if min_nb_param > 0 {
-            app.subcommand(
-                clap::SubCommand::with_name(&name.to_string())
-                    .about("")
-                    .arg(
-                        clap::Arg::with_name("")
-                            .required(true)
-                            .min_values(min_nb_param as u64)
-                            .max_values(max_nb_param as u64),
-                    ),
-            )
-        } else {
-            app.subcommand(
-                clap::SubCommand::with_name(&name.to_string())
-                    .about("")
-                    .arg(clap::Arg::with_name("").required(false)),
-            )
-        }
+        BuilderRepl::new(self, app).new_command(name, help, min_nb_param, max_nb_param, func)
     }
 
     pub fn run(mut self) {
