@@ -1,7 +1,7 @@
-use serde::Deserialize;
 use crate::network::config::NetworkConfig;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolConfig {
-    network_config: NetworkConfig,
+    pub network: NetworkConfig,
 }

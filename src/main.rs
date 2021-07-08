@@ -1,12 +1,9 @@
 #![feature(ip)]
 
-
-
 mod config;
+mod crypto;
 mod network;
 mod protocol;
-mod crypto;
-
 
 use log::{error, info};
 use std::error::Error;
@@ -17,24 +14,25 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 async fn run(cfg: config::Config) -> BoxResult<()> {
     // launch network controller
-    let mut net = network::controller::NetworkController::new(cfg.network).await?;
+    let mut net = network::connection_controller::ConnectionController::new(&cfg.network).await?;
     let mut net_interface = net.get_upstream_interface();
 
     // loop over messages
     loop {
         tokio::select! {
             evt = net.wait_event() => match evt {
-                Ok(msg) => match msg {
-                    network::controller::NetworkControllerEvent::CandidateConnection {ip, socket} => {
-                        info!("new peer: {}", ip);
-                        sleep(Duration::from_secs(2)).await;
-                        net_interface.peer_alive(ip).await;
-                        sleep(Duration::from_secs(20)).await;
-                        net_interface.peer_closed(ip, network::controller::PeerClosureReason::Normal).await;
-                        info!("peer closed: {}", ip);
-                    }
-                },
-                Err(e) => return Err(e)
+                network::connection_controller::ConnectionControllerEvent::NewConnection((id, socket)) => {
+                    info!("new peer: {:#?}", id);
+                    sleep(Duration::from_secs(2)).await;
+                    net_interface.connection_alive(id).await;
+                    sleep(Duration::from_secs(20)).await;
+                    net_interface.connection_closed(id, network::connection_controller::ConnectionClosureReason::Normal).await;
+                    info!("peer closed: {:#?}", id);
+                }
+                network::connection_controller::ConnectionControllerEvent::ConnectionBanned(id) => {
+                    net_interface.connection_closed(id, network::connection_controller::ConnectionClosureReason::Normal).await;
+                    info!("peer closed because of a ban triggered by another connection: {:#?}", id);
+                }
             }
         }
     }
