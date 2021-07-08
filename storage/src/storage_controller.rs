@@ -30,12 +30,14 @@ pub fn start_storage_controller(
 pub struct StorageCommandSender(pub BlockStorage);
 
 impl StorageCommandSender {
-    pub async fn add_block(&'static self, hash: Hash, block: Block) -> Result<(), StorageError> {
-        tokio::task::spawn_blocking(move || self.0.add_block(hash, block)).await?
+    pub async fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.add_block(hash, block)).await?
     }
 
-    pub async fn get_block(&'static self, hash: Hash) -> Result<Option<Block>, StorageError> {
-        tokio::task::spawn_blocking(move || self.0.get_block(hash)).await?
+    pub async fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.get_block(hash)).await?
     }
 
     pub async fn get_slot_range(
@@ -43,7 +45,8 @@ impl StorageCommandSender {
         start: (u64, u8),
         end: (u64, u8),
     ) -> Result<HashMap<Hash, Block>, StorageError> {
-        tokio::task::spawn_blocking(move || self.0.get_slot_range(start, end)).await?
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.get_slot_range(start, end)).await?
     }
 }
 
