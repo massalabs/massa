@@ -15,6 +15,8 @@ pub struct BootstrapConfig {
     pub connect_timeout: UTime,
     /// Time we wait before retrying a bootstrap
     pub retry_delay: UTime,
+    /// Max message size for bootstrap
+    pub max_bootstrap_message_size: u32,
     /// Max number of blocks we provide/ take into account while bootstrapping
     pub max_bootstrap_blocks: u32,
     pub max_bootstrap_cliques: u32,

@@ -213,6 +213,7 @@ async fn test_get_graph_interval() {
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
     };
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -768,6 +769,7 @@ async fn test_get_block_interval() {
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
     };
 
     let mut graph = get_test_block_graph();
@@ -1063,6 +1065,7 @@ async fn test_get_block() {
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
     };
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -1380,6 +1383,7 @@ async fn test_last_stale() {
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
     };
 
     //test with empty stale block
@@ -1478,6 +1482,7 @@ async fn test_last_invalid() {
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
     };
 
     //test with empty final block
@@ -1573,6 +1578,7 @@ async fn test_staker_info() {
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
     };
 
     let staker = get_dummy_staker();

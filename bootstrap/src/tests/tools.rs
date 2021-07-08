@@ -30,6 +30,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ping: UTime::from(500),
+        max_bootstrap_message_size: 100000000,
     }
 }
 
@@ -52,6 +53,7 @@ pub fn get_serialization_context() -> SerializationContext {
         max_bootstrap_deps: 100,
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
     }
 }
 
