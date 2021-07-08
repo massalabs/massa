@@ -41,7 +41,7 @@ impl FutureIncomingBlocks {
             .binary_search(&(slot, hash))
             .err()
             .ok_or(ConsensusError::ContainerInconsistency)?;
-        if pos >= self.max_size {
+        if pos > self.max_size {
             // beyond capacity
             return Ok(Some((hash, block)));
         }
@@ -49,7 +49,7 @@ impl FutureIncomingBlocks {
         // add into map
         map_entry.insert(block);
         // remove over capacity
-        if self.struct_deque.len() >= self.max_size {
+        if self.struct_deque.len() > self.max_size {
             let (_, rem_hash) = self
                 .struct_deque
                 .pop_back()
@@ -171,7 +171,7 @@ impl DependencyWaitingBlocks {
         // sort promotion list by slot and original seq number, and insert it at the end of the vecdeque
         let mut sorted_promotions: Vec<(u64, u8, u64, Hash)> = to_promote
             .into_iter()
-            .map(|(k, v)| (v.0, v.1, v.2, k))
+            .map(|(hash, (period, thread, sequence))| (period, thread, sequence, hash))
             .collect();
         sorted_promotions.sort_unstable();
         for (_, _, _, add_hash) in sorted_promotions.into_iter() {
@@ -236,8 +236,8 @@ impl DependencyWaitingBlocks {
         self.blocked_to_dep.get(hash).map(|(_, block, _)| block)
     }
 
-    // a valid block was obtained.
-    // returns block if removed and a list blocks that should be retried
+    /// a valid block was obtained.
+    /// returns block if removed and a list blocks that should be retried
     pub fn valid_block_obtained(
         &mut self,
         obtained_h: &Hash,
@@ -317,5 +317,314 @@ impl DependencyWaitingBlocks {
             }
         }
         Ok(removed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crypto::signature::SignatureEngine;
+    use models::block::BlockHeader;
+
+    use crate::random_selector::RandomSelector;
+
+    use super::*;
+
+    fn create_standalone_block(period_number: u64, thread_number: u8) -> (Hash, Block) {
+        let signature_engine = SignatureEngine::new();
+        let private_key = SignatureEngine::generate_random_private_key();
+        let public_key = signature_engine.derive_public_key(&private_key);
+        let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
+            .expect("could not initialize selector");
+
+        let example_hash = Hash::hash("42".as_bytes());
+        let parents = Vec::new();
+
+        let header = BlockHeader {
+            creator: public_key,
+            thread_number,
+            period_number,
+            roll_number: selector.draw((period_number, thread_number)),
+            parents,
+            endorsements: Vec::new(),
+            out_ledger_hash: example_hash,
+            operation_merkle_root: example_hash,
+        };
+
+        let hash = header.compute_hash().expect("could not computte hash"); // in a test
+
+        (
+            hash,
+            Block {
+                header,
+                operations: Vec::new(),
+                signature: signature_engine
+                    .sign(&hash, &private_key)
+                    .expect("could not sign"), // in a test
+            },
+        )
+    }
+
+    #[test]
+    fn test_promote() {
+        let mut deps = DependencyWaitingBlocks::new(5);
+        let (hash_a, block_a) = create_standalone_block(1, 1);
+        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_c, block_c) = create_standalone_block(3, 1);
+        let (hash_d, block_d) = create_standalone_block(4, 1);
+
+        let mut deps_a = HashSet::new();
+        deps_a.insert(hash_b);
+        deps.insert(hash_a, block_a.clone(), deps_a.clone())
+            .unwrap();
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
+
+        let mut deps_c = HashSet::new();
+        deps_c.insert(hash_d);
+        deps.insert(hash_c, block_c, deps_c).unwrap();
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
+
+        deps.promote(&hash_a).unwrap();
+        assert_eq!(deps.vec_blocked, vec![(3, hash_c), (4, hash_a)]);
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut deps = DependencyWaitingBlocks::new(2);
+        let (hash_a, block_a) = create_standalone_block(1, 1);
+        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_c, block_c) = create_standalone_block(3, 1);
+        let (hash_d, block_d) = create_standalone_block(4, 1);
+        let (hash_e, block_e) = create_standalone_block(5, 1);
+        let (hash_f, block_f) = create_standalone_block(6, 1);
+
+        let mut deps_a = HashSet::new();
+        deps_a.insert(hash_b);
+        deps.insert(hash_a, block_a.clone(), deps_a.clone())
+            .unwrap();
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
+
+        let mut deps_c = HashSet::new();
+        deps_c.insert(hash_d);
+        deps.insert(hash_c, block_c, deps_c).unwrap();
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
+
+        let mut deps_e = HashSet::new();
+        deps_e.insert(hash_f);
+        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
+
+        // block_a has been
+        assert_eq!(deps.vec_blocked, vec![(3, hash_c), (5, hash_e)]);
+        assert!(removed.contains_key(&hash_a));
+        assert_eq!(removed.len(), 1)
+    }
+
+    #[test]
+    fn test_insert_chain_dependencies() {
+        let mut deps = DependencyWaitingBlocks::new(2);
+        let (hash_a, block_a) = create_standalone_block(1, 1);
+        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_c, block_c) = create_standalone_block(3, 1);
+        let (hash_e, block_e) = create_standalone_block(5, 1);
+
+        let mut deps_a = HashSet::new();
+        deps_a.insert(hash_b);
+        let removed = deps
+            .insert(hash_a, block_a.clone(), deps_a.clone())
+            .unwrap();
+        assert_eq!(removed.len(), 0);
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
+
+        let mut deps_c = HashSet::new();
+        deps_c.insert(hash_a);
+        let removed = deps.insert(hash_c, block_c, deps_c).unwrap();
+        assert_eq!(removed.len(), 0);
+        assert_eq!(deps.vec_blocked, vec![(3, hash_a), (4, hash_c)]);
+
+        let mut deps_e = HashSet::new();
+        deps_e.insert(hash_c);
+        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
+
+        // block_a has been
+        assert_eq!(deps.vec_blocked.len(), 0);
+        assert_eq!(removed.len(), 3)
+    }
+
+    #[test]
+    fn test_valid_block_obtained() {
+        let mut deps = DependencyWaitingBlocks::new(5);
+        let (hash_a, block_a) = create_standalone_block(1, 1);
+        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_c, block_c) = create_standalone_block(3, 1);
+        let (hash_d, block_d) = create_standalone_block(4, 1);
+
+        let mut deps_a = HashSet::new();
+        deps_a.insert(hash_b);
+        deps.insert(hash_a, block_a.clone(), deps_a.clone())
+            .unwrap();
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
+
+        let mut deps_c = HashSet::new();
+        deps_c.insert(hash_d);
+        deps.insert(hash_c, block_c, deps_c).unwrap();
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
+
+        let (block, hashset) = deps.valid_block_obtained(&hash_b).unwrap();
+
+        assert!(block.is_none()); //block_b was never in the structure
+        assert!(hashset.contains(&hash_a));
+        assert_eq!(hashset.len(), 1);
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
+    }
+
+    #[test]
+    fn test_insert_complex_chain_dependencies() {
+        let mut deps = DependencyWaitingBlocks::new(2);
+        let (hash_a, block_a) = create_standalone_block(1, 0);
+        let (hash_b, block_b) = create_standalone_block(2, 0);
+        let (hash_c, block_c) = create_standalone_block(3, 0);
+        let (hash_d, block_d) = create_standalone_block(1, 1);
+        let (hash_e, block_e) = create_standalone_block(2, 1);
+        let (hash_f, block_f) = create_standalone_block(3, 1);
+
+        let deps_b: HashSet<Hash> = vec![hash_a, hash_d].into_iter().collect();
+        let removed = deps.insert(hash_b, block_b, deps_b).unwrap();
+        assert_eq!(removed.len(), 0);
+        assert_eq!(deps.vec_blocked, vec![(1, hash_b)]);
+
+        let deps_f: HashSet<Hash> = vec![hash_b, hash_e].into_iter().collect();
+        let removed = deps.insert(hash_f, block_f, deps_f).unwrap();
+        assert_eq!(removed.len(), 0);
+        assert_eq!(deps.vec_blocked, vec![(3, hash_b), (4, hash_f)]);
+
+        let (b, hs) = deps.valid_block_obtained(&hash_a).unwrap();
+        assert!(b.is_none());
+        assert_eq!(deps.vec_blocked, vec![(3, hash_b), (4, hash_f)]);
+        assert_eq!(hs.len(), 1);
+        assert!(hs.contains(&hash_b));
+
+        let deps_c: HashSet<Hash> = vec![hash_b, hash_e].into_iter().collect();
+        let removed = deps.insert(hash_c, block_c, deps_c).unwrap();
+        assert_eq!(removed.len(), 1);
+        assert!(removed.contains_key(&hash_f));
+        assert_eq!(deps.vec_blocked, vec![(6, hash_b), (7, hash_c)]);
+
+        let deps_e: HashSet<Hash> = vec![hash_d].into_iter().collect();
+        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
+        assert!(removed.contains_key(&hash_c));
+        assert_eq!(removed.len(), 2); // from that point i'm not sure about sequence numbers
+        assert_eq!(deps.vec_blocked, vec![(9, hash_e)]);
+
+        let (b, hs) = deps.valid_block_obtained(&hash_d).unwrap();
+        assert!(b.is_none());
+        assert_eq!(deps.vec_blocked, vec![(9, hash_e)]);
+        assert_eq!(hs.len(), 1);
+        assert!(hs.contains(&hash_e));
+    }
+
+    #[test]
+    fn test_cancel() {
+        let mut deps = DependencyWaitingBlocks::new(5);
+        let (hash_a, block_a) = create_standalone_block(1, 1);
+        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_c, block_c) = create_standalone_block(3, 1);
+        let (hash_d, block_d) = create_standalone_block(4, 1);
+        let (hash_e, block_e) = create_standalone_block(5, 1);
+
+        let mut deps_a = HashSet::new();
+        deps_a.insert(hash_b);
+        let removed = deps
+            .insert(hash_a, block_a.clone(), deps_a.clone())
+            .unwrap();
+        assert_eq!(removed.len(), 0);
+
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
+
+        let mut deps_c = HashSet::new();
+        deps_c.insert(hash_d);
+        let removed = deps.insert(hash_c, block_c, deps_c).unwrap();
+        assert_eq!(removed.len(), 0);
+        assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
+
+        let mut deps_e = HashSet::new();
+        deps_e.insert(hash_a);
+        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
+        assert_eq!(
+            deps.vec_blocked,
+            vec![(3, hash_c), (5, hash_a), (6, hash_e)]
+        );
+        assert_eq!(removed.len(), 0);
+
+        let mut to_cancel = HashSet::new();
+        to_cancel.insert(hash_b);
+
+        let cancelled = deps.cancel(to_cancel).unwrap();
+        assert_eq!(cancelled.len(), 2);
+        assert!(cancelled.contains_key(&hash_a));
+        assert!(cancelled.contains_key(&hash_e));
+    }
+
+    #[test]
+    fn test_insert_future() {
+        let mut future = FutureIncomingBlocks::new(3);
+        let (hash_a, block_a) = create_standalone_block(1, 0);
+        let (hash_b, block_b) = create_standalone_block(2, 0);
+        let (hash_c, block_c) = create_standalone_block(3, 0);
+        let (hash_d, block_d) = create_standalone_block(4, 0);
+
+        assert!(future.insert(hash_a, block_a).unwrap().is_none());
+        assert!(future.insert(hash_b, block_b).unwrap().is_none());
+        assert!(future.insert(hash_c, block_c).unwrap().is_none());
+        if let Some((removed_hash, _removed_block)) = future.insert(hash_d, block_d).unwrap() {
+            assert_eq!(removed_hash, hash_d);
+            assert_eq!(future.struct_deque.len(), 3);
+        } else {
+            panic!("max_size should have been reached")
+        }
+    }
+
+    #[test]
+    fn test_insert_future_order() {
+        let mut future = FutureIncomingBlocks::new(3);
+        let (hash_a, block_a) = create_standalone_block(1, 0);
+        let (hash_b, block_b) = create_standalone_block(2, 0);
+        let (hash_c, block_c) = create_standalone_block(3, 0);
+        let (hash_d, block_d) = create_standalone_block(4, 0);
+
+        assert!(future.insert(hash_d, block_d).unwrap().is_none());
+        assert!(future.insert(hash_b, block_b).unwrap().is_none());
+        assert!(future.insert(hash_c, block_c).unwrap().is_none());
+        if let Some((removed_hash, _removed_block)) = future.insert(hash_a, block_a).unwrap() {
+            assert_eq!(removed_hash, hash_d);
+            assert_eq!(future.struct_deque.len(), 3);
+        } else {
+            panic!("max_size should have been reached")
+        }
+    }
+
+    #[test]
+    fn test_pop_until() {
+        let mut future = FutureIncomingBlocks::new(5);
+        let (hash_a, block_a) = create_standalone_block(1, 0);
+        let (hash_b, block_b) = create_standalone_block(2, 0);
+        let (hash_c, block_c) = create_standalone_block(3, 0);
+        let (hash_d, block_d) = create_standalone_block(4, 0);
+
+        assert!(future.insert(hash_a, block_a).unwrap().is_none());
+        assert!(future.insert(hash_b, block_b).unwrap().is_none());
+        assert!(future.insert(hash_c, block_c).unwrap().is_none());
+        assert!(future.insert(hash_d, block_d).unwrap().is_none());
+
+        let popped = future.pop_until((3, 0)).unwrap();
+        assert_eq!(
+            popped.iter().map(|(h, _)| h).collect::<Vec<&Hash>>(),
+            vec![&hash_a, &hash_b, &hash_c]
+        )
     }
 }
