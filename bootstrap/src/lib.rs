@@ -1,7 +1,7 @@
 use binders::{ReadBinder, WriteBinder};
 use consensus::{BoostrapableGraph, ConsensusCommandSender};
 use establisher::{ReadHalf, WriteHalf};
-use log::{debug, warn};
+use log::{debug, trace, warn};
 use std::net::SocketAddr;
 
 mod binders;
@@ -40,9 +40,16 @@ async fn get_state_internal(
     let signature_engine = SignatureEngine::new();
 
     let send_time_uncompensated = UTime::now(0)?;
+    trace!(
+        "before sending BootstrapInitiation to write binder in get_state_internal in bootstrap lib"
+    );
     writer
         .send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes })
         .await?;
+
+    trace!(
+        "after sending BootstrapInitiation to write binder in get_state_internal in bootstrap lib"
+    );
 
     // First, clock sync.
     let msg = reader.next().await?.map_or_else(
@@ -146,9 +153,12 @@ pub struct BootstrapManager {
 
 impl BootstrapManager {
     pub async fn stop(self) -> Result<(), BootstrapError> {
+        trace!("before sending () to bootstrap manager tx in stop in bootstrap lib");
         if let Err(_) = self.manager_tx.send(()).await {
             warn!("bootstrap server  already dropped");
         }
+
+        trace!("after sending () to bootstrap manager tx in stop in bootstrap lib");
         let _ = self.join_handle.await?;
         Ok(())
     }
@@ -198,8 +208,11 @@ impl BootstrapServer {
         debug!("starting bootstrap server");
         let mut listener = self.establisher.get_listener(self.port).await?;
         loop {
+            trace!("waiting on select in run in bootstrap lib");
             tokio::select! {
-                res = listener.accept() => match res {
+                res = listener.accept() => {
+                    trace!("entered listener.accept() branch of the select in run in bootstrap lib");
+                    match res {
                     Ok(res)=> {
                         if let Err(e) = self.manage_bootstrap(res).await {
                             warn!("error while managing bootstrap connection: {:?} - bootstrap attempt ignored", e.to_string());
@@ -208,8 +221,8 @@ impl BootstrapServer {
                     Err(e) => {
                         warn!("error while accepting bootstrap connection: {:?} - connection attempt ignored", e.to_string());
                     }
-                },
-                _ = self.manager_rx.recv() => break,
+                }},
+                _ = self.manager_rx.recv() => {trace!("entered self.manager_rx.recv() branch of the select in run in bootstrap lib");break},
             }
         }
         Ok(())
@@ -241,7 +254,11 @@ impl BootstrapServer {
                     server_time,
                     signature: signature.clone(),
                 };
+
+                trace!("before sending BootstrapTime to write binder in manage_bootstrap in bootstrap lib");
                 writer.send(&message).await?;
+
+                trace!("after sending BootstrapTime to write binder in manage_bootstrap in bootstrap lib");
 
                 // Second, send state.
                 let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
@@ -254,7 +271,11 @@ impl BootstrapServer {
                 let signature = signature_engine
                     .sign(&previous_signature_and_message_hash, &self.private_key)?;
                 let message = BootstrapMessage::ConsensusState { graph, signature };
+
+                trace!("before sending ConsensusState to write binder in manage_bootstrap in bootstrap lib");
                 writer.send(&message).await?;
+
+                trace!("after sending ConsensusState to write binder in manage_bootstrap in bootstrap lib");
                 Ok(())
             }
             msg => {

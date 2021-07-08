@@ -878,6 +878,7 @@ dependencies = [
  "communication",
  "consensus",
  "crypto",
+ "log",
  "models",
  "reqwest",
  "rustyline",

@@ -10,6 +10,7 @@ pub use config::ApiConfig;
 use config::CHANNEL_SIZE;
 use consensus::ConsensusConfig;
 use filters::get_filter;
+use log::trace;
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::sync::mpsc;
@@ -49,11 +50,14 @@ pub async fn start_api_controller(
     ))
     .try_bind_with_graceful_shutdown(bind, async move {
         loop {
+            trace!("waiting on select in start_api_controller in api lib");
             tokio::select! {
-                cmd = manager_rx.recv() => match cmd {
+                cmd = manager_rx.recv() => {
+                    trace!("entered manager_rx.recv() branch of the select in start_api_controller in api lib");
+                    match cmd {
                     None => break,
                     Some(_) => {}
-                }
+                }}
             }
         }
     })?;
@@ -72,19 +76,25 @@ pub async fn start_api_controller(
 impl ApiEventReceiver {
     /// Listen for ApiEvents
     pub async fn wait_event(&mut self) -> Result<ApiEvent, ApiError> {
-        self.0
+        trace!("before receiving next event from ApiEventReceiver in wait_event in api lib");
+        let res = self
+            .0
             .recv()
             .await
             .ok_or(ApiError::SendChannelError(format!(
                 "could not receive api event"
-            )))
+            )));
+        trace!("after receiving next event from ApiEventReceiver in wait_event in api lib");
+        res
     }
 
     /// drains remaining events and returns them in a VecDeque
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<ApiEvent> {
         let mut remaining_events: VecDeque<ApiEvent> = VecDeque::new();
+        trace!("before receiving next event from ApiEventReceiver in drain in api lib");
         while let Some(evt) = self.0.recv().await {
+            trace!("after receiving next event from ApiEventReceiver in drain in api lib");
             remaining_events.push_back(evt);
         }
         remaining_events

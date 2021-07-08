@@ -10,7 +10,7 @@ use communication::{
     protocol::start_protocol_controller,
 };
 use consensus::start_consensus_controller;
-use log::{error, info};
+use log::{error, info, trace};
 use models::SerializationContext;
 use storage::start_storage;
 use tokio::{
@@ -107,55 +107,77 @@ async fn run(cfg: config::Config) {
 
     // loop over messages
     loop {
+        trace!("waiting on select in loop in massa-node main");
         tokio::select! {
-            evt = consensus_event_receiver.wait_event() => match evt {
-                _ => {}
+            evt = consensus_event_receiver.wait_event() => {
+                trace!("entered consensus_event_receiver.wait_event() branch of the  select in loop in massa-node main");
+                match evt {
+                    Ok(_) => (),
+                    Err(err) => {
+                        error!("consensus_event_receiver.wait_event error: {:?}", err);
+                        break;
+                    }
+                }
             },
 
-            evt = api_event_receiver.wait_event() => match evt {
+            evt = api_event_receiver.wait_event() =>{
+                trace!("entered api_event_receiver.wait_event() branch of the  select in loop in massa-node main");
+                match evt {
                 Ok(ApiEvent::AskStop) => {
                     info!("API asked node stop");
                     break;
                 },
                 Ok(ApiEvent::GetActiveBlock{hash, response_tx}) => {
+                    trace!("before sending block to response_tx sender in loop in massa-node main");
                     response_tx.send(
                         consensus_command_sender
                         .get_active_block(hash)
                             .await
                             .expect("could not retrieve block")
                         ).expect("could not send block");
+
+                    trace!("after sending block to response_tx sender in loop in massa-node main");
                 },
                 Ok(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+
+                    trace!("before sending block graph to response_tx sender in loop in massa-node main");
                     response_sender_tx.send(
                         consensus_command_sender
                         .get_block_graph_status()
                             .await
                             .expect("could not retrive graph status")
                         ).expect("could not send graph status");
+                        trace!("after sending block graph to response_tx sender in loop in massa-node main");
                 },
                 Ok(ApiEvent::GetPeers(response_sender_tx)) => {
+                    trace!("before sending peers to response_tx sender in loop in massa-node main");
                     response_sender_tx.send(
                         network_command_sender
                             .get_peers()
                             .await
                             .expect("could not retrive peers")
                         ).expect("could not send peers");
+
+                    trace!("before sending peers to response_tx sender in loop in massa-node main");
                     },
                 Ok(ApiEvent::GetSelectionDraw { start, end, response_tx}) => {
+                    trace!("before sending selection draws to response_tx sender in loop in massa-node main");
                     response_tx.send(
                         consensus_command_sender
                             .get_selection_draws(start, end )
                             .await
                         ).expect("could not send selection draws");
+                        trace!("after sending selection draws to response_tx sender in loop in massa-node main");
                     },
 
                 Err(err) => {
                     error!("api communication error: {:?}", err);
                     break;
                 }
-            },
+            }},
 
             _ = stop_signal.recv() => {
+                trace!("entered stop_signal.recv() branch of the  select in loop in massa-node main");
                 info!("interrupt signal received");
                 break;
             }

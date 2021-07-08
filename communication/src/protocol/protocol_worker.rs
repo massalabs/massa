@@ -201,21 +201,34 @@ impl ProtocolWorker {
         let block_ask_timer = sleep(self.cfg.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
         loop {
+            trace!("before select! in protocol_worker run_loop");
             tokio::select! {
                 // block ask timer
-                _ = &mut block_ask_timer => self.update_ask_block(&mut block_ask_timer).await?,
+                _ = &mut block_ask_timer => {
+                    trace!("after select! block_ask_timer in protocol_worker run_loop");
+                    self.update_ask_block(&mut block_ask_timer).await?;
+                }
 
                 // listen to incoming commands
-                Some(cmd) = self.controller_command_rx.recv() => self.process_command(cmd, &mut block_ask_timer).await?,
+                Some(cmd) = self.controller_command_rx.recv() => {
+                    trace!("after select! Some(cmd) in protocol_worker run_loop cmd:{:?}", cmd);
+                    self.process_command(cmd, &mut block_ask_timer).await?;
+                }
 
                 // listen to network controller events
-                evt = self.network_event_receiver.wait_event() => self.on_network_event(evt?, &mut block_ask_timer).await?,
+                evt = self.network_event_receiver.wait_event() => {
+                    trace!("after select! evt in protocol_worker run_loop");
+                    self.on_network_event(evt?, &mut block_ask_timer).await?;
+                }
 
                 // listen to management commands
-                cmd = self.controller_manager_rx.recv() => match cmd {
-                    None => break,
-                    Some(_) => {}
-                },
+                cmd = self.controller_manager_rx.recv() => {
+                    trace!("after select! cmd in protocol_worker run_loop");
+                    match cmd {
+                        None => break,
+                        Some(_) => {}
+                    };
+                }
             } //end select!
         } //end loop
 
@@ -229,7 +242,7 @@ impl ProtocolWorker {
     ) -> Result<(), CommunicationError> {
         match cmd {
             ProtocolCommand::IntegratedBlock { hash, block } => {
-                massa_trace!("integrated_block", { "block_header": block.header });
+                massa_trace!("protocol_worker process_command integrated_block", { "block_header": block.header });
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
                     if node_info.remove_wanted_block(&hash) {
@@ -268,6 +281,7 @@ impl ProtocolWorker {
             }
             ProtocolCommand::AttackBlockDetected(hash) => {
                 // Ban all the nodes that sent us this object.
+                debug!("protocol_worker process_command ProtocolCommand::AttackBlockDetected");
                 let to_ban: Vec<NodeId> = self
                     .active_nodes
                     .iter()
@@ -281,7 +295,7 @@ impl ProtocolWorker {
                 }
             }
             ProtocolCommand::FoundBlock { hash, block } => {
-                massa_trace!("send_block", { "block": block });
+                debug!("protocol_worker process_command ProtocolCommand::FoundBlock");
                 // Send the block once to all nodes who asked for it.
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     if node_info.remove_wanted_block(&hash) {
@@ -303,11 +317,13 @@ impl ProtocolWorker {
                 }
             }
             ProtocolCommand::WishlistDelta { new, remove } => {
+                debug!("protocol_worker process_command ProtocolCommand::WishlistDelta");
                 self.stop_asking_blocks(remove)?;
                 self.block_wishlist.extend(new);
                 self.update_ask_block(timer).await?;
             }
             ProtocolCommand::BlockNotFound(hash) => {
+                debug!("protocol_worker process_command ProtocolCommand::BlockNotFound");
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     if node_info.contains_wanted_block(&hash) {
                         self.network_command_sender
@@ -317,6 +333,7 @@ impl ProtocolWorker {
                 }
             }
         }
+        debug!("END protocol_worker");
         Ok(())
     }
 
@@ -531,6 +548,7 @@ impl ProtocolWorker {
                     .await?
                 {
                     self.stop_asking_blocks(HashSet::from(vec![hash].into_iter().collect()))?;
+                    trace!("before sending  ProtocolEvent::ReceivedBlock from controller_event_tx in protocol_worker on_network_event");
                     self.controller_event_tx
                         .send(ProtocolEvent::ReceivedBlock { hash, block })
                         .await
@@ -539,6 +557,7 @@ impl ProtocolWorker {
                                 "receive block event send failed".into(),
                             )
                         })?;
+                    trace!("after sending  ProtocolEvent::ReceivedBlock from controller_event_tx in protocol_worker on_network_event");
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
@@ -553,6 +572,7 @@ impl ProtocolWorker {
             } => {
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
                     node_info.insert_wanted_blocks(data, self.cfg.max_node_wanted_blocks_size);
+                    trace!("before sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
                     self.controller_event_tx
                         .send(ProtocolEvent::GetBlock(data))
                         .await
@@ -561,6 +581,7 @@ impl ProtocolWorker {
                                 "receive asked for block event send failed".into(),
                             )
                         })?;
+                    trace!("after sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
                 }
             }
             NetworkEvent::ReceivedBlockHeader {
@@ -568,6 +589,7 @@ impl ProtocolWorker {
                 header,
             } => {
                 if let Some(hash) = self.note_header_from_node(&header, &source_node_id).await? {
+                    trace!("before sending  ProtocolEvent::ReceivedBlockHeader from controller_event_tx in protocol_worker on_network_event");
                     self.controller_event_tx
                         .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
                         .await
@@ -576,6 +598,7 @@ impl ProtocolWorker {
                                 "receive block event send failed".into(),
                             )
                         })?;
+                    trace!("after sending  ProtocolEvent::ReceivedBlockHeader from controller_event_tx in protocol_worker on_network_event");
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(

@@ -17,6 +17,7 @@ use crate::repl::ReplData;
 use clap::App;
 use clap::Arg;
 use crypto::hash::Hash;
+use log::trace;
 use models::{Block, Slot};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
@@ -205,9 +206,11 @@ fn cmd_network_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplErr
 
 fn cmd_stop_node(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let client = reqwest::blocking::Client::new();
+    trace!("before sending request to client in cmd_stop_node in massa-client main");
     client
         .post(&format!("http://{}/api/v1/stop_node", data.node_ip))
         .send()?;
+    trace!("after sending request to client in cmd_stop_node in massa-client main");
     println!("Stoping node");
     Ok(())
 }
