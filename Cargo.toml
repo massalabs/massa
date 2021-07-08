@@ -1,0 +1,32 @@
+[package]
+name = "blockclique_client"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[profile.dev]
+opt-level = 0
+debug = true
+lto = false
+debug-assertions = true
+panic = 'unwind'
+incremental = true
+overflow-checks = true
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+debug-assertions = false
+panic = 'unwind'
+incremental = false
+overflow-checks = false
+
+[dependencies]
+tokio = { version = "0.2", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+toml = { version = "0.5" }
+failure = { version = "0.1" }
+clap = { version = "2" }
+log = { version ="0.4" }
+stderrlog = { version = "0.4" }
