@@ -136,10 +136,66 @@ dependencies = [
 ]
 
 [[package]]
+name = "communication"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "crypto",
+ "flexbuffers",
+ "futures",
+ "itertools",
+ "log",
+ "logging",
+ "models",
+ "pretty_assertions",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "toml",
+]
+
+[[package]]
+name = "consensus"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "communication",
+ "crypto",
+ "flexbuffers",
+ "futures",
+ "log",
+ "logging",
+ "models",
+ "rand 0.7.3",
+ "rand_xoshiro",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "cpuid-bool"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
+
+[[package]]
+name = "crypto"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_hashes",
+ "bs58",
+ "flexbuffers",
+ "rand 0.7.3",
+ "secp256k1",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "ctor"
@@ -382,28 +438,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_network"
+name = "logging"
 version = "0.1.0"
 dependencies = [
- "async-trait",
- "bitcoin_hashes",
- "bs58",
- "chrono",
- "flexbuffers",
- "futures",
- "itertools",
  "log",
- "pretty_assertions",
- "rand 0.7.3",
- "rand_xoshiro",
- "secp256k1",
- "serde",
- "serde_json",
- "stderrlog",
- "tempfile",
- "tokio",
- "tokio-util",
- "toml",
 ]
 
 [[package]]
@@ -433,6 +471,14 @@ checksum = "5a33c1b55807fbed163481b5ba66db4b2fa6cde694a5027be10fb724206c5897"
 dependencies = [
  "socket2",
  "winapi",
+]
+
+[[package]]
+name = "models"
+version = "0.1.0"
+dependencies = [
+ "crypto",
+ "serde",
 ]
 
 [[package]]
@@ -972,6 +1018,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "testrun"
+version = "0.1.0"
+dependencies = [
+ "communication",
+ "consensus",
+ "futures",
+ "log",
+ "logging",
+ "serde",
+ "stderrlog",
+ "tokio",
+ "tokio-util",
+ "toml",
 ]
 
 [[package]]

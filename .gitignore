@@ -1,2 +1,4 @@
-.swp*
-target/*
+*.swp*
+**/target
+**/Cargo.lock
+!/testrun/Cargo.lock
