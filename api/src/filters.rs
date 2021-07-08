@@ -406,13 +406,35 @@ async fn get_block(
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
-        Ok(None) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("active block not found : {:?}", hash)
-            })),
-            warp::http::StatusCode::NOT_FOUND,
-        )
-        .into_response()),
+        Ok(None) => {
+            if let Some(cmd_tx) = opt_storage_command_sender {
+                match cmd_tx.get_block(hash).await {
+                    Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
+                    Ok(None) => Ok(warp::reply::with_status(
+                        warp::reply::json(&json!({
+                            "message": format!("active block not found : {:?}", hash)
+                        })),
+                        warp::http::StatusCode::NOT_FOUND,
+                    )
+                    .into_response()),
+                    Err(e) => Ok(warp::reply::with_status(
+                        warp::reply::json(&json!({
+                            "message": format!("error retrieving active blocks : {:?}", e)
+                        })),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    )
+                    .into_response()),
+                }
+            } else {
+                Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("active block not found : {:?}", hash)
+                    })),
+                    warp::http::StatusCode::NOT_FOUND,
+                )
+                .into_response())
+            }
+        }
         Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
     }
 }
