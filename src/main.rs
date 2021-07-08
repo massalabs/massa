@@ -38,8 +38,8 @@ async fn main() -> Result<(), failure::Error> {
 
     // initialize rng
 
-    // initialize network layer
-    network::initialize(&config.network).await?;
+    // run network layer
+    network::run(&config.network).await?;
 
     // exit
     Ok(())
