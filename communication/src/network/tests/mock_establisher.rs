@@ -1,5 +1,3 @@
-use super::super::establisher::*;
-use async_trait::async_trait;
 use std::io;
 use std::net::SocketAddr;
 use time::UTime;
@@ -7,17 +5,18 @@ use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
-const MAX_DUPLEX_BUFFER_SIZE: usize = 10000;
+const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
+const CHANNEL_SIZE: usize = 16;
 
-type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
-type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
+pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
+pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
-        mpsc::channel::<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>(1024);
+        mpsc::channel::<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>(CHANNEL_SIZE);
 
     let (connection_connector_tx, connection_connector_rx) =
-        mpsc::channel::<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>(1024);
+        mpsc::channel::<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>(CHANNEL_SIZE);
 
     (
         MockEstablisher {
@@ -36,9 +35,8 @@ pub struct MockListener {
     connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>, //(controller, mock)
 }
 
-#[async_trait]
-impl Listener<ReadHalf, WriteHalf> for MockListener {
-    async fn accept(&mut self) -> std::io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
+impl MockListener {
+    pub async fn accept(&mut self) -> std::io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
         let (addr, sender) = self
             .connection_listener_rx
             .recv()
@@ -69,9 +67,8 @@ pub struct MockConnector {
     timeout_duration: UTime,
 }
 
-#[async_trait]
-impl Connector<ReadHalf, WriteHalf> for MockConnector {
-    async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<(ReadHalf, WriteHalf)> {
+impl MockConnector {
+    pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<(ReadHalf, WriteHalf)> {
         //task the controller connection if exist.
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
         let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
@@ -117,14 +114,8 @@ pub struct MockEstablisher {
     connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
 }
 
-#[async_trait]
-impl Establisher for MockEstablisher {
-    type ReaderT = ReadHalf;
-    type WriterT = WriteHalf;
-    type ListenerT = MockListener;
-    type ConnectorT = MockConnector;
-
-    async fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<Self::ListenerT> {
+impl MockEstablisher {
+    pub async fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self
                 .connection_listener_rx
@@ -133,10 +124,10 @@ impl Establisher for MockEstablisher {
         })
     }
 
-    async fn get_connector(
+    pub async fn get_connector(
         &mut self,
         timeout_duration: UTime,
-    ) -> std::io::Result<Self::ConnectorT> {
+    ) -> std::io::Result<MockConnector> {
         //create connector stream
 
         Ok(MockConnector {

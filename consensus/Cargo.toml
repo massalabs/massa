@@ -10,7 +10,6 @@ edition = "2018"
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 futures = { version = "0.3" }
-async-trait = "0.1.42"
 rand_xoshiro = "0.6"
 crypto = {path = "../crypto"}
 communication = {path = "../communication"}

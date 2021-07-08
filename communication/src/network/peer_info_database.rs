@@ -1,5 +1,5 @@
 use super::config::NetworkConfig;
-use crate::error::{ChannelError, CommunicationError, NetworkConnectionErrorType};
+use crate::error::{CommunicationError, NetworkConnectionErrorType};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -271,9 +271,9 @@ impl PeerInfoDatabase {
     fn request_dump(&self) -> Result<(), CommunicationError> {
         //use map_err to avoir Ok(self.saver_watch_tx.send(self.peers.clone())?)
         //which to unwrap that Ok
-        self.saver_watch_tx
-            .send(self.peers.clone())
-            .map_err(|err| ChannelError::from(err).into())
+        self.saver_watch_tx.send(self.peers.clone()).map_err(|_| {
+            CommunicationError::ChannelError("could not send on savet_watch_tx".into())
+        })
     }
 
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.

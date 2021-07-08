@@ -1,53 +1,61 @@
-use super::super::{
-    block_graph::*, config::ConsensusConfig, consensus_controller::*, random_selector::*,
+use super::{
+    block_graph::*,
+    config::ConsensusConfig,
+    error::{BlockAcknowledgeError, ConsensusError},
+    misc_collections::{DependencyWaitingBlocks, FutureIncomingBlocks},
+    random_selector::*,
     timeslots::*,
 };
-use super::misc_collections::{DependencyWaitingBlocks, FutureIncomingBlocks};
-use crate::error::{BlockAcknowledgeError, ConsensusError};
-use communication::network::PeerInfo;
-use communication::protocol::protocol_controller::{
-    NodeId, ProtocolController, ProtocolEvent, ProtocolEventType,
-};
+use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
 use models::block::Block;
-use std::{collections::HashMap, net::IpAddr};
-
+use std::collections::HashMap;
 use tokio::{
-    sync::mpsc::{Receiver, Sender},
-    time::sleep_until,
+    sync::{mpsc, oneshot},
+    time::{sleep_until, Sleep},
 };
 
 /// Commands that can be proccessed by consensus.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
-    GetBlockGraphStatus(Sender<BlockGraphExport>),
+    GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
     /// Returns through a channel full block with specified hash.
-    GetActiveBlock(Hash, Sender<Option<Block>>),
-    /// Returns through a channel known peers list.
-    GetPeers(Sender<HashMap<IpAddr, PeerInfo>>),
+    GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
     /// Returns through a channel the list of slots with public key of the selected staker.
     GetSelectionDraws(
         (u64, u8),
         (u64, u8),
-        Sender<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>,
+        oneshot::Sender<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>,
     ),
 }
 
+/// Events that are emitted by consensus.
+#[derive(Debug, Clone)]
+pub enum ConsensusEvent {}
+
+/// Events that are emitted by consensus.
+#[derive(Debug, Clone)]
+pub enum ConsensusManagementCommand {}
+
 /// Manages consensus.
-pub struct ConsensusWorker<ProtocolControllerT: ProtocolController + 'static> {
+pub struct ConsensusWorker {
     /// Consensus Configuration
     cfg: ConsensusConfig,
     /// Genesis blocks werecreated with that public key.
     genesis_public_key: PublicKey,
-    /// Associated protocol controller.
-    protocol_controller: ProtocolControllerT,
+    /// Associated protocol command sender.
+    protocol_command_sender: ProtocolCommandSender,
+    /// Associated protocol event listener.
+    protocol_event_receiver: ProtocolEventReceiver,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
     /// Channel receiving consensus commands.
-    controller_command_rx: Receiver<ConsensusCommand>,
+    controller_command_rx: mpsc::Receiver<ConsensusCommand>,
     /// Channel sending out consensus events.
-    controller_event_tx: Sender<ConsensusEvent>,
+    controller_event_tx: mpsc::Sender<ConsensusEvent>,
+    /// Channel receiving consensus management commands.
+    controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
     /// Selector used to select roll numbers.
     selector: RandomSelector,
     /// Sophisticated queue of blocks with slots in the near future.
@@ -58,7 +66,7 @@ pub struct ConsensusWorker<ProtocolControllerT: ProtocolController + 'static> {
     current_slot: (u64, u8),
 }
 
-impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<ProtocolControllerT> {
+impl ConsensusWorker {
     /// Creates a new consensus controller.
     /// Initiates the random selector.
     ///
@@ -68,13 +76,16 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     /// * block_db: Database containing all information about blocks, the blockgraph and cliques.
     /// * controller_command_rx: Channel receiving consensus commands.
     /// * controller_event_tx: Channel sending out consensus events.
+    /// * controller_manager_rx: Channel receiving consensus management commands.
     pub fn new(
         cfg: ConsensusConfig,
-        protocol_controller: ProtocolControllerT,
+        protocol_command_sender: ProtocolCommandSender,
+        protocol_event_receiver: ProtocolEventReceiver,
         block_db: BlockGraph,
-        controller_command_rx: Receiver<ConsensusCommand>,
-        controller_event_tx: Sender<ConsensusEvent>,
-    ) -> Result<ConsensusWorker<ProtocolControllerT>, ConsensusError> {
+        controller_command_rx: mpsc::Receiver<ConsensusCommand>,
+        controller_event_tx: mpsc::Sender<ConsensusEvent>,
+        controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
+    ) -> Result<ConsensusWorker, ConsensusError> {
         let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
         let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
         let selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights)?;
@@ -86,10 +97,12 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
             genesis_public_key: SignatureEngine::new().derive_public_key(&cfg.genesis_key),
-            protocol_controller,
+            protocol_command_sender,
+            protocol_event_receiver,
             block_db,
             controller_command_rx,
             controller_event_tx,
+            controller_manager_rx,
             selector,
             future_incoming_blocks: FutureIncomingBlocks::new(cfg.max_future_processing_blocks),
             dependency_waiting_blocks: DependencyWaitingBlocks::new(cfg.max_dependency_blocks),
@@ -99,7 +112,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
 
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
-    pub async fn run_loop(mut self) -> Result<(), ConsensusError> {
+    pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver, ConsensusError> {
         let next_slot_timer = sleep_until(
             get_block_slot_timestamp(
                 self.cfg.thread_count,
@@ -112,56 +125,68 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         tokio::pin!(next_slot_timer);
         loop {
             tokio::select! {
+                // slot timer
+                _ = &mut next_slot_timer => self.slot_tick(&mut next_slot_timer).await?,
+
                 // listen consensus commands
-                res = self.controller_command_rx.recv() => match res {
-                    Some(cmd) => self.process_consensus_command(cmd).await?,
-                    None => break  // finished
+                Some(cmd) = self.controller_command_rx.recv() => self.process_consensus_command(cmd).await?,
+
+                // receive protocol controller events
+                evt = self.protocol_event_receiver.wait_event() => match evt {
+                    Ok(event) => self.process_protocol_event(event).await?,
+                    Err(err) => return Err(ConsensusError::CommunicationError(err))
                 },
 
-                // slot timer
-                _ = &mut next_slot_timer => {
-                    massa_trace!("slot_timer", {
-                        "thread": self.current_slot.1,
-                        "period": self.current_slot.0
-                    });
-                    let block_creator = self.selector.draw(self.current_slot);
-
-                    // create a block if enabled and possible
-                    if !self.cfg.disable_block_creation && self.current_slot.0 > 0 && block_creator == self.cfg.current_node_index {
-                        let (hash, block) = self.block_db.create_block("block".to_string(), self.current_slot)?;
-                        self.rec_acknowledge_block(hash, block).await?;
-                    }
-
-                    // process queued blocks
-                    let popped_blocks = self.future_incoming_blocks.pop_until(self.current_slot)?;
-                    for (hash, block) in popped_blocks.into_iter() {
-                        self.rec_acknowledge_block(hash, block).await?;
-                    }
-
-                    // reset timer for next slot
-                    self.current_slot = get_next_block_slot(self.cfg.thread_count, self.current_slot)?;
-                    next_slot_timer.set(sleep_until(
-                        get_block_slot_timestamp(
-                            self.cfg.thread_count,
-                            self.cfg.t0,
-                            self.cfg.genesis_timestamp,
-                            self.current_slot
-                        )?
-                        .estimate_instant()?,
-                    ));
+                // listen to manager commands
+                cmd = self.controller_manager_rx.recv() => match cmd {
+                    None => break,
+                    Some(_) => {}
                 }
-
-                // listen protocol controller events
-                evt = self.protocol_controller.wait_event() => match evt {
-                    Ok(ProtocolEvent(source_node_id, event)) => self.process_protocol_event(source_node_id, event).await?,
-                    Err(err) => return Err(ConsensusError::CommunicationError(err)) // in a loop
-                }
-
             }
         }
-
         // end loop
-        self.protocol_controller.stop().await?;
+        Ok(self.protocol_event_receiver)
+    }
+
+    async fn slot_tick(
+        &mut self,
+        next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
+    ) -> Result<(), ConsensusError> {
+        massa_trace!("slot_timer", {
+            "thread": self.current_slot.1,
+            "period": self.current_slot.0
+        });
+        let block_creator = self.selector.draw(self.current_slot);
+
+        // create a block if enabled and possible
+        if !self.cfg.disable_block_creation
+            && self.current_slot.0 > 0
+            && block_creator == self.cfg.current_node_index
+        {
+            let (hash, block) = self
+                .block_db
+                .create_block("block".to_string(), self.current_slot)?;
+            self.rec_acknowledge_block(hash, block).await?;
+        }
+
+        // process queued blocks
+        let popped_blocks = self.future_incoming_blocks.pop_until(self.current_slot)?;
+        for (hash, block) in popped_blocks.into_iter() {
+            self.rec_acknowledge_block(hash, block).await?;
+        }
+
+        // reset timer for next slot
+        self.current_slot = get_next_block_slot(self.cfg.thread_count, self.current_slot)?;
+        next_slot_timer.set(sleep_until(
+            get_block_slot_timestamp(
+                self.cfg.thread_count,
+                self.cfg.t0,
+                self.cfg.genesis_timestamp,
+                self.current_slot,
+            )?
+            .estimate_instant()?,
+        ));
+
         Ok(())
     }
 
@@ -176,7 +201,6 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         match cmd {
             ConsensusCommand::GetBlockGraphStatus(response_tx) => response_tx
                 .send(BlockGraphExport::from(&self.block_db))
-                .await
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send GetBlockGraphStatus answer:{:?}",
@@ -186,19 +210,9 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
             //return full block with specified hash
             ConsensusCommand::GetActiveBlock(hash, response_tx) => response_tx
                 .send(self.block_db.get_active_block(hash).cloned())
-                .await
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send GetBlock answer:{:?}",
-                        err
-                    ))
-                }),
-            ConsensusCommand::GetPeers(response_tx) => response_tx
-                .send(self.protocol_controller.get_peers().await?)
-                .await
-                .map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetPeers answer: {:?}",
                         err
                     ))
                 }),
@@ -225,7 +239,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                         }
                     }
                 }
-                response_tx.send(result).await.map_err(|err| {
+                response_tx.send(result).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send GetSelectionDraws response: {:?}",
                         err
@@ -291,7 +305,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                 // get block (if not discarded)
                 if let Some(block) = self.block_db.get_active_block(hash) {
                     // propagate block
-                    self.protocol_controller
+                    self.protocol_command_sender
                         .propagate_block(hash, &block)
                         .await?;
 
@@ -410,22 +424,17 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     /// Manages received protocolevents.
     ///
     /// # Arguments
-    /// * source_node_id : node from wich the event came from id.
     /// * event: event type to process.
-    async fn process_protocol_event(
-        &mut self,
-        source_node_id: NodeId,
-        event: ProtocolEventType,
-    ) -> Result<(), ConsensusError> {
+    async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
         match event {
-            ProtocolEventType::ReceivedBlock(block) => {
+            ProtocolEvent::ReceivedBlock(_source_node_id, block) => {
                 self.rec_acknowledge_block(block.header.compute_hash()?, block)
                     .await?;
             }
-            ProtocolEventType::ReceivedTransaction(_transaction) => {
+            ProtocolEvent::ReceivedTransaction(_source_node_id, _transaction) => {
                 // todo (see issue #108)
             }
-            ProtocolEventType::AskedBlock(block_hash) => {
+            ProtocolEvent::AskedBlock(source_node_id, block_hash) => {
                 if let Some(_block) = self.block_db.get_active_block(block_hash) {
                     massa_trace!("sending_block", {"dest_node_id": source_node_id, "block": block_hash});
                     /*

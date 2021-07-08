@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use std::net::SocketAddr;
 
+pub const CHANNEL_SIZE: usize = 16;
+
 /// Api configuration.
 #[derive(Debug, Deserialize, Clone)]
 pub struct ApiConfig {

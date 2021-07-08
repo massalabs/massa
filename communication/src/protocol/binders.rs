@@ -1,24 +1,23 @@
 //! Flexbuffer layer between raw data and our objects.
 use super::messages::Message;
 use crate::error::{CommunicationError, FlexbufferError};
+use crate::network::{ReadHalf, WriteHalf};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::marker::Unpin;
-use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 /// Used to serialize and send data.
-pub struct WriteBinder<T: AsyncWrite + Unpin> {
-    framed_writer: FramedWrite<T, LengthDelimitedCodec>,
+pub struct WriteBinder {
+    framed_writer: FramedWrite<WriteHalf, LengthDelimitedCodec>,
     message_index: u64,
 }
 
-impl<T: AsyncWrite + Unpin> WriteBinder<T> {
+impl WriteBinder {
     /// Creates a new WriteBinder.
     ///
     /// # Argument
     /// * writer: inner part of the underlying FramedWrite.
-    pub fn new(writer: T) -> Self {
+    pub fn new(writer: WriteHalf) -> Self {
         WriteBinder {
             framed_writer: FramedWrite::new(writer, LengthDelimitedCodec::new()),
             message_index: 0,
@@ -43,17 +42,17 @@ impl<T: AsyncWrite + Unpin> WriteBinder<T> {
 }
 
 /// Used to receive and deserialize date.
-pub struct ReadBinder<T: AsyncRead + Unpin> {
-    framed_reader: FramedRead<T, LengthDelimitedCodec>,
+pub struct ReadBinder {
+    framed_reader: FramedRead<ReadHalf, LengthDelimitedCodec>,
     message_index: u64,
 }
 
-impl<T: AsyncRead + Unpin> ReadBinder<T> {
+impl ReadBinder {
     /// Creates a new ReadBinder.
     ///
     /// # Argument
     /// * reader: inner part of the underlying FramedRead.
-    pub fn new(reader: T) -> Self {
+    pub fn new(reader: ReadHalf) -> Self {
         ReadBinder {
             framed_reader: FramedRead::new(reader, LengthDelimitedCodec::new()),
             message_index: 0,

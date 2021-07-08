@@ -3,6 +3,8 @@ use serde::Deserialize;
 use std::default::Default;
 use time::UTime;
 
+pub const CHANNEL_SIZE: usize = 16;
+
 /// Consensus configuration
 /// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 #[derive(Debug, Deserialize, Clone)]

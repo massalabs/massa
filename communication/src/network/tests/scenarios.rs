@@ -1,18 +1,16 @@
 //to start alone RUST_BACKTRACE=1 cargo test scenarii -- --nocapture --test-threads=1
-
-use super::super::default_network_controller::DefaultNetworkController;
-use super::super::network_controller::{ConnectionClosureReason, NetworkController, NetworkEvent};
-use super::super::peer_info_database::PeerInfo;
-use super::mock_establisher;
-use super::tools;
-use std::convert::TryInto;
-use std::net::IpAddr;
-use std::net::Ipv4Addr;
-use std::net::SocketAddr;
-use std::time::{Duration, Instant};
+use super::{mock_establisher, tools};
+use crate::network::{start_network_controller, ConnectionClosureReason, NetworkEvent, PeerInfo};
+use std::{
+    convert::TryInto,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    time::{Duration, Instant},
+};
 use time::UTime;
-use tokio::io::AsyncReadExt;
-use tokio::time::{sleep, timeout};
+use tokio::{
+    io::AsyncReadExt,
+    time::{sleep, timeout},
+};
 
 // test connecting two different peers simultaneously to the controller
 // then attempt to connect to controller from an already connected peer to test max_in_connections_per_ip
@@ -37,17 +35,21 @@ async fn test_multiple_connections_to_controller() {
     let mock2_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 12)), bind_port);
     let mock3_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 13)), bind_port);
 
-    // init network
+    // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
-    let mut network = DefaultNetworkController::new(&network_conf, establisher)
-        .await
-        .unwrap();
+
+    // launch network controller
+    let (mut network_command_sender, mut network_event_receiver, network_manager) =
+        start_network_controller(network_conf.clone(), establisher)
+            .await
+            .expect("could not start network controller");
 
     // note: the peers list is empty so the controller will not attempt outgoing connections
 
     // 1) connect peer1 to controller
     let conn1_id = tools::full_connection_to_controller(
-        &mut network,
+        &mut network_command_sender,
+        &mut network_event_receiver,
         &mut mock_interface,
         mock1_addr,
         1_000u64,
@@ -58,7 +60,8 @@ async fn test_multiple_connections_to_controller() {
 
     // 2) connect peer2 to controller
     let conn2_id = tools::full_connection_to_controller(
-        &mut network,
+        &mut network_command_sender,
+        &mut network_event_receiver,
         &mut mock_interface,
         mock2_addr,
         1_000u64,
@@ -78,7 +81,12 @@ async fn test_multiple_connections_to_controller() {
             .await
             .expect("connection to controller failed");
         // no event should occur / have occurred
-        if let Ok(_) = timeout(Duration::from_millis(1000), network.wait_event()).await {
+        if let Ok(_) = timeout(
+            Duration::from_millis(1000),
+            network_event_receiver.wait_event(),
+        )
+        .await
+        {
             panic!("an event was emitted by controller while none were expected");
         }
         // check that the socket was dropped
@@ -102,21 +110,29 @@ async fn test_multiple_connections_to_controller() {
             .await
             .expect("connection to controller failed");
         // no event should occur / have occurred
-        if let Ok(_) = timeout(Duration::from_millis(1000), network.wait_event()).await {
+        if let Ok(_) = timeout(
+            Duration::from_millis(1000),
+            network_event_receiver.wait_event(),
+        )
+        .await
+        {
             panic!("an event was emitted by controller while none were expected");
         }
     }
 
     // 5) close connections and stop
-    network
+    network_command_sender
         .connection_closed(conn1_id, ConnectionClosureReason::Normal)
         .await
         .expect("Error while closing connection");
-    network
+    network_command_sender
         .connection_closed(conn2_id, ConnectionClosureReason::Normal)
         .await
         .expect("Error while closing connection");
-    network.stop().await.expect("error while stoppinf network");
+    network_manager
+        .stop(network_event_receiver)
+        .await
+        .expect("error while stopping network");
     temp_peers_file.close().unwrap();
 }
 
@@ -146,21 +162,25 @@ async fn test_peer_ban() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
 
-    // init network
+    // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
-    let mut network = DefaultNetworkController::new(&network_conf, establisher)
-        .await
-        .unwrap();
+
+    // launch network controller
+    let (mut network_command_sender, mut network_event_receiver, network_manager) =
+        start_network_controller(network_conf.clone(), establisher)
+            .await
+            .expect("could not start network controller");
 
     // add advertised peer to controller
-    network
+    network_command_sender
         .merge_advertised_peer_list(vec![mock_addr.ip()])
         .await
         .expect("Error while merging peer list");
 
     // accept connection from controller to peer
     let conn1_id = tools::full_connection_from_controller(
-        &mut network,
+        &mut network_command_sender,
+        &mut network_event_receiver,
         &mut mock_interface,
         mock_addr,
         1_000u64,
@@ -171,7 +191,8 @@ async fn test_peer_ban() {
 
     // connect to peeer to controller
     let conn2_id = tools::full_connection_to_controller(
-        &mut network,
+        &mut network_command_sender,
+        &mut network_event_receiver,
         &mut mock_interface,
         mock_addr,
         1_000u64,
@@ -181,16 +202,18 @@ async fn test_peer_ban() {
     .await;
 
     // signal the controller that conn1 is closed + banned
-    network
+    network_command_sender
         .connection_closed(conn1_id, ConnectionClosureReason::Banned)
         .await
         .expect("Error while closing connection");
 
     // wait for controller to signal that conn2 is banned as well. Close conn2.
-    if let Ok(NetworkEvent::ConnectionBanned(ban_id)) =
-        timeout(Duration::from_millis(1000), network.wait_event())
-            .await
-            .expect("error while wainting event")
+    if let Ok(NetworkEvent::ConnectionBanned(ban_id)) = timeout(
+        Duration::from_millis(1000),
+        network_event_receiver.wait_event(),
+    )
+    .await
+    .expect("error while wainting event")
     {
         assert_eq!(
             ban_id, conn2_id,
@@ -199,7 +222,7 @@ async fn test_peer_ban() {
     } else {
         panic!("no event or unexpected event emitted by controller");
     }
-    network
+    network_command_sender
         .connection_closed(conn2_id, ConnectionClosureReason::Normal)
         .await
         .expect("Error while closing connection");
@@ -211,12 +234,20 @@ async fn test_peer_ban() {
         .expect("connection to controller failed");
 
     // no event should occur / have occurred (no incoming or outgoing connections succeeeded)
-    if let Ok(_) = timeout(Duration::from_millis(1000), network.wait_event()).await {
+    if let Ok(_) = timeout(
+        Duration::from_millis(1000),
+        network_event_receiver.wait_event(),
+    )
+    .await
+    {
         panic!("an event was emitted by controller while none were expected");
     }
 
     // close
-    network.stop().await.expect("error while stopping network");
+    network_manager
+        .stop(network_event_receiver)
+        .await
+        .expect("error while stopping network");
     temp_peers_file.close().unwrap();
 }
 
@@ -256,14 +287,17 @@ async fn test_advertised_and_wakeup_interval() {
     network_conf.wakeup_interval = UTime::from(2000);
     network_conf.connect_timeout = UTime::from(1000);
 
-    // init network controller
+    // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
-    let mut network = DefaultNetworkController::new(&network_conf, establisher)
-        .await
-        .unwrap();
+
+    // launch network controller
+    let (mut network_command_sender, mut network_event_receiver, network_manager) =
+        start_network_controller(network_conf.clone(), establisher)
+            .await
+            .expect("could not start network controller");
 
     // 1) advertise a peer and wait a bit for connection attempts to start
-    network
+    network_command_sender
         .merge_advertised_peer_list(vec![mock_addr.ip()])
         .await
         .expect("error while merging peer list");
@@ -283,7 +317,8 @@ async fn test_advertised_and_wakeup_interval() {
     let conn_id = {
         let start_instant = Instant::now();
         let conn_id = tools::full_connection_from_controller(
-            &mut network,
+            &mut network_command_sender,
+            &mut network_event_receiver,
             &mut mock_interface,
             mock_addr,
             (network_conf.wakeup_interval.to_millis() as u128 * 3u128)
@@ -302,18 +337,23 @@ async fn test_advertised_and_wakeup_interval() {
     // 4) check that there are no further connection attempts from controller
     {
         // no event should occur / have occurred
-        if let Ok(_) = timeout(Duration::from_millis(1_000u64), network.wait_event()).await {
+        if let Ok(_) = timeout(
+            Duration::from_millis(1_000u64),
+            network_event_receiver.wait_event(),
+        )
+        .await
+        {
             panic!("an event was emitted by controller while none were expected");
         }
     }
 
     // 5) close connection
-    network
+    network_command_sender
         .connection_closed(conn_id, ConnectionClosureReason::Normal)
         .await
         .expect("Error while closing connection");
-    network
-        .stop()
+    network_manager
+        .stop(network_event_receiver)
         .await
         .expect("error while closing connection");
     temp_peers_file.close().unwrap();

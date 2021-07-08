@@ -1,10 +1,19 @@
 //! Manages a connection with a node
-pub mod config;
-pub mod default_establisher;
-pub mod default_network_controller;
-pub mod establisher;
-pub mod network_controller;
+mod common;
+mod config;
+mod establisher;
+mod network_controller;
+mod network_worker;
 mod peer_info_database;
+
+pub use common::{ConnectionClosureReason, ConnectionId};
+pub use config::NetworkConfig;
+pub use establisher::Establisher;
+pub use establisher::*;
+pub use network_controller::{
+    start_network_controller, NetworkCommandSender, NetworkEventReceiver, NetworkManager,
+};
+pub use network_worker::{NetworkCommand, NetworkEvent};
 
 pub use peer_info_database::PeerInfo;
 

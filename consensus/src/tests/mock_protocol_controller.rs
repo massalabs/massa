@@ -1,230 +1,48 @@
-use std::{collections::HashMap, net::IpAddr};
-
-use async_trait::async_trait;
-use communication::network::network_controller::NetworkController;
-use communication::protocol::protocol_controller::{
-    NodeId, ProtocolController, ProtocolEvent, ProtocolEventType,
-};
-use communication::{
-    network::establisher::{Connector, Establisher, Listener},
-    network::PeerInfo,
-    CommunicationError,
+use communication::protocol::{
+    NodeId, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
 use crypto::hash::Hash;
 use models::block::Block;
-use time::UTime;
-use tokio::io::DuplexStream;
-use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::oneshot;
+use tokio::sync::mpsc;
 
-pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
-pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
+const CHANNEL_SIZE: usize = 16;
 
-#[derive(Debug)]
-pub struct BlankListener;
-
-#[async_trait]
-impl Listener<ReadHalf, WriteHalf> for BlankListener {
-    async fn accept(&mut self) -> std::io::Result<(ReadHalf, WriteHalf, std::net::SocketAddr)> {
-        unreachable!();
-    }
-}
-
-#[derive(Debug)]
-pub struct BlankConnector;
-
-#[async_trait]
-impl Connector<ReadHalf, WriteHalf> for BlankConnector {
-    async fn connect(
-        &mut self,
-        _addr: std::net::SocketAddr,
-    ) -> std::io::Result<(ReadHalf, WriteHalf)> {
-        unreachable!();
-    }
-}
-
-#[derive(Debug)]
-pub struct BlankEstablisher;
-
-#[async_trait]
-impl Establisher for BlankEstablisher {
-    type ReaderT = ReadHalf;
-    type WriterT = WriteHalf;
-    type ListenerT = BlankListener;
-    type ConnectorT = BlankConnector;
-
-    async fn get_listener(
-        &mut self,
-        _addr: std::net::SocketAddr,
-    ) -> std::io::Result<Self::ListenerT> {
-        unreachable!()
-    }
-
-    async fn get_connector(
-        &mut self,
-        _timeout_duration: UTime,
-    ) -> std::io::Result<Self::ConnectorT> {
-        unreachable!()
-    }
-}
-
-#[derive(Debug)]
-pub struct BlankNetworkController;
-
-#[async_trait]
-impl NetworkController for BlankNetworkController {
-    type EstablisherT = BlankEstablisher;
-    type ReaderT = ReadHalf;
-    type WriterT = WriteHalf;
-
-    async fn stop(mut self) -> Result<(), CommunicationError> {
-        unreachable!();
-    }
-
-    async fn wait_event(
-        &mut self,
-    ) -> Result<
-        communication::network::network_controller::NetworkEvent<Self::ReaderT, Self::WriterT>,
-        CommunicationError,
-    > {
-        unreachable!();
-    }
-
-    async fn merge_advertised_peer_list(
-        &mut self,
-        _ips: Vec<std::net::IpAddr>,
-    ) -> Result<(), CommunicationError> {
-        unreachable!();
-    }
-
-    async fn get_advertisable_peer_list(
-        &mut self,
-    ) -> Result<Vec<std::net::IpAddr>, CommunicationError> {
-        unreachable!();
-    }
-
-    async fn connection_closed(
-        &mut self,
-        _id: communication::network::network_controller::ConnectionId,
-        _reason: communication::network::network_controller::ConnectionClosureReason,
-    ) -> Result<(), CommunicationError> {
-        unreachable!();
-    }
-
-    async fn connection_alive(
-        &mut self,
-        _id: communication::network::network_controller::ConnectionId,
-    ) -> Result<(), CommunicationError> {
-        unreachable!();
-    }
-
-    async fn get_peers(&mut self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
-        unreachable!();
-    }
-}
-
-#[derive(Debug)]
-pub enum MockProtocolCommand {
-    PropagateBlock { hash: Hash, block: Block },
-    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
-}
-
-pub fn new() -> (MockProtocolController, MockProtocolControllerInterface) {
-    let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(1024);
-    let (protocol_command_tx, protocol_command_rx) = mpsc::channel::<MockProtocolCommand>(1024);
-    (
-        MockProtocolController {
-            protocol_event_rx,
-            protocol_command_tx,
-        },
-        MockProtocolControllerInterface {
-            protocol_event_tx,
-            protocol_command_rx,
-        },
-    )
-}
-
-#[derive(Debug)]
 pub struct MockProtocolController {
-    protocol_event_rx: Receiver<ProtocolEvent>,
-    protocol_command_tx: Sender<MockProtocolCommand>,
+    protocol_command_rx: mpsc::Receiver<ProtocolCommand>,
+    protocol_event_tx: mpsc::Sender<ProtocolEvent>,
 }
 
-#[async_trait]
-impl ProtocolController for MockProtocolController {
-    type NetworkControllerT = BlankNetworkController;
-
-    async fn wait_event(
-        &mut self,
-    ) -> Result<communication::protocol::protocol_controller::ProtocolEvent, CommunicationError>
-    {
-        self.protocol_event_rx
-            .recv()
-            .await
-            .ok_or(CommunicationError::GeneralProtocolError(format!(
-                "failed retrieving protocol controller event in mock protocol controller"
-            )))
+impl MockProtocolController {
+    pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
+        let (protocol_command_tx, protocol_command_rx) =
+            mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
+        let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
+        (
+            MockProtocolController {
+                protocol_event_tx,
+                protocol_command_rx,
+            },
+            ProtocolCommandSender(protocol_command_tx),
+            ProtocolEventReceiver(protocol_event_rx),
+        )
     }
 
-    async fn stop(mut self) -> Result<(), CommunicationError> {
-        Ok(())
-    }
-
-    async fn propagate_block(
-        &mut self,
-        hash: Hash,
-        block: &models::block::Block,
-    ) -> Result<(), CommunicationError> {
-        self.protocol_command_tx
-            .send(MockProtocolCommand::PropagateBlock {
-                hash,
-                block: block.clone(),
-            })
-            .await
-            .expect("could not send mock protocol command");
-        Ok(())
-    }
-
-    async fn get_peers(&self) -> Result<HashMap<std::net::IpAddr, PeerInfo>, CommunicationError> {
-        let (response_tx, response_rx) = oneshot::channel::<HashMap<IpAddr, PeerInfo>>();
-        self.protocol_command_tx
-            .send(MockProtocolCommand::GetPeers(response_tx))
-            .await
-            .map_err(|err| {
-                CommunicationError::MockError(format!("send error consensus command: {:?}", err))
-            })?;
-        Ok(response_rx.await.map_err(|err| {
-            CommunicationError::MockError(format!("could not receive response: {:?}", err))
-        })?)
-    }
-}
-
-#[derive(Debug)]
-pub struct MockProtocolControllerInterface {
-    protocol_event_tx: Sender<ProtocolEvent>,
-    protocol_command_rx: Receiver<MockProtocolCommand>,
-}
-
-impl MockProtocolControllerInterface {
-    pub async fn wait_command(&mut self) -> Option<MockProtocolCommand> {
+    pub async fn wait_command(&mut self) -> Option<ProtocolCommand> {
         Some(self.protocol_command_rx.recv().await?)
     }
 
-    pub async fn receive_block(&mut self, source_node_id: NodeId, block: &Block) {
+    pub async fn receive_block(&mut self, source_node_id: NodeId, block: Block) {
         self.protocol_event_tx
-            .send(ProtocolEvent(
-                source_node_id,
-                ProtocolEventType::ReceivedBlock(block.clone()),
-            ))
+            .send(ProtocolEvent::ReceivedBlock(source_node_id, block))
             .await
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_transaction(&mut self, source_node_id: NodeId, transaction: &String) {
+    pub async fn receive_transaction(&mut self, source_node_id: NodeId, transaction: String) {
         self.protocol_event_tx
-            .send(ProtocolEvent(
+            .send(ProtocolEvent::ReceivedTransaction(
                 source_node_id,
-                ProtocolEventType::ReceivedTransaction(transaction.clone()),
+                transaction,
             ))
             .await
             .expect("could not send protocol event");
@@ -232,11 +50,24 @@ impl MockProtocolControllerInterface {
 
     pub async fn receive_block_ask(&mut self, source_node_id: NodeId, hash: Hash) {
         self.protocol_event_tx
-            .send(ProtocolEvent(
-                source_node_id,
-                ProtocolEventType::AskedBlock(hash),
-            ))
+            .send(ProtocolEvent::AskedBlock(source_node_id, hash))
             .await
             .expect("could not send protocol event");
+    }
+
+    // ignore all commands while waiting for a futrue
+    pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
+        &mut self,
+        mut future: FutureT,
+    ) -> FutureT::Output {
+        loop {
+            tokio::select!(
+                res = &mut future => return res,
+                cmd = self.wait_command() => match cmd {
+                    Some(_) => {},
+                    None => return future.await,  // if the network controlled dies, wait for the future to finish
+                }
+            );
+        }
     }
 }

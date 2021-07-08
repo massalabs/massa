@@ -1,7 +1,7 @@
-use api::config::ApiConfig;
-use communication::network::config::NetworkConfig;
-use communication::protocol::config::ProtocolConfig;
-use consensus::config::ConsensusConfig;
+use api::ApiConfig;
+use communication::network::NetworkConfig;
+use communication::protocol::ProtocolConfig;
+use consensus::ConsensusConfig;
 use serde::Deserialize;
 use toml;
 

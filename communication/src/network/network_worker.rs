@@ -1,19 +1,18 @@
 //! The network worker actually does the job of managing connections
 //! That's why it's ... a worker ! 🦀
-use super::super::{
+use super::{
+    common::{ConnectionClosureReason, ConnectionId},
     config::NetworkConfig,
-    establisher::Establisher,
-    establisher::{Connector, Listener},
-    network_controller::*,
+    establisher::{Establisher, Listener, ReadHalf, WriteHalf},
     peer_info_database::*,
 };
-use crate::error::{ChannelError, CommunicationError};
+use crate::error::CommunicationError;
 use crate::logging::debug;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
-use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
-use tokio::io::{AsyncRead, AsyncWrite};
+use futures::{stream::FuturesUnordered, StreamExt};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that the worker can execute
@@ -26,23 +25,34 @@ pub enum NetworkCommand {
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
 }
 
+#[derive(Debug)]
+pub enum NetworkEvent {
+    NewConnection((ConnectionId, ReadHalf, WriteHalf)),
+    ConnectionBanned(ConnectionId),
+}
+
+#[derive(Debug)]
+pub enum NetworkManagementCommand {}
+
 /// Real job is done by network worker
-pub struct NetworkWorker<EstablisherT: Establisher> {
+pub struct NetworkWorker {
     /// Network configuration.
     cfg: NetworkConfig,
     /// Listener part of the establisher.
-    listener: EstablisherT::ListenerT,
+    listener: Listener,
     /// The connection establisher.
-    establisher: EstablisherT,
+    establisher: Establisher,
     /// Database with peer information.
     peer_info_db: PeerInfoDatabase,
     /// Receiver for network commands
-    network_command_rx: mpsc::Receiver<NetworkCommand>,
+    controller_command_rx: mpsc::Receiver<NetworkCommand>,
     /// Sender for network events
-    event_tx: mpsc::Sender<NetworkEvent<EstablisherT::ReaderT, EstablisherT::WriterT>>,
+    controller_event_tx: mpsc::Sender<NetworkEvent>,
+    /// Receiver for network management commands
+    controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
 }
 
-impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
+impl NetworkWorker {
     /// Creates a new NetworkWorker
     ///
     /// # Arguments
@@ -50,23 +60,26 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
     /// * listener: Listener part of the establisher.
     /// * establisher: The connection establisher.
     /// * peer_info_db: Database with peer information.
-    /// * network_command_rx: Receiver for network commands.
-    /// * event_tx: Sender for network events.
+    /// * controller_command_rx: Channel receiving network commands.
+    /// * controller_event_tx: Channel sending out network events.
+    /// * controller_manager_rx: Channel receiving network management commands.
     pub fn new(
         cfg: NetworkConfig,
-        listener: EstablisherT::ListenerT,
-        establisher: EstablisherT,
+        listener: Listener,
+        establisher: Establisher,
         peer_info_db: PeerInfoDatabase,
-        network_command_rx: mpsc::Receiver<NetworkCommand>,
-        event_tx: mpsc::Sender<NetworkEvent<EstablisherT::ReaderT, EstablisherT::WriterT>>,
-    ) -> NetworkWorker<EstablisherT> {
+        controller_command_rx: mpsc::Receiver<NetworkCommand>,
+        controller_event_tx: mpsc::Sender<NetworkEvent>,
+        controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
+    ) -> NetworkWorker {
         NetworkWorker {
             cfg,
             listener,
             establisher,
             peer_info_db,
-            network_command_rx,
-            event_tx,
+            controller_command_rx,
+            controller_event_tx,
+            controller_manager_rx,
         }
     }
 
@@ -76,7 +89,8 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
         let mut out_connecting_futures = FuturesUnordered::new();
         let mut cur_connection_id = ConnectionId::default();
         let mut active_connections: HashMap<ConnectionId, (IpAddr, bool)> = HashMap::new(); // ip, is_outgoing
-                                                                                            // wake up the controller at a regular interval to retry connections
+
+        // wake up the controller at a regular interval to retry connections
         let mut wakeup_interval = tokio::time::interval(self.cfg.wakeup_interval.to_duration());
 
         loop {
@@ -102,19 +116,23 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
             }
 
             tokio::select! {
+                // listen to manager commands
+                cmd = self.controller_manager_rx.recv() => match cmd {
+                    None => break,
+                    Some(_) => {}
+                },
+
                 // wake up interval
                 _ = wakeup_interval.tick() => {},
 
                 // peer feedback event
-                res = self.network_command_rx.recv() => match res {
-                    Some(cmd) => manage_network_command::<EstablisherT>(
-                        cmd,
-                        &mut self.peer_info_db,
-                        &mut active_connections,
-                        &self.event_tx
-                    ).await?,
-                    None => break,
-                },
+                Some(cmd) = self.controller_command_rx.recv() => manage_network_command(
+                    cmd,
+                    &mut self.peer_info_db,
+                    &mut active_connections,
+                    &self.controller_event_tx
+                ).await?,
+
                 // out-connector event
                 Some((ip_addr, res)) = out_connecting_futures.next() => manage_out_connections(
                     res,
@@ -122,16 +140,17 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
                     &mut self.peer_info_db,
                     &mut cur_connection_id,
                     &mut active_connections,
-                    &self.event_tx,
+                    &self.controller_event_tx,
                 ).await?,
 
                 // listener socket received
-                res = self.listener.accept() => manage_in_connections(res,
+                res = self.listener.accept() => manage_in_connections(
+                    res,
                     &mut self.peer_info_db,
                     &mut cur_connection_id,
                     &mut active_connections,
-                    &self.event_tx
-                ).await?,
+                    &self.controller_event_tx
+                ).await?
             }
         }
 
@@ -152,11 +171,11 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
 /// * peer_info_db: Database with peer information.
 /// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
 /// * event_tx: channel to send network events out.
-async fn manage_network_command<EstablisherT: Establisher>(
+async fn manage_network_command(
     cmd: NetworkCommand,
     peer_info_db: &mut PeerInfoDatabase,
     active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
-    event_tx: &mpsc::Sender<NetworkEvent<EstablisherT::ReaderT, EstablisherT::WriterT>>,
+    event_tx: &mpsc::Sender<NetworkEvent>,
 ) -> Result<(), CommunicationError> {
     match cmd {
         NetworkCommand::MergeAdvertisedPeerList(ips) => {
@@ -167,11 +186,10 @@ async fn manage_network_command<EstablisherT: Establisher>(
         NetworkCommand::GetAdvertisablePeerList(response_tx) => {
             response_tx
                 .send(peer_info_db.get_advertisable_peer_ips())
-                .map_err(|err| {
-                    ChannelError::GetAdvertisablePeerListChannelError(format!(
-                        "could not send GetAdvertisablePeerListChannelError upstream:{:?}",
-                        err
-                    ))
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "could not send GetAdvertisablePeerListChannelError upstream".into(),
+                    )
                 })?;
         }
         NetworkCommand::ConnectionClosed((id, reason)) => {
@@ -210,11 +228,10 @@ async fn manage_network_command<EstablisherT: Establisher>(
                         event_tx
                             .send(NetworkEvent::ConnectionBanned(*target_id))
                             .await
-                            .map_err(|err| {
-                                ChannelError::NetworkEventChannelError(format!(
-                                    "could not send connection banned notification upstream:{}",
-                                    err
-                                ))
+                            .map_err(|_| {
+                                CommunicationError::ChannelError(
+                                    "could not send connection banned notification upstream".into(),
+                                )
                             })?;
                     }
                 }
@@ -234,11 +251,10 @@ async fn manage_network_command<EstablisherT: Establisher>(
         NetworkCommand::GetPeers(response_tx) => {
             response_tx
                 .send(peer_info_db.get_peers().clone())
-                .map_err(|err| {
-                    ChannelError::GetPeersChannelError(format!(
-                        "could not send GetPeersChannelError upstream:{:?}",
-                        err
-                    ))
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "could not send GetPeersChannelError upstream".into(),
+                    )
                 })?;
         }
     }
@@ -254,18 +270,14 @@ async fn manage_network_command<EstablisherT: Establisher>(
 /// * cur_connection_id : connection id of the node we are trying to reach
 /// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
 /// * event_tx: channel to send network events out.
-async fn manage_out_connections<ReaderT, WriterT>(
-    res: tokio::io::Result<(ReaderT, WriterT)>,
+async fn manage_out_connections(
+    res: tokio::io::Result<(ReadHalf, WriteHalf)>,
     ip_addr: IpAddr,
     peer_info_db: &mut PeerInfoDatabase,
     cur_connection_id: &mut ConnectionId,
     active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
-    event_tx: &mpsc::Sender<NetworkEvent<ReaderT, WriterT>>,
-) -> Result<(), CommunicationError>
-where
-    ReaderT: AsyncRead + Send + Sync + Unpin + std::fmt::Debug,
-    WriterT: AsyncWrite + Send + Sync + Unpin + std::fmt::Debug,
-{
+    event_tx: &mpsc::Sender<NetworkEvent>,
+) -> Result<(), CommunicationError> {
     match res {
         Ok((reader, writer)) => {
             if peer_info_db.try_out_connection_attempt_success(&ip_addr)? {
@@ -284,11 +296,10 @@ where
                 event_tx
                     .send(NetworkEvent::NewConnection((connection_id, reader, writer)))
                     .await
-                    .map_err(|err| {
-                        ChannelError::NetworkEventChannelError(format!(
-                            "could not send new out connection notification:{}",
-                            err
-                        ))
+                    .map_err(|_| {
+                        CommunicationError::ChannelError(
+                            "could not send new out connection notification".into(),
+                        )
                     })?;
             } else {
                 debug!("out connection towards ip={:?} refused", ip_addr);
@@ -319,17 +330,13 @@ where
 /// * cur_connection_id : connection id of the node we are trying to reach
 /// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
 /// * event_tx: channel to send network events out.
-async fn manage_in_connections<ReaderT, WriterT>(
-    res: std::io::Result<(ReaderT, WriterT, SocketAddr)>,
+async fn manage_in_connections(
+    res: std::io::Result<(ReadHalf, WriteHalf, SocketAddr)>,
     peer_info_db: &mut PeerInfoDatabase,
     cur_connection_id: &mut ConnectionId,
     active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
-    event_tx: &mpsc::Sender<NetworkEvent<ReaderT, WriterT>>,
-) -> Result<(), CommunicationError>
-where
-    ReaderT: AsyncRead + Send + Sync + Unpin + std::fmt::Debug,
-    WriterT: AsyncWrite + Send + Sync + Unpin + std::fmt::Debug,
-{
+    event_tx: &mpsc::Sender<NetworkEvent>,
+) -> Result<(), CommunicationError> {
     match res {
         Ok((reader, writer, remote_addr)) => {
             if peer_info_db.try_new_in_connection(&remote_addr.ip())? {
@@ -347,11 +354,10 @@ where
                 event_tx
                     .send(NetworkEvent::NewConnection((connection_id, reader, writer)))
                     .await
-                    .map_err(|err| {
-                        ChannelError::NetworkEventChannelError(format!(
-                            "could not send new in connection notification:{}",
-                            err
-                        ))
+                    .map_err(|_| {
+                        CommunicationError::ChannelError(
+                            "could not send new in connection notification".into(),
+                        )
                     })?;
             } else {
                 debug!("inbound connection from addr={:?} refused", remote_addr);

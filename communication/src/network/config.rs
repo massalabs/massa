@@ -2,6 +2,8 @@ use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
 use time::UTime;
 
+pub const CHANNEL_SIZE: usize = 16;
+
 /// Network configuration
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkConfig {
@@ -17,7 +19,7 @@ pub struct NetworkConfig {
     /// Network_worker will try to connect to avaible peers every wakeup_interval.
     /// In millis
     pub wakeup_interval: UTime,
-    /// Path to the file containing knos=wn peers.
+    /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
     /// Number of avaible slots for out connections.
     pub target_out_connections: usize,
