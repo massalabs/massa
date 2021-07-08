@@ -5,7 +5,6 @@ use crypto::{
 };
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -90,7 +89,6 @@ impl Address {
     }
 
     /// ## Example
-    /// todo update after #291
     /// ```rust
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
@@ -100,13 +98,31 @@ impl Address {
     /// # let private_key = SignatureEngine::generate_random_private_key();
     /// # let public_key = signature_engine.derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
-    /// // let bytes = address.to_bytes();
-    /// // let res_addr = Address::from_bytes(&bytes).unwrap();
-    /// // assert_eq!(address, res_addr);
+    /// let ser = address.to_bs58_check();
+    /// let res_addr = Address::from_bs58_check(&ser).unwrap();
+    /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_bs58_check(data: &str) -> Result<Address, ModelsError> {
         Ok(Address(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
         ))
+    }
+
+    /// ## Example
+    /// ```rust
+    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use models::Address;
+    /// # let signature_engine = SignatureEngine::new();
+    /// # let private_key = SignatureEngine::generate_random_private_key();
+    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// let ser = address.to_bs58_check();
+    /// let res_addr = Address::from_bs58_check(&ser).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// ```
+    pub fn to_bs58_check(&self) -> String {
+        self.0.to_bs58_check()
     }
 }
