@@ -143,15 +143,15 @@ impl Display for WrapperBlock {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StakerInfo {
-    pub staker_active_blocks: Vec<(Hash, BlockHeader)>,
-    pub staker_discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,
-    pub staker_next_draws: Vec<Slot>,
+    pub active_blocks: Vec<(Hash, BlockHeader)>,
+    pub discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,
+    pub next_draws: Vec<Slot>,
 }
 
 impl Display for StakerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "  active blocks:")?;
-        let mut blocks: Vec<&(Hash, BlockHeader)> = self.staker_active_blocks.iter().collect();
+        let mut blocks: Vec<&(Hash, BlockHeader)> = self.active_blocks.iter().collect();
         blocks.sort_unstable_by_key(|v| (v.1.content.slot, v.0));
         for (hash, block) in &blocks {
             write!(
@@ -163,7 +163,7 @@ impl Display for StakerInfo {
         }
         writeln!(f, "  discarded blocks:")?;
         let mut blocks: Vec<&(Hash, DiscardReason, BlockHeader)> =
-            self.staker_discarded_blocks.iter().collect();
+            self.discarded_blocks.iter().collect();
         blocks.sort_unstable_by_key(|v| (v.2.content.slot, v.0));
         for (hash, reason, block) in &blocks {
             write!(
@@ -176,8 +176,8 @@ impl Display for StakerInfo {
         }
         writeln!(
             f,
-            "  staker_next_draws{:?}:",
-            self.staker_next_draws
+            "  next_draws{:?}:",
+            self.next_draws
                 .iter()
                 .map(|slot| format!("(slot:{})", slot))
                 .collect::<Vec<String>>()
