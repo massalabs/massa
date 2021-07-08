@@ -7,7 +7,7 @@ use thiserror::Error;
 pub enum ApiError {
     #[error("join error:  {0}")]
     JoinError(#[from] tokio::task::JoinError),
-    #[error("send  channel error: {0}")]
+    #[error("send channel error: {0}")]
     SendChannelError(String),
     #[error("receive  channel error: {0}")]
     ReceiveChannelError(String),
@@ -23,4 +23,6 @@ pub enum ApiError {
     DataInconsistencyError(String),
     #[error("model error: {0}")]
     ModelError(#[from] ModelsError),
+    #[error("usage error: {0}")]
+    UsageErro(String),
 }
