@@ -1,3 +1,4 @@
+use models::ModelsError;
 use sled::transaction::TransactionError;
 use thiserror::Error;
 
@@ -11,6 +12,8 @@ pub enum StorageError {
     SledError(#[from] sled::Error),
     #[error("transaction error{0}")]
     TransactionError(#[from] TransactionError<InternalError>),
+    #[error("model error{0}")]
+    ModelError(#[from] ModelsError),
 }
 
 #[derive(Error, Debug)]
