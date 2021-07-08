@@ -672,7 +672,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         &mut protocol_controller,
         vec![hasht0s1, hasht1s1].into_iter().collect(),
         HashSet::new(),
-        500,
+        1000,
     )
     .await;
     tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 1000).await;
@@ -686,7 +686,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         &mut protocol_controller,
         HashSet::new(),
         vec![hasht0s1].into_iter().collect(),
-        200,
+        1000,
     )
     .await;
     protocol_controller.receive_block(t0s3).await;
@@ -699,20 +699,20 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &vec![hasht1s1, hasht1s2],
-        300,
+        1000,
     )
     .await;
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &vec![hasht1s1, hasht1s2],
-        300,
+        1000,
     )
     .await;
     tools::validate_wishlist(
         &mut protocol_controller,
         HashSet::new(),
         vec![hasht1s1].into_iter().collect(),
-        300,
+        1000,
     )
     .await;
 
