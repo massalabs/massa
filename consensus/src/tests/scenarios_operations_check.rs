@@ -17,30 +17,40 @@ use crate::{
 
 #[tokio::test]
 async fn test_operations_check() {
-    // // setup logging
-    // stderrlog::new()
-    //     .verbosity(4)
-    //     .timestamp(stderrlog::Timestamp::Millisecond)
-    //     .init()
-    //     .unwrap();
+    // setup logging
+    /*
+    stderrlog::new()
+        .verbosity(4)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();
+    */
 
     let thread_count = 2;
 
-    let private_key_1 = crypto::generate_random_private_key();
-    let public_key_1 = crypto::derive_public_key(&private_key_1);
-    let address_1 = Address::from_public_key(&public_key_1).unwrap();
-    let thread_1 = address_1.get_thread(thread_count);
-    let mut private_key_2 = crypto::generate_random_private_key();
-    let mut public_key_2 = crypto::derive_public_key(&private_key_2);
-    let mut address_2 = Address::from_public_key(&public_key_2).unwrap();
-    let mut thread_2 = address_2.get_thread(thread_count);
+    let mut private_key_1;
+    let mut public_key_1;
+    let mut address_1;
+    let mut private_key_2;
+    let mut public_key_2;
+    let mut address_2;
 
     // make sure that both threads are different
-    while thread_1 == thread_2 {
+    loop {
+        private_key_1 = crypto::generate_random_private_key();
+        public_key_1 = crypto::derive_public_key(&private_key_1);
+        address_1 = Address::from_public_key(&public_key_1).unwrap();
+        if address_1.get_thread(thread_count) == 0 {
+            break;
+        }
+    }
+    loop {
         private_key_2 = crypto::generate_random_private_key();
         public_key_2 = crypto::derive_public_key(&private_key_2);
         address_2 = Address::from_public_key(&public_key_2).unwrap();
-        thread_2 = address_2.get_thread(thread_count);
+        if address_2.get_thread(thread_count) == 1 {
+            break;
+        }
     }
 
     let mut ledger = HashMap::new();
@@ -55,7 +65,8 @@ async fn test_operations_check() {
     cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.nodes = vec![(public_key_1, private_key_1)];
-    cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(2000.into());
+    cfg.disable_block_creation = true;
+    cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(10000.into());
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
@@ -85,6 +96,7 @@ async fn test_operations_check() {
         .expect("could not get block graph status")
         .genesis_blocks;
 
+    // Valid block A sending 5 from addr1 to addr2 + reward 1 to addr1
     let operation_1 = create_transaction(
         private_key_1,
         public_key_1,
@@ -92,31 +104,14 @@ async fn test_operations_check() {
         5,
         &serialization_context,
         5,
+        1,
     );
-    let operation_2 = create_transaction(
-        private_key_2,
-        public_key_2,
-        address_1,
-        10,
-        &serialization_context,
-        8,
-    );
-    let creator = (public_key_1, private_key_1);
-
-    let slot_a = Slot::new(1, thread_1);
-    let parents_a = genesis_ids.clone();
-
-    let slot_b = Slot::new(1, thread_2);
-
-    let slot_c = Slot::new(2, thread_1);
-
-    // receiving block A with ok validity period
     let (id_a, block_a, _) = create_block_with_operations(
         &cfg,
         &serialization_context,
-        slot_a,
-        &parents_a,
-        creator,
+        Slot::new(1, 0),
+        &genesis_ids,
+        (public_key_1, private_key_1),
         vec![operation_1.clone()],
     );
     propagate_block(
@@ -127,18 +122,24 @@ async fn test_operations_check() {
     )
     .await;
 
-    // todo assert address 1 has 1 coin at block A (see #269)
-
-    let mut parents_b = genesis_ids.clone();
-    parents_b[thread_1 as usize] = id_a;
+    // todo assert address 1 has 1 coin at blocks (A, genesis_ids[1]) (see #269)
 
     // receive block b with invalid operation (not enough coins)
+    let operation_2 = create_transaction(
+        private_key_2,
+        public_key_2,
+        address_1,
+        10,
+        &serialization_context,
+        8,
+        1,
+    );
     let (_, block_2b, _) = create_block_with_operations(
         &cfg,
         &serialization_context,
-        slot_b,
-        &parents_b,
-        creator,
+        Slot::new(1, 1),
+        &vec![id_a, genesis_ids[1]],
+        (public_key_1, private_key_1),
         vec![operation_2],
     );
     propagate_block(
@@ -153,9 +154,9 @@ async fn test_operations_check() {
     let (id_b, block_b, _) = create_block_with_operations(
         &cfg,
         &serialization_context,
-        slot_b,
-        &parents_b,
-        creator,
+        Slot::new(1, 1),
+        &vec![id_a, genesis_ids[1]],
+        (public_key_1, private_key_1),
         vec![],
     );
     propagate_block(
@@ -169,16 +170,13 @@ async fn test_operations_check() {
     // todo assert address 2 has 5 coins at block B (see #269)
     // (block A taken in account in thread 2)
 
-    let mut parents_c = parents_b.clone();
-    parents_c[thread_2 as usize] = id_b;
-
     // receive block with reused operation
     let (_, block_1c, _) = create_block_with_operations(
         &cfg,
         &serialization_context,
-        slot_c,
-        &parents_c,
-        creator,
+        Slot::new(1, 0),
+        &vec![id_a, id_b],
+        (public_key_1, private_key_1),
         vec![operation_1.clone()],
     );
     propagate_block(

@@ -299,6 +299,7 @@ pub fn create_transaction(
     amount: u64,
     context: &SerializationContext,
     expire_period: u64,
+    fee: u64,
 ) -> Operation {
     let op = OperationType::Transaction {
         recipient_address,
@@ -307,7 +308,7 @@ pub fn create_transaction(
 
     let content = OperationContent {
         sender_public_key,
-        fee: 1,
+        fee,
         expire_period,
         op,
     };
