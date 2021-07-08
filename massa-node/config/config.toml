@@ -7,9 +7,9 @@
     bind = "127.0.0.1:3030"
 
 [consensus]
-    genesis_timestamp = 1607958448000
-    t0 = 64000
-    thread_count = 32
+    genesis_timestamp = 1607958448000 # to update while testing
+    t0 = 5000
+    thread_count = 2
     selection_rng_seed = 42
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
     nodes = [
@@ -18,12 +18,12 @@
         ['54VEbD2R2HkUz2G5NGHyxhaFDhrQFG62UqFLWsUywnHtDsM8qh','2eLQSjhrep9Grw7yDifXnDKgCc1WTXBCtdeREzuJd9jiSZuZmr'],
         ['5KdMBTJAU9JpJggACMx5gd8x8tSQFZEwfpxrzFV2Znz6M7FyAN','5nLsiHcZHCLSWnquQtrninDQRMJdXYKgt3fEyqBQ6ju6a2K6t']
     ]
-    current_node_index = 0
+    current_node_index = 0 # To update
     max_discarded_blocks = 10
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 320
     max_dependency_blocks = 100
-    delta_f0 = 64
+    delta_f0 = 16
     max_operations_per_block = 500
     max_block_size = 10000
     
@@ -36,7 +36,7 @@
 
 [network]
     bind = "0.0.0.0:31234"
-    routable_ip = "200.200.200.200"
+    routable_ip = "200.200.200.200" # Your ip
     protocol_port = 31234
     connect_timeout = 5000
     wakeup_interval = 10000
@@ -62,11 +62,13 @@
     reset_at_startup = true
 
 [bootstrap]
-    bootstrap_ip = "200.200.200.200"
-    bootstrap_port = 42
+    # bootstrap_addr =  "200.200.200.200:31235" #if you want to bootstrap from that ip
     bootstrap_public_key = '4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb'
-    #listen_port =
+    # bind = 31235 # if you want to bootstrap people
     connect_timeout = 1000
-    bootstrap_time_after_genesis = 100000000000
     retry_delay = 5000
-    our_bootstrap_private_key = 'LGXe9RrR1QNSsSn8bAEgrsYM8WwX67oHLjGj6e19bCW9ZKo6p'
+    max_bootstrap_blocks = 1000
+    max_bootstrap_cliques = 1000
+    max_bootstrap_deps = 1000
+    max_bootstrap_children = 1000
+    max_ping = 500
