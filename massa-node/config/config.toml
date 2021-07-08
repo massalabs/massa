@@ -72,3 +72,8 @@
     max_bootstrap_deps = 1000
     max_bootstrap_children = 1000
     max_ping = 500
+
+[hang_monitor]
+    monitor_interval = 1000
+	hang_timeout = 100
+	monitor = true
