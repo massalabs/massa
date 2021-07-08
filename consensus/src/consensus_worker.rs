@@ -70,6 +70,8 @@ pub struct ConsensusWorker {
     next_slot: Slot,
     /// blocks we want
     wishlist: HashSet<BlockId>,
+    // latest final periods
+    latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
 }
@@ -109,6 +111,11 @@ impl ConsensusWorker {
         let next_slot = previous_slot.map_or(Ok(Slot::new(0u64, 0u8)), |s| {
             s.get_next_slot(cfg.thread_count)
         })?;
+        let latest_final_periods: Vec<u64> = block_db
+            .get_latest_final_blocks_periods()
+            .iter()
+            .map(|(_block_id, period)| *period)
+            .collect();
 
         massa_trace!("consensus.consensus_worker.new", {});
         Ok(ConsensusWorker {
@@ -125,6 +132,7 @@ impl ConsensusWorker {
             previous_slot,
             next_slot,
             wishlist: HashSet::new(),
+            latest_final_periods,
             clock_compensation,
             pool_command_sender,
         })
@@ -139,11 +147,9 @@ impl ConsensusWorker {
                 .update_current_slot(previous_slot)
                 .await?;
         }
-        if let Some(final_periods) = self.block_db.get_changed_latest_final_blocks_periods() {
-            self.pool_command_sender
-                .update_latest_final_periods(final_periods)
-                .await?;
-        }
+        self.pool_command_sender
+            .update_latest_final_periods(self.latest_final_periods.clone())
+            .await?;
 
         // set slot timer
         let next_slot_timer = sleep_until(
@@ -220,6 +226,11 @@ impl ConsensusWorker {
         self.block_db
             .slot_tick(&mut self.selector, Some(cur_slot))?;
 
+        // signal tick to pool
+        self.pool_command_sender
+            .update_current_slot(cur_slot)
+            .await?;
+
         // take care of block db changes
         self.block_db_changed().await?;
 
@@ -233,11 +244,6 @@ impl ConsensusWorker {
             )?
             .estimate_instant(self.clock_compensation)?,
         ));
-
-        // signal tick to pool
-        self.pool_command_sender
-            .update_current_slot(self.next_slot)
-            .await?;
 
         Ok(())
     }
@@ -434,10 +440,17 @@ impl ConsensusWorker {
             self.wishlist = new_wishlist;
         }
 
-        // send latest final periods to pool
-        if let Some(final_periods) = self.block_db.get_changed_latest_final_blocks_periods() {
+        // send latest final periods to pool, if changed
+        let latest_final_periods: Vec<u64> = self
+            .block_db
+            .get_latest_final_blocks_periods()
+            .iter()
+            .map(|(_block_id, period)| *period)
+            .collect();
+        if self.latest_final_periods != latest_final_periods {
+            self.latest_final_periods = latest_final_periods;
             self.pool_command_sender
-                .update_latest_final_periods(final_periods)
+                .update_latest_final_periods(self.latest_final_periods.clone())
                 .await?;
         }
 
