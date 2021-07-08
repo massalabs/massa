@@ -572,7 +572,7 @@ impl ProofOfStake {
     }
 
     async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {
-        let mut res = vec![BTreeMap::<Address, u64>::new() ; cfg.thread_count as usize];
+        let mut res = vec![BTreeMap::<Address, u64>::new(); cfg.thread_count as usize];
         let addrs_map = serde_json::from_str::<HashMap<Address, u64>>(
             &tokio::fs::read_to_string(&cfg.initial_rolls_path).await?,
         )?;

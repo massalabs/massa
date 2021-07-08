@@ -43,13 +43,11 @@ pub fn get_consensus_config() -> ConsensusConfig {
         genesis_timestamp: 0.into(),
         thread_count: 2,
         t0: 2000.into(),
-        selection_rng_seed: 0,
         genesis_key: PrivateKey::from_bs58_check(
             "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S",
         )
         .unwrap(),
         staking_keys: Default::default(),
-        current_node_index: 0,
         max_discarded_blocks: 0,
         future_block_processing_max_periods: 0,
         max_future_processing_blocks: 0,

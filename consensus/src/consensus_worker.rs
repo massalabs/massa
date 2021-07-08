@@ -297,7 +297,10 @@ impl ConsensusWorker {
                     }
                 }
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
-                    massa_trace!("consensus.consensus_worker.slot_tick.block_creatorunavailable", {});
+                    massa_trace!(
+                        "consensus.consensus_worker.slot_tick.block_creatorunavailable",
+                        {}
+                    );
                     None
                 }
                 Err(err) => return Err(err),
