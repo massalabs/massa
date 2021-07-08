@@ -27,7 +27,7 @@ use consensus::LedgerDataExport;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
-use models::AddressRollState;
+use models::AddressesRollState;
 use models::Operation;
 use models::OperationId;
 use models::OperationType;
@@ -336,7 +336,7 @@ fn cmd_address_roll_state(data: &mut ReplData, params: &[&str]) -> Result<(), Re
     if let Some(resp) = request_data(data, &url)? {
         //println!("resp {:?}", resp.text());
         if resp.status() == StatusCode::OK {
-            let rolls = resp.json::<Vec<(Address, AddressRollState)>>()?;
+            let rolls = resp.json::<AddressesRollState>()?.states;
             for (addr, roll_state) in rolls.into_iter() {
                 println!("Roll for addresses:");
                 println!(
@@ -595,7 +595,22 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
 }
 
 fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    let url = format!("http://{}/api/v1/next_draws/{}", data.node_ip, params[0]);
+    let addr_list = params[0]
+        .split(',')
+        .map(|str| Address::from_bs58_check(str.trim()))
+        .collect::<Result<HashSet<Address>, _>>();
+    let addrs = match addr_list {
+        Ok(addrs) => addrs,
+        Err(err) => {
+            println!("Error during addresses parsing: {}", err);
+            return Ok(());
+        }
+    };
+    let url = format!(
+        "http://{}/api/v1/next_draws?{}",
+        data.node_ip,
+        serde_qs::to_string(&Addresses { addrs })?
+    );
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<data::NextDraws>()?;
         println!("next_draws:");

@@ -1,10 +1,10 @@
 [
-    {
-      "ip": "93.31.10.235",
-      "banned": false,
-      "bootstrap": true,
-      "last_alive": null,
-      "last_failure": null,
-      "advertised": true
-    }
+  {
+    "advertised": true,
+    "banned": false,
+    "bootstrap": true,
+    "ip": "93.31.10.235",
+    "last_alive": 1625410809342,
+    "last_failure": null
+  }
 ]
