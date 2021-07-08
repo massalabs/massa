@@ -156,6 +156,8 @@ Only difference with current implementation will be where we are looking for blo
 
 Same as check if received block is in block database, except if it was already just a header. In that case do nothing.
 
+#### promote
+
 ## Transitions between ConsensusBlock states
 ```mermaid
 graph LR
@@ -183,3 +185,57 @@ Do we need to remove blocks one by one ?
 
 ### into active
 * for parents : update children vec
+
+
+## Graphs
+
+### Check header
+```mermaid
+graph TD
+    Header -->  K{Known}
+    K--> C((No))
+    K --> B((Yes))
+
+    C --> TF{Too far}
+    TF --> H((No))
+    TF --> I((Yes))
+
+    B --> NRY[NotReceivedYet]
+    B --> HO[HeaderOnly]
+    B --> FB[FullBlock]
+    B --> D[Discarded]
+
+    B --> G[Genesis]
+    B --> A[Active]
+    B --> F[Final]
+
+    G & A & F --> X[[Do nothing]]
+    J & HO & FB & D --> Y[[Update sequence number]]
+
+    NRY --> TF
+    I --> |promote| J(Discarded)
+
+    H --> PT{Process time}
+    PT --> L((Yes))
+    PT --> M((No))
+    M --> |promote| N(HeaderOnly)
+    N --> Y
+
+    L --> RN{Roll number}
+    RN --> O((Yes))
+    RN --> P((No))
+    P --> |promote| Q(Discarded)
+    Q --> Y
+
+    O --> PD{Parents Dependencies}
+    PD --> R((ok))
+    PD --> S((wrong))
+    PD --> T((miss))
+
+    S --> |promote| U(Discarded)
+    T --> |promote| V(HeaderOnly)
+    R --> |promote| W(HeaderOnly)
+
+    U & V --> Y
+    W --> Z[[Ready]]
+```
