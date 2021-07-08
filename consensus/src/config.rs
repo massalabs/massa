@@ -1,4 +1,4 @@
-use crypto::signature::{PrivateKey, PublicKey};
+use crypto::signature::PrivateKey;
 use serde::Deserialize;
 use std::{default::Default, path::PathBuf, usize};
 use time::UTime;
@@ -57,6 +57,7 @@ pub struct ConsensusConfig {
     pub operation_batch_size: usize,
     pub initial_rolls_path: PathBuf,
     pub initial_draw_seed: String,
+    pub roll_price: u64,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.

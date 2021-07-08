@@ -138,18 +138,20 @@ impl DeserializeCompact for LedgerChange {
 }
 
 pub trait OperationLedgerInterface {
-    fn get_changes(
+    fn get_ledger_changes(
         &self,
         fee_target: &Address,
         thread_count: u8,
+        roll_price: u64,
     ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError>;
 }
 
 impl OperationLedgerInterface for Operation {
-    fn get_changes(
+    fn get_ledger_changes(
         &self,
         fee_target: &Address,
         thread_count: u8,
+        roll_price: u64,
     ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError> {
         let mut changes: Vec<HashMap<Address, LedgerChange>> =
             vec![HashMap::new(); thread_count as usize];
@@ -208,9 +210,18 @@ impl OperationLedgerInterface for Operation {
                     },
                 )?;
             }
-            // roll operations are handled separately
-            // because of compensations, lock delays etc...
-            models::OperationType::RollBuy { .. } => {}
+            models::OperationType::RollBuy { roll_count } => {
+                try_add_changes(
+                    &sender_address,
+                    LedgerChange {
+                        balance_delta: roll_count
+                            .checked_mul(roll_price)
+                            .ok_or(ConsensusError::RollOverflowError)?,
+                        balance_increment: false,
+                    },
+                )?;
+            }
+            // roll sale is handled separately with a delay
             models::OperationType::RollSell { .. } => {}
         }
 
@@ -270,7 +281,7 @@ impl Ledger {
     }
 
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
-    pub fn get_final_datas(
+    pub fn get_final_data(
         &self,
         addresses: HashSet<&Address>,
     ) -> Result<HashMap<Address, LedgerData>, ConsensusError> {

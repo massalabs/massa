@@ -8,7 +8,6 @@ use super::{
     pos::ProofOfStake,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
-use crypto::signature::PublicKey;
 use logging::debug;
 use models::{Address, Block, BlockId, OperationId, OperationSearchResult, Slot};
 use pool::PoolCommandSender;

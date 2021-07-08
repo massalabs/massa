@@ -247,7 +247,7 @@ impl Operation {
         start..=self.content.expire_period
     }
 
-    pub fn get_involved_addresses(
+    pub fn get_ledger_involved_addresses(
         &self,
         fee_target: Option<Address>,
     ) -> Result<HashSet<Address>, ModelsError> {
@@ -255,14 +255,17 @@ impl Operation {
         if let Some(target) = fee_target {
             res.insert(target.clone());
         }
-        res.insert(Address::from_public_key(&self.content.sender_public_key)?);
+        let emitter_address = Address::from_public_key(&self.content.sender_public_key)?;
+        res.insert(emitter_address);
         match self.content.op {
             OperationType::Transaction {
                 recipient_address, ..
             } => {
                 res.insert(recipient_address);
             }
-            OperationType::RollBuy { .. } => {}
+            OperationType::RollBuy { .. } => {
+                res.insert(emitter_address);
+            }
             OperationType::RollSell { .. } => {}
         }
         Ok(res)
