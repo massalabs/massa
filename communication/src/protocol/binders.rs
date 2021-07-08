@@ -1,5 +1,5 @@
+//! Flexbuffer layer between raw data and our objects.
 use super::messages::Message;
-/// Flexbuffer layer between raw data and our objects.
 use crate::error::{CommunicationError, FlexbufferError};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};

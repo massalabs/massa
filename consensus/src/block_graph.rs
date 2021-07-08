@@ -1,3 +1,4 @@
+//! All information concerning blocks, the block graph and cliques is managed here.
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::{BlockAcknowledgeError, ConsensusError};
 use crypto::{hash::Hash, signature::SignatureEngine};
@@ -6,13 +7,21 @@ use models::block::BlockHeader;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
+/// The block version that can be exported.
+/// Note that the detailed list of operation is not exported
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
+    /// Header of the corresponding block.
     pub block: BlockHeader,
+    /// For (i, set) in children,
+    /// set contains the headers' hashes
+    /// of blocks referencing exported block as a parent,
+    /// in thread i.
     pub children: Vec<HashSet<Hash>>,
 }
 
 impl<'a> From<&'a CompiledBlock> for ExportCompiledBlock {
+    /// Conversion from compiled block
     fn from(block: &'a CompiledBlock) -> Self {
         ExportCompiledBlock {
             block: block.block.header.clone(),
@@ -21,6 +30,7 @@ impl<'a> From<&'a CompiledBlock> for ExportCompiledBlock {
     }
 }
 
+/// The discarded blocks structure version that can be exported.
 #[derive(Debug, Clone)]
 pub struct ExportDiscardedBlocks {
     pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
@@ -29,6 +39,10 @@ pub struct ExportDiscardedBlocks {
 }
 
 impl<'a> From<&'a DiscardedBlocks> for ExportDiscardedBlocks {
+    /// Conversion from DiscardedBlocks.
+    ///
+    /// # Argument
+    /// * block : DiscardedBlocks to export.
     fn from(block: &'a DiscardedBlocks) -> Self {
         ExportDiscardedBlocks {
             map: block.map.clone(),
@@ -38,18 +52,27 @@ impl<'a> From<&'a DiscardedBlocks> for ExportDiscardedBlocks {
     }
 }
 
+/// Exprortable verison of the blockGraph
 #[derive(Clone, Debug)]
 pub struct BlockGraphExport {
+    /// Genesis blocks.
     pub genesis_blocks: Vec<Hash>,
-    pub active_blocks: HashMap<Hash, ExportCompiledBlock>, // map of active blocks
-    pub discarded_blocks: ExportDiscardedBlocks,           // finite cache of discarded blocks
-    pub best_parents: Vec<Hash>,                           // best parent in each thread
-    pub latest_final_blocks_periods: Vec<(Hash, u64)>, // latest final slot and block hash in each thread
-    pub gi_head: HashMap<Hash, HashSet<Hash>>,         // head of the incompatibility graph
-    pub max_cliques: Vec<HashSet<Hash>>, // list of maximal cliques of compatible blocks
+    /// Map of active blocks, were blocks are in their exported version.
+    pub active_blocks: HashMap<Hash, ExportCompiledBlock>,
+    /// Finite cache of discarded blocks, in exported version.
+    pub discarded_blocks: ExportDiscardedBlocks,
+    /// Best parents hashe in each thread.
+    pub best_parents: Vec<Hash>,
+    /// Latest final period and block hash in each thread.
+    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
+    /// Head of the incompatibility graph.
+    pub gi_head: HashMap<Hash, HashSet<Hash>>,
+    /// List of maximal cliques of compatible blocks.
+    pub max_cliques: Vec<HashSet<Hash>>,
 }
 
 impl<'a> From<&'a BlockGraph> for BlockGraphExport {
+    /// Conversion from blockgraph.
     fn from(dbgrah: &'a BlockGraph) -> Self {
         BlockGraphExport {
             genesis_blocks: dbgrah.genesis_blocks.clone(),
@@ -60,21 +83,26 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
                 .collect(), // map of active blocks
             discarded_blocks: ExportDiscardedBlocks::from(&dbgrah.discarded_blocks), // finite cache of discarded blocks
             best_parents: dbgrah.best_parents.clone(), // best parent in each thread
-            latest_final_blocks_periods: dbgrah.latest_final_blocks_periods.clone(), // latest final slot and block hash in each thread
+            latest_final_blocks_periods: dbgrah.latest_final_blocks_periods.clone(), // latest final period and block hash in each thread
             gi_head: dbgrah.gi_head.clone(), // head of the incompatibility graph
             max_cliques: dbgrah.max_cliques.clone(), // list of maximal cliques of compatible blocks
         }
     }
 }
 
+/// Compliled version of a block.
+/// For now, it adds only block's children.
 #[derive(Debug, Clone)]
 struct CompiledBlock {
+    /// Original block ...
     block: Block,
+    /// ... and its children.
     children: Vec<HashSet<Hash>>,
 }
 
 impl CompiledBlock {
     #[inline]
+    /// Computes the fitness of that block.
     fn fitness(&self) -> u64 {
         self.block
             .header
@@ -87,21 +115,30 @@ impl CompiledBlock {
     }
 }
 
+/// Possible discard reasons
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 pub enum DiscardReason {
+    /// Block is invalid, either structurally, or because of some incompatibility.
     Invalid,
+    /// Block is incompatible with a final block.
     Stale,
+    /// Block has enough fitness.
     Final,
 }
 
+/// Recently discarded blocks' headers are kept here, far away from active blocks.
 #[derive(Debug, Clone)]
 struct DiscardedBlocks {
+    /// Links a hash to corresponding discard reason and block header.
     map: HashMap<Hash, (DiscardReason, BlockHeader)>,
+    /// Keeps the order in wich blocks were discarded.
     vec_deque: VecDeque<Hash>,
+    /// Maximum number of blocks we keep in memory before definitely forgetting about them.
     max_size: usize,
 }
 
 impl DiscardedBlocks {
+    /// Creates a new DiscardedBlocks structure.
     fn new(max_size: usize) -> Self {
         DiscardedBlocks {
             map: HashMap::with_capacity(max_size),
@@ -110,10 +147,15 @@ impl DiscardedBlocks {
         }
     }
 
-    /// insert an element at the front of the queue
-    /// if element is already here put it at the front of the queue
-    /// returns the elements that have been definitely discarded
-    /// because of max_size
+    /// Inserts an element at the front of the queue,
+    /// if element is already here put it at the front of the queue.
+    /// Returns the elements that have been definitely discarded
+    /// because of max_size.
+    ///
+    /// # Argument
+    /// * hash : hash of the considered block
+    /// * header: header of the block to discard
+    /// * reason: why we want it discarded.
     fn insert(
         &mut self,
         hash: Hash,
@@ -155,27 +197,49 @@ impl DiscardedBlocks {
         }
     }
 
+    /// Checks if element is in discardedblocks
+    ///
+    /// # Argument
+    /// * element: hash of the given block.
     fn contains(&self, element: &Hash) -> bool {
         self.map.contains_key(element)
     }
 
+    /// Gets hash, discard reason and block header for given hash, if it id in the structure.
+    ///
+    /// # Argument
+    /// * element: hash of the given block.
     fn get(&self, element: &Hash) -> Option<(&crypto::hash::Hash, &(DiscardReason, BlockHeader))> {
         self.map.get_key_value(element)
     }
 }
 
+/// Here is all information about blocks and graph and cliques.
 #[derive(Debug)]
 pub struct BlockGraph {
+    /// Consensus Configuration
     cfg: ConsensusConfig,
+    /// Genesis blocks.
     genesis_blocks: Vec<Hash>,
-    active_blocks: HashMap<Hash, CompiledBlock>, // map of active blocks
-    discarded_blocks: DiscardedBlocks,           // finite cache of discarded blocks
-    best_parents: Vec<Hash>,                     // best parent in each thread
-    latest_final_blocks_periods: Vec<(Hash, u64)>, // latest final period and block hash in each thread
-    gi_head: HashMap<Hash, HashSet<Hash>>,         // head of the incompatibility graph
-    max_cliques: Vec<HashSet<Hash>>,               // list of maximal cliques of compatible blocks
+    /// Map of active blocks.
+    active_blocks: HashMap<Hash, CompiledBlock>,
+    /// Finite cache of discarded blocks.
+    discarded_blocks: DiscardedBlocks,
+    /// Best parents hashe in each thread.
+    best_parents: Vec<Hash>,
+    /// Latest final period and block hash in each thread.
+    latest_final_blocks_periods: Vec<(Hash, u64)>,
+    /// Head of the incompatibility graph.
+    gi_head: HashMap<Hash, HashSet<Hash>>,
+    /// List of maximal cliques of compatible blocks.
+    max_cliques: Vec<HashSet<Hash>>,
 }
 
+/// Creates genesis block in given thread.
+///
+/// # Arguments
+/// * cfg: consensus configuration.
+/// * thread_number: thread in wich we want a genesis block
 fn create_genesis_block(
     cfg: &ConsensusConfig,
     thread_number: u8,
@@ -207,6 +271,10 @@ fn create_genesis_block(
 }
 
 impl BlockGraph {
+    /// Creates a new block_graph.
+    ///
+    /// # Argument
+    /// * cfg : consensus configuration.
     pub fn new(cfg: &ConsensusConfig) -> Result<Self, ConsensusError> {
         let mut active_blocks = HashMap::new();
         let mut block_hashes: Vec<Hash> = Vec::with_capacity(cfg.thread_count as usize);
@@ -234,15 +302,23 @@ impl BlockGraph {
         })
     }
 
+    /// Gets lastest final blocks (hash, period) for each thread.
     pub fn get_latest_final_blocks_periods(&self) -> &Vec<(Hash, u64)> {
         &self.latest_final_blocks_periods
     }
 
+    /// Gets whole block corresponding to given hash, if it is active.
+    ///
+    /// # Argument
+    /// * hash : header's hash of the given block.
     pub fn get_active_block(&self, hash: Hash) -> Option<&Block> {
         self.active_blocks.get(&hash).map(|cb| &cb.block)
     }
 
-    // returns value, or hashes of some of the blocks missing to be conclusive
+    /// Returns value, or hashes of some of the blocks missing to be conclusive
+    ///
+    /// # Argument
+    /// * parent_hashes : we want to check topological order of parent_hashes.
     fn check_block_parents_topological_order(
         &self,
         parent_hashes: &Vec<Hash>,
@@ -287,7 +363,11 @@ impl BlockGraph {
         }
     }
 
-    // returns hash and resulting discarded blocks
+    /// Returns hash and resulting discarded blocks
+    ///
+    /// # Arguments
+    /// * val : dummy value used to generate dummy hash
+    /// * slot : generated block is in slot slot.
     pub fn create_block(
         &mut self,
         val: String,
@@ -325,8 +405,14 @@ impl BlockGraph {
         ))
     }
 
-    // acknowledge a block
-    // returns discarded blocks
+    /// Acknowledges a block.
+    /// Returns discarded blocks
+    ///
+    /// # Arguments
+    /// * hash : hash of the given block
+    /// * block : block to acknowledge
+    /// * selector: selector to draw staker for slot
+    /// * current_slot: current slot
     pub fn acknowledge_block(
         &mut self,
         hash: Hash,
@@ -513,7 +599,10 @@ impl BlockGraph {
         Ok(discarded)
     }
 
-    // get a block and all its desencants
+    /// Gets a block and all its desencants
+    ///
+    /// # Argument
+    /// * hash : hash of the given block
     fn get_block_and_descendants(&self, hash: Hash) -> Result<HashSet<Hash>, ConsensusError> {
         let mut to_visit = vec![hash];
         let mut result: HashSet<Hash> = HashSet::new();
@@ -531,7 +620,7 @@ impl BlockGraph {
         Ok(result)
     }
 
-    // compute max cliques of compatible blocks
+    /// Computes max cliques of compatible blocks
     fn compute_max_cliques(&mut self) -> Vec<HashSet<Hash>> {
         let mut max_cliques: Vec<HashSet<Hash>> = Vec::new();
 
@@ -579,8 +668,12 @@ impl BlockGraph {
         max_cliques
     }
 
-    // update the consensus state by taking a new block into account
-    // if ok, returns the hashmap of pruned blocks
+    /// Updates the consensus state by taking a new block into account
+    /// if ok, returns the hashmap of pruned blocks.
+    ///
+    /// # Argument
+    /// * hash: hash of the given block
+    /// * block: new incomming block
     fn update_consensus_with_new_block(
         &mut self,
         hash: Hash,
@@ -879,6 +972,9 @@ impl BlockGraph {
         Ok(pruned_blocks)
     }
 
+    /// Prunes blocks from graph.
+    ///
+    /// # Arguments
     /// * prune_set: Hash of blocks to prune
     /// * prune_from_cliques if we want to prune blocks from cliques
     /// * are_blocks_stale: blocks are either stale or final. Used to set discard reason

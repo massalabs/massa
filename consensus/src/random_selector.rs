@@ -9,6 +9,7 @@ use crate::error::ConsensusError;
 
 pub const RANDOM_SELECTOR_MIN_SEED_LENGTH: usize = 32;
 
+/// Used to select staker for slot.
 pub struct RandomSelector {
     thread_generators: Vec<Xoshiro256PlusPlus>,
     distribution: WeightedIndex<u64>,
@@ -16,6 +17,14 @@ pub struct RandomSelector {
 }
 
 impl RandomSelector {
+    /// Creates a new selector.
+    ///
+    /// # Arguments
+    /// * seed: intitiation seed.
+    /// * thread_count: number of threads
+    /// * participant_weights: participants' weights.
+    ///
+    /// Note: we must know every possible staker.
     pub fn new(
         seed: &Vec<u8>,
         thread_count: u8,
@@ -43,6 +52,11 @@ impl RandomSelector {
         })
     }
 
+    /// Draws a staker for given slot.
+    /// For given selector and node, the result is deterministic.
+    ///
+    /// # Argument
+    /// * slot: we want to know staker for that slot.
     pub fn draw(&mut self, slot: (u64, u8)) -> u32 {
         while slot.0 >= (self.cache[slot.1 as usize].len() as u64) {
             self.cache[slot.1 as usize].push(

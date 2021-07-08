@@ -1,4 +1,4 @@
-/// Here are happening hanshakes.
+//! Here are happening hanshakes.
 use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
