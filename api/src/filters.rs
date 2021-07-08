@@ -147,7 +147,7 @@
 
 use crate::ApiError;
 
-use apimodel::{self, BlockInfo, Cliques, HashSlot};
+use apimodel::{BlockInfo, Cliques, HashSlot, NetworkInfo};
 
 use super::config::ApiConfig;
 use communication::{
@@ -764,13 +764,14 @@ async fn get_cliques(event_tx: mpsc::Sender<ApiEvent>) -> Result<Cliques, ApiErr
 async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<serde_json::Value, ApiError> {
-    let peers = retrieve_peers(&event_tx).await?;
+) -> Result<NetworkInfo, ApiError> {
+    let peers = retrieve_peers(&event_tx)
+        .await?
+        .iter()
+        .map(|(_ip, p)| p.clone())
+        .collect();
     let our_ip = network_cfg.routable_ip;
-    Ok(json!({
-        "our_ip": our_ip,
-        "peers": peers,
-    }))
+    Ok(NetworkInfo { our_ip, peers })
 }
 
 /// Returns connected peers :
