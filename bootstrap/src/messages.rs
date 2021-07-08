@@ -261,5 +261,21 @@ mod tests {
         } else {
             panic!("not the right message variant expected ConsensusState");
         }
+        let base_peers = vec![IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11))];
+        let message3 = BootstrapMessage::PeerList {
+            peers: base_peers.clone(),
+            signature: base_signature,
+        };
+        let bytes = message3.to_bytes_compact(&serialization_context).unwrap();
+        let (new_message3, cursor) =
+            BootstrapMessage::from_bytes_compact(&bytes, &serialization_context).unwrap();
+
+        assert_eq!(bytes.len(), cursor);
+        if let BootstrapMessage::PeerList { peers, signature } = new_message3 {
+            assert_eq!(base_signature, signature);
+            assert_eq!(peers, base_peers);
+        } else {
+            panic!("not the right message variant expected PeerList");
+        }
     }
 }
