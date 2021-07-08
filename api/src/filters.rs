@@ -326,6 +326,14 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || get_node_config(context_cfg.clone()));
 
+    let consensus_cfg = consensus_config.clone();
+    let get_consensus_cfg = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("consensus_config"))
+        .and(warp::path::end())
+        .and_then(move || get_consensus_config(consensus_cfg.clone()));
+
     let evt_tx = event_tx.clone();
     let network_cfg = network_config.clone();
     let consensus_cfg = consensus_config.clone();
@@ -426,6 +434,7 @@ pub fn get_filter(
         .or(stop_node)
         .or(send_operations)
         .or(node_config)
+        .or(get_consensus_cfg)
         .boxed()
 }
 
@@ -439,6 +448,19 @@ async fn get_node_config(
 ) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_node_config", {});
     Ok(warp::reply::json(&context))
+}
+
+async fn get_consensus_config(
+    consensus_cfg: ConsensusConfig,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_consensus_config", {});
+    Ok(warp::reply::json(&json!({
+        "t0": consensus_cfg.t0,
+        "thread_count": consensus_cfg.thread_count,
+        "genesis_timestamp": consensus_cfg.genesis_timestamp,
+        "delta_f0": consensus_cfg.delta_f0,
+        "max_block_size": consensus_cfg.max_block_size
+    })))
 }
 
 /// This function sends AskStop outside the Api and
