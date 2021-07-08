@@ -6,9 +6,7 @@ use models::Slot;
 
 #[tokio::test]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
-    let node_ids = tools::create_node_ids(2);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(2);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;

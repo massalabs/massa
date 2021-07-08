@@ -14,9 +14,7 @@ async fn test_unsorted_block() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -148,8 +146,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let node_ids = tools::create_node_ids(1);
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now().unwrap().saturating_sub(2000.into()); // slot 1 is in the past
     cfg.future_block_processing_max_periods = 3;
@@ -240,8 +237,7 @@ async fn test_too_many_blocks_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let node_ids = tools::create_node_ids(1);
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 100;
     cfg.max_future_processing_blocks = 2;
@@ -340,9 +336,7 @@ async fn test_dep_in_back_order() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now()
         .unwrap()
@@ -468,9 +462,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now()
         .unwrap()
@@ -588,9 +580,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now()
         .unwrap()
