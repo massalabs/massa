@@ -56,7 +56,7 @@ pub async fn initialize(network_config: &config::NetworkConfig) -> Result<(), Er
         secret_key = SecretKey::random(&mut rng);
         fs::write(&network_config.node_key_file, secret_key.into_b58check())?;
     }
-    let public_key = PublicKey::from_secret_key(&secret_key);
+    let _public_key = PublicKey::from_secret_key(&secret_key);
     
 
     // launch connection handler
