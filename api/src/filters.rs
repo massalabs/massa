@@ -945,8 +945,8 @@ async fn get_staker_info(
         .collect();
 
     Ok(StakerInfo {
-        staker_active_blocks: blocks,
-        staker_discarded_blocks: discarded,
-        staker_next_draws: next_slots_by_creator,
+        active_blocks: blocks,
+        discarded_blocks: discarded,
+        next_draws: next_slots_by_creator,
     })
 }

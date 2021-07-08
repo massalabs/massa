@@ -1594,10 +1594,10 @@ async fn test_staker_info() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let empty_vec = serde_json::to_value(&Vec::<Block>::new()).unwrap();
-        assert_eq!(obtained["staker_active_blocks"], empty_vec);
-        assert_eq!(obtained["staker_discarded_blocks"], empty_vec);
+        assert_eq!(obtained["active_blocks"], empty_vec);
+        assert_eq!(obtained["discarded_blocks"], empty_vec);
         assert_eq!(
-            obtained["staker_next_draws"],
+            obtained["next_draws"],
             serde_json::to_value(vec![Slot::new(0u64, 0u8)]).unwrap()
         );
 
@@ -1685,8 +1685,8 @@ async fn test_staker_info() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(obtained["staker_active_blocks"], expected_active);
-    assert_eq!(obtained["staker_discarded_blocks"], expected_discarded);
+    assert_eq!(obtained["active_blocks"], expected_active);
+    assert_eq!(obtained["discarded_blocks"], expected_discarded);
 
     drop(filter);
 }
