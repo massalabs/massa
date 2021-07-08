@@ -19,7 +19,7 @@ pub struct NetworkConfig {
 }
 
 impl Config {
-    pub fn from_toml(toml_str: &String) -> Result<Config, toml::de::Error> {
+    pub fn from_toml(toml_str: &str) -> Result<Config, toml::de::Error> {
         toml::de::from_str(toml_str)
     }
 }

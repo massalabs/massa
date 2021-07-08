@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 use tokio::prelude::*;
 
-async fn listen(bind: &String) -> Result<(), Error> {
+async fn listen(bind: &str) -> Result<(), Error> {
     let mut listener = tokio::net::TcpListener::bind(bind).await?;
     loop {
         let (mut socket, _) = listener.accept().await?;

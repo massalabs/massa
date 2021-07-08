@@ -7,7 +7,7 @@ pub use secp256k1::SecretKey;
 pub trait B58able: Sized {
     type Err;
     fn into_b58check(&self) -> String;
-    fn from_b58check(in_str: &String) -> Result<Self, Self::Err>;
+    fn from_b58check(in_str: &str) -> Result<Self, Self::Err>;
 }
 
 impl B58able for SecretKey {
@@ -17,7 +17,7 @@ impl B58able for SecretKey {
         bs58::encode(self.serialize().to_vec()).into_string()
     }
 
-    fn from_b58check(in_str: &String) -> Result<SecretKey, Error> {
+    fn from_b58check(in_str: &str) -> Result<SecretKey, Error> {
         let decoded = bs58::decode(in_str).into_vec()?;
         const OUT_LEN: usize = 32;
         if decoded.len() != OUT_LEN {
@@ -37,7 +37,7 @@ impl B58able for PublicKey {
         bs58::encode(self.serialize_compressed().to_vec()).into_string()
     }
 
-    fn from_b58check(in_str: &String) -> Result<PublicKey, Error> {
+    fn from_b58check(in_str: &str) -> Result<PublicKey, Error> {
         let decoded = bs58::decode(in_str).into_vec()?;
         const OUT_LEN: usize = 33;
         if decoded.len() != OUT_LEN {
@@ -74,10 +74,8 @@ mod tests {
             0xc9, 0x62, 0x67, 0x90, 0x63,
         ])
         .unwrap();
-        let decoded = PublicKey::from_b58check(&String::from(
-            "ppEBeqRBUTDbd9317cXvhBuDmypZyT3fgkXDmXHnoV9c",
-        ))
-        .unwrap();
+        let decoded =
+            PublicKey::from_b58check("ppEBeqRBUTDbd9317cXvhBuDmypZyT3fgkXDmXHnoV9c").unwrap();
         assert_eq!(decoded, expected_public_key);
     }
 
@@ -101,10 +99,8 @@ mod tests {
             0x2f, 0xac, 0x3d, 0x48,
         ])
         .unwrap();
-        let decoded = SecretKey::from_b58check(&String::from(
-            "FEAPpWypnp5Gin5zg1QmY4SuhRBxUSNHRUJjozHZEKio",
-        ))
-        .unwrap();
+        let decoded =
+            SecretKey::from_b58check("FEAPpWypnp5Gin5zg1QmY4SuhRBxUSNHRUJjozHZEKio").unwrap();
         assert_eq!(decoded, expected_secret_key);
     }
 }
