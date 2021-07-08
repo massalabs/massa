@@ -1,6 +1,6 @@
 use super::{mock_network_controller::MockNetworkController, tools};
-use crate::network::NetworkCommand;
 use crate::protocol::{start_protocol_controller, ProtocolEvent};
+use crate::{network::NetworkCommand, protocol::ProtocolPoolEvent};
 use models::Slot;
 use std::collections::{HashMap, HashSet};
 
@@ -54,6 +54,63 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
     {
         None => {}
         _ => panic!("Protocol unexpectedly sent block or header."),
+    }
+
+    protocol_manager
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
+}
+
+#[tokio::test]
+async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
+    let (protocol_config, serialization_context) = tools::create_protocol_config();
+
+    let (mut network_controller, network_command_sender, network_event_receiver) =
+        MockNetworkController::new();
+
+    // start protocol controller
+    let (_, protocol_event_receiver, mut protocol_pool_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            protocol_config.clone(),
+            5u64,
+            serialization_context.clone(),
+            network_command_sender,
+            network_event_receiver,
+        )
+        .await
+        .expect("could not start protocol controller");
+
+    // Create 1 node.
+    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+    let creator_node = nodes.pop().expect("Failed to get node info.");
+
+    // 1. Create an operation
+    let mut operation = tools::create_operation(&serialization_context);
+
+    // 2. Change the validty period.
+    operation.content.expire_period += 10;
+
+    // 3. Send block to protocol.
+    network_controller
+        .send_operations(creator_node.id, vec![operation])
+        .await;
+
+    // The node is banned.
+    tools::assert_banned_node(creator_node.id, &mut network_controller).await;
+
+    // Check protocol does not send operation to pool.
+    match tools::wait_protocol_pool_event(&mut protocol_pool_event_receiver, 1000.into(), |evt| {
+        match evt {
+            evt @ ProtocolPoolEvent::ReceivedOperations(..) => Some(evt),
+            _ => None,
+        }
+    })
+    .await
+    {
+        None => {}
+        _ => panic!("Protocol unexpectedly sent operation."),
     }
 
     protocol_manager

@@ -806,7 +806,7 @@ impl ProtocolWorker {
         &mut self,
         operations: Vec<Operation>,
         source_node_id: &NodeId,
-    ) -> HashMap<OperationId, Operation> {
+    ) -> Option<HashMap<OperationId, Operation>> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "opearations": operations });
         let mut result = HashMap::new();
         for op in operations.into_iter() {
@@ -820,10 +820,11 @@ impl ProtocolWorker {
                         "node {:?} sent an invalid operation: {:?}",
                         source_node_id, err
                     );
+                    return None;
                 }
             }
         }
-        result
+        Some(result)
     }
 
     /// Manages network event
@@ -872,10 +873,7 @@ impl ProtocolWorker {
                     .await;
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
-                    warn!(
-                        "node {:?} sent us critically incorrect block {:?}",
-                        from_node_id, block
-                    );
+                    warn!("node {:?} sent us critically incorrect block", from_node_id);
                     let _ = self.ban_node(&from_node_id).await;
                 }
             }
@@ -912,8 +910,8 @@ impl ProtocolWorker {
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
-                        "node {:?} sent us critically incorrect header {:?}",
-                        source_node_id, header
+                        "node {:?} sent us critically incorrect header",
+                        source_node_id,
                     );
                     let _ = self.ban_node(&source_node_id).await;
                 }
@@ -932,12 +930,17 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                let operations = self.note_operations_from_node(operations, &node);
-                if !operations.is_empty() {
-                    self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations(
-                        operations,
-                    ))
-                    .await;
+                if let Some(operations) = self.note_operations_from_node(operations.clone(), &node)
+                {
+                    if !operations.is_empty() {
+                        self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations(
+                            operations,
+                        ))
+                        .await;
+                    }
+                } else {
+                    warn!("node {:?} sent us critically incorrect operation", node,);
+                    let _ = self.ban_node(&node).await;
                 }
             }
         }
