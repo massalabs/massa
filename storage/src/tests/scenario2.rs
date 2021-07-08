@@ -21,11 +21,18 @@ async fn test_get() {
     command_sender.reset().await.unwrap(); // make sur that the db is empty
     let hash = get_test_hash();
     let block = get_test_block();
-    command_sender.add_block(hash, block).await.unwrap();
-    assert!(command_sender.contains(hash).await.unwrap());
-    assert!(!command_sender
-        .contains(get_another_test_hash())
+    command_sender.add_block(hash, block.clone()).await.unwrap();
+    let retrived = command_sender.get_block(hash).await.unwrap().unwrap();
+
+    assert_eq!(
+        retrived.header.compute_hash().unwrap(),
+        block.header.compute_hash().unwrap()
+    );
+
+    assert!(command_sender
+        .get_block(get_another_test_hash())
         .await
-        .unwrap());
+        .unwrap()
+        .is_none());
     command_sender.reset().await.unwrap();
 }
