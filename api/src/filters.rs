@@ -537,9 +537,7 @@ pub fn hash_slot_vec_to_json(input: Vec<(Hash, Slot)>) -> Vec<serde_json::Value>
 /// Returns best parents as a Vec<Hash, Slot>
 /// The Slot represents the parent's slot.
 ///
-async fn get_current_parents(
-    event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<Vec<HashSlot>, ApiError> {
+async fn get_current_parents(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<HashSlot>, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
 
     let parents = graph.best_parents;
@@ -560,17 +558,14 @@ async fn get_current_parents(
 
 /// Returns last final blocks as a Vec<(Hash, Slot)>.
 ///
-async fn get_last_final(
-    event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<Vec<serde_json::Value>, ApiError> {
+async fn get_last_final(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<HashSlot>, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
-    let finals = graph
+    Ok(graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
-        .map(|(i, (hash, period))| (hash.clone(), Slot::new(*period, i as u8)))
-        .collect::<Vec<(Hash, Slot)>>();
-    Ok(hash_slot_vec_to_json(finals))
+        .map(|(i, (hash, period))| (hash.clone(), Slot::new(*period, i as u8)).into())
+        .collect())
 }
 
 async fn get_block_from_graph(

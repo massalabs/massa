@@ -78,11 +78,6 @@ pub struct HashSlot {
     pub slot: Slot,
 }
 
-impl From<(Hash,Slot)> for HashSlot {
-    fn from((hash, slot) :(Hash,Slot)) -> Self {
-        HashSlot { hash, slot }
-    }
-}
 impl std::fmt::Display for HashSlot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
