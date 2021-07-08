@@ -3,8 +3,8 @@
     "advertised": true,
     "banned": false,
     "bootstrap": true,
-    "ip": "200.200.200.200",
-    "last_alive": 1625415300602,
-    "last_failure": 1625735232869
+    "ip": "149.202.86.103",
+    "last_alive": null,
+    "last_failure": null
   }
 ]
