@@ -18,7 +18,6 @@ pub struct NetworkCommand {
     pub msg: String,
 }
 
-
 async fn listener_process(
     network_config: NetworkConfig,
     secret_key: SecretKey,

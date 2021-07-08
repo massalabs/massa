@@ -34,3 +34,5 @@ libsecp256k1 = { version = "0.3" }
 bs58 = { version = "0.3", features=["check"] }
 rand = { version = "0.7" }
 sha2 = { version = "0.8.1" }
+futures = { version = "0.3.4" }
+num_enum = { version= "0.4.3" }

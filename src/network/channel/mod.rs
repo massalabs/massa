@@ -1,13 +1,16 @@
 use failure::{bail, Error};
+use futures::future;
+use log::{debug, error, warn};
 use rand::rngs::OsRng;
 use rand::Rng;
-use tokio::net::TcpStream;
+use std::net::{Shutdown, SocketAddr};
+use tokio::net::{tcp::ReadHalf, tcp::WriteHalf, TcpStream};
 use tokio::prelude::*;
-use tokio::time::{timeout, Duration};
 use tokio::sync::{mpsc, watch};
-use std::net::{SocketAddr, Shutdown};
-use log::{debug, error, warn};
+use tokio::time::{timeout, Duration};
 
+mod multiplexer;
+use multiplexer::MultiplexedReader;
 
 use crate::config::NetworkConfig;
 use crate::crypto::*;
@@ -28,7 +31,6 @@ pub struct Channel {
 pub enum ChannelEvent {
     Candidate { channel: Channel },
 }
-
 
 async fn perform_handshake(
     network_config: &NetworkConfig,
@@ -57,21 +59,14 @@ async fn perform_handshake(
     // send local handshake and read remote handshake
     let mut remote_handshake_data =
         [0u8; HANDSHAKE_RANDOM_BYTES + COMPRESSED_PUBLIC_KEY_SIZE + SIGNATURE_SIZE];
-    {
-        let (res1, res2) = tokio::try_join!(
-            timeout(
-                Duration::from_secs_f32(network_config.timeout),
-                writer.write_all(&local_handshake_data)
-            ),
-            timeout(
-                Duration::from_secs_f32(network_config.timeout),
-                reader.read_exact(&mut remote_handshake_data)
-            )
-        )?;
-        res1?;
-        res2?;
-        //TODO stop when one fails (not just when it times out)
-    }
+    timeout(
+        Duration::from_secs_f32(network_config.timeout),
+        future::try_join(
+            writer.write_all(&local_handshake_data),
+            reader.read_exact(&mut remote_handshake_data),
+        ),
+    )
+    .await??;
 
     // parse and verify remote handshake, prepare local response
     let remote_pubkey;
@@ -100,28 +95,65 @@ async fn perform_handshake(
 
     // send local response and read remote response
     let mut remote_response_data = [0u8; SIGNATURE_SIZE];
-    {
-        let (res1, res2) = tokio::try_join!(
-            timeout(
-                Duration::from_secs_f32(network_config.timeout),
-                writer.write_all(&local_repsonse_data)
-            ),
-            timeout(
-                Duration::from_secs_f32(network_config.timeout),
-                reader.read_exact(&mut remote_response_data)
-            )
-        )?;
-        res1?;
-        res2?;
-        //TODO stop when one fails (not just when it times out)
-    }
+    timeout(
+        Duration::from_secs_f32(network_config.timeout),
+        future::try_join(
+            writer.write_all(&local_repsonse_data),
+            reader.read_exact(&mut remote_response_data),
+        ),
+    )
+    .await??;
 
     // check their signature of our randomnes
     remote_pubkey.verify_signature(&local_randomnes, &remote_response_data)?;
-    
+
     // return remote public key
     Ok(remote_pubkey)
 }
+
+/* TODO
+    struct FramedReader {  // maintain reading state
+        cursor_pos
+        type
+        chan
+        totsize
+        ...
+    }
+    method : update_from_data(new_data)
+    => returns last parsed data chunk if any (with channel number, total size, offset, ...)
+    => when finished, return
+    => when cancelled, return reason if any
+    => if anything failed, return error
+
+
+    TODO
+
+    struct FramedSender {
+        send_cursor=0
+        feed_cursor=0
+        total_len=xx
+        chan = X
+        buffer
+    }
+    method: start_new_object(chan, tot_size) {
+        allocate buffer to tot_size
+        set send_cursor=feed_cursor=0
+    }
+    method: feed(data) {
+        write to buffer
+        move feed_cursor
+    }
+    method: get_some() {
+        send_cur
+        return PENDING if still waiting for data
+        return FINISHED if finished
+        return STOPPED if stopped
+    }
+    method: stop() {
+        mark to be stopped
+    }
+
+*/
 
 async fn channel_event_loop(
     network_config: &NetworkConfig,
@@ -132,7 +164,39 @@ async fn channel_event_loop(
     channel_event_tx: &mut mpsc::Sender<ChannelEvent>,
     shutdown_rx: &mut watch::Receiver<bool>,
 ) -> Result<(), Error> {
-    
+    /*
+        TODO
+        local_status: watch
+        remote_status
+
+        sending_block = Option(Vec<block_size>)
+    */
+
+    loop {
+        /*
+            TODO: select
+                socket_read => framed_receiver.update_from_data(xx)
+                    if we are receiving an object => send data to the corresponding controller
+                    if we are receiving other's updates =>
+                        parse what we have, update our view
+                sender => framed_sender.get_some()
+                    if done =>
+                        (canceled or not) => mark the other as having it
+                        if successfully sent status update:
+                            TODO
+                        if we are done =>
+                            check if there is something they want and we have
+                            choose one randomly and start sending it
+                    elif if the other wants it =>
+                        send next frame
+                    else
+                        start sending stop frame
+
+                local_status_watch =>
+                    save new one
+        */
+    }
+
     Ok(())
 }
 
@@ -148,36 +212,35 @@ async fn channel_process(
     let remote_address = socket.peer_addr()?;
 
     // perform handshake and get remote public key
-    let remote_public_key = perform_handshake(
-        &network_config,
-        &secret_key,
-        &public_key,
-        &mut socket
-    ).await?;
+    let remote_public_key =
+        perform_handshake(&network_config, &secret_key, &public_key, &mut socket).await?;
 
     // create sender link towards network manager and candidate
     let mut channel_rx;
     {
         const CHANNEL_MPSC_CAPACITY: usize = 128;
         let (chan_tx, chan_rx) = mpsc::channel(CHANNEL_MPSC_CAPACITY);
-        channel_event_tx.send(ChannelEvent::Candidate {
-            channel: Channel {
-                address: remote_address.clone(),
-                public_key: remote_public_key.clone(),
-                sender: chan_tx,
-            }
-        }).await?;
+        channel_event_tx
+            .send(ChannelEvent::Candidate {
+                channel: Channel {
+                    address: remote_address.clone(),
+                    public_key: remote_public_key.clone(),
+                    sender: chan_tx,
+                },
+            })
+            .await?;
         channel_rx = chan_rx;
     }
     // read network manager response
     match channel_rx.recv().await {
-        Some(Message::ChannelAccepted) => {},
-        None => {  // channel refused
+        Some(Message::ChannelAccepted) => {}
+        None => {
+            // channel refused
             // TODO try to send packet saying that the channel was refused
             bail!("Channel refused by network manager");
-        },
+        }
     };
-    
+
     // run channel event loop
     match channel_event_loop(
         &network_config,
@@ -187,17 +250,19 @@ async fn channel_process(
         &mut channel_rx,
         &mut channel_event_tx,
         &mut shutdown_rx,
-    ).await {
-        Ok(_) => {},
+    )
+    .await
+    {
+        Ok(_) => {}
         Err(e) => {
             debug!("Channel closed on error: {:?}", e);
-        },
+        }
     }
 
     // close link from network manager
     channel_rx.close();
 
-    // try to notify network manager of closure
+    // notify network manager of channel closure
     /* TODO
         match channel_event_tx.send().await {
             Ok(_) => {},
@@ -206,13 +271,13 @@ async fn channel_process(
             },
         }
     */
-    
+
     // try to gracefully shutdown socket
     match socket.shutdown(Shutdown::Both) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             debug!("Could not cleanly shutdown socket: {:?}", e);
-        },
+        }
     };
 
     Ok(())
@@ -240,7 +305,8 @@ pub async fn launch_detached(
             socket,
             channel_event_tx_clone,
             shutdown_rx_clone,
-        ).await;
+        )
+        .await;
         // TODO notify main of a closed connection to this IP
     });
 }
