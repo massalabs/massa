@@ -41,7 +41,7 @@ impl StorageCommandSender {
     }
 
     pub async fn get_slot_range(
-        &'static self,
+        &self,
         start: (u64, u8),
         end: (u64, u8),
     ) -> Result<HashMap<Hash, Block>, StorageError> {
