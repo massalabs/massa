@@ -66,6 +66,7 @@ enum BlockStatus {
     WaitingForDependencies {
         header_or_block: HeaderOrBlock,
         unsatisfied_dependencies: HashSet<Hash>, // includes self if it's only a header
+        sequence_number: u64,
     },
     Active(ActiveBlock),
     Discarded {
@@ -370,6 +371,10 @@ impl BlockGraph {
                     // promote if discarded
                     *sequence_number = BlockGraph::new_sequence_number(&mut self.sequence_counter);
                 }
+                BlockStatus::WaitingForDependencies { .. } => {
+                    // promote in dependencies
+                    self.promote_dep_tree(hash)?;
+                }
                 _ => {}
             },
         }
@@ -413,6 +418,7 @@ impl BlockGraph {
                 BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
+                    ..
                 } => {
                     // promote to full block and satisfy self-dependency
                     if unsatisfied_dependencies.remove(&hash) {
@@ -420,6 +426,8 @@ impl BlockGraph {
                         to_ack.insert((block.header.content.slot, hash));
                     }
                     *header_or_block = HeaderOrBlock::Block(block);
+                    // promote in dependencies
+                    self.promote_dep_tree(hash)?;
                 }
                 _ => return Ok(()),
             },
@@ -497,8 +505,12 @@ impl BlockGraph {
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Header(header),
                                 unsatisfied_dependencies: dependencies,
+                                sequence_number: BlockGraph::new_sequence_number(
+                                    &mut self.sequence_counter,
+                                ),
                             },
                         );
+                        self.promote_dep_tree(hash)?;
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForDependencies(mut dependencies) => {
@@ -509,8 +521,12 @@ impl BlockGraph {
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Header(header),
                                 unsatisfied_dependencies: dependencies,
+                                sequence_number: BlockGraph::new_sequence_number(
+                                    &mut self.sequence_counter,
+                                ),
                             },
                         );
+                        self.promote_dep_tree(hash)?;
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForSlot => {
@@ -570,8 +586,12 @@ impl BlockGraph {
                             BlockStatus::WaitingForDependencies {
                                 header_or_block: HeaderOrBlock::Block(block),
                                 unsatisfied_dependencies: dependencies,
+                                sequence_number: BlockGraph::new_sequence_number(
+                                    &mut self.sequence_counter,
+                                ),
                             },
                         );
+                        self.promote_dep_tree(hash)?;
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForSlot => {
@@ -659,6 +679,7 @@ impl BlockGraph {
                 if let BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
+                    ..
                 } = itm_status
                 {
                     if unsatisfied_dependencies.remove(&hash) {
@@ -1469,9 +1490,46 @@ impl BlockGraph {
         Ok(discarded_finals)
     }
 
+    fn promote_dep_tree(&mut self, hash: Hash) -> Result<(), ConsensusError> {
+        let mut to_explore = vec![hash];
+        let mut to_promote: HashMap<Hash, (Slot, u64)> = HashMap::new();
+        while let Some(h) = to_explore.pop() {
+            if to_promote.contains_key(&h) {
+                continue;
+            }
+            if let Some(BlockStatus::WaitingForDependencies {
+                header_or_block,
+                unsatisfied_dependencies,
+                sequence_number,
+                ..
+            }) = self.block_statuses.get(&h)
+            {
+                // promote current block
+                to_promote.insert(h, (header_or_block.get_slot(), *sequence_number));
+                // register dependencies for exploration
+                to_explore.extend(unsatisfied_dependencies);
+            }
+        }
+
+        let mut to_promote: Vec<(Slot, u64, Hash)> = to_promote
+            .into_iter()
+            .map(|(h, (slot, seq))| (slot, seq, h))
+            .collect();
+        to_promote.sort_unstable(); // last ones should have the highest seq number
+        for (_slot, _seq, h) in to_promote.into_iter() {
+            if let Some(BlockStatus::WaitingForDependencies {
+                sequence_number, ..
+            }) = self.block_statuses.get_mut(&h)
+            {
+                *sequence_number = BlockGraph::new_sequence_number(&mut self.sequence_counter);
+            }
+        }
+        Ok(())
+    }
+
     fn prune_waiting_for_dependencies(&mut self) -> Result<(), ConsensusError> {
         let mut to_discard: HashMap<Hash, Option<DiscardReason>> = HashMap::new();
-        let mut to_keep: HashSet<Hash> = HashSet::new();
+        let mut to_keep: HashMap<Hash, (u64, Slot)> = HashMap::new();
 
         // list items that are older than the latest final blocks in their threads or have deps that are discarded
         {
@@ -1479,7 +1537,7 @@ impl BlockGraph {
                 if let BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
-                    ..
+                    sequence_number,
                 } = block_status
                 {
                     // has already discarded dependencies => discard (choose worst reason)
@@ -1513,7 +1571,7 @@ impl BlockGraph {
                     }
 
                     // otherwise, mark as to_keep
-                    to_keep.insert(*hash);
+                    to_keep.insert(*hash, (*sequence_number, header_or_block.get_slot()));
                 }
             }
         }
@@ -1521,7 +1579,7 @@ impl BlockGraph {
         // discard in chain and because of limited size
         while !to_keep.is_empty() {
             // mark entries as to_discard and remove them from to_keep
-            for hash in to_keep.clone().into_iter() {
+            for (hash, _old_order) in to_keep.clone().into_iter() {
                 if let Some(BlockStatus::WaitingForDependencies {
                     unsatisfied_dependencies,
                     ..
@@ -1560,17 +1618,19 @@ impl BlockGraph {
             if to_keep.len() > self.cfg.max_dependency_blocks {
                 let remove_elt = to_keep
                     .iter()
-                    .filter_map(|hash| {
+                    .filter_map(|(hash, _old_order)| {
                         if let Some(BlockStatus::WaitingForDependencies {
-                            header_or_block, ..
+                            header_or_block,
+                            sequence_number,
+                            ..
                         }) = self.block_statuses.get(hash)
                         {
-                            return Some((header_or_block.get_slot(), *hash));
+                            return Some((sequence_number, header_or_block.get_slot(), *hash));
                         }
                         None
                     })
                     .min();
-                if let Some((_slot, hash)) = remove_elt {
+                if let Some((_seq_num, _slot, hash)) = remove_elt {
                     to_keep.remove(&hash);
                     to_discard.insert(hash, None);
                     continue;
