@@ -7,7 +7,7 @@ struct FinalRollThreadData {
     cycle: u64,
     last_final_slot: Slot,
     roll_count: BTreeMap<Address, u64>,  // number of rolls an address has
-    cycle_purchases: HashMap<Address, u64>,  // compensated number of rolls an address has bought in the cycle
+    cycle_purchases: HashMap<Address, u64>,  // compensated number of rolls an address has bought in the cycle 
     cycle_sales: HashMap<Address, u64>,  // compenseated number of rolls an address has sold in the cycle
     rng_seed: BitVec // https://docs.rs/bitvec/0.22.3/bitvec/
 }
@@ -95,13 +95,14 @@ This works by going backwards from BlockId (including BlockId) in the same threa
 
 ## When a block B in thread Tau and cycle N becomes final
 
-* if N > final_roll_data[thread][0].cycle:
-  * push front a new element in final_roll_data that represents cycle N:
-    * inherit FinalRollThreadData.roll_count from cycle N-1
-    * empty FinalRollThreadData.cycle_purchases, FinalRollThreadData.cycle_sales, FinalRollThreadData.rng_seed
-  * pop back for final_roll_data[thread] to keep it the right size
-* if there were misses between B and its parent, for each of them in order:
-  * push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in final_roll_data[thread].rng_seed
-* push the 1st bit of BlockId in final_roll_data[thread].rng_seed
-* overwrite the FinalRollThreadData sales/purchase entries at cycle N with the ones from the ActiveBlock 
-
+* step 1:
+  * if N > final_roll_data[thread][0].cycle:
+    * push front a new element in final_roll_data that represents cycle N:
+      * inherit FinalRollThreadData.roll_count from cycle N-1
+      * empty FinalRollThreadData.cycle_purchases, FinalRollThreadData.cycle_sales, FinalRollThreadData.rng_seed
+    * pop back for final_roll_data[thread] to keep it the right size
+* step 2:
+  * if there were misses between B and its parent, for each of them in order:
+    * push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in final_roll_data[thread].rng_seed
+  * push the 1st bit of BlockId in final_roll_data[thread].rng_seed
+  * overwrite the FinalRollThreadData sales/purchase entries at cycle N with the ones from the ActiveBlock 
