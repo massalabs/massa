@@ -4,7 +4,6 @@ use crate::error::ConsensusError;
 use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
-use rand_xoshiro::rand_core::block;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeSet, HashMap, HashSet};
 use std::mem;
@@ -182,7 +181,6 @@ enum CheckOutcome {
     Discard(DiscardReason),
     WaitForSlot,
     WaitForDependencies(HashSet<Hash>),
-    Ignore,
 }
 
 /// Creates genesis block in given thread.
@@ -515,10 +513,6 @@ impl BlockGraph {
                         );
                         return Ok(BTreeSet::new());
                     }
-                    CheckOutcome::Ignore => {
-                        // drop it silently
-                        return Ok(BTreeSet::new());
-                    }
                     CheckOutcome::WaitForSlot => {
                         // make it wait for slot
                         self.block_statuses.insert(
@@ -578,10 +572,6 @@ impl BlockGraph {
                                 unsatisfied_dependencies: dependencies,
                             },
                         );
-                        return Ok(BTreeSet::new());
-                    }
-                    CheckOutcome::Ignore => {
-                        // drop it silently
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForSlot => {
