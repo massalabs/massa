@@ -7,6 +7,7 @@ pub struct NetworkConfig {
     pub routable_ip: Option<IpAddr>,
     pub protocol_port: u16,
     pub connect_timeout: std::time::Duration,
+    pub wakeup_interval: std::time::Duration,
     pub peers_file: std::path::PathBuf,
     pub target_out_connections: usize,
     pub max_in_connections: usize,
