@@ -34,11 +34,10 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
-    /// # let signature_engine = SignatureEngine::new();
     /// # let private_key = crypto::generate_random_private_key();
     /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
@@ -52,11 +51,10 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
-    /// # let signature_engine = SignatureEngine::new();
     /// # let private_key = crypto::generate_random_private_key();
     /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
@@ -70,11 +68,10 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
-    /// # let signature_engine = SignatureEngine::new();
     /// # let private_key = crypto::generate_random_private_key();
     /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
@@ -90,11 +87,10 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
-    /// # let signature_engine = SignatureEngine::new();
     /// # let private_key = crypto::generate_random_private_key();
     /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
@@ -110,11 +106,10 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
-    /// # let signature_engine = SignatureEngine::new();
     /// # let private_key = crypto::generate_random_private_key();
     /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
