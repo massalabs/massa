@@ -2,6 +2,7 @@ use crate::ApiEvent;
 use storage::{start_storage_controller, StorageConfig};
 
 use super::tools::*;
+use crate::filters::hash_slot_vec_to_json;
 use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock};
 use crypto::hash::Hash;
@@ -190,7 +191,11 @@ async fn test_current_parents() {
     let expected = (get_test_hash(), get_test_block().header.content.slot);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
+        &serde_json::to_string(&hash_slot_vec_to_json(vec![
+            expected.clone(),
+            expected.clone(),
+        ]))
+        .unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
