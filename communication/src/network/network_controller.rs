@@ -156,6 +156,20 @@ impl NetworkCommandSender {
             )
         })?)
     }
+
+    pub async fn block_not_found(
+        &mut self,
+        node: NodeId,
+        hash: Hash,
+    ) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::BlockNotFound(node, hash))
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("cound not send block_not_found command".into())
+            })?;
+        Ok(())
+    }
 }
 
 pub struct NetworkEventReceiver(pub mpsc::Receiver<NetworkEvent>);

@@ -122,7 +122,19 @@ impl ProtocolCommandSender {
         self.0
             .send(ProtocolCommand::WishlistDelta { new, remove })
             .await
-            .map_err(|_| CommunicationError::ChannelError("send_block command send error".into()))
+            .map_err(|_| {
+                CommunicationError::ChannelError("send_wishlist_delta command send error".into())
+            })
+    }
+
+    pub async fn block_not_found(&mut self, hash: Hash) -> Result<(), CommunicationError> {
+        massa_trace!("block_not_found", {});
+        self.0
+            .send(ProtocolCommand::BlockNotFound(hash))
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("block_not_found command send error".into())
+            })
     }
 }
 
