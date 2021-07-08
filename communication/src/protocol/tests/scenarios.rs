@@ -8,6 +8,7 @@ use super::{
     mock_network_controller::{self, MockNetworkCommand, MockNetworkController},
     tools,
 };
+use time::UTime;
 use tokio::time::{timeout, Duration};
 
 // notify controller of a new connection,
@@ -45,7 +46,7 @@ async fn test_new_connection() {
                 mock_sock_write,
                 mock_node_id,
                 mock_private_key,
-                Duration::from_millis(1000),
+                UTime::from(1000),
             )
             .run()
             .await

@@ -10,8 +10,8 @@ use crypto::{
 };
 use futures::future::try_join;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
-
-use tokio::time::{timeout, Duration};
+use time::UTime;
+use tokio::time::timeout;
 
 pub type HandshakeReturnType<NetworkControllerT> = Result<
     (
@@ -27,7 +27,7 @@ pub struct HandshakeWorker<NetworkControllerT: NetworkController> {
     writer: WriteBinder<NetworkControllerT::WriterT>,
     self_node_id: NodeId,
     private_key: PrivateKey,
-    timeout_duration: Duration,
+    timeout_duration: UTime,
 }
 
 impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> {
@@ -36,7 +36,7 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
         socket_writer: NetworkControllerT::WriterT,
         self_node_id: NodeId,
         private_key: PrivateKey,
-        timeout_duration: Duration,
+        timeout_duration: UTime,
     ) -> HandshakeWorker<NetworkControllerT> {
         HandshakeWorker {
             reader: ReadBinder::new(socket_reader),
@@ -69,7 +69,7 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
 
         // join send_init_fut and recv_init_fut with a timeout, and match result
         let (other_node_id, other_random_bytes) = match timeout(
-            self.timeout_duration,
+            self.timeout_duration.to_duration(),
             try_join(send_init_fut, recv_init_fut),
         )
         .await
@@ -107,7 +107,7 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
 
         // join send_reply_fut and recv_reply_fut with a timeout, and match result
         let other_signature = match timeout(
-            self.timeout_duration,
+            self.timeout_duration.to_duration(),
             try_join(send_reply_fut, recv_reply_fut),
         )
         .await

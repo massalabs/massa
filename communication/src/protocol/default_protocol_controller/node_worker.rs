@@ -95,7 +95,9 @@ where
             loop {
                 match writer_command_rx.next().await {
                     Some(msg) => {
-                        if let Err(_) = timeout(write_timeout, socket_writer.send(&msg)).await {
+                        if let Err(_) =
+                            timeout(write_timeout.to_duration(), socket_writer.send(&msg)).await
+                        {
                             clean_exit = false;
                             break;
                         }
@@ -108,7 +110,8 @@ where
                 .expect("writer_evt_tx died"); //in a spawned task
         });
 
-        let mut ask_peer_list_interval = tokio::time::interval(self.cfg.ask_peer_list_interval);
+        let mut ask_peer_list_interval =
+            tokio::time::interval(self.cfg.ask_peer_list_interval.to_duration());
         let mut exit_reason = ConnectionClosureReason::Normal;
         loop {
             tokio::select! {

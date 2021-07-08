@@ -1,7 +1,7 @@
 use super::super::{config::ProtocolConfig, protocol_controller::NodeId};
 use super::mock_network_controller::{MockNetworkCommand, MockNetworkControllerInterface};
 use crypto::signature::{PrivateKey, SignatureEngine};
-use std::time::Duration;
+use time::UTime;
 
 // generate random node ID (public key) and private key
 pub fn generate_node_keys() -> (PrivateKey, NodeId) {
@@ -14,8 +14,8 @@ pub fn generate_node_keys() -> (PrivateKey, NodeId) {
 // create a ProtocolConfig with typical values
 pub fn create_protocol_config() -> ProtocolConfig {
     ProtocolConfig {
-        message_timeout: Duration::from_secs(5),
-        ask_peer_list_interval: Duration::from_secs(50),
+        message_timeout: UTime::from(5000u64),
+        ask_peer_list_interval: UTime::from(50000u64),
     }
 }
 
