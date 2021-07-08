@@ -2186,8 +2186,9 @@ impl BlockGraph {
         block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
         operation_set: HashSet<OperationId>,
     ) -> Result<(), ConsensusError> {
-        // add block to status structure
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
+
+        // add block to status structure
         self.block_statuses.insert(
             hash,
             BlockStatus::Active(ActiveBlock {
@@ -2497,6 +2498,10 @@ impl BlockGraph {
             }
             final_blocks
         };
+
+        // Save latest_final_blocks_periods for later use when updating the ledger.
+        let old_latest_final_blocks_periods = self.latest_final_blocks_periods.clone();
+
         // mark final blocks and update latest_final_blocks_periods
         massa_trace!(
             "consensus.block_graph.add_block_to_graph.mark_final_blocks",
@@ -2533,6 +2538,7 @@ impl BlockGraph {
                     "hash": final_block_hash
                 });
                 *is_final = true;
+                // update latest final blocks
                 if final_block.header.content.slot.period
                     > self.latest_final_blocks_periods
                         [final_block.header.content.slot.thread as usize]
@@ -2547,6 +2553,107 @@ impl BlockGraph {
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", hash, final_block_hash)));
             }
+        }
+
+        // list threads where latest final block changed
+        let changed_threads_old_block_thread_id_period = self
+            .latest_final_blocks_periods
+            .iter()
+            .enumerate()
+            .filter_map(|(thread, b_id_period)| {
+                if b_id_period.0 != old_latest_final_blocks_periods[thread].0 {
+                    return Some((
+                        thread as u8,
+                        b_id_period.0,
+                        old_latest_final_blocks_periods[thread].1,
+                    ));
+                }
+                None
+            });
+
+        // Update ledger with changes from final blocks, "B2".
+        for (changed_thread, old_block_id, old_period) in changed_threads_old_block_thread_id_period
+        {
+            // Get the old block
+            let old_block = match self.block_statuses.get(&old_block_id) {
+                Some(BlockStatus::Active(latest)) => latest,
+                _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - active old latest final block {:?} is missing in thread {:?}", old_block_id, changed_thread))),
+            };
+
+            // Get the latest final in the same thread.
+            let latest_final_in_thread_id =
+                self.latest_final_blocks_periods[changed_thread as usize].0;
+
+            // Init the stop backtrack stop periods
+            let mut stop_backtrack_periods = vec![0u64; self.cfg.thread_count as usize];
+            for limit_thread in 0u8..self.cfg.thread_count {
+                if limit_thread == limit_thread {
+                    // in the same thread, set the stop backtrack period to B1.period + 1
+                    stop_backtrack_periods[limit_thread as usize] = old_period + 1;
+                } else if !old_block.parents.is_empty() {
+                    // In every other thread, set it to B1.parents[tau*].period + 1
+                    stop_backtrack_periods[limit_thread as usize] =
+                        old_block.parents[limit_thread as usize].1 + 1;
+                }
+            }
+
+            // Backtrack blocks starting from B2.
+            let mut ancestry: HashSet<BlockId> = HashSet::new();
+            let mut to_scan: Vec<BlockId> = vec![latest_final_in_thread_id]; // B2
+            let mut accumulated_changes: HashMap<Address, LedgerChange> = HashMap::new();
+            while let Some(scan_b_id) = to_scan.pop() {
+                // insert into ancestry, ignore if already scanned
+                if !ancestry.insert(scan_b_id) {
+                    continue;
+                }
+
+                // get block, quit if not found or not active
+                let scan_b = match self.block_statuses.get(&scan_b_id) {
+                    Some(BlockStatus::Active(b)) => b,
+                    _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - block {:?} is missing", scan_b_id)))
+                };
+
+                // accumulate ledger changes
+                // Warning 1: this uses ledger change commutativity and associativity, may not work with smart contracts
+                // Warning 2: we assume that overflows cannot happen here (they won't be deterministic)
+                if scan_b.block.header.content.slot.period
+                    < stop_backtrack_periods[scan_b.block.header.content.slot.thread as usize]
+                {
+                    continue;
+                }
+                for (addr, changes) in scan_b.block_ledger_change
+                    [scan_b.block.header.content.slot.thread as usize]
+                    .iter()
+                    .filter(|(addr, _changes)| {
+                        addr.get_thread(self.cfg.thread_count) == changed_thread
+                    })
+                {
+                    match accumulated_changes.entry(*addr) {
+                        hash_map::Entry::Occupied(mut occ) => {
+                            occ.get_mut().chain(changes)?;
+                        }
+                        hash_map::Entry::Vacant(vac) => {
+                            vac.insert(changes.clone());
+                        }
+                    }
+                }
+
+                // Explore parents
+                to_scan.extend(
+                    scan_b
+                        .parents
+                        .iter()
+                        .map(|(b_id, _period)| *b_id)
+                        .collect::<Vec<BlockId>>(),
+                );
+            }
+
+            // update ledger
+            self.ledger.apply_final_changes(
+                changed_thread,
+                accumulated_changes.into_iter().collect(),
+                self.latest_final_blocks_periods[changed_thread as usize].1,
+            )?;
         }
 
         massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
