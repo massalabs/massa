@@ -16,13 +16,18 @@ pub async fn validate_notpropagate_block(
     not_propagated_hash: Hash,
     timeout_ms: u64,
 ) -> bool {
+    let mut count = 0;
     loop {
+        count += 1;
         match protocol_controller.wait_command(timeout_ms.into()).await {
             Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
                 return !(not_propagated_hash == hash);
             }
             Some(_) => continue,
             None => return false,
+        }
+        if count > 5 {
+            return false;
         }
     }
 }
@@ -33,13 +38,18 @@ pub async fn validate_notpropagate_block_in_list(
     not_propagated_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) -> bool {
+    let mut count = 0;
     loop {
+        count += 1;
         match protocol_controller.wait_command(timeout_ms.into()).await {
             Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
                 return !not_propagated_hashs.contains(&hash);
             }
             Some(_) => continue,
             None => return false,
+        }
+        if count > 5 {
+            return false;
         }
     }
 }
@@ -84,14 +94,21 @@ pub async fn validate_does_not_ask_for_block(
     hash: &Hash,
     timeout_ms: u64,
 ) {
-    match protocol_controller.wait_command(timeout_ms.into()).await {
-        Some(ProtocolCommand::WishlistDelta { new, .. }) => {
-            if new.contains(hash) {
-                panic!("unexpected ask for block {:?}", hash);
+    let mut count = 0;
+    loop {
+        count += 1;
+        match protocol_controller.wait_command(timeout_ms.into()).await {
+            Some(ProtocolCommand::WishlistDelta { new, .. }) => {
+                if new.contains(hash) {
+                    panic!("unexpected ask for block {:?}", hash);
+                }
             }
+            Some(_) => continue,
+            None => break,
         }
-        Some(cmd) => panic!("unexpected command {:?}", cmd),
-        None => {}
+        if count > 5 {
+            return;
+        }
     }
 }
 
