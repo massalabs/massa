@@ -338,7 +338,13 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("state"))
         .and(warp::path::end())
-        .and_then(move || get_state(evt_tx.clone(), consensus_cfg.clone(), network_cfg.clone()));
+        .and_then(move || {
+            wrap_api_call(get_state(
+                evt_tx.clone(),
+                consensus_cfg.clone(),
+                network_cfg.clone(),
+            ))
+        });
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config.clone();
@@ -800,7 +806,7 @@ async fn get_graph_interval(
                     slot.get_next_slot(consensus_cfg.thread_count)?
                 }
             } else {
-                return Err(ApiError::UsageErro("No end timestamp".to_string()));
+                return Err(ApiError::UsageError("No end timestamp".to_string()));
             };
             Some(end_slot)
         } else {
@@ -904,50 +910,17 @@ async fn get_state(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
     network_cfg: NetworkConfig,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let cur_time = match UTime::now() {
-        Ok(time) => time,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting current time : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+) -> Result<serde_json::Value, ApiError> {
+    let cur_time = UTime::now()?;
 
-    let latest_slot_opt = match get_latest_block_slot_at_timestamp(
+    let latest_slot_opt = get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    ) {
-        Ok(slot) => slot,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting latest slot : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    )?;
 
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving peers : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    let peers = retrieve_peers(&event_tx).await?;
 
     let connected_peers: HashSet<IpAddr> = peers
         .iter()
@@ -957,20 +930,9 @@ async fn get_state(
         .map(|(ip, _peer_info)| *ip)
         .collect();
 
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
 
-    let finals = match graph
+    let finals = graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
@@ -986,21 +948,9 @@ async fn get_state(
                 )?,
             ))
         })
-        .collect::<Result<Vec<(&Hash, Slot, UTime)>, consensus::ConsensusError>>()
-    {
-        Ok(finals) => finals,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting final blocks : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+        .collect::<Result<Vec<(&Hash, Slot, UTime)>, consensus::ConsensusError>>()?;
 
-    Ok(warp::reply::json(&json!({
+    Ok(json!({
         "time": cur_time,
         "latest_slot": latest_slot_opt,
         "our_ip": network_cfg.routable_ip,
@@ -1008,7 +958,6 @@ async fn get_state(
         "nb_cliques": graph.max_cliques.len(),
         "nb_peers": connected_peers.len(),
     }))
-    .into_response())
 }
 
 /// Returns a number of last stale blocks as a Vec<(Hash, Slot)> wrapped in a reply.

@@ -2,6 +2,7 @@ use consensus::ConsensusError;
 use models::ModelsError;
 use storage::StorageError;
 use thiserror::Error;
+use time::TimeError;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
@@ -24,5 +25,7 @@ pub enum ApiError {
     #[error("model error: {0}")]
     ModelError(#[from] ModelsError),
     #[error("usage error: {0}")]
-    UsageErro(String),
+    UsageError(String),
+    #[error("time error: {0}")]
+    TimeError(#[from] TimeError),
 }
