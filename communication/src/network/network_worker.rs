@@ -227,15 +227,24 @@ impl NetworkWorker {
             // drop sender
             drop(self.node_event_tx);
             // gather active node handles
-            for (_, (_, _, handle)) in self.active_nodes.drain() {
+            for (_, (_, node_tx, handle)) in self.active_nodes.drain() {
+                //close opened connection.
+                node_tx
+                    .send(NodeCommand::Close(ConnectionClosureReason::Normal))
+                    .await
+                    .map_err(|_| {
+                        CommunicationError::ChannelError("node close command send failed".into())
+                    })?;
                 node_handle_set.push(handle);
             }
             // drain incoming node events
             while let Some(_) = self.node_event_rx.recv().await {}
             // wait for node join handles
             while let Some(res) = node_handle_set.next().await {
-                if let Err(err) = res {
-                    return Err(CommunicationError::TokioTaskJoinError(err));
+                match res {
+                    Ok(Ok(_)) => (),
+                    Ok(Err(err)) => return Err(err),
+                    Err(err) => return Err(CommunicationError::TokioTaskJoinError(err)),
                 }
             }
         }
