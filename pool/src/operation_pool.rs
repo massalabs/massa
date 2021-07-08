@@ -42,6 +42,8 @@ pub struct OperationPool {
     thread_count: u8,
     /// operation validity periods
     operation_validity_periods: u64,
+    /// ids of operations that are final with expire period and thread
+    final_operations: HashMap<OperationId, (u64, u8)>,
 }
 
 impl OperationPool {
@@ -58,6 +60,7 @@ impl OperationPool {
             cfg,
             thread_count,
             operation_validity_periods,
+            final_operations: HashMap::new(),
         }
     }
 
@@ -75,6 +78,12 @@ impl OperationPool {
             // Already present
             if self.ops.contains_key(&op_id) {
                 massa_trace!("pool add_operations  op already present.)", {});
+                continue;
+            }
+
+            // already final
+            if self.final_operations.contains_key(&op_id) {
+                massa_trace!("pool add_operations op already final", {});
                 continue;
             }
 
@@ -140,6 +149,16 @@ impl OperationPool {
         Ok(newly_added)
     }
 
+    pub fn new_final_operations(&mut self, ops: HashMap<OperationId, (u64, u8)>) {
+        for (id, _) in ops.iter() {
+            if let Some(wrapped) = self.ops.remove(&id) {
+                self.ops_by_thread_and_interest[wrapped.thread as usize]
+                    .remove(&(std::cmp::Reverse(wrapped.get_fee_density()), *id));
+            } // else final op wasnn't in pool.
+        }
+        self.final_operations.extend(ops);
+    }
+
     pub fn update_current_slot(&mut self, slot: Slot) {
         self.current_slot = Some(slot);
         self.prune();
@@ -156,6 +175,17 @@ impl OperationPool {
             .collect();
 
         self.remove_ops(ids);
+
+        let ids = self
+            .final_operations
+            .iter()
+            .filter(|(_, (exp, thread))| *exp <= self.last_final_periods[*thread as usize])
+            .map(|(id, _)| *id)
+            .collect::<Vec<_>>();
+
+        for id in ids.into_iter() {
+            self.final_operations.remove(&id);
+        }
     }
 
     pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {

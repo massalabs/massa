@@ -92,6 +92,17 @@ impl PoolCommandSender {
         res
     }
 
+    pub async fn final_operations(
+        &mut self,
+        ops: HashMap<OperationId, (u64, u8)>,
+    ) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.final_operations", { "ops": ops });
+        self.0
+            .send(PoolCommand::FinalOperations(ops))
+            .await
+            .map_err(|_| PoolError::ChannelError("final_operations command send error".into()))
+    }
+
     pub async fn update_latest_final_periods(
         &mut self,
         periods: Vec<u64>,

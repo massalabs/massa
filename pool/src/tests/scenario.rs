@@ -1,5 +1,7 @@
 use communication::protocol::ProtocolCommand;
 use models::Address;
+use models::Operation;
+use models::OperationId;
 use models::SerializeCompact;
 use models::Slot;
 use std::collections::HashMap;
@@ -394,6 +396,126 @@ async fn test_get_involved_operations() {
         .await
         .unwrap();
     assert_eq!(res, HashSet::new());
+
+    pool_manager.stop().await.unwrap();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_new_final_ops() {
+    let thread_count = 2;
+    //define addresses use for the test
+    // addresses a and b both in thread 0
+    let mut priv_a = crypto::generate_random_private_key();
+    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
+    while 0 != address_a.get_thread(thread_count) {
+        priv_a = crypto::generate_random_private_key();
+        pubkey_a = crypto::derive_public_key(&priv_a);
+        address_a = Address::from_public_key(&pubkey_a).unwrap();
+    }
+    assert_eq!(0, address_a.get_thread(thread_count));
+
+    let mut priv_b = crypto::generate_random_private_key();
+    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
+    while 0 != address_b.get_thread(thread_count) {
+        priv_b = crypto::generate_random_private_key();
+        pubkey_b = crypto::derive_public_key(&priv_b);
+        address_b = Address::from_public_key(&pubkey_b).unwrap();
+    }
+    assert_eq!(0, address_b.get_thread(thread_count));
+
+    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+    let max_pool_size_per_thread = 10;
+    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+
+    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
+        MockProtocolController::new();
+
+    let (mut pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
+        cfg.clone(),
+        thread_count,
+        operation_validity_periods,
+        protocol_command_sender,
+        protocol_pool_event_receiver,
+    )
+    .await
+    .unwrap();
+    let op_filter = |cmd| match cmd {
+        cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
+        _ => None,
+    };
+
+    let mut ops: Vec<(OperationId, Operation)> = Vec::new();
+    for i in 0..10 {
+        let (op, _) = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
+        ops.push((op.get_operation_id().unwrap(), op));
+    }
+
+    // Add ops to pool
+    protocol_controller
+        .received_operations(ops.clone().into_iter().collect::<HashMap<_, _>>())
+        .await;
+
+    let newly_added = match protocol_controller
+        .wait_command(250.into(), op_filter.clone())
+        .await
+    {
+        Some(ProtocolCommand::PropagateOperations(ops)) => ops,
+        Some(_) => panic!("unexpected protocol command"),
+        None => panic!("unexpected timeout reached"),
+    };
+    assert_eq!(
+        newly_added.keys().copied().collect::<HashSet<_>>(),
+        ops.iter().map(|(id, _)| *id).collect::<HashSet<_>>()
+    );
+
+    pool_command_sender
+        .final_operations(
+            ops[..4]
+                .to_vec()
+                .iter()
+                .map(|(id, op)| (*id, (8u64, 0u8)))
+                .collect::<HashMap<OperationId, (u64, u8)>>(),
+        )
+        .await
+        .unwrap();
+
+    let res = pool_command_sender
+        .get_operations_involving_address(address_a)
+        .await
+        .unwrap();
+    assert_eq!(
+        res,
+        ops[4..]
+            .to_vec()
+            .iter()
+            .map(|(id, _)| *id)
+            .collect::<HashSet<_>>()
+    );
+
+    // try to add ops 0 to 3 to pool
+    protocol_controller
+        .received_operations(
+            ops[..4]
+                .to_vec()
+                .clone()
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
+        )
+        .await;
+
+    let newly_added = match protocol_controller
+        .wait_command(500.into(), op_filter.clone())
+        .await
+    {
+        Some(ProtocolCommand::PropagateOperations(ops)) => {
+            panic!("unexpected operation propagation")
+        }
+        Some(_) => panic!("unexpected protocol command"),
+        None => {}
+    };
 
     pool_manager.stop().await.unwrap();
 }
