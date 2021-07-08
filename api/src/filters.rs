@@ -648,6 +648,23 @@ async fn retrieve_block(
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
 }
 
+async fn retrieve_operation(
+    id: OperationId,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<Option<(Operation, bool, HashMap<BlockId, bool>)>, ApiError> {
+    massa_trace!("api.filters.retrieve_operation", { "operation_id": id });
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetOperation { id, response_tx })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!("Could not send api event get operation : {0}", e))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve operation : {0}", e))
+    })
+}
+
 async fn retrieve_peers(
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
