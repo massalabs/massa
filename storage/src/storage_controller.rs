@@ -18,11 +18,14 @@ pub fn start_storage_controller(
 pub struct StorageCommandSender(pub BlockStorage);
 
 impl StorageCommandSender {
-    pub async fn reset(&self) -> Result<(), StorageError> {
+    pub async fn clear(&self) -> Result<(), StorageError> {
         let db = self.0.clone();
-        tokio::task::spawn_blocking(move || db.reset()).await?
+        tokio::task::spawn_blocking(move || db.clear()).await?
     }
-
+    pub async fn len(&self) -> Result<usize, StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.len()).await?
+    }
     pub async fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
         let db = self.0.clone();
         tokio::task::spawn_blocking(move || db.add_block(hash, block)).await?

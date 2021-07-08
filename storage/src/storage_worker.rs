@@ -20,9 +20,15 @@ pub struct BlockStorage {
 }
 
 impl BlockStorage {
-    pub fn reset(&self) -> Result<(), StorageError> {
+    pub fn clear(&self) -> Result<(), StorageError> {
         self.db.open_tree("hash_to_block")?.clear()?;
         self.db.open_tree("slot_to_hash")?.clear()?;
+
+        //update storage len()
+        self.nb_stored_blocks
+            .write()
+            .map(|mut nb_stored_blocks| *nb_stored_blocks = 0)
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
         Ok(())
     }
 
@@ -32,12 +38,28 @@ impl BlockStorage {
             .cache_capacity(cfg.cache_capacity)
             .flush_every_ms(cfg.flush_every_ms);
         let db = sled_config.open()?;
-        let _hash_to_block = db.open_tree("hash_to_block")?;
-        let _slot_to_hash = db.open_tree("slot_to_hash")?;
+        let hash_to_block = db.open_tree("hash_to_block")?;
+        let slot_to_hash = db.open_tree("slot_to_hash")?;
         let nb_blocks_in_db = db.len();
+
+        let nb_stored_blocks_mutex = Arc::new(RwLock::new(nb_blocks_in_db));
+
+        //manage max block. If nb block > max block, remove the oldest block.
+        nb_stored_blocks_mutex
+            .write()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
+            .and_then(|nb_blocks_in_db| {
+                BlockStorage::remove_exceed_blocks(
+                    *nb_blocks_in_db,
+                    cfg.max_stored_blocks,
+                    &hash_to_block,
+                    &slot_to_hash,
+                )
+            })?;
+
         Ok(BlockStorage {
             db,
-            nb_stored_blocks: Arc::new(RwLock::new(nb_blocks_in_db)),
+            nb_stored_blocks: nb_stored_blocks_mutex,
             max_stored_blocks: cfg.max_stored_blocks,
         })
     }
@@ -46,46 +68,61 @@ impl BlockStorage {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
 
-        //manage max block. If nb block > max block, remove the oldest block.
-        self.nb_stored_blocks
-            .read()
-            .map(|nb_stored_blocks| {
-                if *nb_stored_blocks >= self.max_stored_blocks {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
-            .and_then(|max_reach| {
-                if max_reach {
-                    slot_to_hash.pop_min().and_then(|res| {
-                        res.map(|(_, min_hash)| hash_to_block.remove(min_hash))
-                            .transpose()
-                    })?;
-                    Ok(())
-                } else {
-                    self.nb_stored_blocks
-                        .write()
-                        .map(|mut value| {
-                            *value += 1;
-                        })
-                        .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
-                }
-            })?;
+        {
+            //acquire W lock on nb_stored_blocks
+            let mut nb_stored_blocks = self
+                .nb_stored_blocks
+                .write()
+                .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
 
-        (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
-            let block_vec = block.into_bytes().map_err(|err| {
-                ConflictableTransactionError::Abort(InternalError::TransactionError(format!(
-                    "error serializing block: {:?}",
-                    err
-                )))
+            //add the new block
+            (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
+                let block_vec = block.into_bytes().map_err(|err| {
+                    ConflictableTransactionError::Abort(InternalError::TransactionError(format!(
+                        "error serializing block: {:?}",
+                        err
+                    )))
+                })?;
+                hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
+                slot_tx.insert(&block.header.slot.to_bytes(), &hash.to_bytes())?;
+                Ok(())
             })?;
-            hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
-            slot_tx.insert(&block.header.slot.to_bytes(), &hash.to_bytes())?;
-            Ok(())
-        })?;
+            *nb_stored_blocks += 1;
+
+            //manage max block. If nb block > max block, remove the oldest block.
+            BlockStorage::remove_exceed_blocks(
+                *nb_stored_blocks,
+                self.max_stored_blocks,
+                &hash_to_block,
+                &slot_to_hash,
+            )?;
+        }; // drop W lock on nb_stored_blocks
+
         Ok(())
+    }
+
+    fn remove_exceed_blocks(
+        mut nb_stored_blocks: usize,
+        max_stored_blocks: usize,
+        hash_to_block: &Tree,
+        slot_to_hash: &Tree,
+    ) -> Result<(), StorageError> {
+        //manage max block. If nb block > max block, remove the oldest block.
+        while nb_stored_blocks > max_stored_blocks {
+            slot_to_hash.pop_min().and_then(|res| {
+                res.map(|(_, min_hash)| hash_to_block.remove(min_hash))
+                    .transpose()
+            })?;
+            nb_stored_blocks -= 1;
+        }
+        Ok(())
+    }
+
+    pub fn len(&self) -> Result<usize, StorageError> {
+        self.nb_stored_blocks
+            .write()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
+            .map(|nb_stored_blocks| *nb_stored_blocks)
     }
 
     pub fn contains(&self, hash: Hash) -> Result<bool, StorageError> {

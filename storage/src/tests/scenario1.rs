@@ -7,7 +7,6 @@ use models::slot::Slot;
 #[tokio::test]
 async fn test_max_nb_blocks() {
     let filename = "target/tests/max_nb_block.db";
-    tokio::fs::remove_file(filename).await.unwrap_or(()); //error if deosn't exist
     let config = StorageConfig {
         /// Max number of bytes we want to store
         max_stored_blocks: 5,
@@ -18,6 +17,8 @@ async fn test_max_nb_blocks() {
     };
 
     let (storage, manager) = start_storage_controller(config).unwrap();
+    storage.clear().await.unwrap(); // make sur that the db is empty
+    assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
     add_block(Slot::new(2, 1), &storage).await;
     add_block(Slot::new(1, 1), &storage).await;
@@ -43,7 +44,6 @@ async fn test_max_nb_blocks() {
 #[tokio::test]
 async fn test_get_slot_range() {
     let filename = "target/tests/get_slot_range.db";
-    tokio::fs::remove_file(filename).await.unwrap_or(()); //error if deosn't exist
     let config = StorageConfig {
         /// Max number of bytes we want to store
         max_stored_blocks: 10,
@@ -54,6 +54,8 @@ async fn test_get_slot_range() {
     };
 
     let (storage, manager) = start_storage_controller(config).unwrap();
+    storage.clear().await.unwrap(); // make sur that the db is empty
+    assert_eq!(0, storage.len().await.unwrap());
     //add block in this order depending on there periode and thread
     add_block(Slot::new(2, 1), &storage).await;
     add_block(Slot::new(1, 0), &storage).await;
@@ -61,6 +63,7 @@ async fn test_get_slot_range() {
     add_block(Slot::new(3, 0), &storage).await;
     add_block(Slot::new(3, 1), &storage).await;
     add_block(Slot::new(4, 0), &storage).await;
+    assert_eq!(6, storage.len().await.unwrap());
 
     // search for (1,2) (3,1)
     let result = storage
