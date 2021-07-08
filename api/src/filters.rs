@@ -241,7 +241,7 @@ pub fn get_filter(
         .and(warp::path("block"))
         .and(warp::path::param::<Hash>()) //block hash
         .and(warp::path::end())
-        .and_then(move |hash| get_block(evt_tx.clone(), hash, storage.clone()));
+        .and_then(move |hash| wrap_api_call(get_block(evt_tx.clone(), hash, storage.clone())));
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
@@ -419,51 +419,24 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
     }
 }
 
-/// Returns block with given hash as a reply
-///
+/// Returns block with given hash
 async fn get_block(
     event_tx: mpsc::Sender<ApiEvent>,
     hash: Hash,
     opt_storage_command_sender: Option<StorageCommandSender>,
-) -> Result<impl Reply, Rejection> {
-    match retrieve_block(hash, &event_tx).await {
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error retrieving active blocks : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-        Ok(None) => {
+) -> Result<Block, ApiError> {
+    match retrieve_block(hash, &event_tx).await? {
+        None => {
             if let Some(cmd_tx) = opt_storage_command_sender {
-                match cmd_tx.get_block(hash).await {
-                    Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
-                    Ok(None) => Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message": format!("active block not found : {:?}", hash)
-                        })),
-                        warp::http::StatusCode::NOT_FOUND,
-                    )
-                    .into_response()),
-                    Err(e) => Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message": format!("error retrieving active blocks : {:?}", e)
-                        })),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                    .into_response()),
+                match cmd_tx.get_block(hash).await? {
+                    Some(block) => Ok(block),
+                    None => Err(ApiError::NotFound),
                 }
             } else {
-                Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("active block not found : {:?}", hash)
-                    })),
-                    warp::http::StatusCode::NOT_FOUND,
-                )
-                .into_response())
+                Err(ApiError::NotFound)
             }
         }
-        Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
+        Some(block) => Ok(block),
     }
 }
 

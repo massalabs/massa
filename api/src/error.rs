@@ -1,4 +1,5 @@
 use consensus::ConsensusError;
+use storage::StorageError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -15,4 +16,6 @@ pub enum ApiError {
     ConsensusError(#[from] ConsensusError),
     #[error("not found")]
     NotFound,
+    #[error("storage error: {0}")]
+    StorageError(#[from] StorageError),
 }
