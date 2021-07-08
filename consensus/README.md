@@ -165,7 +165,6 @@ graph LR
     F --> C
     A(NotReceivedYet) --> B(HeaderOnly)
     A --> C(FullBlock)
-    B --> C
     H(Genesis)
     C --> D(Active)
     D --> E(Final)
@@ -173,6 +172,7 @@ graph LR
     B --> G
     C --> G
     D --> G
+    B --> C
 ```
 
 ### into discarded
