@@ -1,15 +1,18 @@
+use std::collections::HashMap;
+
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::start_consensus_controller;
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
 use time::UTime;
 
 #[tokio::test]
 async fn test_update_current_slot_cmd_notification() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 2000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
 
@@ -65,7 +68,8 @@ async fn test_update_current_slot_cmd_notification() {
 
 #[tokio::test]
 async fn test_update_latest_final_block_cmd_notification() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
     cfg.delta_f0 = 2;

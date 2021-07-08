@@ -1,11 +1,13 @@
 //RUST_BACKTRACE=1 cargo test test_block_validity -- --nocapture
 
+use std::collections::HashMap;
+
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::start_consensus_controller;
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
 use time::UTime;
@@ -20,7 +22,8 @@ async fn test_ti() {
     .init()
     .unwrap(); */
 
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
     //to avoir timing pb for block in the future
@@ -186,7 +189,8 @@ async fn test_gpi() {
     .init()
     .unwrap();*/
 
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -366,7 +370,8 @@ async fn test_old_stale() {
     //     .init()
     //     .unwrap();
 
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 

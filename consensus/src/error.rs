@@ -11,8 +11,8 @@ pub enum ConsensusError {
     KeyError,
     #[error("Could not hash block header: {0}")]
     HeaderHashError(#[from] ModelsError),
-    #[error("Could not create genesis block")]
-    GenesisCreationError,
+    #[error("Could not create genesis block {0}")]
+    GenesisCreationError(String),
     #[error("Could not propagate block: {0}")]
     WeightedDistributionError(#[from] WeightedError),
     #[error("random selector seed is too short to be safe")]
@@ -65,6 +65,10 @@ pub enum ConsensusError {
     InvalidLedgerChange(String),
     #[error("sled error {0}")]
     SledTransactionError(#[from] sled::transaction::TransactionError<InternalError>),
+    #[error("io error {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("serde error")]
+    SerdeError(#[from] serde_json::Error),
 }
 
 #[derive(Error, Debug)]

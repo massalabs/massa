@@ -258,6 +258,7 @@ impl Ledger {
     pub fn new(
         cfg: ConsensusConfig,
         context: SerializationContext,
+        datas: Option<HashMap<Address, LedgerData>>,
     ) -> Result<Ledger, ConsensusError> {
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
@@ -275,6 +276,26 @@ impl Ledger {
                 let zero: u64 = 0;
                 latest_final_periods.insert([thread], &zero.to_be_bytes())?;
             }
+        }
+
+        if let Some(map) = datas {
+            ledger_per_thread.transaction(|ledger| {
+                for (address, data) in map.iter() {
+                    let thread = address.get_thread(cfg.thread_count);
+                    ledger[thread as usize].insert(
+                        &address.to_bytes(),
+                        data.to_bytes_compact(&context).map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(format!(
+                                    "error serializing ledger data: {:?}",
+                                    err
+                                )),
+                            )
+                        })?,
+                    )?;
+                }
+                Ok(())
+            })?;
         }
         Ok(Ledger {
             ledger_per_thread,
@@ -353,7 +374,7 @@ impl Ledger {
         cfg: ConsensusConfig,
         context: SerializationContext,
     ) -> Result<Ledger, ConsensusError> {
-        let ledger = Ledger::new(cfg.clone(), context.clone())?;
+        let ledger = Ledger::new(cfg.clone(), context.clone(), None)?;
         ledger.clear()?;
 
         // fill ledger per thread
@@ -480,8 +501,8 @@ impl Ledger {
                         let latest = array_from_slice(&val).map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
-                                    "error getting latest final period for thread: {:?}",
-                                    thread
+                                    "error getting latest final period for thread: {:?} {:?}",
+                                    thread, err
                                 )),
                             )
                         })?;

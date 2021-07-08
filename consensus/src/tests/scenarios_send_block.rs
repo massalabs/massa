@@ -1,16 +1,19 @@
 //RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
+use std::collections::HashMap;
+
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::start_consensus_controller;
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
 
 #[tokio::test]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(2);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(2, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -83,7 +86,8 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
 #[tokio::test]
 async fn test_consensus_block_not_found() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(2);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(2, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;

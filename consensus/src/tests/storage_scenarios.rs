@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::start_consensus_controller;
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
 use time::UTime;
 
@@ -19,7 +21,8 @@ async fn test_storage() {
     .init()
     .unwrap();*/
 
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 10;
     cfg.max_discarded_blocks = 1;

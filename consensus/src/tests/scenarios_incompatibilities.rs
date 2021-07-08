@@ -3,13 +3,14 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::start_consensus_controller;
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 #[tokio::test]
 async fn test_thread_incompatibility() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -177,7 +178,8 @@ async fn test_thread_incompatibility() {
 
 #[tokio::test]
 async fn test_grandpa_incompatibility() {
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
+    let ledger_file = generate_ledger_file(&HashMap::new());
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
