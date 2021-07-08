@@ -40,13 +40,12 @@ async fn test_consensus_asks_for_block() {
         Slot::new(1, 0),
         genesis_hashes.clone(),
     );
-
     //send header for block t0s1
     protocol_controller
         .receive_header(t0s1.header.clone())
         .await;
 
-    tools::validate_asks_for_block_in_list(&mut protocol_controller, &vec![hasht0s1], 1000).await;
+    tools::validate_ask_for_block(&mut protocol_controller, hasht0s1, 1000).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);

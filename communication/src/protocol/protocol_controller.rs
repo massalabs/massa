@@ -8,7 +8,7 @@ use crate::{
 };
 use crypto::hash::Hash;
 use models::{Block, BlockHeader, SerializationContext};
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
 /// start a new ProtocolController from a ProtocolConfig
@@ -109,6 +109,18 @@ impl ProtocolCommandSender {
         massa_trace!("send_block_order", { "block": block });
         self.0
             .send(ProtocolCommand::SendBlock { hash, block })
+            .await
+            .map_err(|_| CommunicationError::ChannelError("send_block command send error".into()))
+    }
+
+    pub async fn send_wishlist_delta(
+        &mut self,
+        new: HashSet<Hash>,
+        remove: HashSet<Hash>,
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("send_wishlist_delta", {});
+        self.0
+            .send(ProtocolCommand::WishlistDelta { new, remove })
             .await
             .map_err(|_| CommunicationError::ChannelError("send_block command send error".into()))
     }

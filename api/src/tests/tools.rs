@@ -12,6 +12,7 @@ use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot}
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    time::Duration,
     vec,
 };
 use storage::{start_storage_controller, StorageCommandSender, StorageConfig};
@@ -54,7 +55,9 @@ pub fn get_consensus_config() -> ConsensusConfig {
 }
 
 pub fn get_protocol_config() -> ProtocolConfig {
-    ProtocolConfig {}
+    ProtocolConfig {
+        ask_block_timeout: 10.into(),
+    }
 }
 
 pub fn get_network_config() -> NetworkConfig {

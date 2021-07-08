@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
 use crate::protocol::ProtocolConfig;
@@ -27,7 +29,7 @@ pub async fn create_and_connect_nodes(
     for _ in 0..num {
         // Create a node, and connect it with protocol.
         let info = create_node(&signature_engine);
-        network_controller.new_connection(&info.id).await;
+        network_controller.new_connection(info.id).await;
         nodes.push(info);
     }
     nodes
@@ -67,7 +69,9 @@ pub fn create_block(
 // create a ProtocolConfig with typical values
 pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
     (
-        ProtocolConfig {},
+        ProtocolConfig {
+            ask_block_timeout: 10.into(),
+        },
         SerializationContext {
             max_block_size: 1024 * 1024,
             max_block_operations: 1024,

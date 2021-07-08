@@ -35,7 +35,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
     // 1. Close one connection.
-    network_controller.close_connection(&nodes[0].id).await;
+    network_controller.close_connection(nodes[0].id).await;
 
     // 2. Create a block coming from node 0.
     let block = tools::create_block(
@@ -47,7 +47,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
     // 3. Send header to protocol.
     network_controller
-        .send_header(&creator_node.id, &block.header)
+        .send_header(creator_node.id, block.header.clone())
         .await;
 
     // Check protocol sends header to consensus.
@@ -73,7 +73,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
     // 5. Ask for block.
     protocol_command_sender
-        .ask_for_block(expected_hash)
+        .send_wishlist_delta(vec![expected_hash].into_iter().collect(), HashSet::new())
         .await
         .expect("Failed to ask for block.");
 
@@ -125,7 +125,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
     // 1. Close one connection.
-    network_controller.close_connection(&nodes[2].id).await;
+    network_controller.close_connection(nodes[2].id).await;
 
     // 2. Create a block coming from node 0.
     let block = tools::create_block(
@@ -144,7 +144,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     // 3. Simulate two nodes asking for a block.
     for n in 0..2 {
         network_controller
-            .send_ask_for_block(&nodes[n].id, &expected_hash)
+            .send_ask_for_block(nodes[n].id, expected_hash)
             .await;
 
         // Check protocol sends get block event to consensus.
@@ -234,7 +234,7 @@ async fn test_protocol_propagates_headers_to_all_node_who_do_not_know_about_it()
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
     // 1. Close one connection.
-    network_controller.close_connection(&nodes[0].id).await;
+    network_controller.close_connection(nodes[0].id).await;
 
     // 2. Create a block coming from one node.
     let block = tools::create_block(
@@ -246,7 +246,7 @@ async fn test_protocol_propagates_headers_to_all_node_who_do_not_know_about_it()
 
     // 3. Send header to protocol.
     network_controller
-        .send_header(&creator_node.id, &block.header)
+        .send_header(creator_node.id, block.header)
         .await;
 
     // Check protocol sends header to consensus.
@@ -340,9 +340,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
         .expect("Couldn't compute hash.");
 
     // 3. Send block to protocol.
-    network_controller
-        .send_block(&creator_node.id, &block)
-        .await;
+    network_controller.send_block(creator_node.id, block).await;
 
     // Check protocol sends block to consensus.
     let hash = match protocol_event_receiver
@@ -398,9 +396,7 @@ async fn test_protocol_does_not_send_full_blocks_it_receives_with_invalid_signat
     block.header.content.slot = Slot::new(1, 1);
 
     // 3. Send block to protocol.
-    network_controller
-        .send_block(&creator_node.id, &block)
-        .await;
+    network_controller.send_block(creator_node.id, block).await;
 
     // Check protocol does not send block to consensus.
     match protocol_event_receiver.wait_event().await {

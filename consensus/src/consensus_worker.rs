@@ -1,3 +1,5 @@
+use std::{collections::HashSet, ops::Sub};
+
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
     timeslots::*,
@@ -60,6 +62,8 @@ pub struct ConsensusWorker {
     previous_slot: Option<Slot>,
     /// Next slot
     next_slot: Slot,
+    /// blocks we want
+    wishlist: HashSet<Hash>,
 }
 
 impl ConsensusWorker {
@@ -105,6 +109,7 @@ impl ConsensusWorker {
             selector,
             previous_slot,
             next_slot,
+            wishlist: HashSet::new(),
         })
     }
 
@@ -300,9 +305,14 @@ impl ConsensusWorker {
                 .await?;
         }
 
-        // get block wishlist
-        for hash in self.block_db.get_block_wishlist()?.into_iter() {
-            self.protocol_command_sender.ask_for_block(hash).await?;
+        let new_wishlist = self.block_db.get_block_wishlist()?;
+        let new_blocks = &new_wishlist - &self.wishlist;
+        let remove_blocks = &new_wishlist - &self.wishlist;
+        if !new_blocks.is_empty() || !remove_blocks.is_empty() {
+            self.protocol_command_sender
+                .send_wishlist_delta(new_blocks, remove_blocks)
+                .await?;
+            self.wishlist = new_wishlist;
         }
 
         Ok(())

@@ -30,46 +30,40 @@ impl MockNetworkController {
         Some(self.network_command_rx.recv().await?)
     }
 
-    pub async fn new_connection(&mut self, new_node_id: &NodeId) {
+    pub async fn new_connection(&mut self, new_node_id: NodeId) {
         self.network_event_tx
-            .send(NetworkEvent::NewConnection(new_node_id.clone()))
+            .send(NetworkEvent::NewConnection(new_node_id))
             .await
             .expect("Couldn't connect node to protocol.");
     }
 
-    pub async fn close_connection(&mut self, node_id: &NodeId) {
+    pub async fn close_connection(&mut self, node_id: NodeId) {
         self.network_event_tx
-            .send(NetworkEvent::ConnectionClosed(node_id.clone()))
+            .send(NetworkEvent::ConnectionClosed(node_id))
             .await
             .expect("Couldn't connect node to protocol.");
     }
 
-    pub async fn send_header(&mut self, source_node_id: &NodeId, header: &BlockHeader) {
+    pub async fn send_header(&mut self, source_node_id: NodeId, header: BlockHeader) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
-                source_node_id: source_node_id.clone(),
-                header: header.clone(),
+                source_node_id,
+                header,
             })
             .await
             .expect("Couldn't send header to protocol.");
     }
 
-    pub async fn send_block(&mut self, source_node_id: &NodeId, block: &Block) {
+    pub async fn send_block(&mut self, source_node_id: NodeId, block: Block) {
         self.network_event_tx
-            .send(NetworkEvent::ReceivedBlock(
-                source_node_id.clone(),
-                block.clone(),
-            ))
+            .send(NetworkEvent::ReceivedBlock(source_node_id, block))
             .await
             .expect("Couldn't send block to protocol.");
     }
 
-    pub async fn send_ask_for_block(&mut self, source_node_id: &NodeId, hash: &Hash) {
+    pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, hash: Hash) {
         self.network_event_tx
-            .send(NetworkEvent::AskedForBlock(
-                source_node_id.clone(),
-                hash.clone(),
-            ))
+            .send(NetworkEvent::AskedForBlock(source_node_id, hash))
             .await
             .expect("Couldn't send ask for block to protocol.");
     }

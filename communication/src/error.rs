@@ -41,6 +41,8 @@ pub enum CommunicationError {
     MissingPeersError,
     #[error("Could not hash block header: {0}")]
     HeaderHashError(#[from] ModelsError),
+    #[error("container inconsistency error: {0}")]
+    ContainerInconsistencyError(String),
 }
 
 #[derive(Debug)]
