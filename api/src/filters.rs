@@ -778,10 +778,12 @@ async fn get_network_info(
 /// - ip address
 /// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
 ///
-async fn get_peers(
-    event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
-    retrieve_peers(&event_tx).await
+async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<PeerInfo>, ApiError> {
+    Ok(retrieve_peers(&event_tx)
+        .await?
+        .iter()
+        .map(|(_ip, p)| p.clone())
+        .collect())
 }
 
 /// Returns a summary of the current state:
