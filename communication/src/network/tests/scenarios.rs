@@ -18,6 +18,7 @@ use std::{
 use time::UTime;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
+use tools::get_transaction;
 
 /// Test that a node worker can shutdown even if the event channel is full,
 /// and that sending additional node commands during shutdown does not deadlock.
@@ -714,6 +715,137 @@ async fn test_retry_connection_closed() {
         .stop(network_event_receiver)
         .await
         .expect("error while closing");
+
+    temp_peers_file.close().unwrap();
+}
+
+#[tokio::test]
+async fn test_operation_messages() {
+    // setup logging
+    /*stderrlog::new()
+    .verbosity(4)
+    .timestamp(stderrlog::Timestamp::Millisecond)
+    .init()
+    .unwrap();*/
+
+    //test config
+    let bind_port: u16 = 50_000;
+
+    let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
+    //add advertised peer to controller
+    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+        ip: mock_addr.ip(),
+        banned: false,
+        bootstrap: true,
+        last_alive: None,
+        last_failure: None,
+        advertised: true,
+        active_out_connection_attempts: 0,
+        active_out_connections: 0,
+        active_in_connections: 0,
+    }]);
+
+    let (mut network_conf, mut serialization_context) =
+        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    network_conf.target_out_connections = 10;
+    network_conf.max_ask_blocks_per_message = 3;
+    serialization_context.max_ask_blocks_per_message = 3;
+
+    let signature_engine = SignatureEngine::new();
+
+    // create establisher
+    let (establisher, mut mock_interface) = mock_establisher::new();
+
+    // launch network controller
+    let (network_command_sender, mut network_event_receiver, network_manager, _) =
+        start_network_controller(
+            network_conf.clone(),
+            serialization_context.clone(),
+            establisher,
+            0,
+            None,
+        )
+        .await
+        .expect("could not start network controller");
+
+    // accept connection from controller to peer
+    let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
+        &mut network_event_receiver,
+        &mut mock_interface,
+        mock_addr,
+        1_000u64,
+        1_000u64,
+        1_000u64,
+        serialization_context.clone(),
+    )
+    .await;
+    //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
+
+    // Send tansaction message from connected peer
+    let (transaction, _) = get_transaction(50, 10, &serialization_context);
+    let ref_id = transaction
+        .verify_integrity(&serialization_context, &signature_engine)
+        .unwrap();
+    conn1_w
+        .send(&Message::Operations(vec![transaction.clone()]))
+        .await
+        .unwrap();
+
+    // assert it is sent to protocol
+    if let Some((operations, node)) =
+        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+            NetworkEvent::ReceivedOperations { operations, node } => Some((operations, node)),
+            _ => None,
+        })
+        .await
+    {
+        assert_eq!(operations.len(), 1);
+        let res_id = operations[0]
+            .verify_integrity(&serialization_context, &signature_engine)
+            .unwrap();
+        assert_eq!(ref_id, res_id);
+        assert_eq!(node, conn1_id);
+    } else {
+        panic!("Timeout while waiting for asked for block event");
+    }
+
+    let (transaction2, _) = get_transaction(10, 50, &serialization_context);
+    let ref_id2 = transaction2
+        .verify_integrity(&serialization_context, &signature_engine)
+        .unwrap();
+    // reply with another transaction
+    network_command_sender
+        .send_operations(conn1_id, vec![transaction2.clone()])
+        .await
+        .unwrap();
+
+    //let mut  conn1_r = conn1_drain.0.await.unwrap();
+    // assert that transaction is sent to node
+
+    let timer = sleep(Duration::from_millis(500));
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            evt = conn1_r.next() => {
+                let evt = evt.unwrap().unwrap().1;
+                match evt {
+                Message::Operations(op) => {
+                    assert_eq!(op.len(), 1);
+                    let res_id = op[0].verify_integrity(&serialization_context, &signature_engine).unwrap();
+                    assert_eq!(ref_id2, res_id);
+                    break;}
+                _ => {}
+            }},
+            _ = &mut timer => panic!("timeout reached waiting for message")
+        }
+    }
+
+    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
+    network_manager
+        .stop(network_event_receiver)
+        .await
+        .expect("error while closing");
+    tools::incoming_message_drain_stop(conn1_drain).await;
 
     temp_peers_file.close().unwrap();
 }
