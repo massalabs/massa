@@ -18,4 +18,6 @@ pub enum ApiError {
     NotFound,
     #[error("storage error: {0}")]
     StorageError(#[from] StorageError),
+    #[error("data inconsistency error: {0}")]
+    DataInconsistencyError(String),
 }
