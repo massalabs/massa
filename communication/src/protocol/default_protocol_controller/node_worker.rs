@@ -6,12 +6,11 @@ use super::super::{
 };
 use crate::error::{ChannelError, CommunicationError};
 use crate::network::network_controller::ConnectionClosureReason;
-use futures::{future::FusedFuture, FutureExt};
 use models::block::Block;
 use std::net::IpAddr;
 use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
 #[derive(Clone, Debug)]
@@ -81,8 +80,7 @@ where
     /// - node_event_tx already closed
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(1024);
-        let (writer_event_tx, writer_event_rx) = oneshot::channel::<bool>(); // true = OK, false = ERROR
-        let mut fused_writer_event_rx = writer_event_rx.fuse();
+        let (writer_event_tx, mut writer_event_rx) = mpsc::channel::<bool>(1);
         let mut socket_writer =
             self.socket_writer_opt
                 .take()
@@ -107,6 +105,7 @@ where
             }
             writer_event_tx
                 .send(clean_exit)
+                .await
                 .expect("writer_evt_tx died"); //in a spawned task
         });
 
@@ -162,11 +161,14 @@ where
                 },
 
                 // writer event
-                evt = &mut fused_writer_event_rx => {
-                    if !evt.map_err(|err| ChannelError::from(err))? {
-                        exit_reason = ConnectionClosureReason::Failed;
-                    }
-                    break;
+                evt = writer_event_rx.recv() => match evt {
+                    Some(s) => {
+                        if !s {
+                            exit_reason = ConnectionClosureReason::Failed;
+                        }
+                        break;
+                    },
+                    None => break
                 },
 
                 _ = ask_peer_list_interval.tick() => {
@@ -179,14 +181,7 @@ where
 
         // close writer
         drop(writer_command_tx);
-        if !fused_writer_event_rx.is_terminated() {
-            fused_writer_event_rx.await.map_err(|err| {
-                CommunicationError::GeneralProtocolError(format!(
-                    "fused_writer_event_rx read faild err:{}",
-                    err
-                ))
-            })?;
-        }
+        while let Some(_) = writer_event_rx.recv().await {}
         node_writer_handle.await?;
 
         // notify protocol controller of closure
