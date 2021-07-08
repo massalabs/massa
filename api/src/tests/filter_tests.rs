@@ -9,7 +9,10 @@ use consensus::{LedgerChange, LedgerDataExport};
 use crypto::hash::Hash;
 use models::SerializeCompact;
 use models::{Address, Block, BlockHeader, BlockId, Slot};
-use models::{Operation, OperationContent, OperationId, OperationSearchResult, OperationType};
+use models::{
+    Operation, OperationContent, OperationId, OperationSearchResult, OperationSearchResultStatus,
+    OperationType,
+};
 use serde_json::json;
 use serial_test::serial;
 use std::{
@@ -119,6 +122,7 @@ async fn test_get_operations() {
         let operation = create_operation();
         let operation_id = operation.get_operation_id().unwrap();
         let op_response = OperationSearchResult {
+            status: OperationSearchResultStatus::Pending,
             op: operation,
             in_pool: false,
             in_blocks: vec![(BlockId(Hash::hash("test".as_bytes())), (23, true))]

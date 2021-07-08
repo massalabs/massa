@@ -277,13 +277,9 @@ impl std::fmt::Display for WrappedBlockStatus {
             WrappedBlockStatus::WaitingForDependencies => {
                 write!(f, "status: WaitingForDependencies")
             }
-            WrappedBlockStatus::Active(block) => {
-                write!(f, "status: Active, {}", block)
-            }
+            WrappedBlockStatus::Active(block) => write!(f, "status: Active, {}", block),
             WrappedBlockStatus::Discarded(reason) => write!(f, "status: Discarded({:?})", reason),
-            WrappedBlockStatus::Stored(block) => {
-                write!(f, "status: Stored, {}", block)
-            }
+            WrappedBlockStatus::Stored(block) => write!(f, "status: Stored, {}", block),
         }
     }
 }

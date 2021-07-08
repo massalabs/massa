@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crypto::{hash::Hash, signature::PublicKey};
 use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
-    OperationSearchResult, Slot,
+    OperationSearchResult, OperationSearchResultStatus, Slot,
 };
 use serial_test::serial;
 use time::UTime;
@@ -193,6 +193,7 @@ async fn test_storage() {
     expected.insert(
         op1.get_operation_id().unwrap(),
         OperationSearchResult {
+            status: OperationSearchResultStatus::Pending,
             op: op1,
             in_pool: true,
             in_blocks: HashMap::new(),
@@ -201,6 +202,7 @@ async fn test_storage() {
     expected.insert(
         op2.get_operation_id().unwrap(),
         OperationSearchResult {
+            status: OperationSearchResultStatus::Pending,
             op: op2,
             in_pool: true,
             in_blocks: vec![(b1, (0, true))].into_iter().collect(),
@@ -209,6 +211,7 @@ async fn test_storage() {
     expected.insert(
         op3.get_operation_id().unwrap(),
         OperationSearchResult {
+            status: OperationSearchResultStatus::Pending,
             op: op3,
             in_pool: true,
             in_blocks: vec![(b2, (0, false))].into_iter().collect(),
@@ -217,6 +220,7 @@ async fn test_storage() {
     expected.insert(
         op4.get_operation_id().unwrap(),
         OperationSearchResult {
+            status: OperationSearchResultStatus::Pending,
             op: op4,
             in_pool: true,
             in_blocks: vec![(b3, (0, true))].into_iter().collect(),
@@ -229,6 +233,7 @@ async fn test_storage() {
     for (
         id,
         OperationSearchResult {
+            status,
             op,
             in_blocks,
             in_pool,
@@ -237,6 +242,7 @@ async fn test_storage() {
     {
         assert!(expected.contains_key(id));
         let OperationSearchResult {
+            status,
             op: ex_op,
             in_pool: ex_pool,
             in_blocks: ex_blocks,
@@ -427,6 +433,7 @@ async fn test_consensus_and_storage() {
                                     (
                                         op.get_operation_id().unwrap(),
                                         OperationSearchResult {
+                                            status: OperationSearchResultStatus::Pending,
                                             op,
                                             in_pool: true,
                                             in_blocks: HashMap::new(),
@@ -480,6 +487,7 @@ async fn test_consensus_and_storage() {
                                     (
                                         op.get_operation_id().unwrap(),
                                         OperationSearchResult {
+                                            status: OperationSearchResultStatus::Pending,
                                             op,
                                             in_pool: true,
                                             in_blocks: HashMap::new(),
