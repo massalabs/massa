@@ -329,10 +329,10 @@ impl DeserializeCompact for ExportActiveBlock {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscardReason {
-    /// Block is invalid, either structurally, or because of some incompatibility.
-    Invalid,
+    /// Block is invalid, either structurally, or because of some incompatibility. The String contains the reason for info or debugging.
+    Invalid(String),
     /// Block is incompatible with a final block.
     Stale,
     /// Block has enough fitness.
@@ -939,7 +939,7 @@ impl BlockGraph {
             &private_key,
             BlockHeaderContent {
                 creator: public_key,
-                slot: slot,
+                slot,
                 parents: self.best_parents.clone(),
                 out_ledger_hash: example_hash,
                 operation_merkle_root: Hash::hash(&Vec::new()),
@@ -1240,12 +1240,12 @@ impl BlockGraph {
                     }
                     HeaderCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
-
+                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"block_id": block_id, "reason": reason});
                         // discard
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                header: header,
+                                header,
                                 reason,
                                 sequence_number: BlockGraph::new_sequence_number(
                                     &mut self.sequence_counter,
@@ -1253,7 +1253,6 @@ impl BlockGraph {
                             },
                         );
 
-                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"block_id": block_id, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
@@ -1329,6 +1328,7 @@ impl BlockGraph {
                     }
                     BlockCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
+                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"block_id": block_id, "reason": reason});
 
                         // add to discard
                         self.block_statuses.insert(
@@ -1342,7 +1342,6 @@ impl BlockGraph {
                             },
                         );
 
-                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"block_id": block_id, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
@@ -1450,7 +1449,11 @@ impl BlockGraph {
         massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
         // If invalid, note the attack attempt.
         match reason {
-            &DiscardReason::Invalid => {
+            DiscardReason::Invalid(reason) => {
+                info!(
+                    "consensus.block_graph.maybe_note_attack_attempt DiscardReason::Invalid:{}",
+                    reason
+                );
                 self.attack_attempts.push(hash.clone());
             }
             _ => {}
@@ -1514,7 +1517,9 @@ impl BlockGraph {
             || header.content.slot.period == 0
             || header.content.slot.thread >= self.cfg.thread_count
         {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                "Basic structural header checks failed".to_string(),
+            )));
         }
 
         // check that is older than the latest final block in that thread
@@ -1541,7 +1546,9 @@ impl BlockGraph {
         //       to avoid doing too many draws to check blocks in the distant future
         if header.content.creator != self.cfg.nodes[selector.draw(header.content.slot) as usize].0 {
             // it was not the creator's turn to create a block for this slot
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                format!("Bad creator turn for the slot:{}", header.content.slot),
+            )));
         }
 
         // check if block is in the future: queue it
@@ -1562,7 +1569,10 @@ impl BlockGraph {
             match self.block_statuses.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
-                    return Ok(HeaderCheckOutcome::Discard(*reason));
+                    return Ok(HeaderCheckOutcome::Discard(match reason {
+                        DiscardReason::Invalid(invalid_reason) => DiscardReason::Invalid(format!("discarded because a parent was discarded for the following reason: {:?}", invalid_reason)),
+                        r @ _ => r.clone()
+                    }));
                 }
                 Some(BlockStatus::Active(parent)) => {
                     // parent is active
@@ -1571,14 +1581,21 @@ impl BlockGraph {
                     if parent.block.header.content.slot.thread != parent_thread
                         || parent.block.header.content.slot >= header.content.slot
                     {
-                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                            format!(
+                                "Bad parent thread:{} or slot:{}.",
+                                parent_thread, parent.block.header.content.slot
+                            ),
+                        )));
                     }
 
                     // inherit parent incompatibilities
                     // and ensure parents are mutually compatible
                     if let Some(p_incomp) = self.gi_head.get(&parent_hash) {
                         if !p_incomp.is_disjoint(&parent_set) {
-                            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                                "Parent not mutually compatible".to_string(),
+                            )));
                         }
                         incomp.extend(p_incomp);
                     }
@@ -1613,7 +1630,10 @@ impl BlockGraph {
                 )?;
                 if parent_period < gp_max_slots[parent_i as usize] {
                     // a parent is earlier than a block known by another parent in that thread
-                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        "a parent is earlier than a block known by another parent in that thread"
+                            .to_string(),
+                    )));
                 }
                 gp_max_slots[parent_i as usize] = parent_period;
                 if parent_period == 0 {
@@ -1629,13 +1649,17 @@ impl BlockGraph {
                     match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
-                            return Ok(HeaderCheckOutcome::Discard(*reason));
+                            return Ok(HeaderCheckOutcome::Discard(reason.clone()));
                         }
                         // this grandpa is active
                         Some(BlockStatus::Active(gp)) => {
                             if gp.block.header.content.slot.period > gp_max_slots[gp_i as usize] {
                                 if gp_i < parent_i {
-                                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                                    return Ok(HeaderCheckOutcome::Discard(
+                                        DiscardReason::Invalid(
+                                            "grandpa erro: gp_i < parent_i".to_string(),
+                                        ),
+                                    ));
                                 }
                                 gp_max_slots[gp_i as usize] = gp.block.header.content.slot.period;
                             }
@@ -1716,7 +1740,9 @@ impl BlockGraph {
 
         // check if the block is incompatible with a parent
         if !incomp.is_disjoint(&parents.iter().map(|(h, _p)| *h).collect()) {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                "Block incompatible with a parent".to_string(),
+            )));
         }
 
         // check if the block is incompatible with a final block
@@ -1832,7 +1858,12 @@ impl BlockGraph {
                         "block graph check_operations error, bad operation sender_public_key address :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!(
+                            "bad operation sender_public_key address :{}",
+                            err
+                        )),
+                    ));
                 }
             };
             let op_start_validity_period = operation
@@ -1863,7 +1894,11 @@ impl BlockGraph {
                 // check if present
                 if !current_block.operation_set.is_disjoint(operation_set) {
                     error!("block graph check_operations error, block operation already integrated in another block");
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(
+                            "Block operation already integrated in another block".to_string(),
+                        ),
+                    ));
                 }
                 dependencies.insert(current_block_id);
 
@@ -1886,7 +1921,9 @@ impl BlockGraph {
                         "block graph check_operations error, bad block creator address :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!("bad block creator address :{}", err)),
+                    ));
                 }
             };
         let mut involved_addresses: HashSet<Address> = HashSet::new();
@@ -1901,7 +1938,12 @@ impl BlockGraph {
                         "block graph check_operations error, error during get_involved_addresses :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!(
+                            "error during get_involved_addresses :{}",
+                            err
+                        )),
+                    ));
                 }
             };
         }
@@ -1918,7 +1960,9 @@ impl BlockGraph {
                     "block graph check_operations error, error retrieving ledger at parents :{}",
                     err
                 );
-                return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                return Ok(BlockOperationsCheckOutcome::Discard(
+                    DiscardReason::Invalid(format!("error retrieving ledger at parents :{}", err)),
+                ));
             }
         };
 
@@ -1935,7 +1979,12 @@ impl BlockGraph {
         if creator_thread == block_to_check.header.content.slot.thread {
             if let Err(err) = current_ledger.apply_change(reward_change, self.cfg.thread_count) {
                 warn!("block graph check_operations error, can't apply reward_change to block current_ledger: {}", err);
-                return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                return Ok(BlockOperationsCheckOutcome::Discard(
+                    DiscardReason::Invalid(format!(
+                        "can't apply reward_change to block current_ledger: {}",
+                        err
+                    )),
+                ));
             }
         }
         match block_changes[creator_thread as usize].entry(block_creator_address) {
@@ -1945,7 +1994,9 @@ impl BlockGraph {
                         "block graph check_operations error, can't chain reward change :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!("Can't chain reward change :{}", err)),
+                    ));
                 }
             }
             hash_map::Entry::Vacant(vac) => {
@@ -1962,7 +2013,9 @@ impl BlockGraph {
                         "block graph check_operations error, can't get changes :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!("can't get changes :{}", err)),
+                    ));
                 }
                 Ok(changes) => changes,
             };
@@ -1975,7 +2028,10 @@ impl BlockGraph {
                         {
                             warn!("block graph check_operations error, can't apply change to block current_ledger :{}", err);
                             return Ok(BlockOperationsCheckOutcome::Discard(
-                                DiscardReason::Invalid,
+                                DiscardReason::Invalid(format!(
+                                    "can't apply change to block current_ledger :{}",
+                                    err
+                                )),
                             ));
                         }
                     }
@@ -1988,7 +2044,7 @@ impl BlockGraph {
                                     err
                                 );
                                 return Ok(BlockOperationsCheckOutcome::Discard(
-                                    DiscardReason::Invalid,
+                                    DiscardReason::Invalid(format!("can't chain change :{}", err)),
                                 ));
                             }
                         }
@@ -2865,8 +2921,8 @@ impl BlockGraph {
                         {
                             discarded_dep_found = true;
                             match reason {
-                                DiscardReason::Invalid => {
-                                    discard_reason = Some(DiscardReason::Invalid);
+                                DiscardReason::Invalid(reason) => {
+                                    discard_reason = Some(DiscardReason::Invalid(format!("disgarded because depend on block:{} that has disgard reason:{}", hash, reason)));
                                     break;
                                 }
                                 DiscardReason::Stale => discard_reason = Some(DiscardReason::Stale),
@@ -2908,8 +2964,8 @@ impl BlockGraph {
                         if let Some(reason) = to_discard.get(dep) {
                             dep_to_discard_found = true;
                             match reason {
-                                Some(DiscardReason::Invalid) => {
-                                    discard_reason = Some(DiscardReason::Invalid);
+                                Some(DiscardReason::Invalid(reason)) => {
+                                    discard_reason = Some(DiscardReason::Invalid(format!("disgarded because depend on block:{} that has disgard reason:{}", hash, reason)));
                                     break;
                                 }
                                 Some(DiscardReason::Stale) => {

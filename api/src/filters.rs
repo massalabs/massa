@@ -1569,7 +1569,10 @@ async fn get_last_invalid(
     let mut discarded = discarded
         .map
         .iter()
-        .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Invalid)
+        .filter(|(_hash, (reason, _header))| match reason {
+            DiscardReason::Invalid(_) => true,
+            _ => false,
+        })
         .map(|(hash, (_reason, header))| (hash, header.content.slot))
         .collect::<Vec<(&BlockId, Slot)>>();
     if discarded.len() > 0 {
