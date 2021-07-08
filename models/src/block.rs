@@ -1,6 +1,6 @@
 use crate::{
-    array_from_slice, DeserializeCompact, DeserializeMinBEInt, ModelsError, Operation,
-    SerializationContext, SerializeCompact, SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
+    array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, ModelsError,
+    Operation, SerializationContext, SerializeCompact, SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -192,6 +192,12 @@ impl SerializeCompact for BlockHeaderContent {
         res.extend(self.slot.to_bytes_compact(&context)?);
 
         // parents (note: there should be none if slot period=0)
+        // parents (note: there should be none if slot period=0)
+        if self.parents.len() == 0 {
+            res.push(0);
+        } else {
+            res.push(1);
+        }
         for parent_h in self.parents.iter() {
             res.extend(&parent_h.to_bytes());
         }
@@ -222,12 +228,23 @@ impl DeserializeCompact for BlockHeaderContent {
         cursor += delta;
 
         // parents
-        let mut parents: Vec<Hash> = Vec::with_capacity(context.parent_count as usize);
-        for _ in 0..context.parent_count {
-            let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-            cursor += HASH_SIZE_BYTES;
-            parents.push(parent_h);
-        }
+        let has_parents = u8_from_slice(&buffer[cursor..])?;
+        cursor += 1;
+        let parents = if has_parents == 1 {
+            let mut parents: Vec<Hash> = Vec::with_capacity(context.parent_count as usize);
+            for _ in 0..context.parent_count {
+                let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+                parents.push(parent_h);
+            }
+            parents
+        } else if has_parents == 0 {
+            Vec::new()
+        } else {
+            return Err(ModelsError::SerializeError(
+                "BlockHeaderContent from_bytes_compact bad hasparents flags.".into(),
+            ));
+        };
 
         // output ledger hash
         let out_ledger_hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
