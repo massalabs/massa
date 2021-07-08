@@ -18,22 +18,24 @@ pub async fn validate_notpropagate_block(
     not_propagated_hash: Hash,
     timeout_ms: u64,
 ) -> bool {
-    match timeout(
-        Duration::from_millis(timeout_ms),
-        protocol_controller.wait_command(),
-    )
-    .await
-    {
-        Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
-            if not_propagated_hash == hash {
-                panic!("validate_notpropagate_block the block has been propagated.")
-            } else {
-                true
+    loop {
+        match timeout(
+            Duration::from_millis(timeout_ms),
+            protocol_controller.wait_command(),
+        )
+        .await
+        {
+            Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
+                if not_propagated_hash == hash {
+                    panic!("validate_notpropagate_block the block has been propagated.")
+                } else {
+                    return true;
+                }
             }
+            Ok(Some(cmd)) => {}
+            Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
+            Err(_) => return false,
         }
-        Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-        Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-        Err(_) => false,
     }
 }
 
@@ -43,22 +45,24 @@ pub async fn validate_notpropagate_block_in_list(
     not_propagated_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) -> bool {
-    match timeout(
-        Duration::from_millis(timeout_ms),
-        protocol_controller.wait_command(),
-    )
-    .await
-    {
-        Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
-            if not_propagated_hashs.contains(&hash) {
-                panic!("validate_notpropagate_block the block has been propagated.")
-            } else {
-                true
+    loop {
+        match timeout(
+            Duration::from_millis(timeout_ms),
+            protocol_controller.wait_command(),
+        )
+        .await
+        {
+            Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
+                if not_propagated_hashs.contains(&hash) {
+                    panic!("validate_notpropagate_block the block has been propagated.")
+                } else {
+                    return true;
+                }
             }
+            Ok(Some(cmd)) => {}
+            Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
+            Err(_) => return false,
         }
-        Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-        Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-        Err(_) => false,
     }
 }
 
@@ -67,23 +71,25 @@ pub async fn validate_propagate_block_in_list(
     valid_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) -> Hash {
-    match timeout(
-        Duration::from_millis(timeout_ms),
-        protocol_controller.wait_command(),
-    )
-    .await
-    {
-        Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
-            trace!("receive hash:{}", hash);
-            assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
-            hash
+    loop {
+        match timeout(
+            Duration::from_millis(timeout_ms),
+            protocol_controller.wait_command(),
+        )
+        .await
+        {
+            Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
+                trace!("receive hash:{}", hash);
+                assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
+                return hash;
+            }
+            Ok(Some(cmd)) => {}
+            Ok(msg) => panic!(
+                "an error occurs while waiting for ProtocolCommand event {:?}",
+                msg
+            ),
+            Err(_) => panic!("timeout block not propagated {:?}", valid_hashs),
         }
-        Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-        Ok(msg) => panic!(
-            "an error occurs while waiting for ProtocolCommand event {:?}",
-            msg
-        ),
-        Err(_) => panic!("timeout block not propagated"),
     }
 }
 

@@ -15,7 +15,7 @@ use tokio::{
 #[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
-    // GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),  TODO put it back
+    GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
     /// Returns through a channel full block with specified hash.
     GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
     /// Returns through a channel the list of slots with public key of the selected staker.
@@ -171,7 +171,7 @@ impl ConsensusWorker {
             .slot_tick(&mut self.selector, Some(cur_slot))?;
 
         // take care of block db changes
-        self.block_db_changed()?;
+        self.block_db_changed().await?;
 
         // reset timer for next slot
         next_slot_timer.set(sleep_until(
@@ -196,7 +196,6 @@ impl ConsensusWorker {
         cmd: ConsensusCommand,
     ) -> Result<(), ConsensusError> {
         match cmd {
-            /* TODO put it back
             ConsensusCommand::GetBlockGraphStatus(response_tx) => response_tx
                 .send(BlockGraphExport::from(&self.block_db))
                 .map_err(|err| {
@@ -205,7 +204,6 @@ impl ConsensusWorker {
                         err
                     ))
                 }),
-            */
             //return full block with specified hash
             ConsensusCommand::GetActiveBlock(hash, response_tx) => response_tx
                 .send(self.block_db.get_active_block(hash).cloned())
@@ -261,12 +259,12 @@ impl ConsensusWorker {
                     &mut self.selector,
                     self.previous_slot,
                 )?;
-                self.block_db_changed()?;
+                self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedBlockHeader { hash, header } => {
                 self.block_db
                     .incoming_header(hash, header, &mut self.selector, self.previous_slot);
-                self.block_db_changed()?;
+                self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedTransaction(_transaction) => {
                 // todo (see issue #108)
@@ -288,16 +286,24 @@ impl ConsensusWorker {
         Ok(())
     }
 
-    fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
+    async fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
         // prune block db and send discarded final blocks to storage if present
         let discarded_final_blocks = self.block_db.prune(self.previous_slot)?;
         if let Some(storage_cmd) = &self.opt_storage_command_sender {
             storage_cmd.add_block_batch(discarded_final_blocks);
         }
 
+        // Propagate newly active blocks.
+        for (hash, header) in self.block_db.get_headers_to_propagate().into_iter() {
+            self.protocol_command_sender
+                .propagate_block_header(hash, header)
+                .await?;
+        }
+
         // get block wishlist
-        let block_wishlist = self.block_db.get_block_wishlist()?;
-        // TODO tell protocol to use this wishlist
+        for hash in self.block_db.get_block_wishlist()?.into_iter() {
+            self.protocol_command_sender.ask_for_block(hash).await?;
+        }
 
         Ok(())
     }

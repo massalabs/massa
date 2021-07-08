@@ -7,6 +7,7 @@ use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot}
 use rand_xoshiro::rand_core::block;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeSet, HashMap, HashSet};
+use std::mem;
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
@@ -75,6 +76,89 @@ enum BlockStatus {
     },
 }
 
+/// The block version that can be exported.
+/// Note that the detailed list of operation is not exported
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportCompiledBlock {
+    /// Header of the corresponding block.
+    pub block: BlockHeader,
+    /// For (i, set) in children,
+    /// set contains the headers' hashes
+    /// of blocks referencing exported block as a parent,
+    /// in thread i.
+    pub children: Vec<HashSet<Hash>>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ExportDiscardedBlocks {
+    pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BlockGraphExport {
+    /// Genesis blocks.
+    pub genesis_blocks: Vec<Hash>,
+    /// Map of active blocks, were blocks are in their exported version.
+    pub active_blocks: HashMap<Hash, ExportCompiledBlock>,
+    /// Finite cache of discarded blocks, in exported version.
+    pub discarded_blocks: ExportDiscardedBlocks,
+    /// Best parents hashe in each thread.
+    pub best_parents: Vec<Hash>,
+    /// Latest final period and block hash in each thread.
+    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
+    /// Head of the incompatibility graph.
+    pub gi_head: HashMap<Hash, HashSet<Hash>>,
+    /// List of maximal cliques of compatible blocks.
+    pub max_cliques: Vec<HashSet<Hash>>,
+}
+
+impl<'a> From<&'a BlockGraph> for BlockGraphExport {
+    /// Conversion from blockgraph.
+    fn from(block_graph: &'a BlockGraph) -> Self {
+        let mut export = BlockGraphExport {
+            genesis_blocks: block_graph.genesis_hashes.clone(),
+            active_blocks: Default::default(),
+            discarded_blocks: Default::default(),
+            best_parents: block_graph.best_parents.clone(),
+            latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
+            gi_head: block_graph.gi_head.clone(),
+            max_cliques: block_graph.max_cliques.clone(),
+        };
+
+        for (hash, block) in block_graph.block_statuses.iter() {
+            match block {
+                BlockStatus::Discarded { header, reason, .. } => {
+                    export
+                        .discarded_blocks
+                        .map
+                        .insert(hash.clone(), (reason.clone(), header.clone()));
+                }
+                BlockStatus::Active(block) => {
+                    export.active_blocks.insert(
+                        hash.clone(),
+                        ExportCompiledBlock {
+                            block: block.block.header.clone(),
+                            children: block
+                                .children
+                                .iter()
+                                .map(|thread| {
+                                    thread
+                                        .keys()
+                                        .map(|hash| hash.clone())
+                                        .collect::<HashSet<Hash>>()
+                                })
+                                .collect(),
+                        },
+                    );
+                }
+                _ => continue,
+            }
+        }
+
+        export
+    }
+}
+
 pub struct BlockGraph {
     cfg: ConsensusConfig,
     serialization_context: SerializationContext,
@@ -85,6 +169,7 @@ pub struct BlockGraph {
     best_parents: Vec<Hash>,
     gi_head: HashMap<Hash, HashSet<Hash>>,
     max_cliques: Vec<HashSet<Hash>>,
+    to_propagate: HashMap<Hash, BlockHeader>,
 }
 
 enum CheckOutcome {
@@ -169,14 +254,11 @@ impl BlockGraph {
             sequence_counter: 0,
             genesis_hashes: block_hashes.clone(),
             block_statuses,
-            latest_final_blocks_periods: block_hashes
-                .iter()
-                .enumerate()
-                .map(|(i, h)| (*h, i as u64))
-                .collect(),
+            latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0 as u64)).collect(),
             best_parents: block_hashes,
             gi_head: HashMap::new(),
             max_cliques: vec![HashSet::new()],
+            to_propagate: Default::default(),
         })
     }
 
@@ -571,7 +653,9 @@ impl BlockGraph {
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active(_)) = self.block_statuses.get(&hash) {
+        if let Some(BlockStatus::Active(active)) = self.block_statuses.get(&hash) {
+            self.to_propagate
+                .insert(hash.clone(), active.block.header.clone());
             for (itm_hash, itm_status) in self.block_statuses.iter_mut() {
                 if let BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -637,6 +721,14 @@ impl BlockGraph {
         let mut deps = HashSet::new();
         let mut incomp = HashSet::new();
         let mut missing_deps = HashSet::new();
+
+        // basic structural checks
+        if header.content.parents.len() != (self.cfg.thread_count as usize)
+            || header.content.slot.period == 0
+            || header.content.slot.thread >= self.cfg.thread_count
+        {
+            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+        }
 
         // check that is older than the latest final block in that thread
         // Note: this excludes genesis blocks
@@ -747,7 +839,7 @@ impl BlockGraph {
                     match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { .. }) => {
-                            return Ok(CheckOutcome::Discard(DiscardReason::Invalid))
+                            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
                         }
                         // this grandpa is active
                         Some(BlockStatus::Active(gp)) => {
@@ -1565,8 +1657,8 @@ impl BlockGraph {
     }
 
     // get the current block wishlist
-    pub fn get_block_wishlist(&self) -> Result<HashSet<Hash>, ConsensusError> {
-        let mut wishlist: HashSet<Hash> = HashSet::new();
+    pub fn get_block_wishlist(&self) -> Result<Vec<Hash>, ConsensusError> {
+        let mut wishlist = vec![];
         for block_status in self.block_statuses.values() {
             if let BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
@@ -1582,11 +1674,17 @@ impl BlockGraph {
                         // the full block is already available
                         continue;
                     }
-                    wishlist.insert(*unsatisfied_h);
+                    wishlist.push(*unsatisfied_h);
                 }
             }
         }
         Ok(wishlist)
+    }
+
+    // Get the headers to be propagated.
+    // Must be called by the consensus worker within `block_db_changed`.
+    pub fn get_headers_to_propagate(&mut self) -> HashMap<Hash, BlockHeader> {
+        mem::replace(&mut self.to_propagate, Default::default())
     }
 }
 
