@@ -33,4 +33,6 @@ pub enum ConsensusError {
     ControllerEventError,
     #[error("Join error {0}")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error("Time error {0}")]
+    TimeError(#[from] time::TimeError),
 }

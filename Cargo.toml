@@ -7,4 +7,5 @@ members = [
     "communication",
     "consensus",
     "testrun",
+    "time",
 ]

@@ -10,6 +10,7 @@ use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
+use time::UTime;
 use tokio::io::AsyncReadExt;
 use tokio::time::{sleep, timeout};
 
@@ -244,16 +245,16 @@ async fn test_advertised_and_wakeup_interval() {
         ip: mock_ignore_addr.ip(),
         banned: false,
         bootstrap: true,
-        last_alive_millis: None,
-        last_failure_millis: None,
+        last_alive: None,
+        last_failure: None,
         advertised: false,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
     }]);
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.wakeup_interval = Duration::from_millis(2000);
-    network_conf.connect_timeout = Duration::from_millis(1000);
+    network_conf.wakeup_interval = UTime::from(2000);
+    network_conf.connect_timeout = UTime::from(1000);
 
     // init network controller
     let (establisher, mut mock_interface) = mock_establisher::new();
@@ -285,14 +286,14 @@ async fn test_advertised_and_wakeup_interval() {
             &mut network,
             &mut mock_interface,
             mock_addr,
-            (network_conf.wakeup_interval.as_millis() * 3u128)
+            (network_conf.wakeup_interval.to_millis() as u128 * 3u128)
                 .try_into()
                 .unwrap(),
             1_000u64,
             1_000u64,
         )
         .await;
-        if start_instant.elapsed() < network_conf.wakeup_interval {
+        if start_instant.elapsed() < network_conf.wakeup_interval.to_duration() {
             panic!("controller tried to reconnect after a too short delay");
         }
         conn_id

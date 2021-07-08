@@ -2,8 +2,8 @@
 level = 4
 
 [consensus]
-    genesis_timestamp_millis = 1607958448000
-    t0_millis = 16000
+    genesis_timestamp = 1607958448000
+    t0 = 16000
     thread_count = 32
     selection_rng_seed = 42
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
@@ -16,15 +16,15 @@ level = 4
     
 
 [protocol]
-    message_timeout = {secs = 5, nanos = 0}
-    ask_peer_list_interval = {secs = 50, nanos = 0}
+    message_timeout = 5000
+    ask_peer_list_interval = 50000
 
 [network]
     bind = "0.0.0.0:50000"
     routable_ip = "200.200.200.200"
     protocol_port = 50000
-    connect_timeout = {secs = 5, nanos = 0}
-    wakeup_interval = {secs = 10, nanos = 0}
+    connect_timeout = 5000
+    wakeup_interval = 10000
     peers_file = "config/peers.json"
     target_out_connections = 20
     max_in_connections = 100
@@ -33,5 +33,5 @@ level = 4
     max_idle_peers = 1000
     max_banned_peers = 1000
     max_advertise_length = 100000
-    peers_file_dump_interval = {secs = 30, nanos = 0}
+    peers_file_dump_interval = 30000
     

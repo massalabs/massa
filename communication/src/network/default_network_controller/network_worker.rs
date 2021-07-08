@@ -55,7 +55,7 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
         let mut cur_connection_id = ConnectionId::default();
         let mut active_connections: HashMap<ConnectionId, (IpAddr, bool)> = HashMap::new(); // ip, is_outgoing
                                                                                             // wake up the controller at a regular interval to retry connections
-        let mut wakeup_interval = tokio::time::interval(self.cfg.wakeup_interval);
+        let mut wakeup_interval = tokio::time::interval(self.cfg.wakeup_interval.to_duration());
 
         loop {
             {
@@ -295,7 +295,6 @@ where
                             err
                         ))
                     })?;
-            //.expect("could not send new in connection notification");
             } else {
                 debug!("inbound connection from addr={:?} refused", remote_addr);
                 massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});

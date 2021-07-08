@@ -35,14 +35,14 @@ impl<ProtocolControllerT: ProtocolController + 'static>
                 "thread_count shoud be strictly more than 0"
             )));
         }
-        if cfg.t0_millis == 0 {
+        if cfg.t0 == 0.into() {
             return Err(ConsensusError::ConfigError(format!(
-                "t0_millis shoud be strictly more than 0"
+                "t0 shoud be strictly more than 0"
             )));
         }
-        if cfg.t0_millis % (cfg.thread_count as u64) != 0 {
+        if cfg.t0.checked_rem((cfg.thread_count as u64).into())? != 0.into() {
             return Err(ConsensusError::ConfigError(format!(
-                "thread_count should divide t0_millis"
+                "thread_count should divide t0"
             )));
         }
 

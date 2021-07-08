@@ -2,9 +2,10 @@ use super::super::establisher::*;
 use async_trait::async_trait;
 use std::io;
 use std::net::SocketAddr;
+use time::UTime;
 use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
-use tokio::time::{timeout, Duration};
+use tokio::time::timeout;
 
 const MAX_DUPLEX_BUFFER_SIZE: usize = 10000;
 
@@ -65,7 +66,7 @@ impl Listener<ReadHalf, WriteHalf> for MockListener {
 #[derive(Debug)]
 pub struct MockConnector {
     connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
-    timeout_duration: Duration,
+    timeout_duration: UTime,
 }
 
 #[async_trait]
@@ -80,7 +81,7 @@ impl Connector<ReadHalf, WriteHalf> for MockConnector {
         let (accept_tx, accept_rx) = oneshot::channel::<bool>();
 
         //send new connection to mock
-        timeout(self.timeout_duration, async move {
+        timeout(self.timeout_duration.to_duration(), async move {
             self.connection_connector_tx
                 .send((duplex_mock_read, duplex_mock_write, addr, accept_tx))
                 .await
@@ -134,7 +135,7 @@ impl Establisher for MockEstablisher {
 
     async fn get_connector(
         &mut self,
-        timeout_duration: Duration,
+        timeout_duration: UTime,
     ) -> std::io::Result<Self::ConnectorT> {
         //create connector stream
 

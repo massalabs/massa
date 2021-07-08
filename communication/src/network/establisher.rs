@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use std::io;
 use std::net::SocketAddr;
+use time::UTime;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::time::Duration;
 
 #[async_trait]
 pub trait Establisher
@@ -15,7 +15,7 @@ where
     type ConnectorT: Connector<Self::ReaderT, Self::WriterT>;
 
     async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<Self::ListenerT>;
-    async fn get_connector(&mut self, timeout_duration: Duration) -> io::Result<Self::ConnectorT>;
+    async fn get_connector(&mut self, timeout_duration: UTime) -> io::Result<Self::ConnectorT>;
 }
 
 #[async_trait]
