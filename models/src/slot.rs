@@ -10,7 +10,9 @@ impl Slot {
     pub fn new(period: u64, thread: u8) -> Slot {
         Slot { period, thread }
     }
-
+    pub fn new_tuple((period, thread): (u64, u8)) -> Slot {
+        Slot { period, thread }
+    }
     pub fn into_bytes(&self) -> Vec<u8> {
         let mut vec = Vec::with_capacity(9);
         vec.extend_from_slice(&self.period.to_be_bytes());

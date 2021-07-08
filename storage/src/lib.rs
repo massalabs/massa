@@ -3,7 +3,7 @@ mod error;
 mod storage_controller;
 mod storage_worker;
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
     #[test]
     fn test_sled() {
@@ -11,4 +11,4 @@ mod tests {
         print!("{:?}", tree);
         tree.flush().unwrap();
     }
-}
+}*/

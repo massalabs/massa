@@ -1,9 +1,8 @@
 use crypto::hash::Hash;
 use models::{block::Block, slot::Slot};
 use sled::Transactional;
+use sled::Tree;
 use sled::{transaction::ConflictableTransactionError, Db};
-use tokio::sync::{mpsc, oneshot};
-
 use std::{collections::HashMap, ops::Deref};
 
 use crate::{
@@ -34,7 +33,7 @@ impl BlockStorage {
         (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
             let block_vec = match block.into_bytes() {
                 Ok(b) => b,
-                Err(e) => {
+                Err(_e) => {
                     return Err(ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!("error serializing block")),
                     ))
@@ -52,20 +51,29 @@ impl BlockStorage {
 
     pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
-        hash_to_block
-            .get(&hash.to_bytes())
-            .map(|v| {
-                if let Some(b) = v {
-                    match Block::from_bytes(b.deref().into()) {
-                        Ok(b) => Ok(Some(b)),
-                        Err(e) => {
-                            return Err(e);
-                        }
+        BlockStorage::get_block_internal(hash, &hash_to_block)
+        /*hash_to_block
+        .get(&hash.to_bytes())
+        .map(|v| {
+            if let Some(b) = v {
+                match Block::from_bytes(b.deref().into()) {
+                    Ok(b) => Ok(Some(b)),
+                    Err(e) => {
+                        return Err(e);
                     }
-                } else {
-                    Ok(None)
                 }
-            })?
+            } else {
+                Ok(None)
+            }
+        })?
+        .map_err(|e| StorageError::from(e))*/
+    }
+
+    fn get_block_internal(hash: Hash, hash_to_block: &Tree) -> Result<Option<Block>, StorageError> {
+        hash_to_block
+            .get(hash.to_bytes())?
+            .map(|sblock| Block::from_bytes(sblock.deref().into()))
+            .transpose()
             .map_err(|e| StorageError::from(e))
     }
 
@@ -74,7 +82,22 @@ impl BlockStorage {
         start: (u64, u8),
         end: (u64, u8),
     ) -> Result<HashMap<Hash, Block>, StorageError> {
-        todo!()
+        let hash_to_block = self.db.open_tree("hash_to_block")?;
+        let slot_to_hash = self.db.open_tree("slot_to_hash")?;
+        let start = Slot::new_tuple(start).into_bytes();
+        let end = Slot::new_tuple(end).into_bytes();
+        let result_iter = slot_to_hash.range(start..end);
+        result_iter
+            .map(|res| {
+                res.map_err(|e| StorageError::from(e))
+                    .and_then(|(_, shash)| {
+                        let hash = Hash::from_bytes(shash.deref().into())?;
+                        let block = BlockStorage::get_block_internal(hash, &hash_to_block)?;
+                        Ok(block.map(|b| (hash, b)))
+                    })
+            })
+            .filter_map(|val| val.transpose())
+            .collect::<Result<HashMap<Hash, Block>, StorageError>>()
     }
 }
 

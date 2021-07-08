@@ -14,6 +14,8 @@ pub enum StorageError {
     TransactionError(#[from] TransactionError<InternalError>),
     #[error("model error{0}")]
     ModelError(#[from] ModelsError),
+    #[error("crypto parse error : {0}")]
+    CryptoParseError(#[from] crypto::CryptoError),
 }
 
 #[derive(Error, Debug)]
