@@ -38,6 +38,7 @@ pub fn get_another_test_block_id() -> BlockId {
 pub fn get_consensus_config() -> ConsensusConfig {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     let tempdir2 = tempfile::tempdir().expect("cannot create temp dir");
+    let tempdir3 = tempfile::tempdir().expect("cannot create temp dir");
     ConsensusConfig {
         genesis_timestamp: 0.into(),
         thread_count: 2,
@@ -65,6 +66,11 @@ pub fn get_consensus_config() -> ConsensusConfig {
         block_reward: 10,
         initial_ledger_path: tempdir2.path().to_path_buf(),
         operation_batch_size: 100,
+        initial_rolls_path: tempdir3.path().to_path_buf(),
+        initial_draw_seed: "genesis".into(),
+        periods_per_cycle: 100,
+        pos_lookback_cycles: 4,
+        pos_lock_cycles: 1,
     }
 }
 
