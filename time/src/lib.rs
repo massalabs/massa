@@ -92,6 +92,8 @@ impl FromStr for UTime {
 }
 
 impl UTime {
+    pub const EPSILON: UTime = UTime(1);
+
     /// Gets current timestamp.
     ///
     /// ```

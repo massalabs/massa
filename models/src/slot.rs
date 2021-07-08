@@ -1,6 +1,6 @@
 use crate::error::ModelsError;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, fmt};
+use std::{cmp::Ordering, convert::TryInto, fmt};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Slot {
@@ -36,6 +36,14 @@ impl Slot {
         res[..8].clone_from_slice(&self.period.to_be_bytes());
         res[8] = self.thread;
         res
+    }
+
+    /// Returns a fiexed-size sortable binary key
+    pub fn from_bytes_key(data: &[u8; 9]) -> Self {
+        Slot {
+            period: u64::from_be_bytes(data[..8].try_into().unwrap()), // cannot fail
+            thread: data[8],
+        }
     }
 
     /// Returns a fiexed-size sortable binary key

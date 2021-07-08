@@ -27,7 +27,7 @@ async fn test_add_multiple() {
     let block = get_test_block();
     let mut map = HashMap::new();
     map.insert(hash, block);
-    command_sender.add_multiple_blocks(map).await.unwrap();
+    command_sender.add_block_batch(map).await.unwrap();
     assert!(command_sender.contains(hash).await.unwrap());
     command_sender.clear().await.unwrap();
 }

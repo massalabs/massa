@@ -3,11 +3,15 @@ use crate::{
     error::{InternalError, StorageError},
 };
 use crypto::hash::Hash;
-use models::{block::Block, slot::Slot};
+use models::{
+    block::{Block, BlockHeader},
+    slot::Slot,
+};
 use sled;
 use sled::Transactional;
 use std::{
     collections::HashMap,
+    convert::TryInto,
     sync::{Arc, RwLock, RwLockWriteGuard},
 };
 
@@ -171,11 +175,26 @@ impl BlockStorage {
         }
     }
 
-    pub fn get_slot_range(
+    pub fn get_block_header(&self, hash: Hash) -> Result<Option<BlockHeader>, StorageError> {
+        let hash_key = hash.to_bytes();
+
+        let _block_count_r = self
+            .block_count
+            .read()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+
+        if let Some(s_block) = self.hash_to_block.get(hash_key)? {
+            Ok(Some(Block::from_bytes(&s_block)?.header))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn get_blocks_in_slot_range(
         &self,
         start: Option<Slot>,
         end: Option<Slot>,
-    ) -> Result<HashMap<Hash, Block>, StorageError> {
+    ) -> Result<Vec<(Hash, Block)>, StorageError> {
         let start_key = start.map(|v| v.to_bytes_key());
         let end_key = end.map(|v| v.to_bytes_key());
 
@@ -191,15 +210,84 @@ impl BlockStorage {
             (Some(b1), Some(b2)) => self.slot_to_hash.range(b1..b2),
         }
         .map(|item| {
-            let (_, s_hash) = item?;
-            let hash = Hash::from_bytes(&s_hash)?;
-            let block = self
-                .get_block(hash)?
-                .ok_or(StorageError::DatabaseInconsistency(
-                    "block hash referenced by slot_to_hash is absent from hash_to_block".into(),
-                ))?;
-            Ok((hash, block))
+            let (_slot_key, hash_key) = item?;
+            let s_block =
+                self.hash_to_block
+                    .get(&hash_key)?
+                    .ok_or(StorageError::DatabaseInconsistency(
+                        "block hash referenced by slot_to_hash is absent from hash_to_block".into(),
+                    ))?;
+            Ok((
+                Hash::from_bytes(hash_key.as_ref())?,
+                Block::from_bytes(&s_block)?,
+            ))
         })
-        .collect::<Result<HashMap<Hash, Block>, StorageError>>()
+        .collect::<Result<Vec<(Hash, Block)>, StorageError>>()
+    }
+
+    pub fn get_headers_in_slot_range(
+        &self,
+        start: Option<Slot>,
+        end: Option<Slot>,
+    ) -> Result<Vec<(Hash, BlockHeader)>, StorageError> {
+        let start_key = start.map(|v| v.to_bytes_key());
+        let end_key = end.map(|v| v.to_bytes_key());
+
+        let _block_count_r = self
+            .block_count
+            .read()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+
+        match (start_key, end_key) {
+            (None, None) => self.slot_to_hash.iter(),
+            (Some(b1), None) => self.slot_to_hash.range(b1..),
+            (None, Some(b2)) => self.slot_to_hash.range(..b2),
+            (Some(b1), Some(b2)) => self.slot_to_hash.range(b1..b2),
+        }
+        .map(|item| {
+            let (_slot_key, hash_key) = item?;
+            let s_block =
+                self.hash_to_block
+                    .get(&hash_key)?
+                    .ok_or(StorageError::DatabaseInconsistency(
+                        "block hash referenced by slot_to_hash is absent from hash_to_block".into(),
+                    ))?;
+            Ok((
+                Hash::from_bytes(hash_key.as_ref())?,
+                Block::from_bytes(&s_block)?.header,
+            ))
+        })
+        .collect::<Result<Vec<(Hash, BlockHeader)>, StorageError>>()
+    }
+
+    pub fn get_hashes_in_slot_range(
+        &self,
+        start: Option<Slot>,
+        end: Option<Slot>,
+    ) -> Result<Vec<(Slot, Hash)>, StorageError> {
+        let start_key = start.map(|v| v.to_bytes_key());
+        let end_key = end.map(|v| v.to_bytes_key());
+
+        let _block_count_r = self
+            .block_count
+            .read()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+
+        match (start_key, end_key) {
+            (None, None) => self.slot_to_hash.iter(),
+            (Some(b1), None) => self.slot_to_hash.range(b1..),
+            (None, Some(b2)) => self.slot_to_hash.range(..b2),
+            (Some(b1), Some(b2)) => self.slot_to_hash.range(b1..b2),
+        }
+        .map(|item| {
+            let (slot_key, hash_key) = item?;
+            Ok((
+                Slot::from_bytes_key(&slot_key.as_ref().try_into().map_err(|e| {
+                    StorageError::DatabaseInconsistency(format!("wrong key length: {:?}", e))
+                })?),
+                Hash::from_bytes(&hash_key)?,
+            ))
+        })
+        .collect::<Result<Vec<(Slot, Hash)>, StorageError>>()
     }
 }

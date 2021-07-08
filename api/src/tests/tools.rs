@@ -202,10 +202,7 @@ pub async fn get_test_storage(
     );
     blocks.insert(block_c.header.compute_hash().unwrap(), block_c.clone());
 
-    storage_command_tx
-        .add_multiple_blocks(blocks)
-        .await
-        .unwrap();
+    storage_command_tx.add_block_batch(blocks).await.unwrap();
 
     (storage_command_tx, (block_a, block_b, block_c))
 }

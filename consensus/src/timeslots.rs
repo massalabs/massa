@@ -70,3 +70,53 @@ pub fn get_current_latest_block_slot(
 ) -> Result<Option<Slot>, ConsensusError> {
     get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, UTime::now()?)
 }
+
+pub fn time_range_to_slot_range(
+    thread_count: u8,
+    t0: UTime,
+    genesis_timestamp: UTime,
+    start_time: Option<UTime>,
+    end_time: Option<UTime>,
+) -> Result<(Option<Slot>, Option<Slot>), ConsensusError> {
+    let start_slot = match start_time {
+        None => None,
+        Some(t) => {
+            let inter_slot = t0.checked_div_u64(thread_count as u64)?;
+            let slot_number: u64 = t
+                .saturating_sub(genesis_timestamp)
+                .checked_add(inter_slot)?
+                .saturating_sub(UTime::EPSILON)
+                .checked_div_time(inter_slot)?;
+            Some(Slot::new(
+                slot_number
+                    .checked_div(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?,
+                slot_number
+                    .checked_rem(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?,
+            ))
+        }
+    };
+
+    let end_slot = match end_time {
+        None => None,
+        Some(t) => {
+            let inter_slot = t0.checked_div_u64(thread_count as u64)?;
+            let slot_number: u64 = t
+                .saturating_sub(genesis_timestamp)
+                .checked_add(inter_slot)?
+                .saturating_sub(UTime::EPSILON)
+                .checked_div_time(inter_slot)?;
+            Some(Slot::new(
+                slot_number
+                    .checked_div(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?,
+                slot_number
+                    .checked_rem(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?,
+            ))
+        }
+    };
+
+    Ok((start_slot, end_slot))
+}

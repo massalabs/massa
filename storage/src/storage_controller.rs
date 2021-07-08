@@ -1,7 +1,10 @@
 use crate::{config::StorageConfig, error::StorageError, storage_worker::BlockStorage};
 use crypto::hash::Hash;
 use logging::debug;
-use models::{block::Block, slot::Slot};
+use models::{
+    block::{Block, BlockHeader},
+    slot::Slot,
+};
 use std::collections::HashMap;
 
 pub fn start_storage_controller(
@@ -33,17 +36,14 @@ impl StorageCommandSender {
         tokio::task::spawn_blocking(move || db.add_block_batch(blocks)).await?
     }
 
-    pub async fn add_multiple_blocks(
-        &self,
-        blocks: HashMap<Hash, Block>,
-    ) -> Result<(), StorageError> {
-        let db = self.0.clone();
-        tokio::task::spawn_blocking(move || db.add_block_batch(blocks)).await?
-    }
-
     pub async fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
         let db = self.0.clone();
         tokio::task::spawn_blocking(move || db.get_block(hash)).await?
+    }
+
+    pub async fn get_block_header(&self, hash: Hash) -> Result<Option<BlockHeader>, StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.get_block_header(hash)).await?
     }
 
     pub async fn contains(&self, hash: Hash) -> Result<bool, StorageError> {
@@ -51,13 +51,31 @@ impl StorageCommandSender {
         tokio::task::spawn_blocking(move || db.contains(hash)).await?
     }
 
-    pub async fn get_slot_range(
+    pub async fn get_blocks_in_slot_range(
         &self,
         start: Option<Slot>,
         end: Option<Slot>,
-    ) -> Result<HashMap<Hash, Block>, StorageError> {
+    ) -> Result<Vec<(Hash, Block)>, StorageError> {
         let db = self.0.clone();
-        tokio::task::spawn_blocking(move || db.get_slot_range(start, end)).await?
+        tokio::task::spawn_blocking(move || db.get_blocks_in_slot_range(start, end)).await?
+    }
+
+    pub async fn get_headers_in_slot_range(
+        &self,
+        start: Option<Slot>,
+        end: Option<Slot>,
+    ) -> Result<Vec<(Hash, BlockHeader)>, StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.get_headers_in_slot_range(start, end)).await?
+    }
+
+    pub async fn get_hashes_in_slot_range(
+        &self,
+        start: Option<Slot>,
+        end: Option<Slot>,
+    ) -> Result<Vec<(Slot, Hash)>, StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.get_hashes_in_slot_range(start, end)).await?
     }
 }
 

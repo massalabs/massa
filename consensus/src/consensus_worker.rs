@@ -20,9 +20,9 @@ use tokio::{
 #[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
-    GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
+    GetBlockGRaph(Option<UTime>, Option<UTime>, oneshot::Sender<BlockGraphExport>),
     /// Returns through a channel full block with specified hash.
-    GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
+    GetBlock(Hash, oneshot::Sender<Option<Block>>),
     /// Returns through a channel the list of slots with public key of the selected staker.
     GetSelectionDraws(
         Slot,
@@ -444,7 +444,7 @@ impl ConsensusWorker {
             }
         }
         if let Some(cmd_tx) = &self.opt_storage_command_sender {
-            cmd_tx.add_multiple_blocks(finals).await?
+            cmd_tx.add_block_batch(finals).await?
         }
         Ok(())
     }

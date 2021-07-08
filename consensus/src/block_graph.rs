@@ -9,63 +9,18 @@ use models::{
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-/// The block version that can be exported.
-/// Note that the detailed list of operation is not exported
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExportCompiledBlock {
-    /// Header of the corresponding block.
-    pub block: BlockHeader,
-    /// For (i, set) in children,
-    /// set contains the headers' hashes
-    /// of blocks referencing exported block as a parent,
-    /// in thread i.
-    pub children: Vec<HashSet<Hash>>,
-}
-
-impl<'a> From<&'a CompiledBlock> for ExportCompiledBlock {
-    /// Conversion from compiled block
-    fn from(block: &'a CompiledBlock) -> Self {
-        ExportCompiledBlock {
-            block: block.block.header.clone(),
-            children: block.children.clone(),
-        }
-    }
-}
-
-/// The discarded blocks structure version that can be exported.
-#[derive(Debug, Clone)]
-pub struct ExportDiscardedBlocks {
-    pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
-}
-
-impl<'a> From<&'a DiscardedBlocks> for ExportDiscardedBlocks {
-    /// Conversion from DiscardedBlocks.
-    ///
-    /// # Argument
-    /// * block : DiscardedBlocks to export.
-    fn from(block: &'a DiscardedBlocks) -> Self {
-        ExportDiscardedBlocks {
-            map: block.map.clone(),
-        }
-    }
-}
-
 /// Exprortable verison of the blockGraph
 #[derive(Clone, Debug)]
 pub struct BlockGraphExport {
-    /// Genesis blocks.
-    pub genesis_blocks: Vec<Hash>,
-    /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: HashMap<Hash, ExportCompiledBlock>,
-    /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: ExportDiscardedBlocks,
-    /// Best parents hashe in each thread.
+    /// Timestamp
+    pub timestamp: UTime,
+    /// Blocks
+    pub blocks: HashMap<Hash, BlockSummaryExort>,
+    /// Best parent blocks in each thread
     pub best_parents: Vec<Hash>,
-    /// Latest final period and block hash in each thread.
-    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
-    /// Head of the incompatibility graph.
+    /// Head of the incompatibility graph
     pub gi_head: HashMap<Hash, HashSet<Hash>>,
-    /// List of maximal cliques of compatible blocks.
+    /// List of maximal cliques of compatible blocks
     pub max_cliques: Vec<HashSet<Hash>>,
 }
 
@@ -77,7 +32,7 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
             active_blocks: dbgrah
                 .active_blocks
                 .iter()
-                .map(|(hash, block)| (*hash, ExportCompiledBlock::from(block)))
+                .map(|(hash, block)| (*hash, block.header.clone()))
                 .collect(), // map of active blocks
             discarded_blocks: ExportDiscardedBlocks::from(&dbgrah.discarded_blocks), // finite cache of discarded blocks
             best_parents: dbgrah.best_parents.clone(), // best parent in each thread
@@ -86,6 +41,21 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
             max_cliques: dbgrah.max_cliques.clone(), // list of maximal cliques of compatible blocks
         }
     }
+}
+
+pub enum BlockStatusExport {
+    Active,
+    Final,
+    Stale
+}
+
+pub struct BlockSummaryExort {
+    status: BlockStatusExport,
+    slot: Slot,
+    roll: u32,
+    creator: PublicKey,
+    timestamp: UTime,
+    parents: Vec<Hash>
 }
 
 /// Compliled version of a block.

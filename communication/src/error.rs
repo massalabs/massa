@@ -34,8 +34,8 @@ pub enum CommunicationError {
     TimeError(#[from] time::TimeError),
     #[error("missing peers")]
     MissingPeersError,
-    #[error("storage error {0}")]
-    StorageError(#[from] storage::error::StorageError),
+    #[error("storage error: {0}")]
+    StorageError(#[from] storage::StorageError),
 }
 
 #[derive(Error, Debug)]
