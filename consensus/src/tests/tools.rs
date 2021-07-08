@@ -339,6 +339,8 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             (public_key, private_key)
         })
         .collect();
+    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
+
     (
         ConsensusConfig {
             genesis_timestamp: UTime::now(0).unwrap(),
@@ -357,6 +359,10 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             max_block_size,
             max_operations_per_block,
             operation_validity_periods: 3,
+            ledger_path: tempdir.path().to_path_buf(),
+            ledger_cache_capacity: 1000000,
+            ledger_flush_interval: Some(200.into()),
+            ledger_reset_at_startup: true,
         },
         SerializationContext {
             max_block_size,

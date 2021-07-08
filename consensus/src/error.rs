@@ -1,3 +1,5 @@
+use std::array::TryFromSliceError;
+
 use communication::CommunicationError;
 use models::ModelsError;
 use rand::distributions::WeightedError;
@@ -51,4 +53,22 @@ pub enum ConsensusError {
     StorageError(#[from] storage::StorageError),
     #[error("pool error : {0}")]
     PoolError(#[from] pool::PoolError),
+    #[error("sled error: {0}")]
+    SledError(#[from] sled::Error),
+    #[error("error reading leger {0}")]
+    ReadError(String),
+    #[error("try from slice error {0}")]
+    TryFromSliceError(#[from] TryFromSliceError),
+    #[error("ledger inconsistency error {0}")]
+    LedgerInconsistency(String),
+    #[error("ivalid ledger change {0}")]
+    InvalidLedgerChange(String),
+    #[error("sled error {0}")]
+    SledTransactionError(#[from] sled::transaction::TransactionError<InternalError>),
+}
+
+#[derive(Error, Debug)]
+pub enum InternalError {
+    #[error("transaction error {0}")]
+    TransactionError(String),
 }

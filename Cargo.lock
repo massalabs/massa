@@ -262,6 +262,7 @@ dependencies = [
  "rand_xoshiro",
  "serde",
  "serde_json",
+ "sled",
  "stderrlog",
  "storage",
  "tempfile",
