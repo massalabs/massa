@@ -13,11 +13,19 @@ sanity:
   script:
     - cargo fmt -- --check
 
-# Use cargo to test and build the project
+# Use cargo to build the project
 build:
   stage: build
   image: "rustlang/rust:nightly"
   script:
     - cargo build
-    - cargo test
+
+# Use tarpaulin to test the project
+test:
+  stage: build
+  image: "xd009642/tarpaulin:latest-nightly"
+  script:
+    - cargo tarpaulin -v
+  coverage: /\d+.\d+% coverage/
+
 
