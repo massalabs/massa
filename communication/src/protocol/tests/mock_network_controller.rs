@@ -2,7 +2,6 @@ use crate::common::NodeId;
 use crate::network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use models::{Block, BlockHeader};
-use std::collections::HashSet;
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -79,7 +78,7 @@ impl MockNetworkController {
             .expect("Couldn't send block to protocol.");
     }
 
-    pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: HashSet<Hash>) {
+    pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: Vec<Hash>) {
         self.network_event_tx
             .send(NetworkEvent::AskedForBlocks {
                 node: source_node_id,

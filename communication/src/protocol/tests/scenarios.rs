@@ -159,7 +159,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     // 3. Simulate two nodes asking for a block.
     for n in 0..2 {
         network_controller
-            .send_ask_for_block(nodes[n].id, vec![expected_hash].into_iter().collect())
+            .send_ask_for_block(nodes[n].id, vec![expected_hash])
             .await;
 
         // Check protocol sends get block event to consensus.
@@ -294,7 +294,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         };
 
     network_controller
-        .send_ask_for_block(node_b.id, vec![ref_hash].into_iter().collect())
+        .send_ask_for_block(node_b.id, vec![ref_hash])
         .await;
 
     match tools::wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| match evt {
@@ -468,7 +468,7 @@ async fn test_protocol_block_not_found() {
 
     // 3. Ask block to protocol.
     network_controller
-        .send_ask_for_block(creator_node.id, vec![expected_hash].into_iter().collect())
+        .send_ask_for_block(creator_node.id, vec![expected_hash])
         .await;
 
     // Check protocol sends ask block to consensus.

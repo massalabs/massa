@@ -1,5 +1,3 @@
-use std::collections::{HashMap, HashSet};
-
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
 use crate::network::NetworkCommand;
@@ -9,6 +7,7 @@ use crypto::{
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
+use std::collections::HashMap;
 use time::UTime;
 use tokio::time::sleep;
 
@@ -134,7 +133,7 @@ pub async fn assert_hash_asked_to_node(
 
 pub async fn asked_list(
     network_controller: &mut MockNetworkController,
-) -> HashMap<NodeId, HashSet<Hash>> {
+) -> HashMap<NodeId, Vec<Hash>> {
     let ask_for_block_cmd_filter = |cmd| match cmd {
         NetworkCommand::AskForBlocks { list } => Some(list),
         _ => None,

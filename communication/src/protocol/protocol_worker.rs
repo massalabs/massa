@@ -363,7 +363,7 @@ impl ProtocolWorker {
 
         // list blocks to re-ask and gather candidate nodes to ask from
         let mut candidate_nodes: HashMap<Hash, Vec<_>> = HashMap::new();
-        let mut ask_block_list: HashMap<NodeId, HashSet<Hash>> = HashMap::new();
+        let mut ask_block_list: HashMap<NodeId, Vec<Hash>> = HashMap::new();
 
         // list blocks to re-ask and from whom
         for hash in self.block_wishlist.iter() {
@@ -506,8 +506,8 @@ impl ProtocolWorker {
 
                 ask_block_list
                     .entry(best_node)
-                    .or_insert(HashSet::new())
-                    .insert(hash);
+                    .or_insert_with(|| vec![])
+                    .push(hash);
 
                 let timeout_at = now
                     .checked_add(self.cfg.ask_block_timeout.into())
@@ -596,7 +596,9 @@ impl ProtocolWorker {
                     .note_header_from_node(&block.header, &from_node_id)
                     .await?
                 {
-                    self.stop_asking_blocks(HashSet::from(vec![hash].into_iter().collect()))?;
+                    let mut set = HashSet::with_capacity(1);
+                    set.insert(hash);
+                    self.stop_asking_blocks(set)?;
                     trace!("before sending  ProtocolEvent::ReceivedBlock from controller_event_tx in protocol_worker on_network_event");
                     self.controller_event_tx
                         .send(ProtocolEvent::ReceivedBlock { hash, block })
