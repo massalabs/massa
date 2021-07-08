@@ -204,6 +204,7 @@ async fn test_cliques() {
     let mut mock_interface = MockConsensusControllerInterface::new();
     let hash_set = (0..2).map(|_| get_test_hash()).collect::<HashSet<Hash>>();
     mock_interface.graph.max_cliques = vec![hash_set.clone(), hash_set.clone()];
+    mock_interface.add_active_blocks(get_test_hash(), get_test_block()); // to make graph consistent
 
     let filter = mock_filter(mock_interface);
     // invalid url parameter
@@ -222,9 +223,21 @@ async fn test_cliques() {
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);
+    let expected = hash_set
+        .iter()
+        .map(|hash| {
+            (
+                hash,
+                (
+                    get_test_block().header.period_number,
+                    get_test_block().header.thread_number,
+                ),
+            )
+        })
+        .collect::<Vec<(&Hash, (u64, u8))>>();
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&(2, vec![hash_set.clone(), hash_set.clone()])).unwrap(),
+        &serde_json::to_string(&(2, vec![expected.clone(), expected.clone()])).unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -259,6 +272,7 @@ async fn test_current_parents() {
     //add default parents
     let mut mock_interface = MockConsensusControllerInterface::new();
     mock_interface.graph.best_parents = vec![get_test_hash(), get_test_hash()];
+    mock_interface.add_active_blocks(get_test_hash(), get_test_block());
 
     let filter = mock_filter(mock_interface);
     // invalid url parameter
@@ -277,9 +291,17 @@ async fn test_current_parents() {
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);
+
+    let expected = (
+        get_test_hash(),
+        (
+            get_test_block().header.period_number,
+            get_test_block().header.thread_number,
+        ),
+    );
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![get_test_hash(), get_test_hash()]).unwrap(),
+        &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -333,7 +355,7 @@ async fn test_get_block_interval() {
         get_test_hash(),
         block.header.period_number,
         block.header.thread_number,
-        "valid",
+        "final", // in tests there are no blocks in gi_head, so no just active blocks
         block.header.parents,
     )];
     let expected: serde_json::Value =
@@ -486,7 +508,8 @@ async fn test_get_graph_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<Hash>::new()).unwrap()).unwrap();
+        serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, (u64, u8))>::new()).unwrap())
+            .unwrap();
     assert_eq!(obtained, expected);
 
     // block found
@@ -498,8 +521,16 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let mut expected = Vec::new();
+    expected.push((
+        get_test_hash(),
+        (
+            get_test_block().header.period_number,
+            get_test_block().header.thread_number,
+        ),
+    ));
     let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&vec![get_test_hash()]).unwrap()).unwrap();
+        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
 }
 

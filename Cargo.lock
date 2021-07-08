@@ -824,8 +824,8 @@ version = "0.1.0"
 dependencies = [
  "bitcoin_hashes",
  "bs58",
+ "chrono",
  "clap",
- "communication",
  "crypto",
  "models",
  "reqwest",
@@ -833,6 +833,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "time 0.1.0",
  "toml",
 ]
 

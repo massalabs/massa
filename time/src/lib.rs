@@ -19,6 +19,10 @@ impl fmt::Display for UTime {
 }
 
 impl From<u64> for UTime {
+    /// ```
+    /// # use time::*;
+    /// let time : UTime = UTime::from(42);
+    /// ```
     fn from(value: u64) -> Self {
         UTime(value)
     }
@@ -27,6 +31,14 @@ impl From<u64> for UTime {
 impl TryFrom<Duration> for UTime {
     type Error = TimeError;
 
+    /// ```
+    /// # use std::time::Duration;
+    /// # use time::*;
+    /// # use std::convert::TryFrom;
+    /// let duration: Duration = Duration::from_millis(42);
+    /// let time : UTime = UTime::from(42);
+    /// assert_eq!(time, UTime::try_from(duration).unwrap());
+    /// ```
     fn try_from(value: Duration) -> Result<Self, Self::Error> {
         Ok(UTime(
             value
@@ -38,6 +50,15 @@ impl TryFrom<Duration> for UTime {
 }
 
 impl Into<Duration> for UTime {
+    /// ```
+    /// # use std::time::Duration;
+    /// # use time::*;
+    /// # use std::convert::Into;
+    /// let duration: Duration = Duration::from_millis(42);
+    /// let time : UTime = UTime::from(42);
+    /// let res: Duration = time.into();
+    /// assert_eq!(res, duration);
+    /// ```
     fn into(self) -> Duration {
         Duration::from_millis(self.to_millis())
     }
@@ -46,6 +67,15 @@ impl Into<Duration> for UTime {
 impl FromStr for UTime {
     type Err = crate::TimeError;
 
+    /// ```
+    /// # use std::time::Duration;
+    /// # use time::*;
+    /// # use std::str::FromStr;
+    /// let duration: &str = "42";
+    /// let time : UTime = UTime::from(42);
+    ///
+    /// assert_eq!(time, UTime::from_str(duration).unwrap());
+    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(UTime(
             u64::from_str(s).map_err(|_| Self::Err::ConversionError)?,
@@ -54,6 +84,16 @@ impl FromStr for UTime {
 }
 
 impl UTime {
+    /// ```
+    /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    /// # use time::*;
+    /// # use std::convert::TryFrom;
+    /// # use std::cmp::max;
+    /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    /// let now_utime : UTime = UTime::now().unwrap();
+    /// let converted  :UTime = UTime::try_from(now_duration).unwrap();
+    /// assert!(max(now_utime.saturating_sub(converted), converted.saturating_sub(now_utime)) < 100.into())
+    /// ```
     pub fn now() -> Result<Self, TimeError> {
         Ok(UTime(
             SystemTime::now()
@@ -65,14 +105,41 @@ impl UTime {
         ))
     }
 
+    /// ```
+    /// # use std::time::Duration;
+    /// # use time::*;
+    /// let duration: Duration = Duration::from_millis(42);
+    /// let time : UTime = UTime::from(42);
+    /// let res: Duration = time.to_duration();
+    /// assert_eq!(res, duration);
+    /// ```
     pub fn to_duration(&self) -> Duration {
         Duration::from_millis(self.0)
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time : UTime = UTime::from(42);
+    /// let res: u64 = time.to_millis();
+    /// assert_eq!(res, 42);
+    /// ```
     pub fn to_millis(&self) -> u64 {
         self.0
     }
 
+    /// ```
+    /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    /// # use time::*;
+    /// # use std::convert::TryFrom;
+    /// # use std::cmp::max;
+    /// # use tokio::time::Instant;
+    /// let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now().unwrap(), Instant::now());
+    /// let utime_instant: Instant = cur_timestamp.estimate_instant().unwrap();
+    /// assert!(max(
+    ///     utime_instant.saturating_duration_since(cur_instant),
+    ///     cur_instant.saturating_duration_since(utime_instant)
+    /// ) < std::time::Duration::from_millis(10))
+    /// ```
     pub fn estimate_instant(self) -> Result<Instant, TimeError> {
         let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now()?, Instant::now());
         Ok(cur_instant
@@ -82,14 +149,35 @@ impl UTime {
             .ok_or(TimeError::TimeOverflowError)?)
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let time_2 : UTime = UTime::from(7);
+    /// let res : UTime = time_1.saturating_sub(time_2);
+    /// assert_eq!(res, UTime::from(42-7))
+    /// ```
     pub fn saturating_sub(self, t: UTime) -> Self {
         UTime(self.0.saturating_sub(t.0))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let time_2 : UTime = UTime::from(7);
+    /// let res : UTime = time_1.saturating_add(time_2);
+    /// assert_eq!(res, UTime::from(42+7))
+    /// ```
     pub fn saturating_add(self, t: UTime) -> Self {
         UTime(self.0.saturating_add(t.0))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let time_2 : UTime = UTime::from(7);
+    /// let res : UTime = time_1.checked_sub(time_2).unwrap();
+    /// assert_eq!(res, UTime::from(42-7))
+    /// ```
     pub fn checked_sub(self, t: UTime) -> Result<Self, TimeError> {
         self.0
             .checked_sub(t.0)
@@ -99,6 +187,13 @@ impl UTime {
             .and_then(|value| Ok(UTime(value)))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let time_2 : UTime = UTime::from(7);
+    /// let res : UTime = time_1.checked_add(time_2).unwrap();
+    /// assert_eq!(res, UTime::from(42+7))
+    /// ```
     pub fn checked_add(self, t: UTime) -> Result<Self, TimeError> {
         self.0
             .checked_add(t.0)
@@ -106,12 +201,25 @@ impl UTime {
             .and_then(|value| Ok(UTime(value)))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let time_2 : UTime = UTime::from(7);
+    /// let res : u64 = time_1.checked_div_time(time_2).unwrap();
+    /// assert_eq!(res,42/7)
+    /// ```
     pub fn checked_div_time(self, t: UTime) -> Result<u64, TimeError> {
         self.0
             .checked_div(t.0)
             .ok_or(TimeError::CheckedOperationError(format!("division error")))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let res : UTime = time_1.checked_div_u64(7).unwrap();
+    /// assert_eq!(res,UTime::from(42/7))
+    /// ```
     pub fn checked_div_u64(self, n: u64) -> Result<UTime, TimeError> {
         self.0
             .checked_div(n)
@@ -119,6 +227,12 @@ impl UTime {
             .and_then(|value| Ok(UTime(value)))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let res : UTime = time_1.checked_mul(7).unwrap();
+    /// assert_eq!(res,UTime::from(42*7))
+    /// ```
     pub fn checked_mul(self, n: u64) -> Result<Self, TimeError> {
         self.0
             .checked_mul(n)
@@ -128,6 +242,13 @@ impl UTime {
             .and_then(|value| Ok(UTime(value)))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let time_2 : UTime = UTime::from(7);
+    /// let res : UTime = time_1.checked_rem_time(time_2).unwrap();
+    /// assert_eq!(res,UTime::from(42%7))
+    /// ```
     pub fn checked_rem_time(self, t: UTime) -> Result<Self, TimeError> {
         self.0
             .checked_rem(t.0)
@@ -135,6 +256,12 @@ impl UTime {
             .and_then(|value| Ok(UTime(value)))
     }
 
+    /// ```
+    /// # use time::*;
+    /// let time_1 : UTime = UTime::from(42);
+    /// let res : UTime = time_1.checked_rem_u64(7).unwrap();
+    /// assert_eq!(res,UTime::from(42%7))
+    /// ```
     pub fn checked_rem_u64(self, n: u64) -> Result<Self, TimeError> {
         self.0
             .checked_rem(n)

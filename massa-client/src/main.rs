@@ -2,14 +2,11 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use clap::App;
 use clap::Arg;
-use communication::network::PeerInfo;
-use std::sync::atomic::{AtomicBool, Ordering};
-//use crypto::hash::Hash;
-use models::block::Block;
 use reqwest::blocking::Response;
 use std::fs::read_to_string;
 use std::net::IpAddr;
 use std::str::FromStr;
+use std::sync::atomic::Ordering;
 
 /*
 Usage:
@@ -23,114 +20,8 @@ Usage:
 */
 
 mod config;
+mod data;
 mod repl;
-
-//test for short hash
-use bitcoin_hashes;
-
-pub const HASH_SIZE_BYTES: usize = 32;
-static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(false); //never set to zero.
-
-#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
-pub struct Hash(bitcoin_hashes::sha256::Hash);
-
-impl std::fmt::Display for Hash {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
-            write!(f, "{}", &self.to_bs58_check()[..8])
-        } else {
-            write!(f, "{}", &self.to_bs58_check())
-        }
-    }
-}
-
-impl std::fmt::Debug for Hash {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
-            write!(f, "{}", &self.to_bs58_check()[..8])
-        } else {
-            write!(f, "{}", &self.to_bs58_check())
-        }
-    }
-}
-
-impl Hash {
-    pub fn to_bs58_check(&self) -> String {
-        bs58::encode(self.to_bytes()).with_check().into_string()
-    }
-    pub fn from_bs58_check(data: &str) -> Result<Hash, ReplError> {
-        bs58::decode(data)
-            .with_check(None)
-            .into_vec()
-            .map_err(|err| ReplError::HashParseError(format!("{:?}", err)))
-            .and_then(|s| Hash::from_bytes(&s))
-    }
-    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
-        use bitcoin_hashes::Hash;
-        *self.0.as_inner()
-    }
-    pub fn from_bytes(data: &[u8]) -> Result<Hash, ReplError> {
-        use bitcoin_hashes::Hash;
-        use std::convert::TryInto;
-        let res_inner: Result<<bitcoin_hashes::sha256::Hash as Hash>::Inner, _> = data.try_into();
-        res_inner
-            .map(|inner| Hash(bitcoin_hashes::sha256::Hash::from_inner(inner)))
-            .map_err(|err| ReplError::HashParseError(format!("{:?}", err)))
-    }
-}
-impl<'de> ::serde::Deserialize<'de> for Hash {
-    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Hash, D::Error> {
-        if d.is_human_readable() {
-            struct Base58CheckVisitor;
-
-            impl<'de> ::serde::de::Visitor<'de> for Base58CheckVisitor {
-                type Value = Hash;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("an ASCII base58check string")
-                }
-
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    if let Ok(v_str) = std::str::from_utf8(v) {
-                        Hash::from_bs58_check(&v_str).map_err(E::custom)
-                    } else {
-                        Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
-                    }
-                }
-
-                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    Hash::from_bs58_check(&v).map_err(E::custom)
-                }
-            }
-            d.deserialize_str(Base58CheckVisitor)
-        } else {
-            struct BytesVisitor;
-
-            impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
-                type Value = Hash;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("a bytestring")
-                }
-
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    Hash::from_bytes(v).map_err(E::custom)
-                }
-            }
-
-            d.deserialize_bytes(BytesVisitor)
-        }
-    }
-}
 
 fn main() {
     let app = App::new("Massa CLI")
@@ -151,7 +42,7 @@ fn main() {
                 .short("s")
                 .long("shorthash")
                 .value_name("true, false")
-                .help("true: display short hash")
+                .help("true: display short hash. Doesn't work in command mode")
                 .required(false)
                 .takes_value(true),
         );
@@ -163,6 +54,14 @@ fn main() {
     let mut repl = repl::Repl::new();
 
     //add commands
+    let app = repl.new_command(
+        "set_short_hash",
+        "set displayed hash short: Parameter: bool: true (short), false(long)",
+        1,
+        1,
+        set_short_hash,
+        app,
+    );
     let app = repl.new_command_noargs("our_ip", "get node ip", cmd_our_ip, app);
     let app = repl.new_command_noargs("peers", "get node peers", cmd_peers, app);
     let app = repl.new_command_noargs("cliques", "get cliques", cmd_cliques, app);
@@ -252,10 +151,10 @@ fn main() {
                 })
                 .ok()
         })
-        .unwrap_or(false);
+        .unwrap_or(true);
 
-    if short_hash {
-        FORMAT_SHORT_HASH.swap(true, Ordering::Relaxed);
+    if !short_hash {
+        data::FORMAT_SHORT_HASH.swap(false, Ordering::Relaxed);
     }
 
     match matches.subcommand() {
@@ -275,11 +174,21 @@ fn main() {
     }
 }
 
+fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    if let Err(_) = bool::from_str(&params[0].to_lowercase())
+        .map(|val| data::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed))
+    {
+        println!("Bad parameter:{}, not a boolean (true, false)", params[0]);
+    };
+    Ok(())
+}
+
 fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/staker_info/{}", data.node_ip, params[0]);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<serde_json::Value>()?;
-        println!("staker_info:{:#?}", resp);
+        let resp = resp.json::<data::StakerInfo>()?;
+        println!("staker_info:");
+        println!("{}", resp);
     }
     Ok(())
 }
@@ -287,28 +196,28 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
 fn cmd_network_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/network_info", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<serde_json::Value>()?;
-        println!("network_info:{:#?}", resp);
+        let info = resp.json::<data::NetworkInfo>()?;
+        println!("network_info:");
+        println!("{}", info);
     }
     Ok(())
 }
 
 fn cmd_stop_node(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let client = reqwest::blocking::Client::new();
-    if let Ok(_) = client
+    client
         .post(&format!("http://{}/api/v1/stop_node", data.node_ip))
-        .send()
-    {
-        println!("Stoping node");
-    }
+        .send()?;
+    println!("Stoping node");
     Ok(())
 }
 
 fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/state", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<serde_json::Value>()?;
-        println!("State:{:#?}", resp);
+        let resp = resp.json::<data::State>()?;
+        println!("Summary of current node state");
+        println!("{}", resp);
     }
     Ok(())
 }
@@ -316,8 +225,10 @@ fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_stale", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<Vec<(Hash, u64, u8)>>()?;
-        println!("Last stale:{:#?}", resp);
+        let mut resp = resp.json::<Vec<(data::Hash, u64, u8)>>()?;
+        resp.sort_unstable_by(|a, b| data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2))));
+        let formated = format_node_hash(&mut resp);
+        println!("Last stale:{:?}", formated);
     }
     Ok(())
 }
@@ -325,8 +236,10 @@ fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_last_invalid(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_invalid", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<Vec<(Hash, u64, u8)>>()?;
-        println!("Last invalid:{:#?}", resp);
+        let mut resp = resp.json::<Vec<(data::Hash, u64, u8)>>()?;
+        resp.sort_unstable_by(|a, b| data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2))));
+        let formated = format_node_hash(&mut resp);
+        println!("Last invalid:{:?}", formated);
     }
     Ok(())
 }
@@ -334,8 +247,11 @@ fn cmd_last_invalid(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplErr
 fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/our_ip", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<String>()?;
-        println!("node ip:{:#?}", resp);
+        let resp = resp.json::<Option<IpAddr>>()?;
+        match resp {
+            Some(ip) => println!("Our IP address: {}", ip),
+            None => println!("Our IP address isn't defined"),
+        }
     }
     Ok(())
 }
@@ -343,8 +259,10 @@ fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/peers", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<std::collections::HashMap<IpAddr, PeerInfo>>()?;
-        println!("peers:{:#?}", resp);
+        let resp = resp.json::<std::collections::HashMap<IpAddr, data::PeerInfo>>()?;
+        for peer in resp.values() {
+            println!("    {}", peer);
+        }
     }
     Ok(())
 }
@@ -352,8 +270,9 @@ fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/current_parents", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<Vec<Hash>>()?;
-        println!("Parents:{:#?}", resp);
+        let mut resp = resp.json::<Vec<(data::Hash, (u64, u8))>>()?;
+        resp.sort_unstable_by(|a, b| data::compare_hash(a, b));
+        println!("Parents:{:?}", resp);
     }
     Ok(())
 }
@@ -361,8 +280,10 @@ fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), Repl
 fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_final", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<Vec<(Hash, u64, u8)>>()?;
-        println!("last finals:{:#?}", resp);
+        let mut resp = resp.json::<Vec<(data::Hash, u64, u8)>>()?;
+        resp.sort_unstable_by(|a, b| data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2))));
+        let formated = format_node_hash(&mut resp);
+        println!("last finals:{:?}", formated);
     }
     Ok(())
 }
@@ -370,8 +291,15 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_cliques(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/cliques", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<(usize, Vec<Vec<Hash>>)>()?;
-        println!("cliques:{:#?}", resp);
+        let (nb_cliques, clique_list) =
+            resp.json::<(usize, Vec<Vec<(data::Hash, (u64, u8))>>)>()?;
+        println!("Nb of cliques: {}", nb_cliques);
+        println!("Cliques: ");
+        clique_list.into_iter().for_each(|mut clique| {
+            //use sort_unstable_by to prepare sort by slot
+            clique.sort_unstable_by(|a, b| data::compare_hash(a, b));
+            println!("{:?}", clique);
+        });
     }
     Ok(())
 }
@@ -380,8 +308,8 @@ fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
     let url = format!("http://{}/api/v1/block/{}", data.node_ip, params[0]);
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let block = resp.json::<Block>()?;
-            println!("block: {:#?}", block);
+            let block = resp.json::<data::Block>()?;
+            println!("block: {}", block);
         } else {
             println!("block not found.");
         }
@@ -397,8 +325,9 @@ fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
     );
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let block = resp.json::<Vec<Hash>>()?;
-            println!("blocks: {:#?}", block);
+            let mut block = resp.json::<Vec<(data::Hash, (u64, u8))>>()?;
+            block.sort_unstable_by(|a, b| data::compare_hash(a, b));
+            println!("blocks: {:?}", block);
         } else {
             println!("Not block found.");
         }
@@ -414,8 +343,20 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
     );
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let block = resp.json::<Vec<(Hash, u64, u8, String, Vec<Hash>)>>()?;
-            println!("graph: {:#?}", block);
+            let mut block = resp.json::<Vec<(data::Hash, u64, u8, String, Vec<data::Hash>)>>()?;
+            block.sort_unstable_by(|a, b| {
+                data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2)))
+            });
+            block
+                .iter()
+                .for_each(|(hash, slot, thread, state, parents)| {
+                    println!(
+                        "Block: {} Period: {} Thread:{} Status:{}",
+                        hash, slot, thread, state
+                    );
+                    println!("Block parents: {:?}", parents);
+                    println!("");
+                });
         } else {
             println!("Empty graph found.");
         }
@@ -432,4 +373,11 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
     } else {
         Ok(Some(resp))
     }
+}
+
+fn format_node_hash(list: &mut [(data::Hash, u64, u8)]) -> Vec<String> {
+    list.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+    list.iter()
+        .map(|(hash, slot, thread)| format!("({} Period:{} th:{})", hash, slot, thread))
+        .collect()
 }
