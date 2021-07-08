@@ -778,7 +778,7 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap()).unwrap();
+        serde_json::from_str(&serde_json::to_string(&Vec::<HashSlot>::new()).unwrap()).unwrap();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 
@@ -841,7 +841,7 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected = Vec::<(Hash, Slot)>::new();
+    let expected = Vec::<HashSlot>::new();
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
@@ -1380,8 +1380,7 @@ async fn test_last_stale() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
-                .unwrap();
+            serde_json::from_str(&serde_json::to_string(&Vec::<HashSlot>::new()).unwrap()).unwrap();
         assert_eq!(obtained, expected);
 
         drop(filter);
@@ -1477,8 +1476,7 @@ async fn test_last_invalid() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
-                .unwrap();
+            serde_json::from_str(&serde_json::to_string(&Vec::<HashSlot>::new()).unwrap()).unwrap();
         assert_eq!(obtained, expected);
 
         drop(filter);

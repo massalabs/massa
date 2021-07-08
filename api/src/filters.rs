@@ -547,7 +547,7 @@ async fn get_current_parents(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<Has
     Ok(best)
 }
 
-/// Returns last final blocks as a Vec<(Hash, Slot)>.
+/// Returns last final blocks as a Vec<HashSlot>.
 ///
 async fn get_last_final(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<HashSlot>, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
@@ -780,7 +780,7 @@ async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<PeerInfo>, Ap
 /// Returns a summary of the current state:
 /// * time in UTime
 /// * lastest slot (optional)
-/// * last final block as Vec<(&Hash, Slot UTime)>
+/// * last final block as Vec<HashSlot)>
 /// * number of cliques
 /// * number of connected peers
 ///
@@ -837,7 +837,7 @@ async fn get_state(
     })
 }
 
-/// Returns a number of last stale blocks as a Vec<(Hash, Slot)> wrapped in a reply.
+/// Returns a number of last stale blocks as a Vec<HashSlot> wrapped in a reply.
 ///
 async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
@@ -860,7 +860,7 @@ async fn get_last_stale(
     Ok(discarded)
 }
 
-/// Returns a number of last invalid blocks as a Vec<(Hash, Slot)> wrapped in a reply.
+/// Returns a number of last invalid blocks as a Vec<HashSlot> wrapped in a reply.
 ///
 async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
