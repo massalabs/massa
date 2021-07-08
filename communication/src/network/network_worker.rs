@@ -518,7 +518,7 @@ impl NetworkWorker {
                             .await;
 
                         // If we failed to send the event to protocol, close the connection.
-                        // TODO: retry later instead of closing?
+                        // TODO: retry later instead of closing? see #419
                         if res.is_err() {
                             let res = node_command_tx
                                 .send(NodeCommand::Close(ConnectionClosureReason::Normal))

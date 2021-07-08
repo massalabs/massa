@@ -555,8 +555,8 @@ async fn test_block_creation() {
     cfg.disable_block_creation = false;
     cfg.thread_count = 1;
 
-    let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
-    let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
+    let seed = vec![0u8; 32]; // TODO temporary (see issue #422)
+    let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #422)
     let mut selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights).unwrap();
     let mut expected_slots = Vec::new();
     for i in 1..11 {
