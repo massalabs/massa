@@ -1,13 +1,16 @@
 //to start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::{mock_establisher, tools};
+use crate::network::messages::Message;
 use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
+use crypto::hash::Hash;
 use std::{
     convert::TryInto,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     time::{Duration, Instant},
 };
 use time::UTime;
+use tokio::time::sleep;
 
 // test connecting two different peers simultaneously to the controller
 // then attempt to connect to controller from an already connected peer to test max_in_connections_per_ip
@@ -350,6 +353,117 @@ async fn test_advertised_and_wakeup_interval() {
         panic!("a connection event was emitted by controller while none were expected");
     }
 
+    network_manager
+        .stop(network_event_receiver)
+        .await
+        .expect("error while closing");
+
+    tools::incoming_message_drain_stop(conn1_drain).await;
+
+    temp_peers_file.close().unwrap();
+}
+
+#[tokio::test]
+async fn test_block_not_found() {
+    // setup logging
+    /*stderrlog::new()
+    .verbosity(4)
+    .timestamp(stderrlog::Timestamp::Millisecond)
+    .init()
+    .unwrap();*/
+
+    //test config
+    let bind_port: u16 = 50_000;
+
+    let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
+    //add advertised peer to controller
+    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+        ip: mock_addr.ip(),
+        banned: false,
+        bootstrap: true,
+        last_alive: None,
+        last_failure: None,
+        advertised: true,
+        active_out_connection_attempts: 0,
+        active_out_connections: 0,
+        active_in_connections: 0,
+    }]);
+
+    let (mut network_conf, serialization_context) =
+        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    network_conf.target_out_connections = 10;
+
+    // create establisher
+    let (establisher, mut mock_interface) = mock_establisher::new();
+
+    // launch network controller
+    let (mut network_command_sender, mut network_event_receiver, network_manager) =
+        start_network_controller(
+            network_conf.clone(),
+            serialization_context.clone(),
+            establisher,
+        )
+        .await
+        .expect("could not start network controller");
+
+    // accept connection from controller to peer
+    let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
+        &mut network_event_receiver,
+        &mut mock_interface,
+        mock_addr,
+        1_000u64,
+        1_000u64,
+        1_000u64,
+        serialization_context.clone(),
+    )
+    .await;
+    //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
+
+    // Send ask for block message from connected peer
+    let wanted_hash = Hash::hash("default_val".as_bytes());
+    conn1_w
+        .send(&Message::AskForBlock(wanted_hash))
+        .await
+        .unwrap();
+
+    // assert it is sent to protocol
+    if let Some((hash, node)) =
+        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+            NetworkEvent::AskedForBlock { hash, node } => Some((hash, node)),
+            _ => None,
+        })
+        .await
+    {
+        assert_eq!(hash, wanted_hash);
+        assert_eq!(node, conn1_id);
+    } else {
+        panic!("Timeout while waiting for asked for block event");
+    }
+
+    // reply with block not found
+    network_command_sender
+        .block_not_found(conn1_id, wanted_hash)
+        .await
+        .unwrap();
+
+    //let mut  conn1_r = conn1_drain.0.await.unwrap();
+    // assert that block not found is sent to node
+
+    let timer = sleep(Duration::from_millis(100));
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            evt = conn1_r.next() => {
+                let evt = evt.unwrap().unwrap().1;
+                match evt {
+                Message::BlockNotFound(hash) => {assert_eq!(hash, wanted_hash); break;}
+                _ => {}
+            }},
+            _ = &mut timer => panic!("timeout reached waiting for message")
+        }
+    }
+
+    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
     network_manager
         .stop(network_event_receiver)
         .await
