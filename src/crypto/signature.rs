@@ -223,7 +223,7 @@ impl PublicKey {
     ///
     /// let serialized: String = public_key.serialize_bs58_check();
     /// ```
-    fn serialize_bs58_check(&self) -> String {
+    pub fn serialize_bs58_check(&self) -> String {
         bs58::encode(self.serialize_binary())
             .with_check()
             .into_string()
@@ -240,7 +240,7 @@ impl PublicKey {
     ///
     /// let serialized: Vec<u8> = public_key.serialize_binary();
     /// ```
-    fn serialize_binary(&self) -> Vec<u8> {
+    pub fn serialize_binary(&self) -> Vec<u8> {
         self.0.serialize().to_vec()
     }
 
@@ -256,7 +256,7 @@ impl PublicKey {
     /// let serialized: String = public_key.serialize_bs58_check();
     /// let deserialized: PublicKey = PublicKey::deserialize_bs58_check(&serialized).unwrap();
     /// ```
-    fn deserialize_bs58_check(data: &str) -> Result<PublicKey, SignatureError> {
+    pub fn deserialize_bs58_check(data: &str) -> Result<PublicKey, SignatureError> {
         match bs58::decode(data).with_check(None).into_vec() {
             Ok(s) => Ok(PublicKey::deserialize_binary(&s)?),
             _ => Err(SignatureError::ParseError),
@@ -275,7 +275,7 @@ impl PublicKey {
     /// let serialized : Vec<u8> = public_key.serialize_binary();
     /// let deserialized: PublicKey = PublicKey::deserialize_binary(&serialized).unwrap();
     /// ```
-    fn deserialize_binary(data: &Vec<u8>) -> Result<PublicKey, SignatureError> {
+    pub fn deserialize_binary(data: &Vec<u8>) -> Result<PublicKey, SignatureError> {
         match secp256k1::key::PublicKey::from_slice(&data[..]) {
             Ok(k) => Ok(PublicKey(k)),
             _ => Err(SignatureError::ParseError),
@@ -423,7 +423,7 @@ impl Signature {
     ///
     /// let serialized: String = signature.serialize_bs58_check();
     /// ```
-    fn serialize_bs58_check(&self) -> String {
+    pub fn serialize_bs58_check(&self) -> String {
         bs58::encode(self.serialize_binary())
             .with_check()
             .into_string()
@@ -441,7 +441,7 @@ impl Signature {
     ///
     /// let serialized : Vec<u8> = signature.serialize_binary();
     /// ```
-    fn serialize_binary(&self) -> Vec<u8> {
+    pub fn serialize_binary(&self) -> Vec<u8> {
         self.0.serialize_compact().to_vec()
     }
 
@@ -458,7 +458,7 @@ impl Signature {
     /// let serialized: String = signature.serialize_bs58_check();
     /// let deserialized: Signature = Signature::deserialize_bs58_check(&serialized).unwrap();
     /// ```
-    fn deserialize_bs58_check(data: &str) -> Result<Signature, SignatureError> {
+    pub fn deserialize_bs58_check(data: &str) -> Result<Signature, SignatureError> {
         match bs58::decode(data).with_check(None).into_vec() {
             Ok(s) => Ok(Signature::deserialize_binary(&s)?),
             _ => Err(SignatureError::ParseError),
@@ -478,7 +478,7 @@ impl Signature {
     /// let serialized: Vec<u8> = signature.serialize_binary();
     /// let deserialized: Signature = Signature::deserialize_binary(&serialized).unwrap();
     /// ```
-    fn deserialize_binary(data: &Vec<u8>) -> Result<Signature, SignatureError> {
+    pub fn deserialize_binary(data: &Vec<u8>) -> Result<Signature, SignatureError> {
         match secp256k1::Signature::from_compact(&data[..]) {
             Ok(k) => Ok(Signature(k)),
             _ => Err(SignatureError::ParseError),
@@ -625,7 +625,7 @@ impl SignatureEngine {
     /// ```
     /// let secp: SignatureEngine = SignatureEngine::new();
     /// ```
-    fn new() -> SignatureEngine {
+    pub fn new() -> SignatureEngine {
         SignatureEngine(Secp256k1::new())
     }
 
@@ -635,7 +635,9 @@ impl SignatureEngine {
     /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let private_key: PrivateKey = SignatureEngine::generate_random_private_key(&mut rng);
     /// ```
-    fn generate_random_private_key<R: secp256k1::rand::Rng + ?Sized>(rng: &mut R) -> PrivateKey {
+    pub fn generate_random_private_key<R: secp256k1::rand::Rng + ?Sized>(
+        rng: &mut R,
+    ) -> PrivateKey {
         PrivateKey(secp256k1::key::SecretKey::new(rng))
     }
 
@@ -648,7 +650,7 @@ impl SignatureEngine {
     /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
     /// let public_key: PublicKey = secp.derive_public_key(&private_key);
     /// ```
-    fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
+    pub fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
         PublicKey(secp256k1::key::PublicKey::from_secret_key(
             &self.0,
             &private_key.0,
