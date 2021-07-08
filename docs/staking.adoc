@@ -17,7 +17,7 @@ Get the address that has coins in your wallet:
 wallet_info
 ----
 
-Buy rolls with it: put your address 
+Buy rolls with it: put your address, the number of rolls you want to buy, and the operation fee (you can put 0):
 ----
 buy_rolls <address>  <roll count> <fee>
 ----
