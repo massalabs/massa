@@ -353,7 +353,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("last_stale"))
         .and(warp::path::end())
-        .and_then(move || get_last_stale(evt_tx.clone(), api_cfg.clone()));
+        .and_then(move || wrap_api_call(get_last_stale(evt_tx.clone(), api_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config.clone();
@@ -965,33 +965,22 @@ async fn get_state(
 async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
     api_config: ApiConfig,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+) -> Result<Vec<(Hash, Slot)>, ApiError> {
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let discarded = graph.discarded_blocks.clone();
     let mut discarded = discarded
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
-        .map(|(hash, (_reason, header))| (hash, header.content.slot))
-        .collect::<Vec<(&Hash, Slot)>>();
+        .map(|(hash, (_reason, header))| (hash.clone(), header.content.slot))
+        .collect::<Vec<(Hash, Slot)>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_config.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
 
-    Ok(warp::reply::json(&json!(discarded)).into_response())
+    Ok(discarded)
 }
 
 /// Returns a number of last invalid blocks as a Vec<(Hash, Slot)> wrapped in a reply.
