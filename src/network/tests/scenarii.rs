@@ -10,6 +10,7 @@ use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
+use tokio::io::AsyncReadExt;
 use tokio::time::{sleep, timeout};
 
 // test connecting two different peers simultaneously to the controller
@@ -71,7 +72,7 @@ async fn test_multiple_connections_to_controller() {
 
     // 3) try to establish an extra connection from peet1 to controller
     {
-        let _ = mock_interface
+        let (mut rd, wt) = mock_interface
             .connect_to_controller(&mock1_addr)
             .await
             .expect("connection to controller failed");
@@ -79,6 +80,18 @@ async fn test_multiple_connections_to_controller() {
         if let Ok(_) = timeout(Duration::from_millis(1000), network.wait_event()).await {
             panic!("an event was emitted by controller while none were expected");
         }
+        // check that the socket was dropped
+        // note: only checked on the reader side
+        //       because the opposite writer side is NOT stopped when dropping local reader
+        //       (this is normal TCP/duplex behavior)
+        assert!(
+            timeout(Duration::from_millis(500), rd.read_u8())
+                .await
+                .expect("reading on closed socket should have returned immediately")
+                .is_err(),
+            "reading on closed socket should have returned an error"
+        );
+        std::mem::drop(wt);
     }
 
     // 4) try to establish an third connection to controller
