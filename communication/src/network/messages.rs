@@ -4,7 +4,7 @@ use crypto::{
 };
 use models::{
     array_from_slice, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    ModelsError, SerializationContext, SerializeCompact, SerializeVarInt,
+    ModelsError, Operation, SerializationContext, SerializeCompact, SerializeVarInt,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -45,6 +45,8 @@ pub enum Message {
     PeerList(Vec<IpAddr>),
     /// Block not found
     BlockNotFound(BlockId),
+    /// Operation
+    Operation(Operation),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -58,6 +60,7 @@ enum MessageTypeId {
     AskPeerList = 5,
     PeerList = 6,
     BlockNotFound = 7,
+    Operation = 8,
 }
 
 impl SerializeCompact for Message {
@@ -109,6 +112,10 @@ impl SerializeCompact for Message {
             Message::BlockNotFound(hash) => {
                 res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
                 res.extend(&hash.to_bytes());
+            }
+            Message::Operation(operation) => {
+                res.extend(u32::from(MessageTypeId::Operation).to_varint_bytes());
+                res.extend(&operation.to_bytes_compact(&context)?);
             }
         }
         Ok(res)
@@ -195,6 +202,11 @@ impl DeserializeCompact for Message {
                 let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 Message::BlockNotFound(hash)
+            }
+            MessageTypeId::Operation => {
+                let (op, delta) = Operation::from_bytes_compact(&buffer[cursor..], &context)?;
+                cursor += delta;
+                Message::Operation(op)
             }
         };
         Ok((res, cursor))

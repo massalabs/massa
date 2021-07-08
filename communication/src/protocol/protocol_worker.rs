@@ -2,7 +2,7 @@ use super::config::ProtocolConfig;
 use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
-use models::{Block, BlockHeader, BlockId, SerializationContext};
+use models::{Block, BlockHeader, BlockId, Operation, SerializationContext};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -15,8 +15,6 @@ use tokio::{
 /// Possible types of events that can happen.
 #[derive(Debug, Serialize)]
 pub enum ProtocolEvent {
-    /// A isolated transaction was received.
-    ReceivedTransaction(String),
     /// A block with a valid signature has been received.
     ReceivedBlock { block_id: BlockId, block: Block },
     /// A block header with a valid signature has been received.
@@ -26,16 +24,15 @@ pub enum ProtocolEvent {
     },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<BlockId>),
+    /// Operation
+    ReceivedOperation(Operation),
 }
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
-    IntegratedBlock {
-        block_id: BlockId,
-        block: Block,
-    },
+    IntegratedBlock { block_id: BlockId, block: Block },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
     /// Wishlist delta
@@ -43,8 +40,10 @@ pub enum ProtocolCommand {
         new: HashSet<BlockId>,
         remove: HashSet<BlockId>,
     },
-    // The response to a ProtocolEvent::GetBlocks.
+    /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(HashMap<BlockId, Option<Block>>),
+    /// Operation
+    PropagateOperation(Operation),
 }
 
 #[derive(Debug, Serialize)]
@@ -399,6 +398,17 @@ impl ProtocolWorker {
                     {}
                 );
             }
+            ProtocolCommand::PropagateOperation(operation) => {
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.operation.begin",
+                    { "operation": operation }
+                );
+                for (node, _) in self.active_nodes.iter() {
+                    self.network_command_sender
+                        .send_operation(node.clone(), operation.clone())
+                        .await?
+                }
+            }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
@@ -746,6 +756,11 @@ impl ProtocolWorker {
                     );
                 }
                 self.update_ask_block(block_ask_timer).await?;
+            }
+            NetworkEvent::ReceivedOperation { node, operation } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operation", { "node": node, "operation": operation});
+                self.send_protocol_event(ProtocolEvent::ReceivedOperation(operation))
+                    .await;
             }
         }
         Ok(())

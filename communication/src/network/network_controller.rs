@@ -8,7 +8,7 @@ use super::{
 use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crypto::signature::{PrivateKey, SignatureEngine};
-use models::{Block, BlockHeader, BlockId, SerializationContext};
+use models::{Block, BlockHeader, BlockId, Operation, SerializationContext};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -224,6 +224,20 @@ impl NetworkCommandSender {
     ) -> Result<(), CommunicationError> {
         self.0
             .send(NetworkCommand::BlockNotFound { node, block_id })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("cound not send block_not_found command".into())
+            })?;
+        Ok(())
+    }
+
+    pub async fn send_operation(
+        &self,
+        node: NodeId,
+        operation: Operation,
+    ) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::SendOperation { node, operation })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send block_not_found command".into())
