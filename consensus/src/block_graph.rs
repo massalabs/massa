@@ -1504,17 +1504,27 @@ impl BlockGraph {
             max_cliques = vec![HashSet::new()];
         }
         if max_cliques.len() > 1 {
-            massa_trace!("consensus clique", "nb clique > 1");
+            warn!("more than 1 clique");
+            massa_trace!("Clique before", "nb clique > 1");
+            for cliques in &self.max_cliques {
+                self.print_clique(cliques);
+            }
+
+            massa_trace!("Clique after", "nb clique > 1");
             for cliques in &max_cliques {
-                let mut content: Vec<&Hash> = cliques.iter().collect();
-                content.sort_unstable();
-                let st = content
-                    .iter()
-                    .fold(String::new(), |s, h| format!("{},{}", s, h));
-                massa_trace!("consensus clique", { "list": format!("{:?}", st) });
+                self.print_clique(cliques);
             }
         }
         max_cliques
+    }
+
+    fn print_clique(&self, clique: &HashSet<Hash>) {
+        info!("print clique len:{}", clique.len());
+        for hash in clique {
+            let block = self.block_statuses.get(hash);
+            let st = format!("{:?}", block);
+            massa_trace!("clique:", {"hash":hash, "block": st});
+        }
     }
 
     fn add_block_to_graph(

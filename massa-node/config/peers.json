@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "advertised": true,
+    "banned": false,
+    "bootstrap": false,
+    "ip": "81.28.200.99",
+    "last_alive": null,
+    "last_failure": null
+  },
+  {
+    "advertised": true,
+    "banned": false,
+    "bootstrap": false,
+    "ip": "78.194.186.228",
+    "last_alive": null,
+    "last_failure": null
+  },
+  {
+    "advertised": true,
+    "banned": false,
+    "bootstrap": false,
+    "ip": "88.163.234.137",
+    "last_alive": null,
+    "last_failure": null
+  }
+]

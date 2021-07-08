@@ -7,9 +7,9 @@
     bind = "127.0.0.1:3030"
 
 [consensus]
-    genesis_timestamp = 1607958448000
-    t0 = 64000
-    thread_count = 32
+    genesis_timestamp = 1617368100000
+    t0 = 5000
+    thread_count = 2
     selection_rng_seed = 42
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
     nodes = [
@@ -18,14 +18,14 @@
         ['54VEbD2R2HkUz2G5NGHyxhaFDhrQFG62UqFLWsUywnHtDsM8qh','2eLQSjhrep9Grw7yDifXnDKgCc1WTXBCtdeREzuJd9jiSZuZmr'],
         ['5KdMBTJAU9JpJggACMx5gd8x8tSQFZEwfpxrzFV2Znz6M7FyAN','5nLsiHcZHCLSWnquQtrninDQRMJdXYKgt3fEyqBQ6ju6a2K6t']
     ]
-    current_node_index = 0
+    current_node_index = 2
     max_discarded_blocks = 10
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 320
     max_dependency_blocks = 100
-    delta_f0 = 64
+    delta_f0 = 16
     max_operations_per_block = 500
-    max_block_size = 10000
+    max_block_size = 10000000
     
 
 [protocol]
@@ -35,8 +35,8 @@
     max_node_wanted_blocks_size = 100
 
 [network]
-    bind = "0.0.0.0:31234"
-    routable_ip = "200.200.200.200"
+    bind = "81.28.200.99:31234"
+    routable_ip = "81.28.200.99"
     protocol_port = 31234
     connect_timeout = 5000
     wakeup_interval = 10000
@@ -49,9 +49,10 @@
     max_banned_peers = 1000
     max_advertise_length = 100000
     peers_file_dump_interval = 10000
-    max_message_size = 100
-    message_timeout = 100
+    max_message_size = 10000000
+    message_timeout = 5000
     ask_peer_list_interval = 10000
+    private_key_file="config/node_privkey.key"
 
 [storage]
     max_stored_blocks= 10000
@@ -60,11 +61,9 @@
     #flush_every_ms = 
 
 [bootstrap]
-    bootstrap_ip = "200.200.200.200"
-    bootstrap_port = 42
+    bootstrap_ip = "78.194.186.228"
+    bootstrap_port = 31235
     bootstrap_public_key = '4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb'
-    #listen_port =
-    connect_timeout = 1000
-    bootstrap_time_after_genesis = 100000000000
+    connect_timeout = 5000
+    bootstrap_time_after_genesis = 1000
     retry_delay = 5000
-    our_bootstrap_private_key = 'LGXe9RrR1QNSsSn8bAEgrsYM8WwX67oHLjGj6e19bCW9ZKo6p'
