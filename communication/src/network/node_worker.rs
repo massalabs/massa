@@ -302,11 +302,19 @@ impl NodeWorker {
         while let Some(_) = writer_event_rx.recv().await {}
         node_writer_handle.await?;
 
-        // notify protocol controller of closure
-        trace!("before sending NodeEventType::Closed from node_event_tx in node_worker run_loop");
-        self.send_node_event(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason)))
-            .await;
-        trace!("after sending NodeEventType::Closed from node_event_tx in node_worker run_loop");
+        // Notify protocol controller of closure, while ignoring incoming commands to prevent deadlock.
+        trace!("before shutdown of node worker.");
+        loop {
+            tokio::select! {
+                _ = self
+                    .node_event_tx
+                    .send(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason))) => {
+                    break;
+                },
+                _ = self.node_command_rx.recv() => {},
+            }
+        }
+        trace!("after shutdown of node worker.");
         Ok(())
     }
 }

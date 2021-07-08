@@ -595,7 +595,8 @@ impl NetworkWorker {
                     }
                     trace!("after sending NodeCommand::SendBlockHeader from node_command_tx in network_worker manage_network_command");
                 } else {
-                    // We probably weren't able to send this event previously.
+                    // We probably weren't able to send this event previously,
+                    // retry it now.
                     let _ = self
                         .send_network_event(NetworkEvent::ConnectionClosed(node))
                         .await;
@@ -638,7 +639,8 @@ impl NetworkWorker {
                         )
                     };
                 } else {
-                    // We probably weren't able to send this event previously.
+                    // We probably weren't able to send this event previously,
+                    // retry it now.
                     let _ = self
                         .send_network_event(NetworkEvent::ConnectionClosed(node))
                         .await;
@@ -671,8 +673,8 @@ impl NetworkWorker {
                         )
                     };
                 } else {
-                    println!("Re-sending connection closed event.");
-                    // We probably weren't able to send this event previously.
+                    // We probably weren't able to send this event previously,
+                    // retry it now.
                     let _ = self
                         .send_network_event(NetworkEvent::ConnectionClosed(node))
                         .await;
@@ -832,6 +834,9 @@ impl NetworkWorker {
             // connection closed
             NodeEvent(from_node_id, NodeEventType::Closed(reason)) => {
                 trace!("before sending NetworkEvent::ConnectionClosed from controller_event_tx in network_worker on_node_event");
+                // Note: if the send is dropped, and we later receive a command related to an unknown node,
+                // we will retry a send for this event for that unknonw node,
+                // ensuring protocol eventually notes the closure.
                 let _ = self
                     .send_network_event(NetworkEvent::ConnectionClosed(from_node_id))
                     .await;
