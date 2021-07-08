@@ -22,6 +22,23 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
+    // Init the serialization context with a default,
+    // can be overwritten with a more specific one in the test.
+    models::init_serialization_context(models::SerializationContext {
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_block_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_bootstrap_message_size: 100000000,
+    });
+
     BootstrapConfig {
         bootstrap_addr: Some(SocketAddr::new(BASE_BOOTSTRAP_IP, 16)),
         bootstrap_public_key,

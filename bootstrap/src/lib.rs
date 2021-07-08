@@ -20,7 +20,7 @@ use crypto::{
 use error::BootstrapError;
 pub use establisher::Establisher;
 use messages::BootstrapMessage;
-use models::{get_serialization_context, SerializationContext, SerializeCompact};
+use models::{with_serialization_context, SerializationContext, SerializeCompact};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::convert::TryInto;
 use time::UTime;
@@ -29,7 +29,7 @@ use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 async fn get_state_internal(
     cfg: &BootstrapConfig,
     bootstrap_addr: SocketAddr,
-    serialization_context: SerializationContext,
+    serialization_context: &SerializationContext,
     establisher: &mut Establisher,
 ) -> Result<(BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
@@ -169,11 +169,10 @@ pub async fn get_state(
     mut establisher: Establisher,
 ) -> Result<(Option<BootsrapableGraph>, i64, Option<BootstrapPeers>), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
     if let Some(addr) = cfg.bootstrap_addr.take() {
         loop {
-            match get_state_internal(&cfg, addr, get_serialization_context(), &mut establisher)
-                .await
-            {
+            match get_state_internal(&cfg, addr, &serialization_context, &mut establisher).await {
                 Err(e) => {
                     warn!("error {:?} while bootstraping", e);
                     sleep(cfg.retry_delay.into()).await;
@@ -285,7 +284,7 @@ impl BootstrapServer {
         (reader, writer, _remote_addr): (ReadHalf, WriteHalf, SocketAddr),
     ) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.manage_bootstrap", {});
-        let serialization_context = get_serialization_context();
+        let serialization_context = with_serialization_context(|ctx| ctx.clone());
         let mut reader = ReadBinder::new(reader, serialization_context.clone());
         let mut writer = WriteBinder::new(writer, serialization_context.clone());
 

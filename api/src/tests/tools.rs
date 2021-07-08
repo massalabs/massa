@@ -84,6 +84,27 @@ pub fn get_pool_config() -> PoolConfig {
     }
 }
 
+pub fn initialize_context() -> models::SerializationContext {
+    // Init the serialization context with a default,
+    // can be overwritten with a more specific one in the test.
+    let ctx = models::SerializationContext {
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_block_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_bootstrap_message_size: 100000000,
+    };
+    models::init_serialization_context(ctx.clone());
+    ctx
+}
+
 pub fn get_network_config() -> NetworkConfig {
     NetworkConfig {
         bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),

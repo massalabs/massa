@@ -5,7 +5,7 @@ use crate::{
 };
 use logging::debug;
 use models::{
-    get_serialization_context, Block, BlockId, Operation, OperationId, OperationSearchResult,
+    with_serialization_context, Block, BlockId, Operation, OperationId, OperationSearchResult,
     SerializationContext, Slot,
 };
 use std::collections::{HashMap, HashSet};
@@ -16,7 +16,7 @@ use tokio::task::JoinHandle;
 
 pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManager), StorageError> {
     debug!("starting storage controller");
-    let serialization_context = get_serialization_context();
+    let serialization_context = models::with_serialization_context(|ctx| ctx.clone());
     let sled_config = sled::Config::default()
         .path(&cfg.path)
         .cache_capacity(cfg.cache_capacity)

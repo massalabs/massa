@@ -9,10 +9,8 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
-use models::{
-    get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    SerializeCompact, Slot,
-};
+use models::test_with_serialization_context as with_serialization_context;
+use models::{Address, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot};
 use models::{Operation, OperationContent, OperationType};
 use std::collections::HashMap;
 use time::UTime;
@@ -71,12 +69,12 @@ pub fn create_block_with_operations(
     slot: Slot,
     operations: Vec<Operation>,
 ) -> Block {
-    let serialization_context = &get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {
             let res = [
                 acc,
-                v.get_operation_id(serialization_context)
+                v.get_operation_id(&serialization_context)
                     .unwrap()
                     .to_bytes()
                     .to_vec(),
@@ -135,7 +133,7 @@ pub async fn send_and_propagate_block(
 /// Creates an operation for use in protocol tests,
 /// without paying attention to consensus related things.
 pub fn create_operation() -> Operation {
-    let serialization_context = &get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
     let sender_priv = crypto::generate_random_private_key();
     let sender_pub = crypto::derive_public_key(&sender_priv);
 
@@ -152,7 +150,7 @@ pub fn create_operation() -> Operation {
         sender_public_key: sender_pub,
         expire_period: 0,
     };
-    let hash = Hash::hash(&content.to_bytes_compact(serialization_context).unwrap());
+    let hash = Hash::hash(&content.to_bytes_compact(&serialization_context).unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     Operation { content, signature }
@@ -163,7 +161,7 @@ pub fn create_operation_with_expire_period(
     sender_pub: PublicKey,
     expire_period: u64,
 ) -> Operation {
-    let serialization_context = &get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
     let recv_priv = crypto::generate_random_private_key();
     let recv_pub = crypto::derive_public_key(&recv_priv);
 
@@ -177,7 +175,7 @@ pub fn create_operation_with_expire_period(
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::hash(&content.to_bytes_compact(serialization_context).unwrap());
+    let hash = Hash::hash(&content.to_bytes_compact(&serialization_context).unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     Operation { content, signature }
@@ -187,7 +185,20 @@ pub fn create_operation_with_expire_period(
 pub fn create_protocol_config() -> ProtocolConfig {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
-    models::init_serialization_context(Default::default());
+    models::init_serialization_context(models::SerializationContext {
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_block_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_bootstrap_message_size: 100000000,
+    });
 
     ProtocolConfig {
         ask_block_timeout: 500.into(),

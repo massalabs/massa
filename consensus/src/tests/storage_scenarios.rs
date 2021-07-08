@@ -22,7 +22,6 @@ async fn test_storage() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-
     let ledger_file = generate_ledger_file(&HashMap::new());
     let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();

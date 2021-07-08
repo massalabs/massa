@@ -9,7 +9,7 @@ use std::{
 
 use crate::{ConsensusConfig, ConsensusError};
 use models::{
-    array_from_slice, get_serialization_context, u8_from_slice, Address, DeserializeCompact,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     SerializationContext, SerializeCompact, SerializeVarInt,
 };
 use models::{DeserializeVarInt, Operation};
@@ -242,7 +242,7 @@ impl Ledger {
         cfg: ConsensusConfig,
         datas: Option<HashMap<Address, LedgerData>>,
     ) -> Result<Ledger, ConsensusError> {
-        let context = get_serialization_context();
+        let context = models::with_serialization_context(|ctx| ctx.clone());
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
             .cache_capacity(cfg.ledger_cache_capacity)
@@ -360,7 +360,7 @@ impl Ledger {
         ledger.clear()?;
 
         // fill ledger per thread
-        let context = get_serialization_context();
+        let context = models::with_serialization_context(|ctx| ctx.clone());
         for thread in 0..cfg.thread_count {
             for (address, balance) in export.ledger_per_thread[thread as usize].iter() {
                 if let Some(_) = ledger.ledger_per_thread[thread as usize]
@@ -686,8 +686,21 @@ impl SerializeCompact for LedgerExport {
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext};
     /// # use consensus::LedgerExport;
     /// # let ledger = LedgerExport::new(2);
-    /// # models::init_serialization_context(Default::default());
-    /// # let context = Default::default();
+    /// # models::init_serialization_context(models::SerializationContext {
+    /// #     max_block_operations: 1024,
+    /// #     parent_count: 2,
+    /// #     max_peer_list_length: 128,
+    /// #     max_message_size: 3 * 1024 * 1024,
+    /// #     max_block_size: 3 * 1024 * 1024,
+    /// #     max_bootstrap_blocks: 100,
+    /// #     max_bootstrap_cliques: 100,
+    /// #     max_bootstrap_deps: 100,
+    /// #     max_bootstrap_children: 100,
+    /// #     max_ask_blocks_per_message: 10,
+    /// #     max_operations_per_message: 1024,
+    /// #     max_bootstrap_message_size: 100000000,
+    /// # });
+    /// # let context = models::test_with_serialization_context(|ctx| ctx.clone());
     /// let bytes = ledger.clone().to_bytes_compact(&context).unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes, &context).unwrap();
     /// assert_eq!(ledger.latest_final_periods, res.latest_final_periods);

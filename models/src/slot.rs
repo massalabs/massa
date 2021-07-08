@@ -108,10 +108,24 @@ impl SerializeCompact for Slot {
     /// # use models::Slot;
     /// # use models::SerializationContext;
     /// # use models::{DeserializeCompact, SerializeCompact};
-    /// # models::init_serialization_context(Default::default());
+    /// # models::init_serialization_context(models::SerializationContext {
+    /// #    max_block_operations: 1024,
+    /// #    parent_count: 2,
+    /// #    max_peer_list_length: 128,
+    /// #    max_message_size: 3 * 1024 * 1024,
+    /// #    max_block_size: 3 * 1024 * 1024,
+    /// #    max_bootstrap_blocks: 100,
+    /// #    max_bootstrap_cliques: 100,
+    /// #    max_bootstrap_deps: 100,
+    /// #    max_bootstrap_children: 100,
+    /// #    max_ask_blocks_per_message: 10,
+    /// #    max_operations_per_message: 1024,
+    /// #    max_bootstrap_message_size: 100000000,
+    /// # });
+    /// # let context = models::test_with_serialization_context(|ctx| ctx.clone());
     /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact(&Default::default()).unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser, &Default::default()).unwrap();
+    /// let ser = slot.to_bytes_compact(&context).unwrap();
+    /// let (deser, _) = Slot::from_bytes_compact(&ser, &context).unwrap();
     /// assert_eq!(slot, deser);
     /// ```
     fn to_bytes_compact(&self, _context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
@@ -130,10 +144,24 @@ impl DeserializeCompact for Slot {
     /// # use models::Slot;
     /// # use models::SerializationContext;
     /// # use models::{DeserializeCompact, SerializeCompact};
-    /// # models::init_serialization_context(Default::default());
+    /// # models::init_serialization_context(models::SerializationContext {
+    /// #     max_block_operations: 1024,
+    /// #     parent_count: 2,
+    /// #     max_peer_list_length: 128,
+    /// #     max_message_size: 3 * 1024 * 1024,
+    /// #     max_block_size: 3 * 1024 * 1024,
+    /// #     max_bootstrap_blocks: 100,
+    /// #     max_bootstrap_cliques: 100,
+    /// #     max_bootstrap_deps: 100,
+    /// #     max_bootstrap_children: 100,
+    /// #     max_ask_blocks_per_message: 10,
+    /// #     max_operations_per_message: 1024,
+    /// #     max_bootstrap_message_size: 100000000,
+    /// # });
+    /// # let context = models::test_with_serialization_context(|ctx| ctx.clone());
     /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact(&Default::default()).unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser, &Default::default()).unwrap();
+    /// let ser = slot.to_bytes_compact(&context).unwrap();
+    /// let (deser, _) = Slot::from_bytes_compact(&ser, &context).unwrap();
     /// assert_eq!(slot, deser);
     /// ```
     fn from_bytes_compact(

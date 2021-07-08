@@ -8,7 +8,8 @@ use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
 use crypto::signature;
-use models::{get_serialization_context, BlockId, SerializationContext};
+use models::test_with_serialization_context as with_serialization_context;
+use models::{BlockId, SerializationContext};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
@@ -31,7 +32,7 @@ async fn test_node_worker_shutdown() {
     let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let serialization_context = get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
     let reader = ReadBinder::new(duplex_mock_read, serialization_context.clone());
     let writer = WriteBinder::new(duplex_mock_write, serialization_context.clone());
 
@@ -440,7 +441,7 @@ async fn test_block_not_found() {
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
-    let mut serialization_context: SerializationContext = Default::default();
+    let mut serialization_context = with_serialization_context(|ctx| ctx.clone());
     serialization_context.max_ask_blocks_per_message = 3;
     models::init_serialization_context(serialization_context);
 
@@ -717,7 +718,7 @@ async fn test_operation_messages() {
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
-    let mut serialization_context: SerializationContext = Default::default();
+    let mut serialization_context = with_serialization_context(|ctx| ctx.clone());
     serialization_context.max_ask_blocks_per_message = 3;
     models::init_serialization_context(serialization_context);
 
@@ -742,7 +743,7 @@ async fn test_operation_messages() {
     .await;
     //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-    let serialization_context = models::get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
 
     // Send tansaction message from connected peer
     let (transaction, _) = get_transaction(50, 10);
