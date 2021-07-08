@@ -375,7 +375,7 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
 /// Returns block with given hash as a reply
 ///
 async fn get_block(event_tx: mpsc::Sender<ApiEvent>, hash: Hash) -> Result<impl Reply, Rejection> {
-    match retrieve_block(hash, event_tx).await {
+    match retrieve_block(hash, &event_tx).await {
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
                 "message": format!("error retrieving active blocks : {:?}", err)
@@ -404,7 +404,7 @@ async fn get_our_ip(network_cfg: NetworkConfig) -> Result<impl warp::Reply, warp
 }
 
 async fn retrieve_graph_export(
-    event_tx: mpsc::Sender<ApiEvent>,
+    event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<BlockGraphExport, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -420,7 +420,7 @@ async fn retrieve_graph_export(
 
 async fn retrieve_block(
     hash: Hash,
-    event_tx: mpsc::Sender<ApiEvent>,
+    event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Option<Block>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -435,7 +435,7 @@ async fn retrieve_block(
 }
 
 async fn retrieve_peers(
-    event_tx: mpsc::Sender<ApiEvent>,
+    event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -452,7 +452,7 @@ async fn retrieve_peers(
 async fn retrieve_selection_draw(
     start: (u64, u8),
     end: (u64, u8),
-    event_tx: mpsc::Sender<ApiEvent>,
+    event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Vec<((u64, u8), PublicKey)>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -480,7 +480,7 @@ async fn retrieve_selection_draw(
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -522,7 +522,7 @@ async fn get_current_parents(
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -554,7 +554,7 @@ async fn get_block_interval(
     end: UTime,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut res = Vec::new();
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -606,7 +606,7 @@ async fn get_graph_interval(
     end: UTime,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut res = HashMap::new();
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -714,7 +714,7 @@ async fn get_graph_interval(
 async fn get_cliques(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -782,7 +782,7 @@ async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let peers = match retrieve_peers(event_tx).await {
+    let peers = match retrieve_peers(&event_tx).await {
         Ok(peers) => peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -807,7 +807,7 @@ async fn get_network_info(
 /// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
 ///
 async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
-    let peers = match retrieve_peers(event_tx).await {
+    let peers = match retrieve_peers(&event_tx).await {
         Ok(peers) => peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -865,8 +865,7 @@ async fn get_state(
         }
     };
 
-    let evt_tx = event_tx.clone();
-    let peers = match retrieve_peers(evt_tx).await {
+    let peers = match retrieve_peers(&event_tx).await {
         Ok(peers) => peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -887,7 +886,7 @@ async fn get_state(
         .map(|(ip, _peer_info)| *ip)
         .collect();
 
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -949,7 +948,7 @@ async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
     api_config: ApiConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -984,7 +983,7 @@ async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(event_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -1023,8 +1022,7 @@ async fn get_staker_info(
     consensus_cfg: ConsensusConfig,
     creator: PublicKey,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let evt_tx = event_tx.clone();
-    let graph = match retrieve_graph_export(evt_tx).await {
+    let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -1089,9 +1087,8 @@ async fn get_staker_info(
         start_slot.1,
     );
 
-    let evt_tx = event_tx.clone();
     let next_slots_by_creator: Vec<(u64, u8)> =
-        match retrieve_selection_draw(start_slot, end_slot, evt_tx).await {
+        match retrieve_selection_draw(start_slot, end_slot, &event_tx).await {
             Ok(slot) => slot,
             Err(err) => {
                 return Ok(warp::reply::with_status(
