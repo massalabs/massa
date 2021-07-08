@@ -17,3 +17,6 @@ stderrlog = { version = "0.5" }
 chrono = { version = "0.4", features = ["serde"] }
 serde_json = { version = "1.0" }
 flexbuffers = { version = "0.1" }
+bs58 = { version = "0.3.1", features = ["check"] }
+secp256k1 = { version = "0.19.0", features = ["rand-std", "serde","bitcoin_hashes"]}
+bitcoin_hashes = "0.9.4"
