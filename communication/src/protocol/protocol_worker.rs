@@ -346,33 +346,30 @@ impl ProtocolWorker {
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
-    /// TODO: instead of propagating errors, which will break the run loop of the worker,
-    /// handle them.
     fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
         source_node_id: &NodeId,
-    ) -> Result<Hash, CommunicationError> {
-        let hash = header
-            .content
-            .compute_hash(&self.serialization_context)
-            .map_err(|err| CommunicationError::HeaderHashError(err))?;
+    ) -> Result<Option<Hash>, CommunicationError> {
+        if let Ok(hash) = header.content.compute_hash(&self.serialization_context) {
+            // check signature
+            if let Err(_err) = header.verify_signature(&hash, &SignatureEngine::new()) {
+                return Ok(None);
+            }
 
-        // check signature
-        if let Err(_err) = header.verify_signature(&hash, &SignatureEngine::new()) {
-            return Err(CommunicationError::WrongSignature);
+            let node_info = self
+                .active_nodes
+                .get_mut(source_node_id)
+                .ok_or(CommunicationError::MissingNodeError)?;
+            node_info
+                .known_blocks
+                .insert(hash.clone(), (true, Instant::now()));
+            // todo update wanted blocks
+
+            Ok(Some(hash))
+        } else {
+            Ok(None)
         }
-
-        let node_info = self
-            .active_nodes
-            .get_mut(source_node_id)
-            .ok_or(CommunicationError::MissingNodeError)?;
-        node_info
-            .known_blocks
-            .insert(hash.clone(), (true, Instant::now()));
-        // todo update wanted blocks
-
-        Ok(hash)
     }
 
     /// Manages network event
@@ -406,15 +403,23 @@ impl ProtocolWorker {
                 node: from_node_id,
                 block,
             } => {
-                let hash = self.note_header_from_node(&block.header, &from_node_id)?;
-                self.stop_asking_blocks(HashSet::from(vec![hash].into_iter().collect()))?;
-                self.controller_event_tx
-                    .send(ProtocolEvent::ReceivedBlock { hash, block })
-                    .await
-                    .map_err(|_| {
-                        CommunicationError::ChannelError("receive block event send failed".into())
-                    })?;
-                self.update_ask_block(block_ask_timer).await?;
+                if let Some(hash) = self.note_header_from_node(&block.header, &from_node_id)? {
+                    self.stop_asking_blocks(HashSet::from(vec![hash].into_iter().collect()))?;
+                    self.controller_event_tx
+                        .send(ProtocolEvent::ReceivedBlock { hash, block })
+                        .await
+                        .map_err(|_| {
+                            CommunicationError::ChannelError(
+                                "receive block event send failed".into(),
+                            )
+                        })?;
+                    self.update_ask_block(block_ask_timer).await?;
+                } else {
+                    warn!(
+                        "node {:?} sent us critically incorrect block {:?}",
+                        from_node_id, block
+                    )
+                }
             }
             NetworkEvent::AskedForBlock {
                 node: from_node_id,
@@ -438,14 +443,22 @@ impl ProtocolWorker {
                 source_node_id,
                 header,
             } => {
-                let hash = self.note_header_from_node(&header, &source_node_id)?;
-                self.controller_event_tx
-                    .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
-                    .await
-                    .map_err(|_| {
-                        CommunicationError::ChannelError("receive block event send failed".into())
-                    })?;
-                self.update_ask_block(block_ask_timer).await?;
+                if let Some(hash) = self.note_header_from_node(&header, &source_node_id)? {
+                    self.controller_event_tx
+                        .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
+                        .await
+                        .map_err(|_| {
+                            CommunicationError::ChannelError(
+                                "receive block event send failed".into(),
+                            )
+                        })?;
+                    self.update_ask_block(block_ask_timer).await?;
+                } else {
+                    warn!(
+                        "node {:?} sent us critically incorrect header {:?}",
+                        source_node_id, header
+                    )
+                }
             }
             NetworkEvent::BlockNotFound { node, hash } => {
                 if let Some(info) = self.active_nodes.get_mut(&node) {

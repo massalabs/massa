@@ -443,8 +443,73 @@ async fn test_protocol_does_not_send_full_blocks_it_receives_with_invalid_signat
         _ => panic!("Protocol unexpectedly sent block or header."),
     }
 
-    match protocol_manager.stop(protocol_event_receiver).await {
-        Err(CommunicationError::WrongSignature) => {}
-        _ => panic!("Unexpected protocol shutdown."),
+    // todo once ban workflow is up, assert node was banned
+
+    // the worker should be ok
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
+}
+
+#[tokio::test]
+async fn test_protocol_does_not_send_header_it_receives_with_invalid_signature() {
+    let (protocol_config, serialization_context) = tools::create_protocol_config();
+
+    let mut signature_engine = SignatureEngine::new();
+
+    let (mut network_controller, network_command_sender, network_event_receiver) =
+        MockNetworkController::new();
+
+    // start protocol controller
+    let (_, mut protocol_event_receiver, protocol_manager) = start_protocol_controller(
+        protocol_config.clone(),
+        serialization_context.clone(),
+        network_command_sender,
+        network_event_receiver,
+    )
+    .await
+    .expect("could not start protocol controller");
+
+    // Create 1 node.
+    let mut nodes =
+        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+
+    let creator_node = nodes.pop().expect("Failed to get node info.");
+
+    // 1. Create a block coming from one node.
+    let mut block = tools::create_block(
+        &creator_node.private_key,
+        &creator_node.id.0,
+        &serialization_context,
+        &mut signature_engine,
+    );
+
+    // 2. Change the slot.
+    block.header.content.slot = Slot::new(1, 1);
+
+    // 3. Send header to protocol.
+    network_controller
+        .send_header(creator_node.id, block.header)
+        .await;
+
+    // Check protocol does not send header to consensus.
+    match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt {
+        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+        _ => None,
+    })
+    .await
+    {
+        None => {}
+        _ => panic!("Protocol unexpectedly sent block or header."),
     }
+
+    // todo once ban workflow is up, assert node was banned
+
+    // the worker should be ok
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
 }
