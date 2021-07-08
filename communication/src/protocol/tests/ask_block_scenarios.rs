@@ -2,7 +2,6 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolEvent;
-use crypto::signature::SignatureEngine;
 use std::collections::HashSet;
 use tools::{asked_list, assert_hash_asked_to_node};
 
@@ -10,8 +9,6 @@ use tools::{asked_list, assert_hash_asked_to_node};
 async fn test_without_a_priori() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
-
-    let mut signature_engine = SignatureEngine::new();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -31,26 +28,21 @@ async fn test_without_a_priori() {
     .await
     .expect("could not start protocol controller");
 
-    let node_a = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let node_b = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_b = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let _node_c = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(
-        &node_a.private_key,
-        &node_a.id.0,
-        &serialization_context,
-        &mut signature_engine,
-    );
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
     let hash_1 = block
         .header
         .compute_block_id(&serialization_context)
@@ -97,8 +89,6 @@ async fn test_someone_knows_it() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -117,26 +107,21 @@ async fn test_someone_knows_it() {
     .await
     .expect("could not start protocol controller");
 
-    let node_a = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let _node_b = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let _node_b = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let node_c = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_c = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(
-        &node_a.private_key,
-        &node_a.id.0,
-        &serialization_context,
-        &mut signature_engine,
-    );
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
     let hash_1 = block
         .header
         .compute_block_id(&serialization_context)
@@ -191,8 +176,6 @@ async fn test_dont_want_it_anymore() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -211,26 +194,21 @@ async fn test_dont_want_it_anymore() {
     .await
     .expect("could not start protocol controller");
 
-    let node_a = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let _node_b = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let _node_b = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let _node_c = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(
-        &node_a.private_key,
-        &node_a.id.0,
-        &serialization_context,
-        &mut signature_engine,
-    );
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
     let hash_1 = block
         .header
         .compute_block_id(&serialization_context)
@@ -279,8 +257,6 @@ async fn test_no_one_has_it() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -299,26 +275,21 @@ async fn test_no_one_has_it() {
     .await
     .expect("could not start protocol controller");
 
-    let node_a = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let node_b = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_b = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let node_c = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_c = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(
-        &node_a.private_key,
-        &node_a.id.0,
-        &serialization_context,
-        &mut signature_engine,
-    );
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
     let hash_1 = block
         .header
         .compute_block_id(&serialization_context)
@@ -371,8 +342,6 @@ async fn test_multiple_blocks_without_a_priori() {
     // start
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -391,37 +360,27 @@ async fn test_multiple_blocks_without_a_priori() {
     .await
     .expect("could not start protocol controller");
 
-    let node_a = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let _node_b = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let _node_b = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
-    let _node_c = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .unwrap();
 
     // 2. Create two blocks coming from node 0.
-    let block_1 = tools::create_block(
-        &node_a.private_key,
-        &node_a.id.0,
-        &serialization_context,
-        &mut signature_engine,
-    );
+    let block_1 = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
     let hash_1 = block_1
         .header
         .compute_block_id(&serialization_context)
         .unwrap();
 
-    let block_2 = tools::create_block(
-        &node_a.private_key,
-        &node_a.id.0,
-        &serialization_context,
-        &mut signature_engine,
-    );
+    let block_2 = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
     let hash_2 = block_2
         .header
         .compute_block_id(&serialization_context)

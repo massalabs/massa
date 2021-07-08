@@ -4,7 +4,7 @@ use crate::common::NodeId;
 use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
 use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
-use crypto::{hash::Hash, signature::SignatureEngine};
+use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use models::{
     Address, Operation, OperationContent, OperationType, SerializationContext, SerializeCompact,
 };
@@ -113,9 +113,8 @@ pub async fn full_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake
-    let sig_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
-    let public_key = sig_engine.derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
     let (_, read_binder, write_binder) = HandshakeWorker::new(
         serialization_context,
@@ -170,9 +169,8 @@ pub async fn rejected_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake and ignore errors
-    let sig_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
-    let public_key = sig_engine.derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
     let _handshake_res = HandshakeWorker::new(
         serialization_context,
@@ -245,9 +243,8 @@ pub async fn full_connection_from_controller(
     resp_tx.send(true).expect("resp_tx failed");
 
     // perform handshake
-    let sig_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
-    let public_key = sig_engine.derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
     let (_controller_node_id, read_binder, write_binder) = HandshakeWorker::new(
         serialization_context,
@@ -346,12 +343,11 @@ pub fn get_transaction(
     fee: u64,
     context: &SerializationContext,
 ) -> (Operation, u8) {
-    let sig_engine = SignatureEngine::new();
-    let sender_priv = SignatureEngine::generate_random_private_key();
-    let sender_pub = sig_engine.derive_public_key(&sender_priv);
+    let sender_priv = crypto::generate_random_private_key();
+    let sender_pub = crypto::derive_public_key(&sender_priv);
 
-    let recv_priv = SignatureEngine::generate_random_private_key();
-    let recv_pub = sig_engine.derive_public_key(&recv_priv);
+    let recv_priv = crypto::generate_random_private_key();
+    let recv_pub = crypto::derive_public_key(&recv_priv);
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -364,7 +360,7 @@ pub fn get_transaction(
         expire_period,
     };
     let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
-    let signature = sig_engine.sign(&hash, &sender_priv).unwrap();
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     (
         Operation { content, signature },
