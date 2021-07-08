@@ -112,7 +112,6 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "serde",
  "time",
  "winapi",
 ]
@@ -140,7 +139,6 @@ name = "communication"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "chrono",
  "crypto",
  "flexbuffers",
  "futures",
@@ -152,6 +150,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
+ "stderrlog",
  "tempfile",
  "tokio",
  "tokio-util",
@@ -881,10 +880,8 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6179428c22c73ac0fbb7b5579a56353ce78ba29759b3b8575183336ea74cdfb"
 dependencies = [
- "bitcoin_hashes",
  "rand 0.6.5",
  "secp256k1-sys",
- "serde",
 ]
 
 [[package]]
