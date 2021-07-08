@@ -1,3 +1,5 @@
+use std::{collections::HashMap, net::IpAddr};
+
 use async_trait::async_trait;
 use communication::network::network_controller::NetworkController;
 use communication::protocol::protocol_controller::{
@@ -113,11 +115,19 @@ impl NetworkController for BlankNetworkController {
     ) -> Result<(), CommunicationError> {
         unreachable!();
     }
+
+    async fn get_peers(
+        &mut self,
+        response_tx: Sender<HashMap<IpAddr, String>>,
+    ) -> Result<(), CommunicationError> {
+        unreachable!();
+    }
 }
 
 #[derive(Clone, Debug)]
 pub enum MockProtocolCommand {
     PropagateBlock { hash: Hash, block: Block },
+    GetPeers(Sender<HashMap<IpAddr, String>>),
 }
 
 pub fn new() -> (MockProtocolController, MockProtocolControllerInterface) {
@@ -171,6 +181,17 @@ impl ProtocolController for MockProtocolController {
                 hash,
                 block: block.clone(),
             })
+            .await
+            .expect("could not send mock protocol command");
+        Ok(())
+    }
+
+    async fn get_peers(
+        &self,
+        response_tx: Sender<std::collections::HashMap<std::net::IpAddr, String>>,
+    ) -> Result<(), CommunicationError> {
+        self.protocol_command_tx
+            .send(MockProtocolCommand::GetPeers(response_tx))
             .await
             .expect("could not send mock protocol command");
         Ok(())

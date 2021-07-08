@@ -1,8 +1,11 @@
 mod error;
 pub use error::TimeError;
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+};
 use tokio::time::Instant;
 
 use serde::{Deserialize, Serialize};
@@ -37,6 +40,16 @@ impl TryFrom<Duration> for UTime {
 impl Into<Duration> for UTime {
     fn into(self) -> Duration {
         Duration::from_millis(self.to_millis())
+    }
+}
+
+impl FromStr for UTime {
+    type Err = crate::TimeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(UTime(
+            u64::from_str(s).map_err(|_| Self::Err::ConversionError)?,
+        ))
     }
 }
 

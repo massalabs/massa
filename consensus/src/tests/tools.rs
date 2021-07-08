@@ -30,6 +30,7 @@ pub async fn validate_notpropagate_block(
                 true
             }
         }
+        Ok(Some(_)) => panic!("unexpected command"),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => false,
     }
@@ -56,6 +57,7 @@ pub async fn validate_notpropagate_block_in_list(
         }
         ,
         //        event @ Ok(Some(_)) => panic!("unexpected event sent by Protocol: {:?}", event),
+        Ok(Some(_)) => panic!("unexpected command"),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => false,
     }
@@ -77,6 +79,7 @@ pub async fn validate_propagate_block_in_list(
             assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
             hash
         }
+        Ok(Some(_)) => panic!("unexpected command"),
         //        event @ Ok(Some(_)) => panic!("unexpected event sent by Protocol: {:?}", event),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => panic!("timeout block not propagated"),
@@ -106,6 +109,7 @@ pub async fn validate_propagate_block(
                     Ok(Some(MockProtocolCommand::PropagateBlock { hash, .. })) => {
                         assert_eq!(valid_hash, hash, "not the valid hash propagated")
                     }
+                    Ok(Some(_)) => panic!("unexpected command"),
                     Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
                     Err(_) => panic!("timeout block not propagated"),
                 }
@@ -113,6 +117,7 @@ pub async fn validate_propagate_block(
             //assert_eq!(valid_hash, hash, "not the valid hash propagated")
         }
         //        event @ Ok(Some(_)) => panic!("unexpected event sent by Protocol: {:?}", event),
+        Ok(Some(_)) => panic!("unexpected command"),
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => panic!("timeout block not propagated"),
     };

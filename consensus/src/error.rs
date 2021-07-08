@@ -80,4 +80,6 @@ pub enum BlockAcknowledgeError {
     InvalidParents(String),
     #[error("block verification requires for dependencies")]
     MissingDependencies(Block, HashSet<Hash>),
+    #[error("Container Inconsistency")]
+    ContainerInconsistency,
 }

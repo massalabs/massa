@@ -11,8 +11,11 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
-use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{mpsc, oneshot};
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    sync::mpsc::Sender,
+};
 
 #[derive(Debug)]
 pub enum NetworkCommand {
@@ -20,6 +23,7 @@ pub enum NetworkCommand {
     GetAdvertisablePeerList(oneshot::Sender<Vec<IpAddr>>),
     ConnectionClosed((ConnectionId, ConnectionClosureReason)),
     ConnectionAlive(ConnectionId),
+    GetPeers(Sender<HashMap<IpAddr, String>>),
 }
 
 pub struct NetworkWorker<EstablisherT: Establisher> {
@@ -200,6 +204,17 @@ async fn manage_network_command<EstablisherT: Establisher>(
                 .get(&id)
                 .ok_or(CommunicationError::ActiveConnectionMissing(id))?;
             peer_info_db.peer_alive(&ip)?;
+        }
+        NetworkCommand::GetPeers(response_tx) => {
+            response_tx
+                .send(peer_info_db.get_peers())
+                .await
+                .map_err(|err| {
+                    ChannelError::GetAdvertisablePeerListChannelError(format!(
+                        "could not send GetAdvertisablePeerListChannelError upstream:{:?}",
+                        err
+                    ))
+                })?;
         }
     }
     Ok(())

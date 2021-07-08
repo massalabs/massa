@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
-warp = "0.2.5"
+warp = "0.3"
 logging = { path = "../logging" }
 serde = { version = "1.0", features = ["derive"] }
 models = {path = "../models"}
@@ -18,3 +18,5 @@ serde_json = { version = "1.0" }
 log = { version = "0.4" }
 thiserror = "1.0"
 time = {path = "../time"}
+communication = {path = "../communication"}
+async-trait = "0.1.42"

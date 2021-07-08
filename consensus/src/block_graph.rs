@@ -22,7 +22,7 @@ impl<'a> From<&'a CompiledBlock> for ExportCompiledBlock {
 
 #[derive(Debug, Clone)]
 pub struct ExportDiscardedBlocks {
-    pub set: HashSet<Hash>,
+    pub map: HashMap<Hash, (DiscardReason, (u64, u8))>,
     pub vec_deque: VecDeque<Hash>,
     pub max_size: usize,
 }
@@ -30,7 +30,7 @@ pub struct ExportDiscardedBlocks {
 impl<'a> From<&'a DiscardedBlocks> for ExportDiscardedBlocks {
     fn from(block: &'a DiscardedBlocks) -> Self {
         ExportDiscardedBlocks {
-            set: block.set.clone(),
+            map: block.map.clone(),
             vec_deque: block.vec_deque.clone(),
             max_size: block.max_size,
         }
@@ -86,9 +86,16 @@ impl CompiledBlock {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum DiscardReason {
+    Invalid,
+    Stale,
+    Final,
+}
+
 #[derive(Debug, Clone)]
 struct DiscardedBlocks {
-    set: HashSet<Hash>,
+    map: HashMap<Hash, (DiscardReason, (u64, u8))>,
     vec_deque: VecDeque<Hash>,
     max_size: usize,
 }
@@ -96,7 +103,7 @@ struct DiscardedBlocks {
 impl DiscardedBlocks {
     fn new(max_size: usize) -> Self {
         DiscardedBlocks {
-            set: HashSet::with_capacity(max_size),
+            map: HashMap::with_capacity(max_size),
             vec_deque: VecDeque::with_capacity(max_size),
             max_size,
         }
@@ -106,45 +113,53 @@ impl DiscardedBlocks {
     /// if element is already here put it at the front of the queue
     /// returns the elements that have been definitely discarded
     /// because of max_size
-    fn insert(&mut self, element: Hash) -> Result<HashSet<Hash>, ConsensusError> {
+    fn insert(
+        &mut self,
+        hash: Hash,
+        slot: (u64, u8),
+        reason: DiscardReason,
+    ) -> Result<HashSet<Hash>, ConsensusError> {
         let mut definitively_discarded = HashSet::new();
         if self.max_size == 0 {
             return Ok(definitively_discarded); // discard pile has zero capacity
         }
-        if self.set.insert(element) {
+        if self.map.insert(hash, (reason, slot)).is_none() {
             // newly inserted
             while self.vec_deque.len() > self.max_size - 1 {
                 let h = self
                     .vec_deque
                     .pop_back()
                     .ok_or(ConsensusError::ContainerInconsistency)?;
-                self.set
+                self.map
                     .remove(&h)
-                    .then_some(())
                     .ok_or(ConsensusError::ContainerInconsistency)?;
                 definitively_discarded.insert(h);
             }
-            self.vec_deque.push_front(element);
+            self.vec_deque.push_front(hash);
             Ok(definitively_discarded)
         } else {
             // was already present
             let idx = self
                 .vec_deque
                 .iter()
-                .position(|&h| h == element)
+                .position(|&h| h == hash)
                 .ok_or(ConsensusError::ContainerInconsistency)?;
             if idx > 0 {
                 self.vec_deque
                     .remove(idx)
                     .ok_or(ConsensusError::ContainerInconsistency)?;
-                self.vec_deque.push_front(element);
+                self.vec_deque.push_front(hash);
             }
             Ok(definitively_discarded)
         }
     }
 
     fn contains(&self, element: &Hash) -> bool {
-        self.set.contains(element)
+        self.map.contains_key(element)
+    }
+
+    fn get(&self, element: &Hash) -> Option<(&crypto::hash::Hash, &(DiscardReason, (u64, u8)))> {
+        self.map.get_key_value(element)
     }
 }
 
@@ -332,8 +347,10 @@ impl BlockGraph {
         }
 
         // check if we already know about this block
-        if self.discarded_blocks.contains(&hash) {
-            self.discarded_blocks.insert(hash)?; // promote to the front of the discard pile
+        if let Some((_, (reason, slot))) = self.discarded_blocks.get(&hash) {
+            let (reason, slot) = (*reason, *slot);
+            // get the reason it was first discarded for
+            self.discarded_blocks.insert(hash, slot, reason)?; // promote to the front of the discard pile
             return Err(BlockAcknowledgeError::AlreadyDiscarded); // already discarded
         }
         if self.active_blocks.contains_key(&hash) {
@@ -348,7 +365,11 @@ impl BlockGraph {
             || block.header.period_number == 0
             || block.header.thread_number >= self.cfg.thread_count
         {
-            self.discarded_blocks.insert(hash)?;
+            self.discarded_blocks.insert(
+                hash.clone(),
+                (block.header.period_number, block.header.thread_number),
+                DiscardReason::Invalid,
+            )?;
             return Err(BlockAcknowledgeError::InvalidFields);
         }
 
@@ -356,7 +377,11 @@ impl BlockGraph {
         if block.header.period_number
             <= self.latest_final_blocks_periods[block.header.thread_number as usize].1
         {
-            self.discarded_blocks.insert(hash)?;
+            self.discarded_blocks.insert(
+                hash.clone(),
+                (block.header.period_number, block.header.thread_number),
+                DiscardReason::Invalid,
+            )?;
             return Err(BlockAcknowledgeError::TooOld);
         }
 
@@ -379,7 +404,11 @@ impl BlockGraph {
             != selector.draw((block.header.period_number, block.header.thread_number))
         {
             // it was not the creator's turn to create a block for this slot
-            self.discarded_blocks.insert(hash)?;
+            self.discarded_blocks.insert(
+                hash.clone(),
+                (block.header.period_number, block.header.thread_number),
+                DiscardReason::Invalid,
+            )?;
             return Err(BlockAcknowledgeError::DrawMismatch);
         }
 
@@ -398,7 +427,11 @@ impl BlockGraph {
             for parent_thread in 0u8..self.cfg.thread_count {
                 let parent_hash = block.header.parents[parent_thread as usize];
                 if self.discarded_blocks.contains(&parent_hash) {
-                    self.discarded_blocks.insert(hash)?;
+                    self.discarded_blocks.insert(
+                        hash.clone(),
+                        (block.header.period_number, block.header.thread_number),
+                        DiscardReason::Invalid,
+                    )?;
                     return Err(BlockAcknowledgeError::InvalidParents(
                         "discarded parent".to_string(),
                     )); // a parent is discarded
@@ -410,7 +443,11 @@ impl BlockGraph {
                             >= (block.header.period_number, block.header.thread_number)
                     {
                         // a parent is in the wrong thread or has a slot not strictly before the block
-                        self.discarded_blocks.insert(hash)?;
+                        self.discarded_blocks.insert(
+                            hash.clone(),
+                            (block.header.period_number, block.header.thread_number),
+                            DiscardReason::Invalid,
+                        )?;
                         return Err(BlockAcknowledgeError::InvalidParents(
                             "wrong thread or slot number".to_string(),
                         ));
@@ -427,7 +464,11 @@ impl BlockGraph {
                     if let Some(incomp) = self.gi_head.get(&parent_h) {
                         if !incomp.is_disjoint(&parent_hashes) {
                             // found mutually incompatible parents
-                            self.discarded_blocks.insert(hash)?;
+                            self.discarded_blocks.insert(
+                                hash.clone(),
+                                (block.header.period_number, block.header.thread_number),
+                                DiscardReason::Invalid,
+                            )?;
                             return Err(BlockAcknowledgeError::InvalidParents(
                                 "mutually incompatible parents".to_string(),
                             ));
@@ -441,7 +482,11 @@ impl BlockGraph {
                     Ok(true) => {}
                     Ok(false) => {
                         // inconsistent parent topology
-                        self.discarded_blocks.insert(hash)?;
+                        self.discarded_blocks.insert(
+                            hash.clone(),
+                            (block.header.period_number, block.header.thread_number),
+                            DiscardReason::Invalid,
+                        )?;
                         return Err(BlockAcknowledgeError::InvalidParents(
                             "Inconsistent parent topology".to_string(),
                         ));
@@ -761,7 +806,7 @@ impl BlockGraph {
         info!("stale_blocks:{:?}", stale_blocks);
 
         // prune stale blocks
-        let mut pruned_blocks = self.prune_blocks(stale_blocks, false)?;
+        let mut pruned_blocks = self.prune_blocks(stale_blocks, false, true)?;
 
         // list final blocks
         let final_blocks = {
@@ -837,18 +882,22 @@ impl BlockGraph {
         }
 
         // prune final blocks
-        pruned_blocks.extend(self.prune_blocks(final_blocks, true)?);
+        pruned_blocks.extend(self.prune_blocks(final_blocks, true, false)?);
 
         // print discarded
-        log::info!("discarded: {:?}", self.discarded_blocks.set);
+        log::info!("discarded: {:?}", self.discarded_blocks.map);
 
         Ok(pruned_blocks)
     }
 
+    /// * prune_set: Hash of blocks to prune
+    /// * prune_from_cliques if we want to prune blocks from cliques
+    /// * are_blocks_stale: blocks are either stale or final. Used to set discard reason
     fn prune_blocks(
         &mut self,
         prune_set: HashSet<Hash>,
         prune_from_cliques: bool,
+        are_blocks_stale: bool,
     ) -> Result<HashMap<Hash, Block>, ConsensusError> {
         // pruning
         for discard_h in prune_set.into_iter() {
@@ -964,9 +1013,20 @@ impl BlockGraph {
         // retain only non-genesis removed blocks
         removed.retain(|h, _| !self.genesis_blocks.contains(h));
         // add removed to discarded
-        removed
-            .keys()
-            .try_for_each(|&h| self.discarded_blocks.insert(h).map(|_| ()))?;
+        removed.iter().try_for_each(|(h, block)| {
+            let reason = if are_blocks_stale {
+                DiscardReason::Stale
+            } else {
+                DiscardReason::Final
+            };
+            self.discarded_blocks
+                .insert(
+                    h.clone(),
+                    (block.header.period_number, block.header.thread_number),
+                    reason,
+                )
+                .map(|_| ())
+        })?;
 
         Ok(removed)
     }

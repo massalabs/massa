@@ -9,7 +9,7 @@ use communication::protocol::protocol_controller::{
 };
 use crypto::hash::Hash;
 use models::block::Block;
-use std::collections::HashMap;
+use std::{collections::HashMap, net::IpAddr};
 
 use tokio::{
     sync::mpsc::{Receiver, Sender},
@@ -22,6 +22,7 @@ pub enum ConsensusCommand {
     GetBlockGraphStatus(Sender<BlockGraphExport>),
     //return full block with specified hash
     GetActiveBlock(Hash, Sender<Option<Block>>),
+    GetPeers(Sender<HashMap<IpAddr, String>>),
 }
 
 pub struct ConsensusWorker<ProtocolControllerT: ProtocolController + 'static> {
@@ -155,6 +156,9 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                         err
                     ))
                 }),
+            ConsensusCommand::GetPeers(response_tx) => {
+                Ok(self.protocol_controller.get_peers(response_tx).await?)
+            }
         }
     }
 
@@ -298,6 +302,9 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
             Err(BlockAcknowledgeError::CryptoError(e)) => Err(ConsensusError::CryptoError(e)),
             Err(BlockAcknowledgeError::TimeError(e)) => Err(ConsensusError::TimeError(e)),
             Err(BlockAcknowledgeError::ConsensusError(e)) => Err(e),
+            Err(BlockAcknowledgeError::ContainerInconsistency) => {
+                Err(ConsensusError::ContainerInconsistency)
+            }
         }
     }
 

@@ -184,7 +184,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     //validate the block isn't final.
     let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
-    assert!(!block_graph.discarded_blocks.set.contains(&hash3));
+    assert!(!block_graph.discarded_blocks.map.contains_key(&hash3));
 }
 
 #[tokio::test]

@@ -1,5 +1,4 @@
 use crypto::hash::Hash;
-use std::time::Duration;
 use time::UTime;
 use tokio::time::{sleep_until, timeout};
 
@@ -495,7 +494,6 @@ async fn test_test_parents() {
 
 #[tokio::test]
 async fn test_block_creation() {
-    use std::convert::TryInto;
     let node_ids = tools::create_node_ids(2);
 
     let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
@@ -544,6 +542,7 @@ async fn test_block_creation() {
                 assert_eq!(draw, 0);
                 assert_eq!(i + 1, block.header.period_number as usize);
             }
+            Ok(Some(_)) => panic!("unexpected command"),
             Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
             Err(_) => assert_eq!(draw, 1),
         };
