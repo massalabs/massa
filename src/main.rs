@@ -5,7 +5,6 @@ mod crypto;
 mod network;
 mod protocol;
 
-use crate::protocol::config::ProtocolConfig;
 use crate::protocol::controller::{ProtocolController, ProtocolEvent};
 use log::error;
 use std::error::Error;

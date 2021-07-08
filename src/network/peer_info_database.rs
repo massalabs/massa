@@ -548,8 +548,15 @@ impl PeerInfoDatabase {
         });
         if peer.banned {
             trace!(
-                "massa-network__network__peer_info_database__PeerInfoDatabase::try_new_in_connection__incomming connection::banned peer::{:?}",
-                peer.ip
+                "massa_trace:{}",
+                serde_json::json!({
+                    "origin": concat!(module_path!(), "::try_new_in_connection"),
+                    "event": "peer_banned",
+                    "parameters": {
+                        "ip": peer.ip
+                    }
+                })
+                .to_string()
             );
             peer.last_failure = Some(Utc::now());
             self.request_dump();
