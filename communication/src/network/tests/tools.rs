@@ -5,7 +5,7 @@ use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
 use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
-use models::{Address, Operation, OperationContent, OperationType, SerializeCompact};
+use models::{Address, BlockId, Operation, OperationContent, OperationType, SerializeCompact};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -18,6 +18,10 @@ use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 use tokio::time::sleep;
 
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
+
+pub fn get_dummy_block_id(s: &str) -> BlockId {
+    BlockId(Hash::hash(s.as_bytes()))
+}
 
 /// generate a named temporary JSON peers file
 pub fn generate_peers_file(peer_vec: &Vec<PeerInfo>) -> NamedTempFile {

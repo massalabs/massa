@@ -17,7 +17,7 @@ use std::str::FromStr;
 pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct BlockId(Hash);
+pub struct BlockId(pub Hash);
 
 impl std::fmt::Display for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -33,12 +33,6 @@ impl FromStr for BlockId {
 }
 
 impl BlockId {
-    /// Generate an id on the fly,
-    /// used in tests.
-    pub fn for_tests(s: &str) -> Result<Self, ModelsError> {
-        Ok(BlockId(Hash::hash(s.as_bytes())))
-    }
-
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
         self.0.to_bytes()
     }
