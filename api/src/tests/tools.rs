@@ -50,6 +50,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         disable_block_creation: true,
         max_block_size: 1024 * 1024,
         max_operations_per_block: 1024,
+        validity_period: 50,
     }
 }
 

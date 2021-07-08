@@ -37,6 +37,8 @@ pub struct ConsensusConfig {
     pub max_operations_per_block: u32,
     /// Maximum block size in bytes
     pub max_block_size: u32,
+    /// number of periods before expire_period when an operation is valid
+    pub validity_period: u64,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.

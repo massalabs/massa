@@ -10,6 +10,7 @@ pub struct Pool {
     /// one vec per thread
     vec: Vec<BinaryHeap<(u64, Hash)>>, // fee operation hash
     current_slot: Slot,
+    cfg: ConsensusConfig,
 }
 
 impl Pool {
@@ -18,6 +19,7 @@ impl Pool {
             map: HashMap::new(),
             vec: vec![BinaryHeap::new(); cfg.thread_count as usize],
             current_slot: slot,
+            cfg,
         }
     }
 
@@ -28,6 +30,8 @@ impl Pool {
     /// * current_slot in validity period
     /// * signature ok
     /// Ask new operation for propagation
+    ///
+    /// An error is returned when a critically wrrong operation was received
     pub fn new_operation(
         &mut self,
         new: Operation,
@@ -38,9 +42,16 @@ impl Pool {
         match new {
             Operation::Transaction { content, signature } => {
                 let hash = content.compute_hash(context)?;
+                // period validity check
+                let start = content.expire_period - self.cfg.validity_period;
+                let thread = get_thread(content.sender_public_key);
+                if self.current_slot < Slot::new(start, thread)
+                    || Slot::new(content.expire_period, thread) < self.current_slot
+                {
+                    return Ok(false);
+                }
                 signature_engine.verify(&hash, &signature, &content.sender_public_key)?;
                 if let None = self.map.insert(hash, operation) {
-                    let thread = get_thread(content.sender_public_key);
                     self.vec[thread as usize].push((content.fee, hash));
                     Ok(true)
                 } else {
