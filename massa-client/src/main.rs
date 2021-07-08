@@ -31,6 +31,7 @@ use reqwest::StatusCode;
 use std::string::ToString;
 
 use communication::network::PeerInfo;
+use consensus::LedgerDataExport;
 use std::fs::read_to_string;
 use std::net::IpAddr;
 use std::net::SocketAddr;
@@ -65,12 +66,6 @@ fn main() {
                 .required(false)
                 .takes_value(true),
         );
-
-    //for text
-    let private_key = crypto::signature::generate_random_private_key();
-    let public_key = crypto::signature::derive_public_key(&private_key);
-    let recipient_address = models::Address::from_public_key(&public_key).unwrap();
-    println!("add:{}", recipient_address.to_bs58_check());
 
     // load config
     let config_path = "config/config.toml";
@@ -146,7 +141,14 @@ fn main() {
         1,
         1, //max nb parameters
         cmd_staker_info,
-    ).split();
+    )
+    .new_command(
+        "address_info",
+        "return the specified address balance for current final block and best parents parameters: <Address Hash>",
+        1,
+        1, //max nb parameters
+        cmd_address_info,
+    )    .split();
 
     let matches = app.get_matches();
 
@@ -274,6 +276,33 @@ fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     {
         println!("Bad parameter:{}, not a boolean (true, false)", params[0]);
     };
+    Ok(())
+}
+
+fn cmd_address_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    //convert specified address to Address
+    let search_address = match Address::from_bs58_check(params[0]) {
+        Ok(addr) => addr,
+        Err(err) => {
+            println!(
+                "Error during address convertion, provided address not a bs58 Hash :{}",
+                err
+            );
+            return Ok(());
+        }
+    };
+
+    let url = format!(
+        "http://{}/api/v1/address_data/{}",
+        data.node_ip, search_address
+    );
+    if let Some(resp) = request_data(data, &url)? {
+        let resp = resp
+            .json::<LedgerDataExport>()
+            .map(|ledger| data::WrapperAddressLedgerDataExport::new(&search_address, ledger))?;
+        println!("ledger info for address:{}", search_address);
+        println!("{}", resp);
+    }
     Ok(())
 }
 

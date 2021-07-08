@@ -400,6 +400,14 @@ pub struct BlockGraphExport {
     pub max_cliques: Vec<HashSet<BlockId>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LedgerDataExport {
+    /// Candidate data
+    pub candidate_data: LedgerSubset,
+    /// Final data
+    pub final_data: LedgerSubset,
+}
+
 impl<'a> From<&'a BlockGraph> for BlockGraphExport {
     /// Conversion from blockgraph.
     fn from(block_graph: &'a BlockGraph) -> Self {
@@ -952,6 +960,11 @@ impl BlockGraph {
     /// Gets lastest final blocks (hash, period) for each thread.
     pub fn get_latest_final_blocks_periods(&self) -> &Vec<(BlockId, u64)> {
         &self.latest_final_blocks_periods
+    }
+
+    /// Gets best parents.
+    pub fn get_best_parents(&self) -> &Vec<BlockId> {
+        &self.best_parents
     }
 
     /// Gets whole block corresponding to given hash, if it is active.
@@ -1993,7 +2006,7 @@ impl BlockGraph {
         })
     }
 
-    fn get_ledger_at_parents(
+    pub fn get_ledger_at_parents(
         &self,
         parents: &Vec<BlockId>,
         query_addrs: &HashSet<Address>,

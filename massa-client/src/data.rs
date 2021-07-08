@@ -11,8 +11,10 @@ use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
 use consensus::DiscardReason;
+use consensus::LedgerDataExport;
 use crypto::hash::Hash;
 use crypto::signature::Signature;
+use models::Address;
 use models::{Block, BlockHeader, Operation, Slot};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -56,6 +58,57 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
     list.into_iter().map(|v| from_hash_slot(*v)).collect()
 }
 
+#[derive(Debug, Clone)]
+pub struct WrapperAddressLedgerDataExport<'a> {
+    pub ledger: LedgerDataExport,
+    pub search_addr: &'a Address,
+}
+
+impl<'a> WrapperAddressLedgerDataExport<'a> {
+    pub fn new(search_addr: &Address, ledger: LedgerDataExport) -> WrapperAddressLedgerDataExport {
+        WrapperAddressLedgerDataExport {
+            ledger,
+            search_addr,
+        }
+    }
+}
+
+impl<'a> std::fmt::Display for WrapperAddressLedgerDataExport<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let final_balance = self
+            .ledger
+            .final_data
+            .data
+            .iter()
+            .flatten()
+            .find(|(addr, _)| {
+                if addr == &self.search_addr {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|(_, data)| data.get_balance().to_string())
+            .unwrap_or("Not balance found".to_string());
+        writeln!(f, "Balance at final blocks:{} ", final_balance)?;
+        let parent_balance = self
+            .ledger
+            .candidate_data
+            .data
+            .iter()
+            .flatten()
+            .find(|(addr, _)| {
+                if addr == &self.search_addr {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|(_, data)| data.get_balance().to_string())
+            .unwrap_or("Not balance found".to_string());
+        writeln!(f, "Balance at best parents:{} ", parent_balance)
+    }
+}
 #[derive(Debug, Clone, Deserialize)]
 pub struct WrapperBlock {
     pub header: WrappedBlockHeader,

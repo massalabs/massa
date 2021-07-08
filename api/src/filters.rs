@@ -154,10 +154,11 @@ use communication::{
 use consensus::Status;
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
-    ConsensusConfig, ConsensusError, DiscardReason,
+    ConsensusConfig, ConsensusError, DiscardReason, LedgerDataExport,
 };
 use crypto::signature::PublicKey;
 use logging::massa_trace;
+use models::Address;
 use models::ModelsError;
 use models::Operation;
 use models::OperationId;
@@ -192,6 +193,10 @@ pub enum ApiEvent {
         response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     },
     AddOperations(HashMap<OperationId, Operation>),
+    GetLedgerData {
+        addresses: HashSet<Address>,
+        response_tx: oneshot::Sender<Result<LedgerDataExport, ConsensusError>>,
+    },
 }
 
 pub enum ApiManagementCommand {}
@@ -376,6 +381,15 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
+    let address_data = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("address_data"))
+        .and(warp::path::param::<Address>())
+        .and(warp::path::end())
+        .and_then(move |addr| get_address_data(addr, evt_tx.clone()));
+
+    let evt_tx = event_tx.clone();
     let stop_node = warp::post()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -408,6 +422,7 @@ pub fn get_filter(
         .or(last_stale)
         .or(last_invalid)
         .or(staker_info)
+        .or(address_data)
         .or(stop_node)
         .or(send_operations)
         .or(node_config)
@@ -1302,6 +1317,56 @@ async fn get_network_info(
         "peers": peers,
     }))
     .into_response())
+}
+
+/// Returns the ledger data for an address (candidate and final)
+///
+async fn get_address_data(
+    address: Address,
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_address_data", { "address": address });
+    let addresses: HashSet<Address> = vec![address].into_iter().collect();
+    let (response_tx, response_rx) = oneshot::channel();
+    if let Err(err) = event_tx
+        .send(ApiEvent::GetLedgerData {
+            addresses,
+            response_tx,
+        })
+        .await
+    {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error during sending ledger data : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response());
+    }
+
+    let ledger_data_export = match response_rx.await {
+        Ok(Ok(ledger_export)) => ledger_export,
+        Ok(Err(err)) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error during exporting ledger data : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error get ledger data : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    Ok(warp::reply::json(&ledger_data_export).into_response())
 }
 
 /// Returns connected peers :
