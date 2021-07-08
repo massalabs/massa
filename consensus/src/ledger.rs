@@ -1,7 +1,7 @@
 use crate::error::InternalError;
 use sled::Tree;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map, HashMap, HashSet},
     convert::TryInto,
     usize,
 };
@@ -153,22 +153,101 @@ impl DeserializeCompact for LedgerChange {
     }
 }
 
-trait OerationLedgerInterface {
-    fn get_involved_addresses(fee_target: &Address) -> HashSet<Address>;
-    fn get_changes(
+trait OperationLedgerInterface {
+    fn get_involved_addresses(
+        &self,
         fee_target: &Address,
+    ) -> Result<HashSet<Address>, ConsensusError>;
+    fn get_changes(
+        &self,
+        fee_target: &Address,
+        thread_count: u8,
     ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError>;
 }
 
-impl OerationLedgerInterface for Operation {
-    fn get_involved_addresses(fee_target: &Address) -> HashSet<Address> {
-        todo!()
+impl OperationLedgerInterface for Operation {
+    fn get_involved_addresses(
+        &self,
+        fee_target: &Address,
+    ) -> Result<HashSet<Address>, ConsensusError> {
+        let mut res = HashSet::new();
+        res.insert(fee_target.clone());
+        res.insert(Address::from_public_key(&self.content.sender_public_key)?);
+        match self.content.op {
+            models::OperationType::Transaction {
+                recipient_address, ..
+            } => {
+                res.insert(recipient_address);
+            }
+        }
+        Ok(res)
     }
 
     fn get_changes(
+        &self,
         fee_target: &Address,
+        thread_count: u8,
     ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError> {
-        todo!()
+        let mut changes: Vec<HashMap<Address, LedgerChange>> =
+            vec![HashMap::new(); thread_count as usize];
+
+        let mut try_add_changes =
+            |address: &Address, change: LedgerChange| -> Result<(), ConsensusError> {
+                let thread = address.get_thread(thread_count);
+                match changes[thread as usize].entry(*address) {
+                    hash_map::Entry::Occupied(mut occ) => {
+                        occ.get_mut().chain(&change)?;
+                    }
+                    hash_map::Entry::Vacant(vac) => {
+                        vac.insert(change);
+                    }
+                }
+                Ok(())
+            };
+
+        // sender fee
+        let sender_address = Address::from_public_key(&self.content.sender_public_key)?;
+        try_add_changes(
+            &sender_address,
+            LedgerChange {
+                balance_delta: self.content.fee,
+                balance_increment: false,
+            },
+        )?;
+
+        // fee target
+        try_add_changes(
+            fee_target,
+            LedgerChange {
+                balance_delta: self.content.fee,
+                balance_increment: true,
+            },
+        )?;
+
+        // operation type specific
+        match self.content.op {
+            models::OperationType::Transaction {
+                recipient_address,
+                amount,
+            } => {
+                try_add_changes(
+                    &sender_address,
+                    LedgerChange {
+                        balance_delta: amount,
+                        balance_increment: false,
+                    },
+                )?;
+                try_add_changes(
+                    &recipient_address,
+                    LedgerChange {
+                        balance_delta: amount,
+                        balance_increment: true,
+                    },
+                )?;
+            }
+        }
+
+        Ok(changes)
     }
 }
 
