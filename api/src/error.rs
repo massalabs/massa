@@ -1,4 +1,5 @@
 use consensus::ConsensusError;
+use models::ModelsError;
 use storage::StorageError;
 use thiserror::Error;
 
@@ -20,4 +21,6 @@ pub enum ApiError {
     StorageError(#[from] StorageError),
     #[error("data inconsistency error: {0}")]
     DataInconsistencyError(String),
+    #[error("model error: {0}")]
+    ModelError(#[from] ModelsError),
 }
