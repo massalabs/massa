@@ -6,7 +6,7 @@ use crate::{
     error::CommunicationError,
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
-use models::{Block, BlockId, SerializationContext};
+use models::{Block, BlockId, Operation, SerializationContext};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -146,6 +146,23 @@ impl ProtocolCommandSender {
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("send_wishlist_delta command send error".into())
+            });
+        res
+    }
+
+    pub async fn propagate_operation(
+        &mut self,
+        operation: Operation,
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("protocol.command_sender.propagate_operation", {
+            "operation": operation
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::PropagateOperation(operation))
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("propagate_operation command send error".into())
             });
         res
     }

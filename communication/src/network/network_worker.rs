@@ -13,7 +13,7 @@ use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
 use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
-use models::{Block, BlockHeader, BlockId, SerializationContext};
+use models::{Block, BlockHeader, BlockId, Operation, SerializationContext};
 use models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
@@ -52,6 +52,10 @@ pub enum NetworkCommand {
         node: NodeId,
         block_id: BlockId,
     },
+    SendOperation {
+        node: NodeId,
+        operation: Operation,
+    },
 }
 
 #[derive(Debug)]
@@ -77,6 +81,10 @@ pub enum NetworkEvent {
     BlockNotFound {
         node: NodeId,
         block_id: BlockId,
+    },
+    ReceivedOperation {
+        node: NodeId,
+        operation: Operation,
     },
 }
 
@@ -751,6 +759,17 @@ impl NetworkWorker {
                 )
                 .await;
             }
+            NetworkCommand::SendOperation { node, operation } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::Operation",
+                    { "operation": operation, "node": node }
+                );
+                self.forward_message_to_node_or_resend_close_event(
+                    &node,
+                    NodeCommand::SendOperation(operation),
+                )
+                .await;
+            }
         }
         Ok(())
     }
@@ -956,6 +975,12 @@ impl NetworkWorker {
             NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
                 let _ = self
                     .send_network_event(NetworkEvent::BlockNotFound { node, block_id })
+                    .await;
+            }
+            NodeEvent(node, NodeEventType::ReceivedOperation(operation)) => {
+                // todo in th
+                let _ = self
+                    .send_network_event(NetworkEvent::ReceivedOperation { node, operation })
                     .await;
             }
         }

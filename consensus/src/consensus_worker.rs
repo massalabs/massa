@@ -340,13 +340,6 @@ impl ConsensusWorker {
                 )?;
                 self.block_db_changed().await?;
             }
-            ProtocolEvent::ReceivedTransaction(_transaction) => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_protocol_event.received_transaction",
-                    {}
-                );
-                // todo (see issue #108)
-            }
             ProtocolEvent::GetBlocks(list) => {
                 massa_trace!(
                     "consensus.consensus_worker.process_protocol_event.get_blocks",
@@ -376,6 +369,7 @@ impl ConsensusWorker {
                     .send_get_blocks_results(results)
                     .await?;
             }
+            ProtocolEvent::ReceivedOperation(operation) => todo!("add operation to pool"),
         }
         Ok(())
     }
