@@ -1,4 +1,5 @@
 use communication::protocol::ProtocolCommand;
+use crypto::signature::SignatureEngine;
 use models::SerializeCompact;
 use models::Slot;
 use std::collections::HashMap;
@@ -37,6 +38,8 @@ async fn test_pool() {
         _ => None,
     };
 
+    let sig_engine = SignatureEngine::new();
+
     // generate transactions
     let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
     for i in 0..18 {
@@ -44,7 +47,7 @@ async fn test_pool() {
         let expire_period: u64 = 40 + i;
         let start_period = expire_period.saturating_sub(operation_validity_periods);
         let (op, thread) = get_transaction(expire_period, fee, &context);
-        let id = op.verify_integrity(&context).unwrap();
+        let id = op.verify_integrity(&context, &sig_engine).unwrap();
 
         let mut ops = HashMap::new();
         ops.insert(id, op.clone());
@@ -153,7 +156,7 @@ async fn test_pool() {
         let fee = 1000;
         let expire_period: u64 = 300;
         let (op, thread) = get_transaction(expire_period, fee, &context);
-        let id = op.verify_integrity(&context).unwrap();
+        let id = op.verify_integrity(&context, &sig_engine).unwrap();
         let mut ops = HashMap::new();
         ops.insert(id, op);
 
@@ -207,6 +210,8 @@ async fn test_pool_with_protocol_events() {
         _ => None,
     };
 
+    let sig_engine = SignatureEngine::new();
+
     // generate transactions
     let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
     for i in 0..18 {
@@ -214,7 +219,7 @@ async fn test_pool_with_protocol_events() {
         let expire_period: u64 = 40 + i;
         let start_period = expire_period.saturating_sub(operation_validity_periods);
         let (op, thread) = get_transaction(expire_period, fee, &context);
-        let id = op.verify_integrity(&context).unwrap();
+        let id = op.verify_integrity(&context, &sig_engine).unwrap();
 
         let mut ops = HashMap::new();
         ops.insert(id, op.clone());

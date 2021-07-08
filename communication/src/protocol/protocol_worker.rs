@@ -2,6 +2,7 @@ use super::config::ProtocolConfig;
 use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+use crypto::signature::SignatureEngine;
 use models::{Block, BlockHeader, BlockId, Operation, OperationId, SerializationContext};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -143,6 +144,8 @@ mod nodeinfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     cfg: ProtocolConfig,
+    /// Signature engine
+    signature_engine: SignatureEngine,
     // Serialization context
     serialization_context: SerializationContext,
     /// Associated nework command sender.
@@ -186,6 +189,7 @@ impl ProtocolWorker {
         ProtocolWorker {
             serialization_context,
             cfg,
+            signature_engine: SignatureEngine::new(),
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
@@ -701,7 +705,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "opearations": operations });
         let mut result = HashMap::new();
         for op in operations.into_iter() {
-            match op.verify_integrity(&self.serialization_context) {
+            match op.verify_integrity(&self.serialization_context, &self.signature_engine) {
                 Ok(operation_id) => {
                     result.insert(operation_id, op);
                 }

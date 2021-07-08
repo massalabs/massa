@@ -7,7 +7,7 @@ use crate::protocol::{
 };
 use crypto::{
     hash::Hash,
-    signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
+    signature::{PrivateKey, PublicKey, SignatureEngine},
 };
 use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext,
@@ -24,20 +24,21 @@ pub struct NodeInfo {
     pub id: NodeId,
 }
 
-pub fn create_node() -> NodeInfo {
-    let private_key = generate_random_private_key();
-    let id = NodeId(derive_public_key(&private_key));
+pub fn create_node(signature_engine: &SignatureEngine) -> NodeInfo {
+    let private_key = SignatureEngine::generate_random_private_key();
+    let id = NodeId(signature_engine.derive_public_key(&private_key));
     NodeInfo { private_key, id }
 }
 
 pub async fn create_and_connect_nodes(
     num: usize,
+    signature_engine: &SignatureEngine,
     network_controller: &mut MockNetworkController,
 ) -> Vec<NodeInfo> {
     let mut nodes = vec![];
     for _ in 0..num {
         // Create a node, and connect it with protocol.
-        let info = create_node();
+        let info = create_node(&signature_engine);
         network_controller.new_connection(info.id).await;
         nodes.push(info);
     }
@@ -51,10 +52,12 @@ pub fn create_block(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     serialization_context: &SerializationContext,
+    signature_engine: &mut SignatureEngine,
 ) -> Block {
     let example_hash = Hash::hash("default_val".as_bytes());
 
     let (_, header) = BlockHeader::new_signed(
+        signature_engine,
         private_key,
         BlockHeaderContent {
             creator: public_key.clone(),
@@ -76,11 +79,12 @@ pub fn create_block(
 /// Creates an operation for use in protocol tests,
 /// without paying attention to consensus related things.
 pub fn create_operation(context: &SerializationContext) -> Operation {
-    let sender_priv = crypto::generate_random_private_key();
-    let sender_pub = crypto::derive_public_key(&sender_priv);
+    let sig_engine = SignatureEngine::new();
+    let sender_priv = SignatureEngine::generate_random_private_key();
+    let sender_pub = sig_engine.derive_public_key(&sender_priv);
 
-    let recv_priv = crypto::generate_random_private_key();
-    let recv_pub = crypto::derive_public_key(&recv_priv);
+    let recv_priv = SignatureEngine::generate_random_private_key();
+    let recv_pub = sig_engine.derive_public_key(&recv_priv);
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -93,7 +97,7 @@ pub fn create_operation(context: &SerializationContext) -> Operation {
         expire_period: 0,
     };
     let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
-    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    let signature = sig_engine.sign(&hash, &sender_priv).unwrap();
 
     Operation { content, signature }
 }

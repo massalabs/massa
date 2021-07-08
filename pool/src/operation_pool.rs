@@ -206,14 +206,15 @@ impl OperationPool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crypto::hash::Hash;
+    use crypto::{hash::Hash, signature::SignatureEngine};
     use models::{Operation, OperationContent, OperationType};
 
     fn example_pool_config() -> (PoolConfig, SerializationContext, u8, u64) {
+        let sig_engine = SignatureEngine::new();
         let mut nodes = Vec::new();
         for _ in 0..2 {
-            let private_key = crypto::generate_random_private_key();
-            let public_key = crypto::derive_public_key(&private_key);
+            let private_key = SignatureEngine::generate_random_private_key();
+            let public_key = sig_engine.derive_public_key(&private_key);
             nodes.push((public_key, private_key));
         }
         let thread_count: u8 = 2;
@@ -249,11 +250,12 @@ mod tests {
         fee: u64,
         context: &SerializationContext,
     ) -> (Operation, u8) {
-        let sender_priv = crypto::generate_random_private_key();
-        let sender_pub = crypto::derive_public_key(&sender_priv);
+        let sig_engine = SignatureEngine::new();
+        let sender_priv = SignatureEngine::generate_random_private_key();
+        let sender_pub = sig_engine.derive_public_key(&sender_priv);
 
-        let recv_priv = crypto::generate_random_private_key();
-        let recv_pub = crypto::derive_public_key(&recv_priv);
+        let recv_priv = SignatureEngine::generate_random_private_key();
+        let recv_pub = sig_engine.derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -266,7 +268,7 @@ mod tests {
             expire_period,
         };
         let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
-        let signature = crypto::sign(&hash, &sender_priv).unwrap();
+        let signature = sig_engine.sign(&hash, &sender_priv).unwrap();
 
         (
             Operation { content, signature },
@@ -281,6 +283,7 @@ mod tests {
         let max_pool_size_per_thread = 10;
         cfg.max_pool_size_per_thread = max_pool_size_per_thread;
 
+        let sig_engine = SignatureEngine::new();
         let mut pool = OperationPool::new(cfg, thread_count, operation_validity_periods);
 
         // generate transactions
@@ -290,7 +293,7 @@ mod tests {
             let expire_period: u64 = 40 + i;
             let start_period = expire_period.saturating_sub(operation_validity_periods);
             let (op, thread) = get_transaction(expire_period, fee, &context);
-            let id = op.verify_integrity(&context).unwrap();
+            let id = op.verify_integrity(&context, &sig_engine).unwrap();
 
             let mut ops = HashMap::new();
             ops.insert(id, op.clone());
@@ -362,7 +365,7 @@ mod tests {
             let fee = 1000;
             let expire_period: u64 = 300;
             let (op, thread) = get_transaction(expire_period, fee, &context);
-            let id = op.verify_integrity(&context).unwrap();
+            let id = op.verify_integrity(&context, &sig_engine).unwrap();
             let mut ops = HashMap::new();
             ops.insert(id, op);
             let newly_added = pool.add_operations(ops, &context).unwrap();

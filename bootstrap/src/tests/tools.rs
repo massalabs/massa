@@ -3,7 +3,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{BootsrapableGraph, ConsensusCommand};
-use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use crypto::signature::{PrivateKey, PublicKey, SignatureEngine};
 use models::{BlockId, SerializationContext};
 use time::UTime;
 use tokio::{
@@ -35,8 +35,9 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
 }
 
 pub fn get_keys() -> (PrivateKey, PublicKey) {
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
+    let signature_engine = SignatureEngine::new();
+    let private_key = SignatureEngine::generate_random_private_key();
+    let public_key = signature_engine.derive_public_key(&private_key);
     (private_key, public_key)
 }
 

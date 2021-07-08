@@ -1,7 +1,10 @@
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{block_graph::BlockGraphExport, ConsensusConfig};
 use communication::protocol::ProtocolCommand;
-use crypto::{hash::Hash, signature::PrivateKey};
+use crypto::{
+    hash::Hash,
+    signature::{PrivateKey, SignatureEngine},
+};
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
 use std::collections::HashSet;
 use storage::{StorageAccess, StorageConfig};
@@ -298,6 +301,7 @@ pub fn create_block_with_merkle_root(
     slot: Slot,
     best_parents: Vec<BlockId>,
 ) -> (BlockId, Block, PrivateKey) {
+    let mut signature_engine = SignatureEngine::new();
     let (public_key, private_key) = cfg
         .nodes
         .get(0)
@@ -307,6 +311,7 @@ pub fn create_block_with_merkle_root(
     let example_hash = Hash::hash("default_val".as_bytes());
 
     let (hash, header) = BlockHeader::new_signed(
+        &mut signature_engine,
         &private_key,
         BlockHeaderContent {
             creator: public_key,
@@ -328,14 +333,15 @@ pub fn create_block_with_merkle_root(
 }
 
 pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, SerializationContext) {
-    let genesis_key = crypto::generate_random_private_key();
+    let genesis_key = SignatureEngine::generate_random_private_key();
     let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
     let max_operations_per_block: u32 = 1024;
+    let signature_engine = SignatureEngine::new();
     let nodes = (0..nb_nodes)
         .map(|_| {
-            let private_key = crypto::generate_random_private_key();
-            let public_key = crypto::derive_public_key(&private_key);
+            let private_key = SignatureEngine::generate_random_private_key();
+            let public_key = signature_engine.derive_public_key(&private_key);
             (public_key, private_key)
         })
         .collect();
