@@ -5,10 +5,26 @@ use models::{Operation, SerializationContext, Slot};
 
 use crate::{ConsensusConfig, ConsensusError};
 
+#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Debug)]
+pub struct Adress(Hash); // Public key hash
+
+impl Adress {
+    fn from_public_key(key: PublicKey) -> Adress {
+        todo!()
+    }
+
+    fn get_thread(&self, thread_count: u8) -> u8 {
+        todo!()
+    }
+}
+
+#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Debug)]
+pub struct OperationId(Hash); // Signature hash
+
 pub struct OperationPool {
-    map: HashMap<Hash, Operation>,
+    map: HashMap<OperationId, Operation>,
     /// one vec per thread
-    vec: Vec<BinaryHeap<(u64, Hash)>>, // fee operation hash
+    vec: Vec<BinaryHeap<(u64, OperationId)>>, // fee operation hash
     current_slot: Slot,
     cfg: ConsensusConfig,
 }
@@ -52,8 +68,9 @@ impl OperationPool {
             &operation.signature,
             &operation.content.creator_public_key,
         )?;
-        if let None = self.map.insert(hash, operation.clone()) {
-            self.vec[thread as usize].push((operation.content.fee, hash));
+        let id = OperationId(Hash::hash(&operation.signature.to_bytes()));
+        if let None = self.map.insert(id, operation.clone()) {
+            self.vec[thread as usize].push((operation.content.fee, id));
             Ok(true)
         } else {
             // already present
@@ -72,9 +89,9 @@ impl OperationPool {
     pub fn get_ops(
         &mut self,
         block_slot: Slot,
-        exclude: HashSet<Hash>,
+        exclude: HashSet<OperationId>,
         max_count: usize,
-    ) -> Result<Vec<(Hash, Operation)>, ConsensusError> {
+    ) -> Result<Vec<(OperationId, Operation)>, ConsensusError> {
         let mut res = self.vec[block_slot.thread as usize]
             .clone()
             .into_iter_sorted()
@@ -90,7 +107,7 @@ impl OperationPool {
                         .clone(),
                 ))
             });
-        if let Some(err) = res.find_map(|r: Result<(Hash, Operation), ConsensusError>| {
+        if let Some(err) = res.find_map(|r: Result<(OperationId, Operation), ConsensusError>| {
             if r.is_err() {
                 Some(r.unwrap_err())
             } else {
