@@ -33,20 +33,77 @@ impl Address {
         Ok(Address(Hash::hash(&public_key.to_bytes())))
     }
 
+    /// ## Example
+    /// ```rust
+    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use models::Address;
+    /// # let signature_engine = SignatureEngine::new();
+    /// # let private_key = SignatureEngine::generate_random_private_key();
+    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// let bytes = address.to_bytes();
+    /// let res_addr = Address::from_bytes(&bytes).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// ```
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
+    /// ## Example
+    /// ```rust
+    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use models::Address;
+    /// # let signature_engine = SignatureEngine::new();
+    /// # let private_key = SignatureEngine::generate_random_private_key();
+    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// let bytes = address.clone().into_bytes();
+    /// let res_addr = Address::from_bytes(&bytes).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// ```
     pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
+    /// ## Example
+    /// ```rust
+    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use models::Address;
+    /// # let signature_engine = SignatureEngine::new();
+    /// # let private_key = SignatureEngine::generate_random_private_key();
+    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// let bytes = address.to_bytes();
+    /// let res_addr = Address::from_bytes(&bytes).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Address, ModelsError> {
         Ok(Address(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
 
+    /// ## Example
+    /// todo update after #291
+    /// ```rust
+    /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
+    /// # use crypto::hash::Hash;
+    /// # use serde::{Deserialize, Serialize};
+    /// # use models::Address;
+    /// # let signature_engine = SignatureEngine::new();
+    /// # let private_key = SignatureEngine::generate_random_private_key();
+    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// // let bytes = address.to_bytes();
+    /// // let res_addr = Address::from_bytes(&bytes).unwrap();
+    /// // assert_eq!(address, res_addr);
+    /// ```
     pub fn from_bs58_check(data: &str) -> Result<Address, ModelsError> {
         Ok(Address(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,

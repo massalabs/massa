@@ -242,3 +242,65 @@ impl DeserializeCompact for Operation {
         Ok((res, cursor))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crypto::signature::SignatureEngine;
+
+    use super::*;
+
+    #[test]
+    fn test_operation_type() {
+        let context = SerializationContext {
+            max_block_size: 100000,
+            max_block_operations: 1000000,
+            parent_count: 2,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
+            max_bootstrap_message_size: 100000000,
+        };
+        let secp = SignatureEngine::new();
+        let sender_priv = SignatureEngine::generate_random_private_key();
+        let sender_pub = secp.derive_public_key(&sender_priv);
+
+        let recv_priv = SignatureEngine::generate_random_private_key();
+        let recv_pub = secp.derive_public_key(&recv_priv);
+
+        let op = OperationType::Transaction {
+            recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+            amount: 0,
+        };
+        let ser_type = op.to_bytes_compact(&context).unwrap();
+        let (res_type, _) = OperationType::from_bytes_compact(&ser_type, &context).unwrap();
+        assert_eq!(format!("{:?}", res_type), format!("{:?}", op));
+
+        let content = OperationContent {
+            fee: 20,
+            sender_public_key: sender_pub,
+            op,
+            expire_period: 50,
+        };
+
+        let ser_content = content.to_bytes_compact(&context).unwrap();
+        let (res_content, _) =
+            OperationContent::from_bytes_compact(&ser_content, &context).unwrap();
+        assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
+
+        let hash = Hash::hash(&content.to_bytes_compact(&context).unwrap());
+        let signature = secp.sign(&hash, &sender_priv).unwrap();
+
+        let op = Operation {
+            content: content.clone(),
+            signature,
+        };
+
+        let ser_op = op.to_bytes_compact(&context).unwrap();
+        let (res_op, _) = Operation::from_bytes_compact(&ser_op, &context).unwrap();
+        assert_eq!(format!("{:?}", res_op), format!("{:?}", op));
+    }
+}
