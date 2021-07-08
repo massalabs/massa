@@ -13,4 +13,6 @@ pub enum ApiError {
     ServerError(#[from] warp::Error),
     #[error("consensus error : {0}")]
     ConsensusError(#[from] ConsensusError),
+    #[error("not found")]
+    NotFound,
 }

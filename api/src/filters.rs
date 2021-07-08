@@ -158,7 +158,7 @@ use consensus::{
 };
 use crypto::{hash::Hash, signature::PublicKey};
 use models::{Block, BlockHeader, Slot};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
     cmp::min,
@@ -191,6 +191,35 @@ pub enum ApiManagementCommand {}
 struct TimeInterval {
     start: Option<UTime>,
     end: Option<UTime>,
+}
+
+async fn wrap_api_call<F, T>(fut: F) -> Result<impl Reply, Rejection>
+where
+    F: std::future::Future<Output = Result<T, ApiError>>,
+    T: Serialize,
+{
+    Ok(match fut.await {
+        Ok(output) => {
+            warp::reply::with_status(warp::reply::json(&output), warp::http::StatusCode::OK)
+                .into_response()
+        }
+        Err(ApiError::NotFound) => warp::reply::with_status(
+            warp::reply::json(&json!({
+                "code": warp::http::StatusCode::NOT_FOUND.as_u16(),
+                "message": "not found"
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        )
+        .into_response(),
+        Err(e) => warp::reply::with_status(
+            warp::reply::json(&json!({
+                "code": warp::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                "message": e.to_string()
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response(),
+    })
 }
 
 /// This function sets up all the routes that can be used
