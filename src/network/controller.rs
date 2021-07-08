@@ -156,6 +156,7 @@ async fn controller_fn(
                         PeerStatus::OutHandshaking => PeerStatus::OutConnected,
                         _ => unreachable!("connection OK from peer that was not in the process of connecting")
                     }
+                    peer.last_connection = Some(Utc::now());
                 }
                 None => unreachable!("peer feedback channel disappeared"),
             },

@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct NetworkConfig {
     pub bind: SocketAddr,
     pub known_peers_file: String,
