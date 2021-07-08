@@ -731,7 +731,7 @@ impl ConsensusWorker {
                 ))?;
             let candidate_data = self.block_db.get_roll_data_at_parent(
                 self.block_db.get_best_parents()[thread as usize],
-                Some(&addresses_by_thread[thread as usize]),
+                addresses_by_thread[thread as usize].clone(),
                 &self.pos,
             )?;
 
@@ -745,7 +745,7 @@ impl ConsensusWorker {
                         } else {
                             None
                         },
-                        candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&0),
+                        candidate_rolls: *candidate_data.0.get(addr).unwrap_or(&0),
                     },
                 );
             }

@@ -2,33 +2,13 @@
 
 ## In consensus
 
-```rust
-pub struct RollCompensation(pub u64);
-
+```
 pub struct RollUpdate {
-    pub roll_purchases: bool,
-    pub roll_sales: u64,
-}
-
-impl RollUpdate {
-	pub fn chain(&mut self, change: &Self) -> Result<RollCompensation, ConsensusError>;  // fuses Change into slef and compensates + returns the number of matching purchases/sales
-	pub fn compensate(&mut self) -> RollCompensation;  // compensates matching purchases/sales and returns their count
+    pub roll_increment: bool, // true = majority buy, false = majority sell
+    pub roll_delta: u64,      // absolute change in roll count
 }
 
 pub struct RollUpdates(pub HashMap<Address, RollUpdate>);
-
-impl RollUpdates {
-    // applies another RollUpdates to self, compensates and returns compensation counts for each compensated address
-	// if addrs_opt is Some(addrs), restricts the changes to addrs
-    pub fn chain_subset(
-        &mut self,
-        updates: &RollUpdates,
-        addrs_opt: Option<&HashSet<Address>>,
-    ) -> Result<HashMap<Address, RollCompensation>, ConsensusError>;
-
-    // applyes a RollUpdate to self, compensates and returns compensation count
-    pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<RollCompensation, ConsensusError>;
-}
 
 struct ThreadCycleState {
     cycle: u64,
@@ -39,17 +19,6 @@ struct ThreadCycleState {
 }
 
 pub struct RollCounts(pub BTreeMap<Address, u64>);
-
-
-impl RollCounts {
-    // applies RollUpdates to self with compensations
-    // if addrs_opt is Some(addrs), the changes are restricted to addrs 
-    pub fn apply_subset(
-        &mut self,
-        updates: &RollUpdates,
-        addrs_opt: Option<&HashSet<Address>>,
-    ) -> Result<(), ConsensusError>;
-}
 ```
 
 * `cycle_states: Vec<VecDeque<ThreadCycleState> >` indices: [thread][cycle] -> ThreadCycleState
@@ -100,34 +69,27 @@ Add a field:
 
 ### get_roll_data_at_parent
 
-`get_roll_data_at_parent(BlockId, Option<HashSet<Address>>) -> (RollCounts, RollUpdates)` returns the RollCounts addresses had at the output of BlockId, as well as the cycle RollUpdates.
-If the Option is None, all addresses are taken into account.
+`get_roll_data_at_parent(BlockId, HashSet<Address>) -> RollCounts` returns the RollCounts addresses had at the output of BlockId.
 
 1. start from BlockId, and explore itself and its ancestors backwards in the same thread:
 	1. if a final block is explored, break + save final_cycle
 	2. otherwise, stack the explored block ID
-2. set cur_rolls = the latest final roll state at final_cycle for the selected addresses 
-3. if BlockId is in the same thread as the latest final block, set cur_updates = the lastest final cycle updates, otherwise empty updates
-4. while block_id = stack.pop():
+2. set cur_rolls = the latest final roll state at final_cycle for the selected addresses
+3. while block_id = stack.pop():
 	1. apply active_block[block_id].roll_updates to cur_rolls
-	2. if active_block[block_id].cycle == BlockId.cycle => apply active_block[block_id].roll_updates to cur_updates
-5. return (cur_rolls, cur_updates)
+4. return cur_rolls
 
 ### block reception process
 
 1. check that the draw matches the block creator
 2. get the list of `roll_involved_addresses` buying/selling rolls in the block
-3. set `(cur_rolls, cycle_roll_updates) = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
-    1. if the block's cycle is different than its parent's => empty cycle_roll_updates
+3. set `cur_rolls = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
 4. set `B.roll_updates = new()`
 5. if the block is the first of a new cycle N for thread Tau:
 	1. credit `roll_price * cycle_states[Tau][1 + lookback_cycles + lock_cycles].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
 6. parse the operations of the block in order:
-	1. Apply roll updates to cur_rolls. If the new roll count under/over-flows u64 => block invalid
-	2. try chain roll updates to `B.roll_updates`. If the new roll delta under/over-flows u64 => block invalid
-	3. try chain roll updates to `cycle_roll_updates`, credit the compensation roll count as ledger changes. If any error => block invalid
-		1. try chain roll updates to `cycle_roll_updates` and gather compensation counts for each address. If error => block invalid.
-		2. try chain roll changes to `block_ledger_changes` with compensation. If error => block invalid.
+	1. Apply roll changes to cur_rolls. If the new roll count under/over-flows u64 => block invalid
+	2. try chain roll changes to `B.roll_updates`. If the new roll delta under/over-flows u64 => block invalid
 
 ## When a block B in thread Tau and cycle N becomes final
 

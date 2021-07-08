@@ -263,7 +263,9 @@ impl Operation {
             } => {
                 res.insert(recipient_address);
             }
-            OperationType::RollBuy { .. } => {}
+            OperationType::RollBuy { .. } => {
+                res.insert(emitter_address);
+            }
             OperationType::RollSell { .. } => {}
         }
         Ok(res)

@@ -2,9 +2,9 @@ use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
 use models::{
-    array_from_slice, with_serialization_context, Address, BlockId, DeserializeCompact,
-    DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact, SerializeVarInt,
-    Slot, ADDRESS_SIZE_BYTES,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, BlockId,
+    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact,
+    SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
 };
 use rand::distributions::Uniform;
 use rand::Rng;
@@ -14,25 +14,28 @@ use serde::{Deserialize, Serialize};
 use std::collections::{btree_map, hash_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::convert::TryInto;
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub struct RollCompensation(pub u64);
+pub trait RollUpdateInterface {
+    fn chain(&mut self, change: &Self) -> Result<(), ConsensusError>;
+    fn is_nil(&self) -> bool;
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RollUpdate {
-    pub roll_purchases: u64,
-    pub roll_sales: u64,
-    // Here is space for registering any denunciations/resets
+    pub roll_increment: bool, // true = majority buy, false = majority sell
+    pub roll_delta: u64,      // absolute change in roll count
+                              // Here is space for registering any denunciations/resets
 }
 
 impl SerializeCompact for RollUpdate {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
-        // roll purchases
-        res.extend(self.roll_purchases.to_varint_bytes());
+        // roll increment
+        let roll_increment: u8 = if self.roll_increment { 1u8 } else { 0u8 };
+        res.push(roll_increment);
 
-        // roll sales
-        res.extend(self.roll_sales.to_varint_bytes());
+        // roll delta
+        res.extend(self.roll_delta.to_varint_bytes());
 
         Ok(res)
     }
@@ -42,66 +45,56 @@ impl DeserializeCompact for RollUpdate {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
-        // roll purchases
-        let (roll_purchases, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
+        // roll increment
+        let roll_increment = match u8_from_slice(&buffer[cursor..])? {
+            0u8 => false,
+            1u8 => true,
+            _ => {
+                return Err(ModelsError::SerializeError(
+                    "invalid roll_increment during deserialization of RollUpdate".into(),
+                ));
+            }
+        };
+        cursor += 1;
 
-        // roll sales
-        let (roll_sales, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        // roll delta
+        let (roll_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
         Ok((
             RollUpdate {
-                roll_purchases,
-                roll_sales,
+                roll_increment,
+                roll_delta,
             },
             cursor,
         ))
     }
 }
 
-impl RollUpdate {
-    pub fn new() -> Self {
-        RollUpdate {
-            roll_purchases: 0,
-            roll_sales: 0,
+impl RollUpdateInterface for RollUpdate {
+    fn chain(&mut self, change: &Self) -> Result<(), ConsensusError> {
+        if self.roll_increment == change.roll_increment {
+            self.roll_delta = self.roll_delta.checked_add(change.roll_delta).ok_or(
+                ConsensusError::InvalidRollUpdate("overflow in RollUpdate::chain".into()),
+            )?;
+        } else if change.roll_delta > self.roll_delta {
+            self.roll_delta = change.roll_delta.checked_sub(self.roll_delta).ok_or(
+                ConsensusError::InvalidRollUpdate("underflow in RollUpdate::chain".into()),
+            )?;
+            self.roll_increment = !self.roll_increment;
+        } else {
+            self.roll_delta = self.roll_delta.checked_sub(change.roll_delta).ok_or(
+                ConsensusError::InvalidRollUpdate("underflow in RollUpdate::chain".into()),
+            )?;
         }
-    }
-
-    // chain two roll updates, return compensation count
-    fn chain(&mut self, change: &Self) -> Result<RollCompensation, ConsensusError> {
-        let compensation_other = std::cmp::min(change.roll_purchases, change.roll_sales);
-        self.roll_purchases = self
-            .roll_purchases
-            .checked_add(change.roll_purchases - compensation_other)
-            .ok_or(ConsensusError::InvalidRollUpdate(
-                "roll_purchases overflow in RollUpdate::chain".into(),
-            ))?;
-        self.roll_sales = self
-            .roll_sales
-            .checked_add(change.roll_sales - compensation_other)
-            .ok_or(ConsensusError::InvalidRollUpdate(
-                "roll_sales overflow in RollUpdate::chain".into(),
-            ))?;
-
-        let compensation_self = self.compensate().0;
-
-        let compensation_total = compensation_other.checked_add(compensation_self).ok_or(
-            ConsensusError::InvalidRollUpdate("compensation overflow in RollUpdate::chain".into()),
-        )?;
-        Ok(RollCompensation(compensation_total))
-    }
-
-    // compensate a roll update, return compensation count
-    pub fn compensate(&mut self) -> RollCompensation {
-        let compensation_self = std::cmp::min(self.roll_purchases, self.roll_sales);
-        self.roll_purchases -= compensation_self;
-        self.roll_sales -= compensation_self;
-        RollCompensation(compensation_self)
+        if self.roll_delta == 0 {
+            self.roll_increment = true;
+        }
+        Ok(())
     }
 
     fn is_nil(&self) -> bool {
-        self.roll_purchases == 0 && self.roll_sales == 0
+        self.roll_delta == 0
     }
 }
 
@@ -113,60 +106,55 @@ impl RollUpdates {
         RollUpdates(HashMap::new())
     }
 
-    // chains with another RollUpdates, compensates and returns compensations
-    pub fn chain_subset(
-        &mut self,
-        updates: &RollUpdates,
-        addrs_opt: Option<&HashSet<Address>>,
-    ) -> Result<HashMap<Address, RollCompensation>, ConsensusError> {
-        let mut res = HashMap::new();
-        for (addr, update) in updates
-            .0
-            .iter()
-            .filter(|(a, _v)| addrs_opt.map_or(true, |addrs| addrs.contains(a)))
-        {
-            res.insert(*addr, self.apply(addr, update)?);
-            // remove if nil
-            if let hash_map::Entry::Occupied(occ) = self.0.entry(*addr) {
+    pub fn chain(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
+        for (addr, update) in updates.0.iter() {
+            self.apply(addr, update)?;
+        }
+        Ok(())
+    }
+
+    pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<(), ConsensusError> {
+        if update.is_nil() {
+            return Ok(());
+        }
+        match self.0.entry(*addr) {
+            hash_map::Entry::Occupied(mut occ) => {
+                occ.get_mut().chain(update)?;
                 if occ.get().is_nil() {
                     occ.remove();
                 }
             }
-        }
-        Ok(res)
-    }
-
-    // applyes a RollUpdate, compensates and returns compensation
-    pub fn apply(
-        &mut self,
-        addr: &Address,
-        update: &RollUpdate,
-    ) -> Result<RollCompensation, ConsensusError> {
-        if update.is_nil() {
-            return Ok(RollCompensation(0));
-        }
-        match self.0.entry(*addr) {
-            hash_map::Entry::Occupied(mut occ) => occ.get_mut().chain(update),
             hash_map::Entry::Vacant(vac) => {
-                let mut compensated_update = update.clone();
-                let compensation = compensated_update.compensate();
-                vac.insert(compensated_update);
-                Ok(compensation)
+                vac.insert(update.clone());
             }
         }
+        Ok(())
+    }
+}
+
+impl RollUpdateInterface for RollUpdates {
+    fn chain(&mut self, change: &Self) -> Result<(), ConsensusError> {
+        for (addr, update) in change.0.iter() {
+            if update.is_nil() {
+                continue;
+            }
+            match self.0.entry(*addr) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    occ.get_mut().chain(update)?;
+                    if occ.get().is_nil() {
+                        occ.remove();
+                    }
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    vac.insert(update.clone());
+                }
+            }
+        }
+        Ok(())
     }
 
-    pub fn clone_subset(&self, addrs_opt: Option<&HashSet<Address>>) -> Self {
-        if let Some(addrs) = addrs_opt {
-            Self(
-                addrs
-                    .iter()
-                    .filter_map(|addr| self.0.get(addr).map(|v| (*addr, v.clone())))
-                    .collect(),
-            )
-        } else {
-            self.clone()
-        }
+    fn is_nil(&self) -> bool {
+        self.0.iter().all(|(_k, v)| v.is_nil())
     }
 }
 
@@ -178,37 +166,27 @@ impl RollCounts {
         RollCounts(BTreeMap::new())
     }
 
-    // applies RollUpdates to self with compensations
-    // if addrs_opt is Some(addrs), the changes are restricted to addrs
-    pub fn apply_subset(
-        &mut self,
-        updates: &RollUpdates,
-        addrs_opt: Option<&HashSet<Address>>,
-    ) -> Result<(), ConsensusError> {
-        for (addr, update) in updates
-            .0
-            .iter()
-            .filter(|(a, _v)| addrs_opt.map_or(true, |addrs| addrs.contains(a)))
-        {
+    pub fn apply(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
+        for (addr, update) in updates.0.iter() {
             match self.0.entry(*addr) {
                 btree_map::Entry::Occupied(mut occ) => {
-                    if update.roll_purchases >= update.roll_sales {
-                        occ.get_mut()
-                            .checked_add(update.roll_purchases - update.roll_sales)
-                            .ok_or(ConsensusError::InvalidRollUpdate(
+                    if update.roll_increment {
+                        occ.get_mut().checked_add(update.roll_delta).ok_or(
+                            ConsensusError::InvalidRollUpdate(
                                 "overflow while incrementing roll count".into(),
-                            ))?;
+                            ),
+                        )?;
                     } else {
-                        occ.get_mut()
-                            .checked_sub(update.roll_sales - update.roll_purchases)
-                            .ok_or(ConsensusError::InvalidRollUpdate(
+                        occ.get_mut().checked_sub(update.roll_delta).ok_or(
+                            ConsensusError::InvalidRollUpdate(
                                 "underflow while decrementing roll count".into(),
-                            ))?;
+                            ),
+                        )?;
                     }
                 }
                 btree_map::Entry::Vacant(vac) => {
-                    if update.roll_purchases >= update.roll_sales {
-                        vac.insert(update.roll_purchases - update.roll_sales);
+                    if update.roll_increment || update.roll_delta == 0 {
+                        vac.insert(update.roll_delta);
                     } else {
                         return Err(ConsensusError::InvalidRollUpdate(
                             "underflow while decrementing roll count".into(),
@@ -224,17 +202,13 @@ impl RollCounts {
         self.0.retain(|_k, v| *v != 0);
     }
 
-    pub fn clone_subset(&self, addrs_opt: Option<&HashSet<Address>>) -> Self {
-        if let Some(addrs) = addrs_opt {
-            Self(
-                addrs
-                    .iter()
-                    .filter_map(|addr| self.0.get(addr).map(|v| (*addr, *v)))
-                    .collect(),
-            )
-        } else {
-            self.clone()
-        }
+    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+        Self(
+            addrs
+                .iter()
+                .filter_map(|addr| self.0.get(addr).map(|v| (*addr, *v)))
+                .collect(),
+        )
     }
 }
 
@@ -251,8 +225,8 @@ impl OperationRollInterface for Operation {
                 res.apply(
                     &Address::from_public_key(&self.content.sender_public_key)?,
                     &RollUpdate {
-                        roll_purchases: roll_count,
-                        roll_sales: 0,
+                        roll_increment: true,
+                        roll_delta: roll_count,
                     },
                 )?;
             }
@@ -260,8 +234,8 @@ impl OperationRollInterface for Operation {
                 res.apply(
                     &Address::from_public_key(&self.content.sender_public_key)?,
                     &RollUpdate {
-                        roll_purchases: 0,
-                        roll_sales: roll_count,
+                        roll_increment: false,
+                        roll_delta: roll_count,
                     },
                 )?;
             }
@@ -277,7 +251,7 @@ pub struct ThreadCycleState {
     last_final_slot: Slot,
     /// Number of rolls an address has
     pub roll_count: RollCounts,
-    /// Cycle roll updates
+    /// Compensated roll updates
     pub cycle_updates: RollUpdates,
     /// Used to seed the random selector at each cycle
     rng_seed: BitVec<Lsb0, u8>,
@@ -812,11 +786,8 @@ impl ProofOfStake {
                 // check if we are applying the block itself or a miss
                 if period == block_slot.period {
                     // we are applying the block itself
-                    // compensations have already been taken into account within the block and converted to ledger changes so we ignore them here
-                    entry
-                        .cycle_updates
-                        .chain_subset(&a_block.roll_updates, None)?;
-                    entry.roll_count.apply_subset(&a_block.roll_updates, None)?;
+                    entry.cycle_updates.chain(&a_block.roll_updates)?;
+                    entry.roll_count.apply(&a_block.roll_updates)?;
                     entry.roll_count.remove_nil();
                     // append the 1st bit of the block's hash to the RNG seed bitfield
                     entry.rng_seed.push(block_id.get_first_bit());
@@ -868,14 +839,14 @@ impl ProofOfStake {
                 .get_final_roll_data(target_cycle, slot.thread)
                 .ok_or(ConsensusError::NotFinalRollError)?;
             if !roll_data.is_complete(self.cfg.periods_per_cycle) {
-                return Err(ConsensusError::NotFinalRollError); // target_cycle not completly final
+                return Err(ConsensusError::NotFinalRollError); //target_cycle not completly final
             }
             for (addr, update) in roll_data.cycle_updates.0.iter() {
-                let sale_delta = update.roll_sales.saturating_sub(update.roll_purchases);
-                if sale_delta > 0 {
+                if !update.roll_increment && !update.is_nil() {
                     res.insert(
                         *addr,
-                        sale_delta
+                        update
+                            .roll_delta
                             .checked_mul(self.cfg.roll_price)
                             .ok_or(ConsensusError::RollOverflowError)?,
                     );

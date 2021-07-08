@@ -1022,25 +1022,15 @@ impl BlockGraph {
     }
 
     ///for algo see pos.md
-    // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
-    // returns (roll_counts, cycle_roll_updates)
     pub fn get_roll_data_at_parent(
         &self,
         block_id: BlockId,
-        addrs_opt: Option<&HashSet<Address>>,
+        addrs: HashSet<Address>,
         pos: &ProofOfStake,
-    ) -> Result<(RollCounts, RollUpdates), ConsensusError> {
+    ) -> Result<RollCounts, ConsensusError> {
         // get target block and its cycle/thread
-        let (target_cycle, target_thread) = match self.block_statuses.get(&block_id) {
-            Some(BlockStatus::Active(a_block)) => (
-                a_block
-                    .block
-                    .header
-                    .content
-                    .slot
-                    .get_cycle(self.cfg.periods_per_cycle),
-                a_block.block.header.content.slot.thread,
-            ),
+        let target_thread = match self.block_statuses.get(&block_id) {
+            Some(BlockStatus::Active(a_block)) => a_block.block.header.content.slot.thread,
             _ => {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "block missing or non-active: {:?}",
@@ -1050,7 +1040,6 @@ impl BlockGraph {
         };
 
         // stack back to latest final slot
-        // (step 1 in pos.md)
         let mut stack = Vec::new();
         let mut cur_block_id = block_id;
         let final_cycle;
@@ -1067,7 +1056,6 @@ impl BlockGraph {
             };
             if cur_a_block.is_final {
                 // filters out genesis and final blocks
-                // (step 1.1 in pos.md)
                 final_cycle = cur_a_block
                     .block
                     .header
@@ -1076,54 +1064,26 @@ impl BlockGraph {
                     .get_cycle(self.cfg.periods_per_cycle);
                 break;
             }
-            // (step 1.2 in pos.md)
             stack.push(cur_block_id);
             cur_block_id = cur_a_block.parents[target_thread as usize].0;
         }
 
         // get latest final PoS state for addresses
-        // (step 2 a,d 3 in pos.md)
-        let (mut cur_rolls, mut cur_cycle_roll_updates) = {
-            // (step 2 in pos.md)
-            let cycle_state = pos.get_final_roll_data(final_cycle, target_thread).ok_or(
-                ConsensusError::ContainerInconsistency(format!(
-                    "final PoS cycle not available: {:?}",
-                    final_cycle
-                )),
-            )?;
-            // (step 3 in pos.md)
-            let cur_cycle_roll_updates = if final_cycle == target_cycle {
-                cycle_state.cycle_updates.clone_subset(addrs_opt)
-            } else {
-                RollUpdates::new()
-            };
-            (
-                cycle_state.roll_count.clone_subset(addrs_opt),
-                cur_cycle_roll_updates,
-            )
-        };
+        let mut cur_rolls = pos
+            .get_final_roll_data(final_cycle, target_thread)
+            .ok_or(ConsensusError::ContainerInconsistency(format!(
+                "final PoS cycle not available: {:?}",
+                final_cycle
+            )))?
+            .roll_count
+            .clone_subset(&addrs);
 
         // unstack blocks and apply their roll changes
-        // (step 4 in pos.md)
         while let Some(cur_block_id) = stack.pop() {
-            // get block and apply its roll updates to cur_rolls and cur_cycle_roll_updates if in the same cycle as the target block
+            // get block and apply its roll updates to cur_rolls
             match self.block_statuses.get(&cur_block_id) {
                 Some(BlockStatus::Active(a_block)) => {
-                    // (step 4.1 in pos.md)
-                    cur_rolls.apply_subset(&a_block.roll_updates, addrs_opt)?;
-                    // (step 4.2 in pos.md)
-                    if a_block
-                        .block
-                        .header
-                        .content
-                        .slot
-                        .get_cycle(self.cfg.periods_per_cycle)
-                        == target_cycle
-                    {
-                        // if the block is in the target cycle, accumulate the roll updates
-                        // applies compensations but ignores their amount
-                        cur_cycle_roll_updates.chain_subset(&a_block.roll_updates, addrs_opt)?;
-                    }
+                    cur_rolls.apply(&a_block.roll_updates)?;
                 }
                 _ => {
                     return Err(ConsensusError::ContainerInconsistency(format!(
@@ -1134,8 +1094,7 @@ impl BlockGraph {
             };
         }
 
-        // (step 5 in pos.md)
-        Ok((cur_rolls, cur_cycle_roll_updates))
+        Ok(cur_rolls)
     }
 
     /// gets Ledger data export for given Addressses
@@ -2137,7 +2096,6 @@ impl BlockGraph {
     /// Check if operations are consistent.
     ///
     /// Returns changes done by that block to the ledger (one hashmap per thread) and rolls
-    /// consensus/pos.md#block-reception-process
     fn check_operations(
         &self,
         block_to_check: &Block,
@@ -2292,35 +2250,26 @@ impl BlockGraph {
         };
 
         // (step 3 in consensus/pos.md)
-        let parent_id = block_to_check.header.content.parents
-            [block_to_check.header.content.slot.thread as usize];
-        // will not panic: tested before
+        let mut roll_counts = self.get_roll_data_at_parent(
+            block_to_check.header.content.parents
+                [block_to_check.header.content.slot.thread as usize],
+            roll_involved_addresses,
+            pos,
+        )?;
+
+        // (step 4 in consensus/pos.md)
+        let mut roll_updates = RollUpdates::new();
         let parent_cycle = self
-            .get_active_block(&parent_id)
-            .unwrap()
+            .get_active_block(
+                &block_to_check.header.content.parents
+                    [block_to_check.header.content.slot.thread as usize],
+            )
+            .ok_or(ConsensusError::MissingBlock)?
             .block
             .header
             .content
             .slot
             .get_cycle(self.cfg.periods_per_cycle);
-        let (mut roll_counts, mut cycle_roll_updates) =
-            self.get_roll_data_at_parent(parent_id, Some(&roll_involved_addresses), pos)?;
-        if block_to_check
-            .header
-            .content
-            .slot
-            .get_cycle(self.cfg.periods_per_cycle)
-            != parent_cycle
-        {
-            // if parent is from a different cycle: reset roll updates
-            // (step 3.1 in consensus/pos.md)
-            cycle_roll_updates = RollUpdates::new();
-        }
-        // here, cycle_roll_updates is compensated
-
-        // block roll updates
-        // (step 4 in consensus/pos.md)
-        let mut roll_updates = RollUpdates::new();
 
         let mut block_ledger_changes: Vec<HashMap<Address, LedgerChange>> =
             vec![HashMap::new(); self.cfg.thread_count as usize];
@@ -2427,7 +2376,7 @@ impl BlockGraph {
         for operation in block_to_check.operations.iter() {
             let op_roll_updates = operation.get_roll_updates()?;
             // (step 6.1 in consensus/pos.md)
-            if let Err(err) = roll_counts.apply_subset(&op_roll_updates, None) {
+            if let Err(err) = roll_counts.apply(&op_roll_updates) {
                 warn!("could not apply roll update in block: {}", err);
                 return Ok(BlockOperationsCheckOutcome::Discard(
                     DiscardReason::Invalid(format!(
@@ -2436,9 +2385,8 @@ impl BlockGraph {
                     )),
                 ));
             }
-
-            // chain block roll updates, ignore compensations (step 6.2 in consensus/pos.md)
-            if let Err(err) = roll_updates.chain_subset(&op_roll_updates, None) {
+            // (step 6.2 in consensus/pos.md)
+            if let Err(err) = roll_updates.chain(&op_roll_updates) {
                 warn!("could not chain roll update in block: {}", err);
                 return Ok(BlockOperationsCheckOutcome::Discard(
                     DiscardReason::Invalid(format!(
@@ -2446,76 +2394,6 @@ impl BlockGraph {
                         err
                     )),
                 ));
-            }
-
-            // chain cycle roll updates, apply compensation reimbursements (step 6.3.1 in consensus/pos.md)
-            match cycle_roll_updates.chain_subset(&op_roll_updates, None) {
-                Ok(compensations) => {
-                    for (compensation_addr, compensation_count) in compensations.into_iter() {
-                        let balance_delta =
-                            match compensation_count.0.checked_mul(self.cfg.roll_price) {
-                                Some(v) => v,
-                                None => {
-                                    return Ok(BlockOperationsCheckOutcome::Discard(
-                                        DiscardReason::Invalid(
-                                            "overflow on roll compensation sale price".into(),
-                                        ),
-                                    ));
-                                }
-                            };
-                        let compensation_ledger_change = LedgerChange {
-                            balance_delta,
-                            balance_increment: true,
-                        };
-
-                        // try apply compensations to current_ledger
-                        // (step 6.3.1 in consensus/pos.md)
-                        let compensation_change = (&compensation_addr, &compensation_ledger_change);
-                        if let Err(err) = current_ledger.apply_change(compensation_change) {
-                            warn!("block graph check_operations error, can't apply compensation_change to block current_ledger: {}", err);
-                            return Ok(BlockOperationsCheckOutcome::Discard(
-                                DiscardReason::Invalid(format!(
-                                    "can't apply compensation_change to block current_ledger: {}",
-                                    err
-                                )),
-                            ));
-                        }
-
-                        // try apply compensations to block_ledger_changes
-                        // (step 6.3.2 in consensus/pos.md)
-                        match block_ledger_changes
-                            [compensation_addr.get_thread(self.cfg.thread_count) as usize]
-                            .entry(compensation_addr)
-                        {
-                            hash_map::Entry::Occupied(mut occ) => {
-                                if let Err(err) = occ.get_mut().chain(&compensation_ledger_change) {
-                                    warn!(
-                                        "block graph check_operations error, can't chain roll compensation change :{}",
-                                        err
-                                    );
-                                    return Ok(BlockOperationsCheckOutcome::Discard(
-                                        DiscardReason::Invalid(format!(
-                                            "Can't chain roll compensation change :{}",
-                                            err
-                                        )),
-                                    ));
-                                }
-                            }
-                            hash_map::Entry::Vacant(vac) => {
-                                vac.insert(compensation_ledger_change);
-                            }
-                        }
-                    }
-                }
-                Err(err) => {
-                    warn!("could not chain roll update in block: {}", err);
-                    return Ok(BlockOperationsCheckOutcome::Discard(
-                        DiscardReason::Invalid(format!(
-                            "could not chain roll update in block: {}",
-                            err
-                        )),
-                    ));
-                }
             }
 
             let op_ledger_changes = match operation.get_ledger_changes(
