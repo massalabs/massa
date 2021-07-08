@@ -45,8 +45,10 @@ pub struct NetworkConfig {
     pub message_timeout: UTime,
     /// Every ask_peer_list_interval in millis we ask every one for its advertisable peers list.
     pub ask_peer_list_interval: UTime,
-    //max number of hash in the message AskForBlocks
+    /// Max number of hash in the message AskForBlocks
     pub max_ask_blocks_per_message: u32,
-    // Max wait time for sending a Network or Node event.
+    /// Max number of operations per message
+    pub max_operations_per_message: u32,
+    /// Max wait time for sending a Network or Node event.
     pub max_send_wait: UTime,
 }

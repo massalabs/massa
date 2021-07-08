@@ -436,7 +436,7 @@ async fn send_operations(
     evt_tx: mpsc::Sender<ApiEvent>,
     context: SerializationContext,
 ) -> Result<impl Reply, Rejection> {
-    massa_trace!("api.filters.send_operations ", { "operation": operations });
+    massa_trace!("api.filters.send_operations ", { "operations": operations });
     let signature_engine = SignatureEngine::new();
 
     let to_send: Result<HashMap<OperationId, Operation>, ModelsError> = operations

@@ -33,6 +33,7 @@ async fn run(cfg: config::Config) {
         max_bootstrap_deps: cfg.bootstrap.max_bootstrap_deps,
         max_bootstrap_children: cfg.bootstrap.max_bootstrap_children,
         max_ask_blocks_per_message: cfg.network.max_ask_blocks_per_message,
+        max_operations_per_message: cfg.network.max_operations_per_message,
         max_bootstrap_message_size: cfg.bootstrap.max_bootstrap_message_size,
     };
 

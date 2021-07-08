@@ -157,20 +157,16 @@ impl ProtocolCommandSender {
         res
     }
 
-    pub async fn propagate_operation(
+    pub async fn propagate_operations(
         &mut self,
-        operation_id: OperationId,
-        operation: Operation,
+        operations: HashMap<OperationId, Operation>,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("protocol.command_sender.propagate_operation", {
-            "operation": operation
+        massa_trace!("protocol.command_sender.propagate_operations", {
+            "operations": operations
         });
         let res = self
             .0
-            .send(ProtocolCommand::PropagateOperation {
-                operation_id,
-                operation,
-            })
+            .send(ProtocolCommand::PropagateOperations(operations))
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("propagate_operation command send error".into())
