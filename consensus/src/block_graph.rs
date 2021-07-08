@@ -75,6 +75,89 @@ enum BlockStatus {
     },
 }
 
+/// The block version that can be exported.
+/// Note that the detailed list of operation is not exported
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportCompiledBlock {
+    /// Header of the corresponding block.
+    pub block: BlockHeader,
+    /// For (i, set) in children,
+    /// set contains the headers' hashes
+    /// of blocks referencing exported block as a parent,
+    /// in thread i.
+    pub children: Vec<HashSet<Hash>>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ExportDiscardedBlocks {
+    pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BlockGraphExport {
+    /// Genesis blocks.
+    pub genesis_blocks: Vec<Hash>,
+    /// Map of active blocks, were blocks are in their exported version.
+    pub active_blocks: HashMap<Hash, ExportCompiledBlock>,
+    /// Finite cache of discarded blocks, in exported version.
+    pub discarded_blocks: ExportDiscardedBlocks,
+    /// Best parents hashe in each thread.
+    pub best_parents: Vec<Hash>,
+    /// Latest final period and block hash in each thread.
+    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
+    /// Head of the incompatibility graph.
+    pub gi_head: HashMap<Hash, HashSet<Hash>>,
+    /// List of maximal cliques of compatible blocks.
+    pub max_cliques: Vec<HashSet<Hash>>,
+}
+
+impl<'a> From<&'a BlockGraph> for BlockGraphExport {
+    /// Conversion from blockgraph.
+    fn from(block_graph: &'a BlockGraph) -> Self {
+        let mut export = BlockGraphExport {
+            genesis_blocks: block_graph.genesis_hashes.clone(),
+            active_blocks: Default::default(),
+            discarded_blocks: Default::default(),
+            best_parents: block_graph.best_parents.clone(),
+            latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
+            gi_head: block_graph.gi_head.clone(),
+            max_cliques: block_graph.max_cliques.clone(),
+        };
+
+        for (hash, block) in block_graph.block_statuses.iter() {
+            match block {
+                BlockStatus::Discarded { header, reason, .. } => {
+                    export
+                        .discarded_blocks
+                        .map
+                        .insert(hash.clone(), (reason.clone(), header.clone()));
+                }
+                BlockStatus::Active(block) => {
+                    export.active_blocks.insert(
+                        hash.clone(),
+                        ExportCompiledBlock {
+                            block: block.block.header.clone(),
+                            children: block
+                                .children
+                                .iter()
+                                .map(|thread| {
+                                    thread
+                                        .keys()
+                                        .map(|hash| hash.clone())
+                                        .collect::<HashSet<Hash>>()
+                                })
+                                .collect(),
+                        },
+                    );
+                }
+                _ => continue,
+            }
+        }
+
+        export
+    }
+}
+
 pub struct BlockGraph {
     cfg: ConsensusConfig,
     serialization_context: SerializationContext,

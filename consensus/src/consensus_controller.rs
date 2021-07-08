@@ -92,7 +92,6 @@ pub struct ConsensusCommandSender(pub mpsc::Sender<ConsensusCommand>);
 
 impl ConsensusCommandSender {
     /// Gets all the aviable information on the block graph returning a Blockgraphexport.
-    /*  TODO put it back
     pub async fn get_block_graph_status(&self) -> Result<BlockGraphExport, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<BlockGraphExport>();
         self.0
@@ -105,7 +104,6 @@ impl ConsensusCommandSender {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
         })
     }
-    */
 
     /// Gets the whole block corresponding to given hash.
     ///

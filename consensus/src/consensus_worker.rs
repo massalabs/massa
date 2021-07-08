@@ -15,7 +15,7 @@ use tokio::{
 #[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
-    // GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),  TODO put it back
+    GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
     /// Returns through a channel full block with specified hash.
     GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
     /// Returns through a channel the list of slots with public key of the selected staker.
@@ -196,7 +196,6 @@ impl ConsensusWorker {
         cmd: ConsensusCommand,
     ) -> Result<(), ConsensusError> {
         match cmd {
-            /* TODO put it back
             ConsensusCommand::GetBlockGraphStatus(response_tx) => response_tx
                 .send(BlockGraphExport::from(&self.block_db))
                 .map_err(|err| {
@@ -205,7 +204,6 @@ impl ConsensusWorker {
                         err
                     ))
                 }),
-            */
             //return full block with specified hash
             ConsensusCommand::GetActiveBlock(hash, response_tx) => response_tx
                 .send(self.block_db.get_active_block(hash).cloned())
