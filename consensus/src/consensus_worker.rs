@@ -218,6 +218,7 @@ impl ConsensusWorker {
     async fn get_best_operations(
         &mut self,
         cur_slot: Slot,
+        left_size: u64,
     ) -> Result<Vec<Operation>, ConsensusError> {
         let mut ops = Vec::new();
         let mut exclude: Vec<OperationId> = Vec::new();
@@ -313,7 +314,11 @@ impl ConsensusWorker {
             && self.next_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
-            let operations = self.get_best_operations(cur_slot).await?;
+            let left_size = self.cfg.max_block_size as u64
+                - self
+                    .block_db
+                    .prepare_block_creation("block".to_string(), cur_slot)?;
+            let operations = self.get_best_operations(cur_slot, left_size).await?;
             let ids: HashSet<OperationId> = operations
                 .iter()
                 .map(|op| op.get_operation_id(&self.serialization_context))
@@ -330,12 +335,9 @@ impl ConsensusWorker {
                 })[..],
             );
 
-            let (hash, block) = self.block_db.create_block(
-                "block".to_string(),
-                cur_slot,
-                operations,
-                operation_merkle_root,
-            )?;
+            let (hash, block) = self
+                .block_db
+                .create_block(operations, operation_merkle_root)?;
             massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
 
             self.block_db

@@ -707,6 +707,7 @@ pub struct BlockGraph {
     to_propagate: HashMap<BlockId, Block>,
     attack_attempts: Vec<BlockId>,
     ledger: Ledger,
+    next_block: Option<Block>,
 }
 
 #[derive(Debug)]
@@ -858,6 +859,7 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
+                next_block: None,
             };
             // compute block descendants
             let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
@@ -904,6 +906,7 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
+                next_block: None,
             })
         }
     }
@@ -912,18 +915,11 @@ impl BlockGraph {
         self.best_parents.clone()
     }
 
-    /// Returns hash and resulting discarded blocks
-    ///
-    /// # Arguments
-    /// * val : dummy value used to generate dummy hash
-    /// * slot : generated block is in slot slot.
-    pub fn create_block(
-        &self,
+    pub fn prepare_block_creation(
+        &mut self,
         val: String,
         slot: Slot,
-        operations: Vec<Operation>,
-        operation_merkle_root: Hash,
-    ) -> Result<(BlockId, Block), ConsensusError> {
+    ) -> Result<u64, ConsensusError> {
         let (public_key, private_key) = self
             .cfg
             .nodes
@@ -940,7 +936,52 @@ impl BlockGraph {
                 slot: slot,
                 parents: self.best_parents.clone(),
                 out_ledger_hash: example_hash,
+                operation_merkle_root: Hash::hash(&Vec::new()[..]),
+            },
+            &self.serialization_context,
+        )?;
+        let res = (
+            hash,
+            Block {
+                header,
+                operations: Vec::new(),
+            },
+        );
+        massa_trace!("consensus.block_graph.prepare_create_block", {"hash": res.0, "block": res.1});
+        let bytes = res.1.bytes_count();
+        self.next_block = Some(res.1);
+        Ok(bytes)
+    }
+
+    /// Returns hash and resulting discarded blocks
+    ///
+    /// # Arguments
+    /// * val : dummy value used to generate dummy hash
+    /// * slot : generated block is in slot slot.
+    pub fn create_block(
+        &self,
+        operations: Vec<Operation>,
+        operation_merkle_root: Hash,
+    ) -> Result<(BlockId, Block), ConsensusError> {
+        let (public_key, private_key) = self
+            .cfg
+            .nodes
+            .get(self.cfg.current_node_index as usize)
+            .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
+            .ok_or(ConsensusError::KeyError)?;
+
+        let prepared = self
+            .next_block
+            .clone()
+            .ok_or(ConsensusError::BlockCreationError(
+                "No prepared block avaible".to_string(),
+            ))?;
+
+        let (hash, header) = BlockHeader::new_signed(
+            &private_key,
+            BlockHeaderContent {
                 operation_merkle_root,
+                ..prepared.header.content
             },
             &self.serialization_context,
         )?;

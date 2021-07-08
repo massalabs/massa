@@ -79,6 +79,10 @@ impl Block {
             })
             .is_some())
     }
+
+    pub fn bytes_count(&self) -> u64 {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

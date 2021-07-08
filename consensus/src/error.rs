@@ -71,6 +71,8 @@ pub enum ConsensusError {
     SerdeError(#[from] serde_json::Error),
     #[error("oneshot recv error {0}")]
     OneshotReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error("block creation error {0}")]
+    BlockCreationError(String),
 }
 
 #[derive(Error, Debug)]
