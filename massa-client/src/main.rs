@@ -16,14 +16,19 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use clap::App;
 use clap::Arg;
-use crypto::hash::Hash;
+use crypto::{
+    hash::Hash,
+    signature::{derive_public_key, PrivateKey},
+};
 use log::trace;
 use models::Address;
 use models::Operation;
+use models::SerializeCompact;
 use models::{Block, Slot};
 use models::{OperationContent, OperationType};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
+use std::string::ToString;
 
 use communication::network::PeerInfo;
 use std::fs::read_to_string;
@@ -60,6 +65,12 @@ fn main() {
                 .required(false)
                 .takes_value(true),
         );
+
+    //for text
+    let private_key = crypto::signature::generate_random_private_key();
+    let public_key = crypto::signature::derive_public_key(&private_key);
+    let recipient_address = models::Address::from_public_key(&public_key).unwrap();
+    println!("add:{}", recipient_address.to_bs58_check());
 
     // load config
     let config_path = "config/config.toml";
@@ -121,9 +132,11 @@ fn main() {
         "(hash, thread, slot, reason) for last invalid blocks",
         cmd_last_invalid,
     )
-    .new_command_noargs(
+    .new_command(
         "create_transaction",
-        "create a new transaction with specified parameters. parameters: To be defined",
+        "create a new transaction with specified parameters. parameters: <private_key> <recipient address> <amount> <fee> <expire_period>",
+        5,
+        5,
         cmd_create_transaction,
     )
     .new_command_noargs("stop_node", "Stop node gracefully", cmd_stop_node)
@@ -183,30 +196,57 @@ fn main() {
     }
 }
 
-fn cmd_create_transaction(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+//create_transaction <private_key> <recipient address> <amount> <fee> <expire_period>
+fn cmd_create_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     trace!("before sending request to client in cmd_create_transaction in massa-client main");
+
+    //get node serialisation context
+    let url = format!("http://{}/api/v1/node_config", data.node_ip);
+    let resp = reqwest::blocking::get(&url)?;
+    if resp.status() != StatusCode::OK {
+        return Err(ReplError::GeneralError(format!(
+            "Error during node connection. Server answer code :{}",
+            resp.status()
+        )));
+    }
+
+    let context = resp.json::<models::SerializationContext>()?;
     //create a dummy transaction
-    let public_key = crypto::signature::PublicKey::from_bs58_check(
-        "4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb",
-    )
-    .unwrap();
-    let recipient_address: Address = Address::from_public_key(&public_key).unwrap();
+    let private_key = PrivateKey::from_bs58_check(params[0].trim())
+        .map_err(|_| ReplError::UnreconnizedKeyError)?;
+
+    let public_key = derive_public_key(&private_key);
+    let recipient_address = Address::from_bs58_check(params[1])
+        .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+    let amount: u64 = FromStr::from_str(&params[2]).map_err(|err| {
+        ReplError::GeneralError(format!("incorrect specified amount not an int :{}", err))
+    })?;
+    let fee: u64 = FromStr::from_str(&params[3]).map_err(|err| {
+        ReplError::GeneralError(format!("incorrect specified fee not an int :{}", err))
+    })?;
+    let expire_period: u64 = FromStr::from_str(&params[4]).map_err(|err| {
+        ReplError::GeneralError(format!(
+            "incorrect specified expire period not an int :{}",
+            err
+        ))
+    })?;
     let operation_type = OperationType::Transaction {
         recipient_address,
-        amount: 0,
+        amount,
     };
     let operation_content = OperationContent {
-        fee: 0,
-        expire_period: 0,
+        fee,
+        expire_period,
         sender_public_key: public_key,
         op: operation_type,
     };
 
+    let hash = Hash::hash(&operation_content.to_bytes_compact(&context).unwrap());
+    let signature = crypto::sign(&hash, &private_key).unwrap();
+
     let operation = Operation {
         content: operation_content,
-        signature: crypto::signature::Signature::from_bs58_check(
-                "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
-            ).unwrap(),
+        signature,
     };
     let resp = reqwest::blocking::Client::new()
         .post(&format!("http://{}/api/v1/operations", data.node_ip))

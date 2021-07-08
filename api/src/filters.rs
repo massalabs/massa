@@ -313,6 +313,14 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || get_network_info(network_cfg.clone(), evt_tx.clone()));
 
+    let context_cfg = context.clone();
+    let node_config = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("node_config"))
+        .and(warp::path::end())
+        .and_then(move || get_node_config(context_cfg.clone()));
+
     let evt_tx = event_tx.clone();
     let network_cfg = network_config.clone();
     let consensus_cfg = consensus_config.clone();
@@ -402,7 +410,20 @@ pub fn get_filter(
         .or(staker_info)
         .or(stop_node)
         .or(send_operations)
+        .or(node_config)
         .boxed()
+}
+
+/// Returns our ip adress
+///
+/// Note: as our ip adress is in the config,
+/// this function is more about getting every bit of
+/// information we want exactly in the same way
+async fn get_node_config(
+    context: SerializationContext,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_node_config", {});
+    Ok(warp::reply::json(&context))
 }
 
 /// This function sends AskStop outside the Api and
