@@ -602,6 +602,35 @@ async fn get_block(
     }
 }
 
+async fn get_operation(
+    event_tx: mpsc::Sender<ApiEvent>,
+    id: OperationId,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.get_operation", { "operation_id": id });
+    match retrieve_operation(id, &event_tx).await {
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error retrieving operation : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+        Ok(None) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("operation not found : {:?}", id)
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        )
+        .into_response()),
+        Ok(Some((op, pool, blocks))) => Ok(warp::reply::json(&json!({
+            "operation": op,
+            "in_pool": pool,
+            "in_blocks": blocks,
+        }))
+        .into_response()),
+    }
+}
+
 /// Returns our ip adress
 ///
 /// Note: as our ip adress is in the config,
