@@ -9,7 +9,10 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
-use models::{Address, Block, BlockId, Operation, OperationId, SerializationContext, Slot};
+use models::{
+    Address, Block, BlockId, Operation, OperationId, OperationSearchResult, SerializationContext,
+    Slot,
+};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet, VecDeque};
 use storage::StorageAccess;
@@ -189,14 +192,19 @@ impl ConsensusCommandSender {
         })
     }
 
-    pub async fn get_operation(
+    pub async fn get_operations(
         &self,
-        id: OperationId,
-    ) -> Result<Option<(Operation, bool, HashMap<BlockId, bool>)>, ConsensusError> {
+        operation_ids: HashSet<OperationId>,
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.get_operation", { "id": id });
+        massa_trace!("consensus.consensus_controller.get_operatiosn", {
+            "operation_ids": operation_ids
+        });
         self.0
-            .send(ConsensusCommand::GetOperation { id, response_tx })
+            .send(ConsensusCommand::GetOperations {
+                operation_ids,
+                response_tx,
+            })
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
         response_rx.await.map_err(|_| {

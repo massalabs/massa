@@ -211,7 +211,7 @@ async fn run(cfg: config::Config) {
                         }
                     },
                 Ok(ApiEvent::GetLedgerData {addresses, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_sledger_data", {});
+                    massa_trace!("massa-node.main.run.select.api_event.get_ledger_data", {});
                     if response_tx.send(
                         consensus_command_sender
                             .get_ledger_data(addresses )
@@ -220,15 +220,15 @@ async fn run(cfg: config::Config) {
                             warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
                         }
                     },
-                Ok(ApiEvent::GetOperation {id, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_sledger_data", {});
+                Ok(ApiEvent::GetOperations {operation_ids, response_tx}) => {
+                    massa_trace!("massa-node.main.run.select.api_event.get_operations", {"operation_ids": operation_ids});
                     if response_tx.send(
                         consensus_command_sender
-                            .get_operation(id)
+                            .get_operations(operation_ids)
                             .await
-                            .expect(&format!("could not get operation {:?}", id))
+                            .expect("could not get operations".into())
                         ).is_err() {
-                            warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
+                            warn!("could not send get_operations response in api_event_receiver.wait_event");
                         }
                     },
                 Err(err) => {

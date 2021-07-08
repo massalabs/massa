@@ -143,12 +143,20 @@ impl PoolCommandSender {
         })
     }
 
-    pub async fn get_operation(&mut self, id: OperationId) -> Result<Option<Operation>, PoolError> {
-        massa_trace!("pool.command_sender.get_operation", { "id": id });
+    pub async fn get_operations(
+        &mut self,
+        operation_ids: HashSet<OperationId>,
+    ) -> Result<HashMap<OperationId, Operation>, PoolError> {
+        massa_trace!("pool.command_sender.get_operations", {
+            "operation_ids": operation_ids
+        });
 
         let (response_tx, response_rx) = oneshot::channel();
         self.0
-            .send(PoolCommand::GetOperation { id, response_tx })
+            .send(PoolCommand::GetOperations {
+                operation_ids,
+                response_tx,
+            })
             .await
             .map_err(|_| PoolError::ChannelError("get_operation command send error".into()))?;
 

@@ -3,7 +3,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use models::{Address, Operation, OperationId, SerializationContext, SerializeCompact, Slot};
 use num::rational::Ratio;
 
-use crate::{PoolCommand, PoolConfig, PoolError};
+use crate::{PoolConfig, PoolError};
 
 struct WrappedOperation {
     op: Operation,
@@ -215,8 +215,14 @@ impl OperationPool {
             .collect()
     }
 
-    pub fn get_operation(&self, id: OperationId) -> Option<Operation> {
-        self.ops.get(&id).map(|wrapped_op| wrapped_op.op.clone())
+    pub fn get_operations(
+        &self,
+        operation_ids: &HashSet<OperationId>,
+    ) -> HashMap<OperationId, Operation> {
+        operation_ids
+            .iter()
+            .filter_map(|op_id| self.ops.get(&op_id).map(|w_op| (*op_id, w_op.op.clone())))
+            .collect()
     }
 }
 

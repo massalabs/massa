@@ -23,9 +23,9 @@ pub enum PoolCommand {
         max_size: u64,
         response_tx: oneshot::Sender<Vec<(OperationId, Operation, u64)>>,
     },
-    GetOperation {
-        id: OperationId,
-        response_tx: oneshot::Sender<Option<Operation>>,
+    GetOperations {
+        operation_ids: HashSet<OperationId>,
+        response_tx: oneshot::Sender<HashMap<OperationId, Operation>>,
     },
 }
 
@@ -154,8 +154,11 @@ impl PoolWorker {
                     max_size,
                 )?)
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
-            PoolCommand::GetOperation { id, response_tx } => response_tx
-                .send(self.operation_pool.get_operation(id))
+            PoolCommand::GetOperations {
+                operation_ids,
+                response_tx,
+            } => response_tx
+                .send(self.operation_pool.get_operations(&operation_ids))
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())

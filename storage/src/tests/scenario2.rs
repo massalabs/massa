@@ -25,12 +25,20 @@ async fn test_find_operation() {
     assert_eq!(0, command_sender.len().await.unwrap());
     let (block, id, op) = get_block_with_op(&serialization_context);
     command_sender.add_block(id, block).await.unwrap();
-    let (out_id, out_idx, _out_op) = command_sender.get_operation(op).await.unwrap().unwrap();
-    assert_eq!((out_id, out_idx), (id, 0));
+    let (out_idx, out_final) = command_sender
+        .get_operations(vec![op].into_iter().collect())
+        .await
+        .unwrap()[&op]
+        .in_blocks[&id];
+    assert_eq!((out_idx, out_final), (0, true));
     let mut op2 = create_operation(&serialization_context);
     op2.content.fee = 42;
     let id2 = op2.get_operation_id(&serialization_context).unwrap();
-    assert!(command_sender.get_operation(id2).await.unwrap().is_none());
+    assert!(!command_sender
+        .get_operations(vec![id2].into_iter().collect())
+        .await
+        .unwrap()
+        .contains_key(&id2));
     manager.stop().await.unwrap();
 }
 
