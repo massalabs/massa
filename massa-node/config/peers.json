@@ -1,1 +1,10 @@
-[]
+[
+    {
+      "ip": "93.31.10.235",
+      "banned": false,
+      "bootstrap": true,
+      "last_alive": null,
+      "last_failure": null,
+      "advertised": true
+    }
+]
