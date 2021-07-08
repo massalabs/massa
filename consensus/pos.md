@@ -39,15 +39,24 @@ Add a field:
 
 ### Principle
 
-This is part of the RandomSelector API.
+To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of FinalRollThreadData.rng_seed for all threads in increasing order)`, then draw an index among the cumsum of the `final_roll_data.roll_count` for cycle `N-3` among all threads. THe complexity of a draw should be in `O(log(K))` where K is the roll ledger size. 
 
-To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of FinalRollThreadData.rng_seed for threads from 0 to thread_count-1)`, then draw an index among the cumsum of the `final_roll_data.roll_count` for cycle `N-3` among all threads. There should be an error if `final_roll_data[thread][0].cycle + 3 <= N` for any thread.
+### Special case: if N-3 < 0
+
+If the lookback aims at a cycle `-N` below zero, use:
+* the initial roll registry as the roll count source
+* `sha256^N(cfg.initial_draw_seed)` as the seed, where `sha256^N` means that we apply the sha256 hash function N times consecutively
+### Special case: genesis blocks
+
+For genesis blocks, force the draw to yield the genesis creator's address.
+For simplicity, we do not send genesis block bits to the RNG seed bitfield of cycle 0.
 
 ### Cache
 
-The selector system works on-demand: when the knwoledge of a block creator for a given slot is needed, it is returned if already in cache, otherwise:
-* the cumsum vector and RNG seed are computed for the chosen cycle, and used to draw all the slots of the cycle which are stored in cache
-* the oldest cached cycle draws are removed if the number of stored cycles > cfg.selector_max_cached_cycles
+When computing draws for a cycle, draw the whole cycle and leave it in cache.
+Keep a config-defined maximal number of cycles in cache.
+If there are too many, drop the ones with the lowest sequence number.
+Whenever cache is computed or read for a given cycle, set its sequence number to a new incremental value.
 
 ## When a new block B arrives in thread Tau, cycle N
 
