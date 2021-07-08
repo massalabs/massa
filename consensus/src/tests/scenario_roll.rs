@@ -1,8 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use bitvec::vec;
 use models::{Address, Slot};
-use pool::{PoolCommand, PoolCommandSender};
 use serial_test::serial;
 use time::UTime;
 
@@ -12,12 +10,11 @@ use crate::{
         mock_pool_controller::MockPoolController,
         mock_protocol_controller::MockProtocolController,
         tools::{
-            self, create_and_test_block, create_block_with_operations, create_roll_buy,
-            create_roll_sell, create_transaction, generate_ledger_file, get_creator_for_draw,
-            propagate_block, wait_pool_slot,
+            self, create_block_with_operations, create_roll_buy, create_roll_sell,
+            generate_ledger_file, get_creator_for_draw, propagate_block, wait_pool_slot,
         },
     },
-    LedgerData, LedgerExport,
+    LedgerData,
 };
 
 #[tokio::test]
@@ -61,7 +58,6 @@ async fn test_roll() {
     let staking_file = tools::generate_staking_keys_file(&vec![priv_2]);
     let roll_counts_file = tools::generate_default_roll_counts_file(vec![priv_1]);
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -84,7 +80,7 @@ async fn test_roll() {
 
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
     // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             protocol_command_sender.clone(),

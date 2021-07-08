@@ -5,7 +5,7 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::{pos::RollCounts, start_consensus_controller, tests::tools::generate_ledger_file};
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
 use serial_test::serial;
@@ -20,7 +20,6 @@ async fn test_old_stale_not_propagated_and_discarded() {
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -118,7 +117,6 @@ async fn test_block_not_processed_multiple_times() {
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -199,7 +197,6 @@ async fn test_queuing() {
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -286,7 +283,6 @@ async fn test_double_staking_does_not_propagate() {
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),

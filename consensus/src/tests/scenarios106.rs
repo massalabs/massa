@@ -5,9 +5,7 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::{
-    pos::RollCounts, start_consensus_controller, tests::tools::generate_ledger_file, timeslots,
-};
+use crate::{start_consensus_controller, tests::tools::generate_ledger_file, timeslots};
 use models::{BlockId, Slot};
 use serial_test::serial;
 use std::collections::{HashMap, HashSet};
@@ -28,7 +26,6 @@ async fn test_unsorted_block() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -178,7 +175,6 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -296,7 +292,6 @@ async fn test_too_many_blocks_in_the_future() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -422,7 +417,6 @@ async fn test_dep_in_back_order() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -513,10 +507,6 @@ async fn test_dep_in_back_order() {
         vec![hasht0s3, hasht1s3],
         staking_keys[0].clone(),
     );
-
-    let hash_list = vec![
-        hasht0s1, hasht1s1, hasht0s2, hasht1s2, hasht0s3, hasht1s3, hasht0s4, hasht1s4,
-    ];
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
     protocol_controller.receive_block(t0s2).await; // not propagated and update wishlist
@@ -616,7 +606,6 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -771,7 +760,6 @@ async fn test_add_block_that_depends_on_invalid_block() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),

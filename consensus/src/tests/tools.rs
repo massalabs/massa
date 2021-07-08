@@ -16,7 +16,6 @@ use models::{
     OperationType, SerializeCompact, Slot,
 };
 use pool::PoolCommand;
-use rand_xoshiro::rand_core::block;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -153,7 +152,7 @@ pub async fn validate_propagate_block(
     valid_hash: BlockId,
     timeout_ms: u64,
 ) {
-    let param = protocol_controller
+    protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, .. } => {
                 if block_id == valid_hash {
@@ -164,7 +163,7 @@ pub async fn validate_propagate_block(
             _ => None,
         })
         .await
-        .expect("Block not propagated before timeout.");
+        .expect("Block not propagated before timeout.")
 }
 
 pub async fn validate_notify_block_attack_attempt(
@@ -599,7 +598,6 @@ pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateK
 }
 
 pub fn default_consensus_config(
-    nb_nodes: usize,
     initial_ledger_path: &Path,
     roll_counts_path: &Path,
     staking_keys_path: &Path,

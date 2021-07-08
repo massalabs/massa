@@ -9,14 +9,16 @@ use serial_test::serial;
 use time::UTime;
 
 use crate::{
-    pos::RollCounts,
     start_consensus_controller,
-    tests::tools::{create_transaction, get_export_active_test_block},
+    tests::{
+        mock_pool_controller::PoolCommandSink,
+        tools::{create_transaction, get_export_active_test_block},
+    },
     BootsrapableGraph, LedgerData, LedgerExport,
 };
 
 use super::{
-    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_pool_controller::MockPoolController,
     mock_protocol_controller::MockProtocolController,
     tools::{self, generate_ledger_file},
 };
@@ -60,7 +62,6 @@ async fn test_storage() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -234,19 +235,19 @@ async fn test_storage() {
     for (
         id,
         OperationSearchResult {
-            status,
             op,
             in_blocks,
             in_pool,
+            ..
         },
     ) in ops.iter()
     {
         assert!(expected.contains_key(id));
         let OperationSearchResult {
-            status,
             op: ex_op,
             in_pool: ex_pool,
             in_blocks: ex_blocks,
+            ..
         } = expected.get(id).unwrap();
         assert_eq!(
             op.get_operation_id().unwrap(),
@@ -304,7 +305,6 @@ async fn test_consensus_and_storage() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -385,7 +385,7 @@ async fn test_consensus_and_storage() {
     let b3 = block.header.compute_block_id().unwrap();
     storage_access.add_block(b3, block).await.unwrap();
 
-    let (boot_graph, b1, b2) = get_bootgraph(
+    let (boot_graph, _, _) = get_bootgraph(
         pubkey_a.clone(),
         vec![
             op_consensus_1.clone(),
@@ -396,7 +396,7 @@ async fn test_consensus_and_storage() {
     );
 
     // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+    let (_protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     cfg.genesis_timestamp = UTime::now(0)
@@ -404,7 +404,7 @@ async fn test_consensus_and_storage() {
         .saturating_sub(cfg.t0.checked_mul(4).unwrap())
         .saturating_add(300.into());
     // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             protocol_command_sender.clone(),

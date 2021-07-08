@@ -7,7 +7,6 @@ use super::{
 };
 use crate::{
     ledger::{Ledger, LedgerChange, LedgerData},
-    pos::RollCounts,
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
@@ -24,8 +23,7 @@ async fn test_ledger_init() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -43,8 +41,7 @@ async fn test_ledger_initializes_get_latest_final_periods() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -68,8 +65,7 @@ async fn test_ledger_final_balance_increment_new_address() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -104,8 +100,7 @@ async fn test_ledger_apply_change_wrong_thread() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -143,8 +138,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -184,8 +178,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -235,8 +228,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -292,8 +284,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -321,8 +312,7 @@ async fn test_ledger_final_balance_non_existing_address() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -351,8 +341,7 @@ async fn test_ledger_final_balance_duplicate_address() {
         .collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -385,8 +374,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -424,8 +412,7 @@ async fn test_ledger_clear() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -470,8 +457,7 @@ async fn test_ledger_read_whole() {
         .collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        1,
+    let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -573,7 +559,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -585,7 +570,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     cfg.delta_f0 = 4;
     cfg.block_reward = 1;
     cfg.operation_validity_periods = 20;
-    let nodes = vec![private_key_1];
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =

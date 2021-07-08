@@ -2,9 +2,9 @@ use serial_test::serial;
 use std::collections::HashMap;
 
 use communication::protocol::ProtocolCommand;
-use crypto::{hash::Hash, signature::PublicKey};
+use crypto::hash::Hash;
 use models::SerializeCompact;
-use models::{Address, Block, BlockHeader, BlockHeaderContent, Operation, Slot};
+use models::{Address, Block, BlockHeader, BlockHeaderContent, Slot};
 use pool::PoolCommand;
 use time::UTime;
 
@@ -15,12 +15,8 @@ use crate::{
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
         mock_protocol_controller::MockProtocolController,
-        tools::{
-            self, create_roll_transaction, create_transaction, generate_ledger_file,
-            get_export_active_test_block, wait_pool_slot,
-        },
+        tools::{self, create_roll_transaction, create_transaction, generate_ledger_file},
     },
-    BootsrapableGraph, LedgerExport,
 };
 
 // implement test of issue !424.
@@ -70,7 +66,6 @@ async fn test_block_creation_with_draw() {
 
     let roll_counts_file = tools::generate_roll_counts_file(&roll_counts);
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -123,7 +118,7 @@ async fn test_block_creation_with_draw() {
 
     // initial block: addr2 buys 1 roll
     let op1 = create_roll_transaction(priv_2, pubkey_2, 1, true, 10, operation_fee);
-    let (initial_block_id, mut block, _) = tools::create_block_with_operations(
+    let (initial_block_id, block, _) = tools::create_block_with_operations(
         &cfg,
         Slot::new(1, 0),
         &genesis_ids,
@@ -172,11 +167,11 @@ async fn test_block_creation_with_draw() {
     // check 10 draws
     let draws: HashMap<Slot, Address> = draws.into_iter().collect();
     let mut cur_slot = Slot::new(cfg.periods_per_cycle * 3, 0);
-    for block_n in 0..10 {
+    for _ in 0..10 {
         // wait block propagation
         let block_creator = protocol_controller
             .wait_command(3000.into(), |cmd| match cmd {
-                ProtocolCommand::IntegratedBlock { block_id, block } => {
+                ProtocolCommand::IntegratedBlock { block, .. } => {
                     if block.header.content.slot == cur_slot {
                         Some(block.header.content.creator)
                     } else {
@@ -247,7 +242,6 @@ async fn test_order_of_inclusion() {
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -406,7 +400,6 @@ async fn test_block_filling() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),

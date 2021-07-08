@@ -6,7 +6,6 @@ use super::{
     tools,
 };
 use crate::{
-    pos::RollCounts,
     start_consensus_controller,
     tests::tools::{create_transaction, generate_ledger_file, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
@@ -27,7 +26,6 @@ async fn test_update_current_slot_cmd_notification() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -95,7 +93,6 @@ async fn test_update_latest_final_block_cmd_notification() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -173,7 +170,6 @@ async fn test_new_final_ops() {
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
-        1,
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
@@ -254,7 +250,7 @@ async fn test_new_final_ops() {
     )
     .await;
 
-    p1 = tools::create_and_test_block(
+    tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
         Slot::new(2, 1),
