@@ -204,6 +204,7 @@ async fn main() {
     // setup logging
     stderrlog::new()
         .module(module_path!())
+        .module("bootstrap")
         .module("communication")
         .module("consensus")
         .module("crypto")

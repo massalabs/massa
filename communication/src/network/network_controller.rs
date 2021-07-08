@@ -58,7 +58,7 @@ pub async fn start_network_controller(
                     format!("could not load node private key file: {:?}", err),
                 )
             })?;
-        PrivateKey::from_bs58_check(&private_key_bs58_check).map_err(|err| {
+        PrivateKey::from_bs58_check(&private_key_bs58_check.trim()).map_err(|err| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!("node private key file corrupted: {:?}", err),
