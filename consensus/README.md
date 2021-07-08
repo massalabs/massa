@@ -80,6 +80,20 @@ struct PendingAckBlockState {
 #### unlock dependencies
 
 #### check header
+* check if received header is in block database -> AlreadyKnownError
+* (no structural checks needed)
+* check that it is newer than the latest final block in that thread -> ToDiscardError
+* check that it is not too far in the future (see future_block_processing_max_periods) -> ToDiscardError
+* check roll number -> ToDiscardError
+* check if time to process it has come (for now: is its slot in the past) -> Ok(HashMap::new())
+* check dependencies
+    * check that no parent is discarded
+    * check if a parent is in the wrong thread or has a slot not strictly before the block
+        * if a parent is discarded or there is some mess with slots and parents -> ToDIscardError
+        * else keep missing dependencies
+    * check that parents are mutually compatible -> ToDiscardError
+    * check_block_parents_topological_order -> ToDiscardError
+* return missing dependencies
 
 #### check if received block is in block database
 * it's NotReceivedYet
@@ -105,6 +119,9 @@ struct PendingAckBlockState {
 
 * it's Genesis
     * Do something with the node that send that ?
+
+#### check_block_parents_topological_order
+Only difference with current implementation will be where we are looking for blocks.
 
 #### check if received header is in block database
 
