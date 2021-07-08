@@ -38,7 +38,7 @@
 
 [network]
     bind = "0.0.0.0:31234"
-    routable_ip = "78.194.186.228" # Your ip
+    routable_ip = "200.200.200.200" # Your ip
     protocol_port = 31234
     connect_timeout = 5000
     wakeup_interval = 10000
@@ -77,3 +77,6 @@
     max_bootstrap_children = 1000
     max_ping = 500
     max_bootstrap_message_size = 100000000
+    read_timeout = 100000
+    write_timeout = 10000
+

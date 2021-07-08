@@ -1,7 +1,8 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
-use consensus::{BoostrapableGraph, ConsensusCommand};
+use communication::network::{BootstrapPeers, NetworkCommand};
+use consensus::{BootsrapableGraph, ConsensusCommand};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
@@ -31,6 +32,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_bootstrap_children: 100,
         max_ping: UTime::from(500),
         max_bootstrap_message_size: 100000000,
+        read_timeout: 1000.into(),
+        write_timeout: 1000.into(),
     }
 }
 
@@ -78,8 +81,29 @@ where
     }
 }
 
-pub fn get_boot_graph() -> BoostrapableGraph {
-    BoostrapableGraph {
+pub async fn wait_network_command<F, T>(
+    network_command_receiver: &mut Receiver<NetworkCommand>,
+    timeout: UTime,
+    filter_map: F,
+) -> Option<T>
+where
+    F: Fn(NetworkCommand) -> Option<T>,
+{
+    let timer = sleep(timeout.into());
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            cmd = network_command_receiver.recv() => match cmd {
+                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
+                _ => panic!("network event channel died")
+            },
+            _ = &mut timer => return None
+        }
+    }
+}
+
+pub fn get_boot_graph() -> BootsrapableGraph {
+    BootsrapableGraph {
         active_blocks: Default::default(),
         best_parents: vec![
             Hash::hash(&"parent1".as_bytes()),
@@ -92,6 +116,13 @@ pub fn get_boot_graph() -> BoostrapableGraph {
         gi_head: Default::default(),
         max_cliques: vec![Vec::new()],
     }
+}
+
+pub fn get_peers() -> BootstrapPeers {
+    BootstrapPeers(vec![
+        "82.245.123.77".parse().unwrap(),
+        "82.220.123.78".parse().unwrap(),
+    ])
 }
 
 pub async fn bridge_mock_streams(mut read_side: ReadHalf, mut write_side: WriteHalf) {

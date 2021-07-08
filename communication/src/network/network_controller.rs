@@ -3,6 +3,7 @@ use super::{
     establisher::Establisher,
     network_worker::{NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker},
     peer_info_database::*,
+    BootstrapPeers,
 };
 use crate::common::NodeId;
 use crate::error::CommunicationError;
@@ -29,6 +30,7 @@ pub async fn start_network_controller(
     serialization_context: SerializationContext,
     mut establisher: Establisher,
     clock_compensation: i64,
+    initial_peers: Option<BootstrapPeers>,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -82,7 +84,12 @@ pub async fn start_network_controller(
     let listener = establisher.get_listener(cfg.bind).await?;
 
     // load peer info database
-    let peer_info_db = PeerInfoDatabase::new(&cfg, clock_compensation).await?;
+    let mut peer_info_db = PeerInfoDatabase::new(&cfg, clock_compensation).await?;
+
+    // add initial peers
+    if let Some(peers) = initial_peers {
+        peer_info_db.merge_candidate_peers(&peers.0)?;
+    }
 
     // launch controller
     let (command_tx, command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
@@ -133,7 +140,7 @@ pub async fn start_network_controller(
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
-    pub async fn ban(&mut self, node_id: NodeId) -> Result<(), CommunicationError> {
+    pub async fn ban(&self, node_id: NodeId) -> Result<(), CommunicationError> {
         self.0
             .send(NetworkCommand::Ban(node_id))
             .await
@@ -142,11 +149,7 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to send block.
-    pub async fn send_block(
-        &mut self,
-        node: NodeId,
-        block: Block,
-    ) -> Result<(), CommunicationError> {
+    pub async fn send_block(&self, node: NodeId, block: Block) -> Result<(), CommunicationError> {
         self.0
             .send(NetworkCommand::SendBlock { node, block })
             .await
@@ -158,7 +161,7 @@ impl NetworkCommandSender {
 
     /// Send the order to ask for a block.
     pub async fn ask_for_block_list(
-        &mut self,
+        &self,
         list: HashMap<NodeId, Vec<Hash>>,
     ) -> Result<(), CommunicationError> {
         self.0
@@ -172,7 +175,7 @@ impl NetworkCommandSender {
 
     /// Send the order to send block header.
     pub async fn send_block_header(
-        &mut self,
+        &self,
         node: NodeId,
         header: BlockHeader,
     ) -> Result<(), CommunicationError> {
@@ -186,7 +189,7 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to get peers.
-    pub async fn get_peers(&mut self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
+    pub async fn get_peers(&self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
         let (response_tx, response_rx) = oneshot::channel::<HashMap<IpAddr, PeerInfo>>();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
@@ -201,8 +204,24 @@ impl NetworkCommandSender {
         })?)
     }
 
+    /// Send the order to get bootstrap peers.
+    pub async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel::<BootstrapPeers>();
+        self.0
+            .send(NetworkCommand::GetBootstrapPeers(response_tx))
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("cound not send GetBootstrapPeers command".into())
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            CommunicationError::ChannelError(
+                "could not send GetBootstrapPeers response upstream".into(),
+            )
+        })?)
+    }
+
     pub async fn block_not_found(
-        &mut self,
+        &self,
         node: NodeId,
         hash: Hash,
     ) -> Result<(), CommunicationError> {

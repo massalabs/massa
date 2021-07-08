@@ -13,6 +13,10 @@ pub struct BootstrapConfig {
     pub bind: Option<SocketAddr>,
     /// connection timeout
     pub connect_timeout: UTime,
+    /// readout timeout
+    pub read_timeout: UTime,
+    /// write timeout
+    pub write_timeout: UTime,
     /// Time we wait before retrying a bootstrap
     pub retry_delay: UTime,
     /// Max message size for bootstrap

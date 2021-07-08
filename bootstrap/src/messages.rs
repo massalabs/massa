@@ -1,4 +1,5 @@
-use consensus::BoostrapableGraph;
+use communication::network::BootstrapPeers;
+use consensus::BootsrapableGraph;
 use crypto::signature::{Signature, SIGNATURE_SIZE_BYTES};
 use models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializationContext,
@@ -23,14 +24,21 @@ pub enum BootstrapMessage {
     BootstrapTime {
         /// The curren time on the bootstrap server.
         server_time: UTime,
-        /// Signature of random bytes received +  current time.
+        /// Signature of [BootstrapInitiation.random_bytes + server_time].
+        signature: Signature,
+    },
+    /// Sync clocks,
+    BootstrapPeers {
+        /// Server peers
+        peers: BootstrapPeers,
+        /// Signature of [BootstrapTime.signature + peers]
         signature: Signature,
     },
     /// Global consensus state
     ConsensusState {
         /// Content
-        graph: BoostrapableGraph,
-        /// Signature of our random bytes + graph
+        graph: BootsrapableGraph,
+        /// Signature of [BootstrapPeers.signature + peers]
         signature: Signature,
     },
 }
@@ -40,7 +48,8 @@ pub enum BootstrapMessage {
 enum MessageTypeId {
     BootstrapInitiation = 0u32,
     BootstrapTime = 1,
-    ConsensusState = 2,
+    Peers = 2,
+    ConsensusState = 3,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -58,6 +67,11 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(u32::from(MessageTypeId::BootstrapTime).to_varint_bytes());
                 res.extend(&signature.to_bytes());
                 res.extend(server_time.to_bytes_compact(context)?);
+            }
+            BootstrapMessage::BootstrapPeers { peers, signature } => {
+                res.extend(u32::from(MessageTypeId::Peers).to_varint_bytes());
+                res.extend(&signature.to_bytes());
+                res.extend(&peers.to_bytes_compact(&context)?);
             }
             BootstrapMessage::ConsensusState { graph, signature } => {
                 res.extend(u32::from(MessageTypeId::ConsensusState).to_varint_bytes());
@@ -102,11 +116,20 @@ impl DeserializeCompact for BootstrapMessage {
                     signature,
                 }
             }
+            MessageTypeId::Peers => {
+                let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += SIGNATURE_SIZE_BYTES;
+                let (peers, delta) =
+                    BootstrapPeers::from_bytes_compact(&buffer[cursor..], &context)?;
+                cursor += delta;
+
+                BootstrapMessage::BootstrapPeers { signature, peers }
+            }
             MessageTypeId::ConsensusState => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
                 let (graph, delta) =
-                    BoostrapableGraph::from_bytes_compact(&buffer[cursor..], &context)?;
+                    BootsrapableGraph::from_bytes_compact(&buffer[cursor..], &context)?;
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState { signature, graph }
@@ -156,7 +179,7 @@ mod tests {
             panic!("not the right message variant expected BootstrapInitiation");
         }
 
-        let base_graph = BoostrapableGraph {
+        let base_graph = BootsrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
             active_blocks: Vec::new(),
             /// Best parents hashe in each thread.

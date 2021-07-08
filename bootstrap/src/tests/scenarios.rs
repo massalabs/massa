@@ -1,3 +1,4 @@
+use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::SerializeCompact;
 use std::str::FromStr;
@@ -8,24 +9,27 @@ use crate::{get_state, start_bootstrap_server};
 use super::{
     mock_establisher,
     tools::{
-        bridge_mock_streams, get_boot_graph, get_bootstrap_config, get_keys,
-        get_serialization_context, wait_consensus_command,
+        bridge_mock_streams, get_boot_graph, get_bootstrap_config, get_keys, get_peers,
+        get_serialization_context, wait_consensus_command, wait_network_command,
     },
 };
 
 #[tokio::test]
 async fn test_bootstrap_server() {
-    let (command_tx, mut command_rx) = mpsc::channel::<ConsensusCommand>(5);
+    let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
+    let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let (private_key, public_key) = get_keys();
 
     let cfg = get_bootstrap_config(public_key);
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
-        ConsensusCommandSender(command_tx),
+        ConsensusCommandSender(consensus_cmd_tx),
+        NetworkCommandSender(network_cmd_tx),
         cfg.clone(),
         get_serialization_context(),
         bootstrap_establisher,
         private_key,
+        0,
     )
     .await
     .unwrap()
@@ -74,8 +78,22 @@ async fn test_bootstrap_server() {
         bridge_mock_streams(bootstrap_r, remote_w).await;
     });
 
+    // wait for bootstrap to ask network for peers, send them
+    let response = match wait_network_command(&mut network_cmd_rx, 1000.into(), |cmd| match cmd {
+        NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
+        _ => None,
+    })
+    .await
+    {
+        Some(resp) => resp,
+        None => panic!("timeout waiting for get peers command"),
+    };
+    let sent_peers = get_peers();
+    response.send(sent_peers.clone()).unwrap();
+
     // wait for bootstrap to ask consensus for bootstrap graph, send it
-    let response = match wait_consensus_command(&mut command_rx, 1000.into(), |cmd| match cmd {
+    let response = match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd
+    {
         ConsensusCommand::GetBootGraph(resp) => Some(resp),
         _ => None,
     })
@@ -88,7 +106,7 @@ async fn test_bootstrap_server() {
     response.send(sent_graph.clone()).unwrap();
 
     // wait for get_state
-    let (maybe_recv_graph, _comp) = get_state_h
+    let (maybe_recv_graph, _comp, maybe_recv_peers) = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
 
@@ -106,6 +124,18 @@ async fn test_bootstrap_server() {
             .to_bytes_compact(&get_serialization_context())
             .unwrap(),
         "mismatch between sent and received graphs"
+    );
+
+    // check peers
+    let recv_peers = maybe_recv_peers.unwrap();
+    assert_eq!(
+        sent_peers
+            .to_bytes_compact(&get_serialization_context())
+            .unwrap(),
+        recv_peers
+            .to_bytes_compact(&get_serialization_context())
+            .unwrap(),
+        "mismatch between sent and received peers"
     );
 
     // stop bootstrap server

@@ -107,6 +107,7 @@ async fn test_multiple_connections_to_controller() {
         serialization_context.clone(),
         establisher,
         0,
+        None,
     )
     .await
     .expect("could not start network controller");
@@ -221,12 +222,13 @@ async fn test_peer_ban() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (mut network_command_sender, mut network_event_receiver, network_manager, _) =
+    let (network_command_sender, mut network_event_receiver, network_manager, _) =
         start_network_controller(
             network_conf.clone(),
             serialization_context.clone(),
             establisher,
             0,
+            None,
         )
         .await
         .expect("could not start network controller");
@@ -336,6 +338,7 @@ async fn test_advertised_and_wakeup_interval() {
         serialization_context.clone(),
         establisher,
         0,
+        None,
     )
     .await
     .expect("could not start network controller");
@@ -464,12 +467,13 @@ async fn test_block_not_found() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (mut network_command_sender, mut network_event_receiver, network_manager, _) =
+    let (network_command_sender, mut network_event_receiver, network_manager, _) =
         start_network_controller(
             network_conf.clone(),
             serialization_context.clone(),
             establisher,
             0,
+            None,
         )
         .await
         .expect("could not start network controller");
@@ -646,12 +650,13 @@ async fn test_retry_connection_closed() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (mut network_command_sender, mut network_event_receiver, network_manager, _) =
+    let (network_command_sender, mut network_event_receiver, network_manager, _) =
         start_network_controller(
             network_conf.clone(),
             serialization_context.clone(),
             establisher,
             0,
+            None,
         )
         .await
         .expect("could not start network controller");

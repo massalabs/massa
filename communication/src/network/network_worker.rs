@@ -15,8 +15,13 @@ use crypto::hash::Hash;
 use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::{Block, BlockHeader, SerializationContext};
+use models::{
+    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, HashMap, HashSet},
+    convert::TryInto,
     net::{IpAddr, SocketAddr},
 };
 use tokio::sync::mpsc::error::SendTimeoutError;
@@ -42,6 +47,7 @@ pub enum NetworkCommand {
         header: BlockHeader,
     },
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
+    GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
     BlockNotFound {
         node: NodeId,
@@ -77,6 +83,65 @@ pub enum NetworkEvent {
 
 #[derive(Debug)]
 pub enum NetworkManagementCommand {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BootstrapPeers(pub Vec<IpAddr>);
+
+impl SerializeCompact for BootstrapPeers {
+    fn to_bytes_compact(
+        &self,
+        context: &SerializationContext,
+    ) -> Result<Vec<u8>, models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        //peers
+        let peers_count: u32 = self.0.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many peers blocks in BootstrapPeers: {:?}",
+                err
+            ))
+        })?;
+        if peers_count > context.max_peer_list_length {
+            return Err(ModelsError::SerializeError(format!(
+                "too many peers for serialization context in BootstrapPeers: {:?}",
+                peers_count
+            )));
+        }
+        res.extend(peers_count.to_varint_bytes());
+        for peer in self.0.iter() {
+            res.extend(peer.to_bytes_compact(context)?);
+        }
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for BootstrapPeers {
+    fn from_bytes_compact(
+        buffer: &[u8],
+        context: &SerializationContext,
+    ) -> Result<(Self, usize), models::ModelsError> {
+        let mut cursor = 0usize;
+
+        //peers
+        let (peers_count, delta) = u32::from_varint_bytes(buffer)?;
+        if peers_count > context.max_peer_list_length {
+            return Err(ModelsError::DeserializeError(format!(
+                "too many peers for deserialization context in BootstrapPeers: {:?}",
+                peers_count
+            )));
+        }
+        cursor += delta;
+        let mut peers: Vec<IpAddr> = Vec::with_capacity(peers_count as usize);
+        for _ in 0..(peers_count as usize) {
+            let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..], context)?;
+            cursor += delta;
+            peers.push(ip);
+        }
+
+        Ok((BootstrapPeers(peers), cursor))
+    }
+}
 
 /// Real job is done by network worker
 pub struct NetworkWorker {
@@ -663,6 +728,18 @@ impl NetworkWorker {
                             "could not send GetPeersChannelError upstream".into(),
                         )
                     })?;
+            }
+            NetworkCommand::GetBootstrapPeers(response_tx) => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::GetBootstrapPeers",
+                    {}
+                );
+                let peer_list = self.peer_info_db.get_advertisable_peer_ips();
+                response_tx.send(BootstrapPeers(peer_list)).map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "could not send GetBootstrapPeers response upstream".into(),
+                    )
+                })?;
             }
             NetworkCommand::BlockNotFound { node, hash } => {
                 massa_trace!(
