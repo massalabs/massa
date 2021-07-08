@@ -70,14 +70,20 @@ impl MockNetworkController {
 
     pub async fn send_block(&mut self, source_node_id: NodeId, block: Block) {
         self.network_event_tx
-            .send(NetworkEvent::ReceivedBlock(source_node_id, block))
+            .send(NetworkEvent::ReceivedBlock {
+                node: source_node_id,
+                block,
+            })
             .await
             .expect("Couldn't send block to protocol.");
     }
 
     pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, hash: Hash) {
         self.network_event_tx
-            .send(NetworkEvent::AskedForBlock(source_node_id, hash))
+            .send(NetworkEvent::AskedForBlock {
+                node: source_node_id,
+                hash,
+            })
             .await
             .expect("Couldn't send ask for block to protocol.");
     }

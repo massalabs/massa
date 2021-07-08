@@ -115,7 +115,7 @@ impl ConsensusCommandSender {
     ) -> Result<Option<Block>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<Option<Block>>();
         self.0
-            .send(ConsensusCommand::GetActiveBlock(hash, response_tx))
+            .send(ConsensusCommand::GetActiveBlock { hash, response_tx })
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))
@@ -132,17 +132,17 @@ impl ConsensusCommandSender {
     /// * end_slot: end of the considered interval.
     pub async fn get_selection_draws(
         &self,
-        start_slot: Slot,
-        end_slot: Slot,
+        start: Slot,
+        end: Slot,
     ) -> Result<Vec<(Slot, PublicKey)>, ConsensusError> {
         let (response_tx, response_rx) =
             oneshot::channel::<Result<Vec<(Slot, PublicKey)>, ConsensusError>>();
         self.0
-            .send(ConsensusCommand::GetSelectionDraws(
-                start_slot,
-                end_slot,
+            .send(ConsensusCommand::GetSelectionDraws {
+                start,
+                end,
                 response_tx,
-            ))
+            })
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
         response_rx.await.map_err(|_| {

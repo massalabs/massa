@@ -19,7 +19,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         MockNetworkController::new();
 
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
         _ => None,
     };
 
@@ -88,7 +88,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         .await
         .expect("Protocol didn't send network command.")
     {
-        NetworkCommand::AskForBlock(node_id, hash) => (node_id, hash),
+        NetworkCommand::AskForBlock { node, hash } => (node, hash),
         _ => panic!("Unexpected network command."),
     };
     assert_eq!(expected_hash, asked_for_hash);
@@ -117,7 +117,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     let mut signature_engine = SignatureEngine::new();
 
     let send_block_or_header_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::SendBlock(..) => Some(cmd),
+        cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
         cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
         _ => None,
     };
@@ -197,14 +197,14 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             .wait_command(1000.into(), send_block_or_header_cmd_filter)
             .await
         {
-            Some(NetworkCommand::SendBlock(node_id, block)) => {
+            Some(NetworkCommand::SendBlock { node, block }) => {
                 let hash = block
                     .header
                     .content
                     .compute_hash(&serialization_context)
                     .expect("Failed to compute hash.");
                 assert_eq!(expected_hash, hash);
-                assert!(expecting_block.remove(&node_id));
+                assert!(expecting_block.remove(&node));
             }
             Some(NetworkCommand::SendBlockHeader { .. }) => {
                 panic!("unexpected header sent");

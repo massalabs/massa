@@ -41,6 +41,8 @@ pub enum NodeEventType {
     ReceivedAskForBlock(Hash),
     /// Connection with node was shut down for given reason
     Closed(ConnectionClosureReason),
+    /// Didn't found given block,
+    BlockNotFound(Hash),
 }
 
 /// Events node worker can emit.
@@ -150,6 +152,9 @@ impl NodeWorker {
                             Message::AskPeerList => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::AskedPeerList)
                                 ).await.map_err(|_| CommunicationError::ChannelError("failed to send asked block event".into()))?,
+                            Message::BlockNotFound(hash) => self.node_event_tx.send(
+                                NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))
+                            ).await.map_err(|_| CommunicationError::ChannelError("failed to send block not found event".into()))?,
                             _ => {  // wrong message
                                 exit_reason = ConnectionClosureReason::Failed;
                                 break;

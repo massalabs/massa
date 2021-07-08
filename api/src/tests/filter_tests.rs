@@ -1052,8 +1052,8 @@ async fn test_get_block() {
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
-            Some(ApiEvent::GetActiveBlock(_hash, response_sender_tx)) => {
-                response_sender_tx.send(None).expect("failed to send block");
+            Some(ApiEvent::GetActiveBlock { response_tx, .. }) => {
+                response_tx.send(None).expect("failed to send block");
             }
 
             _ => {}
@@ -1083,8 +1083,8 @@ async fn test_get_block() {
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
-            Some(ApiEvent::GetActiveBlock(_hash, response_sender_tx)) => {
-                response_sender_tx
+            Some(ApiEvent::GetActiveBlock { response_tx, .. }) => {
+                response_tx
                     .send(Some(get_test_block()))
                     .expect("failed to send block");
             }
@@ -1123,8 +1123,8 @@ async fn test_get_block() {
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
-            Some(ApiEvent::GetActiveBlock(_hash, response_sender_tx)) => {
-                response_sender_tx.send(None).expect("failed to send block");
+            Some(ApiEvent::GetActiveBlock { response_tx, .. }) => {
+                response_tx.send(None).expect("failed to send block");
             }
 
             _ => {}
@@ -1551,8 +1551,8 @@ async fn test_staker_info() {
             loop {
                 let evt = rx_api.recv().await;
                 match evt {
-                    Some(ApiEvent::GetSelectionDraw(_start, _stop, response_sender_tx)) => {
-                        response_sender_tx
+                    Some(ApiEvent::GetSelectionDraw { response_tx, .. }) => {
+                        response_tx
                             .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
                             .expect("failed to send slection draw");
                     }
@@ -1624,8 +1624,8 @@ async fn test_staker_info() {
             let cloned = cloned_graph.clone();
             let evt = rx_api.recv().await;
             match evt {
-                Some(ApiEvent::GetSelectionDraw(_start, _stop, response_sender_tx)) => {
-                    response_sender_tx
+                Some(ApiEvent::GetSelectionDraw { response_tx, .. }) => {
+                    response_tx
                         .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
                         .expect("failed to send selection draw");
                 }

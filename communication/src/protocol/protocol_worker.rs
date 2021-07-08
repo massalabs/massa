@@ -425,7 +425,10 @@ impl ProtocolWorker {
                 self.active_nodes.remove(&node_id); // deletes all node info
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::ReceivedBlock(from_node_id, block) => {
+            NetworkEvent::ReceivedBlock {
+                node: from_node_id,
+                block,
+            } => {
                 let hash = self.note_header_from_node(&block.header, &from_node_id)?;
                 self.stop_asking_blocks(HashSet::from(vec![hash].into_iter().collect()))?;
                 self.controller_event_tx
@@ -436,7 +439,10 @@ impl ProtocolWorker {
                     })?;
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::AskedForBlock(from_node_id, data) => {
+            NetworkEvent::AskedForBlock {
+                node: from_node_id,
+                hash: data,
+            } => {
                 let node_info = self
                     .active_nodes
                     .get_mut(&from_node_id)
@@ -464,8 +470,8 @@ impl ProtocolWorker {
                     })?;
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::BlockNotFound(node_id, hash) => {
-                if let Some(info) = self.active_nodes.get_mut(&node_id) {
+            NetworkEvent::BlockNotFound { node, hash } => {
+                if let Some(info) = self.active_nodes.get_mut(&node) {
                     info.known_blocks.insert(hash, (false, Instant::now()));
                 }
                 self.update_ask_block(block_ask_timer).await?;

@@ -98,11 +98,11 @@ impl NetworkCommandSender {
     /// Send the order to send block.
     pub async fn send_block(
         &mut self,
-        node_id: NodeId,
+        node: NodeId,
         block: Block,
     ) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::SendBlock(node_id, block))
+            .send(NetworkCommand::SendBlock { node, block })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send SendBlock command".into())
@@ -113,11 +113,11 @@ impl NetworkCommandSender {
     /// Send the order to ask for a block.
     pub async fn ask_for_block(
         &mut self,
-        node_id: NodeId,
+        node: NodeId,
         hash: Hash,
     ) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::AskForBlock(node_id, hash))
+            .send(NetworkCommand::AskForBlock { node, hash })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send AskForBlock command".into())
@@ -162,7 +162,7 @@ impl NetworkCommandSender {
         hash: Hash,
     ) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::BlockNotFound(node, hash))
+            .send(NetworkCommand::BlockNotFound { node, hash })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send block_not_found command".into())
