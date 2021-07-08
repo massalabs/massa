@@ -4,7 +4,7 @@ use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolEvent;
 use crypto::signature::SignatureEngine;
 use std::collections::HashSet;
-use tools::assert_hash_asked_to_node;
+use tools::{asked_list, assert_hash_asked_to_node};
 
 #[tokio::test]
 async fn test_without_a_priori() {
@@ -347,6 +347,93 @@ async fn test_no_one_has_it() {
         "unexpected command {:?}",
         got_more_commands
     );
+
+    // Close everything
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
+}
+#[tokio::test]
+async fn test_multiple_blocks_without_a_priori() {
+    // start
+    let (protocol_config, serialization_context) = tools::create_protocol_config();
+
+    let mut signature_engine = SignatureEngine::new();
+
+    let (mut network_controller, network_command_sender, network_event_receiver) =
+        MockNetworkController::new();
+
+    // start protocol controller
+    let (mut protocol_command_sender, protocol_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            protocol_config.clone(),
+            serialization_context.clone(),
+            network_command_sender,
+            network_event_receiver,
+        )
+        .await
+        .expect("could not start protocol controller");
+
+    let node_a = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+        .await
+        .pop()
+        .unwrap();
+    let _node_b = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+        .await
+        .pop()
+        .unwrap();
+    let _node_c = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+        .await
+        .pop()
+        .unwrap();
+
+    // 2. Create two blocks coming from node 0.
+    let block_1 = tools::create_block(
+        &node_a.private_key,
+        &node_a.id.0,
+        &serialization_context,
+        &mut signature_engine,
+    );
+    let hash_1 = block_1
+        .header
+        .content
+        .compute_hash(&serialization_context)
+        .unwrap();
+
+    let block_2 = tools::create_block(
+        &node_a.private_key,
+        &node_a.id.0,
+        &serialization_context,
+        &mut signature_engine,
+    );
+    let hash_2 = block_2
+        .header
+        .content
+        .compute_hash(&serialization_context)
+        .unwrap();
+
+    // node a is disconnected so no node knows about wanted blocks
+    network_controller.close_connection(node_a.id).await;
+    // end set up
+
+    // send wishlist
+    protocol_command_sender
+        .send_wishlist_delta(vec![hash_1, hash_2].into_iter().collect(), HashSet::new())
+        .await
+        .unwrap();
+
+    let list = asked_list(&mut network_controller).await;
+    for (node_id, set) in list.into_iter() {
+        // assert we ask one block per node
+        assert_eq!(
+            set.len(),
+            1,
+            "node {:?} was asked {:?} blocks",
+            node_id,
+            set.len()
+        );
+    }
 
     // Close everything
     protocol_manager

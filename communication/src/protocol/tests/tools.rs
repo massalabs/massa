@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
 use crate::network::NetworkCommand;
@@ -127,6 +129,19 @@ pub async fn assert_hash_asked_to_node(
         .expect("Hash not asked for before timer.");
 
     assert!(list.get(&node_id).unwrap().contains(&hash_1));
+}
+
+pub async fn asked_list(
+    network_controller: &mut MockNetworkController,
+) -> HashMap<NodeId, HashSet<Hash>> {
+    let ask_for_block_cmd_filter = |cmd| match cmd {
+        NetworkCommand::AskForBlocks { list } => Some(list),
+        _ => None,
+    };
+    network_controller
+        .wait_command(1000.into(), ask_for_block_cmd_filter)
+        .await
+        .expect("Hash not asked for before timer.")
 }
 
 pub async fn assert_banned_node(node_id: NodeId, network_controller: &mut MockNetworkController) {
