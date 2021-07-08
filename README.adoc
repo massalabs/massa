@@ -29,45 +29,40 @@ Please come to our link:https://discord.com/invite/TnsJQzXkRN[Discord] for testn
 
 For project announcements we mainly use link:https://t.me/massanetwork[Telegram]. 
 
-## Install on ubuntu
+## Install on Ubuntu / MacOS
 
-* curl : `sudo apt install curl`
+* On Ubuntu, these libs must be installed: `sudo apt install curl git build-essential libssl-dev`
 * link:https://www.rust-lang.org/tools/install[rustup] : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 * configure path: `source $HOME/.cargo/env`
 * check rust version: `rustc --version`
 * install link:https://doc.rust-lang.org/edition-guide/rust-2018/rustup-for-managing-rust-versions.html[nigthly]: `rustup toolchain install nightly`
 * set it as default: `rustup default nightly`
 * check rust version: `rustc --version`
-* install git: `sudo apt install git`
-* clone this repo: `git clone https://gitlab.com/massalabs/massa-network.git`
-* `sudo apt install build-essential`
-* `sudo apt install libssl-dev`
-
-## Install on MacOS
-
-* link:https://www.rust-lang.org/tools/install[rustup] : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-* configure path: `source $HOME/.cargo/env`
-* check rust version: `rustc --version`
-* install link:https://doc.rust-lang.org/edition-guide/rust-2018/rustup-for-managing-rust-versions.html[nigthly]: `rustup toolchain install nightly`
-* set it as default: `rustup default nightly`
-* check rust version: `rustc --version`
-* clone this repo: `git clone https://gitlab.com/massalabs/massa-network.git`
+* clone this repo: `git clone https://gitlab.com/massalabs/massa.git`
 
 ## Run
 
 ### Start the node
 
+On a first window:
 ----
-cd massa-node/
+cd massa/massa-node/
 RUST_BACKTRACE=full cargo run --release
 ----
 
-
 ### Start the client
 
+On a second window:
 ----
-cd massa-client/
+cd massa/massa-client/
 cargo run --release
+----
+
+
+## Update
+----
+cd massa/
+git pull
 ----
 
 ## Tutorials
@@ -77,5 +72,4 @@ Here is a set of tutorials:
 * link:docs/wallet.adoc[creating a wallet]
 * link:docs/staking.adoc[staking]
 * link:docs/transaction.adoc[sending transactions]
-
 * Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.

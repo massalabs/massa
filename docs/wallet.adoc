@@ -14,9 +14,9 @@ Head to the link:test.massa.net[explorer] in the wallet part.
 
 Click `Generate private key` then `Add`.
 
-This generates a new random private key from your computer randomness and stays on your side, its never transfered on the network.
+This generates a new random private key from your computer randomness which stays on your side, its never transfered on the network.
 
-Now you can add more addresses or see the list of your adresses with their associated thread and balance.
+Now you can add more addresses or see the list of your addresses with their associated thread and balance.
 
 Also, if you want to save this wallet and be able to restore it later, click `Save wallet`, and next time directly do `Load wallet`. 
 
@@ -26,7 +26,7 @@ Also, if you want to save this wallet and be able to restore it later, click `Sa
 Go to the client folder:
 
 ----
-cd massa-client
+cd massa/massa-client/
 ----
 
 Start the interactive client and load a wallet file:
@@ -37,7 +37,7 @@ cargo run -- --wallet wallet.dat
 
 If the wallet file `wallet.dat` does not exist, it is created.
 
-Generate a new private key (and associated public key / address):
+Now generate a new private key (and associated public key / address):
 
 ----
 wallet_new_privkey
