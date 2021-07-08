@@ -1,48 +1,23 @@
 
 stages:
-  - sanity
-#  - test
   - build
-
 
 cache:
   key: "$CI_BUILD_STAGE-$CI_BUILD_REF_NAME"
   untracked: true
 
-# Use rustfmt to check code formatting
-rustfmt:
-  stage: sanity
+# Use rustfmt to check formatting
+sanity:
+  stage: build
   image: "demilletech/rust"
   script:
     - cargo fmt -- --check
 
-# Use clippy to detect code problems
-#clippy:
-#  stage: sanity
-#  image: "demilletech/rust"
-#  script:
-#    - cargo clippy -- -D warnings --verbose
-
-# Use cargo to test the project
-#test:
-#  stage: test
-#  image: "xd009642/tarpaulin"
-#  script:
-#    - cargo tarpaulin -v
-
-# run cargo audit to identify bad dependecies
-build:
-  stage: test
-  image: "rustlang/rust:nightly"
-  script:
-    - cargo install cargo-audit
-    - cargo-audit audit
-
-# Use cargo to release build the project
+# Use cargo to test and build the project
 build:
   stage: build
   image: "rustlang/rust:nightly"
   script:
-    - cargo build --release
-
+    - cargo build
+    - cargo test -- --test-threads=1
 
