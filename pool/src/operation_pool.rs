@@ -8,6 +8,30 @@ use num::rational::Ratio;
 
 use crate::{PoolConfig, PoolError};
 
+struct OperationIndex(HashMap<Address, HashSet<OperationId>>);
+
+impl OperationIndex {
+    fn new() -> OperationIndex {
+        OperationIndex(HashMap::new())
+    }
+    fn insert_op(&mut self, addr: Address, op_id: OperationId) {
+        self.0.entry(addr).or_insert(HashSet::new()).insert(op_id);
+    }
+
+    fn get_ops_for_address(&self, address: &Address) -> Option<&HashSet<OperationId>> {
+        self.0.get(address)
+    }
+
+    fn remove_op_for_address(&mut self, address: &Address, op_id: &OperationId) {
+        if let Some(old) = self.0.get_mut(address) {
+            old.remove(op_id);
+            if old.len() == 0 {
+                self.0.remove(address);
+            }
+        }
+    }
+}
+
 struct WrappedOperation {
     op: Operation,
     byte_count: u64,
@@ -36,7 +60,7 @@ pub struct OperationPool {
     ops_by_thread_and_interest:
         Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
     /// Maps Addres -> Op id
-    ops_by_address: HashMap<Address, HashSet<OperationId>>,
+    ops_by_address: OperationIndex,
     /// latest final blocks periods
     last_final_periods: Vec<u64>,
     /// current slot
@@ -66,7 +90,7 @@ impl OperationPool {
             thread_count,
             operation_validity_periods,
             final_operations: HashMap::new(),
-            ops_by_address: HashMap::new(),
+            ops_by_address: OperationIndex::new(),
         }
     }
 
@@ -139,10 +163,7 @@ impl OperationPool {
             self.ops.insert(op_id, wrapped_op);
 
             addrs.iter().for_each(|addr| {
-                self.ops_by_address
-                    .entry(*addr)
-                    .or_insert(HashSet::new())
-                    .insert(op_id);
+                self.ops_by_address.insert_op(*addr, op_id);
             });
 
             newly_added.insert(op_id);
@@ -161,9 +182,8 @@ impl OperationPool {
                     // complexity: const
                     let addrs = removed_op.op.get_ledger_involved_addresses(None)?;
                     for addr in addrs {
-                        if let Some(old) = self.ops_by_address.get_mut(&addr) {
-                            old.remove(&removed_id);
-                        }
+                        self.ops_by_address
+                            .remove_op_for_address(&addr, &removed_id);
                     }
                 }
                 newly_added.remove(&removed_id);
@@ -183,9 +203,7 @@ impl OperationPool {
                     .remove(&(std::cmp::Reverse(wrapped.get_fee_density()), *id));
                 let addrs = wrapped.op.get_ledger_involved_addresses(None)?;
                 for addr in addrs {
-                    if let Some(old) = self.ops_by_address.get_mut(&addr) {
-                        old.remove(&id);
-                    }
+                    self.ops_by_address.remove_op_for_address(&addr, &id);
                 }
             } // else final op wasnn't in pool.
         }
@@ -240,9 +258,7 @@ impl OperationPool {
 
                 let addrs = wrapped_op.op.get_ledger_involved_addresses(None)?;
                 for addr in addrs {
-                    if let Some(old) = self.ops_by_address.get_mut(&addr) {
-                        old.remove(&op_id);
-                    }
+                    self.ops_by_address.remove_op_for_address(&addr, &op_id);
                 }
             }
         }
@@ -298,7 +314,7 @@ impl OperationPool {
         &self,
         address: &Address,
     ) -> Result<HashMap<OperationId, OperationSearchResult>, PoolError> {
-        if let Some(ids) = self.ops_by_address.get(address) {
+        if let Some(ids) = self.ops_by_address.get_ops_for_address(address) {
             ids.iter()
                 .map(|op_id| {
                     self.ops
