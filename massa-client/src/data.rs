@@ -212,14 +212,14 @@ impl<'a> std::fmt::Display for WrapperAddressLedgerDataExport<'a> {
 #[derive(Debug, Clone, Deserialize)]
 pub struct WrapperBlock {
     pub header: WrappedBlockHeader,
-    pub operations: Vec<Operation>,
+    pub operations: Vec<WrapperOperation>,
     pub signature: Signature,
 }
 
 impl From<Block> for WrapperBlock {
     fn from(block: Block) -> Self {
         WrapperBlock {
-            operations: block.operations,
+            operations: block.operations.into_iter().map(|op| op.into()).collect(),
             signature: block.header.signature,
             header: block.header.into(),
         }
@@ -234,7 +234,17 @@ impl std::fmt::Display for WrapperBlock {
         } else {
             &signature
         };
-        write!(f, "{} signature:{} operations:....", self.header, signature)
+        write!(
+            f,
+            "{} signature:{} operations:{}",
+            self.header,
+            signature,
+            self.operations
+                .iter()
+                .map(|op| format!("({}", op))
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
     }
 }
 

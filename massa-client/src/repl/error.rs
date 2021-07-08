@@ -20,4 +20,8 @@ pub enum ReplError {
     IOError(#[from] std::io::Error),
     #[error("JSON error err:{0}")]
     JSONError(#[from] serde_json::Error),
+    #[error("Serde Sq error err:{0}")]
+    SerdeqsError(#[from] serde_qs::Error),
+    #[error("Str Format error err:{0}")]
+    FmtError(#[from] std::fmt::Error),
 }
