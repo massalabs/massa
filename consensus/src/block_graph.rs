@@ -266,8 +266,11 @@ fn create_genesis_block(
     ))
 }
 
+/// return type of update_consensus_with_new_block and acknowledge_block
 pub struct UpdateConsensusReturn {
+    /// Blocks that were pruned during last update
     pub pruned: HashMap<crypto::hash::Hash, Block>,
+    /// Final blocks that were discarded that we may want to send to storage
     pub finals: HashMap<crypto::hash::Hash, Block>,
 }
 

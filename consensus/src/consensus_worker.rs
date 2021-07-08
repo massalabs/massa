@@ -69,9 +69,12 @@ pub struct ConsensusWorker {
     current_slot: (u64, u8),
 }
 
+/// Returned by acknowledge_block
 #[derive(Default, Debug)]
 struct AcknowledgeBlockReturn {
+    /// Blocks that were depending on freshly acknowledged block, that we can try to acknowledge again
     pub to_retry: HashMap<crypto::hash::Hash, Block>,
+    /// Final blocks that we may send to storage
     pub finals: HashMap<crypto::hash::Hash, Block>,
 }
 
