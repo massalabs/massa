@@ -499,7 +499,7 @@ async fn test_dep_in_back_order() {
         &mut protocol_controller,
         vec![hasht0s1, hasht1s1].into_iter().collect(),
         HashSet::new(),
-        300,
+        500,
     )
     .await;
     tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 300).await;
@@ -672,16 +672,16 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         &mut protocol_controller,
         vec![hasht0s1, hasht1s1].into_iter().collect(),
         HashSet::new(),
-        200,
+        300,
     )
     .await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 200).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 300).await;
 
     protocol_controller.receive_block(t1s3).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 200).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 300).await;
 
     protocol_controller.receive_block(t0s1).await;
-    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 200).await;
+    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 300).await;
     tools::validate_wishlist(
         &mut protocol_controller,
         HashSet::new(),
@@ -690,29 +690,29 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     )
     .await;
     protocol_controller.receive_block(t0s3).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 200).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 300).await;
 
     protocol_controller.receive_block(t1s2).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s2, 200).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s2, 300).await;
 
     protocol_controller.receive_block(t1s1).await;
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &vec![hasht1s1, hasht1s2],
-        200,
+        300,
     )
     .await;
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &vec![hasht1s1, hasht1s2],
-        200,
+        300,
     )
     .await;
     tools::validate_wishlist(
         &mut protocol_controller,
         HashSet::new(),
         vec![hasht1s1].into_iter().collect(),
-        200,
+        300,
     )
     .await;
 
@@ -820,7 +820,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 200).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 500).await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 200).await;
 
     //block  t0s3, t1s3 are not propagated
