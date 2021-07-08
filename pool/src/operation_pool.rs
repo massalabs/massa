@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use models::{Address, Operation, OperationId, SerializeCompact, Slot};
+use models::{Address, Operation, OperationId, OperationSearchResult, SerializeCompact, Slot};
 use num::rational::Ratio;
 
 use crate::{PoolConfig, PoolError};
@@ -253,12 +253,19 @@ impl OperationPool {
     pub fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> Result<HashSet<OperationId>, PoolError> {
-        let mut res = HashSet::new();
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, PoolError> {
+        let mut res = HashMap::new();
         for (id, op) in self.ops.iter() {
             let involved = op.op.get_involved_addresses(None)?;
             if involved.contains(address) {
-                res.insert(*id);
+                res.insert(
+                    *id,
+                    OperationSearchResult {
+                        op: op.op.clone(),
+                        in_pool: true,
+                        in_blocks: HashMap::new(),
+                    },
+                );
             }
         }
         Ok(res)

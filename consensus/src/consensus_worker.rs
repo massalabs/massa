@@ -52,7 +52,7 @@ pub enum ConsensusCommand {
     /// hashmap: Operation id -> if it is final
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<HashMap<OperationId, bool>>,
+        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetOperations {
         operation_ids: HashSet<OperationId>,
@@ -572,23 +572,27 @@ impl ConsensusWorker {
                 let mut res: HashMap<_, _> = self
                     .pool_command_sender
                     .get_operations_involving_address(address)
-                    .await?
-                    .into_iter()
-                    .map(|op| (op, false))
-                    .collect();
+                    .await?;
 
-                for (op, finality) in self
-                    .block_db
-                    .get_operations_involving_address(&address)
+                self.block_db
+                    .get_operations_involving_address(&address)?
                     .into_iter()
-                {
-                    res.insert(op, finality);
-                }
+                    .for_each(|(op_id, search_new)| {
+                        res.entry(op_id)
+                            .and_modify(|search_old| search_old.extend(&search_new))
+                            .or_insert(search_new);
+                    });
+
                 if let Some(access) = &self.opt_storage_command_sender {
-                    let storage = access.get_operations_involving_address(&address).await?;
-                    for op in storage.into_iter() {
-                        res.insert(op, true);
-                    }
+                    access
+                        .get_operations_involving_address(&address)
+                        .await?
+                        .into_iter()
+                        .for_each(|(op_id, search_new)| {
+                            res.entry(op_id)
+                                .and_modify(|search_old| search_old.extend(&search_new))
+                                .or_insert(search_new);
+                        })
                 }
 
                 response_tx.send(res).map_err(|err| {

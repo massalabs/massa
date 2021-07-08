@@ -333,8 +333,8 @@ async fn test_get_involved_operations() {
         .await
         .unwrap();
     assert_eq!(
-        res,
-        vec![op1_id, op3_id].into_iter().collect::<HashSet<_>>()
+        res.keys().collect::<HashSet<_>>(),
+        vec![&op1_id, &op3_id].into_iter().collect::<HashSet<_>>()
     );
 
     let res = pool_command_sender
@@ -342,8 +342,8 @@ async fn test_get_involved_operations() {
         .await
         .unwrap();
     assert_eq!(
-        res,
-        vec![op1_id, op2_id].into_iter().collect::<HashSet<_>>()
+        res.keys().collect::<HashSet<_>>(),
+        vec![&op1_id, &op2_id].into_iter().collect::<HashSet<_>>()
     );
 
     pool_command_sender
@@ -355,13 +355,19 @@ async fn test_get_involved_operations() {
         .get_operations_involving_address(address_a)
         .await
         .unwrap();
-    assert_eq!(res, vec![op3_id].into_iter().collect::<HashSet<_>>());
+    assert_eq!(
+        res.keys().collect::<HashSet<_>>(),
+        vec![&op3_id].into_iter().collect::<HashSet<_>>()
+    );
 
     let res = pool_command_sender
         .get_operations_involving_address(address_b)
         .await
         .unwrap();
-    assert_eq!(res, vec![op2_id].into_iter().collect::<HashSet<_>>());
+    assert_eq!(
+        res.keys().collect::<HashSet<_>>(),
+        vec![&op2_id].into_iter().collect::<HashSet<_>>()
+    );
 
     pool_command_sender
         .update_latest_final_periods(vec![2, 2])
@@ -372,13 +378,16 @@ async fn test_get_involved_operations() {
         .get_operations_involving_address(address_a)
         .await
         .unwrap();
-    assert_eq!(res, vec![op3_id].into_iter().collect::<HashSet<_>>());
+    assert_eq!(
+        res.keys().collect::<HashSet<_>>(),
+        vec![&op3_id].into_iter().collect::<HashSet<_>>()
+    );
 
     let res = pool_command_sender
         .get_operations_involving_address(address_b)
         .await
         .unwrap();
-    assert_eq!(res, HashSet::new());
+    assert!(res.is_empty());
 
     pool_command_sender
         .update_latest_final_periods(vec![3, 3])
@@ -389,13 +398,13 @@ async fn test_get_involved_operations() {
         .get_operations_involving_address(address_a)
         .await
         .unwrap();
-    assert_eq!(res, HashSet::new());
+    assert!(res.is_empty());
 
     let res = pool_command_sender
         .get_operations_involving_address(address_b)
         .await
         .unwrap();
-    assert_eq!(res, HashSet::new());
+    assert!(res.is_empty());
 
     pool_manager.stop().await.unwrap();
 }
@@ -487,7 +496,7 @@ async fn test_new_final_ops() {
         .await
         .unwrap();
     assert_eq!(
-        res,
+        res.keys().copied().collect::<HashSet<_>>(),
         ops[4..]
             .to_vec()
             .iter()
@@ -506,7 +515,7 @@ async fn test_new_final_ops() {
         )
         .await;
 
-    let newly_added = match protocol_controller
+    match protocol_controller
         .wait_command(500.into(), op_filter.clone())
         .await
     {

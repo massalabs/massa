@@ -399,7 +399,16 @@ async fn test_consensus_and_storage() {
                         .send(
                             vec![op_pool_1.clone(), op_pool_3.clone()]
                                 .into_iter()
-                                .map(|op| op.get_operation_id().unwrap())
+                                .map(|op| {
+                                    (
+                                        op.get_operation_id().unwrap(),
+                                        OperationSearchResult {
+                                            op,
+                                            in_pool: true,
+                                            in_blocks: HashMap::new(),
+                                        },
+                                    )
+                                })
                                 .collect(),
                         )
                         .unwrap();
@@ -443,7 +452,16 @@ async fn test_consensus_and_storage() {
                         .send(
                             vec![op_pool_2.clone(), op_pool_3.clone()]
                                 .into_iter()
-                                .map(|op| op.get_operation_id().unwrap())
+                                .map(|op| {
+                                    (
+                                        op.get_operation_id().unwrap(),
+                                        OperationSearchResult {
+                                            op,
+                                            in_pool: true,
+                                            in_blocks: HashMap::new(),
+                                        },
+                                    )
+                                })
                                 .collect(),
                         )
                         .unwrap();

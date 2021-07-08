@@ -2,9 +2,11 @@ use crate::{
     config::StorageConfig,
     error::{InternalError, StorageError},
 };
+use models::DeserializeMinBEInt;
 use models::{
-    array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
-    OperationSearchResult, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
+    array_from_slice, with_serialization_context, Address, Block, BlockId, DeserializeCompact,
+    OperationId, OperationSearchResult, SerializeCompact, SerializeMinBEInt, Slot,
+    BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
 };
 use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{
@@ -512,19 +514,56 @@ impl BlockStorage {
     pub async fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> Result<HashSet<OperationId>, StorageError> {
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
         let tx_func =
-            |addr_to_op: &TransactionalTree| -> Result<HashSet<OperationId>, StorageError> {
+            |addr_to_op: &TransactionalTree,
+             op_to_block: &TransactionalTree,
+             hash_to_block: &TransactionalTree|
+             -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
                 if let Some(ops) = addr_to_op.get(address.to_bytes())? {
-                    ops_from_ivec(ops)
+                    Ok(ops_from_ivec(ops)?
+                        .into_iter()
+                        .map(|id| {
+                            let ser_op_id = id.to_bytes();
+                            let (block_id, idx) = if let Some(buf) = op_to_block.get(&ser_op_id)? {
+                                let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
+                                let idx: usize = u64::from_be_bytes(array_from_slice(
+                                    &buf[BLOCK_ID_SIZE_BYTES..],
+                                )?) as usize;
+                                (block_id, idx)
+                            } else {
+                                return Err(StorageError::DatabaseInconsistency(
+                                    "inconsistency between addr to op and op to block".to_string(),
+                                ));
+                            };
+                            let ser_block_id = block_id.to_bytes();
+                            let block = if let Some(s_block) = hash_to_block.get(ser_block_id)? {
+                                Block::from_bytes_compact(s_block.as_ref())?.0
+                            } else {
+                                return Err(StorageError::DatabaseInconsistency(
+                                    "Inconsistency between op to block and hash to block"
+                                        .to_string(),
+                                ));
+                            };
+
+                            Ok((
+                                id,
+                                OperationSearchResult {
+                                    op: block.operations[idx].clone(),
+                                    in_pool: false,
+                                    in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
+                                },
+                            ))
+                        })
+                        .collect::<Result<_, _>>()?)
                 } else {
-                    Ok(HashSet::new())
+                    Ok(HashMap::new())
                 }
             };
 
-        (&self.addr_to_op)
-            .transaction(|addr_tx| {
-                tx_func(addr_tx).map_err(|err| {
+        (&self.addr_to_op, &self.op_to_block, &self.hash_to_block)
+            .transaction(|(addr_tx, op_tx, hash_tx)| {
+                tx_func(addr_tx, op_tx, hash_tx).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!("transaction error: {:?}", err)),
                     )

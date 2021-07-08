@@ -7,7 +7,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
-use models::{Address, Operation, OperationId, Slot};
+use models::{Address, Operation, OperationId, OperationSearchResult, Slot};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -177,7 +177,7 @@ impl PoolCommandSender {
     pub async fn get_operations_involving_address(
         &mut self,
         address: Address,
-    ) -> Result<HashSet<OperationId>, PoolError> {
+    ) -> Result<HashMap<OperationId, OperationSearchResult>, PoolError> {
         massa_trace!("pool.command_sender.get_operations_involving_address", {
             "addrese": address
         });

@@ -200,7 +200,7 @@ pub enum ApiEvent {
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<HashMap<OperationId, bool>>, // bool: if it is final
+        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetOperations {
         operation_ids: HashSet<OperationId>,
