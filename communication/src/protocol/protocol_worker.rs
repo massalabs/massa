@@ -396,7 +396,15 @@ impl ProtocolWorker {
                 );
             }
             ProtocolCommand::Operation(operation) => {
-                todo!("propagate operation to every active node")
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.operation.begin",
+                    { "operation": operation }
+                );
+                for (node, _) in self.active_nodes.iter() {
+                    self.network_command_sender
+                        .send_operation(node.clone(), operation.clone())
+                        .await?
+                }
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});

@@ -11,7 +11,7 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, SignatureEngine},
 };
-use models::{Block, BlockHeader, SerializationContext};
+use models::{Block, BlockHeader, Operation, SerializationContext};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -227,6 +227,20 @@ impl NetworkCommandSender {
     ) -> Result<(), CommunicationError> {
         self.0
             .send(NetworkCommand::BlockNotFound { node, hash })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("cound not send block_not_found command".into())
+            })?;
+        Ok(())
+    }
+
+    pub async fn send_operation(
+        &self,
+        node: NodeId,
+        operation: Operation,
+    ) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::Operation { node, operation })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send block_not_found command".into())

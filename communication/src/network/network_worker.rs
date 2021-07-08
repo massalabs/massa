@@ -53,6 +53,10 @@ pub enum NetworkCommand {
         node: NodeId,
         hash: Hash,
     },
+    Operation {
+        node: NodeId,
+        operation: Operation,
+    },
 }
 
 #[derive(Debug)]
@@ -753,6 +757,17 @@ impl NetworkWorker {
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
                     NodeCommand::BlockNotFound(hash),
+                )
+                .await;
+            }
+            NetworkCommand::Operation { node, operation } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::Operation",
+                    { "operation": operation, "node": node }
+                );
+                self.forward_message_to_node_or_resend_close_event(
+                    &node,
+                    NodeCommand::Operation(operation),
                 )
                 .await;
             }
