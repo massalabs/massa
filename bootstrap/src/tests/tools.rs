@@ -3,6 +3,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{BootsrapableGraph, ConsensusCommand, LedgerExport};
+use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use models::BlockId;
 use time::UTime;
@@ -15,6 +16,10 @@ use tokio::{
 use crate::config::BootstrapConfig;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
+
+pub fn get_dummy_block_id(s: &str) -> BlockId {
+    BlockId(Hash::hash(s.as_bytes()))
+}
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
     BootstrapConfig {
@@ -85,13 +90,10 @@ where
 pub fn get_boot_graph() -> BootsrapableGraph {
     BootsrapableGraph {
         active_blocks: Default::default(),
-        best_parents: vec![
-            BlockId::for_tests("parent1").unwrap(),
-            BlockId::for_tests("parent2").unwrap(),
-        ],
+        best_parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
         latest_final_blocks_periods: vec![
-            (BlockId::for_tests("parent1").unwrap(), 10),
-            (BlockId::for_tests("parent2").unwrap(), 10),
+            (get_dummy_block_id("parent1"), 10),
+            (get_dummy_block_id("parent2"), 10),
         ],
         gi_head: Default::default(),
         max_cliques: vec![Vec::new()],

@@ -3206,6 +3206,7 @@ mod tests {
     use std::{path::Path, usize};
 
     use super::*;
+    use crate::tests::tools::get_dummy_block_id;
     use tempfile::NamedTempFile;
     use time::UTime;
 
@@ -3216,8 +3217,8 @@ mod tests {
                     creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
                     operation_merkle_root: Hash::hash(&Vec::new()),
                     parents: vec![
-                        BlockId::for_tests("parent1").unwrap(),
-                        BlockId::for_tests("parent2").unwrap(),
+                        get_dummy_block_id("parent1"),
+                        get_dummy_block_id("parent2"),
                     ],
                     slot: Slot::new(1, 0),
                 },
@@ -3230,20 +3231,20 @@ mod tests {
 
         ExportActiveBlock {
             parents: vec![
-                (BlockId::for_tests("parent11").unwrap(), 23),
-                (BlockId::for_tests("parent12").unwrap(), 24),
+                (get_dummy_block_id("parent11"), 23),
+                (get_dummy_block_id("parent12"), 24),
             ],
             dependencies: vec![
-                BlockId::for_tests("dep11").unwrap(),
-                BlockId::for_tests("dep12").unwrap(),
-                BlockId::for_tests("dep13").unwrap(),
+                get_dummy_block_id("dep11"),
+                get_dummy_block_id("dep12"),
+                get_dummy_block_id("dep13"),
             ]
             .into_iter()
             .collect(),
             block,
             children: vec![vec![
-                (BlockId::for_tests("child11").unwrap(), 31),
-                (BlockId::for_tests("child11").unwrap(), 31),
+                (get_dummy_block_id("child11"), 31),
+                (get_dummy_block_id("child11"), 31),
             ]
             .into_iter()
             .collect()],
@@ -3395,10 +3396,7 @@ mod tests {
         //   A -> A : 512, fee 1024
         // => counted as [A += 1]
         let mut blockp2t0 = active_block.clone();
-        blockp2t0.parents = vec![
-            (BlockId::for_tests("blockp1t0").unwrap(), 1),
-            (hash_genesist1, 0),
-        ];
+        blockp2t0.parents = vec![(get_dummy_block_id("blockp1t0"), 1), (hash_genesist1, 0)];
         blockp2t0.is_final = false;
         blockp2t0.block.header.content.creator = pubkey_a.clone();
         blockp2t0.block_ledger_change = vec![
@@ -3414,8 +3412,8 @@ mod tests {
         // => counted as [A += 10] (B not counted !)
         let mut blockp2t1 = active_block.clone();
         blockp2t1.parents = vec![
-            (BlockId::for_tests("blockp1t0").unwrap(), 1),
-            (BlockId::for_tests("blockp1t1").unwrap(), 1),
+            (get_dummy_block_id("blockp1t0"), 1),
+            (get_dummy_block_id("blockp1t1"), 1),
         ];
         blockp2t1.is_final = true;
         blockp2t1.block.header.content.creator = pubkey_b.clone();
@@ -3435,8 +3433,8 @@ mod tests {
         // => counted as [A += 1 - 2048 - 4096 (+4096) ; C created to 2048]
         let mut blockp3t0 = active_block.clone();
         blockp3t0.parents = vec![
-            (BlockId::for_tests("blockp2t0").unwrap(), 2),
-            (BlockId::for_tests("blockp1t1").unwrap(), 1),
+            (get_dummy_block_id("blockp2t0"), 2),
+            (get_dummy_block_id("blockp1t1"), 1),
         ];
         blockp3t0.is_final = false;
         blockp3t0.block.header.content.creator = pubkey_a.clone();
@@ -3455,8 +3453,8 @@ mod tests {
         // => counted as [B += 1 - 100 - 10 + 10 ; A += 100]
         let mut blockp3t1 = active_block.clone();
         blockp3t1.parents = vec![
-            (BlockId::for_tests("blockp2t0").unwrap(), 2),
-            (BlockId::for_tests("blockp2t1").unwrap(), 2),
+            (get_dummy_block_id("blockp2t0"), 2),
+            (get_dummy_block_id("blockp2t1"), 2),
         ];
         blockp3t1.is_final = false;
         blockp3t1.block.header.content.creator = pubkey_b.clone();
@@ -3476,22 +3474,22 @@ mod tests {
             active_blocks: vec![
                 (hash_genesist0, export_genesist0),
                 (hash_genesist1, export_genesist1),
-                (BlockId::for_tests("blockp1t0").unwrap(), blockp1t0.into()),
-                (BlockId::for_tests("blockp1t1").unwrap(), blockp1t1.into()),
-                (BlockId::for_tests("blockp2t0").unwrap(), blockp2t0.into()),
-                (BlockId::for_tests("blockp2t1").unwrap(), blockp2t1.into()),
-                (BlockId::for_tests("blockp3t0").unwrap(), blockp3t0.into()),
-                (BlockId::for_tests("blockp3t1").unwrap(), blockp3t1.into()),
+                (get_dummy_block_id("blockp1t0"), blockp1t0.into()),
+                (get_dummy_block_id("blockp1t1"), blockp1t1.into()),
+                (get_dummy_block_id("blockp2t0"), blockp2t0.into()),
+                (get_dummy_block_id("blockp2t1"), blockp2t1.into()),
+                (get_dummy_block_id("blockp3t0"), blockp3t0.into()),
+                (get_dummy_block_id("blockp3t1"), blockp3t1.into()),
             ],
             /// Best parents hashe in each thread.
             best_parents: vec![
-                BlockId::for_tests("blockp3t0").unwrap(),
-                BlockId::for_tests("blockp3t1").unwrap(),
+                get_dummy_block_id("blockp3t0"),
+                get_dummy_block_id("blockp3t1"),
             ],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![
-                (BlockId::for_tests("blockp1t0").unwrap(), 1),
-                (BlockId::for_tests("blockp2t1").unwrap(), 2),
+                (get_dummy_block_id("blockp1t0"), 1),
+                (get_dummy_block_id("blockp2t1"), 2),
             ],
             /// Head of the incompatibility graph.
             gi_head: vec![],
@@ -3513,8 +3511,8 @@ mod tests {
         let res = block_graph
             .get_ledger_at_parents(
                 &vec![
-                    BlockId::for_tests("blockp3t0").unwrap(),
-                    BlockId::for_tests("blockp3t1").unwrap(),
+                    get_dummy_block_id("blockp3t0"),
+                    get_dummy_block_id("blockp3t1"),
                 ],
                 &vec![address_a, address_b, address_c, address_d]
                     .into_iter()
@@ -3536,8 +3534,8 @@ mod tests {
         let res = block_graph
             .get_ledger_at_parents(
                 &vec![
-                    BlockId::for_tests("blockp1t0").unwrap(),
-                    BlockId::for_tests("blockp1t1").unwrap(),
+                    get_dummy_block_id("blockp1t0"),
+                    get_dummy_block_id("blockp1t1"),
                 ],
                 &vec![address_a].into_iter().collect(),
             )
@@ -3553,8 +3551,8 @@ mod tests {
         //ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
         let res = block_graph.get_ledger_at_parents(
             &vec![
-                BlockId::for_tests("blockp1t0").unwrap(),
-                BlockId::for_tests("blockp1t1").unwrap(),
+                get_dummy_block_id("blockp1t0"),
+                get_dummy_block_id("blockp1t1"),
             ],
             &vec![address_a, address_b].into_iter().collect(),
         );
@@ -3597,53 +3595,35 @@ mod tests {
         let graph = BootsrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
             active_blocks: vec![
-                (
-                    BlockId::for_tests("active11").unwrap(),
-                    active_block.clone(),
-                ),
-                (
-                    BlockId::for_tests("active12").unwrap(),
-                    active_block.clone(),
-                ),
-                (
-                    BlockId::for_tests("active13").unwrap(),
-                    active_block.clone(),
-                ),
+                (get_dummy_block_id("active11"), active_block.clone()),
+                (get_dummy_block_id("active12"), active_block.clone()),
+                (get_dummy_block_id("active13"), active_block.clone()),
             ]
             .into_iter()
             .collect(),
             /// Best parents hashe in each thread.
             best_parents: vec![
-                BlockId::for_tests("parent11").unwrap(),
-                BlockId::for_tests("parent12").unwrap(),
+                get_dummy_block_id("parent11"),
+                get_dummy_block_id("parent12"),
             ],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![
-                (BlockId::for_tests("lfinal11").unwrap(), 23),
-                (BlockId::for_tests("lfinal12").unwrap(), 24),
+                (get_dummy_block_id("lfinal11"), 23),
+                (get_dummy_block_id("lfinal12"), 24),
             ],
             /// Head of the incompatibility graph.
             gi_head: vec![
                 (
-                    BlockId::for_tests("gi_head11").unwrap(),
-                    vec![
-                        BlockId::for_tests("set11").unwrap(),
-                        BlockId::for_tests("set12").unwrap(),
-                    ],
+                    get_dummy_block_id("gi_head11"),
+                    vec![get_dummy_block_id("set11"), get_dummy_block_id("set12")],
                 ),
                 (
-                    BlockId::for_tests("gi_head12").unwrap(),
-                    vec![
-                        BlockId::for_tests("set21").unwrap(),
-                        BlockId::for_tests("set22").unwrap(),
-                    ],
+                    get_dummy_block_id("gi_head12"),
+                    vec![get_dummy_block_id("set21"), get_dummy_block_id("set22")],
                 ),
                 (
-                    BlockId::for_tests("gi_head13").unwrap(),
-                    vec![
-                        BlockId::for_tests("set31").unwrap(),
-                        BlockId::for_tests("set32").unwrap(),
-                    ],
+                    get_dummy_block_id("gi_head13"),
+                    vec![get_dummy_block_id("set31"), get_dummy_block_id("set32")],
                 ),
             ]
             .into_iter()
@@ -3651,8 +3631,8 @@ mod tests {
 
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![vec![
-                BlockId::for_tests("max_cliques11").unwrap(),
-                BlockId::for_tests("max_cliques12").unwrap(),
+                get_dummy_block_id("max_cliques11"),
+                get_dummy_block_id("max_cliques12"),
             ]
             .into_iter()
             .collect()],

@@ -17,4 +17,4 @@ mod scenarios_pruning;
 mod scenarios_send_block;
 mod scenarios_wishlist;
 mod storage_scenarios;
-mod tools;
+pub mod tools;

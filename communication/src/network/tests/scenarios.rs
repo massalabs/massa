@@ -19,7 +19,7 @@ use std::{
 use time::UTime;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
-use tools::get_transaction;
+use tools::{get_dummy_block_id, get_transaction};
 
 /// Test that a node worker can shutdown even if the event channel is full,
 /// and that sending additional node commands during shutdown does not deadlock.
@@ -466,7 +466,7 @@ async fn test_block_not_found() {
     //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
     // Send ask for block message from connected peer
-    let wanted_hash = BlockId::for_tests("default_val").unwrap();
+    let wanted_hash = get_dummy_block_id("default_val");
     conn1_w
         .send(&Message::AskForBlocks(vec![wanted_hash]))
         .await
@@ -512,10 +512,10 @@ async fn test_block_not_found() {
     //test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
     let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
     let mut hash_list = vec![];
-    hash_list.push(BlockId::for_tests("default_val1").unwrap());
-    hash_list.push(BlockId::for_tests("default_val2").unwrap());
-    hash_list.push(BlockId::for_tests("default_val3").unwrap());
-    hash_list.push(BlockId::for_tests("default_val4").unwrap());
+    hash_list.push(get_dummy_block_id("default_val1"));
+    hash_list.push(get_dummy_block_id("default_val2"));
+    hash_list.push(get_dummy_block_id("default_val3"));
+    hash_list.push(get_dummy_block_id("default_val4"));
     block_list.insert(conn1_id, hash_list);
 
     network_command_sender
@@ -531,9 +531,9 @@ async fn test_block_not_found() {
                 let evt = evt.unwrap().unwrap().1;
                 match evt {
                 Message::AskForBlocks(list1) => {
-                     assert!(list1.contains(&BlockId::for_tests("default_val1").unwrap()));
-                     assert!(list1.contains(&BlockId::for_tests("default_val2").unwrap()));
-                     assert!(list1.contains(&BlockId::for_tests("default_val3").unwrap()));
+                     assert!(list1.contains(&get_dummy_block_id("default_val1")));
+                     assert!(list1.contains(&get_dummy_block_id("default_val2")));
+                     assert!(list1.contains(&get_dummy_block_id("default_val3")));
                      break;
                  }
                 _ => {}
@@ -548,7 +548,7 @@ async fn test_block_not_found() {
             evt = conn1_r.next() => {
                 let evt = evt.unwrap().unwrap().1;
                 match evt {
-                Message::AskForBlocks(list2) => {assert!(list2.contains(&BlockId::for_tests("default_val4").unwrap())); break;}
+                Message::AskForBlocks(list2) => {assert!(list2.contains(&get_dummy_block_id("default_val4"))); break;}
                 _ => {}
             }},
             _ = &mut timer => panic!("timeout reached waiting for message")
@@ -557,10 +557,10 @@ async fn test_block_not_found() {
 
     //test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
     // the message is rejected by the receiver.
-    let wanted_hash1 = BlockId::for_tests("default_val1").unwrap();
-    let wanted_hash2 = BlockId::for_tests("default_val2").unwrap();
-    let wanted_hash3 = BlockId::for_tests("default_val3").unwrap();
-    let wanted_hash4 = BlockId::for_tests("default_val4").unwrap();
+    let wanted_hash1 = get_dummy_block_id("default_val1");
+    let wanted_hash2 = get_dummy_block_id("default_val2");
+    let wanted_hash3 = get_dummy_block_id("default_val3");
+    let wanted_hash4 = get_dummy_block_id("default_val4");
     conn1_w
         .send(&Message::AskForBlocks(vec![
             wanted_hash1,
@@ -660,7 +660,7 @@ async fn test_retry_connection_closed() {
 
     // Send a command for a node not found in active.
     network_command_sender
-        .block_not_found(node_id, BlockId::for_tests("default_val").unwrap())
+        .block_not_found(node_id, get_dummy_block_id("default_val"))
         .await
         .unwrap();
 

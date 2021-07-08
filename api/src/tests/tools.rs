@@ -23,12 +23,16 @@ use tokio::{
 };
 use warp::{filters::BoxedFilter, reply::Reply};
 
+pub fn get_dummy_block_id(s: &str) -> BlockId {
+    BlockId(Hash::hash(s.as_bytes()))
+}
+
 pub fn get_test_block_id() -> BlockId {
-    BlockId::for_tests("test").unwrap()
+    get_dummy_block_id("test")
 }
 
 pub fn get_another_test_block_id() -> BlockId {
-    BlockId::for_tests("another test").unwrap()
+    get_dummy_block_id("another test")
 }
 
 pub fn get_consensus_config() -> ConsensusConfig {
@@ -242,8 +246,8 @@ pub fn get_test_block() -> Block {
                 creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
                 operation_merkle_root: Hash::hash(&Vec::new()),
                 parents: vec![
-                    BlockId::for_tests("parent1").unwrap(),
-                    BlockId::for_tests("parent2").unwrap(),
+                    get_dummy_block_id("parent1"),
+                    get_dummy_block_id("parent2"),
                 ],
                 slot: Slot::new(1, 0),
             },

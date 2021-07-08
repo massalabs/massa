@@ -1001,7 +1001,7 @@ async fn test_get_block() {
     assert!(!matches);
 
     // block not found
-    let other_hash = BlockId::for_tests("something else").unwrap();
+    let other_hash = get_dummy_block_id("something else");
     let res = warp::test::request()
         .method("GET")
         .path(&format!("/api/v1/block/{}", other_hash))
@@ -1064,7 +1064,7 @@ async fn test_get_block() {
     });
 
     // block not found
-    let other_hash = BlockId::for_tests("something else").unwrap();
+    let other_hash = get_dummy_block_id("something else");
 
     storage_command_tx
         .add_block(other_hash, get_test_block())

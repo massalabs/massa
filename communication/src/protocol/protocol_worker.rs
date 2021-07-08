@@ -948,6 +948,7 @@ impl ProtocolWorker {
 mod tests {
     use super::nodeinfo::NodeInfo;
     use super::*;
+    use crate::network::tests::tools::get_dummy_block_id;
     use serial_test::serial;
 
     #[test]
@@ -957,7 +958,7 @@ mod tests {
         let mut nodeinfo = NodeInfo::new();
         let instant = Instant::now();
 
-        let hash_test = BlockId::for_tests("test").unwrap();
+        let hash_test = get_dummy_block_id("test");
         nodeinfo.insert_known_block(hash_test, true, instant, max_node_known_blocks_size);
         let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
         assert!(val);
@@ -968,7 +969,7 @@ mod tests {
         assert_eq!(instant, *t);
 
         for index in 0..9 {
-            let hash = BlockId::for_tests(&index.to_string()).unwrap();
+            let hash = get_dummy_block_id(&index.to_string());
             nodeinfo.insert_known_block(hash, true, Instant::now(), max_node_known_blocks_size);
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }
@@ -978,7 +979,7 @@ mod tests {
 
         //add hash that triggers container pruning
         nodeinfo.insert_known_block(
-            BlockId::for_tests("test2").unwrap(),
+            get_dummy_block_id("test2"),
             true,
             Instant::now(),
             max_node_known_blocks_size,
@@ -986,15 +987,15 @@ mod tests {
 
         //test should be present
         assert!(nodeinfo
-            .get_known_block(&BlockId::for_tests("test").unwrap())
+            .get_known_block(&get_dummy_block_id("test"))
             .is_some());
         //0 should be remove because it's the oldest.
         assert!(nodeinfo
-            .get_known_block(&BlockId::for_tests(&0.to_string()).unwrap())
+            .get_known_block(&get_dummy_block_id(&0.to_string()))
             .is_none());
         //the other are still present.
         for index in 1..9 {
-            let hash = BlockId::for_tests(&index.to_string()).unwrap();
+            let hash = get_dummy_block_id(&index.to_string());
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }
     }
@@ -1005,35 +1006,32 @@ mod tests {
         let max_node_wanted_blocks_size = 10;
         let mut nodeinfo = NodeInfo::new();
 
-        let hash = BlockId::for_tests("test").unwrap();
+        let hash = get_dummy_block_id("test");
         nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
         assert!(nodeinfo.contains_wanted_block(&hash));
         nodeinfo.remove_wanted_block(&hash);
         assert!(!nodeinfo.contains_wanted_block(&hash));
 
         for index in 0..9 {
-            let hash = BlockId::for_tests(&index.to_string()).unwrap();
+            let hash = get_dummy_block_id(&index.to_string());
             nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
             assert!(nodeinfo.contains_wanted_block(&hash));
         }
 
         // change the oldest time to now
-        assert!(nodeinfo.contains_wanted_block(&BlockId::for_tests(&0.to_string()).unwrap()));
+        assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&0.to_string())));
         //add hash that triggers container pruning
-        nodeinfo.insert_wanted_blocks(
-            BlockId::for_tests("test2").unwrap(),
-            max_node_wanted_blocks_size,
-        );
+        nodeinfo.insert_wanted_blocks(get_dummy_block_id("test2"), max_node_wanted_blocks_size);
 
         //0 is present because because its timestamp has been updated with contains_wanted_block
-        assert!(nodeinfo.contains_wanted_block(&BlockId::for_tests(&0.to_string()).unwrap()));
+        assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&0.to_string())));
 
         //1 has been removed because it's the oldest.
-        assert!(nodeinfo.contains_wanted_block(&BlockId::for_tests(&1.to_string()).unwrap()));
+        assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&1.to_string())));
 
         //Other blocks are present.
         for index in 2..9 {
-            let hash = BlockId::for_tests(&index.to_string()).unwrap();
+            let hash = get_dummy_block_id(&index.to_string());
             assert!(nodeinfo.contains_wanted_block(&hash));
         }
     }
