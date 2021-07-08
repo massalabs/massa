@@ -2,29 +2,31 @@
 
 mod config;
 mod network;
+mod protocol;
 
 use log::{error, info};
 use std::error::Error;
 use tokio::fs::read_to_string;
-use tokio::time::{delay_for, Duration};
+use tokio::time::{sleep, Duration};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 async fn run(cfg: config::Config) -> BoxResult<()> {
     // launch network controller
     let mut net = network::controller::NetworkController::new(cfg.network).await?;
+    let mut net_interface = net.get_upstream_interface();
 
     // loop over messages
     loop {
         tokio::select! {
             evt = net.wait_event() => match evt {
                 Ok(msg) => match msg {
-                    network::controller::NetworkControllerEvent::CandidateConnection {ip, socket, is_outgoing} => {
+                    network::controller::NetworkControllerEvent::CandidateConnection {ip, socket} => {
                         info!("new peer: {}", ip);
-                        delay_for(Duration::from_secs(2)).await;
-                        net.peer_alive(ip).await;
-                        delay_for(Duration::from_secs(20)).await;
-                        net.peer_closed(ip, network::controller::PeerClosureReason::Normal).await;
+                        sleep(Duration::from_secs(2)).await;
+                        net_interface.peer_alive(ip).await;
+                        sleep(Duration::from_secs(20)).await;
+                        net_interface.peer_closed(ip, network::controller::PeerClosureReason::Normal).await;
                         info!("peer closed: {}", ip);
                     }
                 },

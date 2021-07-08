@@ -11,7 +11,7 @@ use std::net::{IpAddr, SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-use tokio::time::{delay_for, Duration};
+use tokio::time::{sleep, Duration};
 
 use super::config::NetworkConfig;
 
@@ -24,11 +24,7 @@ pub struct NetworkController {
 
 #[derive(Debug)]
 pub enum NetworkControllerEvent {
-    CandidateConnection {
-        ip: IpAddr,
-        socket: TcpStream,
-        is_outgoing: bool,
-    },
+    CandidateConnection { ip: IpAddr, socket: TcpStream },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -92,6 +88,19 @@ impl NetworkController {
             .ok_or("error reading events".into())
     }
 
+    pub fn get_upstream_interface(&self) -> NetworkControllerUpstreamInterface {
+        NetworkControllerUpstreamInterface {
+            upstream_command_tx: self.upstream_command_tx.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NetworkControllerUpstreamInterface {
+    upstream_command_tx: mpsc::Sender<UpstreamCommand>,
+}
+
+impl NetworkControllerUpstreamInterface {
     pub async fn merge_peer_list(
         &mut self,
         ips: HashSet<IpAddr>,
@@ -227,8 +236,7 @@ async fn controller_fn(
                         peer.status = PeerStatus::OutHandshaking;
                         if event_tx.send(NetworkControllerEvent::CandidateConnection{
                             ip: ip_addr,
-                            socket: socket,
-                            is_outgoing: true
+                            socket: socket
                         }).await.is_err() { unreachable!("could not send out-connected peer upstream") }
                     },
                     Err(_) => {
@@ -263,8 +271,7 @@ async fn controller_fn(
                     peer.status = PeerStatus::InHandshaking;
                     if event_tx.send(NetworkControllerEvent::CandidateConnection{
                         ip: ip_addr,
-                        socket: socket,
-                        is_outgoing: false
+                        socket: socket
                     }).await.is_err() { unreachable!("could not send in-connected peer upstream") }
                 },
                 None => unreachable!("listener disappeared"),
@@ -303,7 +310,7 @@ pub async fn listener_fn(
                 Ok(v) => v,
                 Err(e) => {
                     warn!("network listener bind error: {}", e);
-                    delay_for(Duration::from_secs(1)).await;
+                    sleep(Duration::from_secs(1)).await;
                     continue 'reset_loop;
                 },
             },

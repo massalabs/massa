@@ -6,7 +6,7 @@ use std::error::Error;
 use std::net::IpAddr;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
-use tokio::time::{delay_for, Duration};
+use tokio::time::{sleep, Duration};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -89,16 +89,21 @@ impl PeerDatabase {
         let peers_filename_copy = peers_filename.clone();
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(Some(peers.clone()));
         let saver_join_handle = tokio::spawn(async move {
-            let mut delay = delay_for(Duration::from_secs_f32(peer_file_dump_interval_seconds));
+            let mut delay = sleep(Duration::from_secs_f32(peer_file_dump_interval_seconds));
             let mut last_value: Option<HashMap<IpAddr, PeerInfo>> = None;
             loop {
                 tokio::select! {
-                    opt_opt_p = saver_watch_rx.recv() => match opt_opt_p {
-                        Some(Some(op)) => {
-                            if last_value.is_none() {
-                                delay = delay_for(Duration::from_secs_f32(peer_file_dump_interval_seconds));
+                    opt_opt_p = saver_watch_rx.changed() => match opt_opt_p {
+                        Ok(()) => {
+                            match &*saver_watch_rx.borrow() {
+                                Some(op) => {
+                                    if last_value.is_none() {
+                                        delay = sleep(Duration::from_secs_f32(peer_file_dump_interval_seconds));
+                                    }
+                                    last_value = Some(op.clone());
+                                },
+                                None => break
                             }
-                            last_value = Some(op);
                         },
                         _ => break
                     },
@@ -106,7 +111,7 @@ impl PeerDatabase {
                         if let Some(ref p) = last_value {
                             if let Err(e) = dump_peers(&p, &peers_filename_copy).await {
                                 warn!("could not dump peers to file: {}", e);
-                                delay = delay_for(Duration::from_secs_f32(peer_file_dump_interval_seconds));
+                                delay = sleep(Duration::from_secs_f32(peer_file_dump_interval_seconds));
                                 continue;
                             }
                             last_value = None;
@@ -130,17 +135,13 @@ impl PeerDatabase {
     }
 
     pub fn save(&self) {
-        if self
-            .saver_watch_tx
-            .broadcast(Some(self.peers.clone()))
-            .is_err()
-        {
+        if self.saver_watch_tx.send(Some(self.peers.clone())).is_err() {
             unreachable!("saver task disappeared");
         }
     }
 
     pub async fn stop(self) {
-        let _ = self.saver_watch_tx.broadcast(None);
+        let _ = self.saver_watch_tx.send(None);
         let _ = self.saver_join_handle.await;
     }
 
@@ -151,7 +152,7 @@ impl PeerDatabase {
     pub fn cleanup(&mut self, max_idle_peers: usize, max_banned_peers: usize) {
         // remove any idle non-reachable non-bootstrap peers
         self.peers.retain(
-            |&k, &mut v| match (v.status, v.advertised_as_reachable, v.bootstrap) {
+            |_, &mut v| match (v.status, v.advertised_as_reachable, v.bootstrap) {
                 (PeerStatus::Idle, false, false) => false,
                 _ => true,
             },

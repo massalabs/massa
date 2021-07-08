@@ -1,14 +1,6 @@
 [
   {
     "ip": "100.100.100.100",
-    "status": "Idle",
-    "advertised_as_reachable": true,
-    "bootstrap": true,
-    "last_alive": null,
-    "last_failure": null
-  },
-  {
-    "ip": "100.100.100.100",
     "status": "Banned",
     "advertised_as_reachable": true,
     "bootstrap": false,
