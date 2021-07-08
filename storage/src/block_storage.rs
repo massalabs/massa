@@ -509,7 +509,7 @@ impl BlockStorage {
             })
     }
 
-    pub async fn get_recent_operations(
+    pub async fn get_operations_involving_address(
         &self,
         address: &Address,
     ) -> Result<HashSet<OperationId>, StorageError> {

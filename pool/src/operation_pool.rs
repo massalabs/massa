@@ -220,7 +220,7 @@ impl OperationPool {
             .collect()
     }
 
-    pub fn get_recent_operations(
+    pub fn get_operations_involving_address(
         &self,
         address: &Address,
     ) -> Result<HashSet<OperationId>, PoolError> {

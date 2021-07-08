@@ -955,7 +955,10 @@ impl BlockGraph {
         })
     }
 
-    pub fn get_recent_operations(&self, address: &Address) -> HashMap<OperationId, bool> {
+    pub fn get_operations_involving_address(
+        &self,
+        address: &Address,
+    ) -> HashMap<OperationId, bool> {
         let mut res = HashMap::new();
         for (_, block_status) in self.block_statuses.iter() {
             if let BlockStatus::Active(ActiveBlock {

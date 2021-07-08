@@ -213,14 +213,14 @@ async fn run(cfg: config::Config) {
                         }
                     },
                 Ok(ApiEvent::GetRecentOperations {address, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_recent_operations", {});
+                    massa_trace!("massa-node.main.run.select.api_event.get_operations_involving_address", {});
                     if response_tx.send(
                         consensus_command_sender
-                            .get_recent_operations(address )
+                            .get_operations_involving_address(address )
                             .await
                             .expect("could not get recent operations")
                         ).is_err() {
-                            warn!("could not send get_recent_operations response in api_event_receiver.wait_event");
+                            warn!("could not send get_operations_involving_address response in api_event_receiver.wait_event");
                         }
                     },
                 Ok(ApiEvent::GetOperations {operation_ids, response_tx}) => {

@@ -565,23 +565,27 @@ impl ConsensusWorker {
                 response_tx,
             } => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_recent_operations",
+                    "consensus.consensus_worker.process_consensus_command.get_operations_involving_address",
                     { "address": address }
                 );
 
                 let mut res: HashMap<_, _> = self
                     .pool_command_sender
-                    .get_recent_operations(address)
+                    .get_operations_involving_address(address)
                     .await?
                     .into_iter()
                     .map(|op| (op, false))
                     .collect();
 
-                for (op, finality) in self.block_db.get_recent_operations(&address).into_iter() {
+                for (op, finality) in self
+                    .block_db
+                    .get_operations_involving_address(&address)
+                    .into_iter()
+                {
                     res.insert(op, finality);
                 }
                 if let Some(access) = &self.opt_storage_command_sender {
-                    let storage = access.get_recent_operations(&address).await?;
+                    let storage = access.get_operations_involving_address(&address).await?;
                     for op in storage.into_iter() {
                         res.insert(op, true);
                     }

@@ -158,7 +158,10 @@ impl PoolWorker {
                 address,
                 response_tx,
             } => response_tx
-                .send(self.operation_pool.get_recent_operations(&address)?)
+                .send(
+                    self.operation_pool
+                        .get_operations_involving_address(&address)?,
+                )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())

@@ -231,14 +231,15 @@ impl ConsensusCommandSender {
     }
 
     /// Returns hashmap: Operation id -> if it is final
-    pub async fn get_recent_operations(
+    pub async fn get_operations_involving_address(
         &self,
         address: Address,
     ) -> Result<HashMap<OperationId, bool>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.get_recent_operations", {
-            "address": address
-        });
+        massa_trace!(
+            "consensus.consensus_controller.get_operations_involving_address",
+            { "address": address }
+        );
         self.0
             .send(ConsensusCommand::GetRecentOperations {
                 address,
