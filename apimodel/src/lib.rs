@@ -107,7 +107,7 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<HashSlot> {
 /// return a list of string the display.
 fn format_hash_slot_list(hash_slots: &[&HashSlot]) -> Vec<String> {
     let mut list: Vec<&&HashSlot> = hash_slots.iter().collect();
-    list.sort_unstable_by(|a, b| a.slot.cmp(&b.slot));
+    list.sort_unstable_by_key(|v| (v.slot, v.hash));
     list.iter()
         .map(|hash_slot| format!("({})", hash_slot))
         .collect()
@@ -248,6 +248,17 @@ struct HashSlotTime {
     pub time: UTime,
 }
 
+impl std::fmt::Display for HashSlotTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {:?}",
+            self.hash_slot,
+            Local.timestamp(Into::<Duration>::into(self.time).as_secs() as i64, 0)
+        )
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct State {
     time: UTime,
@@ -256,4 +267,39 @@ pub struct State {
     last_final: Vec<HashSlotTime>,
     nb_cliques: u64,
     nb_peers: u64,
+}
+impl std::fmt::Display for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let duration: Duration = self.time.into();
+
+        let date = Local.timestamp(duration.as_secs() as i64, 0);
+        write!(
+            f,
+            "  Time: {:?} Latest:{}",
+            date,
+            self.latest_slot
+                .map(|s| format!("Slot {:?}", s))
+                .unwrap_or("None".to_string())
+        )?;
+        write!(
+            f,
+            " Nb peers: {}, our IP: {}",
+            self.nb_peers,
+            self.our_ip
+                .map(|i| i.to_string())
+                .unwrap_or("None".to_string())
+        )?;
+        let mut final_blocks: Vec<&HashSlotTime> = self.last_final.iter().collect();
+        final_blocks.sort_unstable_by_key(|v| (v.hash_slot.slot, v.hash_slot.hash));
+
+        write!(
+            f,
+            " Nb cliques: {}, last final blocks:{:#?}",
+            self.nb_cliques,
+            final_blocks
+                .iter()
+                .map(|hash_slot| hash_slot.to_string())
+                .collect::<Vec<String>>()
+        )
+    }
 }
