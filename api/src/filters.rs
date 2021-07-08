@@ -374,12 +374,12 @@ pub fn get_filter(
         .and(warp::path::param::<PublicKey>())
         .and(warp::path::end())
         .and_then(move |creator| {
-            get_staker_info(
+            wrap_api_call(get_staker_info(
                 evt_tx.clone(),
                 api_cfg.clone(),
                 consensus_cfg.clone(),
                 creator,
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -1015,19 +1015,8 @@ async fn get_staker_info(
     api_cfg: ApiConfig,
     consensus_cfg: ConsensusConfig,
     creator: PublicKey,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+) -> Result<serde_json::Value, ApiError> {
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let blocks = graph
         .active_blocks
@@ -1043,36 +1032,13 @@ async fn get_staker_info(
         .filter(|(_hash, (_reason, header))| header.content.creator == creator)
         .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
         .collect::<Vec<(&Hash, DiscardReason, BlockHeader)>>();
-    let cur_time = match UTime::now() {
-        Ok(time) => time,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting current time : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-
-    let start_slot = match consensus::get_latest_block_slot_at_timestamp(
+    let cur_time = UTime::now()?;
+    let start_slot = consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    ) {
-        Ok(slot) => slot,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting slot at timestamp : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    }
+    )?
     .unwrap_or(Slot::new(0, 0));
     let end_slot = Slot::new(
         start_slot
@@ -1081,19 +1047,8 @@ async fn get_staker_info(
         start_slot.thread,
     );
 
-    let next_slots_by_creator: Vec<Slot> =
-        match retrieve_selection_draw(start_slot, end_slot, &event_tx).await {
-            Ok(slot) => slot,
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error selecting draw : {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        }
+    let next_slots_by_creator: Vec<Slot> = retrieve_selection_draw(start_slot, end_slot, &event_tx)
+        .await?
         .into_iter()
         .filter_map(|(slt, sel)| {
             if sel == creator {
@@ -1103,10 +1058,9 @@ async fn get_staker_info(
         })
         .collect();
 
-    Ok(warp::reply::json(&json!({
+    Ok(json!({
         "staker_active_blocks": blocks,
         "staker_discarded_blocks": discarded,
         "staker_next_draws": next_slots_by_creator,
     }))
-    .into_response())
 }
