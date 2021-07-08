@@ -33,8 +33,8 @@ clippy:
 test:
   stage: test
   script:
-    - rustc --version && cargo --version  # Print version info for debugging
-    - cargo test --all --verbose
+    - cargo install cargo-tarpaulin
+    - cargo tarpaulin -v
 
 # Use cargo to build the project
 build:
