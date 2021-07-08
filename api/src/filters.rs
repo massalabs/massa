@@ -834,7 +834,7 @@ async fn get_state(
                 )?,
             })
         })
-        .collect::<Result<Vec<HashSlotTime>, consensus::ConsensusError>>()?;
+        .collect::<Result<Vec<HashSlotTime>, ConsensusError>>()?;
 
     Ok(State {
         time: cur_time,
@@ -919,7 +919,7 @@ async fn get_staker_info(
         .map(|(hash, (reason, header))| (hash.clone(), reason.clone(), header.clone()))
         .collect::<Vec<(Hash, DiscardReason, BlockHeader)>>();
     let cur_time = UTime::now()?;
-    let start_slot = consensus::get_latest_block_slot_at_timestamp(
+    let start_slot = get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
