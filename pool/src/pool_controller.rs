@@ -121,7 +121,7 @@ impl PoolCommandSender {
     }
 
     /// Returns a batch of operations ordered from highest to lowest rentability
-    /// Return value: vector of (OpetationId, Operation, operation_size: u64)
+    /// Return value: vector of (OperationId, Operation, operation_size: u64)
     pub async fn get_operation_batch(
         &mut self,
         target_slot: Slot,
@@ -185,7 +185,7 @@ impl PoolCommandSender {
         address: Address,
     ) -> Result<HashMap<OperationId, OperationSearchResult>, PoolError> {
         massa_trace!("pool.command_sender.get_operations_involving_address", {
-            "addrese": address
+            "address": address
         });
 
         let (response_tx, response_rx) = oneshot::channel();

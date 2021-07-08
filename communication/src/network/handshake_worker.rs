@@ -1,4 +1,4 @@
-//! Here are happening hanshakes.
+//! Here are happening handshakes.
 use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
@@ -22,7 +22,7 @@ pub type HandshakeReturnType = Result<(NodeId, ReadBinder, WriteBinder), Communi
 
 /// Manages handshakes.
 pub struct HandshakeWorker {
-    /// Listens incomming data.
+    /// Listens incoming data.
     reader: ReadBinder,
     /// Sends out data.
     writer: WriteBinder,

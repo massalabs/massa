@@ -139,7 +139,7 @@ impl NetworkCommandSender {
         self.0
             .send(NetworkCommand::Ban(node_id))
             .await
-            .map_err(|_| CommunicationError::ChannelError("cound not send Ban command".into()))?;
+            .map_err(|_| CommunicationError::ChannelError("could not send Ban command".into()))?;
         Ok(())
     }
 
@@ -149,7 +149,7 @@ impl NetworkCommandSender {
             .send(NetworkCommand::SendBlock { node, block })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send SendBlock command".into())
+                CommunicationError::ChannelError("could not send SendBlock command".into())
             })?;
         Ok(())
     }
@@ -163,7 +163,7 @@ impl NetworkCommandSender {
             .send(NetworkCommand::AskForBlocks { list })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send AskForBlock command".into())
+                CommunicationError::ChannelError("could not send AskForBlock command".into())
             })?;
         Ok(())
     }
@@ -178,7 +178,7 @@ impl NetworkCommandSender {
             .send(NetworkCommand::SendBlockHeader { node, header })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send SendBlockHeader command".into())
+                CommunicationError::ChannelError("could not send SendBlockHeader command".into())
             })?;
         Ok(())
     }
@@ -190,7 +190,7 @@ impl NetworkCommandSender {
             .send(NetworkCommand::GetPeers(response_tx))
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send GetPeers command".into())
+                CommunicationError::ChannelError("could not send GetPeers command".into())
             })?;
         Ok(response_rx.await.map_err(|_| {
             CommunicationError::ChannelError(
@@ -206,7 +206,7 @@ impl NetworkCommandSender {
             .send(NetworkCommand::GetBootstrapPeers(response_tx))
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send GetBootstrapPeers command".into())
+                CommunicationError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
         Ok(response_rx.await.map_err(|_| {
             CommunicationError::ChannelError(
@@ -224,7 +224,7 @@ impl NetworkCommandSender {
             .send(NetworkCommand::BlockNotFound { node, block_id })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send block_not_found command".into())
+                CommunicationError::ChannelError("could not send block_not_found command".into())
             })?;
         Ok(())
     }
@@ -238,7 +238,7 @@ impl NetworkCommandSender {
             .send(NetworkCommand::SendOperations { node, operations })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send SendOperations command".into())
+                CommunicationError::ChannelError("could not send SendOperations command".into())
             })?;
         Ok(())
     }

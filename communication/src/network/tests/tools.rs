@@ -75,7 +75,7 @@ pub fn create_network_config(
         wakeup_interval: UTime::from(3000),
         max_in_connections: 100,
         max_in_connections_per_ip: 100,
-        max_out_connnection_attempts: 100,
+        max_out_connection_attempts: 100,
         max_idle_peers: 100,
         max_banned_peers: 100,
         max_advertise_length: 10,

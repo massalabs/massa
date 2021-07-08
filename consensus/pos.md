@@ -11,7 +11,7 @@ pub struct RollUpdate {
 }
 
 impl RollUpdate {
-	pub fn chain(&mut self, change: &Self) -> Result<RollCompensation, ConsensusError>;  // fuses Change into slef and compensates + returns the number of matching purchases/sales
+	pub fn chain(&mut self, change: &Self) -> Result<RollCompensation, ConsensusError>;  // fuses Change into self and compensates + returns the number of matching purchases/sales
 	pub fn compensate(&mut self) -> RollCompensation;  // compensates matching purchases/sales and returns their count
 }
 
@@ -26,7 +26,7 @@ impl RollUpdates {
         addrs_opt: Option<&HashSet<Address>>,
     ) -> Result<HashMap<Address, RollCompensation>, ConsensusError>;
 
-    // applyes a RollUpdate to self, compensates and returns compensation count
+    // applies a RollUpdate to self, compensates and returns compensation count
     pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<RollCompensation, ConsensusError>;
 }
 
@@ -107,7 +107,7 @@ If the Option is None, all addresses are taken into account.
 	1. if a final block is explored, break + save final_cycle
 	2. otherwise, stack the explored block ID
 2. set cur_rolls = the latest final roll state at final_cycle for the selected addresses 
-3. if BlockId is in the same thread as the latest final block, set cur_updates = the lastest final cycle updates, otherwise empty updates
+3. if BlockId is in the same thread as the latest final block, set cur_updates = the latest final cycle updates, otherwise empty updates
 4. while block_id = stack.pop():
 	1. apply active_block[block_id].roll_updates to cur_rolls
 	2. if active_block[block_id].cycle == BlockId.cycle => apply active_block[block_id].roll_updates to cur_updates
@@ -118,7 +118,7 @@ If the Option is None, all addresses are taken into account.
 1. check that the draw matches the block creator
 2. get the list of `roll_involved_addresses` buying/selling rolls in the block
 3. set `(cur_rolls, cycle_roll_updates) = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
-    1. if the block's cycle is different than its parent's => empty cycle_roll_updates
+    1. if the block's cycle is different from its parent's => empty cycle_roll_updates
 4. set `B.roll_updates = new()`
 5. if the block is the first of a new cycle N for thread Tau:
 	1. credit `roll_price * cycle_states[Tau][1 + lookback_cycles + lock_cycles].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`

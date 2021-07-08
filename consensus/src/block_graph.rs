@@ -273,7 +273,7 @@ impl DeserializeCompact for ExportActiveBlock {
             Vec::new()
         } else {
             return Err(ModelsError::SerializeError(
-                "ActiveBlock from_bytes_compact bad hasparents flags.".into(),
+                "ActiveBlock from_bytes_compact bad has parents flags.".into(),
             ));
         };
 
@@ -758,7 +758,7 @@ impl DeserializeCompact for BootsrapableGraph {
         //max_cliques: Vec<HashSet<BlockId>>
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if max_cliques_count > max_bootstrap_cliques {
-            return Err(ModelsError::DeserializeError(format!("too many blocks in max_clilques for deserialization context in BootstrapableGraph: {:?}", max_cliques_count)));
+            return Err(ModelsError::DeserializeError(format!("too many blocks in max_cliques for deserialization context in BootstrapableGraph: {:?}", max_cliques_count)));
         }
         cursor += delta;
         let mut max_cliques: Vec<Vec<BlockId>> = Vec::with_capacity(max_cliques_count as usize);
@@ -1447,7 +1447,7 @@ impl BlockGraph {
 
             // incoming header
             Some(BlockStatus::Incoming(HeaderOrBlock::Header(_))) => {
-                massa_trace!("consensus.block_graph.process.incomming_header", {
+                massa_trace!("consensus.block_graph.process.incoming_header", {
                     "block_id": block_id
                 });
                 // remove header
@@ -1457,7 +1457,7 @@ impl BlockGraph {
                     header
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "inconsistency inside block statuses removing incomming header {:?}",
+                        "inconsistency inside block statuses removing incoming header {:?}",
                         block_id
                     )));
                 };
@@ -1479,7 +1479,7 @@ impl BlockGraph {
                         self.promote_dep_tree(block_id)?;
 
                         massa_trace!(
-                            "consensus.block_graph.process.incomming_header.waiting_for_self",
+                            "consensus.block_graph.process.incoming_header.waiting_for_self",
                             { "block_id": block_id }
                         );
                         return Ok(BTreeSet::new());
@@ -1487,7 +1487,7 @@ impl BlockGraph {
                     HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
                         // set as waiting dependencies
                         dependencies.insert(block_id); // add self as unsatisfied
-                        massa_trace!("consensus.block_graph.process.incomming_header.waiting_for_dependencies", {"block_id": block_id, "dependencies": dependencies});
+                        massa_trace!("consensus.block_graph.process.incoming_header.waiting_for_dependencies", {"block_id": block_id, "dependencies": dependencies});
 
                         self.block_statuses.insert(
                             block_id,
@@ -1511,14 +1511,14 @@ impl BlockGraph {
                         );
 
                         massa_trace!(
-                            "consensus.block_graph.process.incomming_header.waiting_for_slot",
+                            "consensus.block_graph.process.incoming_header.waiting_for_slot",
                             { "block_id": block_id }
                         );
                         return Ok(BTreeSet::new());
                     }
                     HeaderCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
-                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"block_id": block_id, "reason": reason});
+                        massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
                         if reason == DiscardReason::Stale {
                             self.new_stale_blocks.insert(block_id, header.content.slot);
@@ -1542,7 +1542,7 @@ impl BlockGraph {
 
             // incoming block
             Some(BlockStatus::Incoming(HeaderOrBlock::Block(_, _))) => {
-                massa_trace!("consensus.block_graph.process.incomming_block", {
+                massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
                 let (block, operation_set) = if let Some(BlockStatus::Incoming(
@@ -1552,7 +1552,7 @@ impl BlockGraph {
                     (block, operation_set)
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "inconsistency inside block statuses removing incomming block {:?}",
+                        "inconsistency inside block statuses removing incoming block {:?}",
                         block_id
                     )));
                 };
@@ -1566,7 +1566,7 @@ impl BlockGraph {
                         roll_updates,
                     } => {
                         // block is valid: remove it from Incoming and return it
-                        massa_trace!("consensus.block_graph.process.incomming_block.valid", {
+                        massa_trace!("consensus.block_graph.process.incoming_block.valid", {
                             "block_id": block_id
                         });
                         (
@@ -1593,7 +1593,10 @@ impl BlockGraph {
                             },
                         );
                         self.promote_dep_tree(block_id)?;
-                        massa_trace!("consensus.block_graph.process.incomming_block.waiting_for_dependencies", {"block_id": block_id});
+                        massa_trace!(
+                            "consensus.block_graph.process.incoming_block.waiting_for_dependencies",
+                            { "block_id": block_id }
+                        );
                         return Ok(BTreeSet::new());
                     }
                     BlockCheckOutcome::WaitForSlot => {
@@ -1604,14 +1607,14 @@ impl BlockGraph {
                         );
 
                         massa_trace!(
-                            "consensus.block_graph.process.incomming_block.waiting_for_slot",
+                            "consensus.block_graph.process.incoming_block.waiting_for_slot",
                             { "block_id": block_id }
                         );
                         return Ok(BTreeSet::new());
                     }
                     BlockCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
-                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"block_id": block_id, "reason": reason});
+                        massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
                         if reason == DiscardReason::Stale {
                             self.new_stale_blocks
@@ -1672,7 +1675,7 @@ impl BlockGraph {
                     "block_id": block_id
                 });
                 if !unsatisfied_dependencies.is_empty() {
-                    // still has unsatisfied depdendencies: ignore
+                    // still has unsatisfied dependencies: ignore
                     return Ok(BTreeSet::new());
                 }
                 // send back as incoming and ask for reprocess
@@ -1765,7 +1768,7 @@ impl BlockGraph {
         }
     }
 
-    /// Gets a block and all its desencants
+    /// Gets a block and all its descendants
     ///
     /// # Argument
     /// * hash : hash of the given block
@@ -1960,7 +1963,7 @@ impl BlockGraph {
                                 if gp_i < parent_i {
                                     return Ok(HeaderCheckOutcome::Discard(
                                         DiscardReason::Invalid(
-                                            "grandpa erro: gp_i < parent_i".to_string(),
+                                            "grandpa error: gp_i < parent_i".to_string(),
                                         ),
                                     ));
                                 }
@@ -2005,11 +2008,11 @@ impl BlockGraph {
         // grandpa incompatibility test
         for tau in (0u8..self.cfg.thread_count).filter(|&t| t != header.content.slot.thread) {
             // for each parent in a different thread tau
-            // traverse parent's descendance in tau
+            // traverse parent's descendants in tau
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
                 let cur_b = BlockGraph::get_full_active_block(&self.block_statuses, cur_h)
-                    .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} while checking gradpa incompatibility of block {:?}",cur_h,  block_id)))?;
+                    .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} while checking grandpa incompatibility of block {:?}",cur_h,  block_id)))?;
 
                 // traverse but do not check up to generation 1
                 if cur_gen <= 1 {
@@ -2027,7 +2030,7 @@ impl BlockGraph {
                     &self.block_statuses,
                     cur_b.block.header.content.parents[header.content.slot.thread as usize],
                 )
-                .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking gradpa incompatibility of block {:?}",cur_b.block.header.content.parents[header.content.slot.thread as usize],  block_id)))?
+                .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking grandpa incompatibility of block {:?}",cur_b.block.header.content.parents[header.content.slot.thread as usize],  block_id)))?
                 .block
                 .header
                 .content
@@ -2223,7 +2226,7 @@ impl BlockGraph {
             }
         }
 
-        //union for operation in block { operation.get_involved_adresses(block.creator.address) } union block.creator.address;
+        //union for operation in block { operation.get_involved_addresses(block.creator.address) } union block.creator.address;
         //with only the addresses in the block's thread retained
         let block_creator_address =
             match Address::from_public_key(&block_to_check.header.content.creator) {
@@ -2848,7 +2851,7 @@ impl BlockGraph {
         if incomp.len() == inherited_incomp_count {
             // clique optimization routine:
             //   the block only has incompatibilities inherited from its parents
-            //   therfore it is not forking and can simply be added to the cliques it is compatible with
+            //   therefore it is not forking and can simply be added to the cliques it is compatible with
             self.max_cliques
                 .iter_mut()
                 .filter(|c| incomp.is_disjoint(c))
@@ -2932,7 +2935,7 @@ impl BlockGraph {
             {}
         );
         let stale_blocks = {
-            let fitnesss_threshold = clique_fitnesses[blockclique_i]
+            let fitness_threshold = clique_fitnesses[blockclique_i]
                 .0
                 .saturating_sub(self.cfg.delta_f0);
             // iterate from largest to smallest to minimize reallocations
@@ -2942,7 +2945,7 @@ impl BlockGraph {
             let mut low_set: HashSet<BlockId> = HashSet::new();
             let mut keep_mask = vec![true; self.max_cliques.len()];
             for clique_i in indices.into_iter() {
-                if clique_fitnesses[clique_i].0 >= fitnesss_threshold {
+                if clique_fitnesses[clique_i].0 >= fitness_threshold {
                     high_set.extend(&self.max_cliques[clique_i]);
                 } else {
                     low_set.extend(&self.max_cliques[clique_i]);
@@ -3481,7 +3484,7 @@ impl BlockGraph {
                             discarded_dep_found = true;
                             match reason {
                                 DiscardReason::Invalid(reason) => {
-                                    discard_reason = Some(DiscardReason::Invalid(format!("disgarded because depend on block:{} that has disgard reason:{}", hash, reason)));
+                                    discard_reason = Some(DiscardReason::Invalid(format!("discarded because depend on block:{} that has discard reason:{}", hash, reason)));
                                     break;
                                 }
                                 DiscardReason::Stale => discard_reason = Some(DiscardReason::Stale),
@@ -3524,7 +3527,7 @@ impl BlockGraph {
                             dep_to_discard_found = true;
                             match reason {
                                 Some(DiscardReason::Invalid(reason)) => {
-                                    discard_reason = Some(DiscardReason::Invalid(format!("disgarded because depend on block:{} that has disgard reason:{}", hash, reason)));
+                                    discard_reason = Some(DiscardReason::Invalid(format!("discarded because depend on block:{} that has discard reason:{}", hash, reason)));
                                     break;
                                 }
                                 Some(DiscardReason::Stale) => {
@@ -3797,14 +3800,14 @@ mod tests {
                         Address::from_bytes(&Hash::hash("addr01".as_bytes()).into_bytes()).unwrap(),
                         LedgerChange {
                             balance_delta: 1,
-                            balance_increment: true, // wether to increment or decrement balance of delta
+                            balance_increment: true, // whether to increment or decrement balance of delta
                         },
                     ),
                     (
                         Address::from_bytes(&Hash::hash("addr02".as_bytes()).into_bytes()).unwrap(),
                         LedgerChange {
                             balance_delta: 2,
-                            balance_increment: false, // wether to increment or decrement balance of delta
+                            balance_increment: false, // whether to increment or decrement balance of delta
                         },
                     ),
                 ],
@@ -3812,7 +3815,7 @@ mod tests {
                     Address::from_bytes(&Hash::hash("addr11".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
                         balance_delta: 3,
-                        balance_increment: false, // wether to increment or decrement balance of delta
+                        balance_increment: false, // whether to increment or decrement balance of delta
                     },
                 )],
             ],
@@ -3887,7 +3890,7 @@ mod tests {
             block_ledger_change: vec![Vec::new(); thread_count as usize],
             roll_updates: vec![],
         };
-        //update ledget with inital content.
+        //update ledger with initial content.
         //   Thread 0  [at the output of block p0t0]:
         //   A 1000000000
         // Thread 1 [at the output of block p2t1]:
@@ -4021,7 +4024,7 @@ mod tests {
                 (get_dummy_block_id("blockp3t0"), blockp3t0.into()),
                 (get_dummy_block_id("blockp3t1"), blockp3t1.into()),
             ],
-            /// Best parents hashe in each thread.
+            /// Best parents hash in each thread.
             best_parents: vec![
                 get_dummy_block_id("blockp3t0"),
                 get_dummy_block_id("blockp3t1"),
@@ -4148,7 +4151,7 @@ mod tests {
             ]
             .into_iter()
             .collect(),
-            /// Best parents hashe in each thread.
+            /// Best parents hash in each thread.
             best_parents: vec![
                 get_dummy_block_id("parent11"),
                 get_dummy_block_id("parent12"),

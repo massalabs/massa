@@ -106,7 +106,7 @@ impl SerializeMinBEInt for u64 {
 pub trait DeserializeMinBEInt: Sized {
     const MIN_BE_INT_BASE_SIZE: usize;
 
-    /// Compute the minimal big engian deserialization size
+    /// Compute the minimal big endian deserialization size
     fn be_bytes_min_length(max_value: Self) -> usize;
 
     /// Deserializes a minimally sized big endian integer to Self from the provided buffer and checks that its value is within given bounds.

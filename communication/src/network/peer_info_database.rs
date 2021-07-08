@@ -24,10 +24,10 @@ pub struct PeerInfo {
     pub last_alive: Option<UTime>,
     /// Time in millis of peer's last failure
     pub last_failure: Option<UTime>,
-    /// Wether peer was promoted through another peer
+    /// Whether peer was promoted through another peer
     pub advertised: bool,
 
-    /// Current number of active out connection attemps with that peer.
+    /// Current number of active out connection attempts with that peer.
     /// Isn't dump into peer file.
     #[serde(default = "usize::default")]
     pub active_out_connection_attempts: usize,
@@ -62,7 +62,7 @@ pub struct PeerInfoDatabase {
     saver_join_handle: JoinHandle<()>,
     /// Monitor changed peers.
     saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
-    /// Total number of active out connection attemps.
+    /// Total number of active out connection attempts.
     active_out_connection_attempts: usize,
     /// Total number of active out connections.
     active_out_connections: usize,
@@ -111,7 +111,7 @@ async fn dump_peers(
 ///
 /// Arguments : cfg : NetworkConfig
 /// peers : peers to clean up
-/// opt_new_peers : optionnal peers to add to the database
+/// opt_new_peers : optional peers to add to the database
 fn cleanup_peers(
     cfg: &NetworkConfig,
     peers: &mut HashMap<IpAddr, PeerInfo>,
@@ -273,18 +273,16 @@ impl PeerInfoDatabase {
 
     /// Request peers dump to file
     fn request_dump(&self) -> Result<(), CommunicationError> {
-        //use map_err to avoir Ok(self.saver_watch_tx.send(self.peers.clone())?)
-        //which to unwrap that Ok
         trace!("before sending self.peers.clone() from saver_watch_tx in peer_info_database request_dump");
         let res = self.saver_watch_tx.send(self.peers.clone()).map_err(|_| {
-            CommunicationError::ChannelError("could not send on savet_watch_tx".into())
+            CommunicationError::ChannelError("could not send on saver_watch_tx".into())
         });
         trace!("before sending self.peers.clone() from saver_watch_tx in peer_info_database request_dump");
         res
     }
 
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.
-    /// A warining is raised on dump failure.
+    /// A warning is raised on dump failure.
     pub async fn stop(self) -> Result<(), CommunicationError> {
         drop(self.saver_watch_tx);
         self.saver_join_handle.await?;
@@ -294,8 +292,8 @@ impl PeerInfoDatabase {
         Ok(())
     }
 
-    /// Gets avaible out connection attempts
-    /// accordig to NeworkConfig and current connections and connection attempts.
+    /// Gets available out connection attempts
+    /// according to NetworkConfig and current connections and connection attempts.
     pub fn get_available_out_connection_attempts(&self) -> usize {
         std::cmp::min(
             self.cfg
@@ -303,13 +301,13 @@ impl PeerInfoDatabase {
                 .saturating_sub(self.active_out_connection_attempts)
                 .saturating_sub(self.active_out_connections),
             self.cfg
-                .max_out_connnection_attempts
+                .max_out_connection_attempts
                 .saturating_sub(self.active_out_connection_attempts),
         )
     }
 
     /// Sorts peers by ( last_failure, rev(last_success) )
-    /// and returns as many peers as there are avaible slots to attempt outgoing connections to.
+    /// and returns as many peers as there are available slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, CommunicationError> {
         /*
             get_connect_candidate_ips must return the full sorted list where:
@@ -539,9 +537,9 @@ impl PeerInfoDatabase {
         }
     }
 
-    /// Yay an out connection attempt succeded.
+    /// Yay an out connection attempt succeeded.
     /// returns false if there are no slots left for out connections.
-    /// The peer is set to advertized.
+    /// The peer is set to advertised.
     ///
     /// A dump is requested.
     ///
@@ -641,7 +639,7 @@ impl PeerInfoDatabase {
         if let Some(our_ip) = self.cfg.routable_ip {
             // avoid our own IP
             if *ip == our_ip {
-                warn!("incomming connection from our own IP");
+                warn!("incoming connection from our own IP");
                 return Ok(false);
             }
         }
@@ -990,7 +988,7 @@ mod tests {
     #[serial]
     async fn test_new_out_connection_closed() {
         let mut network_config = example_network_config();
-        network_config.max_out_connnection_attempts = 5;
+        network_config.max_out_connection_attempts = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         //add peers
@@ -1075,7 +1073,7 @@ mod tests {
     #[serial]
     async fn test_new_out_connection_attempt() {
         let mut network_config = example_network_config();
-        network_config.max_out_connnection_attempts = 5;
+        network_config.max_out_connection_attempts = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         //add peers
@@ -1420,8 +1418,8 @@ mod tests {
         assert!(!peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 35))));
         assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 36))));
 
-        //test with adversized peers
-        let adversized = vec![
+        //test with advertised peers
+        let advertised = vec![
             IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 10)),
             IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 43)),
             IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
@@ -1432,7 +1430,7 @@ mod tests {
         network_config.max_advertise_length = 1;
         network_config.max_idle_peers = 5;
 
-        cleanup_peers(&network_config, &mut peers, Some(&adversized));
+        cleanup_peers(&network_config, &mut peers, Some(&advertised));
 
         assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 43))));
     }
@@ -1471,7 +1469,7 @@ mod tests {
             target_out_connections: 10,
             max_in_connections: 5,
             max_in_connections_per_ip: 2,
-            max_out_connnection_attempts: 15,
+            max_out_connection_attempts: 15,
             max_idle_peers: 3,
             max_banned_peers: 3,
             max_advertise_length: 5,

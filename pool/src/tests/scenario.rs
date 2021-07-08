@@ -143,7 +143,7 @@ async fn test_pool() {
         }
     }
 
-    // add transactions from protocolwith a high fee but too much in the future: should be ignored
+    // add transactions from protocol with a high fee but too much in the future: should be ignored
     {
         pool_command_sender
             .update_current_slot(Slot::new(10, 0))

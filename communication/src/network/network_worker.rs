@@ -255,7 +255,7 @@ impl NetworkWorker {
     }
 
     /// Runs the main loop of the network_worker
-    /// There is a tokio::select! insside the loop
+    /// There is a tokio::select! inside the loop
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         let mut out_connecting_futures = FuturesUnordered::new();
         let mut cur_connection_id = ConnectionId::default();
@@ -331,7 +331,7 @@ impl NetworkWorker {
                     };
 
                     // Note: if the send is dropped, and we later receive a command related to an unknown node,
-                    // we will retry a send for this event for that unknonw node,
+                    // we will retry a send for this event for that unknown node,
                     // ensuring protocol eventually notes the closure.
                     let _ = self
                         .send_network_event(NetworkEvent::ConnectionClosed(node_id))
@@ -598,11 +598,11 @@ impl NetworkWorker {
             .remove(&id)
             .ok_or(CommunicationError::ActiveConnectionMissing(id))?;
         debug!(
-            "connection closed connedtion_id={:?}, ip={:?}, reason={:?}",
+            "connection closed connection_id={:?}, ip={:?}, reason={:?}",
             id, ip, reason
         );
         massa_trace!("network_worker.connection_closed", {
-            "connnection_id": id,
+            "connection_id": id,
             "ip": ip,
             "reason": reason
         });
@@ -629,7 +629,7 @@ impl NetworkWorker {
     /// # Arguments
     /// * cmd : command to process.
     /// * peer_info_db: Database with peer information.
-    /// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
+    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
     /// * event_tx: channel to send network events out.
     async fn manage_network_command(
         &mut self,
@@ -787,10 +787,10 @@ impl NetworkWorker {
     /// Only used inside worker's run_loop
     ///
     /// # Arguments
-    /// * res : (reader, writer) in a result comming out of out_connecting_futures
+    /// * res : (reader, writer) in a result coming out of out_connecting_futures
     /// * peer_info_db: Database with peer information.
     /// * cur_connection_id : connection id of the node we are trying to reach
-    /// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
+    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
     /// * event_tx: channel to send network events out.
     async fn manage_out_connections(
         &mut self,
@@ -842,10 +842,10 @@ impl NetworkWorker {
     /// Only used inside worker's run_loop
     ///
     /// # Arguments
-    /// * res : (reader, writer, socketAddr) in a result comming out of the listener
+    /// * res : (reader, writer, socketAddr) in a result coming out of the listener
     /// * peer_info_db: Database with peer information.
     /// * cur_connection_id : connection id of the node we are trying to reach
-    /// * active_connections: hashmap linking connection id to ipAddr to wether connection is outgoing (true)
+    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
     /// * event_tx: channel to send network events out.
     async fn manage_in_connections(
         &mut self,

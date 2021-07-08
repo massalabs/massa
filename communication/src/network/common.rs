@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// A unique connecion id for a node
+/// A unique connection id for a node
 #[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ConnectionId(pub u64);
 

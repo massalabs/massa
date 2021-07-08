@@ -166,9 +166,9 @@ pub struct ProtocolWorker {
     cfg: ProtocolConfig,
     /// Operation validity periods
     operation_validity_periods: u64,
-    /// Associated nework command sender.
+    /// Associated network command sender.
     network_command_sender: NetworkCommandSender,
-    /// Associated nework event receiver.
+    /// Associated network event receiver.
     network_event_receiver: NetworkEventReceiver,
     /// Channel to send protocol events to the controller.
     controller_event_tx: mpsc::Sender<ProtocolEvent>,
@@ -268,7 +268,7 @@ impl ProtocolWorker {
 
     /// Main protocol worker loop. Consumes self.
     /// It is mostly a tokio::select inside a loop
-    /// wainting on :
+    /// waiting on :
     /// - controller_command_rx
     /// - network_controller
     /// - handshake_futures
@@ -347,7 +347,7 @@ impl ProtocolWorker {
                     } else {
                         // node that aren't asking for that block
                         let cond = node_info.get_known_block(&block_id);
-                        // if we don't know if that node knowns that hash or if we know it doesn't
+                        // if we don't know if that node knows that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
                             massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id, "header": block.header });
                             self.network_command_sender
@@ -541,7 +541,7 @@ impl ProtocolWorker {
                     // not timed out yet (note: recent DONTHAVBLOCK checked before the match)
                     (false, Some(timeout_at), _) => {
                         next_tick = std::cmp::min(next_tick, timeout_at);
-                        needs_ask = false; // no need to reask
+                        needs_ask = false; // no need to re ask
                         continue; // not a candidate
                     }
                     // timed out, supposed to have it
@@ -820,7 +820,7 @@ impl ProtocolWorker {
         operations: Vec<Operation>,
         source_node_id: &NodeId,
     ) -> Option<HashMap<OperationId, Operation>> {
-        massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "opearations": operations });
+        massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let mut result = HashMap::new();
         for op in operations.into_iter() {
             match op.verify_integrity() {
@@ -828,7 +828,7 @@ impl ProtocolWorker {
                     result.insert(operation_id, op);
                 }
                 Err(err) => {
-                    massa_trace!("protocol.protocol_worker.note_operations_from_node.invalid", { "node": source_node_id, "opearation": op, "err": format!("{:?}", err) });
+                    massa_trace!("protocol.protocol_worker.note_operations_from_node.invalid", { "node": source_node_id, "operation": op, "err": format!("{:?}", err) });
                     warn!(
                         "node {:?} sent an invalid operation: {:?}",
                         source_node_id, err
@@ -844,7 +844,7 @@ impl ProtocolWorker {
     /// Only used by the worker.
     ///
     /// # Argument
-    /// evt: event to processs
+    /// evt: event to process
     async fn on_network_event(
         &mut self,
         evt: NetworkEvent,

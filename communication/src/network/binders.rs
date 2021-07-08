@@ -40,7 +40,7 @@ impl WriteBinder {
         let msg_size: u32 = bytes_vec
             .len()
             .try_into()
-            .map_err(|_| CommunicationError::GeneralProtocolError("messsage too long".into()))?;
+            .map_err(|_| CommunicationError::GeneralProtocolError("message too long".into()))?;
 
         // send length
         let max_message_size = with_serialization_context(|context| context.max_message_size);
@@ -84,7 +84,7 @@ impl ReadBinder {
         }
     }
 
-    /// Awaits the next incomming message and deserializes it. Async cancel-safe.
+    /// Awaits the next incoming message and deserializes it. Async cancel-safe.
     pub async fn next(&mut self) -> Result<Option<(u64, Message)>, CommunicationError> {
         let max_message_size = with_serialization_context(|context| context.max_message_size);
 

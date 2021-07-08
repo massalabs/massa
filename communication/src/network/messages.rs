@@ -25,7 +25,7 @@ pub enum Message {
         /// let us know their public key.
         random_bytes: [u8; HANDSHAKE_RANDOMNES_SIZE_BYTES],
     },
-    /// Reply to a handskake initiation message.
+    /// Reply to a handshake initiation message.
     HandshakeReply {
         /// Signature of the received random bytes with our private_key.
         signature: Signature,

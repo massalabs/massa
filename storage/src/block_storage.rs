@@ -315,7 +315,7 @@ impl BlockStorage {
                     Address::from_public_key(&block.header.content.creator).map_err(|err| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
-                                "error computing feee target addres: {:?}",
+                                "error computing fee target address: {:?}",
                                 err
                             )),
                         )
@@ -514,7 +514,7 @@ impl BlockStorage {
                 })
             })
             .map_err(|err| {
-                StorageError::OperationError(format!("error getting operatiosn: {:?}", err))
+                StorageError::OperationError(format!("error getting operation: {:?}", err))
             })
     }
 
@@ -580,7 +580,7 @@ impl BlockStorage {
                 })
             })
             .map_err(|err| {
-                StorageError::OperationError(format!("error getting operatiosn: {:?}", err))
+                StorageError::OperationError(format!("error getting operation: {:?}", err))
             })
     }
 }

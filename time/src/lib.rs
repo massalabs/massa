@@ -135,7 +135,7 @@ impl UTime {
         Duration::from_millis(self.0)
     }
 
-    /// Conversion to u64, represting millis.
+    /// Conversion to u64, representing millis.
     /// ```
     /// # use time::*;
     /// let time : UTime = UTime::from(42);
@@ -202,7 +202,7 @@ impl UTime {
         self.0
             .checked_sub(t.0)
             .ok_or(TimeError::CheckedOperationError(format!(
-                "substraction error"
+                "subtraction error"
             )))
             .and_then(|value| Ok(UTime(value)))
     }

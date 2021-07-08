@@ -1,6 +1,6 @@
 Here is a proposition for block asking workflow.
 
-For every node we have a list of blocks that we asked to that node, with a sequence number,
+For every node we have a list of blocks that we asked that node, with a sequence number,
 and a wishlist of blocks that node asked us.
 To get next node sort them by
 * if we already asked that block to that node
@@ -111,6 +111,6 @@ Needed structures:
 struct NodeInfo {
     known_blocks: HashMap<Hash, bool>,
     wanted_blocks: HashSet<Hash>,
-    asked_block_history: HashMap<Hash, Option<Instant>
+    asked_block_history: HashMap<Hash, Option<Instant>>,
 }
 ```

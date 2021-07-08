@@ -130,7 +130,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
         .expect("could not get block graph status")
         .best_parents;
 
-    // Send more blocks in the future than the max number of future processinb blocks.
+    // Send more blocks in the future than the max number of future processing blocks.
     for i in 0..(cfg.max_future_processing_blocks + 5) as u64 {
         // Too far into the future.
         let _ = tools::create_and_test_block(
@@ -235,7 +235,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
         .await;
 
     // Eventually, all blocks will be discarded due to their bad parent.
-    // Note the parent too much in the future will not be discared, but ignored.
+    // Note the parent too much in the future will not be discarded, but ignored.
     loop {
         let status = consensus_command_sender
             .get_block_graph_status()

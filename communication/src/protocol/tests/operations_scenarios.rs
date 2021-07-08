@@ -147,7 +147,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
     let operation = tools::create_operation();
 
     // Send operation and wait for the protocol event,
-    // just to be sure the nodes are connected before sendind the propagate command.
+    // just to be sure the nodes are connected before sending the propagate command.
     network_controller
         .send_operations(nodes[0].id, vec![operation.clone()])
         .await;

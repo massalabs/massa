@@ -86,7 +86,7 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
     // 1. Create an operation
     let mut operation = tools::create_operation();
 
-    // 2. Change the validty period.
+    // 2. Change the validity period.
     operation.content.expire_period += 10;
 
     // 3. Send block to protocol.

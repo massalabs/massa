@@ -101,14 +101,14 @@ async fn test_thread_incompatibility() {
     assert!(if let Some(h) = status.gi_head.get(&hash_3) {
         h.contains(&hash_1)
     } else {
-        panic!("missign hash in gi_head")
+        panic!("missing hash in gi_head")
     });
 
     assert_eq!(status.max_cliques.len(), 2);
 
     for clique in status.max_cliques.clone() {
         if clique.contains(&hash_1) && clique.contains(&hash_3) {
-            panic!("incompatible bloocks in the same clique")
+            panic!("incompatible blocks in the same clique")
         }
     }
 
@@ -284,7 +284,7 @@ async fn test_grandpa_incompatibility() {
     assert!(if let Some(h) = status.gi_head.get(&hash_4) {
         h.contains(&hash_3)
     } else {
-        panic!("missign block in gi_head")
+        panic!("missing block in gi_head")
     });
 
     assert_eq!(status.max_cliques.len(), 2);

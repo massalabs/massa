@@ -9,7 +9,7 @@ pub enum CommunicationError {
     WrongSignature,
     #[error("Protocol err:{0}")]
     GeneralProtocolError(String),
-    #[error("An error occured during channel communication: {0}")]
+    #[error("An error occurred during channel communication: {0}")]
     ChannelError(String),
     #[error("A tokio task has crashed err:{0}")]
     TokioTaskJoinError(#[from] tokio::task::JoinError),
@@ -29,7 +29,7 @@ pub enum CommunicationError {
     SerdeError(#[from] serde_json::Error),
     #[error("crypto error {0}")]
     CryptoError(#[from] crypto::CryptoError),
-    #[error("handhsake error:{0:?}")]
+    #[error("handshake error:{0:?}")]
     HandshakeError(HandshakeErrorType),
     #[error("the network controller should not drop a node command sender before shutting down the node.")]
     UnexpectedNodeCommandChannelClosure,

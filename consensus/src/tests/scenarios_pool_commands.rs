@@ -316,7 +316,7 @@ fn get_bootgraph(
             ]
             .into_iter()
             .collect(),
-            /// Best parents hashe in each thread.
+            /// Best parents hash in each thread.
             best_parents: vec![p1t0_id, g1_id],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],

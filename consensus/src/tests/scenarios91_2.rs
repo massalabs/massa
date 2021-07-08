@@ -538,7 +538,7 @@ async fn test_test_parents() {
     )
     .await;
 
-    //create a valids block for slot 2
+    //create a valid block for slot 2
     let valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
@@ -563,7 +563,7 @@ async fn test_test_parents() {
     .await;
 
     // * create 1 block in t0s3 with parents (t0s2, t1s0)
-    //create a valids block for slot 2
+    //create a valid block for slot 2
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,

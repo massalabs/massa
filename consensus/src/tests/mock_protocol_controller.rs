@@ -72,7 +72,7 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    // ignore all commands while waiting for a futrue
+    // ignore all commands while waiting for a future
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
         &mut self,
         mut future: FutureT,
