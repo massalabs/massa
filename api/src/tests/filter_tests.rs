@@ -625,6 +625,42 @@ async fn test_get_block() {
     assert_eq!(obtained, expected);
     handle.await.unwrap();
     drop(filter);
+
+    let (storage_command_tx, _storage_manager) = start_storage_controller(StorageConfig {
+        max_stored_blocks: 10,
+        path: "test".to_string(),
+        cache_capacity: 500,
+        flush_every_ms: None,
+    })
+    .unwrap();
+    let (filter, mut rx_api) = mock_filter(None);
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetActiveBlock(_hash, response_sender_tx)) => {
+                response_sender_tx.send(None).expect("failed to send block");
+            }
+
+            _ => {}
+        }
+    });
+
+    // block not found
+    let other_hash = Hash::hash("something else".as_bytes());
+
+    storage_command_tx
+        .add_block(other_hash, get_test_block())
+        .await
+        .unwrap();
+
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!("/api/v1/block/{}", other_hash))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 404);
+    handle.await.unwrap();
 }
 
 #[tokio::test]
