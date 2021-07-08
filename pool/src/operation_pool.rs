@@ -32,6 +32,8 @@ pub struct OperationPool {
     /// one vec per thread
     ops_by_thread_and_interest:
         Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
+    /// Maps Addres -> Op id
+    ops_by_address: HashMap<Address, HashSet<OperationId>>,
     /// latest final blocks periods
     last_final_periods: Vec<u64>,
     /// current slot
@@ -61,6 +63,7 @@ impl OperationPool {
             thread_count,
             operation_validity_periods,
             final_operations: HashMap::new(),
+            ops_by_address: HashMap::new(),
         }
     }
 
@@ -127,8 +130,18 @@ impl OperationPool {
 
             // insert
             let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
+            let addrs = wrapped_op.op.get_involved_addresses(None)?;
+
             self.ops_by_thread_and_interest[wrapped_op.thread as usize].insert(interest);
             self.ops.insert(op_id, wrapped_op);
+
+            addrs.iter().for_each(|addr| {
+                self.ops_by_address
+                    .entry(*addr)
+                    .or_insert(HashSet::new())
+                    .insert(op_id);
+            });
+
             newly_added.insert(op_id);
         }
 
@@ -141,7 +154,15 @@ impl OperationPool {
                     [thread as usize]
                     .pop_last()
                     .unwrap(); // will not panic because of the while condition. complexity = log or better
-                self.ops.remove(&removed_id); // complexity: const
+                if let Some(removed_op) = self.ops.remove(&removed_id) {
+                    // complexity: const
+                    let addrs = removed_op.op.get_involved_addresses(None)?;
+                    for addr in addrs {
+                        if let Some(old) = self.ops_by_address.get_mut(&addr) {
+                            old.remove(&removed_id);
+                        }
+                    }
+                }
                 newly_added.remove(&removed_id);
             }
         }
@@ -159,12 +180,12 @@ impl OperationPool {
         self.final_operations.extend(ops);
     }
 
-    pub fn update_current_slot(&mut self, slot: Slot) {
+    pub fn update_current_slot(&mut self, slot: Slot) -> Result<(), PoolError> {
         self.current_slot = Some(slot);
-        self.prune();
+        self.prune()
     }
 
-    fn prune(&mut self) {
+    fn prune(&mut self) -> Result<(), PoolError> {
         let ids = self
             .ops
             .iter()
@@ -174,7 +195,7 @@ impl OperationPool {
             .map(|(id, _)| id.clone())
             .collect();
 
-        self.remove_ops(ids);
+        self.remove_ops(ids)?;
 
         let ids = self
             .final_operations
@@ -186,23 +207,33 @@ impl OperationPool {
         for id in ids.into_iter() {
             self.final_operations.remove(&id);
         }
+
+        Ok(())
     }
 
-    pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {
+    pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) -> Result<(), PoolError> {
         self.last_final_periods = periods;
         self.prune()
     }
 
     // removes an operation
-    fn remove_ops(&mut self, op_ids: Vec<OperationId>) {
+    fn remove_ops(&mut self, op_ids: Vec<OperationId>) -> Result<(), PoolError> {
         for op_id in op_ids.into_iter() {
             if let Some(wrapped_op) = self.ops.remove(&op_id) {
                 // complexity: const
                 let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
                 self.ops_by_thread_and_interest[wrapped_op.thread as usize].remove(&interest);
                 // complexity: log
+
+                let addrs = wrapped_op.op.get_involved_addresses(None)?;
+                for addr in addrs {
+                    if let Some(old) = self.ops_by_address.get_mut(&addr) {
+                        old.remove(&op_id);
+                    }
+                }
             }
         }
+        Ok(())
     }
 
     /// Get max_count operation for thread block_slot.thread
@@ -254,21 +285,29 @@ impl OperationPool {
         &self,
         address: &Address,
     ) -> Result<HashMap<OperationId, OperationSearchResult>, PoolError> {
-        let mut res = HashMap::new();
-        for (id, op) in self.ops.iter() {
-            let involved = op.op.get_involved_addresses(None)?;
-            if involved.contains(address) {
-                res.insert(
-                    *id,
-                    OperationSearchResult {
-                        op: op.op.clone(),
-                        in_pool: true,
-                        in_blocks: HashMap::new(),
-                    },
-                );
-            }
+        if let Some(ids) = self.ops_by_address.get(address) {
+            ids.iter()
+                .map(|op_id| {
+                    self.ops
+                        .get(op_id)
+                        .ok_or(PoolError::ContainerInconsistency(
+                            "op in ops by address is not in ops".to_string(),
+                        ))
+                        .map(|op| {
+                            (
+                                *op_id,
+                                OperationSearchResult {
+                                    op: op.op.clone(),
+                                    in_pool: true,
+                                    in_blocks: HashMap::new(),
+                                },
+                            )
+                        })
+                })
+                .collect()
+        } else {
+            Ok(HashMap::new())
         }
-        Ok(res)
     }
 }
 
@@ -403,7 +442,8 @@ mod tests {
 
         // op ending before or at period 45 should be discarded
         let final_period = 45u64;
-        pool.update_latest_final_periods(vec![final_period; thread_count as usize]);
+        pool.update_latest_final_periods(vec![final_period; thread_count as usize])
+            .unwrap();
         for lst in thread_tx_lists.iter_mut() {
             lst.retain(|(_, op, _)| op.content.expire_period > final_period);
         }
@@ -429,7 +469,7 @@ mod tests {
 
         // add transactions with a high fee but too much in the future: should be ignored
         {
-            pool.update_current_slot(Slot::new(10, 0));
+            pool.update_current_slot(Slot::new(10, 0)).unwrap();
             let fee = 1000;
             let expire_period: u64 = 300;
             let (op, thread) = get_transaction(expire_period, fee);
