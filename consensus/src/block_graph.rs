@@ -114,7 +114,7 @@ impl CompiledBlock {
 }
 
 /// Possible discard reasons
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscardReason {
     /// Block is invalid, either structurally, or because of some incompatibility.
     Invalid,

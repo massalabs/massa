@@ -865,6 +865,7 @@ dependencies = [
  "chrono",
  "clap",
  "communication",
+ "consensus",
  "crypto",
  "models",
  "reqwest",

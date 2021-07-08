@@ -8,7 +8,7 @@
 
 [consensus]
     genesis_timestamp = 1607958448000
-    t0 = 16000
+    t0 = 64000
     thread_count = 32
     selection_rng_seed = 42
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
@@ -45,5 +45,12 @@
     max_banned_peers = 1000
     max_advertise_length = 100000
     peers_file_dump_interval = 10000
+
+[storage]
+    max_stored_blocks= 10000
+    path = "block_store"
+    cache_capacity = 10000
+    #flush_every_ms = 
+
     
 
