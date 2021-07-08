@@ -1,0 +1,14 @@
+[
+  {
+    "ip": "100.100.100.100",
+    "status": "Idle",
+    "last_connection": null,
+    "last_failure": null
+  },
+  {
+    "ip": "150.150.150.150",
+    "status": "Banned",
+    "last_connection": null,
+    "last_failure": null
+  }
+]

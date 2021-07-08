@@ -1,18 +1,16 @@
 use chrono::{DateTime, Utc};
 use log::warn;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::net::IpAddr;
-use tokio::fs::{read_to_string, write};
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{delay_for, Duration};
-use serde::{Serialize, Deserialize};
-use toml;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
-#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum PeerStatus {
     Idle,
     OutConnecting,
@@ -23,10 +21,12 @@ pub enum PeerStatus {
     Banned,
 }
 impl Default for PeerStatus {
-    fn default() -> Self { PeerStatus::Idle }
+    fn default() -> Self {
+        PeerStatus::Idle
+    }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct PeerInfo {
     pub ip: IpAddr,
     pub status: PeerStatus,
@@ -38,41 +38,36 @@ pub struct PeerDatabase {
     pub peers: HashMap<IpAddr, PeerInfo>,
     peers_filename: String,
     saver_join_handle: JoinHandle<()>,
-    saver_watch_tx: watch::Sender<Option<Vec<String>>>,
+    saver_watch_tx: watch::Sender<Option<HashMap<IpAddr, PeerInfo>>>,
 }
 
 async fn load_peers(file_name: &String) -> BoxResult<HashMap<IpAddr, PeerInfo>> {
-    
-    /*
-        TODO load from file
-        if status is not Idle or Banned, raise error
-    */
-
-    let mut result = HashMap::<IpAddr, PeerInfo>::new();
-
-    let text = read_to_string(file_name).await?;
-    for ip_str in text.lines() {
-        let ip: IpAddr = ip_str.to_string().parse()?;
-        result.insert(
-            ip,
-            PeerInfo {
-                ip,
-                status: PeerStatus::Idle,
-                last_connection: None,
-                last_failure: None,
-            },
-        );
-    }
-    if result.len() == 0 {
+    let result =
+        serde_json::from_str::<Vec<PeerInfo>>(&tokio::fs::read_to_string(file_name).await?)?
+            .iter()
+            .map(|p| match p.status {
+                PeerStatus::Idle | PeerStatus::Banned => Ok((p.ip, *p)),
+                _ => Err("invalid peer status in peers file"),
+            })
+            .collect::<Result<HashMap<IpAddr, PeerInfo>, _>>()?;
+    if result.is_empty() {
         return Err("known peers file is empty".into());
     }
     Ok(result)
 }
 
 async fn dump_peers(peers: &HashMap<IpAddr, PeerInfo>, file_name: &String) -> BoxResult<()> {
-    // TODO SAVE EVERYTHING !
-    //TODO if status is not Banned, set it to idle
-
+    let peer_vec: Vec<PeerInfo> = peers
+        .values()
+        .map(|&p| PeerInfo {
+            status: match p.status {
+                PeerStatus::Banned => PeerStatus::Banned,
+                _ => PeerStatus::Idle,
+            },
+            ..p
+        })
+        .collect();
+    tokio::fs::write(file_name, serde_json::to_string_pretty(&peer_vec)?).await?;
     Ok(())
 }
 
@@ -83,7 +78,7 @@ impl PeerDatabase {
 
         // setup saver
         let peers_filename_copy = peers_filename.clone();
-        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(Some(Vec::<String>::new()));
+        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(Some(HashMap::new()));
         let saver_join_handle = tokio::spawn(async move {
             while let Some(Some(p)) = saver_watch_rx.recv().await {
                 if let Err(e) = dump_peers(&p, &peers_filename_copy).await {
@@ -115,11 +110,7 @@ impl PeerDatabase {
     pub async fn stop(self) {
         let _ = self.saver_watch_tx.broadcast(None);
         let _ = self.saver_join_handle.await;
-        let _ = dump_peers(
-            &self.peers.keys().map(|ip| ip.to_string()).collect(),
-            &self.peers_filename,
-        )
-        .await;
+        let _ = dump_peers(&self.peers, &self.peers_filename).await;
     }
 
     pub fn count_peers_with_status(&self, status: PeerStatus) -> usize {
