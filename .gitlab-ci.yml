@@ -19,5 +19,5 @@ build:
   image: "rustlang/rust:nightly"
   script:
     - cargo build
-    - cargo test -- --test-threads=1
+    - cargo test
 
