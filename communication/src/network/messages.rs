@@ -1,10 +1,10 @@
 use crypto::{
-    hash::{Hash, HASH_SIZE_BYTES},
+    hash::HASH_SIZE_BYTES,
     signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES},
 };
 use models::{
-    array_from_slice, Block, BlockHeader, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializationContext, SerializeCompact, SerializeVarInt,
+    array_from_slice, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
+    ModelsError, SerializationContext, SerializeCompact, SerializeVarInt,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ pub enum Message {
     /// Block header
     BlockHeader(BlockHeader),
     /// Message asking the peer for a block.
-    AskForBlocks(Vec<Hash>),
+    AskForBlocks(Vec<BlockId>),
     /// Message asking the peer for its advertisable peers list.
     AskPeerList,
     /// Reply to a AskPeerList message
@@ -44,7 +44,7 @@ pub enum Message {
     /// it is the first ip of the list.
     PeerList(Vec<IpAddr>),
     /// Block not found
-    BlockNotFound(Hash),
+    BlockNotFound(BlockId),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -166,9 +166,9 @@ impl DeserializeCompact for Message {
                 )?;
                 cursor += delta;
                 // hash list
-                let mut list: Vec<Hash> = Vec::with_capacity(length as usize);
+                let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
                 for _ in 0..length {
-                    let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                    let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                     cursor += HASH_SIZE_BYTES;
                     list.push(hash);
                 }
@@ -192,7 +192,7 @@ impl DeserializeCompact for Message {
                 Message::PeerList(peers)
             }
             MessageTypeId::BlockNotFound => {
-                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 Message::BlockNotFound(hash)
             }

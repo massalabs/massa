@@ -5,7 +5,7 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, SignatureEngine},
 };
-use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
+use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
 use std::collections::HashSet;
 use storage::{StorageAccess, StorageConfig};
 use time::UTime;
@@ -13,17 +13,17 @@ use time::UTime;
 //return true if another block has been seen
 pub async fn validate_notpropagate_block(
     protocol_controller: &mut MockProtocolController,
-    not_propagated_hash: Hash,
+    not_propagated: BlockId,
     timeout_ms: u64,
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
             _ => None,
         })
         .await;
     match param {
-        Some(hash) => !(not_propagated_hash == hash),
+        Some(block_id) => !(not_propagated == block_id),
         None => false,
     }
 }
@@ -31,37 +31,36 @@ pub async fn validate_notpropagate_block(
 //return true if another block has been seen
 pub async fn validate_notpropagate_block_in_list(
     protocol_controller: &mut MockProtocolController,
-    not_propagated_hashs: &Vec<Hash>,
+    not_propagated: &Vec<BlockId>,
     timeout_ms: u64,
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
             _ => None,
         })
         .await;
     match param {
-        Some(hash) => !not_propagated_hashs.contains(&hash),
+        Some(block_id) => !not_propagated.contains(&block_id),
         None => false,
     }
 }
 
 pub async fn validate_propagate_block_in_list(
     protocol_controller: &mut MockProtocolController,
-    valid_hashs: &Vec<Hash>,
+    valid: &Vec<BlockId>,
     timeout_ms: u64,
-) -> Hash {
+) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
             _ => None,
         })
         .await;
     match param {
-        Some(hash) => {
-            trace!("receive hash:{}", hash);
-            assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
-            hash
+        Some(block_id) => {
+            assert!(valid.contains(&block_id), "not the valid hash propagated");
+            block_id
         }
         None => panic!("Hash not propagated."),
     }
@@ -69,9 +68,9 @@ pub async fn validate_propagate_block_in_list(
 
 pub async fn validate_ask_for_block(
     protocol_controller: &mut MockProtocolController,
-    valid_hash: Hash,
+    valid: BlockId,
     timeout_ms: u64,
-) -> Hash {
+) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
             ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
@@ -80,10 +79,9 @@ pub async fn validate_ask_for_block(
         .await;
     match param {
         Some(new) => {
-            trace!("asking for hashes:{:?}", new);
-            assert!(new.contains(&valid_hash), "not the valid hash asked for");
+            assert!(new.contains(&valid), "not the valid hash asked for");
             assert_eq!(new.len(), 1);
-            valid_hash
+            valid
         }
         None => panic!("Block not asked for before timeout."),
     }
@@ -91,8 +89,8 @@ pub async fn validate_ask_for_block(
 
 pub async fn validate_wishlist(
     protocol_controller: &mut MockProtocolController,
-    new: HashSet<Hash>,
-    remove: HashSet<Hash>,
+    new: HashSet<BlockId>,
+    remove: HashSet<BlockId>,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
@@ -112,7 +110,7 @@ pub async fn validate_wishlist(
 
 pub async fn validate_does_not_ask_for_block(
     protocol_controller: &mut MockProtocolController,
-    hash: &Hash,
+    hash: &BlockId,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
@@ -133,12 +131,12 @@ pub async fn validate_does_not_ask_for_block(
 
 pub async fn validate_propagate_block(
     protocol_controller: &mut MockProtocolController,
-    valid_hash: Hash,
+    valid_hash: BlockId,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
             _ => None,
         })
         .await;
@@ -150,7 +148,7 @@ pub async fn validate_propagate_block(
 
 pub async fn validate_notify_block_attack_attempt(
     protocol_controller: &mut MockProtocolController,
-    valid_hash: Hash,
+    valid_hash: BlockId,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
@@ -183,7 +181,7 @@ pub fn start_storage(serialization_context: &SerializationContext) -> StorageAcc
 
 pub async fn validate_block_found(
     protocol_controller: &mut MockProtocolController,
-    valid_hash: &Hash,
+    valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
@@ -209,7 +207,7 @@ pub async fn validate_block_found(
 
 pub async fn validate_block_not_found(
     protocol_controller: &mut MockProtocolController,
-    valid_hash: &Hash,
+    valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
@@ -238,10 +236,10 @@ pub async fn create_and_test_block(
     cfg: &ConsensusConfig,
     serialization_context: &SerializationContext,
     slot: Slot,
-    best_parents: Vec<Hash>,
+    best_parents: Vec<BlockId>,
     valid: bool,
     trace: bool,
-) -> Hash {
+) -> BlockId {
     let (block_hash, block, _) = create_block(&cfg, &serialization_context, slot, best_parents);
     if trace {
         info!("create block:{}", block_hash);
@@ -263,11 +261,10 @@ pub async fn propagate_block(
     protocol_controller: &mut MockProtocolController,
     block: Block,
     valid: bool,
-) -> Hash {
+) -> BlockId {
     let block_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .unwrap();
     protocol_controller.receive_block(block).await;
     if valid {
@@ -285,8 +282,8 @@ pub fn create_block(
     cfg: &ConsensusConfig,
     serialization_context: &SerializationContext,
     slot: Slot,
-    best_parents: Vec<Hash>,
-) -> (Hash, Block, PrivateKey) {
+    best_parents: Vec<BlockId>,
+) -> (BlockId, Block, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
         serialization_context,
@@ -295,14 +292,15 @@ pub fn create_block(
         best_parents,
     )
 }
+
 // returns hash and resulting discarded blocks
 pub fn create_block_with_merkle_root(
     cfg: &ConsensusConfig,
     serialization_context: &SerializationContext,
     operation_merkle_root: Hash,
     slot: Slot,
-    best_parents: Vec<Hash>,
-) -> (Hash, Block, PrivateKey) {
+    best_parents: Vec<BlockId>,
+) -> (BlockId, Block, PrivateKey) {
     let mut signature_engine = SignatureEngine::new();
     let (public_key, private_key) = cfg
         .nodes
@@ -381,7 +379,7 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
     )
 }
 
-pub fn get_cliques(graph: &BlockGraphExport, hash: Hash) -> HashSet<usize> {
+pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
     let mut res = HashSet::new();
     for (i, clique) in graph.max_cliques.iter().enumerate() {
         if clique.contains(&hash) {

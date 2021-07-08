@@ -9,7 +9,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
-use models::{Block, SerializationContext, Slot};
+use models::{Block, BlockId, SerializationContext, Slot};
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::{
@@ -128,12 +128,15 @@ impl ConsensusCommandSender {
     /// * hash: hash corresponding to the block we want.
     pub async fn get_active_block(
         &self,
-        hash: crypto::hash::Hash,
+        block_id: BlockId,
     ) -> Result<Option<Block>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<Option<Block>>();
         massa_trace!("consensus.consensus_controller.get_active_block", {});
         self.0
-            .send(ConsensusCommand::GetActiveBlock { hash, response_tx })
+            .send(ConsensusCommand::GetActiveBlock {
+                block_id,
+                response_tx,
+            })
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))

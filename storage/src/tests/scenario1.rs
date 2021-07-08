@@ -1,7 +1,6 @@
 use super::tools;
 use crate::{start_storage, StorageAccess, StorageConfig};
-use crypto::hash::Hash;
-use models::{SerializationContext, Slot};
+use models::{BlockId, SerializationContext, Slot};
 
 #[tokio::test]
 async fn test_max_block_count() {
@@ -164,12 +163,12 @@ async fn test_get_slot_range() {
         .await
         .unwrap();
     //println!("result:{:#?}", result);
-    assert!(result.contains_key(&Hash::hash(b"(period: 1, thread: 1)")));
-    assert!(result.contains_key(&Hash::hash(b"(period: 2, thread: 1)")));
-    assert!(result.contains_key(&Hash::hash(b"(period: 3, thread: 0)")));
-    assert!(!result.contains_key(&Hash::hash(b"(period: 3, thread: 1)")));
-    assert!(!result.contains_key(&Hash::hash(b"(period: 1, thread: 0)")));
-    assert!(!result.contains_key(&Hash::hash(b"(period: 2, thread: 0)")));
+    assert!(result.contains_key(&BlockId::for_tests("(period: 1, thread: 1)").unwrap()));
+    assert!(result.contains_key(&BlockId::for_tests("(period: 2, thread: 1)").unwrap()));
+    assert!(result.contains_key(&BlockId::for_tests("(period: 3, thread: 0)").unwrap()));
+    assert!(!result.contains_key(&BlockId::for_tests("(period: 3, thread: 1)").unwrap()));
+    assert!(!result.contains_key(&BlockId::for_tests("(period: 1, thread: 0)").unwrap()));
+    assert!(!result.contains_key(&BlockId::for_tests("(period: 2, thread: 0)").unwrap()));
 
     //range too low
     let result = storage
@@ -202,13 +201,13 @@ async fn test_get_slot_range() {
         .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
         .await
         .unwrap();
-    assert!(result.contains_key(&Hash::hash(b"(period: 1, thread: 0)")));
+    assert!(result.contains_key(&BlockId::for_tests("(period: 1, thread: 0)").unwrap()));
     //unique range sup out
     let result = storage
         .get_slot_range(Some(Slot::new(4, 0)), Some(Slot::new(5, 1)))
         .await
         .unwrap();
-    assert!(result.contains_key(&Hash::hash(b"(period: 4, thread: 0)")));
+    assert!(result.contains_key(&BlockId::for_tests("(period: 4, thread: 0)").unwrap()));
 
     manager.stop().await.unwrap();
 }
@@ -216,6 +215,6 @@ async fn test_get_slot_range() {
 async fn add_block(slot: Slot, storage: &StorageAccess) {
     let mut block = tools::get_test_block();
     block.header.content.slot = slot;
-    let hash = Hash::hash(format!("{}", slot).as_bytes());
+    let hash = BlockId::for_tests(&format!("{}", slot)).unwrap();
     storage.add_block(hash, block).await.unwrap();
 }

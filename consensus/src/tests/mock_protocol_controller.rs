@@ -1,8 +1,7 @@
 use communication::protocol::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
-use crypto::hash::Hash;
-use models::{Block, BlockHeader, SerializationContext};
+use models::{Block, BlockHeader, BlockId, SerializationContext};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -50,29 +49,27 @@ impl MockProtocolController {
     }
 
     pub async fn receive_block(&mut self, block: Block) {
-        let hash = block
+        let block_id = block
             .header
-            .content
-            .compute_hash(&self.serialization_context)
-            .expect("Failed to compute hash");
+            .compute_block_id(&self.serialization_context)
+            .unwrap();
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlock { hash, block })
+            .send(ProtocolEvent::ReceivedBlock { block_id, block })
             .await
             .expect("could not send protocol event");
     }
 
     pub async fn receive_header(&mut self, header: BlockHeader) {
-        let hash = header
-            .content
-            .compute_hash(&self.serialization_context)
-            .expect("Failed to compute hash");
+        let block_id = header
+            .compute_block_id(&self.serialization_context)
+            .unwrap();
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
+            .send(ProtocolEvent::ReceivedBlockHeader { block_id, header })
             .await
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_get_active_blocks(&mut self, list: Vec<Hash>) {
+    pub async fn receive_get_active_blocks(&mut self, list: Vec<BlockId>) {
         self.protocol_event_tx
             .send(ProtocolEvent::GetBlocks(list))
             .await

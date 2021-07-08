@@ -5,9 +5,8 @@ use super::{
 };
 use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
-use crypto::hash::Hash;
 use models::SerializationContext;
-use models::{Block, BlockHeader};
+use models::{Block, BlockHeader, BlockId};
 use std::net::IpAddr;
 use tokio::{
     sync::mpsc,
@@ -24,11 +23,11 @@ pub enum NodeCommand {
     /// Send the header of a block to a node.
     SendBlockHeader(BlockHeader),
     /// Ask for a block from that node.
-    AskForBlocks(Vec<Hash>),
+    AskForBlocks(Vec<BlockId>),
     /// Close the node worker.
     Close(ConnectionClosureReason),
     /// Block not founf
-    BlockNotFound(Hash),
+    BlockNotFound(BlockId),
 }
 
 /// Event types that node worker can emit
@@ -43,9 +42,9 @@ pub enum NodeEventType {
     /// Node we are conneced to sent block header
     ReceivedBlockHeader(BlockHeader),
     /// Node we are conneced to asks for a block.
-    ReceivedAskForBlocks(Vec<Hash>),
+    ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
-    BlockNotFound(Hash),
+    BlockNotFound(BlockId),
 }
 
 /// Events node worker can emit.

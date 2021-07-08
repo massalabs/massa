@@ -142,7 +142,7 @@ impl DeserializeCompact for BootstrapMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crypto::hash::Hash;
+    use models::BlockId;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
 
     #[test]
@@ -184,39 +184,39 @@ mod tests {
             active_blocks: Vec::new(),
             /// Best parents hashe in each thread.
             best_parents: vec![
-                Hash::hash("parent11".as_bytes()),
-                Hash::hash("parent12".as_bytes()),
+                BlockId::for_tests("parent11").unwrap(),
+                BlockId::for_tests("parent12").unwrap(),
             ],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![
-                (Hash::hash("lfinal11".as_bytes()), 23),
-                (Hash::hash("lfinal12".as_bytes()), 24),
+                (BlockId::for_tests("lfinal11").unwrap(), 23),
+                (BlockId::for_tests("lfinal12").unwrap(), 24),
             ],
             /// Head of the incompatibility graph.
             gi_head: vec![
                 (
-                    Hash::hash("gi_head11".as_bytes()),
+                    BlockId::for_tests("gi_head11").unwrap(),
                     vec![
-                        Hash::hash("set11".as_bytes()),
-                        Hash::hash("set12".as_bytes()),
+                        BlockId::for_tests("set11").unwrap(),
+                        BlockId::for_tests("set12").unwrap(),
                     ]
                     .into_iter()
                     .collect(),
                 ),
                 (
-                    Hash::hash("gi_head12".as_bytes()),
+                    BlockId::for_tests("gi_head12").unwrap(),
                     vec![
-                        Hash::hash("set21".as_bytes()),
-                        Hash::hash("set22".as_bytes()),
+                        BlockId::for_tests("set21").unwrap(),
+                        BlockId::for_tests("set22").unwrap(),
                     ]
                     .into_iter()
                     .collect(),
                 ),
                 (
-                    Hash::hash("gi_head13".as_bytes()),
+                    BlockId::for_tests("gi_head13").unwrap(),
                     vec![
-                        Hash::hash("set31".as_bytes()),
-                        Hash::hash("set32".as_bytes()),
+                        BlockId::for_tests("set31").unwrap(),
+                        BlockId::for_tests("set32").unwrap(),
                     ]
                     .into_iter()
                     .collect(),
@@ -227,8 +227,8 @@ mod tests {
 
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![vec![
-                Hash::hash("max_cliques11".as_bytes()),
-                Hash::hash("max_cliques12".as_bytes()),
+                BlockId::for_tests("max_cliques11").unwrap(),
+                BlockId::for_tests("max_cliques12").unwrap(),
             ]
             .into_iter()
             .collect()],
@@ -249,8 +249,14 @@ mod tests {
         assert_eq!(bytes.len(), cursor);
         if let BootstrapMessage::ConsensusState { graph, signature } = new_message2 {
             assert_eq!(base_signature, signature);
-            assert_eq!(Hash::hash("parent11".as_bytes()), graph.best_parents[0]);
-            assert_eq!(Hash::hash("parent12".as_bytes()), graph.best_parents[1]);
+            assert_eq!(
+                BlockId::for_tests("parent11").unwrap(),
+                graph.best_parents[0]
+            );
+            assert_eq!(
+                BlockId::for_tests("parent12").unwrap(),
+                graph.best_parents[1]
+            );
         } else {
             panic!("not the right message variant expected ConsensusState");
         }

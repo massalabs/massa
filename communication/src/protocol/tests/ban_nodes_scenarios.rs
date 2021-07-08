@@ -210,15 +210,14 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
         })
         .await
         {
-            Some(ProtocolEvent::ReceivedBlockHeader { hash, .. }) => hash,
+            Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
             _ => panic!("Unexpected or no protocol event."),
         };
 
     // 3. Check that protocol sent the right header to consensus.
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .expect("Failed to compute hash.");
     assert_eq!(expected_hash, received_hash);
 
@@ -301,8 +300,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .expect("Failed to compute hash.");
 
     // 3. Simulate two nodes asking for a block.
@@ -363,8 +361,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
             Some(NetworkCommand::SendBlock { node, block }) => {
                 let hash = block
                     .header
-                    .content
-                    .compute_hash(&serialization_context)
+                    .compute_block_id(&serialization_context)
                     .expect("Failed to compute hash.");
                 assert_eq!(expected_hash, hash);
                 assert!(expecting_block.remove(&node));
@@ -429,8 +426,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
 
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .expect("Failed to compute hash.");
 
     // Propagate the block via 4 nodes.
@@ -450,7 +446,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             })
             .await
             {
-                Some(ProtocolEvent::ReceivedBlockHeader { hash, .. }) => hash,
+                Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
                 _ => panic!("Unexpected or no protocol event."),
             };
 
@@ -558,15 +554,14 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
         })
         .await
         {
-            Some(ProtocolEvent::ReceivedBlockHeader { hash, .. }) => hash,
+            Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
             _ => panic!("Unexpected or no protocol event."),
         };
 
     // Check that protocol sent the right header to consensus.
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
+        .compute_block_id(&serialization_context)
         .expect("Failed to compute hash.");
     assert_eq!(expected_hash, received_hash);
 

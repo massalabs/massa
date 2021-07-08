@@ -62,16 +62,15 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         })
         .await
         {
-            Some(ProtocolEvent::ReceivedBlockHeader { hash, .. }) => hash,
+            Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
             _ => panic!("Unexpected or no protocol event."),
         };
 
     // 4. Check that protocol sent the right header to consensus.
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
-        .expect("Failed to compute hash.");
+        .compute_block_id(&serialization_context)
+        .unwrap();
     assert_eq!(expected_hash, received_hash);
 
     // 5. Ask for block.
@@ -152,9 +151,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
-        .expect("Failed to compute hash.");
+        .compute_block_id(&serialization_context)
+        .unwrap();
 
     // 3. Simulate two nodes asking for a block.
     for n in 0..2 {
@@ -202,9 +200,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             Some(NetworkCommand::SendBlock { node, block }) => {
                 let hash = block
                     .header
-                    .content
-                    .compute_hash(&serialization_context)
-                    .expect("Failed to compute hash.");
+                    .compute_block_id(&serialization_context)
+                    .unwrap();
                 assert_eq!(expected_hash, hash);
                 assert!(expecting_block.remove(&node));
             }
@@ -293,7 +290,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         })
         .await
         {
-            Some(ProtocolEvent::ReceivedBlockHeader { hash, header }) => (hash, header),
+            Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
             _ => panic!("Unexpected or no protocol event."),
         };
 
@@ -341,19 +338,15 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         {
             Some(NetworkCommand::SendBlockHeader { node, header }) => {
                 assert!(expected_headers.remove(&node));
-                let sent_header_hash = header
-                    .content
-                    .compute_hash(&serialization_context)
-                    .expect("Couldn't compute hash.");
+                let sent_header_hash = header.compute_block_id(&serialization_context).unwrap();
                 assert_eq!(sent_header_hash, ref_hash);
             }
             Some(NetworkCommand::SendBlock { node, block }) => {
                 assert!(expected_full_blocks.remove(&node));
                 let sent_header_hash = block
                     .header
-                    .content
-                    .compute_hash(&serialization_context)
-                    .expect("Couldn't compute hash.");
+                    .compute_block_id(&serialization_context)
+                    .unwrap();
                 assert_eq!(sent_header_hash, ref_hash);
             }
             _ => panic!("Unexpected or no network command."),
@@ -405,9 +398,8 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
-        .expect("Couldn't compute hash.");
+        .compute_block_id(&serialization_context)
+        .unwrap();
 
     // 3. Send block to protocol.
     network_controller.send_block(creator_node.id, block).await;
@@ -421,7 +413,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
         })
         .await
         {
-            Some(ProtocolEvent::ReceivedBlock { hash, .. }) => hash,
+            Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
             _ => panic!("Unexpected or no protocol event."),
         };
     assert_eq!(expected_hash, hash);
@@ -468,9 +460,8 @@ async fn test_protocol_block_not_found() {
 
     let expected_hash = block
         .header
-        .content
-        .compute_hash(&serialization_context)
-        .expect("Couldn't compute hash.");
+        .compute_block_id(&serialization_context)
+        .unwrap();
 
     // 3. Ask block to protocol.
     network_controller
@@ -507,7 +498,7 @@ async fn test_protocol_block_not_found() {
         })
         .await
     {
-        Some(NetworkCommand::BlockNotFound { node, hash }) => (node, hash),
+        Some(NetworkCommand::BlockNotFound { node, block_id }) => (node, block_id),
         _ => panic!("Unexpected or no network command."),
     };
 

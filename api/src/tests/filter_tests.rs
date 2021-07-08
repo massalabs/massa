@@ -4,8 +4,7 @@ use storage::{start_storage, StorageConfig};
 use super::tools::*;
 use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
-use crypto::hash::Hash;
-use models::{Block, BlockHeader, SerializationContext, Slot};
+use models::{Block, BlockHeader, BlockId, SerializationContext, Slot};
 use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
@@ -40,7 +39,7 @@ async fn test_cliques() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value = serde_json::from_str(
-            &serde_json::to_string(&(0, Vec::<HashSet<Hash>>::new())).unwrap(),
+            &serde_json::to_string(&(0, Vec::<HashSet<BlockId>>::new())).unwrap(),
         )
         .unwrap();
         assert_eq!(obtained, expected);
@@ -50,11 +49,13 @@ async fn test_cliques() {
 
     //add default cliques
     let mut graph = get_test_block_graph();
-    let hash_set = (0..2).map(|_| get_test_hash()).collect::<HashSet<Hash>>();
+    let hash_set = (0..2)
+        .map(|_| get_test_block_id())
+        .collect::<HashSet<BlockId>>();
     graph.max_cliques = vec![hash_set.clone(), hash_set.clone()];
     let mut active_blocks = HashMap::new();
     active_blocks.insert(
-        get_test_hash(),
+        get_test_block_id(),
         ExportCompiledBlock {
             block: get_test_block().header,
             children: Vec::new(),
@@ -98,7 +99,7 @@ async fn test_cliques() {
     let expected = hash_set
         .iter()
         .map(|hash| (hash, get_test_block().header.content.slot))
-        .collect::<Vec<(&Hash, Slot)>>();
+        .collect::<Vec<(&BlockId, Slot)>>();
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
         &serde_json::to_string(&(2, vec![expected.clone(), expected.clone()])).unwrap(),
@@ -136,7 +137,7 @@ async fn test_current_parents() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<Hash>::new()).unwrap()).unwrap();
+            serde_json::from_str(&serde_json::to_string(&Vec::<BlockId>::new()).unwrap()).unwrap();
         assert_eq!(obtained, expected);
         handle.await.unwrap();
 
@@ -145,10 +146,10 @@ async fn test_current_parents() {
 
     //add default parents
     let mut graph = get_test_block_graph();
-    graph.best_parents = vec![get_test_hash(), get_test_hash()];
+    graph.best_parents = vec![get_test_block_id(), get_test_block_id()];
     let mut active_blocks = HashMap::new();
     active_blocks.insert(
-        get_test_hash(),
+        get_test_block_id(),
         ExportCompiledBlock {
             block: get_test_block().header,
             children: Vec::new(),
@@ -189,7 +190,7 @@ async fn test_current_parents() {
     assert_eq!(res.status(), 200);
 
     handle.await.unwrap();
-    let expected = (get_test_hash(), get_test_block().header.content.slot);
+    let expected = (get_test_block_id(), get_test_block().header.content.slot);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
         &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
@@ -269,14 +270,14 @@ async fn test_get_graph_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<Hash>::new()).unwrap()).unwrap();
+        serde_json::from_str(&serde_json::to_string(&Vec::<BlockId>::new()).unwrap()).unwrap();
     assert_eq!(obtained, expected);
 
     handle.await.expect("handle failed");
 
     let mut expected = get_test_block_graph();
     expected.active_blocks.insert(
-        get_test_hash(),
+        get_test_block_id(),
         get_test_compiled_exported_block(&serialization_context, Slot::new(1, 0), None),
     );
     let cloned = expected.clone();
@@ -308,9 +309,9 @@ async fn test_get_graph_interval() {
     assert_eq!(res.status(), 200);
     handle.await.expect("handle failed");
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let block = expected.active_blocks.get(&get_test_hash()).unwrap();
+    let block = expected.active_blocks.get(&get_test_block_id()).unwrap();
     let expected = vec![(
-        get_test_hash(),
+        get_test_block_id(),
         block.block.content.slot,
         Status::Active,
         block.block.content.parents.clone(),
@@ -344,13 +345,13 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
+    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+        serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
         Status::Final,
@@ -359,8 +360,7 @@ async fn test_get_graph_interval() {
     expected.push((
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
         Status::Final,
@@ -391,13 +391,13 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
+    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+        serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
         block_a
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_a.header.content.slot,
         Status::Final,
@@ -406,8 +406,7 @@ async fn test_get_graph_interval() {
     expected.push((
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
         Status::Final,
@@ -416,8 +415,7 @@ async fn test_get_graph_interval() {
     expected.push((
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
         Status::Final,
@@ -447,13 +445,13 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
+    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+        serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
         block_a
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_a.header.content.slot,
         Status::Final,
@@ -462,8 +460,7 @@ async fn test_get_graph_interval() {
     expected.push((
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
         Status::Final,
@@ -472,8 +469,7 @@ async fn test_get_graph_interval() {
     expected.push((
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
         Status::Final,
@@ -503,14 +499,14 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
+    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+        serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
 
     expected.push((
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
         Status::Final,
@@ -536,14 +532,14 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
+    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+        serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
 
     expected.push((
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
         Status::Final,
@@ -569,8 +565,9 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot, Status, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
-    let expected = Vec::<(Hash, Slot, Status, Vec<Hash>)>::new();
+    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+        serde_json::from_value(obtained).unwrap();
+    let expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 }
@@ -602,7 +599,7 @@ async fn test_last_final() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(BlockId, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -610,7 +607,8 @@ async fn test_last_final() {
     }
 
     let mut expected = get_test_block_graph();
-    expected.latest_final_blocks_periods = vec![(get_test_hash(), 10), (get_test_hash(), 21)];
+    expected.latest_final_blocks_periods =
+        vec![(get_test_block_id(), 10), (get_test_block_id(), 21)];
     let cloned_expected = expected.clone();
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -652,7 +650,7 @@ async fn test_last_final() {
                 .map(|(thread_number, (hash, period))| {
                     (hash.clone(), Slot::new(*period, thread_number as u8))
                 })
-                .collect::<Vec<(Hash, Slot)>>(),
+                .collect::<Vec<(BlockId, Slot)>>(),
         )
         .unwrap(),
     )
@@ -773,11 +771,11 @@ async fn test_get_block_interval() {
     };
 
     let mut graph = get_test_block_graph();
-    graph.best_parents = vec![get_test_hash(), get_test_hash()];
+    graph.best_parents = vec![get_test_block_id(), get_test_block_id()];
 
     let mut active_blocks = HashMap::new();
     active_blocks.insert(
-        get_test_hash(),
+        get_test_block_id(),
         ExportCompiledBlock {
             block: get_test_block().header,
             children: Vec::new(),
@@ -824,7 +822,8 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap()).unwrap();
+        serde_json::from_str(&serde_json::to_string(&Vec::<(BlockId, Slot)>::new()).unwrap())
+            .unwrap();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 
@@ -855,7 +854,7 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let mut expected = Vec::new();
-    expected.push((get_test_hash(), get_test_block().header.content.slot));
+    expected.push((get_test_block_id(), get_test_block().header.content.slot));
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
@@ -887,7 +886,7 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected = Vec::<(Hash, Slot)>::new();
+    let expected = Vec::<(BlockId, Slot)>::new();
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
@@ -909,12 +908,11 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let mut expected = Vec::<(Hash, Slot)>::new();
+    let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
     ));
@@ -939,29 +937,26 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot)>::new();
+    let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_a
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_a.header.content.slot,
     ));
     expected.push((
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
     ));
     expected.push((
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
     ));
@@ -989,13 +984,12 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot)>::new();
+    let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
     ));
@@ -1024,21 +1018,19 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
-    let mut expected = Vec::<(Hash, Slot)>::new();
+    let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_b
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_b.header.content.slot,
     ));
     expected.push((
         block_c
             .header
-            .content
-            .compute_hash(&serialization_context)
+            .compute_block_id(&serialization_context)
             .unwrap(),
         block_c.header.content.slot,
     ));
@@ -1090,7 +1082,7 @@ async fn test_get_block() {
     assert!(!matches);
 
     // block not found
-    let other_hash = Hash::hash("something else".as_bytes());
+    let other_hash = BlockId::for_tests("something else").unwrap();
     let res = warp::test::request()
         .method("GET")
         .path(&format!("/api/v1/block/{}", other_hash))
@@ -1116,7 +1108,7 @@ async fn test_get_block() {
     // block found
     let res = warp::test::request()
         .method("GET")
-        .path(&format!("/api/v1/block/{}", get_test_hash()))
+        .path(&format!("/api/v1/block/{}", get_test_block_id()))
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);
@@ -1154,7 +1146,7 @@ async fn test_get_block() {
     });
 
     // block not found
-    let other_hash = Hash::hash("something else".as_bytes());
+    let other_hash = BlockId::for_tests("something else").unwrap();
 
     storage_command_tx
         .add_block(other_hash, get_test_block())
@@ -1410,7 +1402,7 @@ async fn test_last_stale() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(BlockId, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -1421,14 +1413,14 @@ async fn test_last_stale() {
     let mut graph = get_test_block_graph();
     graph.discarded_blocks.map.extend(vec![
         (
-            get_test_hash(),
+            get_test_block_id(),
             (
                 DiscardReason::Invalid,
                 get_header(&serialization_context, Slot::new(1, 1), None).1,
             ),
         ),
         (
-            get_another_test_hash(),
+            get_another_test_block_id(),
             (
                 DiscardReason::Stale,
                 get_header(&serialization_context, Slot::new(2, 0), None).1,
@@ -1461,7 +1453,7 @@ async fn test_last_stale() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![(get_another_test_hash(), Slot::new(2, 0))]).unwrap(),
+        &serde_json::to_string(&vec![(get_another_test_block_id(), Slot::new(2, 0))]).unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -1509,7 +1501,7 @@ async fn test_last_invalid() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(BlockId, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -1520,14 +1512,14 @@ async fn test_last_invalid() {
     let mut graph = get_test_block_graph();
     graph.discarded_blocks.map.extend(vec![
         (
-            get_test_hash(),
+            get_test_block_id(),
             (
                 DiscardReason::Invalid,
                 get_header(&serialization_context, Slot::new(1, 1), None).1,
             ),
         ),
         (
-            get_another_test_hash(),
+            get_another_test_block_id(),
             (
                 DiscardReason::Stale,
                 get_header(&serialization_context, Slot::new(2, 0), None).1,
@@ -1559,7 +1551,7 @@ async fn test_last_invalid() {
     handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected = serde_json::to_value(&vec![(get_test_hash(), Slot::new(1, 1))]).unwrap();
+    let expected = serde_json::to_value(&vec![(get_test_block_id(), Slot::new(1, 1))]).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
@@ -1630,7 +1622,7 @@ async fn test_staker_info() {
     let mut graph = get_test_block_graph();
 
     let staker_s_discarded = vec![(
-        get_test_hash(),
+        get_test_block_id(),
         (
             DiscardReason::Invalid,
             get_header(&serialization_context, Slot::new(1, 1), Some(staker)).1,
@@ -1639,7 +1631,7 @@ async fn test_staker_info() {
     graph.discarded_blocks.map.extend(vec![
         staker_s_discarded[0].clone(),
         (
-            get_another_test_hash(),
+            get_another_test_block_id(),
             (
                 DiscardReason::Stale,
                 get_header(&serialization_context, Slot::new(2, 0), None).1,
@@ -1648,7 +1640,7 @@ async fn test_staker_info() {
     ]);
 
     let staker_s_active = vec![(
-        get_another_test_hash(),
+        get_another_test_block_id(),
         get_test_compiled_exported_block(&serialization_context, Slot::new(2, 1), Some(staker)),
     )];
     graph
@@ -1693,7 +1685,7 @@ async fn test_staker_info() {
             &staker_s_active
                 .iter()
                 .map(|(hash, compiled_block)| (hash, compiled_block.block.clone()))
-                .collect::<Vec<(&Hash, BlockHeader)>>(),
+                .collect::<Vec<(&BlockId, BlockHeader)>>(),
         )
         .unwrap(),
     )
@@ -1703,7 +1695,7 @@ async fn test_staker_info() {
             &staker_s_discarded
                 .iter()
                 .map(|(hash, (reason, header))| (hash, reason, header))
-                .collect::<Vec<(&Hash, &DiscardReason, &BlockHeader)>>(),
+                .collect::<Vec<(&BlockId, &DiscardReason, &BlockHeader)>>(),
         )
         .unwrap(),
     )
