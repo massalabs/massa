@@ -1,5 +1,5 @@
 use crate::error::InternalError;
-use sled::Tree;
+use sled::{Transactional, Tree};
 use std::{
     collections::{hash_map, HashMap, HashSet},
     convert::TryInto,
@@ -23,7 +23,7 @@ pub struct Ledger {
 
 #[derive(Debug)]
 pub struct LedgerData {
-    pub balance: u64,
+    balance: u64,
 }
 
 impl LedgerData {
@@ -282,16 +282,67 @@ impl Ledger {
         })
     }
 
-    /// Returns the final balance of an address. 0 if the address does not exist.
-    pub fn get_final_balance(&self, address: &Address) -> Result<u64, ConsensusError> {
-        let thread = address.get_thread(self.cfg.thread_count);
-        if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
-            Ok(LedgerData::from_bytes_compact(&res, &self.context)?
-                .0
-                .balance)
-        } else {
-            Ok(0)
+    /// Returns the final ledger data of a list of unique addresses belonging to any thread.
+    pub fn get_final_datas(
+        &self,
+        mut addresses: HashSet<&Address>,
+    ) -> Result<HashMap<Address, LedgerData>, ConsensusError> {
+        // TODO: only run the transaction on a subset of relevant ledgers?
+        self.ledger_per_thread
+            .transaction(|ledger_per_thread| {
+                let mut result = HashMap::with_capacity(addresses.len());
+                for address in addresses.iter() {
+                    let thread = address.get_thread(self.cfg.thread_count);
+                    let ledger = ledger_per_thread.get(thread as usize).ok_or(
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "Could not get ledger for thread {:?}",
+                                thread
+                            )),
+                        ),
+                    )?;
+                    let data = if let Some(res) = ledger.get(address.to_bytes())? {
+                        LedgerData::from_bytes_compact(&res, &self.context)
+                            .map_err(|err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(format!(
+                                        "error deserializing ledger data: {:?}",
+                                        err
+                                    )),
+                                )
+                            })?
+                            .0
+                    } else {
+                        LedgerData { balance: 0 }
+                    };
+
+                    // Should never panic since we are operating on a set of addresses.
+                    assert!(result.insert((*address).clone(), data).is_none());
+                }
+                Ok(result)
+            })
+            .map_err(|_| {
+                ConsensusError::LedgerInconsistency(format!(
+                    "Unable to fetch data for addresses {:?}",
+                    addresses
+                ))
+            })
+    }
+
+    /// Check that the right thread for the address was specified.
+    fn check_thread_for_address(
+        &self,
+        thread: u8,
+        address: &Address,
+    ) -> Result<(), ConsensusError> {
+        let address_thread = address.get_thread(self.cfg.thread_count);
+        if address_thread != thread {
+            return Err(ConsensusError::LedgerInconsistency(format!(
+                "Wrong thread for address {:?}",
+                address
+            )));
         }
+        Ok(())
     }
 
     /// Atomically apply a batch of changes to the ledger.
@@ -307,23 +358,17 @@ impl Ledger {
         changes: Vec<(Address, LedgerChange)>,
         latest_final_period: u64,
     ) -> Result<(), ConsensusError> {
+        // First, check that the thread is correct for all changes.
+        for (address, _) in changes.iter() {
+            self.check_thread_for_address(thread, address)?;
+        }
+
         let ledger = self.ledger_per_thread.get(thread as usize).ok_or(
             ConsensusError::LedgerInconsistency(format!("missing ledger for thread {:?}", thread)),
         )?;
 
-        ledger.transaction(|db| {
+        (ledger, &self.latest_final_periods).transaction(|(db, latest_final_periods_db)| {
             for (address, change) in changes.iter() {
-                // Check that the right thread for the address was specified.
-                let address_thread = address.get_thread(self.cfg.thread_count);
-                if address_thread != thread {
-                    return Err(sled::transaction::ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(format!(
-                            "Wrong thread for address {:?}",
-                            address
-                        )),
-                    ));
-                }
-
                 let address_bytes = address.to_bytes();
                 let mut data = if let Some(old_bytes) = &db.get(address_bytes)? {
                     let (old, _) = LedgerData::from_bytes_compact(old_bytes, &self.context)
@@ -365,10 +410,8 @@ impl Ledger {
                     )?;
                 }
             }
-            Ok(())
-        })?;
-        self.latest_final_periods.transaction(|db| {
-            db.insert(&[thread], &latest_final_period.to_be_bytes())
+            latest_final_periods_db
+                .insert(&[thread], &latest_final_period.to_be_bytes())
                 .map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!(
@@ -376,7 +419,8 @@ impl Ledger {
                             err
                         )),
                     )
-                })
+                })?;
+            Ok(())
         })?;
         Ok(())
     }
