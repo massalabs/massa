@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::operation_pool::OperationPool;
 
@@ -13,7 +13,7 @@ use tokio::sync::{mpsc, oneshot};
 /// Commands that can be proccessed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
-    AddOperations(Vec<(OperationId, Operation)>),
+    AddOperations(HashMap<OperationId, Operation>),
     UpdateCurrentSlot(Slot),
     UpdateLatestFinalPeriods(Vec<u64>),
     GetOperationBatch {
@@ -122,14 +122,13 @@ impl PoolWorker {
         context: &SerializationContext,
     ) -> Result<(), PoolError> {
         match cmd {
-            PoolCommand::AddOperations(ops) => {
-                self.operation_pool.add_operations(ops.clone(), context)?;
-                for (id, op) in ops.iter() {
-                    if self.operation_pool.contains(*id) {
-                        self.protocol_command_sender
-                            .propagate_operation(*id, op.clone())
-                            .await?;
-                    }
+            PoolCommand::AddOperations(mut ops) => {
+                let newly_added = self.operation_pool.add_operations(ops.clone(), context)?;
+                ops.retain(|op_id, _op| newly_added.contains(op_id));
+                for (op_id, op) in ops.into_iter() {
+                    self.protocol_command_sender
+                        .propagate_operation(op_id, op)
+                        .await?;
                 }
             }
             PoolCommand::UpdateCurrentSlot(slot) => self.operation_pool.update_current_slot(slot),
@@ -161,13 +160,21 @@ impl PoolWorker {
         context: &SerializationContext,
     ) -> Result<(), PoolError> {
         match event {
-            //TODO
             ProtocolPoolEvent::ReceivedOperation {
                 operation_id,
                 operation,
-            } => self
-                .operation_pool
-                .add_operations(vec![(operation_id, operation)], context)?,
+            } => {
+                let mut ops: HashMap<OperationId, Operation> = HashMap::new();
+                ops.insert(operation_id, operation);
+
+                let newly_added = self.operation_pool.add_operations(ops.clone(), context)?;
+                ops.retain(|op_id, _op| newly_added.contains(op_id));
+                for (op_id, op) in ops.into_iter() {
+                    self.protocol_command_sender
+                        .propagate_operation(op_id, op)
+                        .await?;
+                }
+            }
         }
         Ok(())
     }

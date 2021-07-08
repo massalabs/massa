@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use super::{
     config::{PoolConfig, CHANNEL_SIZE},
@@ -73,7 +73,7 @@ pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
 impl PoolCommandSender {
     pub async fn add_operations(
         &mut self,
-        ops: Vec<(OperationId, Operation)>,
+        ops: HashMap<OperationId, Operation>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_operations", { "ops": ops });
         let res = self
