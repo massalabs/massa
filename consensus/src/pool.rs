@@ -38,18 +38,22 @@ impl OperationPool {
         context: &SerializationContext,
     ) -> Result<bool, ConsensusError> {
         let signature_engine = SignatureEngine::new();
-        let hash = operation.operation.compute_hash(context)?;
+        let hash = operation.content.compute_hash(context)?;
         // period validity check
-        let start = operation.expire_period - self.cfg.operation_validity_periods;
-        let thread = get_thread(operation.sender_public_key);
+        let start = operation.content.expiration_period - self.cfg.operation_validity_periods;
+        let thread = get_thread(operation.content.creator_public_key);
         if self.current_slot < Slot::new(start, thread)
-            || Slot::new(operation.expire_period, thread) < self.current_slot
+            || Slot::new(operation.content.expiration_period, thread) < self.current_slot
         {
             return Ok(false);
         }
-        signature_engine.verify(&hash, &operation.signature, &operation.sender_public_key)?;
+        signature_engine.verify(
+            &hash,
+            &operation.signature,
+            &operation.content.creator_public_key,
+        )?;
         if let None = self.map.insert(hash, operation.clone()) {
-            self.vec[thread as usize].push((operation.fee, hash));
+            self.vec[thread as usize].push((operation.content.fee, hash));
             Ok(true)
         } else {
             // already present
