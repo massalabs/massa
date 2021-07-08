@@ -457,7 +457,8 @@ fn wallet_new_privkey(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplE
 fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &data.wallet {
         //get wallet addresses balances
-        let balances = query_addresses(&data, wallet.get_wallet_address_list())
+        let ordered_addrs = wallet.get_wallet_address_list();
+        let balances = query_addresses(&data, ordered_addrs.iter().cloned().collect())
             .and_then(|resp| {
                 if resp.status() != StatusCode::OK {
                     Ok("balance not available.".to_string())
@@ -472,7 +473,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                             "{}",
                             AddressStates {
                                 map: ledger,
-                                order: None
+                                order: ordered_addrs
                             }
                         )?;
                         Ok(s)
@@ -568,7 +569,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
                 "{}",
                 AddressStates {
                     map: ledger,
-                    order: Some(search_addresses)
+                    order: search_addresses
                 }
             )
         }
