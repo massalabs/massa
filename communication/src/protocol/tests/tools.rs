@@ -1,11 +1,13 @@
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
-use crate::protocol::ProtocolConfig;
+use crate::protocol::{ProtocolConfig, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
+use time::UTime;
+use tokio::time::sleep;
 
 pub struct NodeInfo {
     pub private_key: PrivateKey,
@@ -78,4 +80,25 @@ pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
             max_message_size: 3 * 1024 * 1024,
         },
     )
+}
+
+pub async fn wait_protocol_event<F>(
+    protocol_event_receiver: &mut ProtocolEventReceiver,
+    timeout: UTime,
+    filter_map: F,
+) -> Option<ProtocolEvent>
+where
+    F: Fn(ProtocolEvent) -> Option<ProtocolEvent>,
+{
+    let timer = sleep(timeout.into());
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            evt_opt = protocol_event_receiver.wait_event() => match evt_opt {
+                Ok(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
+                _ => return None
+            },
+            _ = &mut timer => return None
+        }
+    }
 }
