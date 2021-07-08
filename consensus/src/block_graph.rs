@@ -317,7 +317,14 @@ impl DeserializeCompact for ExportActiveBlock {
         }
 
         Ok((
-            ExportActiveBlock { block, parents, children, dependencies, is_final, block_ledger_change },
+            ExportActiveBlock {
+                block,
+                parents,
+                children,
+                dependencies,
+                is_final,
+                block_ledger_change,
+            },
             cursor,
         ))
     }
@@ -423,11 +430,7 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
                             children: block
                                 .children
                                 .iter()
-                                .map(|thread| {
-                                    thread
-                                        .keys().copied()
-                                        .collect::<HashSet<BlockId>>()
-                                })
+                                .map(|thread| thread.keys().copied().collect::<HashSet<BlockId>>())
                                 .collect(),
                             status: if block.is_final {
                                 Status::Final
@@ -914,7 +917,8 @@ impl BlockGraph {
         let (public_key, private_key) = self
             .cfg
             .nodes
-            .get(self.cfg.current_node_index as usize).map(|(public_key, private_key)| (*public_key, *private_key))
+            .get(self.cfg.current_node_index as usize)
+            .map(|(public_key, private_key)| (*public_key, *private_key))
             .ok_or(ConsensusError::KeyError)?;
 
         let example_hash = Hash::hash(&val.as_bytes());
@@ -1404,8 +1408,7 @@ impl BlockGraph {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
-            self.to_propagate
-                .insert(block_id, active.block.clone());
+            self.to_propagate.insert(block_id, active.block.clone());
             for (itm_block_id, itm_status) in self.block_statuses.iter_mut() {
                 if let BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -1927,8 +1930,7 @@ impl BlockGraph {
                     }
 
                     // add change to block changes
-                    if let Some(mut old) =
-                        block_changes[thread].insert(*change.0, change.1.clone())
+                    if let Some(mut old) = block_changes[thread].insert(*change.0, change.1.clone())
                     {
                         if let Err(err) = old.chain(change.1) {
                             error!(
@@ -2373,10 +2375,8 @@ impl BlockGraph {
                         .1
                 {
                     self.latest_final_blocks_periods
-                        [final_block.header.content.slot.thread as usize] = (
-                        final_block_hash,
-                        final_block.header.content.slot.period,
-                    );
+                        [final_block.header.content.slot.thread as usize] =
+                        (final_block_hash, final_block.header.content.slot.period);
                 }
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", hash, final_block_hash)));
@@ -2431,11 +2431,7 @@ impl BlockGraph {
         retain_active.extend(&self.best_parents);
 
         // retain last final blocks
-        retain_active.extend(
-            self.latest_final_blocks_periods
-                .iter()
-                .map(|(h, _)| *h),
-        );
+        retain_active.extend(self.latest_final_blocks_periods.iter().map(|(h, _)| *h));
 
         // grow with parents & fill thread holes twice
         for _ in 0..2 {
@@ -2947,10 +2943,7 @@ mod tests {
                     BlockId::for_tests("active12").unwrap(),
                     active_block.clone(),
                 ),
-                (
-                    BlockId::for_tests("active13").unwrap(),
-                    active_block,
-                ),
+                (BlockId::for_tests("active13").unwrap(), active_block),
             ]
             .into_iter()
             .collect(),

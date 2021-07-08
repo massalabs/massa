@@ -180,7 +180,12 @@ impl DeserializeCompact for OperationContent {
         cursor += delta;
 
         Ok((
-            OperationContent { sender_public_key, fee, expire_period, op },
+            OperationContent {
+                sender_public_key,
+                fee,
+                expire_period,
+                op,
+            },
             cursor,
         ))
     }
@@ -293,10 +298,7 @@ mod tests {
         let hash = Hash::hash(&content.to_bytes_compact(&context).unwrap());
         let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
-        let op = Operation {
-            content: content,
-            signature,
-        };
+        let op = Operation { content, signature };
 
         let ser_op = op.to_bytes_compact(&context).unwrap();
         let (res_op, _) = Operation::from_bytes_compact(&ser_op, &context).unwrap();

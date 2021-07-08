@@ -270,7 +270,8 @@ fn cmd_create_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), Re
 
 fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     if bool::from_str(&params[0].to_lowercase())
-        .map(|val| data::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed)).is_err()
+        .map(|val| data::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed))
+        .is_err()
     {
         println!("Bad parameter:{}, not a boolean (true, false)", params[0]);
     };
@@ -431,9 +432,7 @@ fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
     let url = format!("http://{}/api/v1/block/{}", data.node_ip, params[0]);
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let block = resp
-                .json::<Block>()
-                .map(data::WrapperBlock::from)?;
+            let block = resp.json::<Block>().map(data::WrapperBlock::from)?;
             println!("block: {}", block);
         } else {
             println!("block not found.");
@@ -485,7 +484,8 @@ fn format_url_with_to_from(
     params: &[&str],
 ) -> Result<String, ReplError> {
     if let Some(p) = params
-        .iter().find(|p| !p.starts_with("from=") && !p.starts_with("to="))
+        .iter()
+        .find(|p| !p.starts_with("from=") && !p.starts_with("to="))
     {
         return Err(ReplError::BadCommandParameter(p.to_string()));
     }

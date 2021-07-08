@@ -886,10 +886,7 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
                     for hash in &list {
-                        node_info.insert_wanted_blocks(
-                            *hash,
-                            self.cfg.max_node_wanted_blocks_size,
-                        );
+                        node_info.insert_wanted_blocks(*hash, self.cfg.max_node_wanted_blocks_size);
                     }
                 } else {
                     return Ok(());

@@ -139,8 +139,7 @@ async fn test_block_not_processed_multiple_times() {
         parents.clone(),
     );
     protocol_controller.receive_block(block_1.clone()).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1], 1000)
-        .await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &vec![hash_1], 1000).await;
 
     // Send it again, it should not be propagated.
     protocol_controller.receive_block(block_1.clone()).await;

@@ -7,7 +7,6 @@ use pool::PoolConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
 
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct LoggingConfig {
     pub level: usize,

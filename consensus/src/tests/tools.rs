@@ -306,7 +306,8 @@ pub fn create_block_with_merkle_root(
 ) -> (BlockId, Block, PrivateKey) {
     let (public_key, private_key) = cfg
         .nodes
-        .get(0).map(|(public_key, private_key)| (*public_key, *private_key))
+        .get(0)
+        .map(|(public_key, private_key)| (*public_key, *private_key))
         .unwrap();
 
     let example_hash = Hash::hash("default_val".as_bytes());

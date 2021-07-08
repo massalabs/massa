@@ -17,7 +17,10 @@ impl MockNetworkController {
             mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
         let (network_event_tx, network_event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
         (
-            MockNetworkController { network_command_rx, network_event_tx },
+            MockNetworkController {
+                network_command_rx,
+                network_event_tx,
+            },
             NetworkCommandSender(network_command_tx),
             NetworkEventReceiver(network_event_rx),
         )

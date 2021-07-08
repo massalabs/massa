@@ -192,10 +192,8 @@ async fn test_current_parents() {
     handle.await.unwrap();
     let expected = (get_test_block_id(), get_test_block().header.content.slot);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![expected, expected]).unwrap(),
-    )
-    .unwrap();
+    let expected: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&vec![expected, expected]).unwrap()).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);

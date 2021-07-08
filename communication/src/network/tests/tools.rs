@@ -185,27 +185,28 @@ pub async fn rejected_connection_to_controller(
 
     // wait for NetworkEvent::NewConnection or NetworkEvent::ConnectionClosed events to NOT happen
     if wait_network_event(
-            network_event_receiver,
-            event_timeout_ms.into(),
-            |msg| match msg {
-                NetworkEvent::NewConnection(conn_node_id) => {
-                    if conn_node_id == mock_node_id {
-                        Some(())
-                    } else {
-                        None
-                    }
+        network_event_receiver,
+        event_timeout_ms.into(),
+        |msg| match msg {
+            NetworkEvent::NewConnection(conn_node_id) => {
+                if conn_node_id == mock_node_id {
+                    Some(())
+                } else {
+                    None
                 }
-                NetworkEvent::ConnectionClosed(conn_node_id) => {
-                    if conn_node_id == mock_node_id {
-                        Some(())
-                    } else {
-                        None
-                    }
+            }
+            NetworkEvent::ConnectionClosed(conn_node_id) => {
+                if conn_node_id == mock_node_id {
+                    Some(())
+                } else {
+                    None
                 }
-                _ => None,
-            },
-        )
-        .await.is_some()
+            }
+            _ => None,
+        },
+    )
+    .await
+    .is_some()
     {
         panic!("unexpected node connection event detected");
     }

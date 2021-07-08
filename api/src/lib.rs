@@ -80,10 +80,9 @@ pub async fn start_api_controller(
 impl ApiEventReceiver {
     /// Listen for ApiEvents
     pub async fn wait_event(&mut self) -> Result<ApiEvent, ApiError> {
-        self.0
-            .recv()
-            .await
-            .ok_or(ApiError::SendChannelError("could not receive api event".to_string()))
+        self.0.recv().await.ok_or(ApiError::SendChannelError(
+            "could not receive api event".to_string(),
+        ))
     }
 
     /// drains remaining events and returns them in a VecDeque

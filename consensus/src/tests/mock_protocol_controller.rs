@@ -21,7 +21,11 @@ impl MockProtocolController {
             mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
         (
-            MockProtocolController { serialization_context, protocol_command_rx, protocol_event_tx },
+            MockProtocolController {
+                serialization_context,
+                protocol_command_rx,
+                protocol_event_tx,
+            },
             ProtocolCommandSender(protocol_command_tx),
             ProtocolEventReceiver(protocol_event_rx),
         )

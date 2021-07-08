@@ -346,10 +346,7 @@ impl BootstrapServer {
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
-            writer.send(&messages::BootstrapMessage::BootstrapPeers {
-                peers,
-                signature,
-            }),
+            writer.send(&messages::BootstrapMessage::BootstrapPeers { peers, signature }),
         )
         .await
         {
@@ -374,10 +371,7 @@ impl BootstrapServer {
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
-            writer.send(&messages::BootstrapMessage::ConsensusState {
-                graph,
-                signature,
-            }),
+            writer.send(&messages::BootstrapMessage::ConsensusState { graph, signature }),
         )
         .await
         {
