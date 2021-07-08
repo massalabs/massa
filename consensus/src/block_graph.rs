@@ -10,16 +10,16 @@ use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    DeserializeCompact, DeserializeVarInt, ModelsError, OperationId, SerializationContext,
-    SerializeCompact, SerializeVarInt, Slot,
+    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationId,
+    SerializationContext, SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use std::mem;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet, VecDeque},
     convert::TryFrom,
 };
+use std::{convert::TryInto, usize};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
@@ -916,16 +916,11 @@ impl BlockGraph {
         }
     }
 
-    /// Returns hash and resulting discarded blocks
-    ///
-    /// # Arguments
-    /// * val : dummy value used to generate dummy hash
-    /// * slot : generated block is in slot slot.
-    pub fn create_block(
+    pub fn prepare_block_creation(
         &self,
         val: String,
         slot: Slot,
-    ) -> Result<(BlockId, Block), ConsensusError> {
+    ) -> Result<(u64, Block), ConsensusError> {
         let (public_key, private_key) = self
             .cfg
             .nodes
@@ -942,7 +937,7 @@ impl BlockGraph {
                 slot,
                 parents: self.best_parents.clone(),
                 out_ledger_hash: example_hash,
-                operation_merkle_root: Hash::hash(&Vec::new()),
+                operation_merkle_root: Hash::hash(&Vec::new()[..]),
             },
             &self.serialization_context,
         )?;
@@ -953,6 +948,38 @@ impl BlockGraph {
                 operations: Vec::new(),
             },
         );
+        massa_trace!("consensus.block_graph.prepare_create_block", {"hash": res.0, "block": res.1});
+        let bytes = res.1.bytes_count(&self.serialization_context)?;
+        Ok((bytes, res.1))
+    }
+
+    /// Returns hash and resulting discarded blocks
+    ///
+    /// # Arguments
+    /// * val : dummy value used to generate dummy hash
+    /// * slot : generated block is in slot slot.
+    pub fn create_block(
+        &mut self,
+        operations: Vec<Operation>,
+        operation_merkle_root: Hash,
+        prepared: Block,
+    ) -> Result<(BlockId, Block), ConsensusError> {
+        let (public_key, private_key) = self
+            .cfg
+            .nodes
+            .get(self.cfg.current_node_index as usize)
+            .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
+            .ok_or(ConsensusError::KeyError)?;
+
+        let (hash, header) = BlockHeader::new_signed(
+            &private_key,
+            BlockHeaderContent {
+                operation_merkle_root,
+                ..prepared.header.content
+            },
+            &self.serialization_context,
+        )?;
+        let res = (hash, Block { header, operations });
         massa_trace!("consensus.block_graph.create_block", {"hash": res.0, "block": res.1});
         Ok(res)
     }
@@ -1837,6 +1864,48 @@ impl BlockGraph {
             inherited_incompatibilities_count: inherited_incomp_count,
             block_changes,
         })
+    }
+
+    pub fn get_past_operations(
+        &self,
+        cur_slot: Slot,
+        parent: &BlockId,
+    ) -> Result<Vec<OperationId>, ConsensusError> {
+        let mut res = Vec::new();
+
+        // compute stop periods
+        let stop_period = if cur_slot.period < self.cfg.operation_validity_periods {
+            0
+        } else {
+            cur_slot.period - self.cfg.operation_validity_periods
+        };
+        let mut cur_id = parent;
+        loop {
+            let block = match self
+                .block_statuses
+                .get(&cur_id)
+                .ok_or(ConsensusError::MissingBlock)?
+            {
+                BlockStatus::Active(block) => block,
+                _ => {
+                    return Err(ConsensusError::MissingBlock);
+                }
+            };
+            if block.block.header.content.slot.period < stop_period {
+                // we don't need to explore more here
+                break;
+            }
+
+            // genesis block
+            if block.block.header.content.parents.is_empty() {
+                break;
+            }
+
+            res.extend(block.operation_set.clone());
+
+            cur_id = &block.block.header.content.parents[cur_slot.thread as usize];
+        }
+        Ok(res)
     }
 
     /// Check if operations are consistent.
@@ -3485,6 +3554,7 @@ mod tests {
                 ledger_reset_at_startup: true,
                 block_reward: 1,
                 initial_ledger_path: initial_ledger_path.to_path_buf(),
+                operation_batch_size: 100,
             },
             SerializationContext {
                 max_block_size,

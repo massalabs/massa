@@ -7,6 +7,7 @@ use super::{
 };
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
+use pool::PoolCommand;
 use time::UTime;
 
 #[tokio::test]
@@ -99,6 +100,10 @@ async fn test_update_latest_final_block_cmd_notification() {
     // UpdateLatestFinalPeriods pool command filter
     let update_final_notification_filter = |cmd| match cmd {
         pool::PoolCommand::UpdateLatestFinalPeriods(periods) => Some(periods),
+        PoolCommand::GetOperationBatch { response_tx, .. } => {
+            response_tx.send(Vec::new()).unwrap();
+            None
+        }
         _ => None,
     };
 

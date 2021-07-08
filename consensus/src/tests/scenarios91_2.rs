@@ -11,6 +11,7 @@ use crate::{
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::Slot;
+use pool::PoolCommand;
 use time::UTime;
 use tokio::time::sleep;
 
@@ -579,6 +580,12 @@ async fn test_test_parents() {
 
 #[tokio::test]
 async fn test_block_creation() {
+    //     // setup logging
+    // stderrlog::new()
+    //     .verbosity(4)
+    //     .timestamp(stderrlog::Timestamp::Millisecond)
+    //     .init()
+    //     .unwrap();
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(2, ledger_file.path());
     cfg.t0 = 1000.into();
@@ -600,9 +607,8 @@ async fn test_block_creation() {
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
+    let (mut pool_controller, pool_command_sender) =
         MockPoolController::new(serialization_context.clone());
-    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -646,12 +652,22 @@ async fn test_block_creation() {
                          }
                      };
                 },
+                cmd = pool_controller.wait_command(cfg.t0, |cmd| match cmd {
+                    PoolCommand::GetOperationBatch { response_tx, .. } => Some(response_tx),
+                    _ => None,
+                }) => {
+                    match cmd {
+                        Some(response_tx) => response_tx.send(Vec::new()).unwrap(),
+                        None => panic!("did not receive response channel")
+                    }
+                }
                 _ = &mut timer => panic!("Block not integrated before timeout.")
             }
         }
     }
 
     // stop controller while ignoring all commands
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);
     protocol_controller

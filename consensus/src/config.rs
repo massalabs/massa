@@ -1,6 +1,6 @@
 use crypto::signature::{PrivateKey, PublicKey};
 use serde::Deserialize;
-use std::{default::Default, path::PathBuf};
+use std::{default::Default, path::PathBuf, usize};
 use time::UTime;
 
 pub const CHANNEL_SIZE: usize = 256;
@@ -46,6 +46,7 @@ pub struct ConsensusConfig {
     pub ledger_reset_at_startup: bool,
     pub initial_ledger_path: PathBuf,
     pub block_reward: u64,
+    pub operation_batch_size: usize,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.

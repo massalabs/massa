@@ -1,13 +1,23 @@
+use crate::ledger::{LedgerChange, OperationLedgerInterface};
+
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
     timeslots::*,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
-use crypto::signature::{derive_public_key, PublicKey};
-use models::{Address, Block, BlockId, Slot};
+use crypto::{
+    hash::Hash,
+    signature::{derive_public_key, PublicKey},
+};
+use models::{
+    Address, Block, BlockId, Operation, OperationId, SerializationContext, SerializeCompact, Slot,
+};
 use pool::PoolCommandSender;
-use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
+use std::{
+    collections::{HashMap, HashSet},
+    usize,
+};
 use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -81,6 +91,8 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
+    /// serialisation context
+    serialization_context: SerializationContext,
 }
 
 impl ConsensusWorker {
@@ -105,6 +117,7 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
+        serialization_context: SerializationContext,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
         let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
@@ -143,6 +156,7 @@ impl ConsensusWorker {
             latest_final_periods,
             clock_compensation,
             pool_command_sender,
+            serialization_context,
         })
     }
 
@@ -207,6 +221,120 @@ impl ConsensusWorker {
         Ok(self.protocol_event_receiver)
     }
 
+    async fn get_best_operations(
+        &mut self,
+        cur_slot: Slot,
+        mut left_size: u64,
+    ) -> Result<Vec<Operation>, ConsensusError> {
+        let mut ops = Vec::new();
+        let mut excluded: Vec<OperationId> = Vec::new();
+        let mut ids_to_keep: Vec<OperationId> = Vec::new();
+
+        let fee_target = Address::from_public_key(
+            &self
+                .cfg
+                .nodes
+                .get(self.cfg.current_node_index as usize)
+                .and_then(|(public_key, private_key)| {
+                    Some((public_key.clone(), private_key.clone()))
+                })
+                .ok_or(ConsensusError::KeyError)?
+                .0,
+        )?;
+
+        let mut query_addr = HashSet::new();
+        if fee_target.get_thread(self.cfg.thread_count) == cur_slot.thread {
+            query_addr.insert(fee_target);
+        }
+
+        let asked_nb = self.cfg.operation_batch_size;
+        let mut ledger = self
+            .block_db
+            .get_ledger_at_parents(&self.block_db.get_best_parents(), &query_addr)?;
+
+        if fee_target.get_thread(self.cfg.thread_count) == cur_slot.thread {
+            // reward
+            let reward_ledger_change = LedgerChange {
+                balance_delta: self.cfg.block_reward,
+                balance_increment: true,
+            };
+            let reward_change = (&fee_target, &reward_ledger_change);
+
+            ledger.apply_change(reward_change, self.cfg.thread_count)?;
+        }
+
+        excluded.extend(self.block_db.get_past_operations(
+            cur_slot,
+            &self.block_db.get_best_parents()[cur_slot.thread as usize],
+        )?);
+
+        while ops.len() < self.cfg.max_operations_per_block as usize {
+            let to_exclude = [excluded.clone(), ids_to_keep.clone()].concat();
+            let (response_tx, response_rx) = oneshot::channel();
+            self.pool_command_sender
+                .get_operation_batch(
+                    cur_slot,
+                    to_exclude.iter().cloned().collect(),
+                    asked_nb,
+                    left_size,
+                    response_tx,
+                )
+                .await?;
+
+            let candidates = response_rx.await?;
+
+            // operations are already sorted by interest
+            let involved_addresses: HashSet<Address> = candidates
+                .iter()
+                .map(|(_, op, size)| op.get_involved_addresses(&fee_target))
+                .flatten()
+                .flatten()
+                .filter(|a| a.get_thread(self.cfg.thread_count) == cur_slot.thread)
+                .collect();
+
+            // if new addresses are needed, update ledger
+            ledger.merge(
+                self.block_db.get_ledger_at_parents(
+                    &self.block_db.get_best_parents(),
+                    &involved_addresses,
+                )?,
+            );
+
+            let mut cpt = 0;
+            for (id, op, size) in candidates.iter() {
+                if *size > left_size {
+                    cpt += 1;
+                    continue;
+                }
+                let changes = op.get_changes(&fee_target, self.cfg.thread_count)?;
+                match ledger.try_apply_changes(changes) {
+                    Ok(_) => {
+                        // that operation can be included
+                        ops.push(op.clone());
+                        ids_to_keep.push(*id);
+                        left_size = left_size - size;
+                    }
+                    Err(e) => {
+                        // Something went wrong with that op, exclude it
+                        info!("operation {:?} was rejected due to {:?}", id, e);
+                        excluded.push(*id);
+                    }
+                }
+            }
+            // break if every operation was rejected due to size
+            if cpt == candidates.len() {
+                break;
+            }
+
+            // no operations left to select
+            if candidates.len() < asked_nb {
+                break;
+            }
+        }
+
+        Ok(ops)
+    }
+
     async fn slot_tick(
         &mut self,
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
@@ -224,17 +352,7 @@ impl ConsensusWorker {
             && self.next_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
-            let (hash, block) = self.block_db.create_block("block".to_string(), cur_slot)?;
-            massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
-
-            // TODO: pass the actual operation set of the block.
-            self.block_db.incoming_block(
-                hash,
-                block,
-                Default::default(),
-                &mut self.selector,
-                Some(cur_slot),
-            )?;
+            self.create_block(cur_slot).await?;
         }
 
         // signal tick to block graph
@@ -260,6 +378,38 @@ impl ConsensusWorker {
             .estimate_instant(self.clock_compensation)?,
         ));
 
+        Ok(())
+    }
+
+    async fn create_block(&mut self, cur_slot: Slot) -> Result<(), ConsensusError> {
+        let (size, prepared) = self
+            .block_db
+            .prepare_block_creation("block".to_string(), cur_slot)?;
+        let left_size = self.cfg.max_block_size as u64 - size;
+        let operations = self.get_best_operations(cur_slot, left_size).await?;
+        let ids: HashSet<OperationId> = operations
+            .iter()
+            .map(|op| op.get_operation_id(&self.serialization_context))
+            .collect::<Result<_, _>>()?;
+
+        let operation_merkle_root = Hash::hash(
+            &operations.iter().fold(Vec::new(), |acc, v| {
+                let res = [
+                    acc,
+                    v.to_bytes_compact(&self.serialization_context).unwrap(),
+                ]
+                .concat();
+                res
+            })[..],
+        );
+
+        let (hash, block) =
+            self.block_db
+                .create_block(operations, operation_merkle_root, prepared)?;
+        massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
+
+        self.block_db
+            .incoming_block(hash, block, ids, &mut self.selector, Some(cur_slot))?;
         Ok(())
     }
 
