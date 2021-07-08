@@ -48,13 +48,18 @@ impl MockProtocolController {
         }
     }
 
+    // Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
         let block_id = block
             .header
             .compute_block_id(&self.serialization_context)
             .unwrap();
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlock { block_id, block })
+            .send(ProtocolEvent::ReceivedBlock {
+                block_id,
+                block,
+                operation_set: Default::default(),
+            })
             .await
             .expect("could not send protocol event");
     }
