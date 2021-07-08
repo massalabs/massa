@@ -1,3 +1,7 @@
+//!Rustyline integration to manage command completion.
+//!
+//! See [Rustyline documentation](https://docs.rs/rustyline) for trait impl
+
 use rustyline::completion::{Completer, Pair};
 
 use rustyline::highlight::Highlighter;
@@ -6,13 +10,10 @@ use rustyline::history::Direction;
 use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::Helper;
 use rustyline::{Context, Result};
-//use rustyline_derive::Helper;
 
-// XXX: Hardcoded.
-//const COMMANDS: &'static [&'static str] = &["our_ip", "current_parents"];
 pub const HISTORY_FILE: &str = "config/history.txt";
 
-//#[derive(Helper)]
+///the main struct that implements Rustyline traits.
 pub struct ReplHelper {
     completer: CommandCompleter,
     hinter: CommandHinter,

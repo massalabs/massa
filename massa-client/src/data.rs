@@ -1,3 +1,12 @@
+//!Contains all the structure receive using the REST API.
+//!
+//!All struct implements display to be shown on the screen.
+//!
+//! Copy of all structure defined in the API side. They has been copied to avoid to force some behaviour on the massa node developements like display.
+//! To detect desynchronisation between the 2 API, tests has been added to validated the deserialisation of the REST API call response.
+//!
+//! There're only deserialized when received from the REST call.
+
 use crate::ReplError;
 use bitcoin_hashes;
 use chrono::Local;
@@ -329,5 +338,86 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
 
             d.deserialize_bytes(BytesVisitor)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn test_block_deserilization() {
+        let (base_block, public_key, signature) = create_block();
+        let serilized_hash =
+            serde_json::to_string(&crypto::hash::Hash::hash("default_val".as_bytes())).unwrap();
+        let deserilized_hash: super::Hash = serde_json::from_str(&serilized_hash).unwrap();
+        let block_string = serde_json::to_string(&base_block).unwrap();
+        let p: super::Block = serde_json::from_str(&block_string).unwrap();
+        assert_eq!(p.header.creator, public_key);
+        assert_eq!(p.header.thread_number, 0);
+        assert_eq!(
+            p.header.parents,
+            vec![deserilized_hash.clone(), deserilized_hash.clone(),]
+        );
+        assert_eq!(p.header.operation_merkle_root, deserilized_hash);
+        assert_eq!(p.signature, signature);
+    }
+
+    #[test]
+    fn test_peer_info_deserilization() {
+        let peer_info = communication::network::PeerInfo {
+            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            banned: false,
+            bootstrap: true,
+            last_alive: None,
+            last_failure: None,
+            advertised: false,
+            active_out_connection_attempts: 0,
+            active_out_connections: 1,
+            active_in_connections: 0,
+        };
+        let serilized_peer = serde_json::to_string(&peer_info).unwrap();
+        let deserilized_peer: super::PeerInfo = serde_json::from_str(&serilized_peer).unwrap();
+
+        assert_eq!(peer_info.ip, deserilized_peer.ip);
+        assert_eq!(
+            peer_info.active_out_connection_attempts,
+            deserilized_peer.active_out_connection_attempts
+        );
+        assert_eq!(
+            peer_info.active_out_connections,
+            deserilized_peer.active_out_connections
+        );
+    }
+
+    fn create_block() -> (models::block::Block, PublicKey, Signature) {
+        let secp = crypto::signature::SignatureEngine::new();
+        let private_key = crypto::signature::SignatureEngine::generate_random_private_key();
+        let public_key = secp.derive_public_key(&private_key);
+
+        let header = models::block::BlockHeader {
+            creator: public_key,
+            thread_number: 0,
+            period_number: 1,
+            roll_number: 2,
+            parents: vec![
+                crypto::hash::Hash::hash("default_val".as_bytes()),
+                crypto::hash::Hash::hash("default_val".as_bytes()),
+            ],
+            endorsements: Vec::new(),
+            out_ledger_hash: crypto::hash::Hash::hash("default_val".as_bytes()),
+            operation_merkle_root: crypto::hash::Hash::hash("default_val".as_bytes()),
+        };
+
+        let hash = header.compute_hash().unwrap();
+
+        let block = models::block::Block {
+            header,
+            operations: Vec::new(),
+            signature: secp.sign(&hash, &private_key).unwrap(),
+        };
+
+        (block, public_key, secp.sign(&hash, &private_key).unwrap())
     }
 }

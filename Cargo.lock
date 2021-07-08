@@ -826,6 +826,7 @@ dependencies = [
  "bs58",
  "chrono",
  "clap",
+ "communication",
  "crypto",
  "models",
  "reqwest",

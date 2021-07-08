@@ -1,3 +1,17 @@
+//! Massa node client application.
+//!
+//! Allow to query a node using the node API.
+//! It can be executed as a REPL to run several command in a shell
+//! or as CLI using the API command has a parameter.
+//!
+//! Parameters:
+//! * -n (--node): the node IP
+//! * -s (--short) The format of the displayed hash. Set to true display sort hash (default).
+//!
+//! In REPL mode, up and down arrows or tab key can be use to search in the command history.
+//!
+//! The help command display all available commands.
+
 use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use clap::App;
@@ -8,21 +22,11 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use std::sync::atomic::Ordering;
 
-/*
-Usage:
- Connection node is defined by default in the file config/config.toml
- use -n or --node to override the default node.
-
- Use tab, up arrow to complet or search in command history.
- Command history is saved in the file config/history.txt.
- Use the command help to see all available command
-
-*/
-
 mod config;
 mod data;
 mod repl;
 
+///Start the massa-client.
 fn main() {
     let app = App::new("Massa CLI")
         .version("1.0")
@@ -51,80 +55,69 @@ fn main() {
     let config_path = "config/config.toml";
     let cfg = config::Config::from_toml(&read_to_string(config_path).unwrap()).unwrap();
 
-    let mut repl = repl::Repl::new();
-
     //add commands
-    let app = repl.new_command(
+    let (mut repl, app) = repl::Repl::new().new_command(
         "set_short_hash",
         "set displayed hash short: Parameter: bool: true (short), false(long)",
         1,
         1,
         set_short_hash,
-        app,
-    );
-    let app = repl.new_command_noargs("our_ip", "get node ip", cmd_our_ip, app);
-    let app = repl.new_command_noargs("peers", "get node peers", cmd_peers, app);
-    let app = repl.new_command_noargs("cliques", "get cliques", cmd_cliques, app);
-    let app = repl.new_command_noargs(
+        app
+    )
+    .new_command_noargs("our_ip", "get node ip", cmd_our_ip)
+    .new_command_noargs("peers", "get node peers", cmd_peers)
+    .new_command_noargs("cliques", "get cliques", cmd_cliques)
+    .new_command_noargs(
         "current_parents",
         "get current parents",
         cmd_current_parents,
-        app,
-    );
-    let app = repl.new_command_noargs("last_final", "get last finals blocks", cmd_last_final, app);
-    let app = repl.new_command(
+    )
+    .new_command_noargs("last_final", "get last finals blocks", cmd_last_final)
+    .new_command(
         "block",
         "get the block with the specifed hash. Parameter: block hash",
         1,
         1, //max nb parameters
         cmd_get_block,
-        app,
-    );
-    let app = repl.new_command(
+    )
+    .new_command(
         "blockinterval",
         "get the block within the specifed time interval. Parameters: start and end time interval",
         2,
         2, //max nb parameters
         cmd_blockinterval,
-        app,
-    );
-    let app = repl.new_command(
+    )
+    .new_command(
         "graphinterval",
         "get the block graph within the specifed time interval. Parameters: start and end time interval",
         2,
         2, //max nb parameters
-        cmd_graph_interval, app,
-    );
-
-    let app = repl.new_command_noargs(
+        cmd_graph_interval,
+    )
+    .new_command_noargs(
         "network_info",
         "network information: own IP address, connected peers (IP)",
         cmd_network_info,
-        app,
-    );
-    let app = repl.new_command_noargs("state", "summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes", cmd_state, app);
-    let app = repl.new_command_noargs(
+    )
+    .new_command_noargs("state", "summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes", cmd_state)
+    .new_command_noargs(
         "last_stale",
         "(hash, thread, slot) for last stale blocks",
         cmd_last_stale,
-        app,
-    );
-    let app = repl.new_command_noargs(
+    )
+    .new_command_noargs(
         "last_invalid",
         "(hash, thread, slot, reason) for last invalid blocks",
         cmd_last_invalid,
-        app,
-    );
-
-    let app = repl.new_command_noargs("stop_node", "Stop node gracefully", cmd_stop_node, app);
-
-    let app = repl.new_command(
+    )
+    .new_command_noargs("stop_node", "Stop node gracefully", cmd_stop_node)
+    .new_command(
         "staker_info",
         "staker info from staker address (pubkey hash) -> (blocks created, next slots where address is selected)",
         1,
         1, //max nb parameters
-        cmd_staker_info, app,
-    );
+        cmd_staker_info,
+    ).split();
 
     let matches = app.get_matches();
 
@@ -365,6 +358,9 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
     Ok(())
 }
 
+///Send the REST request to the API node.
+///
+///Return the request reponse or and Error.
 fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplError> {
     let resp = reqwest::blocking::get(url)?;
     if data.cli {
@@ -375,6 +371,11 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
     }
 }
 
+///Construct a list of diplay String from the specified list of Hash
+///The hash are sorted with their slot (periode) number
+///
+///The input parameter list is a collection of tuple (Hash, Period, thread)
+/// return a list of string the display.
 fn format_node_hash(list: &mut [(data::Hash, u64, u8)]) -> Vec<String> {
     list.sort_unstable_by(|a, b| a.1.cmp(&b.1));
     list.iter()
