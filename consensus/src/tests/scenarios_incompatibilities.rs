@@ -23,6 +23,7 @@ async fn test_thread_incompatibility() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -186,6 +187,7 @@ async fn test_grandpa_incompatibility() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

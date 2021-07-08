@@ -89,12 +89,17 @@ impl ConsensusWorker {
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
+        clock_compensation: i64,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
         let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
         let selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights)?;
-        let previous_slot =
-            get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)?;
+        let previous_slot = get_current_latest_block_slot(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            clock_compensation,
+        )?;
         let next_slot = previous_slot.map_or(Ok(Slot::new(0u64, 0u8)), |s| {
             s.get_next_slot(cfg.thread_count)
         })?;
@@ -126,7 +131,7 @@ impl ConsensusWorker {
                 self.cfg.genesis_timestamp,
                 self.next_slot,
             )?
-            .estimate_instant()?,
+            .estimate_instant(0)?,
         );
         tokio::pin!(next_slot_timer);
         loop {
@@ -189,7 +194,7 @@ impl ConsensusWorker {
                 self.cfg.genesis_timestamp,
                 self.next_slot,
             )?
-            .estimate_instant()?,
+            .estimate_instant(0)?,
         ));
 
         Ok(())

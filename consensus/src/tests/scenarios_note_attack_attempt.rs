@@ -23,6 +23,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -74,6 +75,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

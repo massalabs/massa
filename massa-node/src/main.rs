@@ -28,11 +28,10 @@ async fn run(cfg: config::Config) {
         max_message_size: cfg.network.max_message_size,
     };
 
-    let boot_graph = get_state(
+    let (boot_graph, clock_compensation) = get_state(
         cfg.bootstrap.clone(),
         serialization_context.clone(),
         bootstrap::establisher::Establisher::new(),
-        cfg.consensus.genesis_timestamp,
     )
     .await
     .unwrap();
@@ -43,6 +42,7 @@ async fn run(cfg: config::Config) {
             cfg.network.clone(),
             serialization_context.clone(),
             Establisher::new(),
+            clock_compensation,
         )
         .await
         .expect("could not start network controller");
@@ -71,6 +71,7 @@ async fn run(cfg: config::Config) {
             protocol_event_receiver,
             Some(storage_command_sender.clone()),
             boot_graph,
+            clock_compensation,
         )
         .await
         .expect("could not start consensus controller");
@@ -82,6 +83,7 @@ async fn run(cfg: config::Config) {
         cfg.protocol.clone(),
         cfg.network.clone(),
         Some(storage_command_sender),
+        clock_compensation,
     )
     .await
     .expect("could not start API controller");

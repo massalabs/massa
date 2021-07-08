@@ -30,6 +30,7 @@ pub async fn start_consensus_controller(
     protocol_event_receiver: ProtocolEventReceiver,
     opt_storage_command_sender: Option<StorageAccess>,
     boot_graph: Option<BoostrapableGraph>,
+    clock_compensation: i64,
 ) -> Result<
     (
         ConsensusCommandSender,
@@ -74,6 +75,7 @@ pub async fn start_consensus_controller(
             command_rx,
             event_tx,
             manager_rx,
+            clock_compensation,
         )?
         .run_loop()
         .await

@@ -24,6 +24,7 @@ async fn test_consensus_asks_for_block() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -77,6 +78,7 @@ async fn test_consensus_does_not_ask_for_block() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

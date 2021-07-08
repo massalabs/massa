@@ -66,8 +66,14 @@ pub fn get_current_latest_block_slot(
     thread_count: u8,
     t0: UTime,
     genesis_timestamp: UTime,
+    clock_compensation: i64,
 ) -> Result<Option<Slot>, ConsensusError> {
-    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, UTime::now()?)
+    get_latest_block_slot_at_timestamp(
+        thread_count,
+        t0,
+        genesis_timestamp,
+        UTime::now(clock_compensation)?,
+    )
 }
 
 #[cfg(test)]

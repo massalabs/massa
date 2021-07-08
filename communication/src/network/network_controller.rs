@@ -28,6 +28,7 @@ pub async fn start_network_controller(
     cfg: NetworkConfig,
     serialization_context: SerializationContext,
     mut establisher: Establisher,
+    clock_compensation: i64,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -81,7 +82,7 @@ pub async fn start_network_controller(
     let listener = establisher.get_listener(cfg.bind).await?;
 
     // load peer info database
-    let peer_info_db = PeerInfoDatabase::new(&cfg).await?;
+    let peer_info_db = PeerInfoDatabase::new(&cfg, clock_compensation).await?;
 
     // launch controller
     let (command_tx, command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);

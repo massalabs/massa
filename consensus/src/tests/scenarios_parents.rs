@@ -22,6 +22,7 @@ async fn test_parent_in_the_future() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -80,6 +81,7 @@ async fn test_parents() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -153,6 +155,7 @@ async fn test_parents_in_incompatible_cliques() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

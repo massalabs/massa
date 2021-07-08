@@ -18,28 +18,83 @@ use crypto::{
 use error::BootstrapError;
 pub use establisher::Establisher;
 use messages::BootstrapMessage;
-use models::{SerializationContext, SerializeCompact};
+use models::{SerializationContext, SerializeCompact, SerializeVarInt};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
+use std::convert::TryInto;
 use time::UTime;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
 async fn get_state_internal(
-    cfg: BootstrapConfig,
+    cfg: &BootstrapConfig,
+    bootstrap_addr: SocketAddr,
     serialization_context: SerializationContext,
     establisher: &mut Establisher,
-) -> Result<BoostrapableGraph, BootstrapError> {
+) -> Result<(BoostrapableGraph, i64), BootstrapError> {
     let mut random_bytes = [0u8; 32];
     StdRng::from_entropy().fill_bytes(&mut random_bytes);
     // create listener
-    let bootstrap_addr = SocketAddr::new(cfg.bootstrap_ip, cfg.bootstrap_port);
     let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
     let (socket_reader, socket_writer) = connector.connect(bootstrap_addr).await?;
     let mut reader = ReadBinder::new(socket_reader, serialization_context.clone());
     let mut writer = WriteBinder::new(socket_writer, serialization_context.clone());
+    let signature_engine = SignatureEngine::new();
 
+    let send_time_uncompensated = UTime::now(0)?;
     writer
         .send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes })
         .await?;
+
+    // First, clock sync.
+    let msg = reader.next().await?.map_or_else(
+        || Err(BootstrapError::UnexpectedConnectionDrop),
+        |(_, msg)| Ok(msg),
+    )?;
+    let (server_time, first_sig) = match msg {
+        BootstrapMessage::BootstrapTime {
+            server_time,
+            signature,
+        } => (server_time, signature),
+        e => return Err(BootstrapError::UnexpectedMessage(e)),
+    };
+
+    let recv_time_uncompensated = UTime::now(0)?;
+
+    // Check signature.
+    let mut signed_data = random_bytes.to_vec();
+    signed_data.extend(server_time.to_millis().to_varint_bytes());
+    let random_and_server_time = Hash::hash(&signed_data);
+    signature_engine.verify(
+        &random_and_server_time,
+        &first_sig,
+        &cfg.bootstrap_public_key,
+    )?;
+
+    let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
+    if ping > cfg.max_ping {
+        return Err(BootstrapError::GeneralBootstrapError(
+            "bootstrap ping too high".into(),
+        ));
+    }
+
+    let local_time_uncompensated = recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
+    let compensation_millis = if server_time >= local_time_uncompensated {
+        server_time
+            .saturating_sub(local_time_uncompensated)
+            .to_millis()
+    } else {
+        local_time_uncompensated
+            .saturating_sub(server_time)
+            .to_millis()
+    };
+    let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
+        BootstrapError::GeneralBootstrapError("Failed to convert compensation time into i64".into())
+    })?;
+    debug!(
+        "Server clock compensation set to: {:?}",
+        compensation_millis
+    );
+
+    // Second, handle state message.
     let msg = reader.next().await?.map_or_else(
         || Err(BootstrapError::UnexpectedConnectionDrop),
         |(_, msg)| Ok(msg),
@@ -49,38 +104,39 @@ async fn get_state_internal(
         e => return Err(BootstrapError::UnexpectedMessage(e)),
     };
 
-    let mut signed_data = random_bytes.to_vec();
+    let mut signed_data = vec![];
+    signed_data.extend(&first_sig.into_bytes());
     signed_data.extend(graph.to_bytes_compact(&serialization_context)?);
 
-    let random_and_message_hash = Hash::hash(&signed_data);
-    let signature_engine = SignatureEngine::new();
+    let previous_signature_and_message_hash = Hash::hash(&signed_data);
     // check their signature
-    signature_engine.verify(&random_and_message_hash, &sig, &cfg.bootstrap_public_key)?;
-    Ok(graph)
+    signature_engine.verify(
+        &previous_signature_and_message_hash,
+        &sig,
+        &cfg.bootstrap_public_key,
+    )?;
+    Ok((graph, compensation_millis))
 }
 
 pub async fn get_state(
-    cfg: BootstrapConfig,
+    mut cfg: BootstrapConfig,
     serialization_context: SerializationContext,
     mut establisher: Establisher,
-    genesis_time: UTime,
-) -> Result<Option<BoostrapableGraph>, BootstrapError> {
-    let now = UTime::now()?;
-    if now < genesis_time.saturating_add(cfg.bootstrap_time_after_genesis) {
-        return Ok(None);
-    } else {
+) -> Result<(Option<BoostrapableGraph>, i64), BootstrapError> {
+    if let Some(addr) = cfg.bootstrap_addr.take() {
         loop {
-            match get_state_internal(cfg.clone(), serialization_context.clone(), &mut establisher)
+            match get_state_internal(&cfg, addr, serialization_context.clone(), &mut establisher)
                 .await
             {
                 Err(e) => {
                     warn!("error {:?} while bootstraping", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
-                Ok(graph) => break Ok(Some(graph)),
+                Ok((graph, compensation)) => return Ok((Some(graph), compensation)),
             }
         }
     }
+    Ok((None, 0))
 }
 
 pub struct BootstrapManager {
@@ -172,14 +228,31 @@ impl BootstrapServer {
         )?;
         match msg {
             BootstrapMessage::BootstrapInitiation { random_bytes } => {
-                let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
+                let signature_engine = SignatureEngine::new();
+
+                // First, sync clocks.
+                let server_time = UTime::now(0)?;
                 let mut signed_data = random_bytes.to_vec();
+                signed_data.extend(server_time.to_millis().to_varint_bytes());
+                let random_and_server_time = Hash::hash(&signed_data);
+                let signature =
+                    signature_engine.sign(&random_and_server_time, &self.private_key)?;
+                let message = BootstrapMessage::BootstrapTime {
+                    server_time,
+                    signature: signature.clone(),
+                };
+                writer.send(&message).await?;
+
+                // Second, send state.
+                let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
+                let mut signed_data = vec![];
+                signed_data.extend(&signature.into_bytes());
                 signed_data.extend(graph.to_bytes_compact(&self.serialization_context)?);
 
-                let random_and_message_hash = Hash::hash(&signed_data);
-                let signature_engine = SignatureEngine::new();
-                let signature =
-                    signature_engine.sign(&random_and_message_hash, &self.private_key)?;
+                let previous_signature_and_message_hash = Hash::hash(&signed_data);
+
+                let signature = signature_engine
+                    .sign(&previous_signature_and_message_hash, &self.private_key)?;
                 let message = BootstrapMessage::ConsensusState { graph, signature };
                 writer.send(&message).await?;
                 Ok(())

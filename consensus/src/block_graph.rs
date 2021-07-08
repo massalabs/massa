@@ -2433,7 +2433,7 @@ mod tests {
         let max_operations_per_block = 1024;
         (
             ConsensusConfig {
-                genesis_timestamp: UTime::now().unwrap(),
+                genesis_timestamp: UTime::now(0).unwrap(),
                 thread_count,
                 t0: 32.into(),
                 selection_rng_seed: 42,
