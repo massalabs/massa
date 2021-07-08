@@ -859,6 +859,7 @@ dependencies = [
 name = "massa-client"
 version = "0.1.0"
 dependencies = [
+ "apimodel",
  "bitcoin_hashes",
  "bs58",
  "chrono",

@@ -16,12 +16,11 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use clap::App;
 use clap::Arg;
-use crypto::hash::Hash;
-use models::{Block, Slot};
+use communication::network::PeerInfo;
+use models::Block;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
-
-use communication::network::PeerInfo;
+use serde::Deserialize;
 use std::fs::read_to_string;
 use std::net::IpAddr;
 use std::net::SocketAddr;
@@ -156,7 +155,7 @@ fn main() {
         .unwrap_or(true);
 
     if !short_hash {
-        data::FORMAT_SHORT_HASH.swap(false, Ordering::Relaxed);
+        apimodel::FORMAT_SHORT_HASH.swap(false, Ordering::Relaxed);
     }
 
     match matches.subcommand() {
@@ -178,7 +177,7 @@ fn main() {
 
 fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     if let Err(_) = bool::from_str(&params[0].to_lowercase())
-        .map(|val| data::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed))
+        .map(|val| apimodel::FORMAT_SHORT_HASH.swap(val, Ordering::Relaxed))
     {
         println!("Bad parameter:{}, not a boolean (true, false)", params[0]);
     };
@@ -188,7 +187,7 @@ fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
 fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/staker_info/{}", data.node_ip, params[0]);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<data::StakerInfo>()?;
+        let resp = resp.json::<apimodel::StakerInfo>()?;
         println!("staker_info:");
         println!("{}", resp);
     }
@@ -198,7 +197,7 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
 fn cmd_network_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/network_info", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let info = resp.json::<data::NetworkInfo>()?;
+        let info = resp.json::<apimodel::NetworkInfo>()?;
         println!("network_info:");
         println!("{}", info);
     }
@@ -217,7 +216,7 @@ fn cmd_stop_node(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError>
 fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/state", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<data::State>()?;
+        let resp = resp.json::<apimodel::State>()?;
         println!("Summary of current node state");
         println!("{}", resp);
     }
@@ -227,10 +226,9 @@ fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/current_parents", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
-            data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
-        resp.sort_unstable_by_key(|v| (v.1, v.0));
-        let formated = format_node_hash(&mut resp);
+        let mut resp: Vec<apimodel::HashSlot> = resp.json()?;
+        resp.sort_unstable_by_key(|v| (v.slot, v.hash));
+        let formated: Vec<String> = resp.iter().map(|hash_slot| hash_slot.to_string()).collect();
         println!("Parents:{:#?}", formated);
     }
     Ok(())
@@ -239,10 +237,9 @@ fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), Repl
 fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_stale", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
-            data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
-        resp.sort_unstable_by_key(|v| (v.1, v.0));
-        let formated = format_node_hash(&mut resp);
+        let mut resp: Vec<apimodel::HashSlot> = resp.json()?;
+        resp.sort_unstable_by_key(|v| (v.slot, v.hash));
+        let formated: Vec<String> = resp.iter().map(|hash_slot| hash_slot.to_string()).collect();
         println!("Last stale:{:#?}", formated);
     }
     Ok(())
@@ -251,10 +248,9 @@ fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_last_invalid(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_invalid", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
-            data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
-        resp.sort_unstable_by_key(|v| (v.0, v.1));
-        let formated = format_node_hash(&mut resp);
+        let mut resp: Vec<apimodel::HashSlot> = resp.json()?;
+        resp.sort_unstable_by_key(|v| (v.slot, v.hash));
+        let formated: Vec<String> = resp.iter().map(|hash_slot| hash_slot.to_string()).collect();
         println!("Last invalid:{:#?}", formated);
     }
     Ok(())
@@ -263,10 +259,9 @@ fn cmd_last_invalid(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplErr
 fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_final", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp: Vec<(data::WrappedHash, data::WrappedSlot)> =
-            data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
-        resp.sort_unstable_by_key(|v| (v.1, v.0));
-        let formated = format_node_hash(&mut resp);
+        let mut resp: Vec<apimodel::HashSlot> = resp.json()?;
+        resp.sort_unstable_by_key(|v| (v.slot, v.hash));
+        let formated: Vec<String> = resp.iter().map(|hash_slot| hash_slot.to_string()).collect();
         println!("last finals:{:#?}", formated);
     }
     Ok(())
@@ -275,13 +270,15 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format_url_with_to_from("blockinterval", data.node_ip, params)?;
     if let Some(resp) = request_data(data, &url)? {
-        let mut block: Vec<(data::WrappedHash, data::WrappedSlot)> =
-            data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
-        if block.len() == 0 {
+        let mut blocks: Vec<apimodel::HashSlot> = resp.json()?;
+        if blocks.len() == 0 {
             println!("Not block found.");
         } else {
-            block.sort_unstable_by_key(|v| (v.1, v.0));
-            let formated = format_node_hash(&mut block);
+            blocks.sort_unstable_by_key(|v| (v.slot, v.hash));
+            let formated: Vec<String> = blocks
+                .iter()
+                .map(|hash_slot| hash_slot.to_string())
+                .collect();
             println!("blocks: {:#?}", formated);
         }
     }
@@ -304,9 +301,9 @@ fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/peers", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<std::collections::HashMap<IpAddr, PeerInfo>>()?;
-        for peer in resp.values() {
-            println!("    {}", data::WrappedPeerInfo::from(peer));
+        let resp = resp.json::<Vec<PeerInfo>>()?;
+        for peer in resp {
+            println!("    {}", apimodel::WrappedPeerInfo::from(peer));
         }
     }
     Ok(())
@@ -315,20 +312,8 @@ fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_cliques(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/cliques", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let (nb_cliques, clique_list) = resp.json::<(usize, Vec<Vec<(Hash, Slot)>>)>()?;
-        let wrapped_clique_list: Vec<Vec<(data::WrappedHash, data::WrappedSlot)>> = clique_list
-            .into_iter()
-            .map(|clique| data::from_vec_hash_slot(&clique))
-            .collect();
-
-        println!("Nb of cliques: {}", nb_cliques);
-        println!("Cliques: ");
-        wrapped_clique_list.into_iter().for_each(|mut clique| {
-            //use sort_unstable_by to prepare sort by slot
-            clique.sort_unstable_by_key(|v| (v.1, v.0));
-            let formated = format_node_hash(&mut clique);
-            println!("{:#?}", formated);
-        });
+        let cliques = resp.json::<apimodel::Cliques>()?;
+        println!("{}", cliques);
     }
     Ok(())
 }
@@ -339,7 +324,7 @@ fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
         if resp.content_length().unwrap() > 0 {
             let block = resp
                 .json::<Block>()
-                .map(|block| data::WrapperBlock::from(block))?;
+                .map(|block| apimodel::WrapperBlock::from(block))?;
             println!("block: {}", block);
         } else {
             println!("block not found.");
@@ -354,29 +339,10 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
 
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let mut block: Vec<(
-                data::WrappedHash,
-                data::WrappedSlot,
-                String,
-                Vec<data::WrappedHash>,
-            )> = resp
-                .json::<Vec<(Hash, Slot, String, Vec<Hash>)>>()?
-                .into_iter()
-                .map(|(hash1, slot, status, hash2)| {
-                    (
-                        hash1.into(),
-                        slot.into(),
-                        status,
-                        hash2.iter().map(|h| h.into()).collect(),
-                    )
-                })
-                .collect();
-
-            block.sort_unstable_by_key(|v| (v.1, v.0));
-            block.iter().for_each(|(hash, slot, state, parents)| {
-                println!("Block: {} Slot: {} Status:{}", hash, slot, state);
-                println!("Block parents: {:?}", parents);
-                println!("");
+            let mut blocks = resp.json::<Vec<apimodel::BlockInfo>>()?;
+            blocks.sort_unstable_by_key(|v| (v.hash_slot.slot, v.hash_slot.hash));
+            blocks.iter().for_each(|block| {
+                println!("{}", block);
             });
         } else {
             println!("Empty graph found.");
@@ -427,7 +393,7 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
     if resp.status() != StatusCode::OK {
         //println!("resp.text(self):{:?}", resp.text());
         let message = resp
-            .json::<data::ErrorMessage>()
+            .json::<ErrorMessage>()
             .map(|message| message.message)
             .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
             .unwrap();
@@ -443,14 +409,7 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
     }
 }
 
-///Construct a list of diplay String from the specified list of Hash
-///The hash are sorted with their slot (periode) number
-///
-///The input parameter list is a collection of tuple (Hash, Slot)
-/// return a list of string the display.
-fn format_node_hash(list: &mut [(data::WrappedHash, data::WrappedSlot)]) -> Vec<String> {
-    list.sort_unstable_by(|a, b| a.1.cmp(&b.1));
-    list.iter()
-        .map(|(hash, slot)| format!("({} Slot:{})", hash, slot))
-        .collect()
+#[derive(Clone, Debug, Deserialize)]
+pub struct ErrorMessage {
+    pub message: String,
 }
