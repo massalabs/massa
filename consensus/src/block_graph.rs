@@ -1212,6 +1212,50 @@ impl BlockGraph {
 
         Ok(removed)
     }
+
+    /// Structural checks
+    /// Do we kow about that header
+    pub fn check_header_structure(
+        &self,
+        hash: Hash,
+        header: &BlockHeader,
+    ) -> Result<(), BlockAcknowledgeError> {
+        todo!()
+    }
+
+    /// Everything is in the name
+    /// todo : once #98 is merged change (u64, u8) by Slot
+    pub fn is_it_processing_time_yet(
+        &self,
+        hash: Hash,
+        header: &BlockHeader,
+        current_slot: (u64, u8),
+    ) -> bool {
+        todo!()
+    }
+
+    /// Make sure that before calling this function header is
+    /// not to far in the future
+    pub fn check_roll_number(
+        &mut self,
+        hash: &Hash,
+        signature: &Signature,
+        header: &BlockHeader,
+        selector: &mut RandomSelector,
+    ) -> Result<(), BlockAcknowledgeError> {
+        todo!()
+    }
+
+    /// Checks that parents are known, valid
+    /// compatible grandpa compatible
+    /// and with a toppological order
+    pub fn check_parents(
+        &mut self,
+        hash: &Hash,
+        header: &BlockHeader,
+    ) -> Result<HashSet<Hash>, ConsensusError> {
+        todo!()
+    }
 }
 
 /// Checks if the signature is ok.
