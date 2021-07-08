@@ -16,6 +16,12 @@ pub struct BlockStorage {
 }
 
 impl BlockStorage {
+    pub fn reset(&self) -> Result<(), StorageError> {
+        self.db.open_tree("hash_to_block")?.clear()?;
+        self.db.open_tree("slot_to_hash")?.clear()?;
+        Ok(())
+    }
+
     pub fn open(cfg: &StorageConfig) -> Result<BlockStorage, StorageError> {
         let sled_config = sled::Config::default()
             .path(&cfg.path)
