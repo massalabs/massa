@@ -18,23 +18,21 @@ test:cargo:
 # Configure and run rustfmt on nightly
 # Exits and builds fails if on bad format
 rustfmt:
-  stage: lint
-  variables:
-    CFG_RELEASE_CHANNEL: "nightly"
+  stage: check
   script:
   - rustc --version && cargo --version
   - cd rust/
   - cargo install rustfmt-nightly --force
   - cargo fmt --all -- --write-mode=diff
-  when: manual
+
 
 # Configure and run clippy on nightly
 # Only fails on errors atm.
 clippy:
-  stage: lint
+  stage: check
   script:
   - rustc --version && cargo --version
   - cd rust/
   - cargo install clippy --force
   - cargo clippy --all
-  when: manual
+
