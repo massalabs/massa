@@ -13,7 +13,9 @@
 //!
 //! The help command display all available commands.
 
+use crate::data::AddressStates;
 use crate::data::GetOperationContent;
+use crate::data::WrappedAddressState;
 use crate::data::WrappedHash;
 use crate::repl::error::ReplError;
 use crate::repl::ReplData;
@@ -22,7 +24,6 @@ use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
 use communication::network::PeerInfo;
-use consensus::AddressState;
 use consensus::ExportBlockStatus;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
@@ -219,14 +220,6 @@ fn main() {
         true,
         cmd_addresses_info,
     )
-    .new_command(
-        "addresses_roll_state",
-        "returns the final and candidate roll state for a list of addresses. Parameters: list of addresses separated by ,  (no space).",
-        1,
-        1, //max nb parameters
-        true,
-        cmd_address_roll_state,
-    )
     .new_command_noargs(
         "get_active_stakers",
         "returns the active stakers and their roll counts for the current cycle.",
@@ -341,53 +334,6 @@ fn main() {
 //The node answer is converted to display for REPL using display trait
 //Or the return json is printed in cli mode.
 //The request_data method manage Node request/answer and cli printing.
-
-fn cmd_address_roll_state(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    let addr_list = params[0]
-        .split(',')
-        .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
-
-    let search_addresses = match addr_list {
-        Ok(addrs) => addrs,
-        Err(err) => {
-            println!("Error during addresses parsing: {}", err);
-            return Ok(());
-        }
-    };
-
-    let resp = query_addresses(&data, search_addresses.iter().copied().collect())?;
-    if resp.status() != StatusCode::OK {
-        let status = resp.status();
-        let message = resp
-            .json::<data::ErrorMessage>()
-            .map(|message| message.message)
-            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
-            .unwrap();
-        println!("Server error response: {} - {}", status, message);
-    } else {
-        if data.cli {
-            println!("{}", resp.text().unwrap());
-        } else {
-            let ledger = resp.json::<HashMap<Address, AddressState>>()?;
-            for (addr, state) in ledger.into_iter() {
-                println!("Roll for addresses:");
-                println!(
-                    "({}: final rolls: {}, active_rolls: {}, candidate_rolls: {}):",
-                    addr,
-                    state.final_rolls,
-                    if let Some(nb) = state.active_rolls {
-                        nb.to_string()
-                    } else {
-                        "none".to_string()
-                    },
-                    state.candidate_rolls,
-                );
-            }
-        }
-    }
-    Ok(())
-}
 
 fn cmd_get_active_stakers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/active_stakers", data.node_ip);
@@ -519,17 +465,17 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                     if data.cli {
                         Ok(format!("{}", resp.text().unwrap()))
                     } else {
-                        let ledger = resp.json::<HashMap<Address, AddressState>>()?;
-                        let balance_list = data::extract_addresses_from_ledger(&ledger, None);
-                        if balance_list.len() == 0 {
-                            Ok("Error no balance found".to_string())
-                        } else {
-                            let mut s = String::new();
-                            for b in balance_list {
-                                writeln!(s, "{}", b)?;
+                        let mut s = String::new();
+                        let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
+                        writeln!(
+                            s,
+                            "{}",
+                            AddressStates {
+                                map: ledger,
+                                order: None
                             }
-                            Ok(s)
-                        }
+                        )?;
+                        Ok(s)
                     }
                 }
             })
@@ -617,15 +563,14 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
         if data.cli {
             println!("{}", resp.text().unwrap());
         } else {
-            let ledger = resp.json::<HashMap<Address, AddressState>>()?;
-            let balance_list = data::extract_addresses_from_ledger(&ledger, Some(search_addresses));
-            if balance_list.len() == 0 {
-                return Err(ReplError::GeneralError("No balance found.".to_string()));
-            } else {
-                for export in balance_list {
-                    println!("{}", export);
+            let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
+            println!(
+                "{}",
+                AddressStates {
+                    map: ledger,
+                    order: Some(search_addresses)
                 }
-            }
+            )
         }
     }
 
