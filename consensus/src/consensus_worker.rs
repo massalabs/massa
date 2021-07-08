@@ -302,7 +302,7 @@ impl ConsensusWorker {
             // block is valid and was acknowledged
             Ok(UpdateConsensusReturn {
                 pruned: discarded,
-                finals: finals_blocks,
+                finals: final_blocks,
             }) => {
                 // cancel discarded dependencies
                 self.dependency_waiting_blocks
@@ -345,12 +345,12 @@ impl ConsensusWorker {
                         .collect();
                     Ok(AcknowledgeBlockReturn {
                         to_retry: res?,
-                        finals: finals_blocks,
+                        finals: final_blocks,
                     })
                 } else {
                     Ok(AcknowledgeBlockReturn {
                         to_retry: HashMap::new(),
-                        finals: finals_blocks,
+                        finals: final_blocks,
                     })
                 }
             }
