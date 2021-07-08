@@ -263,10 +263,10 @@ impl ConsensusWorker {
             ledger.apply_change(reward_change, self.cfg.thread_count)?;
         }
 
-        excluded.extend(
-            self.block_db
-                .get_past_operations(&self.block_db.get_best_parents())?,
-        );
+        excluded.extend(self.block_db.get_past_operations(
+            cur_slot,
+            &self.block_db.get_best_parents()[cur_slot.thread as usize],
+        )?);
 
         while ops.len() < self.cfg.max_operations_per_block as usize {
             let to_exclude = [excluded.clone(), ids_to_keep.clone()].concat();

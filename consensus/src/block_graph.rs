@@ -1842,58 +1842,38 @@ impl BlockGraph {
 
     pub fn get_past_operations(
         &self,
-        parents: &Vec<BlockId>,
+        cur_slot: Slot,
+        parent: &BlockId,
     ) -> Result<Vec<OperationId>, ConsensusError> {
         let mut res = Vec::new();
-        let mut explored = HashSet::new();
-        let mut to_explore: Vec<BlockId> = Vec::new();
-        to_explore.extend(parents);
 
         // compute stop periods
-        let mut stop_periods = vec![0; self.cfg.thread_count as usize];
-        for thread in 0..(self.cfg.thread_count as usize) {
-            stop_periods[thread] = self
-                .get_active_block(&parents[thread])
-                .ok_or(ConsensusError::ContainerInconsistency(
-                    "Missing parent".to_string(),
-                ))?
-                .header
-                .content
-                .slot
-                .period
-                - self.cfg.operation_validity_periods;
-        }
-        while let Some(id) = to_explore.pop() {
-            explored.insert(id);
-            let block = self
-                .get_active_block(&id)
-                .ok_or(ConsensusError::MissingBlock)?;
-            if block.header.content.slot.period
-                < stop_periods[block.header.content.slot.thread as usize]
+        let stop_period = cur_slot.period - self.cfg.operation_validity_periods;
+        let mut cur_id = parent;
+        loop {
+            let block = match self
+                .block_statuses
+                .get(&cur_id)
+                .ok_or(ConsensusError::MissingBlock)?
             {
+                BlockStatus::Active(block) => block,
+                _ => {
+                    return Err(ConsensusError::MissingBlock);
+                }
+            };
+            if block.block.header.content.slot.period < stop_period {
                 // we don't need to explore more here
-                continue;
+                break;
             }
 
             // genesis block
-            if block.header.content.parents.is_empty() {
-                continue;
+            if block.block.header.content.parents.is_empty() {
+                break;
             }
 
-            let ids: Vec<OperationId> = block
-                .operations
-                .iter()
-                .map(|op| op.get_operation_id(&self.serialization_context))
-                .flatten()
-                .collect();
+            res.extend(block.operation_set.clone());
 
-            res.extend(ids);
-
-            for parent in block.header.content.parents.iter() {
-                if !explored.contains(parent) {
-                    to_explore.push(*parent);
-                }
-            }
+            cur_id = &block.block.header.content.parents[cur_slot.thread as usize];
         }
         Ok(res)
     }
