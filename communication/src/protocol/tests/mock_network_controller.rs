@@ -42,26 +42,6 @@ impl MockNetworkController {
         Some(self.network_command_rx.recv().await?)
     }
 
-    pub async fn new_connection(&mut self) -> (ReadHalf, WriteHalf, ConnectionId) {
-        let connection_id = self.cur_connection_id;
-        self.cur_connection_id.0 += 1;
-
-        let (
-            (duplex_mock_read, duplex_mock_write),
-            (duplex_controller_read, duplex_controller_write),
-        ) = get_duplex_pair();
-        self.network_event_tx
-            .send(NetworkEvent::NewConnection((
-                connection_id,
-                duplex_controller_read,
-                duplex_controller_write,
-            )))
-            .await
-            .expect("MockNetworkController event channel failed");
-
-        (duplex_mock_read, duplex_mock_write, connection_id)
-    }
-
     // ignore all commands while waiting for a futrue
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
         &mut self,
@@ -71,7 +51,6 @@ impl MockNetworkController {
             tokio::select!(
                 res = &mut future => return res,
                 cmd = self.wait_command() => match cmd {
-                    Some(NetworkCommand::GetAdvertisablePeerList(sender_tx)) => sender_tx.send(vec![]).unwrap(),
                     Some(_) => {},
                     None => return future.await,  // if the network controlled dies, wait for the future to finish
                 }

@@ -39,4 +39,8 @@ pub struct NetworkConfig {
     pub peers_file_dump_interval: UTime,
     /// Maximum message length in bytes
     pub max_message_size: u32,
+    /// After message_timeout millis we are no longer waiting on handshake message
+    pub message_timeout: UTime,
+    /// Every ask_peer_list_interval in millis we ask every one for its advertisable peers list.
+    pub ask_peer_list_interval: UTime,
 }

@@ -1,5 +1,4 @@
 use super::{
-    common::NodeId,
     config::{ProtocolConfig, CHANNEL_SIZE},
     protocol_worker::{ProtocolCommand, ProtocolEvent, ProtocolManagementCommand, ProtocolWorker},
 };
@@ -8,7 +7,6 @@ use crate::{
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
 use crypto::hash::Hash;
-use crypto::signature::SignatureEngine;
 use models::{Block, BlockHeader, SerializationContext};
 use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
@@ -37,14 +35,6 @@ pub async fn start_protocol_controller(
 > {
     debug!("starting protocol controller");
 
-    // generate our own random PublicKey (and therefore NodeId) and keep private key
-    let signature_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
-    let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
-
-    debug!("local protocol node_id={:?}", self_node_id);
-    massa_trace!("self_node_id", { "node_id": self_node_id });
-
     // launch worker
     let (event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
     let (command_tx, command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
@@ -53,8 +43,6 @@ pub async fn start_protocol_controller(
         ProtocolWorker::new(
             cfg,
             serialization_context,
-            self_node_id,
-            private_key,
             network_command_sender,
             network_event_receiver,
             event_tx,

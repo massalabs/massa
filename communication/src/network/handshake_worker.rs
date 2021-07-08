@@ -1,10 +1,10 @@
 //! Here are happening hanshakes.
 use super::{
     binders::{ReadBinder, WriteBinder},
-    common::NodeId,
     messages::Message,
 };
 use crate::{
+    common::NodeId,
     error::{CommunicationError, HandshakeErrorType},
     network::{ReadHalf, WriteHalf},
 };

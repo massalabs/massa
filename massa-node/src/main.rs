@@ -29,9 +29,13 @@ async fn run(cfg: config::Config) {
 
     // launch network controller
     let (mut network_command_sender, network_event_receiver, network_manager) =
-        start_network_controller(cfg.network.clone(), Establisher::new())
-            .await
-            .expect("could not start network controller");
+        start_network_controller(
+            cfg.network.clone(),
+            serialization_context.clone(),
+            Establisher::new(),
+        )
+        .await
+        .expect("could not start network controller");
 
     let (storage_command_sender, storage_manager) =
         start_storage_controller(cfg.storage.clone(), serialization_context.clone())

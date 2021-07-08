@@ -1,5 +1,5 @@
 use communication::protocol::{
-    NodeId, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
+    ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
 use crypto::hash::Hash;
 use models::{Block, BlockHeader, SerializationContext};
@@ -58,7 +58,14 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_get_active_block(&mut self, _source_node_id: NodeId, hash: Hash) {
+    pub async fn receive_transaction(&mut self, transaction: String) {
+        self.protocol_event_tx
+            .send(ProtocolEvent::ReceivedTransaction(transaction))
+            .await
+            .expect("could not send protocol event");
+    }
+
+    pub async fn receive_get_active_block(&mut self, hash: Hash) {
         self.protocol_event_tx
             .send(ProtocolEvent::GetBlock(hash))
             .await
