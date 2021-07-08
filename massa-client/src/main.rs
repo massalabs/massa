@@ -388,7 +388,7 @@ fn cmd_address_roll_state(data: &mut ReplData, params: &[&str]) -> Result<(), Re
     Ok(())
 }
 
-fn cmd_get_active_stakers(data: &mut ReplData) -> Result<(), ReplError> {
+fn cmd_get_active_stakers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/active_stakers", data.node_ip);
 
     if let Some(resp) = request_data(data, &url)? {
