@@ -2230,23 +2230,28 @@ impl BlockGraph {
     // get the current block wishlist
     pub fn get_block_wishlist(&self) -> Result<HashSet<Hash>, ConsensusError> {
         let mut wishlist = HashSet::new();
-        for block_status in self.block_statuses.values() {
+        'block_loop: for (block_hash, block_status) in self.block_statuses.iter() {
             if let BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
                 ..
             } = block_status
             {
+                let mut wishlist_extend: HashSet<Hash> = HashSet::new();
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
-                    if let Some(BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Block(_),
-                        ..
-                    }) = self.block_statuses.get(unsatisfied_h)
+                    if unsatisfied_h == block_hash {
+                        // the block itself is unsatisfied
+                        wishlist_extend.insert(*unsatisfied_h);
+                    } else if let Some(BlockStatus::WaitingForDependencies { .. }) =
+                        self.block_statuses.get(unsatisfied_h)
                     {
-                        // the full block is already available
-                        continue;
+                        // this dependency is itself waiting for dependencies: ignore whole block
+                        continue 'block_loop;
+                    } else {
+                        // this unsatisfied dependency is not itself listed as waiting dependencies
+                        wishlist_extend.insert(*unsatisfied_h);
                     }
-                    wishlist.insert(*unsatisfied_h);
                 }
+                wishlist.extend(wishlist_extend.into_iter());
             }
         }
         Ok(wishlist)
