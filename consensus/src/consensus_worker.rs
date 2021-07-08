@@ -971,6 +971,7 @@ impl ConsensusWorker {
         let new_final_block_ids = self.block_db.get_new_final_blocks();
         let mut new_final_ops: HashMap<OperationId, (u64, u8)> = HashMap::new();
         let mut new_final_blocks = HashMap::with_capacity(new_final_block_ids.len());
+        let timestamp = UTime::now(self.clock_compensation)?;
         for b_id in new_final_block_ids.into_iter() {
             if let Some(a_block) = self.block_db.get_active_block(&b_id) {
                 // List new final ops
@@ -982,12 +983,6 @@ impl ConsensusWorker {
                 // List final block
                 new_final_blocks.insert(b_id, a_block);
                 // add to stats
-                let timestamp = get_block_slot_timestamp(
-                    self.cfg.thread_count,
-                    self.cfg.t0,
-                    self.cfg.genesis_timestamp,
-                    a_block.block.header.content.slot,
-                )?;
                 self.final_block_stats
                     .push_back((timestamp, a_block.operation_set.len() as u64));
             }
@@ -1029,13 +1024,8 @@ impl ConsensusWorker {
 
         // add stale blocks to stats
         let new_stale_block_ids_slots = self.block_db.get_new_stale_blocks();
-        for (_b_id, b_slot) in new_stale_block_ids_slots.into_iter() {
-            let timestamp = get_block_slot_timestamp(
-                self.cfg.thread_count,
-                self.cfg.t0,
-                self.cfg.genesis_timestamp,
-                b_slot,
-            )?;
+        let timestamp = UTime::now(self.clock_compensation)?;
+        for (_b_id, _b_slot) in new_stale_block_ids_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
         }
 
