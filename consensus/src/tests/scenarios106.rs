@@ -5,7 +5,9 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::{start_consensus_controller, tests::tools::generate_ledger_file, timeslots};
+use crate::{
+    pos::RollCounts, start_consensus_controller, tests::tools::generate_ledger_file, timeslots,
+};
 use models::{BlockId, Slot};
 use serial_test::serial;
 use std::collections::{HashMap, HashSet};
@@ -20,7 +22,16 @@ async fn test_unsorted_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -159,7 +170,16 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_sub(2000.into()); // slot 1 is in the past
     cfg.future_block_processing_max_periods = 3;
@@ -266,7 +286,16 @@ async fn test_too_many_blocks_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 100;
     cfg.max_future_processing_blocks = 2;
@@ -381,7 +410,16 @@ async fn test_dep_in_back_order() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
@@ -565,7 +603,16 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
@@ -709,7 +756,16 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
