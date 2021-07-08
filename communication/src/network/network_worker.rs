@@ -36,6 +36,7 @@ pub enum NetworkCommand {
     },
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
     Ban(NodeId),
+    BlockNotFound(NodeId, Hash),
 }
 
 #[derive(Debug)]
@@ -537,6 +538,18 @@ impl NetworkWorker {
                             "could not send GetPeersChannelError upstream".into(),
                         )
                     })?;
+            }
+            NetworkCommand::BlockNotFound(node, block) => {
+                if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                    node_command_tx
+                        .send(NodeCommand::BlockNotFound(block))
+                        .await
+                        .map_err(|_| {
+                            CommunicationError::ChannelError(
+                                "send block not found node command send failed".into(),
+                            )
+                        })?;
+                }
             }
         }
         Ok(())
