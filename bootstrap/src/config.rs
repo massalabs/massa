@@ -12,7 +12,7 @@ pub struct BootstrapConfig {
     /// Bootstrap node's public key.
     pub bootstrap_public_key: PublicKey,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
-    pub listen_port: Option<SocketAddr>,
+    pub bind: Option<SocketAddr>,
     /// connection timeout
     pub connect_timeout: UTime,
     /// If we are before genesis_time + bootstrap_time_after_genesis we try to bootstrap else we don't

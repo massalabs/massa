@@ -23,7 +23,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         bootstrap_ip: BASE_BOOTSTRAP_IP,
         bootstrap_port: 16,
         bootstrap_public_key,
-        listen_port: Some(format!("0.0.0.0:{}", 10).parse().unwrap()),
+        bind: Some("0.0.0.0:31234".parse().unwrap()),
         connect_timeout: 200.into(),
         bootstrap_time_after_genesis: 100.into(),
         retry_delay: 200.into(),
