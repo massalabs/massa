@@ -675,13 +675,13 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         500,
     )
     .await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 300).await;
 
     protocol_controller.receive_block(t1s3).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 300).await;
 
     protocol_controller.receive_block(t0s1).await;
-    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 500).await;
+    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 300).await;
     tools::validate_wishlist(
         &mut protocol_controller,
         HashSet::new(),
@@ -690,10 +690,10 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     )
     .await;
     protocol_controller.receive_block(t0s3).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 300).await;
 
     protocol_controller.receive_block(t1s2).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s2, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s2, 300).await;
 
     protocol_controller.receive_block(t1s1).await;
     tools::validate_propagate_block_in_list(
