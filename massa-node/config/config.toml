@@ -77,8 +77,9 @@
     reset_at_startup = true
 
 [bootstrap]
-    # bootstrap_addr =  "93.31.10.235:31235" #if you want to bootstrap from that ip
-    bootstrap_public_key = '7d87uuBsjsvWdewepv8FUy8J6fJbUqWZxEM2nveeRcJJQJ1ZgZ'
+    bootstrap_list = [
+        ["93.31.10.235:31235", '7d87uuBsjsvWdewepv8FUy8J6fJbUqWZxEM2nveeRcJJQJ1ZgZ']
+    ]
     bind = "0.0.0.0:31235" # if you want to bootstrap people
     connect_timeout = 1000
     retry_delay = 5000

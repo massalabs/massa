@@ -5,10 +5,8 @@ use time::UTime;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapConfig {
-    /// Ip address of our bootstrap node, if we are to bootstrap.
-    pub bootstrap_addr: Option<SocketAddr>,
-    /// Bootstrap node's public key.
-    pub bootstrap_public_key: PublicKey,
+    /// Ip address of our bootstrap nodes and their public key.
+    pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
     pub bind: Option<SocketAddr>,
     /// connection timeout

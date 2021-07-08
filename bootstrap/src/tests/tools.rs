@@ -65,8 +65,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
     });
 
     BootstrapConfig {
-        bootstrap_addr: Some(SocketAddr::new(BASE_BOOTSTRAP_IP, 16)),
-        bootstrap_public_key,
         bind: Some("0.0.0.0:31234".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
@@ -80,6 +78,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         write_timeout: 1000.into(),
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
     }
 }
 
