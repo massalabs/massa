@@ -1,4 +1,4 @@
-//! Rustyline integration to manager uer input and command typing and execution.
+//! Rustyline integration to manager user input and command typing and execution.
 //!
 //! Command are registered with new_command_noargs or new_command repl functions.
 //! repl API register all elements in Rustyline and Claps.
@@ -49,6 +49,7 @@ pub struct Command {
     func: CmdFn,
 }
 
+//A command name with its parameters that can be executed by the client.
 struct TypedCommand<'a> {
     name: String,
     params: Vec<&'a str>,
@@ -68,7 +69,8 @@ impl<'a> TryFrom<&'a str> for TypedCommand<'a> {
     }
 }
 
-/// The builder part of Repl to register the command with clap.
+/// The builder part of Repl to register the command with clap and Rustyline.
+/// Use the builder pattern.
 pub struct BuilderRepl<'a, 'b> {
     repl: Repl,
     app: clap::App<'a, 'b>,
@@ -136,11 +138,14 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
     }
 }
 
-///Main struct to manager user's typed command.
+/// Manage the REPL mode and typed command
+/// Main struct to manager user's typed command.
 ///
 /// Command are registered using a builder pattern with the new_command_noargs or new_command function.
 /// The BuilderRepl struct implement the builder pattern and the slip function is call
 /// after registering all the command to get Repl and Clap structures.
+///
+/// Default command are automatically created: quit, help, empty for entry cmd.
 ///
 /// # Example
 ///
@@ -210,6 +215,7 @@ impl Repl {
          name: S,
          help: S,
          func: F,
+         active: bool,
          app: clap::App<'a, 'b>,
      ) -> BuilderRepl<'a, 'b>
      where
@@ -217,7 +223,21 @@ impl Repl {
          F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
      {
          BuilderRepl::new(self, app).new_command(name, help, 0, 0, func)
-     }*/
+     }
+    name: name of the command. It's the data that are typed to execute a cmd.
+    help: help message shown by the help command.
+    func: function executed when the cmd is typed.
+    app: present in the first cmd declaration call to start the builder pattern.
+
+    active: determine if the cmd is active or not. Non active cmd can be activated later with the activate_command function.
+
+    Wallet command for example can only use when a wallet file is defined in the client start parameters.
+    By default wallet cmd are non active (false) and activated when the client parameters are processed.
+
+    There's a difficulty with Clap. It parse client parameters and the executed command. All these the data are only avaible at the end.
+    So its impossible to know it the wallet cmd for example are actif when the cmd are declared. To wallet cmd are declared inactif
+    and when the wallet file parameter is process they are activated if it's present.
+     */
 
     ///create a new command with min and max args.
     pub fn new_command<'a, 'b, S, F>(
@@ -244,6 +264,7 @@ impl Repl {
         )
     }
 
+    ///active the command with specified name.
     pub fn activate_command(&mut self, name: &str) {
         self.cmd_list
             .iter_mut()
@@ -302,6 +323,7 @@ impl Repl {
         }
     }
 
+    //execute a cmd in cli mode.
     pub fn run_cmd(&mut self, cmd: &str, args: &[&str]) {
         let mut helper = helper::ReplHelper::new();
         let config = Config::builder()
@@ -331,6 +353,7 @@ impl Repl {
         }
     }
 
+    //execute a command using a taped line or client parameters.
     fn readline<H: Helper>(
         &mut self,
         line: String,

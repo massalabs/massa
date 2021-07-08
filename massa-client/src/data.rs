@@ -7,6 +7,9 @@
 //!
 //! There're only deserialized when received from the REST call.
 
+//massa type are wrapped to define a client specific display behaviour.
+//The display method is only use to show the data REPL mode.
+
 use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
@@ -130,14 +133,17 @@ impl From<&'_ Slot> for WrappedSlot {
     }
 }
 
+/// Wrapps a (hash, slot)
 pub fn from_hash_slot((hash, slot): (Hash, Slot)) -> (WrappedHash, WrappedSlot) {
     (hash.into(), slot.into())
 }
 
+/// Wrapps a vec of (hash, slot)
 pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlot)> {
     list.into_iter().map(|v| from_hash_slot(*v)).collect()
 }
 
+/// Wrapps a ledger data export
 pub fn extract_addresses_from_ledger<'a>(
     ledger: &'a LedgerDataExport,
 ) -> Vec<WrapperAddressLedgerDataExport<'a>> {

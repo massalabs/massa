@@ -28,6 +28,7 @@ enum HeaderOrBlock {
 }
 
 impl HeaderOrBlock {
+    /// Gets slot for that header or block
     pub fn get_slot(&self) -> Slot {
         match self {
             HeaderOrBlock::Header(header) => header.content.slot,
@@ -944,6 +945,7 @@ impl BlockGraph {
         &self.best_parents
     }
 
+    /// gets Ledger data export for given Addressses
     pub fn get_ledger_data_export(
         &self,
         addresses: &HashSet<Address>,
@@ -983,6 +985,7 @@ impl BlockGraph {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
 
+    /// Retrieves operations from operation Ids
     pub fn get_operations(
         &self,
         operation_ids: &HashSet<OperationId>,
@@ -1050,6 +1053,7 @@ impl BlockGraph {
         Ok(())
     }
 
+    /// A new header has come !
     pub fn incoming_header(
         &mut self,
         hash: BlockId,
@@ -1091,6 +1095,7 @@ impl BlockGraph {
         Ok(())
     }
 
+    /// A new block has come
     pub fn incoming_block(
         &mut self,
         block_id: BlockId,
@@ -2111,6 +2116,7 @@ impl BlockGraph {
         })
     }
 
+    /// Compute ledger subset after given parents for given addresses
     pub fn get_ledger_at_parents(
         &self,
         parents: &Vec<BlockId>,
@@ -3245,7 +3251,7 @@ mod tests {
     use tempfile::NamedTempFile;
     use time::UTime;
 
-    pub fn get_export_active_test_block() -> ExportActiveBlock {
+    fn get_export_active_test_block() -> ExportActiveBlock {
         let block = Block {
             header: BlockHeader {
                 content: BlockHeaderContent{
@@ -3747,7 +3753,7 @@ mod tests {
     }
 
     /// generate a named temporary JSON ledger file
-    pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedTempFile {
+    fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedTempFile {
         use std::io::prelude::*;
         let ledger_file_named = NamedTempFile::new().expect("cannot create temp file");
         serde_json::to_writer_pretty(ledger_file_named.as_file(), &ledger_vec)

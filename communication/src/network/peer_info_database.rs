@@ -351,6 +351,7 @@ impl PeerInfoDatabase {
             .collect::<Vec<IpAddr>>())
     }
 
+    /// returns Hashmap of ipAddrs -> Peerinfo
     pub fn get_peers(&self) -> &HashMap<IpAddr, PeerInfo> {
         &self.peers
     }

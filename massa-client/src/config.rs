@@ -8,6 +8,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Deserializes config.
     pub fn from_toml(toml_str: &str) -> Result<Config, toml::de::Error> {
         toml::de::from_str(toml_str)
     }

@@ -68,6 +68,7 @@ pub struct LedgerChange {
 }
 
 impl LedgerChange {
+    /// New ledger change with given delta and increment
     pub fn new(balance_delta: u64, balance_increment: bool) -> Self {
         LedgerChange {
             balance_delta,
@@ -75,6 +76,8 @@ impl LedgerChange {
         }
     }
 
+    /// Combines the effects of two ledger changes
+    /// Takes the first one mutably
     pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
             self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
@@ -553,10 +556,12 @@ impl LedgerSubset {
         }
     }
 
+    /// If subset contains given address
     pub fn contains(&self, address: &Address, thread_count: u8) -> bool {
         self.data[address.get_thread(thread_count) as usize].contains_key(address)
     }
 
+    /// Get the data for given address
     pub fn get_data(&self, address: &Address, thread_count: u8) -> &LedgerData {
         let thread = address.get_thread(thread_count);
         self.data[thread as usize]
@@ -564,6 +569,7 @@ impl LedgerSubset {
             .unwrap_or(&LedgerData { balance: 0 })
     }
 
+    /// Applies given change to that ledger subset
     pub fn apply_change(
         &mut self,
         (change_address, change): (&Address, &LedgerChange),

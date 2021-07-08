@@ -84,6 +84,7 @@ mod nodeinfo {
     }
 
     impl NodeInfo {
+        /// Creates empty node info
         pub fn new() -> NodeInfo {
             NodeInfo {
                 known_blocks: HashMap::new(),
@@ -93,10 +94,20 @@ mod nodeinfo {
             }
         }
 
+        /// Get bool if block knows about the block and when this information was got
+        /// in a option if we don't know if that node knows that block or not
         pub fn get_known_block(&self, block_id: &BlockId) -> Option<&(bool, Instant)> {
             self.known_blocks.get(block_id)
         }
 
+        /// Insert knowledge of a block in NodeInfo
+        ///
+        /// ## Arguments
+        /// - self: node info
+        /// - block_id: given block
+        /// - val: if that node knows that block
+        /// - instant: when that information was created
+        /// - max_node_known_blocks_size : max size of the knowledge of an other node we want to keep
         pub fn insert_known_block(
             &mut self,
             block_id: BlockId,
@@ -116,6 +127,8 @@ mod nodeinfo {
             }
         }
 
+        /// insert a block in wanted list of a node.
+        /// Note that it also insert the block as a not known block for that node.
         pub fn insert_wanted_blocks(
             &mut self,
             block_id: BlockId,
@@ -133,6 +146,7 @@ mod nodeinfo {
             }
         }
 
+        /// If given node previously manifested it wanted given block.
         pub fn contains_wanted_block(&mut self, block_id: &BlockId) -> bool {
             self.wanted_blocks
                 .get_mut(block_id)
@@ -140,6 +154,7 @@ mod nodeinfo {
                 .is_some()
         }
 
+        /// Removes given block from wanted block for that node
         pub fn remove_wanted_block(&mut self, block_id: &BlockId) -> bool {
             self.wanted_blocks.remove(block_id).is_some()
         }

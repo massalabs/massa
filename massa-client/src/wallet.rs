@@ -3,6 +3,7 @@ use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
 use serde::{Deserialize, Serialize};
 
+/// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wallet {
     keys: Vec<PrivateKey>,
@@ -10,6 +11,7 @@ pub struct Wallet {
 }
 
 impl Wallet {
+    /// Generates a new wallet initialized with the provided json file content
     pub fn new(json_file: &str) -> Result<Wallet, ReplError> {
         let path = std::path::Path::new(json_file);
         let keys = if path.exists() {
@@ -23,6 +25,7 @@ impl Wallet {
         })
     }
 
+    /// Adds a new private key to wallet, if it was missing
     pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), ReplError> {
         if self
             .keys
@@ -36,6 +39,7 @@ impl Wallet {
         Ok(())
     }
 
+    /// Finds the private key associated with given address
     pub fn find_associated_private_key(&self, address: Address) -> Option<&PrivateKey> {
         self.keys.iter().find(|priv_key| {
             let pub_key = crypto::derive_public_key(&priv_key);
@@ -45,11 +49,13 @@ impl Wallet {
         })
     }
 
+    //save the wallet in json format in a file
     fn save(&self) -> Result<(), ReplError> {
         std::fs::write(&self.wallet_path, self.to_json_string()?)?;
         Ok(())
     }
 
+    /// Export keys to json string
     pub fn to_json_string(&self) -> Result<String, ReplError> {
         serde_json::to_string_pretty(&self.keys).map_err(|err| err.into())
     }
