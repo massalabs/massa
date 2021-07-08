@@ -61,7 +61,12 @@ pub struct StorageManager {
 }
 
 impl StorageManager {
-    pub async fn stop() {
-        todo!()
+    pub async fn stop(
+        self,
+        storage_event_receiver: StorageEventReceiver,
+    ) -> Result<(), StorageError> {
+        drop(self.manager_tx);
+        let _remaining_events = storage_event_receiver.drain().await;
+        self.join_handle.await?
     }
 }
