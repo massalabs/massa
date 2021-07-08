@@ -22,7 +22,7 @@
     max_discarded_blocks = 10
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 320
-    max_dependency_blocks = 100
+    max_dependency_blocks = 1048
     delta_f0 = 64
     max_operations_per_block = 500
     max_block_size = 100000
@@ -33,7 +33,7 @@
     ask_block_timeout = 10000
     max_node_known_blocks_size = 200
     max_node_wanted_blocks_size = 200
-    max_simultaneous_ask_blocks_per_node = 64
+    max_simultaneous_ask_blocks_per_node = 2048
     max_send_wait = 250
 
 [network]
