@@ -13,6 +13,7 @@
 //!
 //! The help command display all available commands.
 
+use crate::data::WrappedHash;
 use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use api::{Addresses, OperationIds};
@@ -28,6 +29,7 @@ use models::{Block, Slot};
 use models::{OperationContent, OperationType};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::string::ToString;
 
@@ -170,6 +172,14 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_staker_info,
+    )
+    .new_command(
+        "operations_involving_address",
+        "operation involving given address (Address) -> HashMap(block id, is_final)",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_operations_involving_address,
     )
     .new_command(
         "addresses_info",
@@ -559,6 +569,21 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
         let resp = resp.json::<data::StakerInfo>()?;
         println!("staker_info:");
         println!("{}", resp);
+    }
+    Ok(())
+}
+
+fn cmd_operations_involving_address(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!(
+        "http://{}/api/v1/operations_involving_address/{}",
+        data.node_ip, params[0]
+    );
+    if let Some(resp) = request_data(data, &url)? {
+        let resp = resp.json::<HashMap<WrappedHash, bool>>()?;
+        println!("operations_involving_address:");
+        for (op_id, is_final) in resp {
+            println!("operation {} is final: {}", op_id, is_final);
+        }
     }
     Ok(())
 }
