@@ -7,7 +7,7 @@ use crate::{
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
 use crypto::hash::Hash;
-use models::{Block, BlockHeader, SerializationContext};
+use models::{Block, SerializationContext};
 use std::collections::{HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -71,17 +71,17 @@ impl ProtocolCommandSender {
     ///
     /// # Arguments
     /// * hash : hash of the block header
-    pub async fn propagate_block_header(
+    pub async fn integrated_block(
         &mut self,
         hash: Hash,
-        header: BlockHeader,
+        block: Block,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("block_header_propagation_order", { "block": hash });
+        massa_trace!("block_integrated_order", { "block": hash });
         self.0
-            .send(ProtocolCommand::PropagateBlockHeader { hash, header })
+            .send(ProtocolCommand::IntegratedBlock { hash, block })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("propagate_block_header command send error".into())
+                CommunicationError::ChannelError("block_integrated command send error".into())
             })
     }
 
@@ -90,12 +90,16 @@ impl ProtocolCommandSender {
     /// # Arguments
     /// * block : the block.
     /// * node: the id of the node to send the block to.
-    pub async fn send_block(&mut self, hash: Hash, block: Block) -> Result<(), CommunicationError> {
-        massa_trace!("send_block_order", { "block": block });
+    pub async fn found_block(
+        &mut self,
+        hash: Hash,
+        block: Block,
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("found_block_order", { "block": block });
         self.0
-            .send(ProtocolCommand::SendBlock { hash, block })
+            .send(ProtocolCommand::FoundBlock { hash, block })
             .await
-            .map_err(|_| CommunicationError::ChannelError("send_block command send error".into()))
+            .map_err(|_| CommunicationError::ChannelError("found_block command send error".into()))
     }
 
     pub async fn send_wishlist_delta(

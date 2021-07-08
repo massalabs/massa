@@ -595,7 +595,7 @@ async fn test_block_creation() {
 
         let cmd = protocol_controller
             .wait_command(cfg.t0.checked_div_u64(2).unwrap(), |cmd| match cmd {
-                ProtocolCommand::PropagateBlockHeader { header, .. } => Some(header),
+                ProtocolCommand::IntegratedBlock { block, .. } => Some(block.header),
                 _ => None,
             })
             .await;
@@ -605,7 +605,6 @@ async fn test_block_creation() {
                 assert_eq!(draw, 0);
                 assert_eq!(i + 1, header.content.slot.period as usize);
             }
-            Some(_) => {}
             None => {
                 assert_eq!(draw, 1);
             }
