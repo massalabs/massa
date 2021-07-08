@@ -9,10 +9,9 @@ use communication::{
 };
 use crypto::hash::Hash;
 use models::block::Block;
+use time::UTime;
 use tokio::io::DuplexStream;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-
-use crate::error::ConsensusError;
 
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
@@ -59,7 +58,7 @@ impl Establisher for BlankEstablisher {
 
     async fn get_connector(
         &mut self,
-        _timeout_duration: std::time::Duration,
+        _timeout_duration: UTime,
     ) -> std::io::Result<Self::ConnectorT> {
         unreachable!()
     }

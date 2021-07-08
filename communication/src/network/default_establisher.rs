@@ -2,9 +2,10 @@ use super::establisher::*;
 use async_trait::async_trait;
 use std::io;
 use std::net::SocketAddr;
+use time::UTime;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::time::{timeout, Duration};
+use tokio::time::timeout;
 
 #[derive(Debug)]
 pub struct DefaultListener(TcpListener);
@@ -19,12 +20,12 @@ impl Listener<OwnedReadHalf, OwnedWriteHalf> for DefaultListener {
 }
 
 #[derive(Debug)]
-pub struct DefaultConnector(Duration);
+pub struct DefaultConnector(UTime);
 
 #[async_trait]
 impl Connector<OwnedReadHalf, OwnedWriteHalf> for DefaultConnector {
     async fn connect(&mut self, addr: SocketAddr) -> io::Result<(OwnedReadHalf, OwnedWriteHalf)> {
-        match timeout(self.0, TcpStream::connect(addr)).await {
+        match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
             Ok(Ok(sock)) => {
                 let (reader, writer) = sock.into_split();
                 Ok((reader, writer))
@@ -49,7 +50,7 @@ impl Establisher for DefaultEstablisher {
         Ok(DefaultListener(TcpListener::bind(addr).await?))
     }
 
-    async fn get_connector(&mut self, timeout_duration: Duration) -> io::Result<Self::ConnectorT> {
+    async fn get_connector(&mut self, timeout_duration: UTime) -> io::Result<Self::ConnectorT> {
         Ok(DefaultConnector(timeout_duration))
     }
 }

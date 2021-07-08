@@ -8,9 +8,9 @@ use crate::{
 use async_trait::async_trait;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
+use time::UTime;
 use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
-use tokio::time::Duration;
 
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
@@ -51,7 +51,7 @@ impl Establisher for BlankEstablisher {
 
     async fn get_connector(
         &mut self,
-        _timeout_duration: Duration,
+        _timeout_duration: UTime,
     ) -> std::io::Result<Self::ConnectorT> {
         unreachable!();
     }

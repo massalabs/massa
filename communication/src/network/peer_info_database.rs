@@ -4,7 +4,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::time::{SystemTime, UNIX_EPOCH};
+use time::UTime;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
@@ -14,8 +14,8 @@ pub struct PeerInfo {
     pub ip: IpAddr,
     pub banned: bool,
     pub bootstrap: bool,
-    pub last_alive_millis: Option<u64>,
-    pub last_failure_millis: Option<u64>,
+    pub last_alive: Option<UTime>,
+    pub last_failure: Option<UTime>,
     pub advertised: bool,
 
     #[serde(skip, default = "usize::default")]
@@ -45,12 +45,7 @@ pub struct PeerInfoDatabase {
     active_out_connection_attempts: usize,
     active_out_connections: usize,
     active_in_connections: usize,
-    wakeup_interval_millis: u64,
-}
-
-fn now_as_millis() -> Result<u64, CommunicationError> {
-    let now = SystemTime::now();
-    Ok(now.duration_since(UNIX_EPOCH)?.as_millis() as u64)
+    wakeup_interval: UTime,
 }
 
 /// Saves banned, advertised and bootstrap peers to a file.
@@ -104,8 +99,8 @@ fn cleanup_peers(
                     ip,
                     banned: false,
                     bootstrap: false,
-                    last_alive_millis: None,
-                    last_failure_millis: None,
+                    last_alive: None,
+                    last_failure: None,
                     advertised: true,
                     active_out_connection_attempts: 0,
                     active_out_connections: 0,
@@ -149,21 +144,11 @@ fn cleanup_peers(
     // also prefer existing peers over new ones
     // truncate to max length
     idle_peers.append(&mut res_new_peers);
-    idle_peers.sort_by_key(|&p| {
-        (
-            std::cmp::Reverse(p.last_alive_millis),
-            p.last_failure_millis,
-        )
-    });
+    idle_peers.sort_by_key(|&p| (std::cmp::Reverse(p.last_alive), p.last_failure));
     idle_peers.truncate(cfg.max_idle_peers);
 
     // sort and truncate inactive banned peers
-    banned_peers.sort_unstable_by_key(|&p| {
-        (
-            std::cmp::Reverse(p.last_failure_millis),
-            p.last_alive_millis,
-        )
-    });
+    banned_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
 
     // gather everything back
@@ -178,7 +163,7 @@ impl PeerInfoDatabase {
     /// will only emit a warning if peers dumping failed.
     pub async fn new(cfg: &NetworkConfig) -> Result<Self, CommunicationError> {
         // wakeup interval
-        let wakeup_interval_millis = cfg.wakeup_interval.as_millis() as u64;
+        let wakeup_interval = cfg.wakeup_interval;
 
         // load from file
         let mut peers = serde_json::from_str::<Vec<PeerInfo>>(
@@ -212,7 +197,7 @@ impl PeerInfoDatabase {
                             } else {
                                 pending = None;
                             }
-                            delay = sleep(peers_file_dump_interval);
+                            delay = sleep(peers_file_dump_interval.to_duration());
                         },
                         _ => break
                     },
@@ -238,7 +223,7 @@ impl PeerInfoDatabase {
             active_out_connection_attempts: 0,
             active_out_connections: 0,
             active_in_connections: 0,
-            wakeup_interval_millis,
+            wakeup_interval,
         })
     }
 
@@ -288,7 +273,7 @@ impl PeerInfoDatabase {
         if available_slots == 0 {
             return Ok(Vec::new());
         }
-        let now = now_as_millis()?;
+        let now = UTime::now()?;
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
             .values()
@@ -296,24 +281,22 @@ impl PeerInfoDatabase {
                 if !(p.advertised && !p.banned && !p.is_active()) {
                     return false;
                 }
-                if let Some(last_failure) = p.last_failure_millis {
-                    if let Some(last_alive) = p.last_alive_millis {
+                if let Some(last_failure) = p.last_failure {
+                    if let Some(last_alive) = p.last_alive {
                         if last_alive > last_failure {
                             return true;
                         }
                     }
-                    return now > last_failure + self.wakeup_interval_millis;
+                    return now
+                        .saturating_sub(last_failure)
+                        .saturating_sub(self.wakeup_interval)
+                        > UTime::from(0u64);
                 }
                 true
             })
             .copied()
             .collect();
-        sorted_peers.sort_unstable_by_key(|&p| {
-            (
-                p.last_failure_millis,
-                std::cmp::Reverse(p.last_alive_millis),
-            )
-        });
+        sorted_peers.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
         Ok(sorted_peers
             .into_iter()
             .take(available_slots)
@@ -329,12 +312,7 @@ impl PeerInfoDatabase {
             .filter(|&p| (p.advertised && !p.banned))
             .copied()
             .collect();
-        sorted_peers.sort_unstable_by_key(|&p| {
-            (
-                std::cmp::Reverse(p.last_alive_millis),
-                p.last_failure_millis,
-            )
-        });
+        sorted_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_alive), p.last_failure));
         let mut sorted_ips: Vec<IpAddr> = sorted_peers
             .into_iter()
             .take(self.cfg.max_advertise_length)
@@ -388,7 +366,7 @@ impl PeerInfoDatabase {
         self.peers
             .get_mut(&ip)
             .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?
-            .last_alive_millis = Some(now_as_millis()?);
+            .last_alive = Some(UTime::now()?);
         self.request_dump()
     }
 
@@ -399,7 +377,7 @@ impl PeerInfoDatabase {
         self.peers
             .get_mut(&ip)
             .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?
-            .last_failure_millis = Some(now_as_millis()?);
+            .last_failure = Some(UTime::now()?);
         self.request_dump()
     }
 
@@ -412,7 +390,7 @@ impl PeerInfoDatabase {
             .peers
             .get_mut(&ip)
             .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?;
-        peer.last_failure_millis = Some(now_as_millis()?);
+        peer.last_failure = Some(UTime::now()?);
         if !peer.banned {
             peer.banned = true;
             if !peer.is_active() && !peer.bootstrap {
@@ -519,7 +497,7 @@ impl PeerInfoDatabase {
         peer.active_out_connection_attempts -= 1;
         peer.advertised = true; // we just connected to it. Assume advertised.
         if peer.banned {
-            peer.last_failure_millis = Some(now_as_millis()?);
+            peer.last_failure = Some(UTime::now()?);
             if !peer.is_active() && !peer.bootstrap {
                 cleanup_peers(&self.cfg, &mut self.peers, None);
             }
@@ -553,7 +531,7 @@ impl PeerInfoDatabase {
         }
         self.active_out_connection_attempts -= 1;
         peer.active_out_connection_attempts -= 1;
-        peer.last_failure_millis = Some(now_as_millis()?);
+        peer.last_failure = Some(UTime::now()?);
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(&self.cfg, &mut self.peers, None);
         }
@@ -584,8 +562,8 @@ impl PeerInfoDatabase {
             ip: *ip,
             banned: false,
             bootstrap: false,
-            last_alive_millis: None,
-            last_failure_millis: None,
+            last_alive: None,
+            last_failure: None,
             advertised: false,
             active_out_connection_attempts: 0,
             active_out_connections: 0,
@@ -593,7 +571,7 @@ impl PeerInfoDatabase {
         });
         if peer.banned {
             massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
-            peer.last_failure_millis = Some(now_as_millis()?);
+            peer.last_failure = Some(UTime::now()?);
             self.request_dump()?;
             return Ok(false);
         }
@@ -620,8 +598,8 @@ mod tests {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
             routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             protocol_port: 0,
-            connect_timeout: std::time::Duration::from_millis(180_000),
-            wakeup_interval: std::time::Duration::from_millis(10_000),
+            connect_timeout: UTime::from(180_000),
+            wakeup_interval: UTime::from(10_000),
             peers_file: std::path::PathBuf::new(),
             target_out_connections: 10,
             max_in_connections: 5,
@@ -630,7 +608,7 @@ mod tests {
             max_idle_peers: 3,
             max_banned_peers: 3,
             max_advertise_length: 5,
-            peers_file_dump_interval: std::time::Duration::from_millis(30_000),
+            peers_file_dump_interval: UTime::from(10_000),
         }
     }
 
@@ -646,13 +624,23 @@ mod tests {
                 ip: IpAddr::from(ip),
                 banned: (ip[0] % 5) == 0,
                 bootstrap: (ip[1] % 2) == 0,
-                last_alive_millis: match i % 4 {
+                last_alive: match i % 4 {
                     0 => None,
-                    _ => Some(now_as_millis().unwrap() - rng.gen_range(0, 1000000)),
+                    _ => Some(
+                        UTime::now()
+                            .unwrap()
+                            .checked_sub(rng.gen_range(0, 1000000).into())
+                            .unwrap(),
+                    ),
                 },
-                last_failure_millis: match i % 5 {
+                last_failure: match i % 5 {
                     0 => None,
-                    _ => Some(now_as_millis().unwrap() - rng.gen_range(0, 10000)),
+                    _ => Some(
+                        UTime::now()
+                            .unwrap()
+                            .checked_sub(rng.gen_range(0, 1000000).into())
+                            .unwrap(),
+                    ),
                 },
                 advertised: (ip[2] % 2) == 0,
                 active_out_connection_attempts: 0,
@@ -662,7 +650,7 @@ mod tests {
             peers.insert(peer.ip, peer);
         }
         let cfg = example_network_config();
-        let wakeup_interval_millis = cfg.wakeup_interval.as_millis() as u64;
+        let wakeup_interval = cfg.wakeup_interval;
 
         let (saver_watch_tx, _) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
@@ -674,7 +662,7 @@ mod tests {
             active_out_connection_attempts: 0,
             active_out_connections: 0,
             active_in_connections: 0,
-            wakeup_interval_millis,
+            wakeup_interval,
         }
     }
 

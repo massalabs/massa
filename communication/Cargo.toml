@@ -23,6 +23,7 @@ thiserror = "1.0"
 logging = { path = "../logging" }
 crypto = { path = "../crypto" }
 models = { path = "../models" }
+time = { path = "../time" }
 
 
 [dev-dependencies]

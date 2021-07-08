@@ -112,7 +112,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "time",
+ "time 0.1.44",
  "winapi",
 ]
 
@@ -153,6 +153,7 @@ dependencies = [
  "stderrlog",
  "tempfile",
  "thiserror",
+ "time 0.1.0",
  "tokio",
  "tokio-util",
  "toml",
@@ -175,6 +176,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "time 0.1.0",
  "tokio",
  "tokio-util",
 ]
@@ -1065,6 +1067,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "time"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

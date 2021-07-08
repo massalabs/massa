@@ -52,8 +52,6 @@ pub enum CommunicationError {
     HandshakeIdAlreadyExistError(String),
     #[error("Protocol err:{0}")]
     GeneralProtocolError(String),
-    #[error("Time error: {0}")]
-    TimeError(#[from] std::time::SystemTimeError),
     #[error("Failed retrieving network controller event")]
     NetworkControllerEventError,
     #[error("Network command channel error: {0}")]
@@ -98,4 +96,6 @@ pub enum CommunicationError {
     HandshakeInvalidSignatureError,
     #[error("the protocol controller should have close everything before shuting down")]
     UnexpectedProtocolControllerClosureError,
+    #[error("Time error {0}")]
+    TimeError(#[from] time::TimeError),
 }

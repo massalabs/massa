@@ -49,21 +49,22 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     pub async fn run_loop(mut self) -> Result<(), ConsensusError> {
         let (mut next_slot_thread, mut next_slot_number) = get_current_latest_block_slot(
             self.cfg.thread_count,
-            self.cfg.t0_millis,
-            self.cfg.genesis_timestamp_millis,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
         )?
         .map_or(Ok((0u8, 0u64)), |(cur_thread, cur_slot)| {
             get_next_block_slot(self.cfg.thread_count, cur_thread, cur_slot)
         })?;
-        let mut next_slot_timer = sleep_until(estimate_instant_from_timestamp(
-            get_block_slot_timestamp_millis(
+        let mut next_slot_timer = sleep_until(
+            get_block_slot_timestamp(
                 self.cfg.thread_count,
-                self.cfg.t0_millis,
-                self.cfg.genesis_timestamp_millis,
+                self.cfg.t0,
+                self.cfg.genesis_timestamp,
                 next_slot_thread,
                 next_slot_number,
-            )?,
-        )?);
+            )?
+            .estimate_instant()?,
+        );
 
         loop {
             tokio::select! {
@@ -100,15 +101,14 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                     // reset timer for next slot
                     (next_slot_thread, next_slot_number) = get_next_block_slot(self.cfg.thread_count, next_slot_thread, next_slot_number)?;
                     next_slot_timer = sleep_until(
-                        estimate_instant_from_timestamp(
-                            get_block_slot_timestamp_millis(
-                                self.cfg.thread_count,
-                                self.cfg.t0_millis,
-                                self.cfg.genesis_timestamp_millis,
-                                next_slot_thread,
-                                next_slot_number,
-                            )?,
+                        get_block_slot_timestamp(
+                            self.cfg.thread_count,
+                            self.cfg.t0,
+                            self.cfg.genesis_timestamp,
+                            next_slot_thread,
+                            next_slot_number,
                         )?
+                        .estimate_instant()?,
                     );
                 }
 

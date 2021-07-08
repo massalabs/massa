@@ -7,6 +7,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::Path;
 use std::time::Duration;
 use tempfile::NamedTempFile;
+use time::UTime;
 use tokio::prelude::*;
 use tokio::time::timeout;
 
@@ -36,17 +37,17 @@ pub fn create_network_config(
             .unwrap(),
         routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
         protocol_port: network_controller_port,
-        connect_timeout: Duration::from_secs(3),
+        connect_timeout: UTime::from(3000),
         peers_file: peers_file_path.to_path_buf(),
         target_out_connections: 10,
-        wakeup_interval: Duration::from_secs(10),
+        wakeup_interval: UTime::from(3000),
         max_in_connections: 100,
         max_in_connections_per_ip: 100,
         max_out_connnection_attempts: 100,
         max_idle_peers: 100,
         max_banned_peers: 100,
         max_advertise_length: 10,
-        peers_file_dump_interval: Duration::from_secs(30),
+        peers_file_dump_interval: UTime::from(30000),
     }
 }
 
