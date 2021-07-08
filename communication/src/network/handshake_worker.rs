@@ -10,7 +10,7 @@ use crate::{
 };
 use crypto::{
     hash::Hash,
-    signature::{PrivateKey, SignatureEngine},
+    signature::{sign, verify_signature, PrivateKey},
 };
 use futures::future::try_join;
 use models::SerializationContext;
@@ -119,9 +119,8 @@ impl HandshakeWorker {
         }
 
         // sign their random bytes
-        let signature_engine = SignatureEngine::new();
         let other_random_hash = Hash::hash(&other_random_bytes);
-        let self_signature = signature_engine.sign(&other_random_hash, &self.private_key)?;
+        let self_signature = sign(&other_random_hash, &self.private_key)?;
 
         // send handshake reply future
         let send_reply_msg = Message::HandshakeReply {
@@ -161,13 +160,13 @@ impl HandshakeWorker {
         };
 
         // check their signature
-        signature_engine
-            .verify(&self_random_hash, &other_signature, &other_node_id.0)
-            .map_err(|_err| {
+        verify_signature(&self_random_hash, &other_signature, &other_node_id.0).map_err(
+            |_err| {
                 CommunicationError::HandshakeError(
                     HandshakeErrorType::HandshakeInvalidSignatureError,
                 )
-            })?;
+            },
+        )?;
 
         Ok((other_node_id, self.reader, self.writer))
     }

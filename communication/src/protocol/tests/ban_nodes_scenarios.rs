@@ -1,15 +1,12 @@
 use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::{start_protocol_controller, ProtocolEvent};
-use crypto::signature::SignatureEngine;
 use models::Slot;
 use std::collections::{HashMap, HashSet};
 
 #[tokio::test]
 async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
-
-    let mut signature_engine = SignatureEngine::new();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -26,8 +23,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
         .expect("could not start protocol controller");
 
     // Create 1 node.
-    let mut nodes =
-        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -36,7 +32,6 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     // 2. Change the slot.
@@ -70,8 +65,6 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
 async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -87,8 +80,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         .expect("could not start protocol controller");
 
     // Create 1 node.
-    let mut nodes =
-        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
     let to_ban_node = nodes.pop().expect("Failed to get node info.");
 
@@ -97,7 +89,6 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         &to_ban_node.private_key,
         &to_ban_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     // 2. Change the slot.
@@ -124,7 +115,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     }
 
     // Create another node.
-    let not_banned = tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller)
+    let not_banned = tools::create_and_connect_nodes(1, &mut network_controller)
         .await
         .pop()
         .expect("Node not created.");
@@ -134,7 +125,6 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         &not_banned.private_key,
         &not_banned.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     // 3. Send header to protocol, via the banned node.
@@ -164,8 +154,6 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -189,8 +177,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
     .await
     .expect("could not start protocol controller");
 
-    let mut nodes =
-        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -199,7 +186,6 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     // 2. Send header to protocol.
@@ -232,7 +218,6 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
     block.header.content.slot = Slot::new(1, 1);
     network_controller
@@ -266,8 +251,6 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let send_block_or_header_cmd_filter = |cmd| match cmd {
         cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
         cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
@@ -292,8 +275,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     .await
     .expect("could not start protocol controller");
 
-    let mut nodes =
-        tools::create_and_connect_nodes(4, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -305,7 +287,6 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     let expected_hash = block
@@ -344,7 +325,6 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
         &nodes[1].private_key,
         &nodes[1].id.0,
         &serialization_context,
-        &mut signature_engine,
     );
     bad_block.header.content.slot = Slot::new(1, 1);
     network_controller
@@ -406,8 +386,6 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -427,15 +405,13 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     .expect("could not start protocol controller");
 
     // Create 4 nodes.
-    let nodes =
-        tools::create_and_connect_nodes(4, &signature_engine, &mut network_controller).await;
+    let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
 
     // Create a block coming from one node.
     let block = tools::create_block(
         &nodes[0].private_key,
         &nodes[0].id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     let expected_hash = block
@@ -469,8 +445,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     }
 
     // Have one node send that they don't know about the block.
-    let not_banned_nodes =
-        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+    let not_banned_nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
     network_controller
         .send_block_not_found(not_banned_nodes[0].id, expected_hash)
         .await;
@@ -509,8 +484,6 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
 async fn test_protocol_removes_banned_node_on_disconnection() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -525,8 +498,7 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
         .await
         .expect("could not start protocol controller");
 
-    let mut nodes =
-        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -535,7 +507,6 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
     block.header.content.slot = Slot::new(1, 1);
     network_controller
@@ -554,7 +525,6 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
     network_controller
         .send_header(creator_node.id, block.header.clone())

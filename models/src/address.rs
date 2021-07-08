@@ -39,8 +39,8 @@ impl Address {
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let signature_engine = SignatureEngine::new();
-    /// # let private_key = SignatureEngine::generate_random_private_key();
-    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let private_key = crypto::generate_random_private_key();
+    /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
@@ -57,8 +57,8 @@ impl Address {
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let signature_engine = SignatureEngine::new();
-    /// # let private_key = SignatureEngine::generate_random_private_key();
-    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let private_key = crypto::generate_random_private_key();
+    /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
     /// let bytes = address.clone().into_bytes();
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
@@ -75,8 +75,8 @@ impl Address {
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let signature_engine = SignatureEngine::new();
-    /// # let private_key = SignatureEngine::generate_random_private_key();
-    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let private_key = crypto::generate_random_private_key();
+    /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
@@ -95,8 +95,8 @@ impl Address {
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let signature_engine = SignatureEngine::new();
-    /// # let private_key = SignatureEngine::generate_random_private_key();
-    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let private_key = crypto::generate_random_private_key();
+    /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
@@ -115,8 +115,8 @@ impl Address {
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let signature_engine = SignatureEngine::new();
-    /// # let private_key = SignatureEngine::generate_random_private_key();
-    /// # let public_key = signature_engine.derive_public_key(&private_key);
+    /// # let private_key = crypto::generate_random_private_key();
+    /// # let public_key = crypto::derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key).unwrap();
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();

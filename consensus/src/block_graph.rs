@@ -2,7 +2,7 @@
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::ConsensusError;
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
-use crypto::signature::SignatureEngine;
+use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, Block, BlockHeader, BlockHeaderContent, BlockId,
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializationContext, SerializeCompact,
@@ -645,11 +645,9 @@ fn create_genesis_block(
     serialization_context: &SerializationContext,
     thread_number: u8,
 ) -> Result<(BlockId, Block), ConsensusError> {
-    let mut signature_engine = SignatureEngine::new();
     let private_key = cfg.genesis_key;
-    let public_key = signature_engine.derive_public_key(&private_key);
+    let public_key = derive_public_key(&private_key);
     let (header_hash, header) = BlockHeader::new_signed(
-        &mut signature_engine,
         &private_key,
         BlockHeaderContent {
             creator: public_key,
@@ -784,7 +782,6 @@ impl BlockGraph {
         val: String,
         slot: Slot,
     ) -> Result<(BlockId, Block), ConsensusError> {
-        let mut signature_engine = SignatureEngine::new();
         let (public_key, private_key) = self
             .cfg
             .nodes
@@ -795,7 +792,6 @@ impl BlockGraph {
         let example_hash = Hash::hash(&val.as_bytes());
 
         let (hash, header) = BlockHeader::new_signed(
-            &mut signature_engine,
             &private_key,
             BlockHeaderContent {
                 creator: public_key,
@@ -806,7 +802,6 @@ impl BlockGraph {
             },
             &self.serialization_context,
         )?;
-
         let res = (
             hash,
             Block {
@@ -2698,12 +2693,11 @@ mod tests {
         }
     }
     fn example_consensus_config() -> (ConsensusConfig, SerializationContext) {
-        let signature_engine = SignatureEngine::new();
-        let genesis_key = SignatureEngine::generate_random_private_key();
+        let genesis_key = crypto::generate_random_private_key();
         let mut nodes = Vec::new();
         for _ in 0..2 {
-            let private_key = SignatureEngine::generate_random_private_key();
-            let public_key = signature_engine.derive_public_key(&private_key);
+            let private_key = crypto::generate_random_private_key();
+            let public_key = crypto::derive_public_key(&private_key);
             nodes.push((public_key, private_key));
         }
         let thread_count: u8 = 2;
