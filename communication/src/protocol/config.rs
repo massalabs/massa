@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use time::UTime;
 
-pub const CHANNEL_SIZE: usize = 16;
+pub const CHANNEL_SIZE: usize = 256;
 
 /// Protocol Configuration
 #[derive(Debug, Deserialize, Clone)]
