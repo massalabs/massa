@@ -76,6 +76,15 @@ impl Block {
         Ok(self.to_bytes_compact()?.len() as u64)
     }
 
+    /// Retrieve roll involving addresses
+    pub fn get_roll_involved_addresses(&self) -> Result<HashSet<Address>, ModelsError> {
+        let mut roll_involved_addrs = HashSet::new();
+        for op in self.operations.iter() {
+            roll_involved_addrs.extend(op.get_roll_involved_addresses()?);
+        }
+        Ok(roll_involved_addrs)
+    }
+
     pub fn involved_addresses(
         &self,
     ) -> Result<HashMap<Address, HashSet<OperationId>>, ModelsError> {
