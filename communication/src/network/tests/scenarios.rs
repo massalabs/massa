@@ -227,7 +227,7 @@ async fn test_advertised_and_wakeup_interval() {
     .verbosity(4)
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
-    .unwrap(); */
+    .unwrap();*/
 
     // test config
     let bind_port: u16 = 50_000;
@@ -237,8 +237,8 @@ async fn test_advertised_and_wakeup_interval() {
         ip: mock_ignore_addr.ip(),
         banned: false,
         bootstrap: true,
-        last_alive: None,
-        last_failure: None,
+        last_alive_millis: None,
+        last_failure_millis: None,
         advertised: false,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
