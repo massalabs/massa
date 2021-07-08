@@ -510,3 +510,103 @@ async fn test_block_not_found() {
 
     temp_peers_file.close().unwrap();
 }
+
+#[tokio::test]
+async fn test_retry_connection_closed() {
+    // setup logging
+    /*stderrlog::new()
+    .verbosity(4)
+    .timestamp(stderrlog::Timestamp::Millisecond)
+    .init()
+    .unwrap();*/
+
+    //test config
+    let bind_port: u16 = 50_000;
+
+    let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
+    //add advertised peer to controller
+    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+        ip: mock_addr.ip(),
+        banned: false,
+        bootstrap: true,
+        last_alive: None,
+        last_failure: None,
+        advertised: true,
+        active_out_connection_attempts: 0,
+        active_out_connections: 0,
+        active_in_connections: 0,
+    }]);
+
+    let (network_conf, serialization_context) =
+        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+
+    // create establisher
+    let (establisher, mut mock_interface) = mock_establisher::new();
+
+    // launch network controller
+    let (mut network_command_sender, mut network_event_receiver, network_manager, _) =
+        start_network_controller(
+            network_conf.clone(),
+            serialization_context.clone(),
+            establisher,
+            0,
+        )
+        .await
+        .expect("could not start network controller");
+
+    let (node_id, _read, _write) = tools::full_connection_to_controller(
+        &mut network_event_receiver,
+        &mut mock_interface,
+        mock_addr,
+        1_000u64,
+        1_000u64,
+        1_000u64,
+        serialization_context.clone(),
+    )
+    .await;
+
+    // Ban the node.
+    network_command_sender
+        .ban(node_id)
+        .await
+        .expect("error during send ban command.");
+
+    // Make sure network sends a dis-connect event.
+    if let Some(node) =
+        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+            NetworkEvent::ConnectionClosed(node) => Some(node),
+            _ => None,
+        })
+        .await
+    {
+        assert_eq!(node, node_id);
+    } else {
+        panic!("Timeout while waiting for connection closed event");
+    }
+
+    // Send a command for a node not found in active.
+    network_command_sender
+        .block_not_found(node_id, Hash::hash("default_val".as_bytes()))
+        .await
+        .unwrap();
+
+    // Make sure network re-sends a dis-connect event.
+    if let Some(node) =
+        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+            NetworkEvent::ConnectionClosed(node) => Some(node),
+            _ => None,
+        })
+        .await
+    {
+        assert_eq!(node, node_id);
+    } else {
+        panic!("Timeout while waiting for connection closed event");
+    }
+
+    network_manager
+        .stop(network_event_receiver)
+        .await
+        .expect("error while closing");
+
+    temp_peers_file.close().unwrap();
+}

@@ -9,7 +9,8 @@ use std::collections::{HashMap, HashSet};
 use time::TimeError;
 use tokio::{
     sync::mpsc,
-    time::{sleep, sleep_until, Instant, Sleep},
+    sync::mpsc::error::SendTimeoutError,
+    time::{sleep, sleep_until, Duration, Instant, Sleep},
 };
 
 /// Possible types of events that can happen.
@@ -184,6 +185,28 @@ impl ProtocolWorker {
             controller_manager_rx,
             active_nodes: HashMap::new(),
             block_wishlist: HashSet::new(),
+        }
+    }
+
+    async fn send_protocol_event(&self, event: ProtocolEvent) {
+        let result = self
+            .controller_event_tx
+            .send_timeout(
+                event,
+                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
+            )
+            .await;
+        match result {
+            Ok(()) => {}
+            Err(SendTimeoutError::Closed(event)) => {
+                debug!(
+                    "Failed to send ProtocolEvent due to channel closure: {:?}.",
+                    event
+                );
+            }
+            Err(SendTimeoutError::Timeout(event)) => {
+                debug!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
+            }
         }
     }
 
@@ -599,16 +622,8 @@ impl ProtocolWorker {
                     let mut set = HashSet::with_capacity(1);
                     set.insert(hash);
                     self.stop_asking_blocks(set)?;
-                    trace!("before sending  ProtocolEvent::ReceivedBlock from controller_event_tx in protocol_worker on_network_event");
-                    self.controller_event_tx
-                        .send(ProtocolEvent::ReceivedBlock { hash, block })
-                        .await
-                        .map_err(|_| {
-                            CommunicationError::ChannelError(
-                                "receive block event send failed".into(),
-                            )
-                        })?;
-                    trace!("after sending  ProtocolEvent::ReceivedBlock from controller_event_tx in protocol_worker on_network_event");
+                    self.send_protocol_event(ProtocolEvent::ReceivedBlock { hash, block })
+                        .await;
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
@@ -622,19 +637,18 @@ impl ProtocolWorker {
                 list,
             } => {
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-                    for hash in list {
-                        node_info.insert_wanted_blocks(hash, self.cfg.max_node_wanted_blocks_size);
-                        trace!("before sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
-                        self.controller_event_tx
-                            .send(ProtocolEvent::GetBlock(hash))
-                            .await
-                            .map_err(|_| {
-                                CommunicationError::ChannelError(
-                                    "receive asked for block event send failed".into(),
-                                )
-                            })?;
-                        trace!("after sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
+                    for hash in &list {
+                        node_info.insert_wanted_blocks(
+                            hash.clone(),
+                            self.cfg.max_node_wanted_blocks_size,
+                        );
                     }
+                } else {
+                    return Ok(());
+                }
+                for hash in list {
+                    self.send_protocol_event(ProtocolEvent::GetBlock(hash))
+                        .await;
                 }
             }
             NetworkEvent::ReceivedBlockHeader {
@@ -642,16 +656,8 @@ impl ProtocolWorker {
                 header,
             } => {
                 if let Some(hash) = self.note_header_from_node(&header, &source_node_id).await? {
-                    trace!("before sending  ProtocolEvent::ReceivedBlockHeader from controller_event_tx in protocol_worker on_network_event");
-                    self.controller_event_tx
-                        .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
-                        .await
-                        .map_err(|_| {
-                            CommunicationError::ChannelError(
-                                "receive block event send failed".into(),
-                            )
-                        })?;
-                    trace!("after sending  ProtocolEvent::ReceivedBlockHeader from controller_event_tx in protocol_worker on_network_event");
+                    self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader { hash, header })
+                        .await;
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(

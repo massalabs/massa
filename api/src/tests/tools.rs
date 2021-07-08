@@ -59,6 +59,7 @@ pub fn get_protocol_config() -> ProtocolConfig {
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
+        max_send_wait: UTime::from(100),
     }
 }
 
@@ -83,6 +84,7 @@ pub fn get_network_config() -> NetworkConfig {
         ask_peer_list_interval: UTime::from(50000u64),
         private_key_file: std::path::PathBuf::new(),
         max_ask_blocks_per_message: 10,
+        max_send_wait: UTime::from(100),
     }
 }
 

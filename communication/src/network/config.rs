@@ -47,4 +47,6 @@ pub struct NetworkConfig {
     pub ask_peer_list_interval: UTime,
     //max number of hash in the message AskForBlocks
     pub max_ask_blocks_per_message: u32,
+    // Max wait time for sending a Network or Node event.
+    pub max_send_wait: UTime,
 }
