@@ -1,15 +1,9 @@
 use crate::storage_worker::BlockStorage;
+use crate::{config::StorageConfig, error::StorageError};
 use crypto::hash::Hash;
 use logging::{debug, massa_trace};
 use models::block::Block;
 use std::collections::HashMap;
-use std::collections::VecDeque;
-use tokio::sync::mpsc;
-
-use crate::{
-    config::{StorageConfig, CHANNEL_SIZE},
-    error::StorageError,
-};
 
 pub fn start_storage_controller(
     cfg: StorageConfig,

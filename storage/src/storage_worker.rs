@@ -45,13 +45,7 @@ impl BlockStorage {
             })?;
             hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
             slot_tx.insert(
-<<<<<<< HEAD
-                sled::IVec::from(
-                    &Slot::new(block.header.period_number, block.header.thread_number).into_bytes(),
-                ),
-=======
                 &Slot::new(block.header.period_number, block.header.thread_number).to_bytes(),
->>>>>>> 4183eda9654961e4f2f69797364b7b9de51dad01
                 &hash.to_bytes(),
             )?;
             Ok(())
