@@ -157,7 +157,7 @@ impl ProtocolCommandSender {
         });
         let res = self
             .0
-            .send(ProtocolCommand::Operation(operation))
+            .send(ProtocolCommand::PropagateOperation(operation))
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("propagate_operation command send error".into())

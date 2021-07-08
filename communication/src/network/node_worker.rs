@@ -29,8 +29,8 @@ pub enum NodeCommand {
     Close(ConnectionClosureReason),
     /// Block not found
     BlockNotFound(Hash),
-    /// OPeration
-    Operation(Operation),
+    /// Operation
+    SendOperation(Operation),
 }
 
 /// Event types that node worker can emit
@@ -281,7 +281,7 @@ impl NodeWorker {
                                 break;
                             }
                         },
-                        Some(NodeCommand::Operation(operation)) => {
+                        Some(NodeCommand::SendOperation(operation)) => {
                             massa_trace!("node_worker.run_loop. send Message::OPeration", {"operation": operation, "node": self.node_id});
                             if writer_command_tx.send(Message::Operation(operation)).await.is_err() {
                                 break;

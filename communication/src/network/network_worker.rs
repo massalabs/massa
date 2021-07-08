@@ -53,7 +53,7 @@ pub enum NetworkCommand {
         node: NodeId,
         hash: Hash,
     },
-    Operation {
+    SendOperation {
         node: NodeId,
         operation: Operation,
     },
@@ -83,7 +83,7 @@ pub enum NetworkEvent {
         node: NodeId,
         hash: Hash,
     },
-    Operation {
+    ReceivedOperation {
         node: NodeId,
         operation: Operation,
     },
@@ -760,14 +760,14 @@ impl NetworkWorker {
                 )
                 .await;
             }
-            NetworkCommand::Operation { node, operation } => {
+            NetworkCommand::SendOperation { node, operation } => {
                 massa_trace!(
                     "network_worker.manage_network_command receive NetworkCommand::Operation",
                     { "operation": operation, "node": node }
                 );
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
-                    NodeCommand::Operation(operation),
+                    NodeCommand::SendOperation(operation),
                 )
                 .await;
             }
@@ -981,7 +981,7 @@ impl NetworkWorker {
             NodeEvent(node, NodeEventType::Operation(operation)) => {
                 // todo in th
                 let _ = self
-                    .send_network_event(NetworkEvent::Operation { node, operation })
+                    .send_network_event(NetworkEvent::ReceivedOperation { node, operation })
                     .await;
             }
         }

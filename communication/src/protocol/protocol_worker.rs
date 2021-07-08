@@ -17,8 +17,6 @@ use tokio::{
 /// Possible types of events that can happen.
 #[derive(Debug, Serialize)]
 pub enum ProtocolEvent {
-    /// A isolated transaction was received.
-    ReceivedTransaction(String),
     /// A block with a valid signature has been received.
     ReceivedBlock { hash: Hash, block: Block },
     /// A block header with a valid signature has been received.
@@ -26,7 +24,7 @@ pub enum ProtocolEvent {
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<Hash>),
     /// Operation
-    Operation(Operation),
+    ReceivedOperation(Operation),
 }
 
 /// Commands that protocol worker can process
@@ -44,7 +42,7 @@ pub enum ProtocolCommand {
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(HashMap<Hash, Option<Block>>),
     /// Operation
-    Operation(Operation),
+    PropagateOperation(Operation),
 }
 
 #[derive(Debug, Serialize)]
@@ -395,7 +393,7 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::Operation(operation) => {
+            ProtocolCommand::PropagateOperation(operation) => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.operation.begin",
                     { "operation": operation }
@@ -749,9 +747,9 @@ impl ProtocolWorker {
                 }
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::Operation { node, operation } => {
+            NetworkEvent::ReceivedOperation { node, operation } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operation", { "node": node, "operation": operation});
-                self.send_protocol_event(ProtocolEvent::Operation(operation))
+                self.send_protocol_event(ProtocolEvent::ReceivedOperation(operation))
                     .await;
             }
         }

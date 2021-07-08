@@ -240,7 +240,7 @@ impl NetworkCommandSender {
         operation: Operation,
     ) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::Operation { node, operation })
+            .send(NetworkCommand::SendOperation { node, operation })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send block_not_found command".into())
