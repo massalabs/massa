@@ -718,6 +718,11 @@ impl BlockGraph {
             &self.serialization_context,
         )?;
 
+        massa_trace!("consensus create_block", {
+            "hash": format!("{:?}", hash),
+            "block": format!("{:?}", header),
+        });
+
         Ok((
             hash,
             Block {
@@ -1497,6 +1502,17 @@ impl BlockGraph {
         if max_cliques.is_empty() {
             // make sure at least one clique remains
             max_cliques = vec![HashSet::new()];
+        }
+        if max_cliques.len() > 1 {
+            massa_trace!("consensus clique", "nb clique > 1");
+            for cliques in &max_cliques {
+                let mut content: Vec<&Hash> = cliques.iter().collect();
+                content.sort_unstable();
+                let st = content
+                    .iter()
+                    .fold(String::new(), |s, h| format!("{},{}", s, h));
+                massa_trace!("consensus clique", { "list": format!("{:?}", st) });
+            }
         }
         max_cliques
     }
