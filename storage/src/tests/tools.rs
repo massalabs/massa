@@ -24,7 +24,7 @@ pub fn get_test_block() -> Block {
 
 pub fn get_test_config(path: String) -> StorageConfig {
     StorageConfig {
-        max_capacity: 100000,
+        max_stored_blocks: 100000,
         path,
         cache_capacity: 1000000,
         flush_every_ms: Some(200),

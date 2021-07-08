@@ -4,12 +4,42 @@ use crate::storage_controller::StorageCommandSender;
 use crypto::hash::Hash;
 
 #[tokio::test]
+async fn test_max_nb_blocks() {
+    let filename = "target/tests/max_nb_block.db";
+    tokio::fs::remove_file(filename).await.unwrap_or(()); //error if deosn't exist
+    let config = StorageConfig {
+        /// Max number of bytes we want to store
+        max_stored_blocks: 5,
+        /// path to db
+        path: filename.to_string(), //in target to be ignored by git and different file between test.
+        cache_capacity: 256,  //little to force flush cache
+        flush_every_ms: None, //defaut
+    };
+
+    let (storage, manager) = start_storage_controller(config).unwrap();
+    //write 6 block. 5 must be in db after. The (1,0) must be removed.
+    add_block(2, 1, &storage).await;
+    add_block(1, 1, &storage).await;
+    add_block(3, 0, &storage).await;
+    add_block(1, 0, &storage).await;
+    add_block(3, 1, &storage).await;
+    add_block(4, 0, &storage).await;
+    let result = storage.get_slot_range((0, 0), (1, 1)).await.unwrap();
+    assert_eq!(0, result.len());
+    add_block(4, 1, &storage).await;
+    let result = storage.get_slot_range((0, 0), (2, 1)).await.unwrap();
+    assert_eq!(0, result.len());
+
+    manager.stop().await.unwrap();
+}
+
+#[tokio::test]
 async fn test_get_slot_range() {
     let filename = "target/tests/get_slot_range.db";
     tokio::fs::remove_file(filename).await.unwrap_or(()); //error if deosn't exist
     let config = StorageConfig {
         /// Max number of bytes we want to store
-        max_capacity: 0, //not used?
+        max_stored_blocks: 10,
         /// path to db
         path: filename.to_string(), //in target to be ignored by git and different file between test.
         cache_capacity: 256,  //little to force flush cache

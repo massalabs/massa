@@ -3,6 +3,8 @@ use models::{block::Block, slot::Slot};
 use sled::Transactional;
 use sled::Tree;
 use sled::{transaction::ConflictableTransactionError, Db};
+use std::sync::Arc;
+use std::sync::RwLock;
 use std::{collections::HashMap, ops::Deref};
 
 use crate::{
@@ -13,6 +15,8 @@ use crate::{
 #[derive(Clone)]
 pub struct BlockStorage {
     db: Db,
+    nb_stored_blocks: Arc<RwLock<usize>>,
+    max_stored_blocks: usize,
 }
 
 impl BlockStorage {
@@ -30,12 +34,47 @@ impl BlockStorage {
         let db = sled_config.open()?;
         let _hash_to_block = db.open_tree("hash_to_block")?;
         let _slot_to_hash = db.open_tree("slot_to_hash")?;
-        Ok(BlockStorage { db })
+        let nb_blocks_in_db = db.len();
+        Ok(BlockStorage {
+            db,
+            nb_stored_blocks: Arc::new(RwLock::new(nb_blocks_in_db)),
+            max_stored_blocks: cfg.max_stored_blocks,
+        })
     }
 
     pub fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
+
+        //manage max block. If nb block > max block, remove the oldest block.
+        self.nb_stored_blocks
+            .read()
+            .map(|nb_stored_blocks| {
+                if *nb_stored_blocks >= self.max_stored_blocks {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
+            .and_then(|max_reach| {
+                if max_reach {
+                    slot_to_hash.pop_min().and_then(|res| {
+                        res.map(|(_, min_hash)| hash_to_block.remove(min_hash))
+                            .transpose()
+                    })?;
+                    Ok(())
+                    //.map_err(|err| err.into())
+                } else {
+                    self.nb_stored_blocks
+                        .write()
+                        .map(|mut value| {
+                            *value += 1;
+                        })
+                        .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
+                }
+            })?;
+
         (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
             let block_vec = block.into_bytes().map_err(|err| {
                 ConflictableTransactionError::Abort(InternalError::TransactionError(format!(
