@@ -153,8 +153,8 @@ use communication::{
     protocol::ProtocolConfig,
 };
 use consensus::{
-    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
-    ConsensusConfig, ConsensusError, DiscardReason,
+    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, get_next_block_slot,
+    BlockGraphExport, ConsensusConfig, ConsensusError, DiscardReason,
 };
 use crypto::{hash::Hash, signature::PublicKey};
 use models::block::{Block, BlockHeader};
@@ -577,6 +577,7 @@ async fn get_block_interval(
     opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut res = HashMap::new();
+
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -628,16 +629,42 @@ async fn get_block_interval(
                 )
                 .into_response())
             }
-            Ok(Some(slot)) => slot,
-            Ok(None) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving slot from time : no slot found")
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
+            Ok(Some(slot)) => {
+                if match get_block_slot_timestamp(
+                    consensus_cfg.thread_count,
+                    consensus_cfg.t0,
+                    consensus_cfg.genesis_timestamp,
+                    slot,
+                ) {
+                    Ok(start_time) => start_time,
+                    Err(e) => {
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&json!({
+                                "message": format!("error retrieving next slot: {:?}", e)
+                            })),
+                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        )
+                        .into_response())
+                    }
+                } == start
+                {
+                    slot
+                } else {
+                    match get_next_block_slot(consensus_cfg.thread_count, slot) {
+                        Ok(next) => next,
+                        Err(e) => {
+                            return Ok(warp::reply::with_status(
+                                warp::reply::json(&json!({
+                                    "message": format!("error retrieving next slot: {:?}", e)
+                                })),
+                                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            )
+                            .into_response())
+                        }
+                    }
+                }
             }
+            Ok(None) => (0, 0),
         };
         let end_slot = match get_latest_block_slot_at_timestamp(
             consensus_cfg.thread_count,
@@ -654,11 +681,45 @@ async fn get_block_interval(
                 )
                 .into_response())
             }
-            Ok(Some(slot)) => slot,
+            Ok(Some(slot)) => {
+                if match get_block_slot_timestamp(
+                    consensus_cfg.thread_count,
+                    consensus_cfg.t0,
+                    consensus_cfg.genesis_timestamp,
+                    slot,
+                ) {
+                    Ok(start_time) => start_time,
+                    Err(e) => {
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&json!({
+                                "message": format!("error retrieving next slot: {:?}", e)
+                            })),
+                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        )
+                        .into_response())
+                    }
+                } == start
+                {
+                    slot
+                } else {
+                    match get_next_block_slot(consensus_cfg.thread_count, slot) {
+                        Ok(next) => next,
+                        Err(e) => {
+                            return Ok(warp::reply::with_status(
+                                warp::reply::json(&json!({
+                                    "message": format!("error retrieving next slot: {:?}", e)
+                                })),
+                                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            )
+                            .into_response())
+                        }
+                    }
+                }
+            }
             Ok(None) => {
                 return Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
-                        "message": format!("error retrieving slot from time : no slot found")
+                        "message": format!("error retrieving end slot from time : no slot found")
                     })),
                     warp::http::StatusCode::INTERNAL_SERVER_ERROR,
                 )
