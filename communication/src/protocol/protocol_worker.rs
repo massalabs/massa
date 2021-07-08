@@ -482,18 +482,16 @@ impl ProtocolWorker {
                                 "node command send send_peer_list failed".into(),
                             )
                         })?
-                } else {
-                    if let Some(storage_controller) = &self.opt_storage_command_sender {
-                        if let Some(block) = storage_controller.get_block(hash).await? {
-                            node_command_tx
-                                .send(NodeCommand::SendBlock(block))
-                                .await
-                                .map_err(|_| {
-                                    CommunicationError::ChannelError(
-                                        "node command send send_peer_list failed".into(),
-                                    )
-                                })?
-                        }
+                } else if let Some(storage_controller) = &self.opt_storage_command_sender {
+                    if let Some(block) = storage_controller.get_block(hash).await? {
+                        node_command_tx
+                            .send(NodeCommand::SendBlock(block))
+                            .await
+                            .map_err(|_| {
+                                CommunicationError::ChannelError(
+                                    "node command send send_peer_list failed".into(),
+                                )
+                            })?
                     }
                 }
             }
