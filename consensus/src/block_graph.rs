@@ -24,7 +24,7 @@ use std::{convert::TryInto, usize};
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
     Header(BlockHeader),
-    Block(Block, HashSet<OperationId>),
+    Block(Block, HashMap<OperationId, usize>),
 }
 
 impl HeaderOrBlock {
@@ -45,7 +45,7 @@ pub struct ActiveBlock {
     pub descendants: HashSet<BlockId>,
     pub is_final: bool,
     pub block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
-    pub operation_set: HashSet<OperationId>,
+    pub operation_set: HashMap<OperationId, usize>,
 }
 
 impl ActiveBlock {
@@ -73,7 +73,7 @@ pub struct ExportActiveBlock {
     pub dependencies: Vec<BlockId>,         // dependencies required for validity check
     pub is_final: bool,
     pub block_ledger_change: Vec<Vec<(Address, LedgerChange)>>,
-    pub operation_set: Vec<OperationId>,
+    pub operation_set: Vec<(OperationId, usize)>,
 }
 
 impl From<ActiveBlock> for ExportActiveBlock {
@@ -320,9 +320,12 @@ impl DeserializeCompact for ExportActiveBlock {
         let operation_set = block
             .operations
             .iter()
-            .map(|op| op.get_operation_id(context))
-            .flatten()
-            .collect();
+            .enumerate()
+            .map(|(idx, op)| match op.get_operation_id(context) {
+                Ok(id) => Ok((id, idx)),
+                Err(e) => Err(e),
+            })
+            .collect::<Result<_, _>>()?;
 
         Ok((
             ExportActiveBlock {
@@ -838,7 +841,7 @@ impl BlockGraph {
                     descendants: HashSet::new(),
                     is_final: true,
                     block_ledger_change: vec![HashMap::new(); cfg.thread_count as usize], // todo add initial coin repartition see #311
-                    operation_set: HashSet::with_capacity(0),
+                    operation_set: HashMap::with_capacity(0),
                 }),
             );
         }
@@ -1018,7 +1021,7 @@ impl BlockGraph {
         &mut self,
         block_id: BlockId,
         block: Block,
-        operation_set: HashSet<OperationId>,
+        operation_set: HashMap<OperationId, usize>,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
@@ -1745,7 +1748,7 @@ impl BlockGraph {
         &self,
         block_id: &BlockId,
         block: &Block,
-        operation_set: &HashSet<OperationId>,
+        operation_set: &HashMap<OperationId, usize>,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<BlockCheckOutcome, ConsensusError> {
@@ -1806,55 +1809,13 @@ impl BlockGraph {
         })
     }
 
-    pub fn get_past_operations(
-        &self,
-        cur_slot: Slot,
-        parent: &BlockId,
-    ) -> Result<Vec<OperationId>, ConsensusError> {
-        let mut res = Vec::new();
-
-        // compute stop periods
-        let stop_period = if cur_slot.period < self.cfg.operation_validity_periods {
-            0
-        } else {
-            cur_slot.period - self.cfg.operation_validity_periods
-        };
-        let mut cur_id = parent;
-        loop {
-            let block = match self
-                .block_statuses
-                .get(&cur_id)
-                .ok_or(ConsensusError::MissingBlock)?
-            {
-                BlockStatus::Active(block) => block,
-                _ => {
-                    return Err(ConsensusError::MissingBlock);
-                }
-            };
-            if block.block.header.content.slot.period < stop_period {
-                // we don't need to explore more here
-                break;
-            }
-
-            // genesis block
-            if block.block.header.content.parents.is_empty() {
-                break;
-            }
-
-            res.extend(block.operation_set.clone());
-
-            cur_id = &block.block.header.content.parents[cur_slot.thread as usize];
-        }
-        Ok(res)
-    }
-
     /// Check if operations are consistent.
     ///
     /// Returns changes done by that block to the ledger (one hashmap per thread)
     fn check_operations(
         &self,
         block_to_check: &Block,
-        operation_set: &HashSet<OperationId>,
+        operation_set: &HashMap<OperationId, usize>,
     ) -> Result<BlockOperationsCheckOutcome, ConsensusError> {
         // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
         let mut dependencies: HashSet<BlockId> = HashSet::new();
@@ -1901,7 +1862,11 @@ impl BlockGraph {
                 }
 
                 // check if present
-                if !current_block.operation_set.is_disjoint(operation_set) {
+                if current_block
+                    .operation_set
+                    .keys()
+                    .any(|k| operation_set.contains_key(k))
+                {
                     error!("block graph check_operations error, block operation already integrated in another block");
                     return Ok(BlockOperationsCheckOutcome::Discard(
                         DiscardReason::Invalid(
@@ -2248,7 +2213,7 @@ impl BlockGraph {
         incomp: HashSet<BlockId>,
         inherited_incomp_count: usize,
         block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
-        operation_set: HashSet<OperationId>,
+        operation_set: HashMap<OperationId, usize>,
     ) -> Result<(), ConsensusError> {
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
 

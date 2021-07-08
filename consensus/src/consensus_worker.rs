@@ -321,7 +321,7 @@ impl ConsensusWorker {
             if ancestor.block.header.content.slot.period < stop_period {
                 break;
             }
-            exclude_operations.extend(&ancestor.operation_set);
+            exclude_operations.extend(ancestor.operation_set.keys());
             if ancestor.parents.is_empty() {
                 break;
             }
@@ -347,7 +347,7 @@ impl ConsensusWorker {
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
-        let mut operation_set: HashSet<OperationId> = HashSet::new();
+        let mut operation_set: HashMap<OperationId, usize> = HashMap::new();
         let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
         while !finished {
             // get a batch of operations
@@ -395,8 +395,8 @@ impl ConsensusWorker {
                 }
 
                 // add operation
+                operation_set.insert(op_id, operation_set.len());
                 operations.push(op);
-                operation_set.insert(op_id);
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
                 total_hash.extend(op_id.to_bytes());
