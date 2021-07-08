@@ -345,7 +345,7 @@ impl ConsensusWorker {
                         .await?;
 
                     // unlock dependencies
-                    let res = self
+                    let res: Vec<_> = self
                         .dependency_waiting_blocks
                         .valid_block_obtained(&hash)?
                         .1
@@ -354,12 +354,27 @@ impl ConsensusWorker {
                             Some(QueuedBlock::FullBLock(block)) => Ok((h, block.clone())),
                             Some(QueuedBlock::HeaderOnly(header)) => {
                                 self.waiting_header.0.insert(h, header.clone());
-                                Err(ConsensusError::WaitingForBlockContent)
+                                Err(ConsensusError::WaitingForBlockContent(h, header.clone()))
                             }
                             None => Err(ConsensusError::ContainerInconsistency),
                         })
+                        .collect();
+
+                    for item in res.iter() {
+                        match item {
+                            Err(ConsensusError::WaitingForBlockContent(hash, header)) => {
+                                self.waiting_header.0.insert(hash.clone(), header.clone());
+                                self.protocol_command_sender
+                                    .ask_for_block(hash.clone())
+                                    .await?;
+                            }
+                            _ => {}
+                        }
+                    }
+                    let res = res
+                        .into_iter()
                         .filter(|e| match e {
-                            Err(ConsensusError::WaitingForBlockContent) => false,
+                            Err(ConsensusError::WaitingForBlockContent(_, _)) => false,
                             _ => true,
                         })
                         .collect::<Result<HashMap<Hash, Block>, ConsensusError>>()?;

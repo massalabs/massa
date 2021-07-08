@@ -1,6 +1,6 @@
 use communication::CommunicationError;
 use crypto::hash::Hash;
-use models::{Block, ModelsError};
+use models::{Block, BlockHeader, ModelsError};
 use rand::distributions::WeightedError;
 use std::collections::HashSet;
 use thiserror::Error;
@@ -52,7 +52,7 @@ pub enum ConsensusError {
     #[error("Storage error : {0}")]
     StorageError(#[from] storage::StorageError),
     #[error("still waiting for block")]
-    WaitingForBlockContent,
+    WaitingForBlockContent(Hash, BlockHeader),
     #[error("error checking header {0}")]
     HeaderCheckError(String),
 }
