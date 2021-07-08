@@ -7,7 +7,7 @@
     bind = "127.0.0.1:3030"
 
 [consensus]
-    genesis_timestamp = 1625432267000 # to update while testing
+    genesis_timestamp = 1625774400000 # to update while testing
     t0 = 16000
     thread_count = 32
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
@@ -23,7 +23,7 @@
     ledger_cache_capacity = 1048576
     ledger_flush_interval = 10000
     ledger_reset_at_startup = true
-    block_reward = 1
+    block_reward = 1000000000
     initial_ledger_path = "config/initial_ledger.json"
     operation_batch_size = 1024
     #POS
@@ -34,7 +34,7 @@
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 10
     staking_keys_path = "config/initial_staking_keys.json"
-    roll_price = 1
+    roll_price = 500000000000
     #stats
     stats_timespan = 30000
 
@@ -78,7 +78,7 @@
 
 [bootstrap]
     bootstrap_list = [
-        
+        ["149.202.86.103:31235", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3W"]
     ]
     bind = "0.0.0.0:31235" # if you want to bootstrap people
     connect_timeout = 1000
@@ -97,5 +97,3 @@
 [pool]
     max_pool_size_per_thread = 100000
     max_operation_future_validity_start_periods = 100
-
-
