@@ -573,7 +573,7 @@ async fn get_block_from_graph(
     consensus_cfg: &ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
-) -> Result<Vec<(Hash, Slot)>, ApiError> {
+) -> Result<Vec<HashSlot>, ApiError> {
     retrieve_graph_export(&event_tx).await.and_then(|graph| {
         let start = start_opt.unwrap_or(UTime::from(0));
         let end = end_opt.unwrap_or(UTime::from(u64::MAX));
@@ -591,14 +591,14 @@ async fn get_block_from_graph(
                 .map_err(|err| ApiError::from(err))
                 .map(|time| {
                     if start <= time && time < end {
-                        Some((hash, exported_block.block.content.slot))
+                        Some((hash, exported_block.block.content.slot).into())
                     } else {
                         None
                     }
                 })
                 .transpose()
             })
-            .collect::<Result<Vec<(Hash, Slot)>, ApiError>>()
+            .collect()
     })
 }
 
@@ -608,7 +608,7 @@ async fn get_block_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageCommandSender>,
-) -> Result<Vec<(Hash, Slot)>, ApiError> {
+) -> Result<Vec<HashSlot>, ApiError> {
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
         .is_some()
@@ -634,7 +634,7 @@ async fn get_block_interval(
                 res.append(
                     &mut blocks
                         .into_iter()
-                        .map(|(hash, block)| (hash, block.header.content.slot))
+                        .map(|(hash, block)| (hash, block.header.content.slot).into())
                         .collect(),
                 )
             })?;
