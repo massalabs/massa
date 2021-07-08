@@ -948,7 +948,7 @@ impl BlockGraph {
             },
         );
         massa_trace!("consensus.block_graph.prepare_create_block", {"hash": res.0, "block": res.1});
-        let bytes = res.1.bytes_count();
+        let bytes = res.1.bytes_count(&self.serialization_context)?;
         self.next_block = Some(res.1);
         Ok(bytes)
     }

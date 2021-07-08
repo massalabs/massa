@@ -80,8 +80,8 @@ impl Block {
             .is_some())
     }
 
-    pub fn bytes_count(&self) -> u64 {
-        todo!()
+    pub fn bytes_count(&self, context: &SerializationContext) -> Result<u64, ModelsError> {
+        Ok(self.to_bytes_compact(context)?.len() as u64)
     }
 }
 
