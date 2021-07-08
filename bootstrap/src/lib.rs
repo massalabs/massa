@@ -1,7 +1,7 @@
 use binders::{ReadBinder, WriteBinder};
 use consensus::{BoostrapableGraph, ConsensusCommandSender};
 use establisher::{ReadHalf, WriteHalf};
-use log::{debug, trace, warn};
+use log::{debug, info, trace, warn};
 use std::net::SocketAddr;
 
 mod binders;
@@ -122,6 +122,7 @@ async fn get_state_internal(
         &sig,
         &cfg.bootstrap_public_key,
     )?;
+    info!("Bootstrap completed successfully 🦀");
     Ok((graph, compensation_millis))
 }
 
