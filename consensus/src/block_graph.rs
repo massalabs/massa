@@ -1017,6 +1017,8 @@ impl BlockGraph {
                     CheckOutcome::WaitForDependencies(mut dependencies) => {
                         // set as waiting dependencies
                         dependencies.insert(hash); // add self as unsatisfied
+                        massa_trace!("consensus.block_graph.process.incomming_header.waiting_for_dependencies", {"hash": hash, "dependencies": dependencies});
+
                         self.block_statuses.insert(
                             hash,
                             BlockStatus::WaitingForDependencies {
@@ -1029,7 +1031,6 @@ impl BlockGraph {
                         );
                         self.promote_dep_tree(hash)?;
 
-                        massa_trace!("consensus.block_graph.process.incomming_header.waiting_for_dependencies", {"hash": hash});
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForSlot => {
