@@ -33,15 +33,17 @@ impl MockProtocolController {
     }
 
     pub async fn receive_block(&mut self, block: Block) {
+        let hash = block.header.compute_hash().expect("Failed to compute hash");
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlock(block))
+            .send(ProtocolEvent::ReceivedBlock { hash, block })
             .await
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_header(&mut self, signature: Signature, header: BlockHeader) {
+    pub async fn receive_header(&mut self, header: BlockHeader) {
+        let hash = header.compute_hash().expect("Failed to compute hash");
         self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedBlockHeader { signature, header })
+            .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
             .await
             .expect("could not send protocol event");
     }

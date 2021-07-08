@@ -385,12 +385,6 @@ impl ConsensusWorker {
                 //  do nothing: we already have discarded this block
                 Ok(Default::default())
             }
-            Err(BlockAcknowledgeError::WrongSignature) => {
-                // the signature is wrong: ignore and do not cancel anything
-                // TODO in the future, ban sender node
-                // TODO re-ask ? (see issue #107)
-                Ok(Default::default())
-            }
             Err(BlockAcknowledgeError::InvalidFields) => {
                 // do nothing: block is invalid
                 self.dependency_waiting_blocks
@@ -457,17 +451,12 @@ impl ConsensusWorker {
     /// * event: event type to process.
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
         match event {
-            ProtocolEvent::ReceivedBlock(block) => {
-                self.rec_acknowledge_block(block.header.compute_hash()?, block)
-                    .await?;
+            ProtocolEvent::ReceivedBlock { hash, block } => {
+                self.rec_acknowledge_block(hash, block).await?;
             }
-            ProtocolEvent::ReceivedBlockHeader { signature, header } => {
-                let hash = header
-                    .compute_hash()
-                    .map_err(|err| ConsensusError::HeaderHashError(err))?;
+            ProtocolEvent::ReceivedBlockHeader { hash, header } => {
                 let header_check = self.block_db.check_header(
                     &hash,
-                    &signature,
                     &header,
                     &mut self.selector,
                     self.current_slot,

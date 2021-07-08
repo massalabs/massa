@@ -62,8 +62,6 @@ pub enum BlockAcknowledgeError {
     TimeError(#[from] time::TimeError),
     #[error("consensus error {0}")]
     ConsensusError(#[from] ConsensusError),
-    #[error("wrong signature")]
-    WrongSignature,
     #[error("block was previously discarded")]
     AlreadyDiscarded,
     #[error("block was previously acknowledged")]

@@ -2,7 +2,7 @@
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::{BlockAcknowledgeError, ConsensusError};
 use crypto::hash::Hash;
-use crypto::signature::{Signature, SignatureEngine};
+use crypto::signature::SignatureEngine;
 use models::block::Block;
 use models::block::BlockHeader;
 use models::slot::Slot;
@@ -421,23 +421,10 @@ impl BlockGraph {
     pub fn check_header(
         &mut self,
         hash: &Hash,
-        signature: &Signature,
         header: &BlockHeader,
         selector: &mut RandomSelector,
         current_slot: Slot,
     ) -> Result<HashSet<Hash>, BlockAcknowledgeError> {
-        massa_trace!("start_ack_new_block", {
-            "block": hash,
-            "slot": header.slot
-        });
-
-        // check signature
-        if !SignatureEngine::new().verify(&hash, &signature, &header.creator)? {
-            return Err(BlockAcknowledgeError::WrongSignature);
-            // the block may still be valid, but badly signed
-            // don't add it to discard pile to prevent attackers from discarding arbitrary blocks
-        }
-
         // check if we already know about this block
         if let Some((_, (reason, header))) = self.discarded_blocks.get(&hash) {
             let (reason, header) = (*reason, header.clone());
@@ -639,13 +626,8 @@ impl BlockGraph {
             return Err(BlockAcknowledgeError::InTheFuture(block));
         }
 
-        let missing_dependencies = self.check_header(
-            &hash,
-            &block.signature,
-            &block.header,
-            selector,
-            current_slot,
-        )?;
+        let missing_dependencies =
+            self.check_header(&hash, &block.header, selector, current_slot)?;
         if !missing_dependencies.is_empty() {
             // there are missing dependencies
             if !missing_dependencies.is_disjoint(&self.genesis_blocks.iter().copied().collect()) {
@@ -1269,81 +1251,6 @@ mod tests {
             signature: signature_engine
                 .sign(&hash, &private_key)
                 .expect("could not sign"), // in a test
-        }
-    }
-
-    #[test]
-    fn test_block_validity() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
-        let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
-            .expect("could not initialize selector");
-
-        let signature_engine = SignatureEngine::new();
-
-        let ok_block = create_standalone_block(
-            &mut block_graph,
-            "42".into(),
-            Slot::new(1, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
-            Vec::new(),
-            &mut selector,
-        );
-
-        // test unmatching signature
-        let mut corrupt_block = ok_block.clone();
-        corrupt_block.header.creator = cfg.nodes[1].0;
-
-        match block_graph.acknowledge_block(
-            corrupt_block.header.compute_hash().unwrap(),
-            corrupt_block,
-            &mut selector,
-            Slot::new(1000, 0),
-        ) {
-            Ok(_) => panic!("Corrupted block has been acknowledged"),
-            Err(BlockAcknowledgeError::WrongSignature) => {} // that's what we expected
-            Err(e) => panic!(format!("unexpected error {:?}", e)),
-        }
-
-        let mut corrupt_block = ok_block.clone();
-        corrupt_block.header.slot.period = 2;
-        corrupt_block.signature = signature_engine
-            .sign(
-                &corrupt_block.header.compute_hash().unwrap(),
-                &cfg.nodes[0].1,
-            )
-            .expect("could not sign"); // in a test
-
-        match block_graph.acknowledge_block(
-            corrupt_block.header.compute_hash().unwrap(),
-            corrupt_block,
-            &mut selector,
-            Slot::new(1000, 0),
-        ) {
-            Ok(_) => panic!("Corrupted block has been acknowledged"),
-            Err(BlockAcknowledgeError::DrawMismatch) => {} // that's what we expected
-            Err(e) => panic!(format!("unexpected error {:?}", e)),
-        }
-
-        let mut corrupt_block = ok_block.clone();
-        corrupt_block.header.slot.thread = 1;
-        corrupt_block.signature = signature_engine
-            .sign(
-                &corrupt_block.header.compute_hash().unwrap(),
-                &cfg.nodes[0].1,
-            )
-            .expect("could not sign"); // in a test
-
-        match block_graph.acknowledge_block(
-            corrupt_block.header.compute_hash().unwrap(),
-            corrupt_block,
-            &mut selector,
-            Slot::new(1000, 0),
-        ) {
-            Ok(_) => panic!("Corrupted block has been acknowledged"),
-            Err(BlockAcknowledgeError::DrawMismatch) => {} // that's what we expected
-            Err(e) => panic!(format!("unexpected error {:?}", e)),
         }
     }
 
