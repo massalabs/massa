@@ -1,3 +1,4 @@
+use consensus::ConsensusError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -10,4 +11,6 @@ pub enum ApiError {
     ReceiveChannelError(String),
     #[error("server error: {0}")]
     ServerError(#[from] warp::Error),
+    #[error("consensus error : {0}")]
+    ConsensusError(#[from] ConsensusError),
 }

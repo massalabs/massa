@@ -18,7 +18,7 @@ use tokio::{
 
 async fn run(cfg: config::Config) {
     // launch network controller
-    let (network_command_sender, network_event_receiver, network_manager) =
+    let (mut network_command_sender, network_event_receiver, network_manager) =
         start_network_controller(cfg.network.clone(), Establisher::new())
             .await
             .expect("could not start network controller");
@@ -49,9 +49,6 @@ async fn run(cfg: config::Config) {
         cfg.consensus.clone(),
         cfg.protocol.clone(),
         cfg.network.clone(),
-        consensus_command_sender.clone(),
-        protocol_command_sender.clone(),
-        network_command_sender.clone(),
     )
     .await
     .expect("could not start API controller");
@@ -71,6 +68,38 @@ async fn run(cfg: config::Config) {
                     info!("API asked node stop");
                     break;
                 },
+                Ok(ApiEvent::GetActiveBlock(hash, response_sender_tx)) => {
+                    response_sender_tx.send(
+                        consensus_command_sender
+                        .get_active_block(hash)
+                            .await
+                            .expect("could not retrieve block")
+                        ).expect("could not send block");
+                },
+                Ok(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                    response_sender_tx.send(
+                        consensus_command_sender
+                        .get_block_graph_status()
+                            .await
+                            .expect("could not retrive graph status")
+                        ).expect("could not send graph status");
+                },
+                Ok(ApiEvent::GetPeers(response_sender_tx)) => {
+                    response_sender_tx.send(
+                        network_command_sender
+                            .get_peers()
+                            .await
+                            .expect("could not retrive peers")
+                        ).expect("could not send peers");
+                    },
+                Ok(ApiEvent::GetSelectionDraw(start, end, response_sender_tx)) => {
+                    response_sender_tx.send(
+                        consensus_command_sender
+                            .get_selection_draws(start, end )
+                            .await
+                        ).expect("could not send selection draws");
+                    },
+
                 Err(err) => {
                     error!("api communication error: {:?}", err);
                     break;
