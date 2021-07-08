@@ -15,7 +15,7 @@ use std::{
     time::Duration,
     vec,
 };
-use storage::{start_storage_controller, StorageCommandSender, StorageConfig};
+use storage::{start_storage, StorageAccess, StorageConfig};
 use time::UTime;
 use tokio::{
     sync::mpsc::{self, Receiver},
@@ -119,7 +119,7 @@ pub fn get_header(
 }
 
 pub fn mock_filter(
-    storage_cmd: Option<StorageCommandSender>,
+    storage_cmd: Option<StorageAccess>,
 ) -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
     let (evt_tx, evt_rx) = mpsc::channel(1);
     (
@@ -158,7 +158,7 @@ pub fn get_dummy_staker() -> PublicKey {
 pub async fn get_test_storage(
     cfg: ConsensusConfig,
     serialization_context: SerializationContext,
-) -> (StorageCommandSender, (Block, Block, Block)) {
+) -> (StorageAccess, (Block, Block, Block)) {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
     let storage_config = StorageConfig {
@@ -170,7 +170,7 @@ pub async fn get_test_storage(
         flush_interval: None, //defaut
     };
     let (storage_command_tx, _storage_manager) =
-        start_storage_controller(storage_config, serialization_context.clone()).unwrap();
+        start_storage(storage_config, serialization_context.clone()).unwrap();
 
     let mut blocks = HashMap::new();
 

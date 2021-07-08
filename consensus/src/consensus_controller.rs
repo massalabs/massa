@@ -11,7 +11,7 @@ use crypto::signature::PublicKey;
 use logging::debug;
 use models::{Block, SerializationContext, Slot};
 use std::collections::VecDeque;
-use storage::StorageCommandSender;
+use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -28,7 +28,7 @@ pub async fn start_consensus_controller(
     serialization_context: SerializationContext,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<
     (
         ConsensusCommandSender,

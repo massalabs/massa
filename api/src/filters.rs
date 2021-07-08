@@ -165,7 +165,7 @@ use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
 };
-use storage::StorageCommandSender;
+use storage::StorageAccess;
 use time::UTime;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
@@ -202,7 +202,7 @@ pub fn get_filter(
     _protocol_config: ProtocolConfig,
     network_config: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> BoxedFilter<(impl Reply,)> {
     let evt_tx = event_tx.clone();
     let storage = opt_storage_command_sender.clone();
@@ -395,7 +395,7 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
 async fn get_block(
     event_tx: mpsc::Sender<ApiEvent>,
     hash: Hash,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<impl Reply, Rejection> {
     match retrieve_block(hash, &event_tx).await {
         Err(err) => Ok(warp::reply::with_status(
@@ -592,7 +592,7 @@ async fn get_block_interval(
     consensus_cfg: ConsensusConfig,
     start: Option<UTime>,
     end: Option<UTime>,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     match get_block_interval_process(
         event_tx,
@@ -657,7 +657,7 @@ async fn get_block_interval_process(
     consensus_cfg: ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<Vec<(Hash, Slot)>, String> {
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
@@ -944,7 +944,7 @@ async fn get_graph_interval(
     consensus_cfg: ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     match get_graph_interval_process(
         event_tx,
@@ -969,7 +969,7 @@ async fn get_graph_interval_process(
     consensus_cfg: ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<Vec<(Hash, Slot, String, Vec<Hash>)>, String> {
     //filter block from graph_export
     let mut res = retrieve_graph_export(&event_tx)

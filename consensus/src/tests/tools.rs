@@ -1,13 +1,13 @@
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{block_graph::BlockGraphExport, ConsensusConfig};
 use communication::protocol::ProtocolCommand;
-use communication::NodeId;
 use crypto::{
     hash::Hash,
-    signature::{PrivateKey, PublicKey, SignatureEngine},
+    signature::{PrivateKey, SignatureEngine},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 use std::{collections::HashSet, time::Duration};
+use storage::{StorageAccess, StorageConfig};
 use time::UTime;
 
 use tokio::time::timeout;
@@ -32,7 +32,7 @@ pub async fn validate_notpropagate_block(
                     return true;
                 }
             }
-            Ok(Some(cmd)) => {}
+            Ok(Some(_)) => {}
             Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
             Err(_) => return false,
         }
@@ -59,7 +59,7 @@ pub async fn validate_notpropagate_block_in_list(
                     return true;
                 }
             }
-            Ok(Some(cmd)) => {}
+            Ok(Some(_)) => {}
             Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
             Err(_) => return false,
         }
@@ -83,7 +83,7 @@ pub async fn validate_propagate_block_in_list(
                 assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
                 return hash;
             }
-            Ok(Some(cmd)) => {}
+            Ok(Some(_)) => {}
             Ok(msg) => panic!(
                 "an error occurs while waiting for ProtocolCommand event {:?}",
                 msg
@@ -177,6 +177,21 @@ pub async fn validate_propagate_block(
         Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
         Err(_) => panic!("timeout block not propagated"),
     };
+}
+
+pub fn start_storage(serialization_context: &SerializationContext) -> StorageAccess {
+    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
+    let storage_config = StorageConfig {
+        /// Max number of bytes we want to store
+        max_stored_blocks: 50,
+        /// path to db
+        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
+        cache_capacity: 256,  //little to force flush cache
+        flush_interval: None, //defaut
+    };
+    let (storage_command_tx, _storage_manager) =
+        storage::start_storage(storage_config, serialization_context.clone()).unwrap();
+    storage_command_tx
 }
 
 pub async fn validate_send_block(

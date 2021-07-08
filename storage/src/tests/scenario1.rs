@@ -1,5 +1,5 @@
 use super::tools;
-use crate::{start_storage_controller, StorageCommandSender, StorageConfig};
+use crate::{start_storage, StorageAccess, StorageConfig};
 use crypto::hash::Hash;
 use models::{SerializationContext, Slot};
 
@@ -23,7 +23,7 @@ async fn test_max_block_count() {
         max_message_size: 3 * 1024 * 1024,
     };
 
-    let (storage, manager) = start_storage_controller(config, serialization_context).unwrap();
+    let (storage, manager) = start_storage(config, serialization_context).unwrap();
     storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
@@ -74,7 +74,7 @@ async fn test_max_nb_blocks() {
         max_message_size: 3 * 1024 * 1024,
     };
 
-    let (storage, manager) = start_storage_controller(config, serialization_context).unwrap();
+    let (storage, manager) = start_storage(config, serialization_context).unwrap();
     storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
@@ -125,7 +125,7 @@ async fn test_get_slot_range() {
         max_message_size: 3 * 1024 * 1024,
     };
 
-    let (storage, manager) = start_storage_controller(config, serialization_context).unwrap();
+    let (storage, manager) = start_storage(config, serialization_context).unwrap();
     storage.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, storage.len().await.unwrap());
     //add block in this order depending on there periode and thread
@@ -192,7 +192,7 @@ async fn test_get_slot_range() {
     manager.stop().await.unwrap();
 }
 
-async fn add_block(slot: Slot, storage: &StorageCommandSender) {
+async fn add_block(slot: Slot, storage: &StorageAccess) {
     let mut block = tools::get_test_block();
     block.header.content.slot = slot;
     let hash = Hash::hash(format!("{}", slot).as_bytes());

@@ -1,22 +1,22 @@
-use crate::{config::StorageConfig, error::StorageError, storage_worker::BlockStorage};
+use crate::{block_storage::BlockStorage, config::StorageConfig, error::StorageError};
 use crypto::hash::Hash;
 use logging::debug;
 use models::{Block, SerializationContext, Slot};
 use std::collections::HashMap;
 
-pub fn start_storage_controller(
+pub fn start_storage(
     cfg: StorageConfig,
     serialization_context: SerializationContext,
-) -> Result<(StorageCommandSender, StorageManager), StorageError> {
+) -> Result<(StorageAccess, StorageManager), StorageError> {
     debug!("starting storage controller");
     let db = BlockStorage::open(cfg, serialization_context)?;
-    Ok((StorageCommandSender(db.clone()), StorageManager(db)))
+    Ok((StorageAccess(db.clone()), StorageManager(db)))
 }
 
 #[derive(Clone)]
-pub struct StorageCommandSender(pub BlockStorage);
+pub struct StorageAccess(pub BlockStorage);
 
-impl StorageCommandSender {
+impl StorageAccess {
     pub async fn clear(&self) -> Result<(), StorageError> {
         let db = self.0.clone();
         tokio::task::spawn_blocking(move || db.clear()).await?

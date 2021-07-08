@@ -7,7 +7,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
 use models::{Block, Slot};
-use storage::StorageCommandSender;
+use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
     time::{sleep_until, Sleep},
@@ -47,7 +47,7 @@ pub struct ConsensusWorker {
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
     /// Associated storage command sender. If we want to have long term final blocks storage.
-    opt_storage_command_sender: Option<StorageCommandSender>,
+    opt_storage_command_sender: Option<StorageAccess>,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
     /// Channel receiving consensus commands.
@@ -81,7 +81,7 @@ impl ConsensusWorker {
         cfg: ConsensusConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
-        opt_storage_command_sender: Option<StorageCommandSender>,
+        opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
@@ -267,8 +267,12 @@ impl ConsensusWorker {
                 self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedBlockHeader { hash, header } => {
-                self.block_db
-                    .incoming_header(hash, header, &mut self.selector, self.previous_slot);
+                self.block_db.incoming_header(
+                    hash,
+                    header,
+                    &mut self.selector,
+                    self.previous_slot,
+                )?;
                 self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedTransaction(_transaction) => {
@@ -295,7 +299,7 @@ impl ConsensusWorker {
         // prune block db and send discarded final blocks to storage if present
         let discarded_final_blocks = self.block_db.prune(self.previous_slot)?;
         if let Some(storage_cmd) = &self.opt_storage_command_sender {
-            storage_cmd.add_block_batch(discarded_final_blocks);
+            storage_cmd.add_block_batch(discarded_final_blocks).await?;
         }
 
         // Propagate newly active blocks.
