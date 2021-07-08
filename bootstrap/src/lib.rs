@@ -15,7 +15,7 @@ mod messages;
 use config::BootstrapConfig;
 use crypto::{
     hash::Hash,
-    signature::{sign, verify_signature, PrivateKey},
+    signature::{PrivateKey, SignatureEngine},
 };
 use error::BootstrapError;
 pub use establisher::Establisher;
@@ -39,6 +39,7 @@ async fn get_state_internal(
     let (socket_reader, socket_writer) = connector.connect(bootstrap_addr).await?;
     let mut reader = ReadBinder::new(socket_reader, serialization_context.clone());
     let mut writer = WriteBinder::new(socket_writer, serialization_context.clone());
+    let signature_engine = SignatureEngine::new();
 
     let mut random_bytes = [0u8; 32];
     StdRng::from_entropy().fill_bytes(&mut random_bytes);
@@ -88,7 +89,7 @@ async fn get_state_internal(
     let mut signed_data = random_bytes.to_vec();
     signed_data.extend(server_time.to_bytes_compact(&serialization_context)?);
     let signed_data_hash = Hash::hash(&signed_data);
-    verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
+    signature_engine.verify(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
 
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
@@ -136,7 +137,7 @@ async fn get_state_internal(
     let mut signed_data = sig_prev.to_bytes().to_vec();
     signed_data.extend(peers.to_bytes_compact(&serialization_context)?);
     let signed_data_hash = Hash::hash(&signed_data);
-    verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
+    signature_engine.verify(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
     let sig_prev = sig;
 
     // Third, handle state message.
@@ -159,7 +160,7 @@ async fn get_state_internal(
     let mut signed_data = sig_prev.to_bytes().to_vec();
     signed_data.extend(graph.to_bytes_compact(&serialization_context)?);
     let signed_data_hash = Hash::hash(&signed_data);
-    verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
+    signature_engine.verify(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
 
     Ok((graph, compensation_millis, peers))
 }
@@ -291,6 +292,7 @@ impl BootstrapServer {
         massa_trace!("bootstrap.lib.manage_bootstrap", {});
         let mut reader = ReadBinder::new(reader, self.serialization_context.clone());
         let mut writer = WriteBinder::new(writer, self.serialization_context.clone());
+        let signature_engine = SignatureEngine::new();
 
         // Initiation
         let random_bytes = match tokio::time::timeout(self.read_timeout.into(), reader.next()).await
@@ -315,7 +317,7 @@ impl BootstrapServer {
         let mut signed_data = random_bytes.to_vec();
         signed_data.extend(server_time.to_bytes_compact(&self.serialization_context)?);
         let signed_data_hash = Hash::hash(&signed_data);
-        let signature = sign(&signed_data_hash, &self.private_key)?;
+        let signature = signature_engine.sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::BootstrapTime {
@@ -343,7 +345,7 @@ impl BootstrapServer {
         signed_data.extend(&last_sig.into_bytes());
         signed_data.extend(peers.to_bytes_compact(&self.serialization_context)?);
         let signed_data_hash = Hash::hash(&signed_data);
-        let signature = sign(&signed_data_hash, &self.private_key)?;
+        let signature = signature_engine.sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::BootstrapPeers {
@@ -371,7 +373,7 @@ impl BootstrapServer {
         signed_data.extend(&last_sig.into_bytes());
         signed_data.extend(graph.to_bytes_compact(&self.serialization_context)?);
         let signed_data_hash = Hash::hash(&signed_data);
-        let signature = sign(&signed_data_hash, &self.private_key)?;
+        let signature = signature_engine.sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::ConsensusState {

@@ -3,7 +3,7 @@ use super::{
     timeslots::*,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
-use crypto::signature::{derive_public_key, PublicKey};
+use crypto::{signature::PublicKey, signature::SignatureEngine};
 use models::{Block, BlockId, Slot};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet};
@@ -118,10 +118,9 @@ impl ConsensusWorker {
             .collect();
 
         massa_trace!("consensus.consensus_worker.new", {});
-        let genesis_public_key = derive_public_key(&cfg.genesis_key);
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
-            genesis_public_key,
+            genesis_public_key: SignatureEngine::new().derive_public_key(&cfg.genesis_key),
             protocol_command_sender,
             protocol_event_receiver,
             opt_storage_command_sender,

@@ -7,7 +7,7 @@ use crate::{
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
     signature::{
-        verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+        PublicKey, Signature, SignatureEngine, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
     },
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -196,9 +196,10 @@ impl Operation {
     pub fn verify_integrity(
         &self,
         context: &SerializationContext,
+        signature_engine: &SignatureEngine,
     ) -> Result<OperationId, ModelsError> {
         let content_hash = Hash::hash(&self.content.to_bytes_compact(context)?);
-        verify_signature(
+        signature_engine.verify(
             &content_hash,
             &self.signature,
             &self.content.sender_public_key,
@@ -244,6 +245,8 @@ impl DeserializeCompact for Operation {
 
 #[cfg(test)]
 mod tests {
+    use crypto::signature::SignatureEngine;
+
     use super::*;
 
     #[test]
@@ -262,11 +265,12 @@ mod tests {
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         };
-        let sender_priv = crypto::generate_random_private_key();
-        let sender_pub = crypto::derive_public_key(&sender_priv);
+        let signature_engine = SignatureEngine::new();
+        let sender_priv = SignatureEngine::generate_random_private_key();
+        let sender_pub = signature_engine.derive_public_key(&sender_priv);
 
-        let recv_priv = crypto::generate_random_private_key();
-        let recv_pub = crypto::derive_public_key(&recv_priv);
+        let recv_priv = SignatureEngine::generate_random_private_key();
+        let recv_pub = signature_engine.derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -289,7 +293,7 @@ mod tests {
         assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
 
         let hash = Hash::hash(&content.to_bytes_compact(&context).unwrap());
-        let signature = crypto::sign(&hash, &sender_priv).unwrap();
+        let signature = signature_engine.sign(&hash, &sender_priv).unwrap();
 
         let op = Operation {
             content: content.clone(),
