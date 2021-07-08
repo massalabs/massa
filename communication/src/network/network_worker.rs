@@ -259,7 +259,7 @@ impl NetworkWorker {
                                 "node_id": node_id,
                                 "err": format!("{:?}", err)
                             });
-                            ConnectionClosureReason::Normal
+                            ConnectionClosureReason::Failed
                         }
                     };
 
