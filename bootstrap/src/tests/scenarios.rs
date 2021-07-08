@@ -18,12 +18,6 @@ use super::{
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
-    stderrlog::new()
-        .verbosity(4)
-        .timestamp(stderrlog::Timestamp::Millisecond)
-        .init()
-        .unwrap();
-
     let (private_key, public_key) = get_keys();
     let cfg = get_bootstrap_config(public_key);
 
