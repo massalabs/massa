@@ -1,3 +1,4 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
 use crate::{get_filter, ApiConfig, ApiEvent};
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 use consensus::{

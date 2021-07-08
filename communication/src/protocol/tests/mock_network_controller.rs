@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::common::NodeId;
 use crate::network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use models::{Block, BlockHeader, BlockId, Operation};

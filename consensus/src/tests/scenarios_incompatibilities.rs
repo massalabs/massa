@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,

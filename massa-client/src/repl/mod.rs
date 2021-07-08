@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //! Rustyline integration to manager user input and command typing and execution.
 //!
 //! Command are registered with new_command_noargs or new_command repl functions.

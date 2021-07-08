@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::hash::Hash;
 use crate::error::CryptoError;
 use bs58;

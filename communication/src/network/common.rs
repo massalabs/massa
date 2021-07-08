@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use serde::{Deserialize, Serialize};
 
 /// A unique connection id for a node

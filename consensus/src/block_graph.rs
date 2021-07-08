@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //! All information concerning blocks, the block graph and cliques is managed here.
 use super::config::ConsensusConfig;
 use crate::{

@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::{mock_network_controller::MockNetworkController, tools};

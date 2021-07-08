@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use models::{

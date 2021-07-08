@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::error::CryptoError;
 use bitcoin_hashes;
 use std::{convert::TryInto, str::FromStr};

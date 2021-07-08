@@ -1,5 +1,5 @@
-//! Flexbuffer layer between raw data and our objects.
-//! TODO : is this still true ?
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::{ReadHalf, WriteHalf};

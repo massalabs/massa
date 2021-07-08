@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use communication::CommunicationError;
 use consensus::ConsensusError;
 use crypto::CryptoError;

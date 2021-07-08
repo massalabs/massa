@@ -1,6 +1,7 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 mod mock_pool_controller;
 mod mock_protocol_controller;
-mod mock_storage_controller;
 mod scenario_block_creation;
 mod scenario_roll;
 mod scenarios106;

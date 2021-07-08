@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 mod config;
 mod protocol_controller;
 mod protocol_worker;

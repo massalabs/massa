@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use api::ApiConfig;
 use bootstrap::config::BootstrapConfig;
 use communication::network::NetworkConfig;

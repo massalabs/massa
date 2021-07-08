@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //to start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::{mock_establisher, tools};
 use crate::network::binders::{ReadBinder, WriteBinder};

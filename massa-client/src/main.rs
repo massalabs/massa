@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //! Massa node client application.
 //!
 //! Allow to query a node using the node API.

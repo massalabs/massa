@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 #[macro_use]
 extern crate lazy_static;
 

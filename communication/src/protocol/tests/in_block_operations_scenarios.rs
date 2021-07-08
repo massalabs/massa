@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crypto::hash::Hash;
 use models::{get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, Slot};
 

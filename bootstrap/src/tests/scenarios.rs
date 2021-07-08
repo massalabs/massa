@@ -1,3 +1,4 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::SerializeCompact;

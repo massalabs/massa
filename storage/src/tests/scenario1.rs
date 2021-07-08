@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::tools::{self, get_dummy_block_id};
 use crate::{start_storage, StorageAccess, StorageConfig};
 use models::{SerializationContext, Slot};

@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //RUST_BACKTRACE=1 cargo test test_block_validity -- --nocapture
 
 use std::collections::HashMap;

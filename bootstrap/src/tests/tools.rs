@@ -1,3 +1,4 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};

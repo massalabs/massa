@@ -1,17 +1,7 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 pub use log::{debug, error, info, trace, warn};
 
-/*
-macro_rules! function_path {
-    () => {{
-        fn f() {}
-        fn type_name_of<T>(_: T) -> &'static str {
-            std::any::type_name::<T>()
-        }
-        let name = type_name_of(f);
-        &name[..name.len() - 3]
-    }};
-}
-*/
 #[macro_export]
 macro_rules! massa_trace {
     ($evt:expr, $params:tt) => {

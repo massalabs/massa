@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, ModelsError, Operation, OperationId, SerializeCompact, SerializeMinBEInt,

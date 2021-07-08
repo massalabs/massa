@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use binders::{ReadBinder, WriteBinder};
 use communication::network::{BootstrapPeers, NetworkCommandSender};
 use consensus::{BootsrapableGraph, ConsensusCommandSender, ExportProofOfStake};

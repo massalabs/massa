@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use std::collections::{HashMap, HashSet};
 
 use crypto::{hash::Hash, signature::PublicKey};

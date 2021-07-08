@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //!Rustyline integration to manage command completion.
 //!
 //! See [Rustyline documentation](https://docs.rs/rustyline) for trait impl

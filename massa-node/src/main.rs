@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 #![feature(ip)]
 #![feature(destructuring_assignment)]
 

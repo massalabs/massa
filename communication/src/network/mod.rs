@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //! Manages a connection with a node
 mod binders;
 mod common;

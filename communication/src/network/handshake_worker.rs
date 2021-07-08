@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //! Here are happening handshakes.
 use super::{
     binders::{ReadBinder, WriteBinder},

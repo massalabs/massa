@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::config::NetworkConfig;
 use crate::error::{CommunicationError, NetworkConnectionErrorType};
 use itertools::Itertools;

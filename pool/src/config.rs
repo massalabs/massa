@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use serde::Deserialize;
 
 pub const CHANNEL_SIZE: usize = 256;

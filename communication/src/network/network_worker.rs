@@ -1,5 +1,6 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //! The network worker actually does the job of managing connections
-//! That's why it's ... a worker ! 🦀
 use super::{
     common::{ConnectionClosureReason, ConnectionId},
     config::{NetworkConfig, CHANNEL_SIZE},

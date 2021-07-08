@@ -1,7 +1,7 @@
 [package]
 name = "massa-client"
 version = "0.1.0"
-authors = ["Massa Labs <contact@massa.network>"]
+authors = ["Massa Labs <info@massa.net>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,7 +15,7 @@ clap = "2.33.3"
 thiserror = "1.0"
 crypto = {path = "../crypto"}
 bs58 = { version = "0.4", features = ["check"] }
-bitcoin_hashes = "0.9"
+bitcoin_hashes = "0.10"
 serde_json = { version = "1.0" }
 chrono = "0.4.19"
 log = { version = "0.4" }

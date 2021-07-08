@@ -1,3 +1,7 @@
+# Massa
+
+The decentralized and scaled blockchain.
+
 ## Setup from scratch for ubuntu
 
 * curl : `sudo apt install curl`

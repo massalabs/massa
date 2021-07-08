@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::{network::ConnectionId, protocol::ProtocolEvent};
 use models::ModelsError;
 use std::net::IpAddr;

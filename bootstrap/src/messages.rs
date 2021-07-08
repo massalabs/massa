@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use communication::network::BootstrapPeers;
 use consensus::{BootsrapableGraph, ExportProofOfStake};
 use crypto::signature::{Signature, SIGNATURE_SIZE_BYTES};

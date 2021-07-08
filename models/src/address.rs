@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::ModelsError;
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},

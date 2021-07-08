@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //! warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 use crate::error::ConsensusError;
 use models::Slot;

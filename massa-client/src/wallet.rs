@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::ReplData;
 use crate::ReplError;
 use crypto::hash::Hash;

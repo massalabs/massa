@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
 use crate::network::NetworkCommand;

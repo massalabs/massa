@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 #![recursion_limit = "256"]
 
 mod config;

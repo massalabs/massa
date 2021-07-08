@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::error::ModelsError;
 use integer_encoding::VarInt;
 use std::convert::TryInto;

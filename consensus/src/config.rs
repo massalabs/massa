@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crypto::signature::PrivateKey;
 use serde::Deserialize;
 use std::{default::Default, path::PathBuf, usize};

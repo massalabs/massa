@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use models::ModelsError;
 use sled::transaction::{TransactionError, UnabortableTransactionError};
 use thiserror::Error;

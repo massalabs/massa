@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use crate::common::NodeId;

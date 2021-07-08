@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};

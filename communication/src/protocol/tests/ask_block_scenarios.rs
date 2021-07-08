@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;

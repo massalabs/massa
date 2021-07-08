@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},

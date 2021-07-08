@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 #[cfg(not(test))]
 use std::{io, net::SocketAddr};
 #[cfg(not(test))]

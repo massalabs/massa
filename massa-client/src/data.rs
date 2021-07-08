@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 //!Contains all the structure receive using the REST API.
 //!
 //!All struct implements display to be shown on the screen.
