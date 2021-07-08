@@ -181,35 +181,27 @@ impl PeerInfoDatabase {
         let peers_file = cfg.peers_file.clone();
         let peers_file_dump_interval = cfg.peers_file_dump_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
+        let mut need_dump = false;
         let saver_join_handle = tokio::spawn(async move {
             let delay = sleep(Duration::from_millis(0));
             tokio::pin!(delay);
-            let mut pending: Option<HashMap<IpAddr, PeerInfo>> = None;
             loop {
                 tokio::select! {
                     opt_p = saver_watch_rx.changed() => match opt_p {
-                        Ok(()) => {
-                            pending = Some(saver_watch_rx.borrow().clone());
-                            if !delay.is_elapsed() {
-                                continue;
-                            }
-                            //unwrap pending set to some before.
-                            if let Err(e) = dump_peers(pending.as_ref().unwrap(), &peers_file).await {
-                                warn!("could not dump peers to file: {}", e);
-                            } else {
-                                pending = None;
-                            }
+                        Ok(_) => if !need_dump {
                             delay.set(sleep(peers_file_dump_interval.to_duration()));
+                            need_dump = true;
                         },
-                        _ => break
+                        Err(_) => break
                     },
-                    _ = &mut delay => {
-                        if let Some(ref p) = pending {
-                            if let Err(e) = dump_peers(&p, &peers_file).await {
+                    _ = &mut delay, if need_dump => {
+                        let to_dump = saver_watch_rx.borrow().clone();
+                        match dump_peers(&to_dump, &peers_file).await {
+                            Ok(_) => { need_dump = false; },
+                            Err(e) => {
                                 warn!("could not dump peers to file: {}", e);
-                                continue;
+                                delay.set(sleep(peers_file_dump_interval.to_duration()));
                             }
-                            pending = None;
                         }
                     }
                 }

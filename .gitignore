@@ -3,3 +3,4 @@ lcov.info
 **/target
 **/Cargo.lock
 !/testrun/Cargo.lock
+massa-client/config/history.txt

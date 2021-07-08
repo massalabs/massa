@@ -68,6 +68,7 @@ async fn main() {
         .module("logging")
         .module("models")
         .module("time")
+        .module("api")
         .verbosity(cfg.logging.level)
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
