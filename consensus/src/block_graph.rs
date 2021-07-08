@@ -1248,9 +1248,9 @@ pub fn check_signature(
     header: BlockHeader,
     hash: Hash,
     signature: Signature,
-) -> Result<bool, ConsensusError> {
+) -> Result<(), ConsensusError> {
     SignatureEngine::new()
-        .verify(&hash, &signature, &header.creator)
+        .verify(&hash, &signature, &header.content.creator)
         .map_err(|e| ConsensusError::from(e))
 }
 
