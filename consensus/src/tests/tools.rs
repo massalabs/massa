@@ -340,6 +340,7 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             max_bootstrap_cliques: 100,
             max_bootstrap_deps: 100,
             max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
         },
     )
 }

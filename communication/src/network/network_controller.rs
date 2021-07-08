@@ -12,7 +12,7 @@ use crypto::{
 };
 use models::{Block, BlockHeader, SerializationContext};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     net::IpAddr,
 };
 use tokio::{
@@ -163,12 +163,11 @@ impl NetworkCommandSender {
     /// Send the order to ask for a block.
     pub async fn ask_for_block(
         &mut self,
-        node: NodeId,
-        hash: Hash,
+        list: HashMap<NodeId, HashSet<Hash>>,
     ) -> Result<(), CommunicationError> {
         trace!("before sending NetworkCommand::AskForBlock from NetworkCommandSender.0 in NetworkCommandSender ask_for_block");
         self.0
-            .send(NetworkCommand::AskForBlock { node, hash })
+            .send(NetworkCommand::AskForBlocks { list })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send AskForBlock command".into())

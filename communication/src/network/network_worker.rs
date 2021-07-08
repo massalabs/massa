@@ -26,9 +26,8 @@ use tokio::task::JoinHandle;
 #[derive(Debug)]
 pub enum NetworkCommand {
     /// Ask for a block from a node.
-    AskForBlock {
-        node: NodeId,
-        hash: Hash,
+    AskForBlocks {
+        list: HashMap<NodeId, HashSet<Hash>>,
     },
     /// Send that block to node.
     SendBlock {
@@ -63,9 +62,9 @@ pub enum NetworkEvent {
         header: BlockHeader,
     },
     /// Someone ask for block with given header hash.
-    AskedForBlock {
+    AskedForBlocks {
         node: NodeId,
-        hash: Hash,
+        list: HashSet<Hash>,
     },
     /// That node does not have this block
     BlockNotFound {
@@ -559,21 +558,25 @@ impl NetworkWorker {
                     trace!("after sending NodeCommand::SendBlockHeader from node_command_tx in network_worker manage_network_command");
                 }
             }
-            NetworkCommand::AskForBlock { node, hash } => {
-                if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
-                    trace!("before sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
+            NetworkCommand::AskForBlocks { list } => {
+                for (node, hash_list) in list.into_iter() {
+                    if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                        trace!("before sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
 
-                    let res = node_command_tx.send(NodeCommand::AskForBlock(hash)).await;
+                        let res = node_command_tx
+                            .send(NodeCommand::AskForBlocks(hash_list))
+                            .await;
 
-                    trace!("after sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
-                    if res.is_err() {
-                        warn!(
-                            "{}",
-                            CommunicationError::ChannelError(
-                                "ask for block node command send failed".into(),
-                            )
-                        );
-                    };
+                        trace!("after sending NodeCommand::AskForBlock from node_command_tx in network_worker manage_network_command");
+                        if res.is_err() {
+                            warn!(
+                                "{}",
+                                CommunicationError::ChannelError(
+                                    "ask for block node command send failed".into(),
+                                )
+                            );
+                        }
+                    }
                 }
             }
             NetworkCommand::SendBlock { node, block } => {
@@ -755,12 +758,12 @@ impl NetworkWorker {
                     })?;
                 trace!("after sending NetworkEvent::ReceivedBlock from controller_event_tx in network_worker on_node_event");
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlock(data)) => {
+            NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
                 trace!("before sending NetworkEvent::AskedForBlock from controller_event_tx in network_worker on_node_event");
                 self.controller_event_tx
-                    .send(NetworkEvent::AskedForBlock {
+                    .send(NetworkEvent::AskedForBlocks {
                         node: from_node_id,
-                        hash: data,
+                        list,
                     })
                     .await
                     .map_err(|_| {

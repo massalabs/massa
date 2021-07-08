@@ -168,7 +168,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
         MockNetworkController::new();
 
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
+        cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
         _ => None,
     };
 
@@ -308,7 +308,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     // 3. Simulate two nodes asking for a block.
     for n in 0..2 {
         network_controller
-            .send_ask_for_block(nodes[n].id, expected_hash)
+            .send_ask_for_block(nodes[n].id, vec![expected_hash].into_iter().collect())
             .await;
 
         // Check protocol sends get block event to consensus.

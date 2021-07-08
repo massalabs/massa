@@ -86,6 +86,7 @@ pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
             max_bootstrap_cliques: 100,
             max_bootstrap_deps: 100,
             max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
         },
     )
 }
@@ -117,15 +118,15 @@ pub async fn assert_hash_asked_to_node(
     network_controller: &mut MockNetworkController,
 ) {
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        NetworkCommand::AskForBlock { node, hash } => Some((node, hash)),
+        NetworkCommand::AskForBlocks { list } => Some(list),
         _ => None,
     };
-    let (ask_to_node_id, asked_for_hash) = network_controller
+    let list = network_controller
         .wait_command(1000.into(), ask_for_block_cmd_filter)
         .await
         .expect("Hash not asked for before timer.");
-    assert_eq!(hash_1, asked_for_hash);
-    assert_eq!(ask_to_node_id, node_id);
+
+    assert!(list.get(&node_id).unwrap().contains(&hash_1));
 }
 
 pub async fn assert_banned_node(node_id: NodeId, network_controller: &mut MockNetworkController) {
