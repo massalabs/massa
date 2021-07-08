@@ -239,3 +239,44 @@ graph TD
     U & V --> Y
     W --> Z[[Ready]]
 ```
+
+
+### check block
+```mermaid
+graph TD
+    Block -->  K{Known}
+    K--> C((No))
+    K --> B((Yes))
+
+    C --> CH{Check Header}
+
+    B --> NRY[NotReceivedYet]
+    B --> HO[HeaderOnly]
+    B --> FB[FullBlock]
+
+    NRY & HO --> CH
+
+    B --> D[Discarded]
+
+    B --> G[Genesis]
+    B --> A[Active]
+    B --> F[Final]
+
+    G & A & F --> X[[Do nothing]]
+    FB & D --> Y[[Update sequence number]]
+
+    CH --> H([Ready])
+    CH --> I([Update sequence number])
+    CH --> J([Do nothing])
+
+    J --> X
+    I --> Y
+
+    H --> L{"Transaction incompatibilities"}
+    L--> M((No))
+    L --> N((Yes))
+
+    N --> |promote| O(Discarded) --> Y
+
+    M --> P[[Ready]]
+```
