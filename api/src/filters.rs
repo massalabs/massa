@@ -539,14 +539,14 @@ pub fn hash_slot_vec_to_json(input: Vec<(Hash, Slot)>) -> Vec<serde_json::Value>
 ///
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<Vec<serde_json::Value>, ApiError> {
+) -> Result<Vec<HashSlot>, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
 
     let parents = graph.best_parents;
     let mut best = Vec::new();
     for hash in parents {
         match graph.active_blocks.get_key_value(&hash) {
-            Some((_, block)) => best.push((hash, block.block.content.slot)),
+            Some((_, block)) => best.push((hash, block.block.content.slot).into()),
             None => {
                 return Err(ApiError::DataInconsistencyError(format!(
                     "inconsistency error between best_parents and active_blocks"
@@ -555,7 +555,7 @@ async fn get_current_parents(
         }
     }
 
-    Ok(hash_slot_vec_to_json(best))
+    Ok(best)
 }
 
 /// Returns last final blocks as a Vec<(Hash, Slot)>.
