@@ -14,7 +14,7 @@ struct ThreadCycleState {
     cycle: u64,
     last_final_slot: Slot,  // last final slot of cycle for this thread (even if miss)
     roll_count: RollCounts,  // number of rolls addresses have
-    cycle_updates: RollUpdates,  // compensated number of rolls addresses have bought/sold in the cycle 
+    cycle_updates: RollUpdates,  // compensated number of rolls addresses have bought/sold in the cycle
     rng_seed: BitVec // https://docs.rs/bitvec/0.22.3/bitvec/
 }
 
@@ -22,6 +22,7 @@ pub struct RollCounts(pub BTreeMap<Address, u64>);
 ```
 
 * `cycle_states: Vec<VecDeque<ThreadCycleState> >` indices: [thread][cycle] -> ThreadCycleState
+where the index "cycle" is relative cycle number with respect to the latest one stored. 
 
 Those values are either bootstrapped, or set to their genesis values:
 * cycle_states:
@@ -39,24 +40,30 @@ Add a field:
 
 ### Principle
 
-To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of ThreadCycleState.rng_seed for all threads in increasing order)`, then draw an index among the cumsum of the `cycle_states.roll_count` for cycle `N-3` among all threads.
+1. To get the draws for cycle N:
+	1. seed the RNG with the `Sha256(concatenation of ThreadCycleState.rng_seed for all threads in increasing order)`,
+	2. draw an index among the cumsum of the `cycle_states.roll_count` for cycle `N-3` among all threads.
 
 > The complexity of a draw should be in `O(log(K))` where K is the roll ledger size.
 
-* if the lookback cycle N-3 < 0:
-  * use the initial (genesis) roll registry as the roll count source
-  * `sha256^N(cfg.initial_draw_seed)` as the seed, where `sha256^N` means that we apply the sha256 hash function N times consecutively 
+1. if the lookback cycle N-3 < 0:
+  1. use the initial (genesis) roll registry as the roll count source
+  2. `sha256^N(cfg.initial_draw_seed)` as the seed, where `sha256^N` means that we apply the sha256 hash function N times consecutively
 
-*  if the draw is being performed for a genesis slot, force the draw outcome to match the genesis creator's address to keep draws consistent
+2.  if the draw is being performed for a genesis slot
+  1. force the draw outcome to match the genesis creator's address to keep draws consistent
 
 > For consistency, genesis block bits are also fed to the RNG seed bitfields
 
 ### Cache
 
-When computing draws for a cycle, draw the whole cycle and leave it in cache.
-Keep a config-defined maximal number of cycles in cache.
-If there are too many, drop the ones with the lowest sequence number.
-Whenever cache is computed or read for a given cycle, set its sequence number to a new incremental value.
+
+1. When computing draws for a cycle:
+	1. draw the whole cycle and add to the cache.
+	2. If the number of items in the cache is above a configured maximum:
+		1. drop the ones with the lowest sequence number
+2. Whenever cache is computed or read for a given cycle, set its sequence number to a new incremental value.
+
 
 ## When a new block B arrives in thread Tau, cycle N
 
@@ -65,7 +72,7 @@ Whenever cache is computed or read for a given cycle, set its sequence number to
 `get_roll_data_at_parent(BlockId, HashSet<Address>) -> RollCounts` returns the RollCounts addresses had at the output of BlockId.
 
 1. start from BlockId, and explore itself and its ancestors backwards in the same thread:
-	1. if a final block is explored, break + save final_cycle 
+	1. if a final block is explored, break + save final_cycle
 	2. otherwise, stack the explored block ID
 2. set cur_rolls = the latest final roll state at final_cycle for the selected addresses
 3. while block_id = stack.pop():
@@ -79,7 +86,7 @@ Whenever cache is computed or read for a given cycle, set its sequence number to
 3. set `cur_rolls = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
 4. set `B.roll_updates = new()`
 5. if the block is the first of a new cycle N for thread Tau:
-	1. credit `roll_price * cycle_states[Tau][4].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
+	1. credit `roll_price * cycle_states[Tau][1 + lookback_cycles + lock_cycles].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
 6. parse the operations of the block in order:
 	1. Apply roll changes to cur_rolls. If the new roll count under/over-flows u64 => block invalid
 	2. try chain roll changes to `B.roll_updates`. If the new roll delta under/over-flows u64 => block invalid
@@ -93,5 +100,5 @@ Whenever cache is computed or read for a given cycle, set its sequence number to
 	2. pop back for cycle_states[thread] to keep it the right size
 2. if there were misses between B and its parent, for each of them in order:
 	1. push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in cycle_states[thread].rng_seed
-3. update the ThreadCycleState roll counts at cycle N with by applying ActiveBlock.roll_updates 
+3. update the ThreadCycleState roll counts at cycle N with by applying ActiveBlock.roll_updates
 4. push the 1st bit of BlockId in cycle_states[thread].rng_seed
