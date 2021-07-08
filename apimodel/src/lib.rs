@@ -3,7 +3,8 @@ use chrono::TimeZone;
 use communication::PeerInfo;
 use consensus::DiscardReason;
 use crypto::hash::Hash;
-use models::{BlockHeader, Slot};
+use crypto::signature::Signature;
+use models::{Block, BlockHeader, Operation, Slot};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -99,6 +100,35 @@ impl std::fmt::Display for WrappedBlockHeader {
         )
         //        writeln!(f, "  parents:{:?}", self.parents)?;
         //        writeln!(f, "  endorsements:{:?}", self.endorsements)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WrapperBlock {
+    pub header: WrappedBlockHeader,
+    pub operations: Vec<Operation>,
+    pub signature: Signature,
+}
+
+impl From<Block> for WrapperBlock {
+    fn from(block: Block) -> Self {
+        WrapperBlock {
+            operations: block.operations,
+            signature: block.header.signature,
+            header: block.header.into(),
+        }
+    }
+}
+
+impl std::fmt::Display for WrapperBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let signature = self.signature.to_string();
+        let signature = if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
+            &signature[..4]
+        } else {
+            &signature
+        };
+        write!(f, "{} signature:{} operations:....", self.header, signature)
     }
 }
 
@@ -265,7 +295,9 @@ impl std::fmt::Display for Cliques {
         self.content
             .iter()
             .map(|clique| {
-                let formated = format_hash_slot_list(&clique.iter().collect::<Vec<&HashSlot>>());
+                let mut list: Vec<&HashSlot> = clique.iter().collect();
+                list.sort_unstable_by_key(|v| (v.slot, v.hash));
+                let formated = format_hash_slot_list(&list);
                 writeln!(f, "{:#?}", formated)
             })
             .collect()
@@ -296,7 +328,7 @@ impl std::fmt::Display for NetworkInfo {
 }
 
 #[derive(Clone, Deserialize)]
-struct WrappedPeerInfo(PeerInfo);
+pub struct WrappedPeerInfo(PeerInfo);
 
 impl From<PeerInfo> for WrappedPeerInfo {
     fn from(peer: PeerInfo) -> Self {
