@@ -1,5 +1,5 @@
-pub mod error;
 pub mod config;
+pub mod error;
 
 #[cfg(test)]
 mod tests {
