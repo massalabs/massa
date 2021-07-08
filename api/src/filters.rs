@@ -147,7 +147,7 @@
 
 use crate::ApiError;
 
-use apimodel::{BlockInfo, Cliques, HashSlot, HashSlotTime, NetworkInfo, State};
+use apimodel::{BlockInfo, Cliques, HashSlot, HashSlotTime, NetworkInfo, StakerInfo, State};
 
 use super::config::ApiConfig;
 use communication::{
@@ -901,23 +901,23 @@ async fn get_staker_info(
     api_cfg: ApiConfig,
     consensus_cfg: ConsensusConfig,
     creator: PublicKey,
-) -> Result<serde_json::Value, ApiError> {
+) -> Result<StakerInfo, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
 
     let blocks = graph
         .active_blocks
         .iter()
         .filter(|(_hash, block)| block.block.content.creator == creator)
-        .map(|(hash, block)| (hash, block.block.clone()))
-        .collect::<Vec<(&Hash, BlockHeader)>>();
+        .map(|(hash, block)| (hash.clone(), block.block.clone()))
+        .collect::<Vec<(Hash, BlockHeader)>>();
 
     let discarded = graph
         .discarded_blocks
         .map
         .iter()
         .filter(|(_hash, (_reason, header))| header.content.creator == creator)
-        .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
-        .collect::<Vec<(&Hash, DiscardReason, BlockHeader)>>();
+        .map(|(hash, (reason, header))| (hash.clone(), reason.clone(), header.clone()))
+        .collect::<Vec<(Hash, DiscardReason, BlockHeader)>>();
     let cur_time = UTime::now()?;
     let start_slot = consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
@@ -944,9 +944,9 @@ async fn get_staker_info(
         })
         .collect();
 
-    Ok(json!({
-        "staker_active_blocks": blocks,
-        "staker_discarded_blocks": discarded,
-        "staker_next_draws": next_slots_by_creator,
-    }))
+    Ok(StakerInfo {
+        staker_active_blocks: blocks,
+        staker_discarded_blocks: discarded,
+        staker_next_draws: next_slots_by_creator,
+    })
 }
