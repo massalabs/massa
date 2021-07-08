@@ -1,13 +1,18 @@
 use crate::error::InternalError;
 use sled::Tree;
-use std::{collections::HashMap, convert::TryInto, usize};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryInto,
+    usize,
+};
 
 use crate::{ConsensusConfig, ConsensusError};
-use models::DeserializeVarInt;
 use models::{
     array_from_slice, Address, DeserializeCompact, SerializationContext, SerializeCompact,
     SerializeVarInt,
 };
+use models::{DeserializeVarInt, Operation};
+use serde::{Deserialize, Serialize};
 
 struct Ledger {
     ledger_per_thread: Vec<Tree>, // containing (Address, LedgerData)
@@ -17,7 +22,7 @@ struct Ledger {
 }
 
 #[derive(Debug)]
-struct LedgerData {
+pub struct LedgerData {
     balance: u64,
 }
 
@@ -44,9 +49,24 @@ impl DeserializeCompact for LedgerData {
     }
 }
 
-struct LedgerChange {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LedgerChange {
     balance_delta: u64,
     balance_increment: bool, // wether to increment or decrement balance of delta
+}
+
+impl LedgerChange {
+    fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
+        if self.balance_increment == change.balance_increment {
+            self.balance_delta = self.balance_delta + change.balance_delta;
+        } else {
+            if change.balance_delta > self.balance_delta {
+                self.balance_increment = !self.balance_increment;
+            }
+            self.balance_delta = change.balance_delta - self.balance_delta;
+        }
+        Ok(())
+    }
 }
 
 impl LedgerData {
@@ -63,6 +83,25 @@ impl LedgerData {
             }
         }
         Ok(())
+    }
+}
+
+trait OerationLedgerInterface {
+    fn get_involved_addresses(fee_target: &Address) -> HashSet<Address>;
+    fn get_changes(
+        fee_target: &Address,
+    ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError>;
+}
+
+impl OerationLedgerInterface for Operation {
+    fn get_involved_addresses(fee_target: &Address) -> HashSet<Address> {
+        todo!()
+    }
+
+    fn get_changes(
+        fee_target: &Address,
+    ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError> {
+        todo!()
     }
 }
 

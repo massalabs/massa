@@ -1,10 +1,13 @@
 //! All information concerning blocks, the block graph and cliques is managed here.
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
-use crate::error::ConsensusError;
+use crate::{
+    error::ConsensusError,
+    ledger::{LedgerChange, LedgerData},
+};
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
-    array_from_slice, u8_from_slice, Block, BlockHeader, BlockHeaderContent, BlockId,
+    array_from_slice, u8_from_slice, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializationContext, SerializeCompact,
     SerializeVarInt, Slot,
 };
@@ -36,6 +39,7 @@ pub struct ActiveBlock {
     dependencies: HashSet<BlockId>,       // dependencies required for validity check
     descendants: HashSet<BlockId>,
     is_final: bool,
+    block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
 }
 
 impl ActiveBlock {
@@ -93,6 +97,7 @@ impl<'a> From<ExportActiveBlock> for ActiveBlock {
             dependencies: block.dependencies.into_iter().collect(),
             descendants: HashSet::new(),
             is_final: block.is_final,
+            block_ledger_change: Vec::new(), //todo update see #310
         }
     }
 }
@@ -628,6 +633,7 @@ enum CheckOutcome {
         dependencies: HashSet<BlockId>,
         incompatibilities: HashSet<BlockId>,
         inherited_incompatibilities_count: usize,
+        block_changes: Vec<HashMap<Address, LedgerChange>>,
     },
     Discard(DiscardReason),
     WaitForSlot,
@@ -694,6 +700,7 @@ impl BlockGraph {
                     dependencies: HashSet::new(),
                     descendants: HashSet::new(),
                     is_final: true,
+                    block_ledger_change: Vec::new(), // todo add initial coin repartition see #311
                 }),
             );
         }
@@ -993,6 +1000,7 @@ impl BlockGraph {
             valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
+            valid_block_changes,
         ) = match self.block_statuses.get(&hash) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
@@ -1121,6 +1129,7 @@ impl BlockGraph {
                         dependencies,
                         incompatibilities,
                         inherited_incompatibilities_count,
+                        block_changes,
                     } => {
                         // block is valid: remove it from Incoming and return it
 
@@ -1133,6 +1142,7 @@ impl BlockGraph {
                             dependencies,
                             incompatibilities,
                             inherited_incompatibilities_count,
+                            block_changes,
                         )
                     }
                     CheckOutcome::WaitForDependencies(dependencies) => {
@@ -1253,6 +1263,7 @@ impl BlockGraph {
             valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
+            valid_block_changes,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
@@ -1573,6 +1584,7 @@ impl BlockGraph {
             dependencies: deps,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
+            block_changes: Vec::new(), // we do not have operations yet
         })
     }
 
@@ -1596,7 +1608,9 @@ impl BlockGraph {
                 dependencies,
                 incompatibilities,
                 inherited_incompatibilities_count,
+                block_changes,
             } => {
+                // block_changes can be ignored as it is empty, (maybe add an error if not)
                 parents = parents_hash_period;
                 deps = dependencies;
                 incomp = incompatibilities;
@@ -1608,6 +1622,7 @@ impl BlockGraph {
         //TODO check block
 
         // TODO operation incompatibility test (see issue #102)
+        let block_changes = self.check_operations(&block)?;
 
         massa_trace!("consensus.block_graph.check_block.ok", { "hash": hash });
 
@@ -1616,7 +1631,26 @@ impl BlockGraph {
             dependencies: deps,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
+            block_changes,
         })
+    }
+
+    /// Check if operations are consistent.
+    ///
+    /// Returns changes done by that block to the ledger (one hashmap per thread)
+    fn check_operations(
+        &self,
+        block: &Block,
+    ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError> {
+        Ok(Vec::new()) // todo see #266 ##Process
+    }
+
+    fn get_ledger_at_parents(
+        &self,
+        parents: &Vec<BlockId>,
+        query_addrs: &HashSet<Address>,
+    ) -> Vec<HashMap<Address, LedgerData>> {
+        todo!()
     }
 
     /// Computes max cliques of compatible blocks
@@ -1675,6 +1709,7 @@ impl BlockGraph {
         deps: HashSet<BlockId>,
         incomp: HashSet<BlockId>,
         inherited_incomp_count: usize,
+        block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
     ) -> Result<(), ConsensusError> {
         // add block to status structure
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
@@ -1687,6 +1722,7 @@ impl BlockGraph {
                 block: block.clone(),
                 children: vec![HashMap::new(); self.cfg.thread_count as usize],
                 is_final: false,
+                block_ledger_change,
             }),
         );
 
