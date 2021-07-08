@@ -130,11 +130,15 @@ pub struct DependencyWaitingBlocks {
     /// Maps a dependency's hash to the set of hashes of the blocks that are blocked, wainting for this dependency.
     dep_to_blocked: HashMap<Hash, HashSet<Hash>>, // dep, hashes_blocked
     /// Maps a header's hash to a number in the queue, the whole block and the set of dependencies that block is waiting for.
-    blocked_to_dep: HashMap<Hash, (u64, Block, HashSet<Hash>)>, // hash_blocked, (block_blocked, deps)
+    blocked_to_dep: HashMap<Hash, (u64, BlockHeader, HashSet<Hash>)>, // hash_blocked, (block_blocked, deps)
     /// VecDeque of (number in the queue, hash).
     /// Note that the number in the queue is not the index in vecdeque
     /// due to update method.
     vec_blocked: VecDeque<(u64, Hash)>,
+    /// headers waiting for a dependency
+    // headers: HashMap<Hash, BlockHeader>,
+    /// blocks waiting for a dependency
+    blocks: HashMap<Hash, Block>,
     /// Maximum number of blocked blocks we allow in the structure.
     max_size: usize,
     /// Current next number in the queue.
@@ -151,6 +155,8 @@ impl DependencyWaitingBlocks {
             dep_to_blocked: HashMap::new(),
             blocked_to_dep: HashMap::with_capacity(max_size.saturating_add(1)),
             max_size,
+            //headers: HashMap::with_capacity(max_size.saturating_add(1)),
+            blocks: HashMap::with_capacity(max_size.saturating_add(1)),
             vec_blocked: VecDeque::with_capacity(max_size.saturating_add(1)),
             counter: 0,
         }
@@ -165,9 +171,9 @@ impl DependencyWaitingBlocks {
         // todo could be optimized (see issue #110)
         self.blocked_to_dep
             .iter()
-            .filter_map(|(hash, (_, block, _))| {
-                if block.header.content.slot.period
-                    <= latest_final_periods[block.header.content.slot.thread as usize]
+            .filter_map(|(hash, (_, header, _))| {
+                if header.content.slot.period
+                    <= latest_final_periods[header.content.slot.thread as usize]
                 {
                     Some(*hash)
                 } else {
@@ -210,9 +216,9 @@ impl DependencyWaitingBlocks {
             if to_promote.contains_key(&pull_h) {
                 continue; // already traversed
             }
-            if let Some((pull_seq, pull_block, pull_deps)) = self.blocked_to_dep.get(&pull_h) {
+            if let Some((pull_seq, pull_header, pull_deps)) = self.blocked_to_dep.get(&pull_h) {
                 stack.extend(pull_deps); // traverse dependencies
-                to_promote.insert(pull_h, (pull_block.header.content.slot, *pull_seq));
+                to_promote.insert(pull_h, (pull_header.content.slot, *pull_seq));
                 // remove from vecdeque
                 self.vec_blocked
                     .remove(
@@ -251,9 +257,10 @@ impl DependencyWaitingBlocks {
     pub fn insert(
         &mut self,
         hash: Hash,
-        block: Block,
+        header: BlockHeader,
+        block: Option<Block>,
         dependencies: HashSet<Hash>,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
+    ) -> Result<HashMap<Hash, (BlockHeader, Option<Block>)>, ConsensusError> {
         if self.max_size == 0 {
             return Ok(HashMap::new());
         }
@@ -266,9 +273,12 @@ impl DependencyWaitingBlocks {
         });
         match self.blocked_to_dep.entry(hash) {
             hash_map::Entry::Vacant(vac) => {
-                vac.insert((self.counter, block, dependencies.clone()));
+                vac.insert((self.counter, header, dependencies.clone()));
                 self.vec_blocked.push_back((self.counter, hash));
                 self.counter += 1;
+                if let Some(b) = block {
+                    self.blocks.insert(hash, b);
+                }
             }
             hash_map::Entry::Occupied(mut occ) => {
                 occ.get_mut().2.extend(dependencies);
@@ -279,7 +289,7 @@ impl DependencyWaitingBlocks {
         self.promote(&hash)?;
 
         // pruning
-        let mut removed: HashMap<Hash, Block> = HashMap::new();
+        let mut removed: HashMap<Hash, (BlockHeader, Option<Block>)> = HashMap::new();
         while self.vec_blocked.len() > self.max_size {
             let (_, rem_hash) = self
                 .vec_blocked
@@ -296,8 +306,13 @@ impl DependencyWaitingBlocks {
     ///
     /// # Argument
     /// * hash : hash of the block we want to retrive.
-    pub fn get(&self, hash: &Hash) -> Option<&Block> {
-        self.blocked_to_dep.get(hash).map(|(_, block, _)| block)
+    pub fn get(&self, hash: &Hash) -> (Option<BlockHeader>, Option<&Block>) {
+        let header = self
+            .blocked_to_dep
+            .get(hash)
+            .map(|(_, header, _)| header.clone());
+        let block = self.blocks.get(hash);
+        (header, block)
     }
 
     /// A valid block was obtained.
@@ -309,25 +324,27 @@ impl DependencyWaitingBlocks {
     pub fn valid_block_obtained(
         &mut self,
         obtained_h: &Hash,
-    ) -> Result<(Option<Block>, HashSet<Hash>), ConsensusError> {
+    ) -> Result<(Option<BlockHeader>, Option<Block>, HashSet<Hash>), ConsensusError> {
         // remove from blocked list
-        let ret_block = if let Some((seq, block, deps)) = self.blocked_to_dep.remove(obtained_h) {
-            if !deps.is_empty() {
-                // if it is valid, it should have no missing deps
-                return Err(ConsensusError::ContainerInconsistency);
-            }
-            // remove from deque
-            self.vec_blocked
-                .remove(
-                    self.vec_blocked
-                        .binary_search(&(seq, *obtained_h))
-                        .map_err(|_| ConsensusError::ContainerInconsistency)?,
-                )
-                .ok_or(ConsensusError::ContainerInconsistency)?;
-            Some(block)
-        } else {
-            None
-        };
+        let (ret_header, ret_block) =
+            if let Some((seq, header, deps)) = self.blocked_to_dep.remove(obtained_h) {
+                if !deps.is_empty() {
+                    // if it is valid, it should have no missing deps
+                    return Err(ConsensusError::ContainerInconsistency);
+                }
+                // remove from deque
+                self.vec_blocked
+                    .remove(
+                        self.vec_blocked
+                            .binary_search(&(seq, *obtained_h))
+                            .map_err(|_| ConsensusError::ContainerInconsistency)?,
+                    )
+                    .ok_or(ConsensusError::ContainerInconsistency)?;
+                let block = self.blocks.remove(obtained_h);
+                (Some(header), block)
+            } else {
+                (None, None)
+            };
 
         // trigger blocks waiting for it
         let mut retry_blocks: HashSet<Hash> = HashSet::new();
@@ -344,7 +361,7 @@ impl DependencyWaitingBlocks {
             retry_blocks.extend(unlock_block_hashes);
         }
 
-        Ok((ret_block, retry_blocks))
+        Ok((ret_header, ret_block, retry_blocks))
     }
 
     /// Cancels a set of blocks and all its depencendy tree.
@@ -355,12 +372,12 @@ impl DependencyWaitingBlocks {
     pub fn cancel(
         &mut self,
         cancel: HashSet<Hash>,
-    ) -> Result<HashMap<Hash, Block>, ConsensusError> {
-        let mut removed: HashMap<Hash, Block> = HashMap::new();
+    ) -> Result<HashMap<Hash, (BlockHeader, Option<Block>)>, ConsensusError> {
+        let mut removed: HashMap<Hash, (BlockHeader, Option<Block>)> = HashMap::new();
         let mut stack: Vec<Hash> = cancel.into_iter().collect();
         while let Some(hash) = stack.pop() {
             // remove if blocked
-            if let Some((seq, block, deps)) = self.blocked_to_dep.remove(&hash) {
+            if let Some((seq, header, deps)) = self.blocked_to_dep.remove(&hash) {
                 // remove from deque
                 self.vec_blocked
                     .remove(
@@ -378,8 +395,9 @@ impl DependencyWaitingBlocks {
                         }
                     }
                 }
+                let block = self.blocks.remove(&hash);
                 // add to removed list
-                removed.insert(hash, block);
+                removed.insert(hash, (header, block));
             }
 
             // drop the dependency and stack those that depend on it
@@ -449,14 +467,15 @@ mod tests {
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
-        deps.insert(hash_a, block_a.clone(), deps_a.clone())
+        deps.insert(hash_a, block_a.header.clone(), None, deps_a.clone())
             .unwrap();
 
         assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
 
         let mut deps_c = HashSet::new();
         deps_c.insert(hash_d);
-        deps.insert(hash_c, block_c, deps_c).unwrap();
+        deps.insert(hash_c, block_c.header.clone(), None, deps_c)
+            .unwrap();
 
         assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
 
@@ -476,20 +495,23 @@ mod tests {
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
-        deps.insert(hash_a, block_a.clone(), deps_a.clone())
+        deps.insert(hash_a, block_a.header.clone(), None, deps_a.clone())
             .unwrap();
 
         assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
 
         let mut deps_c = HashSet::new();
         deps_c.insert(hash_d);
-        deps.insert(hash_c, block_c, deps_c).unwrap();
+        deps.insert(hash_c, block_c.header.clone(), None, deps_c)
+            .unwrap();
 
         assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
 
         let mut deps_e = HashSet::new();
         deps_e.insert(hash_f);
-        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
+        let removed = deps
+            .insert(hash_e, block_e.header.clone(), None, deps_e)
+            .unwrap();
 
         // block_a has been
         assert_eq!(deps.vec_blocked, vec![(3, hash_c), (5, hash_e)]);
@@ -508,7 +530,7 @@ mod tests {
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
         let removed = deps
-            .insert(hash_a, block_a.clone(), deps_a.clone())
+            .insert(hash_a, block_a.header.clone(), None, deps_a.clone())
             .unwrap();
         assert_eq!(removed.len(), 0);
 
@@ -516,13 +538,17 @@ mod tests {
 
         let mut deps_c = HashSet::new();
         deps_c.insert(hash_a);
-        let removed = deps.insert(hash_c, block_c, deps_c).unwrap();
+        let removed = deps
+            .insert(hash_c, block_c.header.clone(), None, deps_c)
+            .unwrap();
         assert_eq!(removed.len(), 0);
         assert_eq!(deps.vec_blocked, vec![(3, hash_a), (4, hash_c)]);
 
         let mut deps_e = HashSet::new();
         deps_e.insert(hash_c);
-        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
+        let removed = deps
+            .insert(hash_e, block_e.header.clone(), None, deps_e)
+            .unwrap();
 
         // block_a has been
         assert_eq!(deps.vec_blocked.len(), 0);
@@ -539,20 +565,21 @@ mod tests {
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
-        deps.insert(hash_a, block_a.clone(), deps_a.clone())
+        deps.insert(hash_a, block_a.header.clone(), None, deps_a.clone())
             .unwrap();
 
         assert_eq!(deps.vec_blocked, vec![(1, hash_a)]);
 
         let mut deps_c = HashSet::new();
         deps_c.insert(hash_d);
-        deps.insert(hash_c, block_c, deps_c).unwrap();
+        deps.insert(hash_c, block_c.header.clone(), None, deps_c)
+            .unwrap();
 
         assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
 
-        let (block, hashset) = deps.valid_block_obtained(&hash_b).unwrap();
+        let (header, block, hashset) = deps.valid_block_obtained(&hash_b).unwrap();
 
-        assert!(block.is_none()); //block_b was never in the structure
+        assert!(header.is_none()); //block_b was never in the structure
         assert!(hashset.contains(&hash_a));
         assert_eq!(hashset.len(), 1);
         assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
@@ -570,7 +597,7 @@ mod tests {
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
         let removed = deps
-            .insert(hash_a, block_a.clone(), deps_a.clone())
+            .insert(hash_a, block_a.header.clone(), None, deps_a.clone())
             .unwrap();
         assert_eq!(removed.len(), 0);
 
@@ -578,13 +605,17 @@ mod tests {
 
         let mut deps_c = HashSet::new();
         deps_c.insert(hash_d);
-        let removed = deps.insert(hash_c, block_c, deps_c).unwrap();
+        let removed = deps
+            .insert(hash_c, block_c.header.clone(), None, deps_c)
+            .unwrap();
         assert_eq!(removed.len(), 0);
         assert_eq!(deps.vec_blocked, vec![(1, hash_a), (3, hash_c)]);
 
         let mut deps_e = HashSet::new();
         deps_e.insert(hash_a);
-        let removed = deps.insert(hash_e, block_e, deps_e).unwrap();
+        let removed = deps
+            .insert(hash_e, block_e.header.clone(), None, deps_e)
+            .unwrap();
         assert_eq!(
             deps.vec_blocked,
             vec![(3, hash_c), (5, hash_a), (6, hash_e)]

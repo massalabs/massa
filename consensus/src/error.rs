@@ -51,6 +51,8 @@ pub enum ConsensusError {
     ReceiveChannelError(String),
     #[error("Storage error : {0}")]
     StorageError(#[from] storage::StorageError),
+    #[error("still wainting for block")]
+    WaitingForBlockContent,
 }
 
 #[derive(Error, Debug)]
