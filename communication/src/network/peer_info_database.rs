@@ -1450,6 +1450,7 @@ mod tests {
             max_message_size: 3 * 10241024,
             message_timeout: UTime::from(5000u64),
             ask_peer_list_interval: UTime::from(50000u64),
+            private_key_file: std::path::PathBuf::new(),
         }
     }
 
