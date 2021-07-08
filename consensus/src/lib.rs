@@ -2,6 +2,7 @@
 #![feature(bool_to_option)]
 #![feature(hash_drain_filter)]
 #![feature(map_first_last)]
+#![feature(binary_heap_into_iter_sorted)]
 
 #[macro_use]
 extern crate logging;

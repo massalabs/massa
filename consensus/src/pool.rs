@@ -60,11 +60,12 @@ impl Pool {
                 }
             }
         }
+        // todo!() // see #270
     }
 
     /// Update current_slot and discard invalid or integrated operation
     pub fn ack_final_block(&mut self, block_slot: Slot, thread_final_ops: HashSet<Hash>) {
-        todo!()
+        todo!() // see #270
     }
 
     /// Get max_count operation for thread block_slot.thread
@@ -74,8 +75,33 @@ impl Pool {
         block_slot: Slot,
         exclude: HashSet<Hash>,
         max_count: usize,
-    ) -> Vec<(Hash, Operation)> {
-        todo!()
+    ) -> Result<Vec<(Hash, Operation)>, ConsensusError> {
+        let mut res = self.vec[block_slot.thread as usize]
+            .clone()
+            .into_iter_sorted()
+            .filter(|(_, hash)| !exclude.contains(hash))
+            .map(|(_, hash)| {
+                Ok((
+                    hash,
+                    self.map
+                        .get(&hash)
+                        .ok_or(ConsensusError::ContainerInconsistency(
+                            "inconsistency between vec pool and map pool".into(),
+                        ))?
+                        .clone(),
+                ))
+            });
+        if let Some(err) = res.find_map(|r: Result<(Hash, Operation), ConsensusError>| {
+            if r.is_err() {
+                Some(r.unwrap_err())
+            } else {
+                None
+            }
+        }) {
+            Err(err)
+        } else {
+            Ok(res.flatten().collect::<Vec<_>>()[0..max_count].into())
+        }
     }
 }
 
