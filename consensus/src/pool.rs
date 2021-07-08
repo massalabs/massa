@@ -141,25 +141,25 @@ impl OperationPool {
         exclude: HashSet<OperationId>,
         max_count: usize,
     ) -> Result<Vec<(OperationId, Operation)>, ConsensusError> {
-        Ok(self.ops_by_thread_and_interest[block_slot.thread as usize]
+        self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
             .filter_map(|(_rentability, id)| {
                 if exclude.contains(id) {
                     return None;
                 }
-                if let Some(op) = self.ops.get(id) {
-                    if op.is_valid_at_period(block_slot.period, self.cfg.operation_validity_periods)
-                    {
-                        Some((id.clone(), op.op.clone()))
-                    } else {
-                        None
+                if let Some(w_op) = self.ops.get(id) {
+                    if !w_op.is_valid_at_period(block_slot.period, self.cfg.operation_validity_periods) {
+                        return None;
                     }
+                    Some(Ok((id.clone(), w_op.op.clone())))
                 } else {
-                    None // container inconsistency but don't know how to return the error from the filter
+                    Some(Err(ConsensusError::ContainerInconsistency(
+                        format!("operation pool get_ops inconsistency: op_id={:?} is in ops_by_thread_and_interest but not in ops", id)
+                    )))
                 }
             })
             .take(max_count)
-            .collect::<Vec<(OperationId, Operation)>>())
+            .collect()
     }
 }
 
