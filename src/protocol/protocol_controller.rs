@@ -2,13 +2,13 @@ use super::binders::{ReadBinder, WriteBinder};
 use super::config::ProtocolConfig;
 use super::messages::Message;
 use crate::crypto::signature::{PrivateKey, PublicKey, SignatureEngine};
+use crate::logging::{debug, info, trace};
 use crate::network::network_controller::{
     ConnectionClosureReason, ConnectionId, NetworkController, NetworkEvent,
 };
 use futures::{
     future::try_join, future::FusedFuture, stream::FuturesUnordered, FutureExt, StreamExt,
 };
-use log::{debug, info, trace};
 use rand::{rngs::StdRng, FromEntropy, RngCore};
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, HashSet};
@@ -97,14 +97,7 @@ impl ProtocolController {
         network_controller: NetworkController,
     ) -> BoxResult<Self> {
         debug!("starting protocol controller");
-        trace!(
-            "massa_trace:{}",
-            serde_json::json!({
-                "origin": concat!(module_path!(), "::ProtocolController::new"),
-                "event": "start"
-            })
-            .to_string()
-        );
+        massa_trace!("start", {});
 
         // generate our own random PublicKey (and therefore NodeId) and keep private key
         let private_key;
@@ -116,17 +109,7 @@ impl ProtocolController {
             self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
         }
         debug!("local protocol node_id={:?}", self_node_id);
-        trace!(
-            "massa_trace:{}",
-            serde_json::json!({
-                "origin": concat!(module_path!(), "::ProtocolController::new"),
-                "event": "self_node_id",
-                "parameters": {
-                    "node_id": self_node_id
-                }
-            })
-            .to_string()
-        );
+        massa_trace!("self_node_id", { "node_id": self_node_id });
 
         // launch worker
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(1024);
@@ -145,14 +128,7 @@ impl ProtocolController {
         });
 
         debug!("protocol controller ready");
-        trace!(
-            "massa_trace:{}",
-            serde_json::json!({
-                "origin": concat!(module_path!(), "::ProtocolController::new"),
-                "event": "ready"
-            })
-            .to_string()
-        );
+        massa_trace!("ready", {});
 
         Ok(ProtocolController {
             protocol_event_rx,
@@ -176,28 +152,14 @@ impl ProtocolController {
     /// panices id the protocol controller is not reachable
     pub async fn stop(mut self) {
         debug!("stopping protocol controller");
-        trace!(
-            "massa_trace:{}",
-            serde_json::json!({
-                "origin": concat!(module_path!(), "::ProtocolController::stop"),
-                "event": "begin"
-            })
-            .to_string()
-        );
+        massa_trace!("begin", {});
         drop(self.protocol_command_tx);
         while let Some(_) = self.protocol_event_rx.next().await {}
         self.protocol_controller_handle
             .await
             .expect("failed joining protocol controller");
         debug!("protocol controller stopped");
-        trace!(
-            "massa_trace:{}",
-            serde_json::json!({
-                "origin": concat!(module_path!(), "::ProtocolController::stop"),
-                "event": "end"
-            })
-            .to_string()
-        );
+        massa_trace!("end", {});
     }
 
     fn propagate_block(
@@ -269,13 +231,7 @@ async fn protocol_controller_fn(
                     }
 
                     debug!("starting handshake with connection_id={:?}", connection_id);
-                    trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                        "event": "handshake_start",
-                        "parameters": {
-                            "connection_id": connection_id
-                        }
-                    }).to_string());
+                    massa_trace!("handshake_start", {"connection_id": connection_id});
 
                     let messsage_timeout_copy = cfg.message_timeout;
                     let handshake_fn_handle = tokio::spawn(async move {
@@ -312,26 +268,18 @@ async fn protocol_controller_fn(
                 // a handshake finished, and succeeded
                 Ok((new_connection_id, Ok((new_node_id, socket_reader, socket_writer)))) =>  {
                     debug!("handshake with connection_id={:?} succeeded => node_id={:?}", new_connection_id, new_node_id);
-                    trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                        "event": "handshake_ok",
-                        "parameters": {
-                            "connection_id": new_connection_id,
-                            "node_id": new_node_id
-                        }
-                    }).to_string());
+                    massa_trace!("handshake_ok", {
+                        "connection_id": new_connection_id,
+                        "node_id": new_node_id
+                    });
 
                     // connection was banned in the meantime
                     if !running_handshakes.remove(&new_connection_id) {
                         debug!("connection_id={:?}, node_id={:?} peer was banned while handshaking", new_connection_id, new_node_id);
-                        trace!("massa_trace:{}", serde_json::json!({
-                            "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                            "event": "handshake_banned",
-                            "parameters": {
-                                "connection_id": new_connection_id,
-                                "node_id": new_node_id
-                            }
-                        }).to_string());
+                        massa_trace!("handshake_banned", {
+                            "connection_id": new_connection_id,
+                            "node_id": new_node_id
+                        });
                         network_controller
                             .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                             .await;
@@ -342,14 +290,10 @@ async fn protocol_controller_fn(
                         // we already have this node ID
                         hash_map::Entry::Occupied(_) => {
                             debug!("connection_id={:?}, node_id={:?} protocol channel would be redundant", new_connection_id, new_node_id);
-                            trace!("massa_trace:{}", serde_json::json!({
-                                "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                                "event": "node_redundant",
-                                "parameters": {
-                                    "connection_id": new_connection_id,
-                                    "node_id": new_node_id
-                                }
-                            }).to_string());
+                            massa_trace!("node_redundant", {
+                                "connection_id": new_connection_id,
+                                "node_id": new_node_id
+                            });
                             network_controller
                                 .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                                 .await;
@@ -357,14 +301,10 @@ async fn protocol_controller_fn(
                         // we don't have this node ID
                         hash_map::Entry::Vacant(entry) => {
                             info!("established protocol channel with connection_id={:?} => node_id={:?}", new_connection_id, new_node_id);
-                            trace!("massa_trace:{}", serde_json::json!({
-                                "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                                "event": "node_connected",
-                                "parameters": {
-                                    "connection_id": new_connection_id,
-                                    "node_id": new_node_id
-                                }
-                            }).to_string());
+                            massa_trace!("node_connected", {
+                                "connection_id": new_connection_id,
+                                "node_id": new_node_id
+                            });
                             // spawn node_controller_fn
                             let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1024);
                             let node_event_tx_clone = node_event_tx.clone();
@@ -387,14 +327,10 @@ async fn protocol_controller_fn(
                 // a handshake finished and failed
                 Ok((connection_id, Err(err))) => {
                     debug!("handshake failed with connection_id={:?}: {:?}", connection_id, err);
-                    trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                        "event": "handshake_failed",
-                        "parameters": {
-                            "connection_id": connection_id,
-                            "err": err.to_string()
-                        }
-                    }).to_string());
+                    massa_trace!("handshake_failed", {
+                        "connection_id": connection_id,
+                        "err": err.to_string()
+                    });
                     running_handshakes.remove(&connection_id);
                     network_controller.connection_closed(connection_id, ConnectionClosureReason::Failed).await;
                 },
@@ -406,14 +342,10 @@ async fn protocol_controller_fn(
                 // received a list of peers
                 Some(NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst))) => {
                     debug!("node_id={:?} sent us a peer list: {:?}", from_node_id, lst);
-                    trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                        "event": "peer_list_received",
-                        "parameters": {
-                            "node_id": from_node_id,
-                            "ips": lst
-                        }
-                    }).to_string());
+                    massa_trace!("peer_list_received", {
+                        "node_id": from_node_id,
+                        "ips": lst
+                    });
                     let (connection_id, _, _) = active_nodes.get(&from_node_id).expect("event from missing node");
                     network_controller.connection_alive(*connection_id).await;
                     network_controller.merge_advertised_peer_list(lst).await;
@@ -430,27 +362,17 @@ async fn protocol_controller_fn(
                 Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
                     let (connection_id, _, handle) = active_nodes.remove(&from_node_id).expect("event from misising node");
                     info!("protocol channel closed peer_id={:?}", from_node_id);
-                    trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                        "event": "node_closed",
-                        "parameters": {
-                            "node_id": from_node_id,
-                            "reason": reason
-                        }
-                    }).to_string());
+                    massa_trace!("node_closed", {
+                        "node_id": from_node_id,
+                        "reason": reason
+                    });
                     network_controller.connection_closed(connection_id, reason).await;
                     handle.await.expect("controller event tx failed");
                 },
                 // asked peer list
                 Some(NodeEvent(from_node_id, NodeEventType::AskedPeerList)) => {
                     debug!("node_id={:?} asked us for peer list", from_node_id);
-                    trace!("massa_trace:{}", serde_json::json!({
-                        "origin": concat!(module_path!(), "::protocol_controller_fn"),
-                        "event": "node_asked_peer_list",
-                        "parameters": {
-                            "node_id": from_node_id
-                        }
-                    }).to_string());
+                    massa_trace!("node_asked_peer_list", {"node_id": from_node_id});
                     let (_, node_command_tx, _) = active_nodes.get(&from_node_id).expect("event received from missing node");
                     node_command_tx
                         .send(NodeCommand::SendPeerList(network_controller.get_advertisable_peer_list().await))
@@ -678,13 +600,7 @@ async fn node_controller_fn(
 
             _ = interval.tick() => {
                 debug!("timer-based asking node_id={:?} for peer list", node_id);
-                trace!("massa_trace:{}", serde_json::json!({
-                    "origin": concat!(module_path!(), "::node_controller_fn"),
-                    "event": "timer_ask_peer_list",
-                    "parameters": {
-                        "node_id": node_id
-                    }
-                }).to_string());
+                massa_trace!("timer_ask_peer_list", {"node_id": node_id});
                 writer_command_tx.send(Message::AskPeerList).await.expect("writer disappeared");
             }
         }

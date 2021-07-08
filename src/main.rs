@@ -1,14 +1,16 @@
 #![feature(ip)]
 
+#[macro_use]
+pub mod logging;
 pub mod config;
 pub mod consensus;
 pub mod crypto;
 pub mod network;
 pub mod protocol;
 pub mod structures;
+use crate::logging::error;
 use crate::network::network_controller::NetworkController;
 use crate::protocol::protocol_controller::{ProtocolController, ProtocolEvent, ProtocolEventType};
-use log::error;
 use std::error::Error;
 use tokio::fs::read_to_string;
 

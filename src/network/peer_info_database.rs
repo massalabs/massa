@@ -1,7 +1,7 @@
 use super::config::NetworkConfig;
+use crate::logging::{trace, warn};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
@@ -551,17 +551,7 @@ impl PeerInfoDatabase {
             active_in_connections: 0,
         });
         if peer.banned {
-            trace!(
-                "massa_trace:{}",
-                serde_json::json!({
-                    "origin": concat!(module_path!(), "::try_new_in_connection"),
-                    "event": "peer_banned",
-                    "parameters": {
-                        "ip": peer.ip
-                    }
-                })
-                .to_string()
-            );
+            massa_trace!("peer_banned", {"ip": peer.ip});
             peer.last_failure = Some(Utc::now());
             self.request_dump();
             return false;
