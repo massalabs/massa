@@ -286,7 +286,6 @@ impl Ledger {
         &self,
         addresses: HashSet<&Address>,
     ) -> Result<HashMap<Address, LedgerData>, ConsensusError> {
-        // TODO: only run the transaction on a subset of relevant ledgers? see #421
         self.ledger_per_thread
             .transaction(|ledger_per_thread| {
                 let mut result = HashMap::with_capacity(addresses.len());
