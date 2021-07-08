@@ -7,9 +7,10 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
+use models::test_with_serialization_context as with_serialization_context;
 use models::{
-    get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation,
-    OperationContent, OperationType, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    OperationType, SerializeCompact, Slot,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -303,8 +304,8 @@ pub fn create_transaction(
         expire_period,
         op,
     };
-    let context = &get_serialization_context();
-    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let context = with_serialization_context(|ctx| ctx.clone());
+    let hash = Hash::hash(&content.to_bytes_compact(&context).unwrap());
     let signature = crypto::sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
@@ -362,11 +363,11 @@ pub fn create_block_with_operations(
     operations: Vec<Operation>,
 ) -> (BlockId, Block, PrivateKey) {
     let (public_key, private_key) = creator;
-    let serialization_context = &get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
 
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            let res = [acc, v.to_bytes_compact(serialization_context).unwrap()].concat();
+            let res = [acc, v.to_bytes_compact(&serialization_context).unwrap()].concat();
             res
         })[..],
     );
@@ -416,7 +417,20 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
 
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
-    models::init_serialization_context(Default::default());
+    models::init_serialization_context(models::SerializationContext {
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_block_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_bootstrap_message_size: 100000000,
+    });
 
     ConsensusConfig {
         genesis_timestamp: UTime::now(0).unwrap(),

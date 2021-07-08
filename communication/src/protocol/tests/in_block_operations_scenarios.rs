@@ -1,4 +1,5 @@
 use crypto::hash::Hash;
+use models::test_with_serialization_context as with_serialization_context;
 use models::{Address, Block, BlockHeader, BlockHeaderContent, Slot};
 
 use crate::protocol::{
@@ -25,7 +26,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     // .init()
     // .unwrap();
     let protocol_config = create_protocol_config();
-    let serialization_context = models::get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();

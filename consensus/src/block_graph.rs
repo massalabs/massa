@@ -108,7 +108,7 @@ impl From<ActiveBlock> for ExportActiveBlock {
 
 impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(block: ExportActiveBlock) -> Result<ActiveBlock, ConsensusError> {
-        let context = models::get_serialization_context();
+        let context = models::with_serialization_context(|ctx| ctx.clone());
         let operation_set = block
             .block
             .operations
@@ -1435,8 +1435,9 @@ impl BlockGraph {
                 }
             }
         };
-        let serialization_context = models::get_serialization_context();
-        let addresses_to_operations = valid_block.involved_addresses(&serialization_context)?;
+
+        let addresses_to_operations = valid_block
+            .involved_addresses(&models::with_serialization_context(|ctx| ctx.clone()))?;
 
         // add block to graph
         self.add_block_to_graph(

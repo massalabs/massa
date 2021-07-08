@@ -244,6 +244,24 @@ mod tests {
         let operation_validity_periods: u64 = 50;
         let max_block_size = 1024 * 1024;
         let max_operations_per_block = 1024;
+
+        // Init the serialization context with a default,
+        // can be overwritten with a more specific one in the test.
+        models::init_serialization_context(models::SerializationContext {
+            max_block_operations: max_operations_per_block,
+            parent_count: thread_count,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+            max_block_size: max_block_size,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
+            max_operations_per_message: 1024,
+            max_bootstrap_message_size: 100000000,
+        });
+
         (
             PoolConfig {
                 max_pool_size_per_thread: 100000,
@@ -288,8 +306,7 @@ mod tests {
     #[serial]
     fn test_pool() {
         let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-        models::init_serialization_context(Default::default());
-        let context = models::get_serialization_context();
+        let context = models::test_with_serialization_context(|ctx| ctx.clone());
 
         let max_pool_size_per_thread = 10;
         cfg.max_pool_size_per_thread = max_pool_size_per_thread;

@@ -19,13 +19,15 @@ pub fn init_serialization_context(context: SerializationContext) {
         .expect("Couldn't acquire mutex on SERIALIZATION_CONTEXT.") = Some(context);
 }
 
-/// Get a clone of the context.
-pub fn get_serialization_context() -> SerializationContext {
-    SERIALIZATION_CONTEXT
+/// Get a clone of the context. For tests only.
+pub fn test_with_serialization_context<F, V>(f: F) -> V
+where
+    F: FnOnce(&SerializationContext) -> V,
+{
+    let ctx = SERIALIZATION_CONTEXT
         .lock()
-        .expect("Couldn't acquire mutex on SERIALIZATION_CONTEXT.")
-        .clone()
-        .expect("Unitialized SERIALIZATION_CONTEXT.")
+        .expect("Couldn't acquire mutex on SERIALIZATION_CONTEXT.");
+    f(ctx.as_ref().expect("Unitialized SERIALIZATION_CONTEXT."))
 }
 
 /// Use the tls context, should be called only after initializing the global context.
@@ -65,26 +67,4 @@ pub struct SerializationContext {
     pub max_bootstrap_message_size: u32,
     pub max_ask_blocks_per_message: u32,
     pub max_operations_per_message: u32,
-}
-
-impl Default for SerializationContext {
-    fn default() -> SerializationContext {
-        let thread_count: u8 = 2;
-        let max_block_size: u32 = 3 * 1024 * 1024;
-        let max_operations_per_block: u32 = 1024;
-        SerializationContext {
-            max_block_size,
-            max_block_operations: max_operations_per_block,
-            parent_count: thread_count,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-        }
-    }
 }

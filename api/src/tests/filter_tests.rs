@@ -44,8 +44,7 @@ pub fn create_operation(context: &SerializationContext) -> Operation {
 #[tokio::test]
 #[serial]
 async fn test_get_operations() {
-    let serialization_context: SerializationContext = Default::default();
-    models::init_serialization_context(serialization_context.clone());
+    let serialization_context = initialize_context();
 
     //test no operation found
     {
@@ -185,8 +184,8 @@ async fn test_get_operations() {
 #[tokio::test]
 #[serial]
 async fn test_get_addresses_data() {
-    let serialization_context: SerializationContext = Default::default();
-    models::init_serialization_context(serialization_context.clone());
+    initialize_context();
+    let serialization_context = models::test_with_serialization_context(|ctx| ctx.clone());
 
     let search_address =
         Address::from_bs58_check("SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S").unwrap();
@@ -530,7 +529,7 @@ async fn test_current_parents() {
 #[tokio::test]
 #[serial]
 async fn test_get_graph_interval() {
-    models::init_serialization_context(Default::default());
+    initialize_context();
 
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -1043,7 +1042,7 @@ async fn test_peers() {
 #[tokio::test]
 #[serial]
 async fn test_get_block_interval() {
-    models::init_serialization_context(Default::default());
+    initialize_context();
 
     let mut graph = get_test_block_graph();
     graph.best_parents = vec![get_test_block_id(), get_test_block_id()];
@@ -1300,7 +1299,7 @@ async fn test_get_block_interval() {
 #[tokio::test]
 #[serial]
 async fn test_get_block() {
-    models::init_serialization_context(Default::default());
+    initialize_context();
 
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -1608,7 +1607,7 @@ async fn test_state() {
 #[tokio::test]
 #[serial]
 async fn test_last_stale() {
-    models::init_serialization_context(Default::default());
+    initialize_context();
 
     //test with empty stale block
     {
@@ -1693,7 +1692,7 @@ async fn test_last_stale() {
 #[tokio::test]
 #[serial]
 async fn test_last_invalid() {
-    models::init_serialization_context(Default::default());
+    initialize_context();
 
     //test with empty final block
     {
@@ -1775,7 +1774,7 @@ async fn test_last_invalid() {
 #[tokio::test]
 #[serial]
 async fn test_staker_info() {
-    models::init_serialization_context(Default::default());
+    initialize_context();
 
     let staker = get_dummy_staker();
     let cloned_staker = staker.clone();

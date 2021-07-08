@@ -5,6 +5,7 @@ use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
 use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
+use models::test_with_serialization_context as with_serialization_context;
 use models::{Address, BlockId, Operation, OperationContent, OperationType, SerializeCompact};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -46,7 +47,20 @@ pub fn create_network_config(
 ) -> NetworkConfig {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
-    models::init_serialization_context(Default::default());
+    models::init_serialization_context(models::SerializationContext {
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_block_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_bootstrap_message_size: 100000000,
+    });
 
     NetworkConfig {
         bind: format!("0.0.0.0:{}", network_controller_port)
@@ -323,7 +337,7 @@ pub async fn incoming_message_drain_stop(
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
-    let context = &models::get_serialization_context();
+    let serialization_context = with_serialization_context(|ctx| ctx.clone());
     let sender_priv = crypto::generate_random_private_key();
     let sender_pub = crypto::derive_public_key(&sender_priv);
 
@@ -340,7 +354,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let hash = Hash::hash(&content.to_bytes_compact(&serialization_context).unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     (
