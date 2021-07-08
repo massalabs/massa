@@ -2,13 +2,10 @@ use communication::network::config::NetworkConfig;
 use config::ApiConfig;
 use consensus::{config::ConsensusConfig, consensus_controller::ConsensusControllerInterface};
 use consensus::{get_block_slot_timestamp, DiscardReason};
-use crypto::hash::Hash;
+use crypto::{hash::Hash, signature::PublicKey};
+use models::block::BlockHeader;
 use serde_json::json;
-use std::{
-    cmp::min,
-    collections::{HashMap, HashSet},
-    net::IpAddr,
-};
+use std::{cmp::min, collections::HashSet, net::IpAddr};
 use time::UTime;
 use warp::{filters::BoxedFilter, reject, Filter, Rejection, Reply};
 
@@ -140,6 +137,24 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         //.and(warp::path::end())
         .and_then(move || last_invalid(api_cfg.clone(), interface.clone()));
 
+    let interface = consensus_controller_interface.clone();
+    let api_cfg = api_config.clone();
+    let consensus_cfg = consensus_config.clone();
+    let staker_info = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("staker_info"))
+        .and(warp::path::param::<PublicKey>())
+        //.and(warp::path::end())
+        .and_then(move |creator| {
+            staker_info(
+                creator,
+                api_cfg.clone(),
+                consensus_cfg.clone(),
+                interface.clone(),
+            )
+        });
+
     block
         .or(blockinterval)
         .or(current_parents)
@@ -152,6 +167,7 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .or(state)
         .or(last_stale)
         .or(last_invalid)
+        .or(staker_info)
         .boxed()
 }
 
@@ -194,7 +210,9 @@ async fn current_parents<ConsensusControllerInterfaceT: ConsensusControllerInter
     let parents = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?
         .best_parents;
     Ok(warp::reply::json(&parents))
 }
@@ -205,7 +223,9 @@ async fn last_final<ConsensusControllerInterfaceT: ConsensusControllerInterface>
     let finals = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?;
     let finals = finals
         .latest_final_blocks_periods
         .iter()
@@ -227,7 +247,9 @@ async fn block_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
     let graph = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?;
     for (hash, exported_block) in graph.active_blocks {
         let header = exported_block.block;
         let time = get_block_slot_timestamp(
@@ -236,7 +258,9 @@ async fn block_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
             cfg.genesis_timestamp,
             (header.period_number, header.thread_number),
         )
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("timestamp error: {:#?}", err),
+        })?;
         if start <= time && time <= end {
             res.insert(hash);
         }
@@ -257,7 +281,9 @@ async fn graph_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
     let graph = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?;
     for (hash, exported_block) in graph.active_blocks {
         let header = exported_block.block;
         let time = get_block_slot_timestamp(
@@ -266,7 +292,9 @@ async fn graph_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
             cfg.genesis_timestamp,
             (header.period_number, header.thread_number),
         )
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("timestamp error: {:#?}", err),
+        })?;
         if start <= time && time <= end {
             res.insert((
                 hash,
@@ -293,21 +321,13 @@ async fn cliques<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     let graph = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?;
     Ok(warp::reply::json(&(
         graph.max_cliques.len(),
         graph.max_cliques,
     )))
-}
-
-async fn peers<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
-    interface: ConsensusControllerInterfaceT,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let peers = interface
-        .get_peers()
-        .await
-        .map_err(|_| warp::reject::reject())?;
-    Ok(warp::reply::json(&peers))
 }
 
 /// return network information: own IP address, connected peers (address, IP), connection status, connections usage, average upload and download bandwidth used for headers, operations, syncing
@@ -315,15 +335,23 @@ async fn network_info<ConsensusControllerInterfaceT: ConsensusControllerInterfac
     interface: ConsensusControllerInterfaceT,
     cfg: NetworkConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let peers = interface
-        .get_peers()
-        .await
-        .map_err(|_| warp::reject::reject())?;
+    let peers = interface.get_peers().await.map_err(|err| InternalError {
+        message: format!("error get peers: {:#?}", err),
+    })?;
     let our_ip = cfg.routable_ip;
     Ok(warp::reply::json(&json!({
         "our_ip": our_ip,
         "peers": peers,
     })))
+}
+
+async fn peers<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
+    interface: ConsensusControllerInterfaceT,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let peers = interface.get_peers().await.map_err(|err| InternalError {
+        message: format!("get peers error: {:#?}", err),
+    })?;
+    Ok(warp::reply::json(&peers))
 }
 
 /// returns a summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes
@@ -332,58 +360,65 @@ async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     consensus_cfg: ConsensusConfig,
     network_cfg: NetworkConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let time = UTime::now().unwrap(); //.map_err(|err | Err(warp::reject::custom(InternalError {message: "time error".into()})))?;
-    let time = consensus::get_latest_block_slot_at_timestamp(
+    let cur_time = UTime::now().map_err(|err| InternalError {
+        message: format!("error getting current time: {:#?}", err),
+    })?;
+
+    let latest_slot_opt = consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
-        time,
-    ) /*.map_err(|err | Err(warp::reject::custom(InternalError {message: "time error".into()})))*/
-    .unwrap() /*?*/
-    .ok_or(InternalError {
-        message: "No own ip".into(),
+        cur_time,
+    )
+    .map_err(|err| InternalError {
+        message: format!("get_latest_block_slot_at_timestamp error: {:#?}", err),
     })?;
-    let peers: HashMap<IpAddr, String> = interface
-        .get_peers()
-        .await
-        .map_err(|_| warp::reject::reject())?;
+
+    let peers = interface.get_peers().await.map_err(|err| InternalError {
+        message: format!("get peers error: {:#?}", err),
+    })?;
 
     let connected_peers: HashSet<IpAddr> = peers
         .iter()
-        .filter(|(_ip, status)| status.as_str() == "connected")
-        .map(|(ip, _status)| ip.clone())
+        .filter(|(_ip, peer_info)| {
+            peer_info.active_out_connections > 0 || peer_info.active_in_connections > 0
+        })
+        .map(|(ip, _peer_info)| *ip)
         .collect();
-    let our_ip = network_cfg.routable_ip.ok_or(InternalError {
-        message: "No own ip".into(),
-    })?;
 
     let graph = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("get_block_graph_status error: {:#?}", err),
+        })?;
+
     let finals = graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
-        .map(|(i, (hash, period))| {
-            (
+        .map(|(thread, (hash, period))| {
+            Ok((
                 hash,
                 *period,
-                i as u8,
+                thread as u8,
                 get_block_slot_timestamp(
                     consensus_cfg.thread_count,
                     consensus_cfg.t0,
                     consensus_cfg.genesis_timestamp,
-                    (*period, i as u8),
-                )
-                .unwrap(), // in a closure
-            )
+                    (*period, thread as u8),
+                )?,
+            ))
         })
-        .collect::<Vec<(&Hash, u64, u8, UTime)>>();
+        .collect::<Result<Vec<(&Hash, u64, u8, UTime)>, consensus::ConsensusError>>()
+        .map_err(|err| InternalError {
+            message: format!("error gathering final blocks: {:#?}", err),
+        })?;
 
     Ok(warp::reply::json(&json!({
-        "time": time,
-        "our_ip": our_ip,
+        "time": cur_time,
+        "latest_slot": latest_slot_opt,
+        "our_ip": network_cfg.routable_ip,
         "last_final": finals,
         "nb_cliques": graph.max_cliques.len(),
         "nb_peers": connected_peers.len(),
@@ -397,7 +432,9 @@ async fn last_stale<ConsensusControllerInterfaceT: ConsensusControllerInterface>
     let graph = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?;
 
     let discarded = graph.discarded_blocks.clone();
     let mut discarded = discarded
@@ -421,7 +458,9 @@ async fn last_invalid<ConsensusControllerInterfaceT: ConsensusControllerInterfac
     let graph = interface
         .get_block_graph_status()
         .await
-        .map_err(|_| warp::reject::reject())?;
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?;
 
     let discarded = graph.discarded_blocks.clone();
 
@@ -437,6 +476,76 @@ async fn last_invalid<ConsensusControllerInterfaceT: ConsensusControllerInterfac
     }
 
     Ok(warp::reply::json(&json!(discarded)))
+}
+
+async fn staker_info<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
+    creator: PublicKey,
+    api_cfg: ApiConfig,
+    consensus_cfg: ConsensusConfig,
+    interface: ConsensusControllerInterfaceT,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let graph = interface
+        .get_block_graph_status()
+        .await
+        .map_err(|err| InternalError {
+            message: format!("error get block gaph: {:#?}", err),
+        })?;
+
+    let blocks = graph
+        .active_blocks
+        .iter()
+        .filter(|(_hash, block)| block.block.creator == creator)
+        .map(|(hash, block)| (hash, block.block.clone()))
+        .collect::<Vec<(&Hash, BlockHeader)>>();
+
+    let discarded = graph
+        .discarded_blocks
+        .map
+        .iter()
+        .filter(|(_hash, (_reason, header))| header.creator == creator)
+        .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
+        .collect::<Vec<(&Hash, DiscardReason, BlockHeader)>>();
+    let cur_time = UTime::now().map_err(|err| InternalError {
+        message: format!("error getting current time: {:#?}", err),
+    })?;
+
+    let start_slot = consensus::get_latest_block_slot_at_timestamp(
+        consensus_cfg.thread_count,
+        consensus_cfg.t0,
+        consensus_cfg.genesis_timestamp,
+        cur_time,
+    )
+    .map_err(|err| InternalError {
+        message: format!("get_latest_block_slot_at_timestamp error: {:#?}", err),
+    })?
+    .unwrap_or((0, 0));
+    let end_slot = (
+        start_slot
+            .0
+            .saturating_add(api_cfg.selection_return_periods),
+        start_slot.1,
+    );
+
+    let next_slots_by_creator: Vec<(u64, u8)> = interface
+        .get_selection_draws(start_slot, end_slot)
+        .await
+        .map_err(|err| InternalError {
+            message: format!("get_creator interface error: {:#?}", err),
+        })?
+        .into_iter()
+        .filter_map(|(slt, sel)| {
+            if sel == creator {
+                return Some(slt);
+            }
+            None
+        })
+        .collect();
+
+    Ok(warp::reply::json(&json!({
+        "staker_active_blocks": blocks,
+        "staker_discarded_blocks": discarded,
+        "staker_next_draws": next_slots_by_creator,
+    })))
 }
 
 #[cfg(test)]

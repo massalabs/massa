@@ -54,6 +54,8 @@ pub enum ChannelError {
     PeerInfoChannelError(#[from] tokio::sync::mpsc::error::SendError<PeerInfo>),
     #[error("GetAdvertisablePeerList event oneshot channel err:{0}")]
     GetAdvertisablePeerListChannelError(String),
+    #[error("GetPeers event oneshot channel err:{0}")]
+    GetPeersChannelError(String),
     #[error("SaverWatcher channel has disconnected err:{0}")]
     SaverWatcherChannelError(
         #[from] tokio::sync::watch::error::SendError<HashMap<IpAddr, PeerInfo>>,

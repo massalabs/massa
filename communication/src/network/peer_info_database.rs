@@ -306,21 +306,8 @@ impl PeerInfoDatabase {
             .collect::<Vec<IpAddr>>())
     }
 
-    pub fn get_peers(&self) -> HashMap<IpAddr, String> {
-        self.peers
-            .iter()
-            .map(|(ip, peer)| {
-                if peer.banned {
-                    (ip.clone(), "banned".into())
-                } else if peer.active_in_connections > 0 || peer.active_out_connections > 0 {
-                    (ip.clone(), "connected".into())
-                } else if peer.advertised {
-                    (ip.clone(), "advertised".into())
-                } else {
-                    (ip.clone(), "known".into())
-                }
-            })
-            .collect()
+    pub fn get_peers(&self) -> &HashMap<IpAddr, PeerInfo> {
+        &self.peers
     }
 
     /// Returns a vec of advertisable IpAddrs sorted by ( last_failure, rev(last_success) )

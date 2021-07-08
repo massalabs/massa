@@ -16,8 +16,10 @@ pub use block_graph::{
     BlockGraphExport, DiscardReason, ExportCompiledBlock, ExportDiscardedBlocks,
 };
 pub use error::ConsensusError;
-pub use timeslots::get_block_slot_timestamp;
-pub use timeslots::get_latest_block_slot_at_timestamp;
+pub use timeslots::{
+    get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp,
+    get_next_block_slot,
+};
 
 #[cfg(test)]
 mod tests;

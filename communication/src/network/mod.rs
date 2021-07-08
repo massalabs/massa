@@ -5,7 +5,7 @@ pub mod establisher;
 pub mod network_controller;
 mod peer_info_database;
 
+pub use peer_info_database::PeerInfo;
+
 #[cfg(test)]
 pub mod tests;
-
-pub use peer_info_database::PeerInfo;

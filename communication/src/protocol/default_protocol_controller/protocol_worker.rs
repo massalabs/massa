@@ -8,6 +8,7 @@ use crate::error::{ChannelError, CommunicationError, HandshakeErrorType};
 use crate::network::network_controller::{
     ConnectionClosureReason, ConnectionId, NetworkController, NetworkEvent,
 };
+use crate::network::PeerInfo;
 use crypto::{hash::Hash, signature::PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::block::Block;
@@ -15,14 +16,14 @@ use std::{
     collections::{hash_map, HashMap, HashSet},
     net::IpAddr,
 };
-use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum ProtocolCommand {
     PropagateBlock { hash: Hash, block: Block },
-    GetPeers(Sender<HashMap<IpAddr, String>>),
+    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
 }
 
 pub struct ProtocolWorker<NetworkControllerT: 'static + NetworkController> {
@@ -100,11 +101,12 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                         }
                     }
                     Some(ProtocolCommand::GetPeers(response_tx)) => {
-                        self
+                        response_tx.send(self
                             .network_controller
-                            .get_peers(response_tx)
+                            .get_peers()
                             .await
-                            .map_err(|_| ChannelError::DatabaseCommunicationError)?;
+                            .map_err(|_| ChannelError::DatabaseCommunicationError)?
+                        ).map_err(|_| ChannelError::DatabaseCommunicationError)?;
                     }
                     None => break  // finished
                 },

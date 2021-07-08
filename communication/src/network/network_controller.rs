@@ -1,13 +1,11 @@
+use crate::network::PeerInfo;
 use crate::CommunicationError;
 
 use super::establisher::Establisher;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr};
-use tokio::{
-    io::{AsyncRead, AsyncWrite},
-    sync::mpsc::Sender,
-};
+use tokio::io::{AsyncRead, AsyncWrite};
 
 #[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ConnectionId(pub u64);
@@ -58,10 +56,7 @@ where
         ips: Vec<IpAddr>,
     ) -> Result<(), CommunicationError>;
     async fn get_advertisable_peer_list(&mut self) -> Result<Vec<IpAddr>, CommunicationError>;
-    async fn get_peers(
-        &mut self,
-        response_tx: Sender<HashMap<IpAddr, String>>,
-    ) -> Result<(), CommunicationError>;
+    async fn get_peers(&mut self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError>;
     async fn connection_closed(
         &mut self,
         id: ConnectionId,

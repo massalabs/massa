@@ -3,9 +3,10 @@ use crate::error::{BlockAcknowledgeError, ConsensusError};
 use crypto::{hash::Hash, signature::SignatureEngine};
 use models::block::Block;
 use models::block::BlockHeader;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     pub block: BlockHeader,
     pub children: Vec<HashSet<Hash>>,
@@ -86,7 +87,7 @@ impl CompiledBlock {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 pub enum DiscardReason {
     Invalid,
     Stale,
