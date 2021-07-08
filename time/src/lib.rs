@@ -103,19 +103,23 @@ impl UTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    /// let now_utime : UTime = UTime::now().unwrap();
+    /// let now_utime : UTime = UTime::now(0).unwrap();
     /// let converted  :UTime = UTime::try_from(now_duration).unwrap();
     /// assert!(max(now_utime.saturating_sub(converted), converted.saturating_sub(now_utime)) < 100.into())
     /// ```
-    pub fn now() -> Result<Self, TimeError> {
-        Ok(UTime(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|_| TimeError::TimeOverflowError)?
-                .as_millis()
-                .try_into()
-                .map_err(|_| TimeError::TimeOverflowError)?,
-        ))
+    pub fn now(compensation_millis: i64) -> Result<Self, TimeError> {
+        let now: i64 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| TimeError::TimeOverflowError)?
+            .as_millis()
+            .try_into()
+            .map_err(|_| TimeError::TimeOverflowError)?;
+        let compensated = now
+            .checked_add(compensation_millis)
+            .ok_or_else(|| TimeError::TimeOverflowError)?
+            .try_into()
+            .map_err(|_| TimeError::TimeOverflowError)?;
+        Ok(UTime(compensated))
     }
 
     /// Conversion to `std::time::Duration`.
@@ -148,15 +152,16 @@ impl UTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// # use tokio::time::Instant;
-    /// let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now().unwrap(), Instant::now());
-    /// let utime_instant: Instant = cur_timestamp.estimate_instant().unwrap();
+    /// let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now(0).unwrap(), Instant::now());
+    /// let utime_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
     /// assert!(max(
     ///     utime_instant.saturating_duration_since(cur_instant),
     ///     cur_instant.saturating_duration_since(utime_instant)
     /// ) < std::time::Duration::from_millis(10))
     /// ```
-    pub fn estimate_instant(self) -> Result<Instant, TimeError> {
-        let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now()?, Instant::now());
+    pub fn estimate_instant(self, compensation_millis: i64) -> Result<Instant, TimeError> {
+        let (cur_timestamp, cur_instant): (UTime, Instant) =
+            (UTime::now(compensation_millis)?, Instant::now());
         Ok(cur_instant
             .checked_add(self.to_duration())
             .ok_or(TimeError::TimeOverflowError)?

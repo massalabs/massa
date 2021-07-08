@@ -20,7 +20,7 @@ async fn test_ti() {
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
     //to avoir timing pb for block in the future
-    cfg.genesis_timestamp = UTime::now()
+    cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -37,6 +37,7 @@ async fn test_ti() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -182,7 +183,7 @@ async fn test_gpi() {
     cfg.delta_f0 = 32;
 
     // to avoid timing problems for blocks in the future
-    cfg.genesis_timestamp = UTime::now()
+    cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -199,6 +200,7 @@ async fn test_gpi() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -357,7 +359,7 @@ async fn test_old_stale() {
     cfg.delta_f0 = 32;
 
     //to avoid timing problems for blocks in the future
-    cfg.genesis_timestamp = UTime::now()
+    cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -374,6 +376,7 @@ async fn test_old_stale() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

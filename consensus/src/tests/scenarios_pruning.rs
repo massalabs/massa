@@ -22,6 +22,7 @@ async fn test_pruning_of_discarded_blocks() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -82,6 +83,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -142,6 +144,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

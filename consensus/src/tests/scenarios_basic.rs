@@ -23,6 +23,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -104,6 +105,7 @@ async fn test_block_not_processed_multiple_times() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -168,6 +170,7 @@ async fn test_queuing() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -238,6 +241,7 @@ async fn test_double_staking_does_not_propagate() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

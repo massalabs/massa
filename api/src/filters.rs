@@ -207,6 +207,7 @@ pub fn get_filter(
     network_config: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
     opt_storage_command_sender: Option<StorageAccess>,
+    clock_compensation: i64,
 ) -> BoxedFilter<(impl Reply,)> {
     let evt_tx = event_tx.clone();
     let storage = opt_storage_command_sender.clone();
@@ -313,7 +314,14 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("state"))
         .and(warp::path::end())
-        .and_then(move || get_state(evt_tx.clone(), consensus_cfg.clone(), network_cfg.clone()));
+        .and_then(move || {
+            get_state(
+                evt_tx.clone(),
+                consensus_cfg.clone(),
+                network_cfg.clone(),
+                clock_compensation,
+            )
+        });
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config.clone();
@@ -348,6 +356,7 @@ pub fn get_filter(
                 api_cfg.clone(),
                 consensus_cfg.clone(),
                 creator,
+                clock_compensation,
             )
         });
 
@@ -1224,8 +1233,9 @@ async fn get_state(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
     network_cfg: NetworkConfig,
+    clock_compensation: i64,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let cur_time = match UTime::now() {
+    let cur_time = match UTime::now(clock_compensation) {
         Ok(time) => time,
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -1409,6 +1419,7 @@ async fn get_staker_info(
     api_cfg: ApiConfig,
     consensus_cfg: ConsensusConfig,
     creator: PublicKey,
+    clock_compensation: i64,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let graph = match retrieve_graph_export(&event_tx).await {
         Err(err) => {
@@ -1437,7 +1448,7 @@ async fn get_staker_info(
         .filter(|(_hash, (_reason, header))| header.content.creator == creator)
         .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
         .collect::<Vec<(&Hash, DiscardReason, BlockHeader)>>();
-    let cur_time = match UTime::now() {
+    let cur_time = match UTime::now(clock_compensation) {
         Ok(time) => time,
         Err(err) => {
             return Ok(warp::reply::with_status(

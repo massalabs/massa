@@ -7,6 +7,7 @@ use models::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use time::UTime;
 
 pub const BOOTSTRAP_RANDOMNES_SIZE_BYTES: usize = 32;
 
@@ -17,6 +18,13 @@ pub enum BootstrapMessage {
     BootstrapInitiation {
         /// Random data we expect the bootstrap node to sign with its private_key.
         random_bytes: [u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES],
+    },
+    /// Sync clocks,
+    BootstrapTime {
+        /// The curren time on the bootstrap server.
+        server_time: UTime,
+        /// Signature of random bytes received +  current time.
+        signature: Signature,
     },
     /// Global consensus state
     ConsensusState {
@@ -31,7 +39,8 @@ pub enum BootstrapMessage {
 #[repr(u32)]
 enum MessageTypeId {
     BootstrapInitiation = 0u32,
-    ConsensusState = 1,
+    BootstrapTime = 1,
+    ConsensusState = 2,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -41,6 +50,14 @@ impl SerializeCompact for BootstrapMessage {
             BootstrapMessage::BootstrapInitiation { random_bytes } => {
                 res.extend(u32::from(MessageTypeId::BootstrapInitiation).to_varint_bytes());
                 res.extend(random_bytes);
+            }
+            BootstrapMessage::BootstrapTime {
+                server_time,
+                signature,
+            } => {
+                res.extend(u32::from(MessageTypeId::BootstrapTime).to_varint_bytes());
+                res.extend(&signature.to_bytes());
+                res.extend(server_time.to_millis().to_varint_bytes());
             }
             BootstrapMessage::ConsensusState { graph, signature } => {
                 res.extend(u32::from(MessageTypeId::ConsensusState).to_varint_bytes());
@@ -74,6 +91,15 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += BOOTSTRAP_RANDOMNES_SIZE_BYTES;
                 // return message
                 BootstrapMessage::BootstrapInitiation { random_bytes }
+            }
+            MessageTypeId::BootstrapTime => {
+                let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += SIGNATURE_SIZE_BYTES;
+                let server_time = UTime::from(u64::from_varint_bytes(&buffer[cursor..])?.0);
+                BootstrapMessage::BootstrapTime {
+                    server_time,
+                    signature,
+                }
             }
             MessageTypeId::ConsensusState => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;

@@ -132,6 +132,7 @@ pub fn mock_filter(
             get_network_config(),
             evt_tx,
             storage_cmd,
+            0,
         ),
         evt_rx,
     )

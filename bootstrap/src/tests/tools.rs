@@ -1,4 +1,4 @@
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use consensus::{BoostrapableGraph, ConsensusCommand};
@@ -20,13 +20,12 @@ pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10))
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
     BootstrapConfig {
-        bootstrap_ip: BASE_BOOTSTRAP_IP,
-        bootstrap_port: 16,
+        bootstrap_addr: Some(SocketAddr::new(BASE_BOOTSTRAP_IP, 16)),
         bootstrap_public_key,
         bind: Some("0.0.0.0:31234".parse().unwrap()),
         connect_timeout: 200.into(),
-        bootstrap_time_after_genesis: 100.into(),
         retry_delay: 200.into(),
+        max_ping: UTime::from(500),
     }
 }
 

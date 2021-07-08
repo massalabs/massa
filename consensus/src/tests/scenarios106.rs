@@ -32,6 +32,7 @@ async fn test_unsorted_block() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -149,7 +150,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .unwrap();*/
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now().unwrap().saturating_sub(2000.into()); // slot 1 is in the past
+    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_sub(2000.into()); // slot 1 is in the past
     cfg.future_block_processing_max_periods = 3;
     cfg.max_future_processing_blocks = 5;
 
@@ -166,6 +167,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -188,10 +190,14 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     tools::validate_propagate_block(&mut protocol_controller, hash1, 1000).await;
 
     // this block is slightly in the future: will wait for it
-    let slot =
-        timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
-            .unwrap()
-            .unwrap();
+    let slot = timeslots::get_current_latest_block_slot(
+        cfg.thread_count,
+        cfg.t0,
+        cfg.genesis_timestamp,
+        0,
+    )
+    .unwrap()
+    .unwrap();
     let (hash2, block2, _) = tools::create_block(
         &cfg,
         &serialization_context,
@@ -203,10 +209,14 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     tools::validate_propagate_block(&mut protocol_controller, hash2, 2500).await;
 
     // this block is too much in the future: do not process
-    let slot =
-        timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
-            .unwrap()
-            .unwrap();
+    let slot = timeslots::get_current_latest_block_slot(
+        cfg.thread_count,
+        cfg.t0,
+        cfg.genesis_timestamp,
+        0,
+    )
+    .unwrap()
+    .unwrap();
     let (hash3, block3, _) = tools::create_block(
         &cfg,
         &serialization_context,
@@ -245,7 +255,7 @@ async fn test_too_many_blocks_in_the_future() {
     cfg.future_block_processing_max_periods = 100;
     cfg.max_future_processing_blocks = 2;
     cfg.delta_f0 = 1000;
-    cfg.genesis_timestamp = UTime::now().unwrap().saturating_sub(2000.into()); // slot 1 is in the past
+    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_sub(2000.into()); // slot 1 is in the past
 
     // mock protocol
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
@@ -260,6 +270,7 @@ async fn test_too_many_blocks_in_the_future() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -274,10 +285,14 @@ async fn test_too_many_blocks_in_the_future() {
     // generate 5 blocks but there is only space for 2 in the waiting line
     let mut expected_block_hashes: HashSet<Hash> = HashSet::new();
     let mut max_period = 0;
-    let slot =
-        timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
-            .unwrap()
-            .unwrap();
+    let slot = timeslots::get_current_latest_block_slot(
+        cfg.thread_count,
+        cfg.t0,
+        cfg.genesis_timestamp,
+        0,
+    )
+    .unwrap()
+    .unwrap();
     for period in 0..5 {
         max_period = slot.period + 2 + period;
         let (hash, block, _) = tools::create_block(
@@ -307,9 +322,14 @@ async fn test_too_many_blocks_in_the_future() {
         );
     }
     // wait until we reach the slot of the last block
-    while timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
-        .unwrap()
-        .unwrap()
+    while timeslots::get_current_latest_block_slot(
+        cfg.thread_count,
+        cfg.t0,
+        cfg.genesis_timestamp,
+        0,
+    )
+    .unwrap()
+    .unwrap()
         < Slot::new(max_period + 1, 0)
     {}
     // ensure that the graph contains only what we expect
@@ -342,7 +362,7 @@ async fn test_dep_in_back_order() {
     .unwrap();*/
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now()
+    cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 10;
@@ -360,6 +380,7 @@ async fn test_dep_in_back_order() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -465,7 +486,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .unwrap();*/
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now()
+    cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 2;
@@ -483,6 +504,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
@@ -584,7 +606,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .unwrap();*/
     let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now()
+    cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 7;
@@ -602,6 +624,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
             protocol_event_receiver,
             None,
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");

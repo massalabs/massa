@@ -293,7 +293,7 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
         .collect();
     (
         ConsensusConfig {
-            genesis_timestamp: UTime::now().unwrap(),
+            genesis_timestamp: UTime::now(0).unwrap(),
             thread_count: thread_count,
             t0: 32000.into(),
             selection_rng_seed: 42,

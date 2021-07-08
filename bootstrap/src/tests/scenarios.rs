@@ -35,15 +35,9 @@ async fn test_bootstrap_server() {
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let cfg_copy = cfg.clone();
     let get_state_h = tokio::spawn(async move {
-        get_state(
-            cfg_copy,
-            get_serialization_context(),
-            remote_establisher,
-            0.into(),
-        )
-        .await
-        .unwrap()
-        .unwrap()
+        get_state(cfg_copy, get_serialization_context(), remote_establisher)
+            .await
+            .unwrap()
     });
 
     // accept connection attempt from remote
@@ -54,7 +48,7 @@ async fn test_bootstrap_server() {
     .await
     .expect("timeout waiting for connection attempt from remote")
     .expect("error receiving connection attempt from remote");
-    let expect_conn_addr = std::net::SocketAddr::new(cfg.bootstrap_ip, cfg.bootstrap_port);
+    let expect_conn_addr = cfg.bootstrap_addr.unwrap().clone();
     assert_eq!(
         conn_addr, expect_conn_addr,
         "client connected to wrong bootstrap ip"
@@ -94,7 +88,7 @@ async fn test_bootstrap_server() {
     response.send(sent_graph.clone()).unwrap();
 
     // wait for get_state
-    let recv_graph = get_state_h
+    let (maybe_recv_graph, _comp) = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
 
@@ -103,6 +97,7 @@ async fn test_bootstrap_server() {
     bridge_h2.await.expect("bridge 2 join failed");
 
     // check states
+    let recv_graph = maybe_recv_graph.unwrap();
     assert_eq!(
         sent_graph
             .to_bytes_compact(&get_serialization_context())

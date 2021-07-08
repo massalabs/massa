@@ -21,7 +21,7 @@ async fn test_storage() {
     cfg.max_discarded_blocks = 1;
 
     // to avoid timing problems for blocks in the future
-    cfg.genesis_timestamp = UTime::now()
+    cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -41,6 +41,7 @@ async fn test_storage() {
             protocol_event_receiver,
             Some(storage_access.clone()),
             None,
+            0,
         )
         .await
         .expect("could not start consensus controller");
