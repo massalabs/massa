@@ -6,9 +6,28 @@ image: "rust:latest"
 #   - apt-get update -yqq
 #   - apt-get install -yqq --no-install-recommends build-essential
 
-cache:
-  key: one-key-to-rule-them-all
+stages:
+  - sanity
+  - test
+  - build
 
+cache:
+  key: "$CI_BUILD_STAGE/$CI_BUILD_REF_NAME"
+  untracked: true
+
+rustfmt:
+  stage: sanity
+  script:
+    - cargo fmt -- --write-mode=diff
+
+clippy:
+  stage: sanity
+  allow_failure: true
+  script:
+    - cargo clippy -- -D warnings # Turn all warnings in
+
+
+  
 # Use cargo to test the project
 test:cargo:
   script:
