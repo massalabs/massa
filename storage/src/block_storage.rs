@@ -7,7 +7,7 @@ use sled::{self, Transactional};
 use std::{
     collections::HashMap,
     convert::TryInto,
-    sync::{Arc, RwLock, RwLockWriteGuard},
+    sync::{Arc, RwLock},
 };
 
 #[derive(Clone)]
@@ -103,7 +103,7 @@ impl BlockStorage {
         &self,
         block_id: BlockId,
         block: Block,
-        block_count_w: &mut RwLockWriteGuard<usize>,
+        block_count_w: &mut usize,
     ) -> Result<(), StorageError> {
         //add the new block
         (&self.hash_to_block, &self.slot_to_hash).transaction(|(hash_tx, slot_tx)| {
@@ -124,20 +124,17 @@ impl BlockStorage {
             )?;
             Ok(())
         })?;
-        **block_count_w += 1;
+        *block_count_w += 1;
 
         //manage max block. If nb block > max block, remove the oldest block.
-        self.remove_excess_blocks(&mut *block_count_w)?;
+        self.remove_excess_blocks(block_count_w)?;
 
         Ok(())
     }
 
     /// while there are too many blocks, remove the one with the oldest slot
-    fn remove_excess_blocks(
-        &self,
-        block_count_w: &mut RwLockWriteGuard<usize>,
-    ) -> Result<(), StorageError> {
-        while **block_count_w > self.cfg.max_stored_blocks {
+    fn remove_excess_blocks(&self, block_count_w: &mut usize) -> Result<(), StorageError> {
+        while *block_count_w > self.cfg.max_stored_blocks {
             let (_block, hash) =
                 self.slot_to_hash
                     .pop_min()?
@@ -145,7 +142,7 @@ impl BlockStorage {
                         "block_count > 0 but slot_to_hash.pop_min returned None".into(),
                     ))?;
             self.hash_to_block.remove(hash)?;
-            **block_count_w -= 1;
+            *block_count_w -= 1;
         }
         Ok(())
     }
