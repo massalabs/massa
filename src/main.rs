@@ -1,13 +1,13 @@
 #![feature(ip)]
 
-mod config;
-mod consensus;
-mod crypto;
-mod network;
-mod protocol;
-mod structures;
-
-use crate::protocol::controller::{ProtocolController, ProtocolEvent, ProtocolEventType};
+pub mod config;
+pub mod consensus;
+pub mod crypto;
+pub mod network;
+pub mod protocol;
+pub mod structures;
+use crate::network::network_controller::NetworkController;
+use crate::protocol::protocol_controller::{ProtocolController, ProtocolEvent, ProtocolEventType};
 use log::error;
 use std::error::Error;
 use tokio::fs::read_to_string;
@@ -15,8 +15,10 @@ use tokio::fs::read_to_string;
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 async fn run(cfg: config::Config) -> BoxResult<()> {
+    let network = NetworkController::new(&cfg.network).await?;
+
     // launch network controller
-    let mut protocol = ProtocolController::new(&cfg.protocol).await?;
+    let mut protocol = ProtocolController::new(&cfg.protocol, network).await?;
 
     // loop over messages
     loop {

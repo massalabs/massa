@@ -1,4 +1,4 @@
 mod binders;
 pub mod config;
-pub mod controller;
 pub mod messages;
+pub mod protocol_controller;

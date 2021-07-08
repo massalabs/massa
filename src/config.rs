@@ -1,3 +1,4 @@
+use crate::network::config::NetworkConfig;
 use crate::protocol::config::ProtocolConfig;
 use serde::Deserialize;
 use toml;
@@ -11,6 +12,7 @@ pub struct LoggingConfig {
 pub struct Config {
     pub logging: LoggingConfig,
     pub protocol: ProtocolConfig,
+    pub network: NetworkConfig,
 }
 
 impl Config {
