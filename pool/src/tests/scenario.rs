@@ -1,5 +1,4 @@
 use communication::protocol::ProtocolCommand;
-use models::get_serialization_context;
 use models::SerializeCompact;
 use models::Slot;
 use std::collections::HashMap;
@@ -17,8 +16,6 @@ use serial_test::serial;
 #[serial]
 async fn test_pool() {
     let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let context = get_serialization_context();
-
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
 
@@ -45,8 +42,8 @@ async fn test_pool() {
         let fee = 40 + i;
         let expire_period: u64 = 40 + i;
         let start_period = expire_period.saturating_sub(operation_validity_periods);
-        let (op, thread) = get_transaction(expire_period, fee, &context);
-        let id = op.verify_integrity(&context).unwrap();
+        let (op, thread) = get_transaction(expire_period, fee);
+        let id = op.verify_integrity().unwrap();
 
         let mut ops = HashMap::new();
         ops.insert(id, op.clone());
@@ -103,12 +100,12 @@ async fn test_pool() {
                 .unwrap();
             assert!(res
                 .iter()
-                .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
+                .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, _, r)| r.contains(&target_slot.period))
                     .take(max_count)
-                    .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))));
+                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
         }
     }
 
@@ -133,12 +130,12 @@ async fn test_pool() {
                 .unwrap();
             assert!(res
                 .iter()
-                .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
+                .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, _, r)| r.contains(&target_slot.period))
                     .take(max_count)
-                    .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))));
+                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
         }
     }
 
@@ -150,8 +147,8 @@ async fn test_pool() {
             .unwrap();
         let fee = 1000;
         let expire_period: u64 = 300;
-        let (op, thread) = get_transaction(expire_period, fee, &context);
-        let id = op.verify_integrity(&context).unwrap();
+        let (op, thread) = get_transaction(expire_period, fee);
+        let id = op.verify_integrity().unwrap();
         let mut ops = HashMap::new();
         ops.insert(id, op);
 
@@ -182,8 +179,6 @@ async fn test_pool() {
 #[serial]
 async fn test_pool_with_protocol_events() {
     let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let context = get_serialization_context();
-
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
 
@@ -210,8 +205,8 @@ async fn test_pool_with_protocol_events() {
         let fee = 40 + i;
         let expire_period: u64 = 40 + i;
         let start_period = expire_period.saturating_sub(operation_validity_periods);
-        let (op, thread) = get_transaction(expire_period, fee, &context);
-        let id = op.verify_integrity(&context).unwrap();
+        let (op, thread) = get_transaction(expire_period, fee);
+        let id = op.verify_integrity().unwrap();
 
         let mut ops = HashMap::new();
         ops.insert(id, op.clone());

@@ -2,7 +2,7 @@ use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    Address, ModelsError, SerializationContext, ADDRESS_SIZE_BYTES,
+    Address, ModelsError, ADDRESS_SIZE_BYTES,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -82,7 +82,7 @@ pub enum OperationType {
 }
 
 impl SerializeCompact for OperationType {
-    fn to_bytes_compact(&self, _context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         match self {
             OperationType::Transaction {
@@ -104,10 +104,7 @@ impl SerializeCompact for OperationType {
 }
 
 impl DeserializeCompact for OperationType {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        _context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0;
 
         // type id
@@ -139,7 +136,7 @@ impl DeserializeCompact for OperationType {
 }
 
 impl SerializeCompact for OperationContent {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         // fee
@@ -152,17 +149,14 @@ impl SerializeCompact for OperationContent {
         res.extend(&self.sender_public_key.to_bytes());
 
         // operation type
-        res.extend(&self.op.to_bytes_compact(context)?);
+        res.extend(&self.op.to_bytes_compact()?);
 
         Ok(res)
     }
 }
 
 impl DeserializeCompact for OperationContent {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
         // fee
@@ -178,7 +172,7 @@ impl DeserializeCompact for OperationContent {
         cursor += PUBLIC_KEY_SIZE_BYTES;
 
         // op
-        let (op, delta) = OperationType::from_bytes_compact(&buffer[cursor..], context)?;
+        let (op, delta) = OperationType::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         Ok((
@@ -195,24 +189,18 @@ impl DeserializeCompact for OperationContent {
 
 impl Operation {
     /// Verify the signature and integrity of the operation and computes operation ID
-    pub fn verify_integrity(
-        &self,
-        context: &SerializationContext,
-    ) -> Result<OperationId, ModelsError> {
-        let content_hash = Hash::hash(&self.content.to_bytes_compact(context)?);
+    pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
+        let content_hash = Hash::hash(&self.content.to_bytes_compact()?);
         verify_signature(
             &content_hash,
             &self.signature,
             &self.content.sender_public_key,
         )?;
-        self.get_operation_id(context)
+        self.get_operation_id()
     }
 
-    pub fn get_operation_id(
-        &self,
-        context: &SerializationContext,
-    ) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(Hash::hash(&self.to_bytes_compact(context)?)))
+    pub fn get_operation_id(&self) -> Result<OperationId, ModelsError> {
+        Ok(OperationId(Hash::hash(&self.to_bytes_compact()?)))
     }
 
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
@@ -242,11 +230,11 @@ impl Operation {
 }
 
 impl SerializeCompact for Operation {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         // content
-        res.extend(self.content.to_bytes_compact(&context)?);
+        res.extend(self.content.to_bytes_compact()?);
 
         // signature
         res.extend(&self.signature.to_bytes());
@@ -256,14 +244,11 @@ impl SerializeCompact for Operation {
 }
 
 impl DeserializeCompact for Operation {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0;
 
         // content
-        let (content, delta) = OperationContent::from_bytes_compact(&buffer[cursor..], context)?;
+        let (content, delta) = OperationContent::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         // signature
@@ -284,20 +269,6 @@ mod tests {
     #[test]
     #[serial]
     fn test_operation_type() {
-        let context = SerializationContext {
-            max_block_size: 100000,
-            max_block_operations: 1000000,
-            parent_count: 2,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-        };
         let sender_priv = crypto::generate_random_private_key();
         let sender_pub = crypto::derive_public_key(&sender_priv);
 
@@ -308,8 +279,8 @@ mod tests {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
             amount: 0,
         };
-        let ser_type = op.to_bytes_compact(&context).unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type, &context).unwrap();
+        let ser_type = op.to_bytes_compact().unwrap();
+        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
         assert_eq!(format!("{:?}", res_type), format!("{:?}", op));
 
         let content = OperationContent {
@@ -319,12 +290,11 @@ mod tests {
             expire_period: 50,
         };
 
-        let ser_content = content.to_bytes_compact(&context).unwrap();
-        let (res_content, _) =
-            OperationContent::from_bytes_compact(&ser_content, &context).unwrap();
+        let ser_content = content.to_bytes_compact().unwrap();
+        let (res_content, _) = OperationContent::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
 
-        let hash = Hash::hash(&content.to_bytes_compact(&context).unwrap());
+        let hash = Hash::hash(&content.to_bytes_compact().unwrap());
         let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
         let op = Operation {
@@ -332,8 +302,8 @@ mod tests {
             signature,
         };
 
-        let ser_op = op.to_bytes_compact(&context).unwrap();
-        let (res_op, _) = Operation::from_bytes_compact(&ser_op, &context).unwrap();
+        let ser_op = op.to_bytes_compact().unwrap();
+        let (res_op, _) = Operation::from_bytes_compact(&ser_op).unwrap();
         assert_eq!(format!("{:?}", res_op), format!("{:?}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);

@@ -7,7 +7,7 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 
-use models::{Operation, OperationId, SerializationContext, Slot};
+use models::{Operation, OperationId, Slot};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be proccessed by pool.
@@ -45,8 +45,6 @@ pub struct PoolWorker {
     controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,
     /// operation pool
     operation_pool: OperationPool,
-    /// serialization context
-    context: SerializationContext,
 }
 
 impl PoolWorker {
@@ -69,7 +67,6 @@ impl PoolWorker {
         protocol_pool_event_receiver: ProtocolPoolEventReceiver,
         controller_command_rx: mpsc::Receiver<PoolCommand>,
         controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,
-        context: SerializationContext,
     ) -> Result<PoolWorker, PoolError> {
         massa_trace!("pool.pool_worker.new", {});
         Ok(PoolWorker {
@@ -78,7 +75,6 @@ impl PoolWorker {
             controller_command_rx,
             controller_manager_rx,
             operation_pool: OperationPool::new(cfg, thread_count, operation_validity_periods),
-            context,
         })
     }
 
@@ -91,16 +87,14 @@ impl PoolWorker {
                 // listen pool commands
                 Some(cmd) = self.controller_command_rx.recv() => {
                     massa_trace!("pool.pool_worker.run_loop.pool_command", {});
-                    let context = self.context.clone();
-                    self.process_pool_command(cmd, &context).await?
+                    self.process_pool_command(cmd).await?
                 },
                 // receive protocol controller pool events
                 evt = self.protocol_pool_event_receiver.wait_event() => {
                     massa_trace!("pool.pool_worker.run_loop.select.protocol_event", {});
                     match evt {
                         Ok(event) => {
-                            let context = self.context.clone();
-                            self.process_protocol_pool_event(event, &context).await?},
+                            self.process_protocol_pool_event(event).await?},
                         Err(err) => return Err(PoolError::CommunicationError(err))
                     }
                 },
@@ -121,14 +115,10 @@ impl PoolWorker {
     ///
     /// # Argument
     /// * cmd: consens command to process
-    async fn process_pool_command(
-        &mut self,
-        cmd: PoolCommand,
-        context: &SerializationContext,
-    ) -> Result<(), PoolError> {
+    async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
             PoolCommand::AddOperations(mut ops) => {
-                let newly_added = self.operation_pool.add_operations(ops.clone(), context)?;
+                let newly_added = self.operation_pool.add_operations(ops.clone())?;
                 ops.retain(|op_id, _op| newly_added.contains(op_id));
                 if !ops.is_empty() {
                     self.protocol_command_sender
@@ -171,11 +161,10 @@ impl PoolWorker {
     async fn process_protocol_pool_event(
         &mut self,
         event: ProtocolPoolEvent,
-        context: &SerializationContext,
     ) -> Result<(), PoolError> {
         match event {
             ProtocolPoolEvent::ReceivedOperations(mut ops) => {
-                let newly_added = self.operation_pool.add_operations(ops.clone(), context)?;
+                let newly_added = self.operation_pool.add_operations(ops.clone())?;
                 ops.retain(|op_id, _op| newly_added.contains(op_id));
                 if !ops.is_empty() {
                     self.protocol_command_sender

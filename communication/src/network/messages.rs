@@ -3,8 +3,8 @@ use crypto::{
     signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES},
 };
 use models::{
-    array_from_slice, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    ModelsError, Operation, SerializationContext, SerializeCompact, SerializeVarInt,
+    array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
+    DeserializeVarInt, ModelsError, Operation, SerializeCompact, SerializeVarInt,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -64,7 +64,7 @@ enum MessageTypeId {
 }
 
 impl SerializeCompact for Message {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         match self {
             Message::HandshakeInitiation {
@@ -81,11 +81,11 @@ impl SerializeCompact for Message {
             }
             Message::Block(block) => {
                 res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
-                res.extend(&block.to_bytes_compact(&context)?);
+                res.extend(&block.to_bytes_compact()?);
             }
             Message::BlockHeader(header) => {
                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
-                res.extend(&header.to_bytes_compact(&context)?);
+                res.extend(&header.to_bytes_compact()?);
             }
             Message::AskForBlocks(list) => {
                 res.extend(u32::from(MessageTypeId::AskForBlocks).to_varint_bytes());
@@ -106,7 +106,7 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
                 res.extend((ip_vec.len() as u64).to_varint_bytes());
                 for ip in ip_vec.into_iter() {
-                    res.extend(ip.to_bytes_compact(&context)?)
+                    res.extend(ip.to_bytes_compact()?)
                 }
             }
             Message::BlockNotFound(hash) => {
@@ -117,7 +117,7 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
                 res.extend((operations.len() as u64).to_varint_bytes());
                 for op in operations.into_iter() {
-                    res.extend(op.to_bytes_compact(&context)?);
+                    res.extend(op.to_bytes_compact()?);
                 }
             }
         }
@@ -126,11 +126,17 @@ impl SerializeCompact for Message {
 }
 
 impl DeserializeCompact for Message {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
+
+        let (max_ask_blocks_per_message, max_peer_list_length, max_operations_per_message) =
+            with_serialization_context(|context| {
+                (
+                    context.max_ask_blocks_per_message,
+                    context.max_peer_list_length,
+                    context.max_operations_per_message,
+                )
+            });
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -160,20 +166,18 @@ impl DeserializeCompact for Message {
                 Message::HandshakeReply { signature }
             }
             MessageTypeId::Block => {
-                let (block, delta) = Block::from_bytes_compact(&buffer[cursor..], &context)?;
+                let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 Message::Block(block)
             }
             MessageTypeId::BlockHeader => {
-                let (header, delta) = BlockHeader::from_bytes_compact(&buffer[cursor..], &context)?;
+                let (header, delta) = BlockHeader::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 Message::BlockHeader(header)
             }
             MessageTypeId::AskForBlocks => {
-                let (length, delta) = u32::from_varint_bytes_bounded(
-                    &buffer[cursor..],
-                    context.max_ask_blocks_per_message,
-                )?;
+                let (length, delta) =
+                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_ask_blocks_per_message)?;
                 cursor += delta;
                 // hash list
                 let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
@@ -187,15 +191,13 @@ impl DeserializeCompact for Message {
             MessageTypeId::AskPeerList => Message::AskPeerList,
             MessageTypeId::PeerList => {
                 // length
-                let (length, delta) = u32::from_varint_bytes_bounded(
-                    &buffer[cursor..],
-                    context.max_peer_list_length,
-                )?;
+                let (length, delta) =
+                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_peer_list_length)?;
                 cursor += delta;
                 // peer list
                 let mut peers: Vec<IpAddr> = Vec::with_capacity(length as usize);
                 for _ in 0..length {
-                    let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..], &context)?;
+                    let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
                     cursor += delta;
                     peers.push(ip);
                 }
@@ -208,15 +210,13 @@ impl DeserializeCompact for Message {
             }
             MessageTypeId::Operations => {
                 // length
-                let (length, delta) = u32::from_varint_bytes_bounded(
-                    &buffer[cursor..],
-                    context.max_operations_per_message,
-                )?;
+                let (length, delta) =
+                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
                 cursor += delta;
                 // operations
                 let mut ops: Vec<Operation> = Vec::with_capacity(length as usize);
                 for _ in 0..length {
-                    let (op, delta) = Operation::from_bytes_compact(&buffer[cursor..], &context)?;
+                    let (op, delta) = Operation::from_bytes_compact(&buffer[cursor..])?;
                     cursor += delta;
                     ops.push(op);
                 }

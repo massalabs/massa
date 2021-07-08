@@ -4,8 +4,7 @@ use crate::{
 };
 use models::{
     array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
-    OperationSearchResult, SerializationContext, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES,
-    OPERATION_ID_SIZE_BYTES,
+    OperationSearchResult, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
 };
 use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{
@@ -26,7 +25,6 @@ pub struct StorageCleaner {
     slot_to_hash: sled::Tree,
     op_to_block: sled::Tree, // op_id -> (block_id, index)
     addr_to_op: sled::Tree,  // address -> Vec<operationId>
-    serialization_context: SerializationContext,
 }
 
 impl StorageCleaner {
@@ -39,7 +37,6 @@ impl StorageCleaner {
         op_to_block: sled::Tree,
         addr_to_op: sled::Tree, // address -> Vec<operationId>
         block_count: Arc<AtomicUsize>,
-        serialization_context: SerializationContext,
     ) -> Result<Self, StorageError> {
         Ok(StorageCleaner {
             max_stored_blocks,
@@ -50,7 +47,6 @@ impl StorageCleaner {
             slot_to_hash,
             op_to_block,
             addr_to_op,
-            serialization_context,
         })
     }
 
@@ -79,8 +75,7 @@ impl StorageCleaner {
                                     )
                                 )?;
                             let (block, _) = Block::from_bytes_compact(
-                                s_block.as_ref(),
-                                &self.serialization_context,
+                                s_block.as_ref()
                             )
                             .map_err(|err| {
                                 sled::transaction::ConflictableTransactionError::Abort(
@@ -101,7 +96,7 @@ impl StorageCleaner {
                             let mut addr_to_op_cache: HashMap<Address, HashSet<OperationId>> = HashMap::new();
                             for op in block.operations.into_iter() {
                                 // remove operation from op_id => block index
-                                let op_id = op.get_operation_id(&self.serialization_context).map_err(
+                                let op_id = op.get_operation_id().map_err(
                                     |err| {
                                         sled::transaction::ConflictableTransactionError::Abort(
                                             InternalError::TransactionError(format!(
@@ -214,7 +209,6 @@ fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
 #[derive(Clone)]
 pub struct BlockStorage {
     cfg: StorageConfig,
-    serialization_context: SerializationContext,
     block_count: Arc<AtomicUsize>,
     hash_to_block: sled::Tree,
     slot_to_hash: sled::Tree,
@@ -226,7 +220,6 @@ pub struct BlockStorage {
 impl BlockStorage {
     pub fn open(
         cfg: StorageConfig,
-        serialization_context: SerializationContext,
         hash_to_block: sled::Tree,
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
@@ -236,7 +229,6 @@ impl BlockStorage {
     ) -> Result<BlockStorage, StorageError> {
         let res = BlockStorage {
             cfg,
-            serialization_context,
             block_count,
             hash_to_block,
             slot_to_hash,
@@ -298,16 +290,14 @@ impl BlockStorage {
         )
             .transaction(|(hash_tx, slot_tx, op_tx, addr_tx)| {
                 // add block
-                let serialized_block = block
-                    .to_bytes_compact(&self.serialization_context)
-                    .map_err(|err| {
-                        sled::transaction::ConflictableTransactionError::Abort(
-                            InternalError::TransactionError(format!(
-                                "error serializing block: {:?}",
-                                err
-                            )),
-                        )
-                    })?;
+                let serialized_block = block.to_bytes_compact().map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!(
+                            "error serializing block: {:?}",
+                            err
+                        )),
+                    )
+                })?;
                 let s_block_id = block_id.to_bytes();
                 if hash_tx
                     .insert(&s_block_id, serialized_block.as_slice())?
@@ -332,16 +322,14 @@ impl BlockStorage {
                 // operations
                 let mut addr_to_ops: HashMap<Address, HashSet<OperationId>> = HashMap::new();
                 for (idx, op) in block.operations.iter().enumerate() {
-                    let op_id =
-                        op.get_operation_id(&self.serialization_context)
-                            .map_err(|err| {
-                                sled::transaction::ConflictableTransactionError::Abort(
-                                    InternalError::TransactionError(format!(
-                                        "error getting op id block: {:?}",
-                                        err
-                                    )),
-                                )
-                            })?;
+                    let op_id = op.get_operation_id().map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error getting op id block: {:?}",
+                                err
+                            )),
+                        )
+                    })?;
                     let s_op_id = op_id.to_bytes();
                     // add to ops
                     op_tx.insert(
@@ -416,9 +404,7 @@ impl BlockStorage {
         massa_trace!("block_storage.get_block", { "block_id": block_id });
         let hash_key = block_id.to_bytes();
         if let Some(s_block) = self.hash_to_block.get(hash_key)? {
-            Ok(Some(
-                Block::from_bytes_compact(s_block.as_ref(), &self.serialization_context)?.0,
-            ))
+            Ok(Some(Block::from_bytes_compact(s_block.as_ref())?.0))
         } else {
             Ok(None)
         }
@@ -485,10 +471,7 @@ impl BlockStorage {
                         continue;
                     };
                     if let Some(s_block) = hash_tx.get(&block_id.to_bytes())? {
-                        let (mut block, _size) = Block::from_bytes_compact(
-                            s_block.as_ref(),
-                            &self.serialization_context,
-                        )?;
+                        let (mut block, _size) = Block::from_bytes_compact(s_block.as_ref())?;
                         if idx >= block.operations.len() {
                             return Err(StorageError::DatabaseInconsistency(
                                 "operation index overflows block operations length".into(),

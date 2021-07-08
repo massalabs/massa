@@ -4,10 +4,7 @@ use crate::{
     error::StorageError,
 };
 use logging::debug;
-use models::{
-    with_serialization_context, Block, BlockId, Operation, OperationId, OperationSearchResult,
-    SerializationContext, Slot,
-};
+use models::{Block, BlockId, OperationId, OperationSearchResult, Slot};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -16,7 +13,6 @@ use tokio::task::JoinHandle;
 
 pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManager), StorageError> {
     debug!("starting storage controller");
-    let serialization_context = models::with_serialization_context(|ctx| ctx.clone());
     let sled_config = sled::Config::default()
         .path(&cfg.path)
         .cache_capacity(cfg.cache_capacity)
@@ -39,7 +35,6 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
     let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>(1);
     let db = BlockStorage::open(
         cfg.clone(),
-        serialization_context.clone(),
         hash_to_block.clone(),
         slot_to_hash.clone(),
         op_to_block.clone(),
@@ -57,7 +52,6 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         op_to_block,
         addr_to_op,
         block_count,
-        serialization_context,
     )?;
     let join_handle = tokio::spawn(async move {
         let res = storage_cleaner.run_loop().await;

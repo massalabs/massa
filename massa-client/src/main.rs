@@ -351,6 +351,10 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             )));
         }
         let context = resp.json::<models::SerializationContext>()?;
+
+        // Set the context for the client process.
+        models::init_serialization_context(context);
+
         //get pool config
         /*        let url = format!("http://{}/api/v1/pool_config", data.node_ip);
         let resp = reqwest::blocking::get(&url)?;
@@ -424,7 +428,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             op: operation_type,
         };
 
-        let hash = Hash::hash(&operation_content.to_bytes_compact(&context).unwrap());
+        let hash = Hash::hash(&operation_content.to_bytes_compact().unwrap());
         let signature = crypto::sign(&hash, &private_key).unwrap();
 
         let operation = Operation {

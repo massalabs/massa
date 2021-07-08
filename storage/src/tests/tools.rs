@@ -31,7 +31,7 @@ pub fn get_test_block() -> Block {
         }
 }
 
-pub fn create_operation(context: &SerializationContext) -> Operation {
+pub fn create_operation() -> Operation {
     let sender_priv = crypto::generate_random_private_key();
     let sender_pub = crypto::derive_public_key(&sender_priv);
 
@@ -48,14 +48,14 @@ pub fn create_operation(context: &SerializationContext) -> Operation {
         sender_public_key: sender_pub,
         expire_period: 0,
     };
-    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     Operation { content, signature }
 }
 
-pub fn get_block_with_op(context: &SerializationContext) -> (Block, BlockId, OperationId) {
-    let op = create_operation(context);
+pub fn get_block_with_op() -> (Block, BlockId, OperationId) {
+    let op = create_operation();
     let block = Block {
         header: BlockHeader {
             content: BlockHeaderContent{
@@ -74,10 +74,10 @@ pub fn get_block_with_op(context: &SerializationContext) -> (Block, BlockId, Ope
         operations: vec![op.clone()]
     };
     let id = block.header.compute_block_id().unwrap();
-    (block, id, op.get_operation_id(context).unwrap())
+    (block, id, op.get_operation_id().unwrap())
 }
 
-pub fn get_test_config() -> (StorageConfig, SerializationContext) {
+pub fn get_test_config() -> StorageConfig {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
     let context = SerializationContext {
         max_block_size: 1024 * 1024,
@@ -94,16 +94,13 @@ pub fn get_test_config() -> (StorageConfig, SerializationContext) {
         max_bootstrap_message_size: 100000000,
     };
     models::init_serialization_context(context.clone());
-    (
-        StorageConfig {
-            max_stored_blocks: 100000,
-            path: tempdir.path().to_path_buf(),
-            cache_capacity: 1000000,
-            flush_interval: Some(200.into()),
-            reset_at_startup: true,
-        },
-        context,
-    )
+    StorageConfig {
+        max_stored_blocks: 100000,
+        path: tempdir.path().to_path_buf(),
+        cache_capacity: 1000000,
+        flush_interval: Some(200.into()),
+        reset_at_startup: true,
+    }
 }
 
 pub fn get_test_block_id() -> BlockId {

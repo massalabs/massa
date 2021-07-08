@@ -751,7 +751,7 @@ impl ProtocolWorker {
             }
 
             // check integrity (signature) and reuse
-            match op.verify_integrity(&serialization_context) {
+            match op.verify_integrity() {
                 Ok(op_id) => {
                     if seen_ops.insert(op_id, idx).is_some() {
                         // reused
@@ -804,9 +804,8 @@ impl ProtocolWorker {
     ) -> Option<HashMap<OperationId, Operation>> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "opearations": operations });
         let mut result = HashMap::new();
-        let serialization_context = models::with_serialization_context(|context| context.clone());
         for op in operations.into_iter() {
-            match op.verify_integrity(&serialization_context) {
+            match op.verify_integrity() {
                 Ok(operation_id) => {
                     result.insert(operation_id, op);
                 }

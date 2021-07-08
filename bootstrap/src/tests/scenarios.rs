@@ -1,6 +1,6 @@
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
-use models::{get_serialization_context, SerializeCompact};
+use models::SerializeCompact;
 use serial_test::serial;
 use std::str::FromStr;
 use tokio::sync::mpsc;
@@ -20,7 +20,6 @@ use super::{
 async fn test_bootstrap_server() {
     let (private_key, public_key) = get_keys();
     let cfg = get_bootstrap_config(public_key);
-    let serialization_context = get_serialization_context();
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
@@ -117,16 +116,16 @@ async fn test_bootstrap_server() {
     // check states
     let recv_graph = maybe_recv_graph.unwrap();
     assert_eq!(
-        sent_graph.to_bytes_compact(&serialization_context).unwrap(),
-        recv_graph.to_bytes_compact(&serialization_context).unwrap(),
+        sent_graph.to_bytes_compact().unwrap(),
+        recv_graph.to_bytes_compact().unwrap(),
         "mismatch between sent and received graphs"
     );
 
     // check peers
     let recv_peers = maybe_recv_peers.unwrap();
     assert_eq!(
-        sent_peers.to_bytes_compact(&serialization_context).unwrap(),
-        recv_peers.to_bytes_compact(&serialization_context).unwrap(),
+        sent_peers.to_bytes_compact().unwrap(),
+        recv_peers.to_bytes_compact().unwrap(),
         "mismatch between sent and received peers"
     );
 

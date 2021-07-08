@@ -10,8 +10,8 @@ use crypto::{
     signature::{derive_public_key, PublicKey},
 };
 use models::{
-    with_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    Operation, OperationId, OperationSearchResult, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
+    OperationSearchResult, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
 use std::convert::TryFrom;
@@ -296,8 +296,7 @@ impl ConsensusWorker {
             operations: Vec::new(),
         };
 
-        let serialized_block =
-            with_serialization_context(|context| block.to_bytes_compact(context))?;
+        let serialized_block = block.to_bytes_compact()?;
 
         // initialize remaining block space and remaining operation count
         let mut remaining_block_space = (self.cfg.max_block_size as u64)

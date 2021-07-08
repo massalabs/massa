@@ -9,9 +9,9 @@ use crate::{
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
-    array_from_slice, u8_from_slice, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationId,
-    OperationSearchResult, SerializationContext, SerializeCompact, SerializeVarInt, Slot,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
+    BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
+    OperationId, OperationSearchResult, SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -108,19 +108,18 @@ impl From<ActiveBlock> for ExportActiveBlock {
 
 impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(block: ExportActiveBlock) -> Result<ActiveBlock, ConsensusError> {
-        let context = models::with_serialization_context(|ctx| ctx.clone());
         let operation_set = block
             .block
             .operations
             .iter()
             .enumerate()
-            .map(|(idx, op)| match op.get_operation_id(&context) {
+            .map(|(idx, op)| match op.get_operation_id() {
                 Ok(id) => Ok((id, idx)),
                 Err(e) => Err(e),
             })
             .collect::<Result<_, _>>()?;
 
-        let addresses_to_operations = block.block.involved_addresses(&context)?;
+        let addresses_to_operations = block.block.involved_addresses()?;
         Ok(ActiveBlock {
             block: block.block,
             parents: block.parents,
@@ -146,10 +145,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
 }
 
 impl SerializeCompact for ExportActiveBlock {
-    fn to_bytes_compact(
-        &self,
-        context: &SerializationContext,
-    ) -> Result<Vec<u8>, models::ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
         //is_final
@@ -160,7 +156,7 @@ impl SerializeCompact for ExportActiveBlock {
         }
 
         //block
-        res.extend(self.block.to_bytes_compact(&context)?);
+        res.extend(self.block.to_bytes_compact()?);
 
         //parents
         // parents (note: there should be none if slot period=0)
@@ -221,7 +217,7 @@ impl SerializeCompact for ExportActiveBlock {
             res.extend(u32::from(map_count).to_varint_bytes());
             for (address, ledger) in map {
                 res.extend(&address.to_bytes());
-                res.extend(ledger.to_bytes_compact(&context)?);
+                res.extend(ledger.to_bytes_compact()?);
             }
         }
 
@@ -230,11 +226,16 @@ impl SerializeCompact for ExportActiveBlock {
 }
 
 impl DeserializeCompact for ExportActiveBlock {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), models::ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
+        let (parent_count, max_bootstrap_children, max_bootstrap_deps) =
+            with_serialization_context(|context| {
+                (
+                    context.parent_count,
+                    context.max_bootstrap_children,
+                    context.max_bootstrap_deps,
+                )
+            });
 
         //is_final
         let is_final_u8 = u8_from_slice(&buffer)?;
@@ -242,16 +243,15 @@ impl DeserializeCompact for ExportActiveBlock {
         let is_final = if is_final_u8 == 0 { false } else { true };
 
         //block
-        let (block, delta) = Block::from_bytes_compact(&buffer[cursor..], &context)?;
+        let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;
         let parents = if has_parents == 1 {
-            let mut parents: Vec<(BlockId, u64)> =
-                Vec::with_capacity(context.parent_count as usize);
-            for _ in 0..context.parent_count {
+            let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(parent_count as usize);
+            for _ in 0..parent_count {
                 let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -270,7 +270,7 @@ impl DeserializeCompact for ExportActiveBlock {
 
         //childrens
         let (children_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if children_count > context.parent_count.into() {
+        if children_count > parent_count.into() {
             return Err(ModelsError::DeserializeError(
                 "too much threads with children to deserialize".to_string(),
             ));
@@ -279,7 +279,7 @@ impl DeserializeCompact for ExportActiveBlock {
         let mut children: Vec<Vec<(BlockId, u64)>> = Vec::with_capacity(children_count as usize);
         for _ in 0..(children_count as usize) {
             let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            if map_count > context.max_bootstrap_children {
+            if map_count > max_bootstrap_children {
                 return Err(ModelsError::DeserializeError(
                     "too much children to deserialize".to_string(),
                 ));
@@ -298,7 +298,7 @@ impl DeserializeCompact for ExportActiveBlock {
 
         //dependencies
         let (dependencies_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if dependencies_count > context.max_bootstrap_deps {
+        if dependencies_count > max_bootstrap_deps {
             return Err(ModelsError::DeserializeError(
                 "too many dependencies to deserialize".to_string(),
             ));
@@ -313,7 +313,7 @@ impl DeserializeCompact for ExportActiveBlock {
 
         //block_ledger_change
         let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if block_ledger_change_count > context.parent_count.into() {
+        if block_ledger_change_count > parent_count.into() {
             return Err(ModelsError::DeserializeError(
                 "too much threads with block_ledger_change to deserialize".to_string(),
             ));
@@ -323,7 +323,7 @@ impl DeserializeCompact for ExportActiveBlock {
             Vec::with_capacity(block_ledger_change_count as usize);
         for _ in 0..(block_ledger_change_count as usize) {
             let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            if map_count > context.max_bootstrap_children {
+            if map_count > max_bootstrap_children {
                 return Err(ModelsError::DeserializeError(
                     "too much block_ledger_change to deserialize".to_string(),
                 ));
@@ -333,8 +333,7 @@ impl DeserializeCompact for ExportActiveBlock {
             for _ in 0..(map_count as usize) {
                 let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
-                let (ledger, delta) =
-                    LedgerChange::from_bytes_compact(&buffer[cursor..], &context)?;
+                let (ledger, delta) = LedgerChange::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 map.push((address, ledger));
             }
@@ -549,11 +548,11 @@ impl<'a> TryFrom<&'a BlockGraph> for BootsrapableGraph {
 }
 
 impl SerializeCompact for BootsrapableGraph {
-    fn to_bytes_compact(
-        &self,
-        context: &SerializationContext,
-    ) -> Result<Vec<u8>, models::ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
+        let (max_bootstrap_blocks, max_bootstrap_cliques) = with_serialization_context(|context| {
+            (context.max_bootstrap_blocks, context.max_bootstrap_cliques)
+        });
 
         //active_blocks
         let blocks_count: u32 = self.active_blocks.len().try_into().map_err(|err| {
@@ -562,13 +561,13 @@ impl SerializeCompact for BootsrapableGraph {
                 err
             ))
         })?;
-        if blocks_count > context.max_bootstrap_blocks {
+        if blocks_count > max_bootstrap_blocks {
             return Err(ModelsError::SerializeError(format!("too many blocks in active_blocks for serialization context in BootstrapableGraph: {:?}", blocks_count)));
         }
         res.extend(u32::from(blocks_count).to_varint_bytes());
         for (hash, block) in self.active_blocks.iter() {
             res.extend(&hash.to_bytes());
-            res.extend(block.to_bytes_compact(&context)?);
+            res.extend(block.to_bytes_compact()?);
         }
 
         //best_parents
@@ -608,7 +607,7 @@ impl SerializeCompact for BootsrapableGraph {
                 err
             ))
         })?;
-        if max_cliques_count > context.max_bootstrap_cliques {
+        if max_cliques_count > max_bootstrap_cliques {
             return Err(ModelsError::SerializeError(format!("too many blocks in max_cliques for serialization context in BootstrapableGraph: {:?}", max_cliques_count)));
         }
         res.extend(u32::from(max_cliques_count).to_varint_bytes());
@@ -625,22 +624,27 @@ impl SerializeCompact for BootsrapableGraph {
             }
         }
 
-        res.extend(self.ledger.to_bytes_compact(context)?);
+        res.extend(self.ledger.to_bytes_compact()?);
 
         Ok(res)
     }
 }
 
 impl DeserializeCompact for BootsrapableGraph {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), models::ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
+        let (max_bootstrap_blocks, parent_count, max_bootstrap_cliques) =
+            with_serialization_context(|context| {
+                (
+                    context.max_bootstrap_blocks,
+                    context.parent_count,
+                    context.max_bootstrap_cliques,
+                )
+            });
 
         //active_blocks
         let (active_blocks_count, delta) = u32::from_varint_bytes(buffer)?;
-        if active_blocks_count > context.max_bootstrap_blocks {
+        if active_blocks_count > max_bootstrap_blocks {
             return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {:?}", active_blocks_count)));
         }
         cursor += delta;
@@ -649,15 +653,14 @@ impl DeserializeCompact for BootsrapableGraph {
         for _ in 0..(active_blocks_count as usize) {
             let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
-            let (block, delta) =
-                ExportActiveBlock::from_bytes_compact(&buffer[cursor..], &context)?;
+            let (block, delta) = ExportActiveBlock::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             active_blocks.push((hash, block));
         }
 
         //best_parents
-        let mut best_parents: Vec<BlockId> = Vec::with_capacity(context.parent_count as usize);
-        for _ in 0..context.parent_count {
+        let mut best_parents: Vec<BlockId> = Vec::with_capacity(parent_count as usize);
+        for _ in 0..parent_count {
             let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             best_parents.push(parent_h);
@@ -665,8 +668,8 @@ impl DeserializeCompact for BootsrapableGraph {
 
         //latest_final_blocks_periods
         let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
-            Vec::with_capacity(context.parent_count as usize);
-        for _ in 0..context.parent_count {
+            Vec::with_capacity(parent_count as usize);
+        for _ in 0..parent_count {
             let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -676,7 +679,7 @@ impl DeserializeCompact for BootsrapableGraph {
 
         //gi_head
         let (gi_head_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if gi_head_count > context.max_bootstrap_blocks {
+        if gi_head_count > max_bootstrap_blocks {
             return Err(ModelsError::DeserializeError(format!("too many blocks in gi_head for deserialization context in BootstrapableGraph: {:?}", gi_head_count)));
         }
         cursor += delta;
@@ -685,7 +688,7 @@ impl DeserializeCompact for BootsrapableGraph {
             let gihash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            if set_count > context.max_bootstrap_blocks {
+            if set_count > max_bootstrap_blocks {
                 return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {:?}", set_count)));
             }
             cursor += delta;
@@ -700,14 +703,14 @@ impl DeserializeCompact for BootsrapableGraph {
 
         //max_cliques: Vec<HashSet<BlockId>>
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if max_cliques_count > context.max_bootstrap_cliques {
+        if max_cliques_count > max_bootstrap_cliques {
             return Err(ModelsError::DeserializeError(format!("too many blocks in max_clilques for deserialization context in BootstrapableGraph: {:?}", max_cliques_count)));
         }
         cursor += delta;
         let mut max_cliques: Vec<Vec<BlockId>> = Vec::with_capacity(max_cliques_count as usize);
         for _ in 0..(max_cliques_count as usize) {
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            if set_count > context.max_bootstrap_blocks {
+            if set_count > max_bootstrap_blocks {
                 return Err(ModelsError::DeserializeError(format!("too many blocks in a clique for deserialization context in BootstrapableGraph: {:?}", set_count)));
             }
             cursor += delta;
@@ -720,7 +723,7 @@ impl DeserializeCompact for BootsrapableGraph {
             max_cliques.push(set);
         }
 
-        let (ledger, delta) = LedgerExport::from_bytes_compact(&buffer[cursor..], context)?;
+        let (ledger, delta) = LedgerExport::from_bytes_compact(&buffer[cursor..])?;
 
         cursor += delta;
         Ok((
@@ -835,11 +838,9 @@ impl BlockGraph {
     /// * serialization_context: SerializationContext instance
     pub async fn new(
         cfg: ConsensusConfig,
-        context: SerializationContext,
         init: Option<BootsrapableGraph>,
     ) -> Result<Self, ConsensusError> {
         // load genesis blocks
-        models::init_serialization_context(context);
 
         let mut block_statuses = HashMap::new();
         let mut block_hashes = Vec::with_capacity(cfg.thread_count as usize);
@@ -1436,8 +1437,7 @@ impl BlockGraph {
             }
         };
 
-        let addresses_to_operations = valid_block
-            .involved_addresses(&models::with_serialization_context(|ctx| ctx.clone()))?;
+        let addresses_to_operations = valid_block.involved_addresses()?;
 
         // add block to graph
         self.add_block_to_graph(
@@ -3225,7 +3225,6 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
-    use crypto::generate_random_private_key;
     use crypto::signature::PublicKey;
     use serial_test::serial;
     use std::{path::Path, usize};
@@ -3313,8 +3312,7 @@ mod tests {
         let thread_count: u8 = 2;
         let active_block: ActiveBlock = get_export_active_test_block().try_into().unwrap();
         let ledger_file = generate_ledger_file(&HashMap::new());
-        let (mut cfg, serialization_context) = example_consensus_config(ledger_file.path());
-        models::init_serialization_context(serialization_context.clone());
+        let mut cfg = example_consensus_config(ledger_file.path());
 
         cfg.block_reward = 1;
         //to generate address and public keys
@@ -3526,9 +3524,7 @@ mod tests {
             },
         };
 
-        let block_graph = BlockGraph::new(cfg, serialization_context.clone(), Some(export_graph))
-            .await
-            .unwrap();
+        let block_graph = BlockGraph::new(cfg, Some(export_graph)).await.unwrap();
 
         //Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
         let res = block_graph
@@ -3589,12 +3585,12 @@ mod tests {
     #[serial]
     fn test_bootsrapable_graph_serialize_compact() {
         //test with 2 thread
-        let serialization_context = SerializationContext {
-            max_block_size: 1024 * 1024,
+        models::init_serialization_context(models::SerializationContext {
             max_block_operations: 1024,
             parent_count: 2,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
+            max_block_size: 3 * 1024 * 1024,
             max_bootstrap_blocks: 100,
             max_bootstrap_cliques: 100,
             max_bootstrap_deps: 100,
@@ -3602,16 +3598,12 @@ mod tests {
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
-        };
-        models::init_serialization_context(serialization_context.clone());
+        });
 
         let active_block = get_export_active_test_block();
 
-        let bytes = active_block
-            .block
-            .to_bytes_compact(&serialization_context)
-            .unwrap();
-        let new_block = Block::from_bytes_compact(&bytes, &serialization_context).unwrap();
+        let bytes = active_block.block.to_bytes_compact().unwrap();
+        let new_block = Block::from_bytes_compact(&bytes).unwrap();
 
         println!("{:?}", new_block);
 
@@ -3665,9 +3657,8 @@ mod tests {
             },
         };
 
-        let bytes = graph.to_bytes_compact(&serialization_context).unwrap();
-        let (new_graph, cursor) =
-            BootsrapableGraph::from_bytes_compact(&bytes, &serialization_context).unwrap();
+        let bytes = graph.to_bytes_compact().unwrap();
+        let (new_graph, cursor) = BootsrapableGraph::from_bytes_compact(&bytes).unwrap();
 
         assert_eq!(bytes.len(), cursor);
         assert_eq!(
@@ -3690,11 +3681,8 @@ mod tests {
     #[serial]
     async fn test_clique_calculation() {
         let ledger_file = generate_ledger_file(&HashMap::new());
-        let (cfg, serialization_context) = example_consensus_config(ledger_file.path());
-        models::init_serialization_context(serialization_context.clone());
-        let mut block_graph = BlockGraph::new(cfg, serialization_context.clone(), None)
-            .await
-            .unwrap();
+        let cfg = example_consensus_config(ledger_file.path());
+        let mut block_graph = BlockGraph::new(cfg, None).await.unwrap();
         let hashes: Vec<BlockId> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
@@ -3750,9 +3738,7 @@ mod tests {
         ledger_file_named
     }
 
-    fn example_consensus_config(
-        initial_ledger_path: &Path,
-    ) -> (ConsensusConfig, SerializationContext) {
+    fn example_consensus_config(initial_ledger_path: &Path) -> ConsensusConfig {
         let genesis_key = crypto::generate_random_private_key();
         let mut nodes = Vec::new();
         for _ in 0..2 {
@@ -3765,46 +3751,45 @@ mod tests {
         let max_operations_per_block = 1024;
         let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
-        (
-            ConsensusConfig {
-                genesis_timestamp: UTime::now(0).unwrap(),
-                thread_count,
-                t0: 32.into(),
-                selection_rng_seed: 42,
-                genesis_key,
-                nodes,
-                current_node_index: 0,
-                max_discarded_blocks: 10,
-                future_block_processing_max_periods: 3,
-                max_future_processing_blocks: 10,
-                max_dependency_blocks: 10,
-                delta_f0: 5,
-                disable_block_creation: true,
-                max_block_size,
-                max_operations_per_block,
-                operation_validity_periods: 3,
-                ledger_path: tempdir.path().to_path_buf(),
-                ledger_cache_capacity: 1000000,
-                ledger_flush_interval: Some(200.into()),
-                ledger_reset_at_startup: true,
-                block_reward: 1,
-                initial_ledger_path: initial_ledger_path.to_path_buf(),
-                operation_batch_size: 100,
-            },
-            SerializationContext {
-                max_block_size,
-                max_block_operations: max_operations_per_block,
-                parent_count: thread_count,
-                max_peer_list_length: 128,
-                max_message_size: 3 * 1024 * 1024,
-                max_bootstrap_blocks: 100,
-                max_bootstrap_cliques: 100,
-                max_bootstrap_deps: 100,
-                max_bootstrap_children: 100,
-                max_ask_blocks_per_message: 10,
-                max_operations_per_message: 1024,
-                max_bootstrap_message_size: 100000000,
-            },
-        )
+        models::init_serialization_context(models::SerializationContext {
+            max_block_operations: 1024,
+            parent_count: 2,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+            max_block_size: 3 * 1024 * 1024,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
+            max_operations_per_message: 1024,
+            max_bootstrap_message_size: 100000000,
+        });
+
+        ConsensusConfig {
+            genesis_timestamp: UTime::now(0).unwrap(),
+            thread_count,
+            t0: 32.into(),
+            selection_rng_seed: 42,
+            genesis_key,
+            nodes,
+            current_node_index: 0,
+            max_discarded_blocks: 10,
+            future_block_processing_max_periods: 3,
+            max_future_processing_blocks: 10,
+            max_dependency_blocks: 10,
+            delta_f0: 5,
+            disable_block_creation: true,
+            max_block_size,
+            max_operations_per_block,
+            operation_validity_periods: 3,
+            ledger_path: tempdir.path().to_path_buf(),
+            ledger_cache_capacity: 1000000,
+            ledger_flush_interval: Some(200.into()),
+            ledger_reset_at_startup: true,
+            block_reward: 1,
+            initial_ledger_path: initial_ledger_path.to_path_buf(),
+            operation_batch_size: 100,
+        }
     }
 }

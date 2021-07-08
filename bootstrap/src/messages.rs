@@ -2,8 +2,8 @@ use communication::network::BootstrapPeers;
 use consensus::BootsrapableGraph;
 use crypto::signature::{Signature, SIGNATURE_SIZE_BYTES};
 use models::{
-    array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializationContext,
-    SerializeCompact, SerializeVarInt,
+    array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
+    SerializeVarInt,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -53,7 +53,7 @@ enum MessageTypeId {
 }
 
 impl SerializeCompact for BootstrapMessage {
-    fn to_bytes_compact(&self, context: &SerializationContext) -> Result<Vec<u8>, ModelsError> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         match self {
             BootstrapMessage::BootstrapInitiation { random_bytes } => {
@@ -66,17 +66,17 @@ impl SerializeCompact for BootstrapMessage {
             } => {
                 res.extend(u32::from(MessageTypeId::BootstrapTime).to_varint_bytes());
                 res.extend(&signature.to_bytes());
-                res.extend(server_time.to_bytes_compact(context)?);
+                res.extend(server_time.to_bytes_compact()?);
             }
             BootstrapMessage::BootstrapPeers { peers, signature } => {
                 res.extend(u32::from(MessageTypeId::Peers).to_varint_bytes());
                 res.extend(&signature.to_bytes());
-                res.extend(&peers.to_bytes_compact(&context)?);
+                res.extend(&peers.to_bytes_compact()?);
             }
             BootstrapMessage::ConsensusState { graph, signature } => {
                 res.extend(u32::from(MessageTypeId::ConsensusState).to_varint_bytes());
                 res.extend(&signature.to_bytes());
-                res.extend(&graph.to_bytes_compact(&context)?);
+                res.extend(&graph.to_bytes_compact()?);
             }
         }
         Ok(res)
@@ -84,10 +84,7 @@ impl SerializeCompact for BootstrapMessage {
 }
 
 impl DeserializeCompact for BootstrapMessage {
-    fn from_bytes_compact(
-        buffer: &[u8],
-        context: &SerializationContext,
-    ) -> Result<(Self, usize), ModelsError> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
@@ -109,7 +106,7 @@ impl DeserializeCompact for BootstrapMessage {
             MessageTypeId::BootstrapTime => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
-                let (server_time, delta) = UTime::from_bytes_compact(&buffer[cursor..], context)?;
+                let (server_time, delta) = UTime::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 BootstrapMessage::BootstrapTime {
                     server_time,
@@ -119,8 +116,7 @@ impl DeserializeCompact for BootstrapMessage {
             MessageTypeId::Peers => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
-                let (peers, delta) =
-                    BootstrapPeers::from_bytes_compact(&buffer[cursor..], &context)?;
+                let (peers, delta) = BootstrapPeers::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessage::BootstrapPeers { signature, peers }
@@ -128,8 +124,7 @@ impl DeserializeCompact for BootstrapMessage {
             MessageTypeId::ConsensusState => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
-                let (graph, delta) =
-                    BootsrapableGraph::from_bytes_compact(&buffer[cursor..], &context)?;
+                let (graph, delta) = BootsrapableGraph::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState { signature, graph }
@@ -151,12 +146,12 @@ mod tests {
     #[serial]
     fn test_message_serialize_compact() {
         //test with 2 thread
-        let serialization_context = SerializationContext {
-            max_block_size: 1024 * 1024,
+        models::init_serialization_context(models::SerializationContext {
             max_block_operations: 1024,
             parent_count: 2,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
+            max_block_size: 3 * 1024 * 1024,
             max_bootstrap_blocks: 100,
             max_bootstrap_cliques: 100,
             max_bootstrap_deps: 100,
@@ -164,7 +159,7 @@ mod tests {
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
-        };
+        });
 
         let mut base_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut base_random_bytes);
@@ -172,9 +167,8 @@ mod tests {
             random_bytes: base_random_bytes,
         };
 
-        let bytes = message1.to_bytes_compact(&serialization_context).unwrap();
-        let (new_message1, cursor) =
-            BootstrapMessage::from_bytes_compact(&bytes, &serialization_context).unwrap();
+        let bytes = message1.to_bytes_compact().unwrap();
+        let (new_message1, cursor) = BootstrapMessage::from_bytes_compact(&bytes).unwrap();
         assert_eq!(bytes.len(), cursor);
 
         if let BootstrapMessage::BootstrapInitiation { random_bytes } = new_message1 {
@@ -239,9 +233,8 @@ mod tests {
             graph: base_graph,
             signature: base_signature,
         };
-        let bytes = message2.to_bytes_compact(&serialization_context).unwrap();
-        let (new_message2, cursor) =
-            BootstrapMessage::from_bytes_compact(&bytes, &serialization_context).unwrap();
+        let bytes = message2.to_bytes_compact().unwrap();
+        let (new_message2, cursor) = BootstrapMessage::from_bytes_compact(&bytes).unwrap();
 
         assert_eq!(bytes.len(), cursor);
         if let BootstrapMessage::ConsensusState { graph, signature } = new_message2 {

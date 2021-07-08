@@ -1,7 +1,5 @@
 use crypto::hash::Hash;
-use models::{
-    Address, Operation, OperationContent, OperationType, SerializationContext, SerializeCompact,
-};
+use models::{Address, Operation, OperationContent, OperationType, SerializeCompact};
 
 use crate::PoolConfig;
 
@@ -44,11 +42,7 @@ pub fn example_pool_config() -> (PoolConfig, u8, u64) {
     )
 }
 
-pub fn get_transaction(
-    expire_period: u64,
-    fee: u64,
-    context: &SerializationContext,
-) -> (Operation, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
     let sender_priv = crypto::generate_random_private_key();
     let sender_pub = crypto::derive_public_key(&sender_priv);
 
@@ -65,7 +59,7 @@ pub fn get_transaction(
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     (
