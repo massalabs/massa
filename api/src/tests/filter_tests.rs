@@ -1,17 +1,185 @@
-use crate::ApiEvent;
-use storage::{start_storage, StorageConfig};
-
 use super::tools::*;
+use crate::ApiEvent;
+use crate::OperationIds;
 use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
+use crypto::hash::Hash;
+use models::Address;
 use models::{Block, BlockHeader, BlockId, Slot};
+use models::{Operation, OperationContent, OperationId, OperationSearchResult, OperationType};
+use models::{SerializationContext, SerializeCompact};
 use serde_json::json;
 use serial_test::serial;
 use std::{
     collections::{HashMap, HashSet},
     net::{IpAddr, Ipv4Addr},
 };
+use storage::{start_storage, StorageConfig};
 use time::UTime;
+
+pub fn create_operation(context: &SerializationContext) -> Operation {
+    let sender_priv = crypto::generate_random_private_key();
+    let sender_pub = crypto::derive_public_key(&sender_priv);
+
+    let recv_priv = crypto::generate_random_private_key();
+    let recv_pub = crypto::derive_public_key(&recv_priv);
+
+    let op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        amount: 0,
+    };
+    let content = OperationContent {
+        fee: 0,
+        op,
+        sender_public_key: sender_pub,
+        expire_period: 0,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+
+    Operation { content, signature }
+}
+
+#[tokio::test]
+#[serial]
+async fn test_get_operations() {
+    let serialization_context: SerializationContext = Default::default();
+    models::init_serialization_context(serialization_context.clone());
+
+    //test no operation found
+    {
+        let (filter, mut rx_api) = mock_filter(None);
+
+        // no input operation ids
+        let res = warp::test::request()
+            .method("GET")
+            .path(&"/api/v1/get_operations")
+            .matches(&filter)
+            .await;
+        assert!(!res);
+
+        let handle = tokio::spawn(async move {
+            let evt = rx_api.recv().await;
+            match evt {
+                Some(ApiEvent::GetOperations { response_tx, .. }) => {
+                    response_tx
+                        .send(HashMap::new())
+                        .expect("failed to send block");
+                }
+
+                _ => {}
+            }
+        });
+
+        let search_op_ids = OperationIds {
+            operation_ids: vec![].into_iter().collect(),
+        };
+
+        //no provided op id.
+        let url = format!(
+            "/api/v1/get_operations?{}",
+            serde_qs::to_string(&search_op_ids).unwrap(),
+        );
+        let res = warp::test::request()
+            .method("GET")
+            .path(&url)
+            .reply(&filter)
+            .await;
+        assert_eq!(res.status(), 500);
+
+        //op id provided but no op found.
+        let search_op_ids = OperationIds {
+            operation_ids: vec![OperationId::from_bs58_check(
+                "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S",
+            )
+            .unwrap()]
+            .into_iter()
+            .collect(),
+        };
+        let url = format!(
+            "/api/v1/get_operations?{}",
+            serde_qs::to_string(&search_op_ids).unwrap(),
+        );
+        let res = warp::test::request()
+            .method("GET")
+            .path(&url)
+            .reply(&filter)
+            .await;
+        assert_eq!(res.status(), 200);
+        let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+        assert_eq!(obtained, serde_json::Value::Array(Vec::new()));
+        handle.await.unwrap();
+    }
+
+    //test one operation found for several addresses
+    {
+        let (filter, mut rx_api) = mock_filter(None);
+
+        let operation = create_operation(&serialization_context);
+        let operation_id = operation.get_operation_id(&serialization_context).unwrap();
+        let op_response = OperationSearchResult {
+            op: operation,
+            in_pool: false,
+            in_blocks: vec![(BlockId(Hash::hash("test".as_bytes())), (23, true))]
+                .into_iter()
+                .collect(), // index, is_final
+        };
+        let handle_response = op_response.clone();
+        let handle = tokio::spawn(async move {
+            let evt = rx_api.recv().await;
+            match evt {
+                Some(ApiEvent::GetOperations { response_tx, .. }) => {
+                    response_tx
+                        .send(vec![(operation_id, handle_response)].into_iter().collect())
+                        .expect("failed to send block");
+                }
+
+                _ => {}
+            }
+        });
+
+        let search_op_ids = OperationIds {
+            operation_ids: vec![
+                operation_id,
+                OperationId::from_bs58_check("SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S")
+                    .unwrap(),
+            ]
+            .into_iter()
+            .collect(),
+        };
+
+        let url = format!(
+            "/api/v1/get_operations?{}",
+            serde_qs::to_string(&search_op_ids).unwrap(),
+        );
+        let res = warp::test::request()
+            .method("GET")
+            .path(&url)
+            .reply(&filter)
+            .await;
+        assert_eq!(res.status(), 200);
+
+        let obtained: Vec<(OperationId, OperationSearchResult)> =
+            serde_json::from_slice(res.body()).unwrap();
+
+        assert_eq!(obtained.len(), 1);
+        assert_eq!(obtained[0].0, operation_id);
+        assert_eq!(
+            obtained[0]
+                .1
+                .op
+                .get_operation_id(&serialization_context)
+                .unwrap(),
+            op_response
+                .op
+                .get_operation_id(&serialization_context)
+                .unwrap()
+        );
+        assert_eq!(obtained[0].1.in_pool, op_response.in_pool);
+        assert_eq!(obtained[0].1.in_blocks, op_response.in_blocks);
+        handle.await.unwrap();
+    }
+}
 
 #[tokio::test]
 #[serial]
@@ -87,7 +255,6 @@ async fn test_cliques() {
         .path(&"/api/v1/cliques/123")
         .matches(&filter)
         .await;
-    println!("matches:{:?}", matches);
     assert!(!matches);
 
     //valide url with cliques.
