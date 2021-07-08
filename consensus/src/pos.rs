@@ -572,12 +572,14 @@ impl ProofOfStake {
     }
 
     async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {
-        Ok(serde_json::from_str::<Vec<BTreeMap<Address, u64>>>(
+        let mut res = vec![BTreeMap::<Address, u64>::new() ; cfg.thread_count as usize];
+        let addrs_map = serde_json::from_str::<HashMap<Address, u64>>(
             &tokio::fs::read_to_string(&cfg.initial_rolls_path).await?,
-        )?
-        .into_iter()
-        .map(|itm| RollCounts(itm))
-        .collect())
+        )?;
+        for (addr, n_rolls) in addrs_map.into_iter() {
+            res[addr.get_thread(cfg.thread_count) as usize].insert(addr, n_rolls);
+        }
+        Ok(res.into_iter().map(|rolls| RollCounts(rolls)).collect())
     }
 
     fn generate_initial_seeds(cfg: &ConsensusConfig) -> Vec<Vec<u8>> {
