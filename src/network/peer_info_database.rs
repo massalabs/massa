@@ -633,8 +633,6 @@ mod tests {
             peers.insert(peer.ip, peer);
         }
         let cfg = example_network_config();
-        //let peers_file = cfg.peers_file.clone();
-        //let peers_file_dump_interval = cfg.peers_file_dump_interval;
         let wakeup_interval = chrono::Duration::from_std(cfg.wakeup_interval)
             .expect("NetworkCOnfig.wakeup_interval overflows chrono");
 

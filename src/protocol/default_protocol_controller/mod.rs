@@ -1,8 +1,6 @@
-mod handshake_worker;
 mod node_worker;
 mod protocol_worker;
-use super::config::ProtocolConfig;
-use super::protocol_controller::*;
+use super::{config::ProtocolConfig, protocol_controller::*};
 use crate::crypto::signature::SignatureEngine;
 use crate::logging::debug;
 use crate::network::network_controller::NetworkController;

@@ -1,8 +1,9 @@
-use super::super::{config::ProtocolConfig, protocol_controller::*};
-use super::{
+use super::super::{
+    config::ProtocolConfig,
     handshake_worker::{HandshakeReturnType, HandshakeWorker},
-    node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
+    protocol_controller::*,
 };
+use super::node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker};
 
 use crate::crypto::signature::PrivateKey;
 use crate::logging::{debug, info};
@@ -33,9 +34,10 @@ pub struct ProtocolWorker<NetworkControllerT: 'static + NetworkController> {
     controller_event_tx: Sender<ProtocolEvent>,
     controller_command_rx: Receiver<ProtocolCommand>,
     running_handshakes: HashSet<ConnectionId>,
-    handshake_futures: FuturesUnordered<JoinHandle<HandshakeReturnType<NetworkControllerT>>>,
+    handshake_futures:
+        FuturesUnordered<JoinHandle<(ConnectionId, HandshakeReturnType<NetworkControllerT>)>>,
     active_nodes: HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>, JoinHandle<()>)>,
-    node_event_tx: Sender<NodeEvent>,
+    node_event_tx_opt: Option<Sender<NodeEvent>>,
     node_event_rx: Receiver<NodeEvent>,
 }
 
@@ -59,7 +61,7 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
             running_handshakes: HashSet::new(),
             handshake_futures: FuturesUnordered::new(),
             active_nodes: HashMap::new(),
-            node_event_tx,
+            node_event_tx_opt: Some(node_event_tx),
             node_event_rx,
         }
     }
@@ -93,7 +95,10 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 evt = self.network_controller.wait_event() => self.on_network_event(evt).await,
 
                 // wait for a handshake future to complete
-                Some(res) = self.handshake_futures.next() => self.on_handshake_finished(res).await,
+                Some(res) = self.handshake_futures.next() => {
+                    let (conn_id, outcome) = res.expect("handhsake join error");
+                    self.on_handshake_finished(conn_id, outcome).await;
+                },
 
                 // event received from a node
                 evt = self.node_event_rx.next() => self.on_node_event(evt).await,
@@ -106,6 +111,7 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
             // close all active nodes
             let mut node_handle_set = FuturesUnordered::new();
             // drop senders
+            let _ = self.node_event_tx_opt.take();
             for (_, (_, _, handle)) in self.active_nodes.drain() {
                 node_handle_set.push(handle);
             }
@@ -140,17 +146,20 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 let self_node_id = self.self_node_id;
                 let private_key = self.private_key;
                 let message_timeout = self.cfg.message_timeout;
+                let connection_id_copy = connection_id.clone();
                 let handshake_fn_handle = tokio::spawn(async move {
-                    HandshakeWorker::<NetworkControllerT>::new(
-                        connection_id,
-                        reader,
-                        writer,
-                        self_node_id,
-                        private_key,
-                        message_timeout,
+                    (
+                        connection_id_copy,
+                        HandshakeWorker::<NetworkControllerT>::new(
+                            reader,
+                            writer,
+                            self_node_id,
+                            private_key,
+                            message_timeout,
+                        )
+                        .run()
+                        .await,
                     )
-                    .run()
-                    .await
                 });
                 self.handshake_futures.push(handshake_fn_handle);
             }
@@ -173,11 +182,12 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
 
     async fn on_handshake_finished(
         &mut self,
-        res: Result<HandshakeReturnType<NetworkControllerT>, tokio::task::JoinError>,
+        new_connection_id: ConnectionId,
+        outcome: HandshakeReturnType<NetworkControllerT>,
     ) {
-        match res {
+        match outcome {
             // a handshake finished, and succeeded
-            Ok((new_connection_id, Ok((new_node_id, socket_reader, socket_writer)))) => {
+            Ok((new_node_id, socket_reader, socket_writer)) => {
                 debug!(
                     "handshake with connection_id={:?} succeeded => node_id={:?}",
                     new_connection_id, new_node_id
@@ -228,9 +238,17 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                             "connection_id": new_connection_id,
                             "node_id": new_node_id
                         });
+                        // notidy that the connection is alive
+                        self.network_controller
+                            .connection_alive(new_connection_id)
+                            .await;
                         // spawn node_controller_fn
                         let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1024);
-                        let node_event_tx_clone = self.node_event_tx.clone();
+                        let node_event_tx_clone = self
+                            .node_event_tx_opt
+                            .as_ref()
+                            .expect("node_event_tx disappeared")
+                            .clone();
                         let cfg_copy = self.cfg.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             NodeWorker::new(
@@ -249,21 +267,20 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 }
             }
             // a handshake finished and failed
-            Ok((connection_id, Err(err))) => {
+            Err(err) => {
                 debug!(
                     "handshake failed with connection_id={:?}: {:?}",
-                    connection_id, err
+                    new_connection_id, err
                 );
                 massa_trace!("handshake_failed", {
-                    "connection_id": connection_id,
+                    "connection_id": new_connection_id,
                     "err": err.to_string()
                 });
-                self.running_handshakes.remove(&connection_id);
+                self.running_handshakes.remove(&new_connection_id);
                 self.network_controller
-                    .connection_closed(connection_id, ConnectionClosureReason::Failed)
+                    .connection_closed(new_connection_id, ConnectionClosureReason::Failed)
                     .await;
             }
-            Err(err) => panic!("running handshake future await returned an error:{:?}", err),
         }
     }
 
