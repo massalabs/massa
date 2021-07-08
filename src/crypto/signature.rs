@@ -669,7 +669,7 @@ impl SignatureEngine {
     /// let data = "Hello World!".as_bytes().to_vec();
     /// let signature: Signature = secp.sign(&data, &private_key);
     /// ```
-    pub fn sign(&self, data: &Vec<u8>, &private_key: &PrivateKey) -> Signature {
+    pub fn sign(&self, data: &Vec<u8>, private_key: &PrivateKey) -> Signature {
         let message = Message::from_hashed_data::<sha256::Hash>(data);
         Signature(self.0.sign(&message, &private_key.0))
     }
@@ -687,7 +687,7 @@ impl SignatureEngine {
     /// let signature = secp.sign(&data, &private_key);
     /// let verification: bool = secp.verify(&data, &signature, &public_key);
     /// ```
-    pub fn verify(&self, data: &Vec<u8>, signature: &Signature, &public_key: &PublicKey) -> bool {
+    pub fn verify(&self, data: &Vec<u8>, signature: &Signature, public_key: &PublicKey) -> bool {
         let message = Message::from_hashed_data::<sha256::Hash>(data);
         self.0.verify(&message, &signature.0, &public_key.0).is_ok()
     }
