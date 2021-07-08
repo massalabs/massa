@@ -1,73 +1,200 @@
 use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
-use models::{Address, Block, BlockId, Operation, Slot};
+use models::{Address, BlockId, Operation, Slot};
 use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{btree_map, hash_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::convert::TryInto;
 
-pub trait OperationPosInterface {
-    /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
-    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError>;
+pub trait RollUpdateInterface {
+    fn chain(&mut self, change: &Self) -> Result<(), ConsensusError>;
+    fn is_nil(&self) -> bool;
 }
 
-impl OperationPosInterface for Operation {
-    /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
-    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError> {
-        let mut res = HashMap::new();
-        match self.content.op {
-            models::OperationType::Transaction { .. } => {}
-            models::OperationType::RollBuy { roll_count } => {
-                res.insert(
-                    Address::from_public_key(&self.content.sender_public_key)?,
-                    (roll_count, 0),
-                );
-            }
-            models::OperationType::RollSell { roll_count } => {
-                res.insert(
-                    Address::from_public_key(&self.content.sender_public_key)?,
-                    (0, roll_count),
-                );
-            }
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RollUpdate {
+    pub roll_increment: bool, // true = majority buy, false = majority sell
+    pub roll_delta: u64,      // absolute change in roll count
+                              // Here is space for registering any denunciations/resets
+}
+
+impl RollUpdateInterface for RollUpdate {
+    fn chain(&mut self, change: &Self) -> Result<(), ConsensusError> {
+        if self.roll_increment == change.roll_increment {
+            self.roll_delta = self.roll_delta.checked_add(change.roll_delta).ok_or(
+                ConsensusError::InvalidRollUpdate("overflow in RollUpdate::chain".into()),
+            )?;
+        } else if change.roll_delta > self.roll_delta {
+            self.roll_delta = change.roll_delta.checked_sub(self.roll_delta).ok_or(
+                ConsensusError::InvalidRollUpdate("underflow in RollUpdate::chain".into()),
+            )?;
+            self.roll_increment = !self.roll_increment;
+        } else {
+            self.roll_delta = self.roll_delta.checked_sub(change.roll_delta).ok_or(
+                ConsensusError::InvalidRollUpdate("underflow in RollUpdate::chain".into()),
+            )?;
         }
-        Ok(res)
+        if self.roll_delta == 0 {
+            self.roll_increment = true;
+        }
+        Ok(())
+    }
+
+    fn is_nil(&self) -> bool {
+        self.roll_delta == 0
     }
 }
 
-impl OperationPosInterface for Block {
-    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError> {
-        let mut res = HashMap::new();
-        for op in self.operations.iter() {
-            let op_res = op.get_roll_changes()?;
-            for (address, (bought, sold)) in op_res.into_iter() {
-                if let Some(&(old_bought, old_sold)) = res.get(&address) {
-                    res.insert(address, (old_bought + bought, old_sold + sold));
-                } else {
-                    res.insert(address, (bought, sold));
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RollUpdates(pub HashMap<Address, RollUpdate>);
+
+impl RollUpdates {
+    pub fn new() -> Self {
+        RollUpdates(HashMap::new())
+    }
+
+    pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<(), ConsensusError> {
+        match self.0.entry(*addr) {
+            hash_map::Entry::Occupied(mut occ) => {
+                occ.get_mut().chain(update)?;
+                if occ.get().is_nil() {
+                    occ.remove();
+                }
+            }
+            hash_map::Entry::Vacant(vac) => {
+                vac.insert(update.clone());
+            }
+        }
+        Ok(())
+    }
+}
+
+impl RollUpdateInterface for RollUpdates {
+    fn chain(&mut self, change: &Self) -> Result<(), ConsensusError> {
+        for (addr, update) in change.0.iter() {
+            if update.is_nil() {
+                continue;
+            }
+            match self.0.entry(*addr) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    occ.get_mut().chain(update)?;
+                    if occ.get().is_nil() {
+                        occ.remove();
+                    }
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    vac.insert(update.clone());
                 }
             }
         }
+        Ok(())
+    }
+
+    fn is_nil(&self) -> bool {
+        self.0.iter().all(|(_k, v)| v.is_nil())
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RollCounts(pub BTreeMap<Address, u64>);
+
+impl RollCounts {
+    pub fn new() -> Self {
+        RollCounts(BTreeMap::new())
+    }
+
+    pub fn apply(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
+        for (addr, update) in updates.0.iter() {
+            match self.0.entry(*addr) {
+                btree_map::Entry::Occupied(mut occ) => {
+                    if update.roll_increment {
+                        occ.get_mut().checked_add(update.roll_delta).ok_or(
+                            ConsensusError::InvalidRollUpdate(
+                                "overflow while incrementing roll count".into(),
+                            ),
+                        )?;
+                    } else {
+                        occ.get_mut().checked_sub(update.roll_delta).ok_or(
+                            ConsensusError::InvalidRollUpdate(
+                                "underflow while decrementing roll count".into(),
+                            ),
+                        )?;
+                    }
+                }
+                btree_map::Entry::Vacant(vac) => {
+                    if update.roll_increment || update.roll_delta == 0 {
+                        vac.insert(update.roll_delta);
+                    } else {
+                        return Err(ConsensusError::InvalidRollUpdate(
+                            "underflow while decrementing roll count".into(),
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn remove_nil(&mut self) {
+        self.0.retain(|_k, v| *v != 0);
+    }
+
+    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+        Self(
+            addrs
+                .iter()
+                .filter_map(|addr| self.0.get(addr).map(|v| (*addr, *v)))
+                .collect(),
+        )
+    }
+}
+
+pub trait OperationRollInterface {
+    fn get_roll_updates(&self) -> Result<RollUpdates, ConsensusError>;
+}
+
+impl OperationRollInterface for Operation {
+    fn get_roll_updates(&self) -> Result<RollUpdates, ConsensusError> {
+        let mut res = RollUpdates::new();
+        match self.content.op {
+            models::OperationType::Transaction { .. } => {}
+            models::OperationType::RollBuy { roll_count } => {
+                res.apply(
+                    &Address::from_public_key(&self.content.sender_public_key)?,
+                    &RollUpdate {
+                        roll_increment: true,
+                        roll_delta: roll_count,
+                    },
+                )?;
+            }
+            models::OperationType::RollSell { roll_count } => {
+                res.apply(
+                    &Address::from_public_key(&self.content.sender_public_key)?,
+                    &RollUpdate {
+                        roll_increment: false,
+                        roll_delta: roll_count,
+                    },
+                )?;
+            }
+        }
         Ok(res)
     }
 }
 
-pub struct FinalRollThreadData {
+pub struct ThreadCycleState {
     /// Cycle number
     cycle: u64,
-    /// Slot of the latest final block
+    /// Last final slot (can be a miss)
     last_final_slot: Slot,
-    /// number of rolls an address has
-    roll_count: BTreeMap<Address, u64>,
-    /// compensated number of rolls an address has bought in the cycle
-    cycle_purchases: HashMap<Address, u64>,
-    /// compensated number of rolls an address has sold in the cycle
-    cycle_sales: HashMap<Address, u64>,
-    /// https://docs.rs/bitvec/0.22.3/bitvec/
-    /// Used to seed random selector at each cycle
+    /// Number of rolls an address has
+    pub roll_count: RollCounts,
+    /// Compensated roll updates
+    pub cycle_updates: RollUpdates,
+    /// Used to seed the random selector at each cycle
     rng_seed: BitVec,
 }
 
@@ -75,12 +202,12 @@ pub struct ProofOfStake {
     /// Config
     cfg: ConsensusConfig,
     /// Index by thread and cycle number
-    final_roll_data: Vec<VecDeque<FinalRollThreadData>>,
+    cycle_states: Vec<VecDeque<ThreadCycleState>>,
     /// Cycle draw cache: cycle_number => (counter, map(slot => address))
     draw_cache: HashMap<u64, (usize, HashMap<Slot, Address>)>,
     draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
-    initial_rolls: Option<Vec<BTreeMap<Address, u64>>>,
+    initial_rolls: Option<Vec<RollCounts>>,
     // Initial seeds: they are lightweight, we always keep them
     // the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed
     // the seeds are indexed from -1 to -N
@@ -90,49 +217,50 @@ pub struct ProofOfStake {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExportProofOfStake {
     /// Index by thread and cycle number
-    final_roll_data: Vec<Vec<ExportFinalRollThreadData>>,
+    cycle_states: Vec<VecDeque<ExportThreadCycleState>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExportFinalRollThreadData {
+pub struct ExportThreadCycleState {
     /// Cycle number
     cycle: u64,
+    /// Last final slot (can be a miss)
     last_final_slot: Slot,
     /// number of rolls an address has
     roll_count: Vec<(Address, u64)>,
-    /// compensated number of rolls an address has bought in the cycle
-    cycle_purchases: Vec<(Address, u64)>,
-    /// compensated number of rolls an address has sold in the cycle
-    cycle_sales: Vec<(Address, u64)>,
-    /// https://docs.rs/bitvec/0.22.3/bitvec/
+    /// Compensated roll updates
+    cycle_updates: Vec<(Address, RollUpdate)>,
     /// Used to seed random selector at each cycle
     rng_seed: BitVec,
 }
 
 impl ProofOfStake {
-    pub async fn new(cfg: ConsensusConfig) -> Result<ProofOfStake, ConsensusError> {
-        let mut final_roll_data = Vec::with_capacity(cfg.thread_count as usize);
+    pub async fn new(
+        cfg: ConsensusConfig,
+        genesis_block_ids: &Vec<BlockId>,
+    ) -> Result<ProofOfStake, ConsensusError> {
+        let mut cycle_states = Vec::with_capacity(cfg.thread_count as usize);
         let initial_roll_count = ProofOfStake::get_initial_rolls(&cfg).await?;
         for (thread, thread_rolls) in initial_roll_count.iter().enumerate() {
             // init thread history with one cycle
-            // note that the genesis blocks are not taken into account in the rng_seed
+            let mut rng_seed = BitVec::new();
+            rng_seed.push(genesis_block_ids[thread].get_first_bit());
             let mut history = VecDeque::with_capacity(
                 (cfg.pos_lock_cycles + cfg.pos_lock_cycles + 2 + 1) as usize,
             );
-            let frtd = FinalRollThreadData {
+            let thread_cycle_state = ThreadCycleState {
                 cycle: 0,
                 last_final_slot: Slot::new(0, thread as u8),
                 roll_count: thread_rolls.clone(),
-                cycle_purchases: HashMap::new(),
-                cycle_sales: HashMap::new(),
-                rng_seed: BitVec::new(),
+                cycle_updates: RollUpdates::new(),
+                rng_seed,
             };
-            history.push_front(frtd);
-            final_roll_data.push(history);
+            history.push_front(thread_cycle_state);
+            cycle_states.push(history);
         }
         // generate object
         Ok(ProofOfStake {
-            final_roll_data,
+            cycle_states,
             initial_rolls: Some(initial_roll_count),
             initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
             draw_cache: HashMap::with_capacity(cfg.pos_draw_cached_cycles),
@@ -141,12 +269,13 @@ impl ProofOfStake {
         })
     }
 
-    async fn get_initial_rolls(
-        cfg: &ConsensusConfig,
-    ) -> Result<Vec<BTreeMap<Address, u64>>, ConsensusError> {
+    async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {
         Ok(serde_json::from_str::<Vec<BTreeMap<Address, u64>>>(
             &tokio::fs::read_to_string(&cfg.initial_rolls_path).await?,
-        )?)
+        )?
+        .into_iter()
+        .map(|itm| RollCounts(itm))
+        .collect())
     }
 
     fn generate_initial_seeds(cfg: &ConsensusConfig) -> Vec<Vec<u8>> {
@@ -162,13 +291,13 @@ impl ProofOfStake {
 
     pub fn export(&self) -> ExportProofOfStake {
         ExportProofOfStake {
-            final_roll_data: self
-                .final_roll_data
+            cycle_states: self
+                .cycle_states
                 .iter()
                 .map(|vec| {
                     vec.iter()
                         .map(|frtd| frtd.export())
-                        .collect::<Vec<ExportFinalRollThreadData>>()
+                        .collect::<VecDeque<ExportThreadCycleState>>()
                 })
                 .collect(),
         }
@@ -178,18 +307,18 @@ impl ProofOfStake {
         cfg: ConsensusConfig,
         export: ExportProofOfStake,
     ) -> Result<ProofOfStake, ConsensusError> {
-        let final_roll_data: Vec<VecDeque<FinalRollThreadData>> = export
-            .final_roll_data
+        let cycle_states: Vec<VecDeque<ThreadCycleState>> = export
+            .cycle_states
             .into_iter()
             .map(|vec| {
                 vec.into_iter()
-                    .map(|frtd| FinalRollThreadData::from_export(frtd))
-                    .collect::<VecDeque<FinalRollThreadData>>()
+                    .map(|frtd| ThreadCycleState::from_export(frtd))
+                    .collect::<VecDeque<ThreadCycleState>>()
             })
             .collect();
 
         // if initial rolls are still needed for some threads, load them
-        let initial_rolls = if final_roll_data
+        let initial_rolls = if cycle_states
             .iter()
             .any(|v| v[0].cycle < cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1)
         {
@@ -200,7 +329,7 @@ impl ProofOfStake {
 
         // generate object
         Ok(ProofOfStake {
-            final_roll_data,
+            cycle_states,
             initial_rolls,
             initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
             draw_cache: HashMap::with_capacity(cfg.pos_draw_cached_cycles),
@@ -257,7 +386,7 @@ impl ProofOfStake {
                     return Err(ConsensusError::PosCycleUnavailable(format!("tryign to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
                 }
                 rng_seed_bits.extend(&final_data.rng_seed);
-                for (addr, &n_rolls) in final_data.roll_count.iter() {
+                for (addr, &n_rolls) in final_data.roll_count.0.iter() {
                     if n_rolls == 0 {
                         continue;
                     }
@@ -281,7 +410,7 @@ impl ProofOfStake {
                     "trying to get PoS initial draw rolls/seed for negative cycle at thread {}, which is unavailable",
                     scan_thread
                 )))?[scan_thread as usize];
-                for (addr, &n_rolls) in init_rolls.iter() {
+                for (addr, &n_rolls) in init_rolls.0.iter() {
                     if n_rolls == 0 {
                         continue;
                     }
@@ -350,7 +479,7 @@ impl ProofOfStake {
     }
 
     pub fn draw(&mut self, slot: Slot) -> Result<Address, ConsensusError> {
-        let cycle = slot.period / self.cfg.periods_per_cycle;
+        let cycle = slot.get_cycle(self.cfg.periods_per_cycle);
         let cycle_draws = self.get_cycle_draws(cycle)?;
         Ok(cycle_draws
             .get(&slot)
@@ -363,7 +492,10 @@ impl ProofOfStake {
 
     /// Update internal states after a set of blocks become final
     /// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final
-    pub fn note_final_blocks(&mut self, blocks: &HashMap<BlockId, ActiveBlock>) {
+    pub fn note_final_blocks(
+        &mut self,
+        blocks: &HashMap<BlockId, ActiveBlock>,
+    ) -> Result<(), ConsensusError> {
         // Update internal states after a set of blocks become final.
 
         // process blocks by increasing slot number
@@ -379,52 +511,46 @@ impl ProofOfStake {
             // for this thread, iterate from the latest final period + 1 to the block's
             // all iterations for which period < block_slot.period are misses
             // the iteration at period = block_slot.period corresponds to a_block
-            let cur_last_final_period = self.final_roll_data[thread as usize][0]
-                .last_final_slot
-                .period;
+            let cur_last_final_period =
+                self.cycle_states[thread as usize][0].last_final_slot.period;
             for period in (cur_last_final_period + 1)..=block_slot.period {
                 let cycle = period / self.cfg.periods_per_cycle;
                 let slot = Slot::new(period, thread);
 
                 // if the cycle of the miss/block being processed is higher than the latest final block cycle
-                // then create a new FinalRollThreadData representing this new cycle and push it at the front of final_roll_data[thread]
+                // then create a new ThreadCycleState representing this new cycle and push it at the front of cycle_states[thread]
                 // (step 1 in the spec)
                 if cycle
-                    > self.final_roll_data[thread as usize][0]
+                    > self.cycle_states[thread as usize][0]
                         .last_final_slot
-                        .period
-                        / self.cfg.periods_per_cycle
+                        .get_cycle(self.cfg.periods_per_cycle)
                 {
-                    // the new FinalRollThreadData inherits from the roll_count of the previous cycle but has empty cycle_purchases, cycle_sales, rng_seed
-                    let roll_count = self.final_roll_data[thread as usize][0].roll_count.clone();
-                    self.final_roll_data[thread as usize].push_front(FinalRollThreadData {
+                    // the new ThreadCycleState inherits from the roll_count of the previous cycle but has empty cycle_purchases, cycle_sales, rng_seed
+                    let roll_count = self.cycle_states[thread as usize][0].roll_count.clone();
+                    self.cycle_states[thread as usize].push_front(ThreadCycleState {
                         cycle,
                         last_final_slot: slot.clone(),
-                        cycle_purchases: HashMap::new(),
-                        cycle_sales: HashMap::new(),
+                        cycle_updates: RollUpdates::new(),
                         roll_count,
                         rng_seed: BitVec::new(),
                     });
-                    // If final_roll_data becomes longer than pos_lookback_cycles+pos_lock_cycles+1, truncate it by removing the back elements
-                    self.final_roll_data[thread as usize].truncate(
+                    // If cycle_states becomes longer than pos_lookback_cycles+pos_lock_cycles+1, truncate it by removing the back elements
+                    self.cycle_states[thread as usize].truncate(
                         (self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 2) as usize,
                     );
                 }
 
-                // apply the miss/block to the latest final_roll_data
+                // apply the miss/block to the latest cycle_states
                 // (step 2 in the spec)
-                let entry = &mut self.final_roll_data[thread as usize][0];
+                let entry = &mut self.cycle_states[thread as usize][0];
                 // update the last_final_slot for the latest cycle
                 entry.last_final_slot = slot.clone();
                 // check if we are applying the block itself or a miss
                 if period == block_slot.period {
                     // we are applying the block itself
-                    // overwrite the cycle's roll_count,cycle_purchases,cycle_sales with the subsets from the block
-                    entry.roll_count.extend(&a_block.roll_updates.roll_count);
-                    entry
-                        .cycle_purchases
-                        .extend(&a_block.roll_updates.cycle_purchases);
-                    entry.cycle_sales.extend(&a_block.roll_updates.cycle_sales);
+                    entry.cycle_updates.chain(&a_block.roll_updates)?;
+                    entry.roll_count.apply(&a_block.roll_updates)?;
+                    entry.roll_count.remove_nil();
                     // append the 1st bit of the block's hash to the RNG seed bitfield
                     entry.rng_seed.push(block_id.get_first_bit());
                 } else {
@@ -438,48 +564,48 @@ impl ProofOfStake {
         // if initial rolls are not needed, remove them to free memory
         if self.initial_rolls.is_some() {
             if !self
-                .final_roll_data
+                .cycle_states
                 .iter()
                 .any(|v| v[0].cycle < self.cfg.pos_lock_cycles + self.cfg.pos_lock_cycles + 1)
             {
                 self.initial_rolls = None;
             }
         }
+
+        Ok(())
     }
 
     pub fn get_last_final_block_cycle(&self, thread: u8) -> u64 {
-        self.final_roll_data[thread as usize][0].cycle
+        self.cycle_states[thread as usize][0].cycle
     }
 
-    pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&FinalRollThreadData> {
+    pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&ThreadCycleState> {
         let last_final_block_cycle = self.get_last_final_block_cycle(thread);
         if let Some(neg_relative_cycle) = last_final_block_cycle.checked_sub(cycle) {
-            self.final_roll_data[thread as usize].get(neg_relative_cycle as usize)
+            self.cycle_states[thread as usize].get(neg_relative_cycle as usize)
         } else {
             None
         }
     }
 }
 
-impl FinalRollThreadData {
-    fn export(&self) -> ExportFinalRollThreadData {
-        ExportFinalRollThreadData {
+impl ThreadCycleState {
+    fn export(&self) -> ExportThreadCycleState {
+        ExportThreadCycleState {
             cycle: self.cycle,
             last_final_slot: self.last_final_slot,
-            roll_count: self.roll_count.clone().into_iter().collect(),
-            cycle_purchases: self.cycle_purchases.clone().into_iter().collect(),
-            cycle_sales: self.cycle_sales.clone().into_iter().collect(),
+            roll_count: self.roll_count.0.clone().into_iter().collect(),
+            cycle_updates: self.cycle_updates.0.clone().into_iter().collect(),
             rng_seed: self.rng_seed.clone(),
         }
     }
 
-    fn from_export(export: ExportFinalRollThreadData) -> FinalRollThreadData {
-        FinalRollThreadData {
+    fn from_export(export: ExportThreadCycleState) -> ThreadCycleState {
+        ThreadCycleState {
             cycle: export.cycle,
             last_final_slot: export.last_final_slot,
-            roll_count: export.roll_count.into_iter().collect(),
-            cycle_purchases: export.cycle_purchases.into_iter().collect(),
-            cycle_sales: export.cycle_sales.into_iter().collect(),
+            roll_count: RollCounts(export.roll_count.into_iter().collect()),
+            cycle_updates: RollUpdates(export.cycle_updates.into_iter().collect()),
             rng_seed: export.rng_seed,
         }
     }

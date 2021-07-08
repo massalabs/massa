@@ -61,8 +61,10 @@ pub enum ConsensusError {
     TryFromSliceError(#[from] TryFromSliceError),
     #[error("ledger inconsistency error {0}")]
     LedgerInconsistency(String),
-    #[error("ivalid ledger change: {0}")]
+    #[error("invalid ledger change: {0}")]
     InvalidLedgerChange(String),
+    #[error("invalid roll update: {0}")]
+    InvalidRollUpdate(String),
     #[error("sled error {0}")]
     SledTransactionError(#[from] sled::transaction::TransactionError<InternalError>),
     #[error("io error {0}")]
