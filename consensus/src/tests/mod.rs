@@ -8,6 +8,7 @@ mod scenarios91_1;
 mod scenarios91_2;
 mod scenarios_basic;
 mod scenarios_get_operations;
+mod scenarios_get_selection_draws;
 mod scenarios_header_check;
 mod scenarios_incompatibilities;
 mod scenarios_ledger;

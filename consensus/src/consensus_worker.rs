@@ -597,7 +597,6 @@ impl ConsensusWorker {
                             }
                         } else {
                             match self.pos.draw(cur_slot) {
-                                Err(ConsensusError::PosCycleUnavailable(_)) => continue,
                                 Err(err) => break Err(err),
                                 Ok(sel_addr) => sel_addr,
                             }
