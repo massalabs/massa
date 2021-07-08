@@ -1848,7 +1848,11 @@ impl BlockGraph {
         let mut res = Vec::new();
 
         // compute stop periods
-        let stop_period = cur_slot.period - self.cfg.operation_validity_periods;
+        let stop_period = if cur_slot.period < self.cfg.operation_validity_periods {
+            0
+        } else {
+            cur_slot.period - self.cfg.operation_validity_periods
+        };
         let mut cur_id = parent;
         loop {
             let block = match self

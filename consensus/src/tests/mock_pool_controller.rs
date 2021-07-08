@@ -1,8 +1,13 @@
-use models::SerializationContext;
-use pool::{PoolCommand, PoolCommandSender};
+use std::collections::HashSet;
+
+use models::{Operation, OperationId, SerializationContext, Slot};
+use pool::{PoolCommand, PoolCommandSender, PoolError};
 use time::UTime;
 use tokio::{
-    sync::{mpsc, oneshot},
+    sync::{
+        mpsc,
+        oneshot::{self, Sender},
+    },
     task::JoinHandle,
     time::sleep,
 };
