@@ -33,8 +33,6 @@ pub enum ProtocolCommand {
         hash: Hash,
         header: BlockHeader,
     },
-    /// Propagate hash of a given block header
-    AskForBlock(Hash),
     /// Send a block to peers who asked for it.
     SendBlock {
         hash: Hash,
@@ -179,27 +177,6 @@ impl ProtocolWorker {
                             })?;
                     }
                 }
-            }
-            ProtocolCommand::AskForBlock(hash) => {
-                massa_trace!("ask_for_block", { "block": hash });
-                // // Ask for the block from all nodes who know it.
-                // // TODO: limit the number of nodes we ask the block from?
-
-                // if None = self.block_ask_status.get(hash) {
-
-                // } // if already asked or already received
-                // for (node_id, node_info) in self.active_nodes.iter() {
-                //     if node_info.known_blocks.get(&hash) == Some(&true) {
-                //         self.network_command_sender
-                //             .ask_for_block(*node_id, hash)
-                //             .await
-                //             .map_err(|_| {
-                //                 CommunicationError::ChannelError(
-                //                     "ask for block network command send failed".into(),
-                //                 )
-                //             })?;
-                //     }
-                // }
             }
             ProtocolCommand::SendBlock { hash, block } => {
                 massa_trace!("send_block", { "block": block });

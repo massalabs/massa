@@ -111,8 +111,7 @@ async fn test_consensus_does_not_ask_for_block() {
     protocol_controller.receive_header(header).await;
 
     // Consensus should not ask for the block, so the time-out should be hit.
-    tools::validate_does_not_ask_for_block_in_list(&mut protocol_controller, &vec![hasht0s1], 10)
-        .await;
+    tools::validate_does_not_ask_for_block(&mut protocol_controller, &hasht0s1, 10).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);

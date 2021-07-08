@@ -119,9 +119,9 @@ pub async fn validate_ask_for_block(
     }
 }
 
-pub async fn validate_does_not_ask_for_block_in_list(
+pub async fn validate_does_not_ask_for_block(
     protocol_controller: &mut MockProtocolController,
-    _valid_hashs: &Vec<Hash>,
+    hash: &Hash,
     timeout_ms: u64,
 ) {
     match timeout(
@@ -130,8 +130,10 @@ pub async fn validate_does_not_ask_for_block_in_list(
     )
     .await
     {
-        Ok(Some(ProtocolCommand::AskForBlock(hash))) => {
-            panic!("unexpected ask for block {:?}", hash);
+        Ok(Some(ProtocolCommand::WishlistDelta { new, .. })) => {
+            if new.contains(hash) {
+                panic!("unexpected ask for block {:?}", hash);
+            }
         }
         Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
         Ok(msg) => panic!(
