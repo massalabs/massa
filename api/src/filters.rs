@@ -198,6 +198,11 @@ pub enum ApiEvent {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<Result<LedgerDataExport, ConsensusError>>,
     },
+    GetOperation {
+        id: OperationId,
+        /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
+        response_tx: oneshot::Sender<Option<(Operation, bool, HashMap<BlockId, bool>)>>,
+    },
 }
 
 pub enum ApiManagementCommand {}
