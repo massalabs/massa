@@ -6,9 +6,7 @@ use models::Slot;
 
 #[tokio::test]
 async fn test_consensus_asks_for_block() {
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -62,9 +60,7 @@ async fn test_consensus_asks_for_block() {
 
 #[tokio::test]
 async fn test_consensus_does_not_ask_for_block() {
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;

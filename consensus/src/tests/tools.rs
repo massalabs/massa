@@ -4,7 +4,7 @@ use communication::protocol::ProtocolCommand;
 use communication::NodeId;
 use crypto::{
     hash::Hash,
-    signature::{PrivateKey, SignatureEngine},
+    signature::{PrivateKey, PublicKey, SignatureEngine},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 use std::{collections::HashSet, time::Duration};
@@ -192,22 +192,10 @@ pub async fn validate_send_block(
     };
 }
 
-pub fn create_node_ids(nb_nodes: usize) -> Vec<(PrivateKey, NodeId)> {
-    let signature_engine = SignatureEngine::new();
-    (0..nb_nodes)
-        .map(|_| {
-            let private_key = SignatureEngine::generate_random_private_key();
-            let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
-            (private_key, self_node_id)
-        })
-        .collect()
-}
-
 pub async fn create_and_test_block(
     protocol_controller: &mut MockProtocolController,
     cfg: &ConsensusConfig,
     serialization_context: &SerializationContext,
-    _source_node_id: NodeId,
     slot: Slot,
     best_parents: Vec<Hash>,
     valid: bool,
@@ -305,13 +293,19 @@ pub fn create_block_with_merkle_root(
     (hash, block, private_key)
 }
 
-pub fn default_consensus_config(
-    nodes: &[(PrivateKey, NodeId)],
-) -> (ConsensusConfig, SerializationContext) {
+pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, SerializationContext) {
     let genesis_key = SignatureEngine::generate_random_private_key();
     let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
     let max_operations_per_block: u32 = 1024;
+    let signature_engine = SignatureEngine::new();
+    let nodes = (0..nb_nodes)
+        .map(|_| {
+            let private_key = SignatureEngine::generate_random_private_key();
+            let public_key = signature_engine.derive_public_key(&private_key);
+            (public_key, private_key)
+        })
+        .collect();
     (
         ConsensusConfig {
             genesis_timestamp: UTime::now().unwrap(),
@@ -319,10 +313,7 @@ pub fn default_consensus_config(
             t0: 32000.into(),
             selection_rng_seed: 42,
             genesis_key,
-            nodes: nodes
-                .iter()
-                .map(|(pk, nodeid)| (nodeid.0, pk.clone()))
-                .collect(),
+            nodes,
             current_node_index: 0,
             max_discarded_blocks: 10,
             future_block_processing_max_periods: 3,

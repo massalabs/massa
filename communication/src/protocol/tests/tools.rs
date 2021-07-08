@@ -12,6 +12,17 @@ pub fn generate_node_keys() -> (PrivateKey, NodeId) {
     (private_key, self_node_id)
 }
 
+pub fn create_node_ids(nb_nodes: usize) -> Vec<(PrivateKey, NodeId)> {
+    let signature_engine = SignatureEngine::new();
+    (0..nb_nodes)
+        .map(|_| {
+            let private_key = SignatureEngine::generate_random_private_key();
+            let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
+            (private_key, self_node_id)
+        })
+        .collect()
+}
+
 // create a ProtocolConfig with typical values
 pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
     (

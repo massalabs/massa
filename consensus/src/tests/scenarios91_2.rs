@@ -18,9 +18,7 @@ async fn test_queueing() {
     //     .init()
     //     .unwrap();
 
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -57,7 +55,6 @@ async fn test_queueing() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -70,7 +67,6 @@ async fn test_queueing() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -84,7 +80,6 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -97,7 +92,6 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -118,7 +112,6 @@ async fn test_queueing() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(33, 0),
         vec![missed_hash, valid_hasht1],
         false,
@@ -132,7 +125,6 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 34, 0),
             vec![valid_hasht0, valid_hasht1],
             false,
@@ -145,7 +137,6 @@ async fn test_queueing() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 34, 1),
             vec![valid_hasht0, valid_hasht1],
             false,
@@ -172,9 +163,7 @@ async fn test_doubles() {
     //     .init()
     //     .unwrap();
 
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -211,7 +200,6 @@ async fn test_doubles() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -224,7 +212,6 @@ async fn test_doubles() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -238,7 +225,6 @@ async fn test_doubles() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -251,7 +237,6 @@ async fn test_doubles() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -265,7 +250,6 @@ async fn test_doubles() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
         true,
@@ -305,9 +289,7 @@ async fn test_double_staking() {
     //     .init()
     //     .unwrap();
 
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -344,7 +326,6 @@ async fn test_double_staking() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -357,7 +338,6 @@ async fn test_double_staking() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -371,7 +351,6 @@ async fn test_double_staking() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -384,7 +363,6 @@ async fn test_double_staking() {
             &mut protocol_controller,
             &cfg,
             &serialization_context,
-            node_ids[0].1.clone(),
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -452,9 +430,7 @@ async fn test_test_parents() {
     //     .init()
     //     .unwrap();
 
-    let node_ids = tools::create_node_ids(1);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(1);
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -491,7 +467,6 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -504,7 +479,6 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -517,7 +491,6 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(2, 0),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
@@ -530,7 +503,6 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(2, 1),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
@@ -544,7 +516,6 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(3, 0),
         vec![valid_hasht0s2, genesis_hashes[1usize]],
         false,
@@ -557,7 +528,6 @@ async fn test_test_parents() {
         &mut protocol_controller,
         &cfg,
         &serialization_context,
-        node_ids[0].1.clone(),
         Slot::new(3, 1),
         vec![genesis_hashes[0usize], genesis_hashes[0usize]],
         false,
@@ -576,9 +546,7 @@ async fn test_test_parents() {
 
 #[tokio::test]
 async fn test_block_creation() {
-    let node_ids = tools::create_node_ids(2);
-
-    let (mut cfg, serialization_context) = tools::default_consensus_config(&node_ids);
+    let (mut cfg, serialization_context) = tools::default_consensus_config(2);
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
