@@ -1,162 +1,15 @@
-//! The goal of this API is to retrieve information
-//! on the current state of our node and interact with it.
-//! In version 0.1, we can get some informations
-//! and stop the node through the API.
-//!
-//! # Examples
-//! ## Get cliques
-//! Returns a vec containing all cliques, as sets of hashes.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/cliques")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Current parents
-//! Returns a vec containing current best parents.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/current_parents")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Block interval
-//! Returns all blocks generate between start and end (excluded), in millis.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path(&format!(
-//!         "/api/v1/blockinterval?start={}&end={}",
-//!         start, end
-//!     ))
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Last final
-//! Returns last final block in each thread.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/last_final")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Peers
-//! Returns all known peers with full peer info.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/peers")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Graph interval
-//! Returns some information on blocks generated between start and end (excluded), in millis :
-//! - hash
-//! - period_number,
-//! - header.thread_number,
-//! - status in ["final", "active", "stale"],
-//! - parents,
-//!
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path(&format!(
-//!         "/api/v1/graph_interval?start={}&end={}",
-//!         start, end
-//!     ))
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Get block
-//! Returns full block associated with given hash.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path(&format!("/api/v1/block/{}", some_hash))
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Network info
-//! Returns our ip and known peers with full peer info.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/network_info")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## State
-//! Returns current node state :
-//! - last final blocks
-//! - number of active cliques
-//! - number of peers
-//! - our ip
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/state")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Last stale
-//! Returns a number (see configuration) of recent stale blocks.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/last_stale")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ## Last invalid
-//! Returns a number (see configuration) of recent invalid blocks.
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path("/api/v1/last_invalid")
-//!     .reply(&filter)
-//!     .await;
-//! ```
-//!
-//! ### Staker info
-//! Returns information about staker using given public key :
-//! - staker active blocks: active blocks created by staker
-//! - staker discarded blocks: discarded block created by staker
-//! - staker next draw: next slot when staker can create a block
-//!
-//!
-//! ```ignore
-//! let res = warp::test::request()
-//!     .method("GET")
-//!     .path(&format!("/api/v1/staker_info/{}", staker))
-//!     .reply(&filter)
-//!     .await;
-//! ```
-
 use crate::ApiError;
 
 use apimodel::{BlockInfo, Cliques, HashSlot, HashSlotTime, NetworkInfo, StakerInfo, State};
 
 use super::config::ApiConfig;
 use communication::{
-    network::{NetworkConfig, PeerInfo},
-    protocol::ProtocolConfig,
+    network::{NetworkCommandSender, NetworkConfig, PeerInfo},
+    protocol::{ProtocolCommandSender, ProtocolConfig},
 };
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
-    BlockGraphExport, ConsensusConfig, ConsensusError, DiscardReason,
+    BlockGraphExport, ConsensusCommandSender, ConsensusConfig, ConsensusError, DiscardReason,
 };
 use crypto::{hash::Hash, signature::PublicKey};
 use models::{Block, BlockHeader, Slot};
@@ -230,23 +83,38 @@ where
 pub fn get_filter(
     api_config: ApiConfig,
     consensus_config: ConsensusConfig,
-    _protocol_config: ProtocolConfig,
-    network_config: NetworkConfig,
+    consensus_command_sender: ConsensusCommandSender,
+    protocol_command_sender: ProtocolCommandSender,
+    network_command_sender: NetworkCommandSender,
     event_tx: mpsc::Sender<ApiEvent>,
-    opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> BoxedFilter<(impl Reply,)> {
-    let evt_tx = event_tx.clone();
-    let storage = opt_storage_command_sender.clone();
-    let block = warp::get()
+    // get block
+    let consensus_cmd = consensus_command_sender.clone();
+    let get_block_filter = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("block"))
         .and(warp::path::param::<Hash>()) //block hash
         .and(warp::path::end())
-        .and_then(move |hash| wrap_api_call(get_block(evt_tx.clone(), hash, storage.clone())));
+        .and_then(move |hash| wrap_api_call(get_block(consensus_cmd.clone(), hash)));
 
-    let evt_tx = event_tx.clone();
+    // get graph range
     let consensus_cfg = consensus_config.clone();
+    let consensus_cmd = consensus_command_sender.clone();
+    let get_graph_range_filter = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("graph_range"))
+        .and(warp::path::end())
+        .and(warp::query::<TimeInterval>()) //start, end
+        .and_then(move |TimeInterval { start, end }| {
+            wrap_api_call(get_graph_range(
+                consensus_cfg.clone(),
+                consensus_cmd.clone(),
+                start,
+                end,
+            ));
+        });
 
     let storage = opt_storage_command_sender.clone();
     let blockinterval = warp::get()
@@ -392,7 +260,7 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || stop_node(evt_tx.clone()));
 
-    block
+    filter_get_block
         .or(blockinterval)
         .or(current_parents)
         .or(last_final)
@@ -407,6 +275,69 @@ pub fn get_filter(
         .or(staker_info)
         .or(stop_node)
         .boxed()
+}
+
+/// Returns block with given hash
+async fn get_block(consensus_cmd: ConsensusCommandSender, hash: Hash) -> Result<Block, ApiError> {
+    let block = consensus_cmd
+        .get_block(hash)
+        .await
+        .ok_or(ApiError::NotFound)?;
+    Ok(block)
+}
+
+/// returns block headers within a time range
+async fn get_graph_range(
+    consensus_cfg: ConsensusConfig,
+    consensus_cmd: ConsensusCommandSender,
+    start_time: Option<UTime>,
+    end_time: Option<UTime>,
+) -> Result<serde_json::Value, ApiError> {
+    // get bounds in terms of slots
+    let (start_slot, end_slot) = time_range_to_slot_range(
+        consensus_cfg.thread_count,
+        consensus_cfg.t0,
+        consensus_cfg.genesis_timestamp,
+        start_time,
+        end_time,
+    )?;
+
+    // list consensus blocks
+    let mut res_map: HashMap<Hash, BlockHeaderSummary> = consensus_cmd
+        .get_graph_range(start_slot, end_slot)
+        .await?
+        .into_iter()
+        .map(|header| {
+            //TODO translate consensus graph export to the hashmap
+            /*
+                (hash, BlockHeaderSummary {
+                    header
+                    hash
+                    timestamp
+                    status
+                })
+            */
+        })
+        .collect();
+
+    // gather in Vec and sort by increasing slot, then by increasing hash if equality
+    let mut res_vec = res_map.into_iter().map(|h, s| (s, h)).collect();
+    res_vec.sort_unstable();
+    res_vec
+        .into_iter()
+        .map(|(s, h)| {
+            json!({
+                "hash": h,
+                "slot": s,
+                "timestamp": get_block_slot_timestamp(
+                    consensus_cfg.thread_count,
+                    consensus_cfg.t0,
+                    consensus_cfg.genesis_timestamp,
+                    s
+                )?
+            })
+        })
+        .collect()
 }
 
 /// This function sends AskStop outside the Api and
@@ -424,27 +355,6 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
-    }
-}
-
-/// Returns block with given hash
-async fn get_block(
-    event_tx: mpsc::Sender<ApiEvent>,
-    hash: Hash,
-    opt_storage_command_sender: Option<StorageCommandSender>,
-) -> Result<Block, ApiError> {
-    match retrieve_block(hash, &event_tx).await? {
-        None => {
-            if let Some(cmd_tx) = opt_storage_command_sender {
-                match cmd_tx.get_block(hash).await? {
-                    Some(block) => Ok(block),
-                    None => Err(ApiError::NotFound),
-                }
-            } else {
-                Err(ApiError::NotFound)
-            }
-        }
-        Some(block) => Ok(block),
     }
 }
 
@@ -470,22 +380,6 @@ async fn retrieve_graph_export(
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve block graph: {0}", e))
     })
-}
-
-async fn retrieve_block(
-    hash: Hash,
-    event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Option<Block>, ApiError> {
-    let (response_tx, response_rx) = oneshot::channel();
-    event_tx
-        .send(ApiEvent::GetActiveBlock(hash, response_tx))
-        .await
-        .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get block : {0}", e))
-        })?;
-    response_rx
-        .await
-        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
 }
 
 async fn retrieve_peers(

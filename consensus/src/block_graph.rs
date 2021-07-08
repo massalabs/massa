@@ -4,10 +4,12 @@ use crate::error::ConsensusError;
 use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
-use rand_xoshiro::rand_core::block;
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map, BTreeSet, HashMap, HashSet};
 use std::mem;
+use std::{
+    collections::{hash_map, BTreeSet, HashMap, HashSet},
+    u64,
+};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
@@ -30,24 +32,9 @@ struct ActiveBlock {
     parents: Vec<(Hash, u64)>, // one (hash, period) per thread ( if not genesis )
     children: Vec<HashMap<Hash, u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
     dependencies: HashSet<Hash>,       // dependencies required for validity check
-    is_final: bool,
-}
-
-impl ActiveBlock {
-    /// Computes the fitness of the block
-    fn fitness(&self) -> u64 {
-        /*
-        self.block
-            .header
-            .endorsements
-            .iter()
-            .fold(1, |acc, endorsement| match endorsement {
-                Some(_) => acc + 1,
-                None => acc,
-            })
-        */
-        1
-    }
+    is_final: bool,                    // true if final
+    fitness: u64,                      // block fitness
+    finality_depth: Option<u64>,       // largest in-clique descendant depth  (0 = not final, +delta_f0 = almost final)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,87 +63,9 @@ enum BlockStatus {
     },
 }
 
-/// The block version that can be exported.
-/// Note that the detailed list of operation is not exported
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExportCompiledBlock {
-    /// Header of the corresponding block.
-    pub block: BlockHeader,
-    /// For (i, set) in children,
-    /// set contains the headers' hashes
-    /// of blocks referencing exported block as a parent,
-    /// in thread i.
-    pub children: Vec<HashSet<Hash>>,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct ExportDiscardedBlocks {
-    pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
-}
-
-#[derive(Debug, Clone)]
-pub struct BlockGraphExport {
-    /// Genesis blocks.
-    pub genesis_blocks: Vec<Hash>,
-    /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: HashMap<Hash, ExportCompiledBlock>,
-    /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: ExportDiscardedBlocks,
-    /// Best parents hashe in each thread.
-    pub best_parents: Vec<Hash>,
-    /// Latest final period and block hash in each thread.
-    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
-    /// Head of the incompatibility graph.
-    pub gi_head: HashMap<Hash, HashSet<Hash>>,
-    /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<HashSet<Hash>>,
-}
-
-impl<'a> From<&'a BlockGraph> for BlockGraphExport {
-    /// Conversion from blockgraph.
-    fn from(block_graph: &'a BlockGraph) -> Self {
-        let mut export = BlockGraphExport {
-            genesis_blocks: block_graph.genesis_hashes.clone(),
-            active_blocks: Default::default(),
-            discarded_blocks: Default::default(),
-            best_parents: block_graph.best_parents.clone(),
-            latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
-            gi_head: block_graph.gi_head.clone(),
-            max_cliques: block_graph.max_cliques.clone(),
-        };
-
-        for (hash, block) in block_graph.block_statuses.iter() {
-            match block {
-                BlockStatus::Discarded { header, reason, .. } => {
-                    export
-                        .discarded_blocks
-                        .map
-                        .insert(hash.clone(), (reason.clone(), header.clone()));
-                }
-                BlockStatus::Active(block) => {
-                    export.active_blocks.insert(
-                        hash.clone(),
-                        ExportCompiledBlock {
-                            block: block.block.header.clone(),
-                            children: block
-                                .children
-                                .iter()
-                                .map(|thread| {
-                                    thread
-                                        .keys()
-                                        .map(|hash| hash.clone())
-                                        .collect::<HashSet<Hash>>()
-                                })
-                                .collect(),
-                        },
-                    );
-                }
-                _ => continue,
-            }
-        }
-
-        export
-    }
+pub struct MaxClique {
+    block_hashes: HashSet<Hash>,
+    fitness: u64,
 }
 
 pub struct BlockGraph {
@@ -168,7 +77,8 @@ pub struct BlockGraph {
     latest_final_blocks_periods: Vec<(Hash, u64)>,
     best_parents: Vec<Hash>,
     gi_head: HashMap<Hash, HashSet<Hash>>,
-    max_cliques: Vec<HashSet<Hash>>,
+    max_cliques: Vec<MaxClique>,
+    blockclique_index: usize,
     to_propagate: HashMap<Hash, BlockHeader>,
 }
 
@@ -244,6 +154,8 @@ impl BlockGraph {
                     children: vec![HashMap::new(); cfg.thread_count as usize],
                     dependencies: HashSet::new(),
                     is_final: true,
+                    fitness: 1u64, // TODO compute block fitness
+                    finality_depth: None,
                 }),
             );
         }
@@ -257,7 +169,11 @@ impl BlockGraph {
             latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0 as u64)).collect(),
             best_parents: block_hashes,
             gi_head: HashMap::new(),
-            max_cliques: vec![HashSet::new()],
+            max_cliques: vec![MaxClique {
+                block_hashes: HashSet::new(),
+                fitness: 0,
+            }],
+            blockclique_index: 0,
             to_propagate: Default::default(),
         })
     }
@@ -1058,6 +974,8 @@ impl BlockGraph {
                 block: block.clone(),
                 children: vec![HashMap::new(); self.cfg.thread_count as usize],
                 is_final: false,
+                fitness: 1u64, // TODO
+                finality_depth: None,
             }),
         );
         for (parent_h, _parent_period) in parents_hash_period.iter() {
@@ -1085,40 +1003,59 @@ impl BlockGraph {
             //   therfore it is not forking and can simply be added to the cliques it is compatible with
             self.max_cliques
                 .iter_mut()
-                .filter(|c| incomp.is_disjoint(c))
-                .for_each(|c| drop(c.insert(hash)));
+                .filter(|MaxClique { block_hashes, .. }| incomp.is_disjoint(block_hashes))
+                .for_each(|MaxClique { block_hashes, .. }| drop(block_hashes.insert(hash)));
         } else {
             // fully recompute max cliques
-            self.max_cliques = self.compute_max_cliques();
+            self.max_cliques = self
+                .compute_max_cliques()
+                .into_iter()
+                .map(|c| MaxClique {
+                    block_hashes: c,
+                    fitness: 0,
+                })
+                .collect();
         }
 
         // compute clique fitnesses and find blockclique
-        // note: clique_fitnesses is pair (fitness, -hash_sum) where the second parameter is negative for sorting
-        let mut clique_fitnesses = vec![(0u64, num::BigInt::default()); self.max_cliques.len()];
-        let mut blockclique_i = 0usize;
-        for (clique_i, clique) in self.max_cliques.iter().enumerate() {
-            let mut sum_fit: u64 = 0;
-            let mut sum_hash = num::BigInt::default();
-            for block_h in clique.iter() {
-                sum_fit = sum_fit
+        let mut blockclique_hashsum = num::BigUint::default();
+        self.blockclique_index = 0usize;
+        for (
+            clique_i,
+            MaxClique {
+                block_hashes,
+                fitness,
+                ..
+            },
+        ) in self.max_cliques.iter_mut().enumerate()
+        {
+            *fitness = 0;
+            let mut hash_sum = num::BigUint::default();
+            for block_h in block_hashes.iter() {
+                *fitness = fitness
                     .checked_add(
                         BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
                             .ok_or(ConsensusError::ContainerInconsistency)?
-                            .fitness(),
+                            .fitness,
                     )
                     .ok_or(ConsensusError::FitnessOverflow)?;
-                sum_hash -=
-                    num::BigInt::from_bytes_be(num::bigint::Sign::Plus, &block_h.to_bytes());
+                hash_sum += num::BigUint::from_bytes_be(&block_h.to_bytes());
             }
-            clique_fitnesses[clique_i] = (sum_fit, sum_hash);
-            if clique_fitnesses[clique_i] > clique_fitnesses[blockclique_i] {
-                blockclique_i = clique_i;
+            if clique_i == self.blockclique_index
+                || (*fitness, std::cmp::Reverse(hash_sum))
+                    > (
+                        self.max_cliques[self.blockclique_index].fitness,
+                        std::cmp::Reverse(blockclique_hashsum),
+                    )
+            {
+                self.blockclique_index = clique_i;
+                blockclique_hashsum = hash_sum;
             }
         }
 
         // update best parents
         {
-            let blockclique = &self.max_cliques[blockclique_i];
+            let blockclique = &self.max_cliques[self.blockclique_index].block_hashes;
             let mut parents_updated = 0u8;
             for block_h in blockclique.iter() {
                 let block_a = BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
@@ -1140,20 +1077,22 @@ impl BlockGraph {
 
         // list stale blocks
         let stale_blocks = {
-            let fitnesss_threshold = clique_fitnesses[blockclique_i]
-                .0
+            let fitnesss_threshold = self.max_cliques[self.blockclique_index]
+                .fitness
                 .saturating_sub(self.cfg.delta_f0);
             // iterate from largest to smallest to minimize reallocations
             let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
-            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].len()));
+            indices.sort_unstable_by_key(|&i| {
+                std::cmp::Reverse(self.max_cliques[i].block_hashes.len())
+            });
             let mut high_set: HashSet<Hash> = HashSet::new();
             let mut low_set: HashSet<Hash> = HashSet::new();
             let mut keep_mask = vec![true; self.max_cliques.len()];
             for clique_i in indices.into_iter() {
-                if clique_fitnesses[clique_i].0 >= fitnesss_threshold {
-                    high_set.extend(&self.max_cliques[clique_i]);
+                if self.max_cliques[clique_i].fitness >= fitnesss_threshold {
+                    high_set.extend(self.max_cliques[clique_i].block_hashes);
                 } else {
-                    low_set.extend(&self.max_cliques[clique_i]);
+                    low_set.extend(self.max_cliques[clique_i].block_hashes);
                     keep_mask[clique_i] = false;
                 }
             }
@@ -1163,17 +1102,6 @@ impl BlockGraph {
                 keep_mask[clique_i - 1]
             });
             clique_i = 0;
-            clique_fitnesses.retain(|_| {
-                clique_i += 1;
-                if keep_mask[clique_i - 1] {
-                    true
-                } else {
-                    if blockclique_i > clique_i - 1 {
-                        blockclique_i -= 1;
-                    }
-                    false
-                }
-            });
             &low_set - &high_set
         };
         // mark stale blocks
@@ -1197,11 +1125,14 @@ impl BlockGraph {
                 // remove from cliques
                 self.max_cliques
                     .iter_mut()
-                    .for_each(|c| drop(c.remove(&stale_block_hash)));
-                self.max_cliques.retain(|c| !c.is_empty()); // remove empty cliques
+                    .for_each(|c| drop(c.block_hashes.remove(&stale_block_hash)));
+                self.max_cliques.retain(|c| !c.block_hashes.is_empty()); // remove empty cliques
                 if self.max_cliques.is_empty() {
                     // make sure at least one clique remains
-                    self.max_cliques = vec![HashSet::new()];
+                    self.max_cliques = vec![MaxClique {
+                        block_hashes: HashSet::new(),
+                        fitness: 0,
+                    }];
                 }
 
                 // remove from parent's children
@@ -1231,19 +1162,32 @@ impl BlockGraph {
 
         // list final blocks
         let final_blocks = {
-            //  short-circuiting intersection of cliques from smallest to largest
-            let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
-            indices.sort_unstable_by_key(|&i| self.max_cliques[i].len());
-            let mut final_candidates = self.max_cliques[indices[0]].clone();
-            for i in 1..indices.len() {
-                final_candidates.retain(|v| self.max_cliques[i].contains(v));
-                if final_candidates.is_empty() {
-                    break;
+            // reset finality_depth
+            for block_status in self.block_statuses.values_mut() {
+                if let BlockStatus::Active(ActiveBlock { finality_depth, .. }) = block_status {
+                    *finality_depth = None;
                 }
             }
-            // restrict search to cliques with high enough fitness
-            indices.retain(|&i| clique_fitnesses[i].0 > self.cfg.delta_f0);
-            indices.sort_unstable_by_key(|&i| clique_fitnesses[i].0);
+
+            //  short-circuiting intersection of cliques from smallest to largest
+            let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
+            indices.sort_unstable_by_key(|&i| self.max_cliques[i].block_hashes.len());
+            let mut final_candidates = self.max_cliques[indices[0]].block_hashes.clone();
+            if indices.len() > 1 {
+                for i in 1..indices.len() {
+                    final_candidates.retain(|h| self.max_cliques[i].block_hashes.contains(h));
+                    if final_candidates.is_empty() {
+                        break;
+                    }
+                }
+            }
+
+            // optimization: restrict search to cliques with high enough fitness
+            // note: makes finality_depth unavailable when cliques are too small
+            //indices.retain(|&i| self.max_cliques[i].fitness > self.cfg.delta_f0);
+
+            // check in-clique total descendants fitness
+            indices.sort_unstable_by_key(|&i| self.max_cliques[i].fitness);
             let mut final_blocks: HashSet<Hash> = HashSet::new();
             for clique_i in indices.into_iter().rev() {
                 // check in cliques from highest to lowest fitness
@@ -1251,12 +1195,13 @@ impl BlockGraph {
                     // no more final candidates
                     break;
                 }
-                let clique = &self.max_cliques[clique_i];
+                let clique = &self.max_cliques[clique_i].block_hashes;
                 // sum the descendence fitness for each candidate
                 let cloned_candidates = final_candidates.clone();
                 for candidate_h in cloned_candidates.into_iter() {
                     let mut visited: HashSet<Hash> = HashSet::new();
                     let mut stack: Vec<Hash> = vec![candidate_h];
+                    let mut is_final = false;
                     let mut desc_rem_fitness = self.cfg.delta_f0; // remaining required fitness
                     while let Some(h) = stack.pop() {
                         let root = h == candidate_h;
@@ -1271,7 +1216,7 @@ impl BlockGraph {
                             stack.extend(clique.intersection(&c_set.keys().copied().collect()))
                         });
                         if !root {
-                            if let Some(v) = desc_rem_fitness.checked_sub(b.fitness()) {
+                            if let Some(v) = desc_rem_fitness.checked_sub(b.fitness) {
                                 desc_rem_fitness = v;
                             } else {
                                 // block is final
@@ -1279,6 +1224,17 @@ impl BlockGraph {
                                 final_blocks.insert(candidate_h);
                                 break;
                             }
+                        }
+                    }
+                    if let Some(BlockStatus::Active(ActiveBlock { finality_depth, .. })) =
+                        self.block_statuses.get_mut(&candidate_h)
+                    {
+                        if is_final {
+                            *finality_depth = None;
+                        } else if let Some(f) = finality_depth {
+                            *f = std::cmp::min(*f, self.cfg.delta_f0 - desc_rem_fitness);
+                        } else {
+                            *finality_depth = Some(self.cfg.delta_f0 - desc_rem_fitness);
                         }
                     }
                 }
@@ -1299,11 +1255,14 @@ impl BlockGraph {
             // remove from cliques
             self.max_cliques
                 .iter_mut()
-                .for_each(|c| drop(c.remove(&final_block_hash)));
-            self.max_cliques.retain(|c| !c.is_empty()); // remove empty cliques
+                .for_each(|c| drop(c.block_hashes.remove(&final_block_hash)));
+            self.max_cliques.retain(|c| !c.block_hashes.is_empty()); // remove empty cliques
             if self.max_cliques.is_empty() {
                 // make sure at least one clique remains
-                self.max_cliques = vec![HashSet::new()];
+                self.max_cliques = vec![MaxClique {
+                    block_hashes: HashSet::new(),
+                    fitness: 0,
+                }];
             }
 
             // mark as final and update latest_final_blocks_periods
@@ -1646,6 +1605,7 @@ impl BlockGraph {
     ) -> Result<HashMap<Hash, Block>, ConsensusError> {
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active(current_slot)?;
+        
 
         // Step 2: prune dependency waiting blocks
         self.prune_waiting_for_dependencies()?;
