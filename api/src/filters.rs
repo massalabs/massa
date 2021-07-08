@@ -147,6 +147,8 @@
 
 use crate::ApiError;
 
+use apimodel::{self, HashSlot};
+
 use super::config::ApiConfig;
 use communication::{
     network::{NetworkConfig, PeerInfo},
