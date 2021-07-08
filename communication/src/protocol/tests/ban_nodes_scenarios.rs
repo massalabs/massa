@@ -308,7 +308,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     // 3. Simulate two nodes asking for a block.
     for n in 0..2 {
         network_controller
-            .send_ask_for_block(nodes[n].id, vec![expected_hash].into_iter().collect())
+            .send_ask_for_block(nodes[n].id, vec![expected_hash])
             .await;
 
         // Check protocol sends get block event to consensus.

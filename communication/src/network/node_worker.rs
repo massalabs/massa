@@ -7,7 +7,6 @@ use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use crypto::hash::Hash;
 use models::{Block, BlockHeader};
-use std::collections::HashSet;
 use std::net::IpAddr;
 use tokio::{sync::mpsc, time::timeout};
 
@@ -20,7 +19,7 @@ pub enum NodeCommand {
     /// Send the header of a block to a node.
     SendBlockHeader(BlockHeader),
     /// Ask for a block from that node.
-    AskForBlocks(HashSet<Hash>),
+    AskForBlocks(Vec<Hash>),
     /// Close the node worker.
     Close(ConnectionClosureReason),
     /// Block not founf
@@ -39,7 +38,7 @@ pub enum NodeEventType {
     /// Node we are conneced to sent block header
     ReceivedBlockHeader(BlockHeader),
     /// Node we are conneced to asks for a block.
-    ReceivedAskForBlocks(HashSet<Hash>),
+    ReceivedAskForBlocks(Vec<Hash>),
     /// Connection with node was shut down for given reason
     Closed(ConnectionClosureReason),
     /// Didn't found given block,
@@ -163,7 +162,7 @@ impl NodeWorker {
                             Message::AskForBlocks(list) => {
                                 trace!("before sending NodeEventType::ReceivedAskForBlock from node_event_tx in node_worker run_loop");
                                 self.node_event_tx.send(
-                                        NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list.into_iter().collect()))
+                                        NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list))
                                     ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block header event".into()))?;
                                 trace!("after sending NodeEventType::ReceivedAskForBlock from node_event_tx in node_worker run_loop");
                             }
@@ -237,7 +236,6 @@ impl NodeWorker {
                         Some(NodeCommand::AskForBlocks(list)) => {
                             //cut hash list on sub list if exceed max_ask_blocks_per_message
                             trace!("before sending Message::AskForBlock from writer_command_tx in node_worker run_loop");
-                            let list : Vec<_> = list.into_iter().collect();
                             for to_send_list in list.chunks(self.cfg.max_ask_blocks_per_message as usize) {
                                 writer_command_tx.send(Message::AskForBlocks(to_send_list.iter().copied().collect())).await.map_err(
                                     |_| CommunicationError::ChannelError("ask peer block node command send failed".into())

@@ -27,7 +27,7 @@ use tokio::task::JoinHandle;
 pub enum NetworkCommand {
     /// Ask for a block from a node.
     AskForBlocks {
-        list: HashMap<NodeId, HashSet<Hash>>,
+        list: HashMap<NodeId, Vec<Hash>>,
     },
     /// Send that block to node.
     SendBlock {
@@ -64,7 +64,7 @@ pub enum NetworkEvent {
     /// Someone ask for block with given header hash.
     AskedForBlocks {
         node: NodeId,
-        list: HashSet<Hash>,
+        list: Vec<Hash>,
     },
     /// That node does not have this block
     BlockNotFound {
