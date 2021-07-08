@@ -21,6 +21,8 @@ pub struct NetworkConfig {
     pub wakeup_interval: UTime,
     /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
+    /// Path to the file containing our private_key
+    pub private_key_file: std::path::PathBuf,
     /// Number of avaible slots for out connections.
     pub target_out_connections: usize,
     /// Limit on the number of in connections.

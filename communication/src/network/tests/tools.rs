@@ -32,6 +32,9 @@ pub fn generate_peers_file(peer_vec: &Vec<PeerInfo>) -> NamedTempFile {
     peers_file_named
 }
 
+fn get_temp_private_key_file() -> NamedTempFile {
+    NamedTempFile::new().expect("cannot create temp file")
+}
 /// create a NetworkConfig with typical values
 pub fn create_network_config(
     network_controller_port: u16,
@@ -58,6 +61,7 @@ pub fn create_network_config(
             max_message_size: 3 * 1024 * 1024,
             message_timeout: UTime::from(5000u64),
             ask_peer_list_interval: UTime::from(50000u64),
+            private_key_file: get_temp_private_key_file().path().to_path_buf(),
         },
         SerializationContext {
             max_block_size: 1024 * 1024,

@@ -6,7 +6,10 @@ use super::{
 };
 use crate::common::NodeId;
 use crate::error::CommunicationError;
-use crypto::{hash::Hash, signature::SignatureEngine};
+use crypto::{
+    hash::Hash,
+    signature::{PrivateKey, SignatureEngine},
+};
 use models::{Block, BlockHeader, SerializationContext};
 use std::{
     collections::{HashMap, VecDeque},
@@ -35,9 +38,32 @@ pub async fn start_network_controller(
         }
     }
 
-    // generate our own random PublicKey (and therefore NodeId) and keep private key
+    // try to read node private key from file, otherwise generate it & write to file. Then derive nodeId
     let signature_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
+    let private_key = if std::path::Path::is_file(&cfg.private_key_file) {
+        // file exists: try to load it
+        let private_key_bs58_check = tokio::fs::read_to_string(&cfg.private_key_file)
+            .await
+            .map_err(|err| {
+                std::io::Error::new(
+                    err.kind(),
+                    format!("could not load node private key file: {:?}", err),
+                )
+            })?;
+        PrivateKey::from_bs58_check(&private_key_bs58_check).map_err(|err| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("node private key file corrupted: {:?}", err),
+            )
+        })?
+    } else {
+        // node file does not exist: generate the key and save it
+        let priv_key = SignatureEngine::generate_random_private_key();
+        if let Err(e) = tokio::fs::write(&cfg.private_key_file, &priv_key.to_bs58_check()).await {
+            warn!("could not generate node private key file: {:?}", e);
+        }
+        priv_key
+    };
     let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
 
     debug!("local network node_id={:?}", self_node_id);
