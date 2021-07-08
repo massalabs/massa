@@ -105,6 +105,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bootstrap"
+version = "0.1.0"
+dependencies = [
+ "consensus",
+ "crypto",
+ "log",
+ "models",
+ "num_enum",
+ "rand 0.8.2",
+ "serde",
+ "thiserror",
+ "time 0.1.0",
+ "tokio",
+]
+
+[[package]]
 name = "bs58"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -877,6 +893,7 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "api",
+ "bootstrap",
  "communication",
  "consensus",
  "futures",

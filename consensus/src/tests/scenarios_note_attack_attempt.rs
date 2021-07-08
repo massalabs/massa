@@ -22,6 +22,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -71,6 +72,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await

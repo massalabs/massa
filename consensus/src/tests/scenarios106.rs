@@ -31,6 +31,7 @@ async fn test_unsorted_block() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -164,6 +165,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -256,6 +258,7 @@ async fn test_too_many_blocks_in_the_future() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await
@@ -355,6 +358,7 @@ async fn test_dep_in_back_order() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await
@@ -478,6 +482,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -595,6 +600,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await

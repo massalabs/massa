@@ -21,6 +21,7 @@ async fn test_parent_in_the_future() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -77,6 +78,7 @@ async fn test_parents() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await
@@ -149,6 +151,7 @@ async fn test_parents_in_incompatible_cliques() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await

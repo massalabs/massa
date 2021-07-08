@@ -2,10 +2,15 @@
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::ConsensusError;
 use crypto::hash::Hash;
+use crypto::hash::HASH_SIZE_BYTES;
 use crypto::signature::SignatureEngine;
-use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
+use models::{
+    array_from_slice, u8_from_slice, Block, BlockHeader, BlockHeaderContent, DeserializeCompact,
+    DeserializeVarInt, ModelsError, SerializationContext, SerializeCompact, SerializeVarInt, Slot,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeSet, HashMap, HashSet};
+use std::convert::TryInto;
 use std::mem;
 
 #[derive(Debug, Clone)]
@@ -23,8 +28,8 @@ impl HeaderOrBlock {
     }
 }
 
-#[derive(Debug, Clone)]
-struct ActiveBlock {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveBlock {
     block: Block,
     parents: Vec<(Hash, u64)>, // one (hash, period) per thread ( if not genesis )
     children: Vec<HashMap<Hash, u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
@@ -46,6 +51,141 @@ impl ActiveBlock {
             })
         */
         1
+    }
+}
+
+impl SerializeCompact for ActiveBlock {
+    fn to_bytes_compact(
+        &self,
+        context: &SerializationContext,
+    ) -> Result<Vec<u8>, models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        //is_final
+        if self.is_final {
+            res.push(1);
+        } else {
+            res.push(0);
+        }
+
+        //block
+        res.extend(self.block.to_bytes_compact(&context)?);
+
+        //parents
+        // parents (note: there should be none if slot period=0)
+        if self.parents.len() == 0 {
+            res.push(0);
+        } else {
+            res.push(1);
+        }
+        for (hash, period) in self.parents.iter() {
+            res.extend(&hash.to_bytes());
+            res.extend(period.to_varint_bytes());
+        }
+
+        //children
+        let children_count: u32 = self.children.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!("too many children in ActiveBlock: {:?}", err))
+        })?;
+        res.extend(u32::from(children_count).to_varint_bytes());
+        for map in self.children.iter() {
+            let map_count: u32 = map.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!(
+                    "too many entry in children map in ActiveBlock: {:?}",
+                    err
+                ))
+            })?;
+            res.extend(u32::from(map_count).to_varint_bytes());
+            for (hash, period) in map.iter() {
+                res.extend(&hash.to_bytes());
+                res.extend(period.to_varint_bytes());
+            }
+        }
+
+        //dependencies
+        let dependencies_count: u32 = self.dependencies.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!("too many dependencies in ActiveBlock: {:?}", err))
+        })?;
+        res.extend(u32::from(dependencies_count).to_varint_bytes());
+        for dep in self.dependencies.iter() {
+            res.extend(&dep.to_bytes());
+        }
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for ActiveBlock {
+    fn from_bytes_compact(
+        buffer: &[u8],
+        context: &SerializationContext,
+    ) -> Result<(Self, usize), models::ModelsError> {
+        let mut cursor = 0usize;
+
+        //is_final
+        let is_final_u8 = u8_from_slice(&buffer)?;
+        cursor += 1;
+        let is_final = if is_final_u8 == 0 { false } else { true };
+
+        //block
+        let (block, delta) = Block::from_bytes_compact(&buffer[cursor..], &context)?;
+        cursor += delta;
+
+        // parents
+        let has_parents = u8_from_slice(&buffer[cursor..])?;
+        cursor += 1;
+        let parents = if has_parents == 1 {
+            let mut parents: Vec<(Hash, u64)> = Vec::with_capacity(context.parent_count as usize);
+            for _ in 0..context.parent_count {
+                let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+                let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                parents.push((parent_h, period));
+            }
+            parents
+        } else {
+            Vec::new()
+        };
+
+        //childrens
+        let (children_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        let mut children: Vec<HashMap<Hash, u64>> = Vec::with_capacity(children_count as usize);
+        for _ in 0..(children_count as usize) {
+            let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            let mut map: HashMap<Hash, u64> = HashMap::with_capacity(map_count as usize);
+            for _ in 0..(map_count as usize) {
+                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+                let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+                map.insert(hash, period);
+            }
+            children.push(map);
+        }
+
+        //dependencies
+        let (dependencies_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        let mut dependencies: HashSet<Hash> = HashSet::with_capacity(dependencies_count as usize);
+        for _ in 0..(dependencies_count as usize) {
+            let dep = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += HASH_SIZE_BYTES;
+            dependencies.insert(dep);
+        }
+
+        Ok((
+            ActiveBlock {
+                is_final,
+                block,
+                parents,
+                children,
+                dependencies,
+            },
+            cursor,
+        ))
     }
 }
 
@@ -159,6 +299,204 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoostrapableGraph {
+    /// Map of active blocks, were blocks are in their exported version.
+    pub active_blocks: HashMap<Hash, ActiveBlock>,
+    /// Best parents hashe in each thread.
+    pub best_parents: Vec<Hash>,
+    /// Latest final period and block hash in each thread.
+    pub latest_final_blocks_periods: Vec<(Hash, u64)>,
+    /// Head of the incompatibility graph.
+    pub gi_head: HashMap<Hash, HashSet<Hash>>,
+    /// List of maximal cliques of compatible blocks.
+    pub max_cliques: Vec<HashSet<Hash>>,
+}
+
+impl<'a> From<&'a BlockGraph> for BoostrapableGraph {
+    fn from(block_graph: &'a BlockGraph) -> Self {
+        let mut active_blocks = HashMap::new();
+        for (hash, status) in block_graph.block_statuses.iter() {
+            match status {
+                BlockStatus::Active(block) => {
+                    active_blocks.insert(*hash, block.clone());
+                }
+                _ => continue,
+            }
+        }
+
+        BoostrapableGraph {
+            active_blocks,
+            best_parents: block_graph.best_parents.clone(),
+            latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
+            gi_head: block_graph.gi_head.clone(),
+            max_cliques: block_graph.max_cliques.clone(),
+        }
+    }
+}
+
+impl SerializeCompact for BoostrapableGraph {
+    fn to_bytes_compact(
+        &self,
+        context: &SerializationContext,
+    ) -> Result<Vec<u8>, models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        //active_blocks
+        let blocks_count: u32 = self.active_blocks.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many active blocks in BoostrapableGraph: {:?}",
+                err
+            ))
+        })?;
+        res.extend(u32::from(blocks_count).to_varint_bytes());
+        for (hash, block) in self.active_blocks.iter() {
+            res.extend(&hash.to_bytes());
+            res.extend(block.to_bytes_compact(&context)?);
+        }
+
+        //best_parents
+        for parent_h in self.best_parents.iter() {
+            res.extend(&parent_h.to_bytes());
+        }
+
+        //latest_final_blocks_periods
+        for (hash, period) in self.latest_final_blocks_periods.iter() {
+            res.extend(&hash.to_bytes());
+            res.extend(period.to_varint_bytes());
+        }
+
+        //gi_head
+        let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!("too many gi_head in BoostrapableGraph: {:?}", err))
+        })?;
+        res.extend(u32::from(gi_head_count).to_varint_bytes());
+        for (gihash, set) in self.gi_head.iter() {
+            res.extend(&gihash.to_bytes());
+            let set_count: u32 = set.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!(
+                    "too many entry in gi_head set in BoostrapableGraph: {:?}",
+                    err
+                ))
+            })?;
+            res.extend(u32::from(set_count).to_varint_bytes());
+            for hash in set.iter() {
+                res.extend(&hash.to_bytes());
+            }
+        }
+
+        //max_cliques
+        let max_cliques_count: u32 = self.max_cliques.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many max_cliques in BoostrapableGraph: {:?}",
+                err
+            ))
+        })?;
+        res.extend(u32::from(max_cliques_count).to_varint_bytes());
+        for set in self.max_cliques.iter() {
+            let set_count: u32 = set.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!(
+                    "too many entry in max_cliques set in BoostrapableGraph: {:?}",
+                    err
+                ))
+            })?;
+            res.extend(u32::from(set_count).to_varint_bytes());
+            for hash in set.iter() {
+                res.extend(&hash.to_bytes());
+            }
+        }
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for BoostrapableGraph {
+    fn from_bytes_compact(
+        buffer: &[u8],
+        context: &SerializationContext,
+    ) -> Result<(Self, usize), models::ModelsError> {
+        let mut cursor = 0usize;
+
+        //active_blocks
+        let (active_blocks_count, delta) = u32::from_varint_bytes(buffer)?;
+        cursor += delta;
+        let mut active_blocks: HashMap<Hash, ActiveBlock> =
+            HashMap::with_capacity(active_blocks_count as usize);
+        for _ in 0..(active_blocks_count as usize) {
+            let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += HASH_SIZE_BYTES;
+            let (block, delta) = ActiveBlock::from_bytes_compact(&buffer[cursor..], &context)?;
+            cursor += delta;
+            active_blocks.insert(hash, block);
+        }
+
+        //best_parents
+        let mut best_parents: Vec<Hash> = Vec::with_capacity(context.parent_count as usize);
+        for _ in 0..context.parent_count {
+            let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += HASH_SIZE_BYTES;
+            best_parents.push(parent_h);
+        }
+
+        //latest_final_blocks_periods
+        let mut latest_final_blocks_periods: Vec<(Hash, u64)> =
+            Vec::with_capacity(context.parent_count as usize);
+        for _ in 0..context.parent_count {
+            let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += HASH_SIZE_BYTES;
+            let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            latest_final_blocks_periods.push((hash, period));
+        }
+
+        //gi_head
+        let (gi_head_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        let mut gi_head: HashMap<Hash, HashSet<Hash>> =
+            HashMap::with_capacity(gi_head_count as usize);
+        for _ in 0..(gi_head_count as usize) {
+            let gihash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += HASH_SIZE_BYTES;
+            let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            let mut set: HashSet<Hash> = HashSet::with_capacity(set_count as usize);
+            for _ in 0..(set_count as usize) {
+                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+                set.insert(hash);
+            }
+            gi_head.insert(gihash, set);
+        }
+
+        //max_cliques: Vec<HashSet<Hash>>
+        let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        let mut max_cliques: Vec<HashSet<Hash>> = Vec::with_capacity(max_cliques_count as usize);
+        for _ in 0..(max_cliques_count as usize) {
+            let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            let mut set: HashSet<Hash> = HashSet::with_capacity(set_count as usize);
+            for _ in 0..(set_count as usize) {
+                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+                set.insert(hash);
+            }
+            max_cliques.push(set);
+        }
+
+        Ok((
+            BoostrapableGraph {
+                active_blocks,
+                best_parents,
+                latest_final_blocks_periods,
+                gi_head,
+                max_cliques,
+            },
+            cursor,
+        ))
+    }
+}
+
 pub struct BlockGraph {
     cfg: ConsensusConfig,
     serialization_context: SerializationContext,
@@ -230,6 +568,7 @@ impl BlockGraph {
     pub fn new(
         cfg: ConsensusConfig,
         serialization_context: SerializationContext,
+        init: Option<BoostrapableGraph>,
     ) -> Result<Self, ConsensusError> {
         // load genesis blocks
         let mut block_statuses = HashMap::new();
@@ -249,20 +588,39 @@ impl BlockGraph {
                 }),
             );
         }
-
-        Ok(BlockGraph {
-            cfg,
-            serialization_context,
-            sequence_counter: 0,
-            genesis_hashes: block_hashes.clone(),
-            block_statuses,
-            latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0 as u64)).collect(),
-            best_parents: block_hashes,
-            gi_head: HashMap::new(),
-            max_cliques: vec![HashSet::new()],
-            to_propagate: Default::default(),
-            attack_attempts: Default::default(),
-        })
+        if let Some(boot_graph) = init {
+            Ok(BlockGraph {
+                cfg,
+                serialization_context,
+                sequence_counter: 0,
+                genesis_hashes: block_hashes.clone(),
+                block_statuses: boot_graph
+                    .active_blocks
+                    .iter()
+                    .map(|(hash, block)| (*hash, BlockStatus::Active(block.clone())))
+                    .collect(),
+                latest_final_blocks_periods: boot_graph.latest_final_blocks_periods,
+                best_parents: boot_graph.best_parents,
+                gi_head: boot_graph.gi_head,
+                max_cliques: boot_graph.max_cliques,
+                to_propagate: Default::default(),
+                attack_attempts: Default::default(),
+            })
+        } else {
+            Ok(BlockGraph {
+                cfg,
+                serialization_context,
+                sequence_counter: 0,
+                genesis_hashes: block_hashes.clone(),
+                block_statuses,
+                latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0 as u64)).collect(),
+                best_parents: block_hashes,
+                gi_head: HashMap::new(),
+                max_cliques: vec![HashSet::new()],
+                to_propagate: Default::default(),
+                attack_attempts: Default::default(),
+            })
+        }
     }
 
     /// Returns hash and resulting discarded blocks
@@ -1797,10 +2155,162 @@ mod tests {
     use super::*;
     use time::UTime;
 
+    pub fn get_active_test_block() -> ActiveBlock {
+        let block = Block {
+            header: BlockHeader {
+                content: BlockHeaderContent{
+                    creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                    operation_merkle_root: Hash::hash("operation_merkle_root".as_bytes()),
+                    out_ledger_hash: Hash::hash("out_ledger_hash".as_bytes()),
+                    parents: vec![
+                        Hash::hash("parent1".as_bytes()),
+                        Hash::hash("parent2".as_bytes())
+                    ],
+                    slot: Slot::new(1, 0),
+                },
+                signature: crypto::signature::Signature::from_bs58_check(
+                    "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+                ).unwrap()
+            },
+            operations: vec![]
+        };
+
+        ActiveBlock {
+            parents: vec![
+                (Hash::hash("parent11".as_bytes()), 23),
+                (Hash::hash("parent12".as_bytes()), 24),
+            ],
+            dependencies: vec![
+                Hash::hash("dep11".as_bytes()),
+                Hash::hash("dep12".as_bytes()),
+                Hash::hash("dep13".as_bytes()),
+            ]
+            .into_iter()
+            .collect(),
+            block,
+            children: vec![vec![
+                (Hash::hash("child11".as_bytes()), 31),
+                (Hash::hash("child11".as_bytes()), 31),
+            ]
+            .into_iter()
+            .collect()],
+            is_final: true,
+        }
+    }
+
+    #[test]
+    fn test_boostrapablegraph_serialize_compact() {
+        //test with 2 thread
+        let serialization_context = SerializationContext {
+            max_block_size: 1024 * 1024,
+            max_block_operations: 1024,
+            parent_count: 2,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+        };
+
+        let active_block = get_active_test_block();
+
+        let bytes = active_block
+            .block
+            .to_bytes_compact(&serialization_context)
+            .unwrap();
+        let new_block = Block::from_bytes_compact(&bytes, &serialization_context).unwrap();
+
+        println!("{:?}", new_block);
+
+        let graph = BoostrapableGraph {
+            /// Map of active blocks, were blocks are in their exported version.
+            active_blocks: vec![
+                (Hash::hash("active11".as_bytes()), active_block.clone()),
+                (Hash::hash("active12".as_bytes()), active_block.clone()),
+                (Hash::hash("active13".as_bytes()), active_block.clone()),
+            ]
+            .into_iter()
+            .collect(),
+            /// Best parents hashe in each thread.
+            best_parents: vec![
+                Hash::hash("parent11".as_bytes()),
+                Hash::hash("parent12".as_bytes()),
+            ],
+            /// Latest final period and block hash in each thread.
+            latest_final_blocks_periods: vec![
+                (Hash::hash("lfinal11".as_bytes()), 23),
+                (Hash::hash("lfinal12".as_bytes()), 24),
+            ],
+            /// Head of the incompatibility graph.
+            gi_head: vec![
+                (
+                    Hash::hash("gi_head11".as_bytes()),
+                    vec![
+                        Hash::hash("set11".as_bytes()),
+                        Hash::hash("set12".as_bytes()),
+                    ]
+                    .into_iter()
+                    .collect(),
+                ),
+                (
+                    Hash::hash("gi_head12".as_bytes()),
+                    vec![
+                        Hash::hash("set21".as_bytes()),
+                        Hash::hash("set22".as_bytes()),
+                    ]
+                    .into_iter()
+                    .collect(),
+                ),
+                (
+                    Hash::hash("gi_head13".as_bytes()),
+                    vec![
+                        Hash::hash("set31".as_bytes()),
+                        Hash::hash("set32".as_bytes()),
+                    ]
+                    .into_iter()
+                    .collect(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+
+            /// List of maximal cliques of compatible blocks.
+            max_cliques: vec![vec![
+                Hash::hash("max_cliques11".as_bytes()),
+                Hash::hash("max_cliques12".as_bytes()),
+            ]
+            .into_iter()
+            .collect()],
+        };
+
+        let bytes = graph.to_bytes_compact(&serialization_context).unwrap();
+        let (new_graph, cursor) =
+            BoostrapableGraph::from_bytes_compact(&bytes, &serialization_context).unwrap();
+
+        assert_eq!(bytes.len(), cursor);
+        assert_eq!(
+            graph.active_blocks[&Hash::hash("active11".as_bytes())]
+                .block
+                .header
+                .signature,
+            new_graph.active_blocks[&Hash::hash("active11".as_bytes())]
+                .block
+                .header
+                .signature
+        );
+        assert_eq!(graph.best_parents[0], new_graph.best_parents[0]);
+        assert_eq!(graph.best_parents[1], new_graph.best_parents[1]);
+        assert_eq!(
+            graph.latest_final_blocks_periods[0],
+            new_graph.latest_final_blocks_periods[0]
+        );
+        assert_eq!(
+            graph.latest_final_blocks_periods[1],
+            new_graph.latest_final_blocks_periods[1]
+        );
+    }
+
     #[test]
     fn test_clique_calculation() {
         let (cfg, serialization_context) = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg, serialization_context).unwrap();
+        let mut block_graph = BlockGraph::new(cfg, serialization_context, None).unwrap();
         let hashes: Vec<Hash> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",

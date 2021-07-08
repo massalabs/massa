@@ -20,6 +20,7 @@ consensus = { path = "../consensus" }
 api = { path = "../api" }
 storage = { path = "../storage" }
 models = { path = "../models" }
+bootstrap = { path = "../bootstrap" }
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }

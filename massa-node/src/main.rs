@@ -4,6 +4,7 @@
 extern crate logging;
 mod config;
 use api::{start_api_controller, ApiEvent};
+use bootstrap::{get_state, start_bootstrap_server};
 use communication::{
     network::{start_network_controller, Establisher},
     protocol::start_protocol_controller,
@@ -27,8 +28,17 @@ async fn run(cfg: config::Config) {
         max_message_size: cfg.network.max_message_size,
     };
 
+    let boot_graph = get_state(
+        cfg.bootstrap.clone(),
+        serialization_context.clone(),
+        bootstrap::establisher::Establisher::new(),
+        cfg.consensus.genesis_timestamp,
+    )
+    .await
+    .unwrap();
+
     // launch network controller
-    let (mut network_command_sender, network_event_receiver, network_manager) =
+    let (mut network_command_sender, network_event_receiver, network_manager, private_key) =
         start_network_controller(
             cfg.network.clone(),
             serialization_context.clone(),
@@ -60,6 +70,7 @@ async fn run(cfg: config::Config) {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             Some(storage_command_sender.clone()),
+            boot_graph,
         )
         .await
         .expect("could not start consensus controller");
@@ -74,6 +85,16 @@ async fn run(cfg: config::Config) {
     )
     .await
     .expect("could not start API controller");
+
+    let bootstrap_manager = start_bootstrap_server(
+        consensus_command_sender.clone(),
+        cfg.bootstrap,
+        serialization_context.clone(),
+        bootstrap::Establisher::new(),
+        private_key,
+    )
+    .await
+    .unwrap();
 
     // interrupt signal listener
     let mut stop_signal = signal(SignalKind::interrupt()).unwrap();
@@ -133,6 +154,14 @@ async fn run(cfg: config::Config) {
                 break;
             }
         }
+    }
+
+    // stop bootstrap
+    if let Some(bootstrap_manager) = bootstrap_manager {
+        bootstrap_manager
+            .stop()
+            .await
+            .expect("bootstrap server shutdown failed")
     }
 
     // stop API controller

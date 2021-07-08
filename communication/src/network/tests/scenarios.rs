@@ -40,7 +40,7 @@ async fn test_multiple_connections_to_controller() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (_, mut network_event_receiver, network_manager) = start_network_controller(
+    let (_, mut network_event_receiver, network_manager, _) = start_network_controller(
         network_conf.clone(),
         serialization_context.clone(),
         establisher,
@@ -158,7 +158,7 @@ async fn test_peer_ban() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (mut network_command_sender, mut network_event_receiver, network_manager) =
+    let (mut network_command_sender, mut network_event_receiver, network_manager, _) =
         start_network_controller(
             network_conf.clone(),
             serialization_context.clone(),
@@ -267,7 +267,7 @@ async fn test_advertised_and_wakeup_interval() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (_, mut network_event_receiver, network_manager) = start_network_controller(
+    let (_, mut network_event_receiver, network_manager, _) = start_network_controller(
         network_conf.clone(),
         serialization_context.clone(),
         establisher,
@@ -397,7 +397,7 @@ async fn test_block_not_found() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (mut network_command_sender, mut network_event_receiver, network_manager) =
+    let (mut network_command_sender, mut network_event_receiver, network_manager, _) =
         start_network_controller(
             network_conf.clone(),
             serialization_context.clone(),
