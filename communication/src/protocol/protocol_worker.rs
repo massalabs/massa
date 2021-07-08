@@ -49,22 +49,87 @@ pub enum ProtocolCommand {
 #[derive(Debug)]
 pub enum ProtocolManagementCommand {}
 
-/// Information about a node we are connected to,
-/// essentially our view of its state.
-///
-/// Note: should we prune the set of known and wanted blocks during lifetime of a node connection?
-/// Currently it would only be dropped alongside the rest when the node becomes inactive.
-#[derive(Debug, Clone)]
-struct NodeInfo {
-    /// The blocks the node "knows about",
-    /// defined as the one the node propagated headers to us for.
-    known_blocks: HashMap<Hash, (bool, Instant)>,
-    /// The blocks the node asked for.
-    wanted_blocks: HashSet<Hash>,
-    /// Blocks we asked that node for
-    asked_blocks: HashMap<Hash, Instant>,
-    /// Instant when the node was added
-    connection_instant: Instant,
+//put in a module to block private access from Protocol_worker.
+mod nodeinfo {
+    use crypto::hash::Hash;
+    use std::collections::HashMap;
+    use tokio::time::Instant;
+
+    /// Information about a node we are connected to,
+    /// essentially our view of its state.
+    ///
+    /// Note: should we prune the set of known and wanted blocks during lifetime of a node connection?
+    /// Currently it would only be dropped alongside the rest when the node becomes inactive.
+    #[derive(Debug, Clone)]
+    pub struct NodeInfo {
+        /// The blocks the node "knows about",
+        /// defined as the one the node propagated headers to us for.
+        known_blocks: HashMap<Hash, (bool, Instant)>,
+        /// The blocks the node asked for.
+        wanted_blocks: HashMap<Hash, Instant>,
+        /// Blocks we asked that node for
+        pub asked_blocks: HashMap<Hash, Instant>,
+        /// Instant when the node was added
+        pub connection_instant: Instant,
+    }
+
+    impl NodeInfo {
+        pub fn new() -> NodeInfo {
+            NodeInfo {
+                known_blocks: HashMap::new(),
+                wanted_blocks: HashMap::new(),
+                asked_blocks: HashMap::new(),
+                connection_instant: Instant::now(),
+            }
+        }
+
+        pub fn get_known_block(&self, hash: &Hash) -> Option<&(bool, Instant)> {
+            self.known_blocks.get(hash)
+        }
+
+        pub fn insert_known_block(
+            &mut self,
+            hash: Hash,
+            val: bool,
+            instant: Instant,
+            max_node_known_blocks_size: usize,
+        ) {
+            self.known_blocks.insert(hash, (val, instant));
+            while self.known_blocks.len() > max_node_known_blocks_size {
+                //remove oldest item
+                let (&h, _) = self
+                    .known_blocks
+                    .iter()
+                    .min_by_key(|(h, (_, t))| (*t, *h))
+                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
+                self.known_blocks.remove(&h);
+            }
+        }
+
+        pub fn insert_wanted_blocks(&mut self, hash: Hash, max_node_wanted_blocks_size: usize) {
+            self.wanted_blocks.insert(hash, Instant::now());
+            while self.known_blocks.len() > max_node_wanted_blocks_size {
+                //remove oldest item
+                let (&h, _) = self
+                    .known_blocks
+                    .iter()
+                    .min_by_key(|(h, t)| (*t, *h))
+                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
+                self.known_blocks.remove(&h);
+            }
+        }
+
+        pub fn contains_wanted_block(&mut self, hash: &Hash) -> bool {
+            self.wanted_blocks
+                .get_mut(hash)
+                .map(|instant| *instant = Instant::now())
+                .is_some()
+        }
+
+        pub fn remove_wanted_block(&mut self, hash: &Hash) -> bool {
+            self.wanted_blocks.remove(hash).is_some()
+        }
+    }
 }
 
 pub struct ProtocolWorker {
@@ -83,7 +148,7 @@ pub struct ProtocolWorker {
     /// Channel to send management commands to the controller.
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     /// Ids of active nodes mapped to node info.
-    active_nodes: HashMap<NodeId, NodeInfo>,
+    active_nodes: HashMap<NodeId, nodeinfo::NodeInfo>,
     /// List of wanted blocks.
     block_wishlist: HashSet<Hash>,
 }
@@ -165,8 +230,13 @@ impl ProtocolWorker {
                 massa_trace!("integrated_block", { "block_header": block.header });
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
-                    if node_info.wanted_blocks.remove(&hash) {
-                        node_info.known_blocks.insert(hash, (true, Instant::now()));
+                    if node_info.remove_wanted_block(&hash) {
+                        node_info.insert_known_block(
+                            hash,
+                            true,
+                            Instant::now(),
+                            self.cfg.max_node_known_blocks_size,
+                        );
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
                             .await
@@ -177,7 +247,7 @@ impl ProtocolWorker {
                             })?;
                     } else {
                         // node that aren't asking for that block
-                        let cond = node_info.known_blocks.get(&hash);
+                        let cond = node_info.get_known_block(&hash);
                         // if we don't know if that node knowns that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
                             self.network_command_sender
@@ -198,8 +268,13 @@ impl ProtocolWorker {
                 massa_trace!("send_block", { "block": block });
                 // Send the block once to all nodes who asked for it.
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
-                    if node_info.wanted_blocks.remove(&hash) {
-                        node_info.known_blocks.insert(hash, (true, Instant::now()));
+                    if node_info.remove_wanted_block(&hash) {
+                        node_info.insert_known_block(
+                            hash,
+                            true,
+                            Instant::now(),
+                            self.cfg.max_node_known_blocks_size,
+                        );
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
                             .await
@@ -217,8 +292,8 @@ impl ProtocolWorker {
                 self.update_ask_block(timer).await?;
             }
             ProtocolCommand::BlockNotFound(hash) => {
-                for (node_id, node_info) in self.active_nodes.iter() {
-                    if node_info.wanted_blocks.contains(&hash) {
+                for (node_id, node_info) in self.active_nodes.iter_mut() {
+                    if node_info.contains_wanted_block(&hash) {
                         self.network_command_sender
                             .block_not_found(*node_id, hash)
                             .await?
@@ -259,7 +334,8 @@ impl ProtocolWorker {
             let mut best_candidate = None;
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                let ask_time_opt = node_info.asked_blocks.get(hash);
+                //map to remove the borrow on asked_blocks. Otherwise can't call insert_known_block
+                let ask_time_opt = node_info.asked_blocks.get(hash).map(|time| *time);
                 let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
                     let t = ask_time
                         .checked_add(self.cfg.ask_block_timeout.into())
@@ -268,7 +344,7 @@ impl ProtocolWorker {
                 } else {
                     (None, false)
                 };
-                let knows_block = node_info.known_blocks.get(&hash).clone();
+                let knows_block = node_info.get_known_block(&hash);
 
                 // check if the node recently told us it doesn't have the block
                 if let Some((false, info_time)) = knows_block {
@@ -298,7 +374,12 @@ impl ProtocolWorker {
                     (true, Some(timeout_at), Some((true, info_time))) => {
                         if info_time < &timeout_at {
                             // info less recent than timeout: mark as not having it
-                            node_info.known_blocks.insert(*hash, (false, timeout_at));
+                            node_info.insert_known_block(
+                                *hash,
+                                false,
+                                timeout_at,
+                                self.cfg.max_node_known_blocks_size,
+                            );
                             (2u8, ask_time_opt)
                         } else {
                             // told us it has it after a timeout: good candidate again
@@ -309,13 +390,23 @@ impl ProtocolWorker {
                     (true, Some(timeout_at), Some((false, info_time))) => {
                         if info_time < &timeout_at {
                             // info less recent than timeout: update info time
-                            node_info.known_blocks.insert(*hash, (false, timeout_at));
+                            node_info.insert_known_block(
+                                *hash,
+                                false,
+                                timeout_at,
+                                self.cfg.max_node_known_blocks_size,
+                            );
                         }
                         (2u8, ask_time_opt)
                     }
                     // timed out but don't know if has it: mark as not having it
                     (true, Some(timeout_at), None) => {
-                        node_info.known_blocks.insert(*hash, (false, timeout_at));
+                        node_info.insert_known_block(
+                            *hash,
+                            false,
+                            timeout_at,
+                            self.cfg.max_node_known_blocks_size,
+                        );
                         (2u8, ask_time_opt)
                     }
                 };
@@ -377,10 +468,12 @@ impl ProtocolWorker {
                 .active_nodes
                 .get_mut(source_node_id)
                 .ok_or(CommunicationError::MissingNodeError)?;
-            node_info
-                .known_blocks
-                .insert(hash.clone(), (true, Instant::now()));
-            // todo update wanted blocks
+            node_info.insert_known_block(
+                hash,
+                true,
+                Instant::now(),
+                self.cfg.max_node_known_blocks_size,
+            );
 
             Ok(Some(hash))
         } else {
@@ -400,15 +493,7 @@ impl ProtocolWorker {
     ) -> Result<(), CommunicationError> {
         match evt {
             NetworkEvent::NewConnection(node_id) => {
-                self.active_nodes.insert(
-                    node_id,
-                    NodeInfo {
-                        known_blocks: HashMap::new(),
-                        wanted_blocks: HashSet::new(),
-                        asked_blocks: HashMap::new(),
-                        connection_instant: Instant::now(),
-                    },
-                );
+                self.active_nodes.insert(node_id, nodeinfo::NodeInfo::new());
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
@@ -445,7 +530,7 @@ impl ProtocolWorker {
                     .active_nodes
                     .get_mut(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;
-                node_info.wanted_blocks.insert(data.clone());
+                node_info.insert_wanted_blocks(data, self.cfg.max_node_wanted_blocks_size);
                 self.controller_event_tx
                     .send(ProtocolEvent::GetBlock(data))
                     .await
@@ -478,11 +563,106 @@ impl ProtocolWorker {
             }
             NetworkEvent::BlockNotFound { node, hash } => {
                 if let Some(info) = self.active_nodes.get_mut(&node) {
-                    info.known_blocks.insert(hash, (false, Instant::now()));
+                    info.insert_known_block(
+                        hash,
+                        false,
+                        Instant::now(),
+                        self.cfg.max_node_known_blocks_size,
+                    );
                 }
                 self.update_ask_block(block_ask_timer).await?;
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::nodeinfo::NodeInfo;
+    use super::*;
+
+    #[test]
+    fn test_node_info_know_block() {
+        let max_node_known_blocks_size = 10;
+        let mut nodeinfo = NodeInfo::new();
+        let instant = Instant::now();
+
+        let hash_test = Hash::hash("test".as_bytes());
+        nodeinfo.insert_known_block(hash_test, true, instant, max_node_known_blocks_size);
+        let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
+        assert!(val);
+        assert_eq!(instant, *t);
+        nodeinfo.insert_known_block(hash_test, false, instant, max_node_known_blocks_size);
+        let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
+        assert!(!val);
+        assert_eq!(instant, *t);
+
+        for index in 0..9 {
+            let hash = Hash::hash(index.to_string().as_bytes());
+            println!("index:{} hash:{:?}", index, hash);
+            nodeinfo.insert_known_block(hash, true, Instant::now(), max_node_known_blocks_size);
+            assert!(nodeinfo.get_known_block(&hash).is_some());
+        }
+
+        //re insert the oldest to update its timestamp.
+        nodeinfo.insert_known_block(hash_test, false, Instant::now(), max_node_known_blocks_size);
+
+        //add hash that triggers container pruning
+        nodeinfo.insert_known_block(
+            Hash::hash("test2".as_bytes()),
+            true,
+            Instant::now(),
+            max_node_known_blocks_size,
+        );
+
+        //test should be present
+        assert!(nodeinfo
+            .get_known_block(&Hash::hash("test".as_bytes()))
+            .is_some());
+        //0 should be remove because it's the oldest.
+        assert!(nodeinfo
+            .get_known_block(&Hash::hash(0.to_string().as_bytes()))
+            .is_none());
+        //the other are still present.
+        for index in 1..9 {
+            let hash = Hash::hash(index.to_string().as_bytes());
+            assert!(nodeinfo.get_known_block(&hash).is_some());
+        }
+    }
+
+    #[test]
+    fn test_node_info_wanted_block() {
+        let max_node_wanted_blocks_size = 10;
+        let mut nodeinfo = NodeInfo::new();
+
+        let hash = Hash::hash("test".as_bytes());
+        nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
+        assert!(nodeinfo.contains_wanted_block(&hash));
+        nodeinfo.remove_wanted_block(&hash);
+        assert!(!nodeinfo.contains_wanted_block(&hash));
+
+        for index in 0..9 {
+            let hash = Hash::hash(index.to_string().as_bytes());
+            nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
+            assert!(nodeinfo.contains_wanted_block(&hash));
+        }
+
+        // change the oldest time to now
+        assert!(nodeinfo.contains_wanted_block(&Hash::hash(0.to_string().as_bytes())));
+        //add hash that triggers container pruning
+        nodeinfo.insert_wanted_blocks(Hash::hash("test2".as_bytes()), max_node_wanted_blocks_size);
+
+        //0 is present because because its timestamp has been updated with contains_wanted_block
+        assert!(nodeinfo.contains_wanted_block(&Hash::hash(0.to_string().as_bytes())));
+
+        //1 has been removed because it's the oldest.
+        assert!(nodeinfo.contains_wanted_block(&Hash::hash(1.to_string().as_bytes())));
+
+        //Other blocks are present.
+        for index in 2..9 {
+            let hash = Hash::hash(index.to_string().as_bytes());
+            assert!(nodeinfo.contains_wanted_block(&hash));
+        }
     }
 }
