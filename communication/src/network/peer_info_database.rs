@@ -58,10 +58,8 @@ pub struct PeerInfoDatabase {
     cfg: NetworkConfig,
     /// Maps an ip address to peer's info
     peers: HashMap<IpAddr, PeerInfo>,
-    /// todo : I'm not sur what it is for
     /// Handle on the task managing the dump
     saver_join_handle: JoinHandle<()>,
-    /// todo : I'm not sur what it is for
     /// Monitor changed peers.
     saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
     /// Total number of active out connection attemps.
