@@ -376,7 +376,7 @@ pub fn default_consensus_config(
             disable_block_creation: true,
             max_block_size,
             max_operations_per_block,
-            operation_validity_periods: 2,
+            operation_validity_periods: 1,
             ledger_path: tempdir.path().to_path_buf(),
             ledger_cache_capacity: 1000000,
             ledger_flush_interval: Some(200.into()),

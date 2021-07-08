@@ -142,7 +142,6 @@ impl PoolWorker {
                 batch_size,
                 max_size,
                 response_tx,
-                size_left,
             } => response_tx
                 .send(self.operation_pool.get_operation_batch(
                     target_slot,
