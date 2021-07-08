@@ -416,15 +416,6 @@ fn get_export_active_test_block(
                         .collect()
                 })
                 .collect(),
-            operation_set: operations
-                .iter()
-                .enumerate()
-                .map(|(idx, op)| match op.get_operation_id(context) {
-                    Ok(id) => Ok((id, idx)),
-                    Err(e) => Err(e),
-                })
-                .flatten()
-                .collect(),
         },
         id,
     )

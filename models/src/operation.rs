@@ -12,8 +12,10 @@ use crypto::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
+use std::{collections::HashSet, convert::TryInto, ops::Range};
 use std::{ops::RangeInclusive, str::FromStr};
+
+pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
@@ -219,6 +221,23 @@ impl Operation {
             .expire_period
             .saturating_sub(operation_validity_period);
         start..=self.content.expire_period
+    }
+
+    pub fn get_involved_addresses(
+        &self,
+        fee_target: &Address,
+    ) -> Result<HashSet<Address>, ModelsError> {
+        let mut res = HashSet::new();
+        res.insert(fee_target.clone());
+        res.insert(Address::from_public_key(&self.content.sender_public_key)?);
+        match self.content.op {
+            OperationType::Transaction {
+                recipient_address, ..
+            } => {
+                res.insert(recipient_address);
+            }
+        }
+        Ok(res)
     }
 }
 

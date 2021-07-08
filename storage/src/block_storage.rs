@@ -3,12 +3,13 @@ use crate::{
     error::{InternalError, StorageError},
 };
 use models::{
-    array_from_slice, Block, BlockId, DeserializeCompact, Operation, OperationId,
+    array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
     OperationSearchResult, SerializationContext, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES,
+    OPERATION_ID_SIZE_BYTES,
 };
-use sled::{self, transaction::TransactionalTree, Transactional};
+use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map, HashMap, HashSet},
     convert::TryInto,
     sync::atomic::{AtomicUsize, Ordering},
     sync::Arc,
@@ -24,6 +25,7 @@ pub struct StorageCleaner {
     hash_to_block: sled::Tree,
     slot_to_hash: sled::Tree,
     op_to_block: sled::Tree, // op_id -> (block_id, index)
+    addr_to_op: sled::Tree,  // address -> Vec<operationId>
     serialization_context: SerializationContext,
 }
 
@@ -35,6 +37,7 @@ impl StorageCleaner {
         hash_to_block: sled::Tree,
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
+        addr_to_op: sled::Tree, // address -> Vec<operationId>
         block_count: Arc<AtomicUsize>,
         serialization_context: SerializationContext,
     ) -> Result<Self, StorageError> {
@@ -46,6 +49,7 @@ impl StorageCleaner {
             hash_to_block,
             slot_to_hash,
             op_to_block,
+            addr_to_op,
             serialization_context,
         })
     }
@@ -59,16 +63,21 @@ impl StorageCleaner {
             let mut removed = 0;
             while current_count > self.max_stored_blocks {
                 if let Some((slot, hash)) = self.slot_to_hash.first()? {
-                    (&self.slot_to_hash, &self.hash_to_block, &self.op_to_block).transaction(
-                        |(slots, hashes, ops)| {
-                            // Note: below assertions are unlikely to panic,
-                            // since only the cleaner removes keys from the trees.
-                            slots
-                                .remove(&slot)?
-                                .expect("Slot should have been previously inserted");
+                    (
+                        &self.slot_to_hash,
+                        &self.hash_to_block,
+                        &self.op_to_block,
+                        &self.addr_to_op,
+                    )
+                        .transaction(|(slots, hashes, ops, addr_to_op)| {
+                            slots.remove(&slot)?;
                             let s_block = hashes
                                 .remove(&hash)?
-                                .expect("Block should have been previously inserted");
+                                .ok_or(
+                                    sled::transaction::ConflictableTransactionError::Abort(
+                                        InternalError::TransactionError("block missing".into()),
+                                    )
+                                )?;
                             let (block, _) = Block::from_bytes_compact(
                                 s_block.as_ref(),
                                 &self.serialization_context,
@@ -81,24 +90,84 @@ impl StorageCleaner {
                                     )),
                                 )
                             })?;
+                            let fee_addr = Address::from_public_key(&block.header.content.creator).map_err(|err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(format!(
+                                        "error computing fee address: {:?}",
+                                        err
+                                    )),
+                                )
+                            })?;
+                            let mut addr_to_op_cache: HashMap<Address, HashSet<OperationId>> = HashMap::new();
                             for op in block.operations.into_iter() {
-                                ops.remove(
-                                    op.to_bytes_compact(&self.serialization_context).map_err(
+                                // remove operation from op_id => block index
+                                let op_id = op.get_operation_id(&self.serialization_context).map_err(
+                                    |err| {
+                                        sled::transaction::ConflictableTransactionError::Abort(
+                                            InternalError::TransactionError(format!(
+                                                "error getting operation ID: {:?}",
+                                                err
+                                            )),
+                                        )
+                                    },
+                                )?;
+                                ops.remove(&op_id.to_bytes())?;
+
+                                // remove involved addrs from address => operation index
+                                let involved_addrs = op.get_involved_addresses(&fee_addr).map_err(|err| {
+                                    sled::transaction::ConflictableTransactionError::Abort(
+                                        InternalError::TransactionError(format!(
+                                            "error computing op-involved addresses: {:?}",
+                                            err
+                                        )),
+                                    )
+                                })?;
+                                for involved_addr in involved_addrs.into_iter() {
+                                    match addr_to_op_cache.entry(involved_addr) {
+                                        hash_map::Entry::Occupied(mut occ) => { occ.get_mut().remove(&op_id); },
+                                        hash_map::Entry::Vacant(vac) => {
+                                            if let Some(ivec) = addr_to_op.get(&involved_addr.to_bytes())? {
+                                                let mut inv_ops = ops_from_ivec(ivec)
+                                                    .map_err(
+                                                        |err| {
+                                                            sled::transaction::ConflictableTransactionError::Abort(
+                                                                InternalError::TransactionError(format!(
+                                                                    "error loading operation IDs: {:?}",
+                                                                    err
+                                                                )),
+                                                            )
+                                                        },
+                                                    )?;
+                                                inv_ops.remove(&op_id);
+                                                vac.insert(inv_ops);
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                            // write back addr_to_op_cache
+                            for (addr, op_ids) in addr_to_op_cache.into_iter() {
+                                if op_ids.is_empty() {
+                                    // element is empty: remove it
+                                    addr_to_op.remove(&addr.to_bytes())?;
+                                    continue;
+                                }
+                                let ivec = ops_to_ivec(&op_ids)
+                                    .map_err(
                                         |err| {
                                             sled::transaction::ConflictableTransactionError::Abort(
                                                 InternalError::TransactionError(format!(
-                                                    "error serializing operation: {:?}",
+                                                    "error serializing operation IDs: {:?}",
                                                     err
                                                 )),
                                             )
                                         },
-                                    )?,
-                                )?
-                                .expect("operations should have been previously inserted");
+                                    )?;
+                                addr_to_op.insert(&addr.to_bytes(), ivec)?;
                             }
+
                             Ok(())
-                        },
-                    )?;
+                        })?;
                 }
                 current_count -= 1;
                 removed += 1;
@@ -123,6 +192,25 @@ impl StorageCleaner {
     }
 }
 
+fn ops_from_ivec(buffer: IVec) -> Result<HashSet<OperationId>, StorageError> {
+    let operation_count = buffer.len() / OPERATION_ID_SIZE_BYTES;
+    let mut operations: HashSet<OperationId> = HashSet::with_capacity(operation_count as usize);
+    for op_i in 0..operation_count {
+        let cursor = OPERATION_ID_SIZE_BYTES * op_i;
+        let operation_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        operations.insert(operation_id);
+    }
+    Ok(operations)
+}
+
+fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
+    let mut res: Vec<u8> = Vec::with_capacity(OPERATION_ID_SIZE_BYTES * op_ids.len());
+    for op_id in op_ids.iter() {
+        res.extend(op_id.to_bytes());
+    }
+    Ok(res[..].into())
+}
+
 #[derive(Clone)]
 pub struct BlockStorage {
     cfg: StorageConfig,
@@ -131,6 +219,7 @@ pub struct BlockStorage {
     hash_to_block: sled::Tree,
     slot_to_hash: sled::Tree,
     op_to_block: sled::Tree,
+    addr_to_op: sled::Tree, // address -> Vec<operationId>
     notify: Arc<Notify>,
 }
 
@@ -141,6 +230,7 @@ impl BlockStorage {
         hash_to_block: sled::Tree,
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
+        addr_to_op: sled::Tree, // address -> Vec<operationId>
         block_count: Arc<AtomicUsize>,
         notify: Arc<Notify>,
     ) -> Result<BlockStorage, StorageError> {
@@ -151,6 +241,7 @@ impl BlockStorage {
             hash_to_block,
             slot_to_hash,
             op_to_block,
+            addr_to_op, // address -> Vec<operationId>
             notify,
         };
 
@@ -199,8 +290,14 @@ impl BlockStorage {
         block: Block,
     ) -> Result<bool, StorageError> {
         //add the new block
-        (&self.hash_to_block, &self.slot_to_hash, &self.op_to_block)
-            .transaction(|(hash_tx, slot_tx, op_tx)| {
+        (
+            &self.hash_to_block,
+            &self.slot_to_hash,
+            &self.op_to_block,
+            &self.addr_to_op,
+        )
+            .transaction(|(hash_tx, slot_tx, op_tx, addr_tx)| {
+                // add block
                 let serialized_block = block
                     .to_bytes_compact(&self.serialization_context)
                     .map_err(|err| {
@@ -211,34 +308,94 @@ impl BlockStorage {
                             )),
                         )
                     })?;
-                hash_tx.insert(&block_id.to_bytes(), serialized_block.as_slice())?;
+                let s_block_id = block_id.to_bytes();
+                if hash_tx
+                    .insert(&s_block_id, serialized_block.as_slice())?
+                    .is_some()
+                {
+                    return Ok(false);
+                }
+
+                let fee_target =
+                    Address::from_public_key(&block.header.content.creator).map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error computing feee target addres: {:?}",
+                                err
+                            )),
+                        )
+                    })?;
+
+                // slot
+                slot_tx.insert(&block.header.content.slot.to_bytes_key(), &s_block_id)?;
+
+                // operations
+                let mut addr_to_ops: HashMap<Address, HashSet<OperationId>> = HashMap::new();
                 for (idx, op) in block.operations.iter().enumerate() {
-                    let id = op
-                        .get_operation_id(&self.serialization_context)
-                        .map_err(|err| {
-                            sled::transaction::ConflictableTransactionError::Abort(
-                                InternalError::TransactionError(format!(
-                                    "error getting op id block: {:?}",
-                                    err
-                                )),
-                            )
-                        })?
-                        .to_bytes();
+                    let op_id =
+                        op.get_operation_id(&self.serialization_context)
+                            .map_err(|err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(format!(
+                                        "error getting op id block: {:?}",
+                                        err
+                                    )),
+                                )
+                            })?;
+                    let s_op_id = op_id.to_bytes();
+                    // add to ops
                     op_tx.insert(
-                        &id,
+                        &s_op_id,
                         [&block_id.to_bytes()[..], &(idx as u64).to_be_bytes()[..]].concat(),
                     )?;
+                    // add to involved addrs
+                    let involved_addrs = op.get_involved_addresses(&fee_target).map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error getting involved addrs: {:?}",
+                                err
+                            )),
+                        )
+                    })?;
+                    for involved_addr in involved_addrs.into_iter() {
+                        // get current ops
+                        match addr_to_ops.entry(involved_addr) {
+                            hash_map::Entry::Occupied(mut occ) => {
+                                occ.get_mut().insert(op_id);
+                            }
+                            hash_map::Entry::Vacant(vac) => {
+                                let mut cur_ops =
+                                    if let Some(ivec) = addr_tx.get(&involved_addr.to_bytes())? {
+                                        ops_from_ivec(ivec).map_err(|err| {
+                                            sled::transaction::ConflictableTransactionError::Abort(
+                                                InternalError::TransactionError(format!(
+                                                    "error getting involved addrs: {:?}",
+                                                    err
+                                                )),
+                                            )
+                                        })?
+                                    } else {
+                                        HashSet::new()
+                                    };
+                                cur_ops.insert(op_id);
+                                vac.insert(cur_ops);
+                            }
+                        }
+                    }
                 }
-                if slot_tx
-                    .insert(
-                        &block.header.content.slot.to_bytes_key(),
-                        &block_id.to_bytes(),
-                    )?
-                    .is_none()
-                {
-                    return Ok(true);
-                };
-                Ok(false)
+                // write back addr_to_op_cache
+                for (addr, op_ids) in addr_to_ops.into_iter() {
+                    let ivec = ops_to_ivec(&op_ids).map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error serializing operation IDs: {:?}",
+                                err
+                            )),
+                        )
+                    })?;
+                    addr_tx.insert(&addr.to_bytes(), ivec)?;
+                }
+                Ok(true)
             })
             .map_err(|err| StorageError::AddBlockError(format!("Error adding a block: {:?}", err)))
     }

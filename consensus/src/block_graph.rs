@@ -46,6 +46,7 @@ pub struct ActiveBlock {
     pub is_final: bool,
     pub block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
     pub operation_set: HashMap<OperationId, usize>,
+    pub addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
 }
 
 impl ActiveBlock {
@@ -82,7 +83,6 @@ pub struct ExportActiveBlock {
     pub dependencies: Vec<BlockId>,         // dependencies required for validity check
     pub is_final: bool,
     pub block_ledger_change: Vec<Vec<(Address, LedgerChange)>>,
-    pub operation_set: Vec<(OperationId, usize)>,
 }
 
 impl From<ActiveBlock> for ExportActiveBlock {
@@ -102,14 +102,57 @@ impl From<ActiveBlock> for ExportActiveBlock {
                 .into_iter()
                 .map(|map| map.into_iter().collect())
                 .collect(),
-            operation_set: block.operation_set.into_iter().collect(),
         }
     }
 }
 
-impl<'a> From<ExportActiveBlock> for ActiveBlock {
-    fn from(block: ExportActiveBlock) -> Self {
-        ActiveBlock {
+impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
+    fn try_from(block: ExportActiveBlock) -> Result<ActiveBlock, ConsensusError> {
+        let context = models::get_serialization_context();
+        let operation_set = block
+            .block
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(idx, op)| match op.get_operation_id(&context) {
+                Ok(id) => Ok((id, idx)),
+                Err(e) => Err(e),
+            })
+            .collect::<Result<_, _>>()?;
+
+        let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
+        block
+            .block
+            .operations
+            .iter()
+            .map(|op| {
+                let addrs = op
+                    .get_involved_addresses(&Address::from_public_key(
+                        &block.block.header.content.creator,
+                    )?)
+                    .map_err(|err| {
+                        ModelsError::DeserializeError(
+                            "could not get invoolved addresses".to_string(),
+                        )
+                    })?;
+                let id = op.get_operation_id(&context)?;
+                for ad in addrs.iter() {
+                    if let Some(entry) = addresses_to_operations.get_mut(ad) {
+                        entry.insert(id);
+                    } else {
+                        let mut set = HashSet::new();
+                        set.insert(id);
+                        addresses_to_operations.insert(*ad, set);
+                    }
+                }
+                Ok(())
+            })
+            .collect::<Result<(), ModelsError>>()?;
+        let addresses_to_operations = addresses_to_operations
+            .into_iter()
+            .map(|(ad, vec)| (ad, vec.into_iter().collect()))
+            .collect();
+        Ok(ActiveBlock {
             block: block.block,
             parents: block.parents,
             children: block
@@ -125,9 +168,12 @@ impl<'a> From<ExportActiveBlock> for ActiveBlock {
                 .into_iter()
                 .map(|map| map.into_iter().collect())
                 .collect(),
-            operation_set: block.operation_set.into_iter().collect(),
-        }
+            operation_set,
+            addresses_to_operations,
+        })
     }
+
+    type Error = ConsensusError;
 }
 
 impl SerializeCompact for ExportActiveBlock {
@@ -326,16 +372,6 @@ impl DeserializeCompact for ExportActiveBlock {
             block_ledger_change.push(map);
         }
 
-        let operation_set = block
-            .operations
-            .iter()
-            .enumerate()
-            .map(|(idx, op)| match op.get_operation_id(context) {
-                Ok(id) => Ok((id, idx)),
-                Err(e) => Err(e),
-            })
-            .collect::<Result<_, _>>()?;
-
         Ok((
             ExportActiveBlock {
                 is_final,
@@ -344,7 +380,6 @@ impl DeserializeCompact for ExportActiveBlock {
                 children,
                 dependencies,
                 block_ledger_change,
-                operation_set,
             },
             cursor,
         ))
@@ -822,9 +857,12 @@ impl BlockGraph {
     /// * serialization_context: SerializationContext instance
     pub async fn new(
         cfg: ConsensusConfig,
+        context: SerializationContext,
         init: Option<BootsrapableGraph>,
     ) -> Result<Self, ConsensusError> {
         // load genesis blocks
+        models::init_serialization_context(context);
+
         let mut block_statuses = HashMap::new();
         let mut block_hashes = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
@@ -843,6 +881,7 @@ impl BlockGraph {
                     is_final: true,
                     block_ledger_change: vec![HashMap::new(); cfg.thread_count as usize], // todo add initial coin repartition see #311
                     operation_set: HashMap::with_capacity(0),
+                    addresses_to_operations: HashMap::with_capacity(0),
                 }),
             );
         }
@@ -857,8 +896,10 @@ impl BlockGraph {
                 block_statuses: boot_graph
                     .active_blocks
                     .iter()
-                    .map(|(hash, block)| (*hash, BlockStatus::Active(block.clone().into())))
-                    .collect(),
+                    .map(|(hash, block)| {
+                        Ok((*hash, BlockStatus::Active(block.clone().try_into()?)))
+                    })
+                    .collect::<Result<_, ConsensusError>>()?,
                 latest_final_blocks_periods: boot_graph.latest_final_blocks_periods,
                 best_parents: boot_graph.best_parents,
                 gi_head: boot_graph
@@ -1416,6 +1457,25 @@ impl BlockGraph {
                 }
             }
         };
+        let serialization_context = models::get_serialization_context();
+        let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
+        valid_block
+            .operations
+            .iter()
+            .map(|op| {
+                let addrs = op.get_involved_addresses(&Address::from_public_key(
+                    &valid_block.header.content.creator,
+                )?)?;
+                let id = op.get_operation_id(&serialization_context)?;
+                for ad in addrs.iter() {
+                    addresses_to_operations
+                        .entry(*ad)
+                        .or_insert_with(|| HashSet::with_capacity(1))
+                        .insert(id);
+                }
+                Ok(())
+            })
+            .collect::<Result<(), ConsensusError>>()?;
 
         // add block to graph
         self.add_block_to_graph(
@@ -1427,6 +1487,7 @@ impl BlockGraph {
             valid_block_inherited_incomp_count,
             valid_block_changes,
             operation_set,
+            addresses_to_operations,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
@@ -2257,6 +2318,7 @@ impl BlockGraph {
         inherited_incomp_count: usize,
         block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
         operation_set: HashMap<OperationId, usize>,
+        addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
     ) -> Result<(), ConsensusError> {
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
 
@@ -2272,6 +2334,7 @@ impl BlockGraph {
                 is_final: false,
                 block_ledger_change,
                 operation_set,
+                addresses_to_operations,
             }),
         );
 
@@ -3274,8 +3337,6 @@ mod tests {
                     },
                 )],
             ],
-
-            operation_set: vec![],
         }
     }
 
@@ -3288,7 +3349,7 @@ mod tests {
         // .init()
         // .unwrap();
         let thread_count: u8 = 2;
-        let active_block: ActiveBlock = get_export_active_test_block().into();
+        let active_block: ActiveBlock = get_export_active_test_block().try_into().unwrap();
         let ledger_file = generate_ledger_file(&HashMap::new());
         let (mut cfg, serialization_context) = example_consensus_config(ledger_file.path());
         models::init_serialization_context(serialization_context.clone());
@@ -3336,7 +3397,6 @@ mod tests {
             dependencies: vec![], // dependencies required for validity check
             is_final: true,
             block_ledger_change: vec![Vec::new(); thread_count as usize],
-            operation_set: vec![],
         };
         let export_genesist1 = ExportActiveBlock {
             block: block_genesist1,
@@ -3345,7 +3405,6 @@ mod tests {
             dependencies: vec![], // dependencies required for validity check
             is_final: true,
             block_ledger_change: vec![Vec::new(); thread_count as usize],
-            operation_set: vec![],
         };
         //update ledget with inital content.
         //   Thread 0  [at the output of block p0t0]:
@@ -3505,7 +3564,9 @@ mod tests {
             },
         };
 
-        let block_graph = BlockGraph::new(cfg, Some(export_graph)).await.unwrap();
+        let block_graph = BlockGraph::new(cfg, serialization_context.clone(), Some(export_graph))
+            .await
+            .unwrap();
 
         //Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
         let res = block_graph
@@ -3669,7 +3730,9 @@ mod tests {
         let ledger_file = generate_ledger_file(&HashMap::new());
         let (cfg, serialization_context) = example_consensus_config(ledger_file.path());
         models::init_serialization_context(serialization_context.clone());
-        let mut block_graph = BlockGraph::new(cfg, None).await.unwrap();
+        let mut block_graph = BlockGraph::new(cfg, serialization_context.clone(), None)
+            .await
+            .unwrap();
         let hashes: Vec<BlockId> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
