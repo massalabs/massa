@@ -20,6 +20,10 @@ pub enum StorageError {
     DatabaseInconsistency(String),
     #[error("deserialization error: {0}")]
     DeserializationError(String),
+    #[error("add block error: {0}")]
+    AddBlockError(String),
+    #[error("clear error: {0}")]
+    ClearError(String),
 }
 
 #[derive(Error, Debug)]
