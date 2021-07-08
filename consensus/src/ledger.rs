@@ -606,13 +606,11 @@ impl LedgerSubset {
         }
     }
 
-    pub fn get_data(&self, address: &Address, thread_count: u8) -> LedgerData {
+    pub fn get_data(&self, address: &Address, thread_count: u8) -> &LedgerData {
         let thread = address.get_thread(thread_count);
-        if let Some(data) = self.data[thread as usize].get(address) {
-            *data
-        } else {
-            LedgerData { balance: 0 }
-        }
+        self.data[thread as usize]
+            .get(address)
+            .unwrap_or(&LedgerData { balance: 0 })
     }
 
     pub fn apply_change(

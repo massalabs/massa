@@ -133,7 +133,8 @@ async fn test_operations_check() {
         .await
         .unwrap()
         .candidate_data
-        .get_data(&address_1, cfg.thread_count);
+        .get_data(&address_1, cfg.thread_count)
+        .clone();
     assert_eq!(res.get_balance(), 1);
 
     // receive block b with invalid operation (not enough coins)
@@ -187,7 +188,8 @@ async fn test_operations_check() {
         .await
         .unwrap()
         .candidate_data
-        .get_data(&address_2, cfg.thread_count);
+        .get_data(&address_2, cfg.thread_count)
+        .clone();
     assert_eq!(res.get_balance(), 5);
 
     // receive block with reused operation
