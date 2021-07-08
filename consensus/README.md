@@ -188,6 +188,7 @@ Do we need to remove blocks one by one ?
 
 
 ## Graphs
+When updating sequence number, update also dependencies sequence numbers
 
 ### Check header
 ```mermaid
@@ -279,4 +280,35 @@ graph TD
     N --> |promote| O(Discarded) --> Y
 
     M --> P[[Ready]]
+```
+
+### Update consensus
+Given a checked block :
+```mermaid
+graph TD
+    Block --> A[Inherit incomp]
+    A --> B[get Thread incomp]
+    A --> C[get Granda incomp]
+    A --> D[get transaction incomp]
+    B & C & D --> E[Extend incomp]
+    E --> F{{Check incomp with final block}}
+    F --> G((Yes))
+    F --> H((No))
+
+    G --> |promote| I(Discarded)
+    I --> J[[Update sequence number]]
+    H --> |promote| K(Active)
+    K --> L[Add incomp to gi_head]
+    L --> M[update max_clique]
+    M --> N[update best parents]
+    N --> O[prune stale blocks]
+    O --> |promote other| R(Discarded)
+
+    O --> P[update latest final blocks]
+    P --> Q[prune useless final blocks]
+
+    Q --> |promote other| S(Discarded)
+    Q --> T[[Ok]]
+
+    R & S --> J
 ```
