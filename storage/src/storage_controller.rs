@@ -34,6 +34,11 @@ impl StorageCommandSender {
         tokio::task::spawn_blocking(move || db.get_block(hash)).await?
     }
 
+    pub async fn contains(&self, hash: Hash) -> Result<bool, StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.contains(hash)).await?
+    }
+
     pub async fn get_slot_range(
         &self,
         start: (u64, u8),

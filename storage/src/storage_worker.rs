@@ -47,6 +47,12 @@ impl BlockStorage {
         Ok(())
     }
 
+    pub fn contains(&self, hash: Hash) -> Result<bool, StorageError> {
+        let hash_to_block = self.db.open_tree("hash_to_block")?;
+        hash_to_block
+            .contains_key(hash.to_bytes())
+            .map_err(|e| StorageError::from(e))
+    }
     pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         BlockStorage::get_block_internal(hash, &hash_to_block)
