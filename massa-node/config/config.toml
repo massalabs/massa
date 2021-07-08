@@ -7,7 +7,7 @@
     bind = "127.0.0.1:3030"
 
 [consensus]
-    genesis_timestamp = 1625407900000 # to update while testing
+    genesis_timestamp = 1625414954000 # to update while testing
     t0 = 16000
     thread_count = 32
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
@@ -29,7 +29,7 @@
     #POS
     initial_rolls_path = "config/initial_rolls.json"
     initial_draw_seed = "massa_genesis_seed"
-    periods_per_cycle = 128
+    periods_per_cycle = 10
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 10

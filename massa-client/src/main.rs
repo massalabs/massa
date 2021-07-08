@@ -278,6 +278,7 @@ fn main() {
                 repl.data.wallet = Some(wallet);
                 repl.activate_command("wallet_info");
                 repl.activate_command("wallet_new_privkey");
+                repl.activate_command("send_transaction");
                 repl.activate_command("buy_rolls");
                 repl.activate_command("sell_rolls");
             }
@@ -363,10 +364,10 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
     if let Some(wallet) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let roll_count: u64 = FromStr::from_str(&params[2]).map_err(|err| {
+        let roll_count: u64 = FromStr::from_str(&params[1]).map_err(|err| {
             ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
         })?;
-        let fee: u64 = FromStr::from_str(&params[3])
+        let fee: u64 = FromStr::from_str(&params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
 
@@ -380,10 +381,10 @@ fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
     if let Some(wallet) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let roll_count: u64 = FromStr::from_str(&params[2]).map_err(|err| {
+        let roll_count: u64 = FromStr::from_str(&params[1]).map_err(|err| {
             ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
         })?;
-        let fee: u64 = FromStr::from_str(&params[3])
+        let fee: u64 = FromStr::from_str(&params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollSell { roll_count };
 
