@@ -138,9 +138,9 @@ impl PoolCommandSender {
                 PoolError::ChannelError("get_operation_batch command send error".into())
             })?;
 
-        response_rx
-            .await
-            .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!("pool command response read error {:?}", e))
+        })
     }
 }
 

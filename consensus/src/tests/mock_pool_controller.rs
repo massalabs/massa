@@ -82,6 +82,9 @@ impl PoolCommandSink {
                 tokio::select! {
                     _ = &mut stop_rx => return mock_pool_controller,
                     cmd = mock_pool_controller.pool_command_rx.recv() => match cmd {
+                        Some(PoolCommand::GetOperationBatch{response_tx, ..}) => {
+                            response_tx.send(vec![]).unwrap();
+                        },
                         Some(_) => {},
                         None => {
                             let _  = stop_rx.await;

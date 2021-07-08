@@ -606,6 +606,10 @@ impl LedgerSubset {
         }
     }
 
+    pub fn contains(&self, address: &Address, thread_count: u8) -> bool {
+        self.data[address.get_thread(thread_count) as usize].contains_key(address)
+    }
+
     pub fn get_data(&self, address: &Address, thread_count: u8) -> &LedgerData {
         let thread = address.get_thread(thread_count);
         self.data[thread as usize]
