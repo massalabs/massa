@@ -551,7 +551,7 @@ impl PeerInfoDatabase {
             active_in_connections: 0,
         });
         if peer.banned {
-            massa_trace!("peer_banned", {"ip": peer.ip});
+            massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
             peer.last_failure = Some(Utc::now());
             self.request_dump();
             return false;
