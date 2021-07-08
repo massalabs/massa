@@ -472,8 +472,19 @@ impl ProtocolWorker {
                 let (response_tx, response_rx) = oneshot::channel();
                 self.controller_event_tx
                     .send(ProtocolEvent::AskedBlock(hash, response_tx))
-                    .await?;
-                if let Some(block) = response_rx.await? {
+                    .await
+                    .map_err(|e| {
+                        CommunicationError::ChannelError(format!(
+                            "error sending block : {:?}",
+                            e.to_string()
+                        ))
+                    })?;
+                if let Some(block) = response_rx.await.map_err(|e| {
+                    CommunicationError::ChannelError(format!(
+                        "error receiving block : {:?}",
+                        e.to_string()
+                    ))
+                })? {
                     node_command_tx
                         .send(NodeCommand::SendBlock(block))
                         .await
