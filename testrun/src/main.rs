@@ -50,6 +50,12 @@ async fn main() {
     // setup logging
     stderrlog::new()
         .module(module_path!())
+        .module("communication")
+        .module("consensus")
+        .module("crypto")
+        .module("logging")
+        .module("models")
+        .module("time")
         .verbosity(cfg.logging.level)
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
