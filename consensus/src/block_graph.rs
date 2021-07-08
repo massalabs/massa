@@ -726,7 +726,7 @@ fn create_genesis_block(
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             out_ledger_hash: Hash::hash("Hello world !".as_bytes()),
-            operation_merkle_root: Hash::hash("Hello world !".as_bytes()),
+            operation_merkle_root: Hash::hash(&Vec::new()),
         },
         &serialization_context,
     )?;
@@ -875,7 +875,7 @@ impl BlockGraph {
                 slot: slot,
                 parents: self.best_parents.clone(),
                 out_ledger_hash: example_hash,
-                operation_merkle_root: example_hash,
+                operation_merkle_root: Hash::hash(&Vec::new()),
             },
             &self.serialization_context,
         )?;
@@ -2602,7 +2602,7 @@ mod tests {
             header: BlockHeader {
                 content: BlockHeaderContent{
                     creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
-                    operation_merkle_root: Hash::hash("operation_merkle_root".as_bytes()),
+                    operation_merkle_root: Hash::hash(&Vec::new()),
                     out_ledger_hash: Hash::hash("out_ledger_hash".as_bytes()),
                     parents: vec![
                         BlockId::for_tests("parent1").unwrap(),

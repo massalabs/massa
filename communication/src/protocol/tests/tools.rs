@@ -61,7 +61,7 @@ pub fn create_block(
             slot: Slot::new(0, 0),
             parents: Vec::new(),
             out_ledger_hash: example_hash,
-            operation_merkle_root: example_hash,
+            operation_merkle_root: Hash::hash(&Vec::new()),
         },
         &serialization_context,
     )
