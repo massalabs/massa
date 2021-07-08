@@ -1,5 +1,5 @@
-/// The network worker actually does the job of managing connections
-/// That's why it's ... a worker ! 🦀
+//! The network worker actually does the job of managing connections
+//! That's why it's ... a worker ! 🦀
 use super::super::{
     config::NetworkConfig,
     establisher::Establisher,

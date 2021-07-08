@@ -1,7 +1,7 @@
-/// The goal of this API is to retrieve information
-/// on the current state of our node and interact with it.
-/// In version 0.1, we can get some informations
-/// and stop the node through the API.
+//! The goal of this API is to retrieve information
+//! on the current state of our node and interact with it.
+//! In version 0.1, we can get some informations
+//! and stop the node through the API.
 use communication::network::config::NetworkConfig;
 use config::ApiConfig;
 use consensus::{config::ConsensusConfig, consensus_controller::ConsensusControllerInterface};

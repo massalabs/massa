@@ -1,4 +1,4 @@
-/// default_network_controller is the used implementation of NetworkController
+//! Default_network_controller is the used implementation of NetworkController
 mod network_worker;
 
 use crate::error::{ChannelError, CommunicationError};

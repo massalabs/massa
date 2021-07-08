@@ -1,4 +1,4 @@
-/// All information concerning blocks, the block graph and cliques is managed here.
+//! All information concerning blocks, the block graph and cliques is managed here.
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::{BlockAcknowledgeError, ConsensusError};
 use crypto::{hash::Hash, signature::SignatureEngine};
