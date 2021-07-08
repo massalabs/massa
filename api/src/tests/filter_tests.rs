@@ -1768,7 +1768,6 @@ async fn test_last_invalid() {
 }
 
 #[tokio::test]
-#[ignore]
 #[serial]
 async fn test_staker_info() {
     initialize_context();
@@ -1805,7 +1804,10 @@ async fn test_staker_info() {
 
         let res = warp::test::request()
             .method("GET")
-            .path(&format!("/api/v1/staker_info/{}", staker))
+            .path(&format!(
+                "/api/v1/staker_info/{}",
+                Address::from_public_key(&staker).unwrap().to_bs58_check()
+            ))
             .reply(&filter)
             .await;
         handle.abort();
@@ -1877,7 +1879,10 @@ async fn test_staker_info() {
     //valide url with final block.
     let res = warp::test::request()
         .method("GET")
-        .path(&format!("/api/v1/staker_info/{}", staker))
+        .path(&format!(
+            "/api/v1/staker_info/{}",
+            Address::from_public_key(&staker).unwrap().to_bs58_check()
+        ))
         .reply(&filter)
         .await;
     handle.abort();
