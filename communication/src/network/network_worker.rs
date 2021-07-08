@@ -429,7 +429,7 @@ impl NetworkWorker {
             }
             ConnectionClosureReason::Banned => {
                 // nothing here, because peer_info_db.peer_banned called in NetworkCommand::Ban
-            } 
+            }
         }
         if is_outgoing {
             self.peer_info_db.out_connection_closed(&ip)?;
