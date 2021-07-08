@@ -9,6 +9,7 @@ use communication::{
     network::{start_network_controller, Establisher},
     protocol::start_protocol_controller,
 };
+use pool::start_pool_controller;
 use consensus::start_consensus_controller;
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
@@ -55,12 +56,13 @@ async fn run(cfg: config::Config) {
         .await
         .expect("could not start network controller");
 
+    // start storage
     let (storage_command_sender, storage_manager) =
         start_storage(cfg.storage.clone(), serialization_context.clone())
             .expect("could not start storage controller");
 
     // launch protocol controller
-    let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
+    let (protocol_command_sender, protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
         start_protocol_controller(
             cfg.protocol.clone(),
             serialization_context.clone(),
@@ -70,12 +72,25 @@ async fn run(cfg: config::Config) {
         .await
         .expect("could not start protocol controller");
 
+    // launch pool controller
+    let (pool_command_sender, pool_manager) =
+        start_pool_controller(
+            cfg.pool.clone(),
+            serialization_context.clone(),
+            protocol_command_sender.clone(),
+            protocol_pool_event_receiver,
+            clock_compensation,
+        )
+        .await
+        .expect("could not start pool controller");
+
     // launch consensus controller
     let (consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.consensus.clone(),
             serialization_context.clone(),
             protocol_command_sender.clone(),
+            pool_command_sender.clone(),
             protocol_event_receiver,
             Some(storage_command_sender.clone()),
             boot_graph,
@@ -212,6 +227,12 @@ async fn run(cfg: config::Config) {
         .await
         .expect("consensus shutdown failed");
 
+    // stop pool controller
+    let protocol_event_receiver = pool_manager
+        .stop()
+        .await
+        .expect("pool shutdown failed");
+
     // stop protocol controller
     let network_event_receiver = protocol_manager
         .stop(protocol_event_receiver)
@@ -248,6 +269,7 @@ async fn main() {
         .module("models")
         .module("time")
         .module("api")
+        .module("pool")
         .verbosity(cfg.logging.level)
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
