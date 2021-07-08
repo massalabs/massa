@@ -19,11 +19,33 @@ pub struct StorageWorker {
 }
 
 impl StorageWorker {
-    pub fn new() -> Result<StorageWorker, StorageError> {
-        todo!()
+    pub fn new(
+        cfg: StorageConfig,
+        controller_command_rx: mpsc::Receiver<StorageCommand>,
+        controller_event_tx: mpsc::Sender<StorageEvent>,
+        controller_manager_rx: mpsc::Receiver<StorageManagementCommand>,
+    ) -> Result<StorageWorker, StorageError> {
+        Ok(StorageWorker {
+            cfg,
+            controller_command_rx,
+            controller_event_tx,
+            controller_manager_rx,
+        })
     }
 
-    pub async fn run_loop(mut self) {
-        todo!()
+    pub async fn run_loop(mut self) -> Result<(), StorageError> {
+        loop {
+            tokio::select! {
+                Some(cmd) = self.controller_command_rx.recv() => match cmd {
+                    _=> {},
+                },
+
+                cmd = self.controller_manager_rx.recv() => match cmd {
+                    None => break,
+                    Some(_) => {}
+                }
+            }
+        }
+        Ok(())
     }
 }

@@ -1783,7 +1783,10 @@ dependencies = [
 name = "storage"
 version = "0.1.0"
 dependencies = [
+ "log",
+ "logging",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
 ]
