@@ -24,6 +24,7 @@ num = "0.3.1"
 time= { path = "../time"}
 storage= { path = "../storage"}
 pool= { path = "../pool"}
+sled = "0.34.6"
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }
