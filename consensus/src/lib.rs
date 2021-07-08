@@ -26,10 +26,7 @@ pub use consensus_controller::{
 pub use consensus_worker::{ConsensusCommand, ConsensusEvent};
 pub use error::ConsensusError;
 pub use ledger::{LedgerChange, LedgerData, LedgerExport};
-pub use pos::{
-    ExportProofOfStake, ExportThreadCycleState, RollCounts, RollUpdate, RollUpdateInterface,
-    RollUpdates,
-};
+pub use pos::{ExportProofOfStake, ExportThreadCycleState, RollCounts, RollUpdate, RollUpdates};
 pub use timeslots::{
     get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp,
 };
