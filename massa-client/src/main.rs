@@ -443,7 +443,10 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             "Error no current time slot generated".to_string(),
         ))?;
 
-        let expire_period = slot.period + consensus_cfg.operation_validity_periods + 1;
+        let mut expire_period = slot.period + consensus_cfg.operation_validity_periods;
+        if slot.thread >= from_address.get_thread(consensus_cfg.thread_count) {
+            expire_period += 1;
+        }
         let operation_type = OperationType::Transaction {
             recipient_address,
             amount,
