@@ -272,7 +272,23 @@ impl PeerInfoDatabase {
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
             .values()
-            .filter(|&p| (p.advertised && !p.banned && !p.is_active()))
+            .filter(|&p| {
+                if !(p.advertised && !p.banned && !p.is_active()) {
+                    return false;
+                }
+                if let Some(last_failure) = p.last_failure {
+                    if let Some(last_alive) = p.last_alive {
+                        if last_alive > last_failure {
+                            return true;
+                        }
+                    }
+                    return (Utc::now() - last_failure)
+                        .to_std()
+                        .expect("chrono duration unsupported by std")
+                        > self.cfg.wakeup_interval;
+                }
+                true
+            })
             .copied()
             .collect();
         sorted_peers.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
@@ -552,6 +568,7 @@ mod tests {
             routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             protocol_port: 0,
             connect_timeout: std::time::Duration::from_secs_f32(180.0),
+            wakeup_interval: std::time::Duration::from_secs_f32(10.0),
             peers_file: std::path::PathBuf::new(),
             target_out_connections: 10,
             max_in_connections: 5,

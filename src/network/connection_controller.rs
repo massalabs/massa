@@ -156,6 +156,7 @@ async fn connection_controller_fn(
     let mut out_connecting_futures = FuturesUnordered::new();
     let mut cur_connection_id = ConnectionId::default();
     let mut active_connections: HashMap<ConnectionId, (IpAddr, bool)> = HashMap::new(); // ip, is_outgoing
+    let mut wakeup_interval = tokio::time::interval(cfg.wakeup_interval); // wake up the controller at a regular interval to retry connections
 
     loop {
         {
@@ -172,6 +173,9 @@ async fn connection_controller_fn(
         }
 
         tokio::select! {
+            // wake up interval
+            _ = wakeup_interval.tick() => {}
+
             // peer feedback event
             res = connection_command_rx.next() => match res {
                 Some(ConnectionCommand::MergeAdvertisedPeerList(ips)) => {
