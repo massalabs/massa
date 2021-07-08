@@ -7,7 +7,7 @@ mod serialization;
 mod slot;
 
 pub use address::{Address, ADDRESS_SIZE_BYTES};
-pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId};
+pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId, BLOCK_ID_SIZE_BYTES};
 pub use context::SerializationContext;
 pub use error::ModelsError;
 pub use operation::{Operation, OperationContent, OperationId, OperationType};

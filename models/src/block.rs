@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::str::FromStr;
 
+pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct BlockId(Hash);
 

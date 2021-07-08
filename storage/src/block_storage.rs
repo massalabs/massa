@@ -2,105 +2,124 @@ use crate::{
     config::StorageConfig,
     error::{InternalError, StorageError},
 };
-use models::{Block, BlockId, DeserializeCompact, SerializationContext, SerializeCompact, Slot};
-use sled::{self, Transactional};
+use models::{
+    array_from_slice, Block, BlockId, DeserializeCompact, Operation, OperationId,
+    SerializationContext, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES,
+};
+use sled::{self, transaction::TransactionalTree, Transactional};
 use std::{
     collections::HashMap,
     convert::TryInto,
     sync::atomic::{AtomicUsize, Ordering},
     sync::Arc,
+    usize,
 };
-use tokio::sync::{mpsc, oneshot, Notify};
+use tokio::sync::{mpsc, Notify};
 
 pub struct StorageCleaner {
     max_stored_blocks: usize,
     notify: Arc<Notify>,
-    shutdown: Arc<Notify>,
-    clear_rx: mpsc::Receiver<oneshot::Sender<()>>,
+    shutdown: mpsc::Receiver<()>,
     block_count: Arc<AtomicUsize>,
     hash_to_block: sled::Tree,
     slot_to_hash: sled::Tree,
+    op_to_block: sled::Tree, // op_id -> (block_id, index)
+    serialization_context: SerializationContext,
 }
 
 impl StorageCleaner {
     pub fn new(
         max_stored_blocks: usize,
         notify: Arc<Notify>,
-        shutdown: Arc<Notify>,
-        clear_rx: mpsc::Receiver<oneshot::Sender<()>>,
+        shutdown: mpsc::Receiver<()>,
         hash_to_block: sled::Tree,
         slot_to_hash: sled::Tree,
+        op_to_block: sled::Tree,
         block_count: Arc<AtomicUsize>,
+        serialization_context: SerializationContext,
     ) -> Result<Self, StorageError> {
         Ok(StorageCleaner {
             max_stored_blocks,
             notify,
             shutdown,
-            clear_rx,
             block_count,
             hash_to_block,
             slot_to_hash,
+            op_to_block,
+            serialization_context,
         })
     }
 
     pub async fn run_loop(mut self) -> Result<(), StorageError> {
         loop {
             massa_trace!("storage.storage_cleaner.run_loop.select", {});
-            let shutdown = tokio::select! {
-                _ = self.notify.notified() => {
-                    massa_trace!("storage.storage_cleaner.run_loop.notified", {});
-                    false
-                },
-                _ = self.shutdown.notified() => {
-                    massa_trace!("storage.storage_cleaner.run_loop.shutdown", {});
-                    true
-                },
-                Some(response_sender) = self.clear_rx.recv() => {
-                    massa_trace!("storage.storage_cleaner.run_loop.clear", {});
-                    let current_count = self.block_count.load(Ordering::Acquire);
 
-                    // clear all key-value stores
-                    self.hash_to_block.clear()?;
-                    self.slot_to_hash.clear()?;
-
-                    // Note: this is not completely accurate,
-                    // since storage could have added blocks between the load and the clears.
-                    self.block_count.fetch_sub(current_count, Ordering::Release);
-
-                    response_sender.send(()).map_err(|_| {
-                        StorageError::ClearError("Couldn't send the clear command response.".into())
-                    })?;
-                    continue;
-                },
-            };
-
-            // 1. Always run the cleaner.
+            // 1. run the cleaner.
             let mut current_count = self.block_count.load(Ordering::Acquire);
             let mut removed = 0;
             while current_count > self.max_stored_blocks {
                 if let Some((slot, hash)) = self.slot_to_hash.first()? {
-                    (&self.slot_to_hash, &self.hash_to_block).transaction(|(slots, hashes)| {
-                        // Note: below assertions are unlikely to panic,
-                        // since only the cleaner removes keys from the trees.
-                        slots
-                            .remove(slot.clone())?
-                            .expect("Slot should have been previously inserted");
-                        hashes
-                            .remove(hash.clone())?
-                            .expect("Block should have been previously inserted");
-                        Ok(())
-                    })?;
+                    (&self.slot_to_hash, &self.hash_to_block, &self.op_to_block).transaction(
+                        |(slots, hashes, ops)| {
+                            // Note: below assertions are unlikely to panic,
+                            // since only the cleaner removes keys from the trees.
+                            slots
+                                .remove(&slot)?
+                                .expect("Slot should have been previously inserted");
+                            let s_block = hashes
+                                .remove(&hash)?
+                                .expect("Block should have been previously inserted");
+                            let (block, _) = Block::from_bytes_compact(
+                                s_block.as_ref(),
+                                &self.serialization_context,
+                            )
+                            .map_err(|err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(format!(
+                                        "error deserializing block: {:?}",
+                                        err
+                                    )),
+                                )
+                            })?;
+                            for op in block.operations.into_iter() {
+                                ops.remove(
+                                    op.to_bytes_compact(&self.serialization_context).map_err(
+                                        |err| {
+                                            sled::transaction::ConflictableTransactionError::Abort(
+                                                InternalError::TransactionError(format!(
+                                                    "error serializing operation: {:?}",
+                                                    err
+                                                )),
+                                            )
+                                        },
+                                    )?,
+                                )?
+                                .expect("operations should have been previously inserted");
+                            }
+                            Ok(())
+                        },
+                    )?;
                 }
                 current_count -= 1;
                 removed += 1;
             }
-            self.block_count.fetch_sub(removed, Ordering::Release);
+            if removed > 0 {
+                self.block_count.fetch_sub(removed, Ordering::Release);
+            }
 
-            // 2. Maybe shutdown.
-            if shutdown {
-                return Ok(());
+            // 2. wait for wakeup
+            tokio::select! {
+                _ = self.notify.notified() => {
+                    massa_trace!("storage.storage_cleaner.run_loop.notified", {});
+                },
+                _ = self.shutdown.recv() => {
+                    massa_trace!("storage.storage_cleaner.run_loop.shutdown", {});
+                    break;
+                }
             }
         }
+
+        Ok(())
     }
 }
 
@@ -111,34 +130,19 @@ pub struct BlockStorage {
     block_count: Arc<AtomicUsize>,
     hash_to_block: sled::Tree,
     slot_to_hash: sled::Tree,
+    op_to_block: sled::Tree,
     notify: Arc<Notify>,
-    clear_tx: mpsc::Sender<oneshot::Sender<()>>,
 }
 
 impl BlockStorage {
-    pub async fn clear(&self) -> Result<(), StorageError> {
-        // Note: do the clearing in the cleaner,
-        // to ensure only the cleaner is removing stuff from the trees,
-        // and the prevent the count from going back above zero
-        // if the cleaner is in the middle of a clean.
-        let (response_tx, response_rx) = oneshot::channel();
-        self.clear_tx.send(response_tx).await.map_err(|_| {
-            StorageError::ClearError("Couldn't send the clear command to the cleaner.".into())
-        })?;
-        response_rx.await.map_err(|_| {
-            StorageError::ClearError("Couldn't receive the clear response from the cleaner.".into())
-        })?;
-        Ok(())
-    }
-
     pub fn open(
         cfg: StorageConfig,
         serialization_context: SerializationContext,
         hash_to_block: sled::Tree,
         slot_to_hash: sled::Tree,
+        op_to_block: sled::Tree,
         block_count: Arc<AtomicUsize>,
         notify: Arc<Notify>,
-        clear_tx: mpsc::Sender<oneshot::Sender<()>>,
     ) -> Result<BlockStorage, StorageError> {
         let res = BlockStorage {
             cfg,
@@ -146,8 +150,8 @@ impl BlockStorage {
             block_count,
             hash_to_block,
             slot_to_hash,
+            op_to_block,
             notify,
-            clear_tx,
         };
 
         return Ok(res);
@@ -160,8 +164,8 @@ impl BlockStorage {
         //add the new block
         if self.add_block_internal(block_id, block).await? {
             self.block_count.fetch_add(1, Ordering::Release);
+            self.notify.notify_one();
         };
-        self.notify.notify_one();
 
         Ok(())
     }
@@ -180,8 +184,10 @@ impl BlockStorage {
             };
         }
 
-        self.block_count.fetch_add(newly_added, Ordering::Release);
-        self.notify.notify_one();
+        if newly_added > 0 {
+            self.block_count.fetch_add(newly_added, Ordering::Release);
+            self.notify.notify_one();
+        }
 
         Ok(())
     }
@@ -193,8 +199,8 @@ impl BlockStorage {
         block: Block,
     ) -> Result<bool, StorageError> {
         //add the new block
-        (&self.hash_to_block, &self.slot_to_hash)
-            .transaction(|(hash_tx, slot_tx)| {
+        (&self.hash_to_block, &self.slot_to_hash, &self.op_to_block)
+            .transaction(|(hash_tx, slot_tx, op_tx)| {
                 let serialized_block = block
                     .to_bytes_compact(&self.serialization_context)
                     .map_err(|err| {
@@ -206,6 +212,23 @@ impl BlockStorage {
                         )
                     })?;
                 hash_tx.insert(&block_id.to_bytes(), serialized_block.as_slice())?;
+                for (idx, op) in block.operations.iter().enumerate() {
+                    let id = op
+                        .get_operation_id(&self.serialization_context)
+                        .map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(format!(
+                                    "error getting op id block: {:?}",
+                                    err
+                                )),
+                            )
+                        })?
+                        .to_bytes();
+                    op_tx.insert(
+                        &id,
+                        [&block_id.to_bytes()[..], &(idx as u64).to_be_bytes()[..]].concat(),
+                    )?;
+                }
                 if slot_tx
                     .insert(
                         &block.header.content.slot.to_bytes_key(),
@@ -281,5 +304,50 @@ impl BlockStorage {
             }
         })
         .collect::<Result<HashMap<BlockId, Block>, StorageError>>()
+    }
+
+    pub async fn get_operation(
+        &self,
+        id: OperationId,
+    ) -> Result<Option<(BlockId, usize, Operation)>, StorageError> {
+        let ser_op_id = id.to_bytes();
+        let tx_func = |op_tx: &TransactionalTree,
+                       hash_tx: &TransactionalTree|
+         -> Result<Option<(BlockId, usize, Operation)>, StorageError> {
+            let (block_id, idx) = if let Some(buf) = op_tx.get(&ser_op_id)? {
+                let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
+                let idx: usize =
+                    u64::from_be_bytes(array_from_slice(&buf[BLOCK_ID_SIZE_BYTES..])?) as usize;
+                (block_id, idx)
+            } else {
+                return Ok(None); // not found
+            };
+
+            if let Some(s_block) = hash_tx.get(&block_id.to_bytes())? {
+                let (mut block, _size) =
+                    Block::from_bytes_compact(s_block.as_ref(), &self.serialization_context)?;
+                if idx >= block.operations.len() {
+                    return Err(StorageError::DatabaseInconsistency(
+                        "operation index overflows block operations length".into(),
+                    ));
+                }
+                Ok(Some((block_id, idx, block.operations.swap_remove(idx))))
+            } else {
+                return Err(StorageError::DatabaseInconsistency(
+                    "could not find a block referenced by operation index".into(),
+                ));
+            }
+        };
+        (&self.op_to_block, &self.hash_to_block)
+            .transaction(|(op_tx, hash_tx)| {
+                tx_func(op_tx, hash_tx).map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!("transaction error: {:?}", err)),
+                    )
+                })
+            })
+            .map_err(|err| {
+                StorageError::AddBlockError(format!("error getting operation: {:?}", err))
+            })
     }
 }

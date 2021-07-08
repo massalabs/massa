@@ -1,20 +1,22 @@
 use models::ModelsError;
-use sled::transaction::TransactionError;
+use sled::transaction::{TransactionError, UnabortableTransactionError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum StorageError {
-    #[error("join error {0}")]
+    #[error("join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
-    #[error("sled error {0}")]
+    #[error("sled error: {0}")]
     SledError(#[from] sled::Error),
-    #[error("transaction error{0}")]
+    #[error("transaction error: {0}")]
     TransactionError(#[from] TransactionError<InternalError>),
-    #[error("model error{0}")]
+    #[error("unabortable transaction error: {0}")]
+    UnabortableTransactionError(#[from] UnabortableTransactionError),
+    #[error("model error: {0}")]
     ModelError(#[from] ModelsError),
-    #[error("crypto parse error : {0}")]
+    #[error("crypto parse error: {0}")]
     CryptoParseError(#[from] crypto::CryptoError),
-    #[error("Mutex poisoned error:{0}")]
+    #[error("Mutex poisoned error: {0}")]
     MutexPoisonedError(String),
     #[error("Database inconsistency error: {0}")]
     DatabaseInconsistency(String),
