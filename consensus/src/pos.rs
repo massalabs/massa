@@ -58,6 +58,9 @@ impl RollUpdates {
     }
 
     pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<(), ConsensusError> {
+        if update.is_nil() {
+            return Ok(());
+        }
         match self.0.entry(*addr) {
             hash_map::Entry::Occupied(mut occ) => {
                 occ.get_mut().chain(update)?;
