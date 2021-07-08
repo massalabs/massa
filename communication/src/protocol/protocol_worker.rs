@@ -23,8 +23,8 @@ pub enum ProtocolEvent {
     ReceivedBlock { hash: Hash, block: Block },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader { hash: Hash, header: BlockHeader },
-    /// Ask for a block from consensus.
-    GetBlock(Hash),
+    /// Ask for a list of blocks from consensus.
+    GetBlocks(Vec<Hash>),
 }
 
 /// Commands that protocol worker can process
@@ -704,10 +704,8 @@ impl ProtocolWorker {
                 } else {
                     return Ok(());
                 }
-                for hash in list {
-                    self.send_protocol_event(ProtocolEvent::GetBlock(hash))
-                        .await;
-                }
+                self.send_protocol_event(ProtocolEvent::GetBlocks(list))
+                    .await;
             }
             NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
