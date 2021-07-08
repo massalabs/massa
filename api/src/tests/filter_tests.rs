@@ -732,6 +732,87 @@ async fn test_get_block_interval() {
         assert!(obtained.contains(&item))
     }
     handle.await.unwrap();
+
+    let (filter, mut rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+            None => {}
+            _ => {}
+        }
+    });
+
+    let start: UTime = 3500.into();
+    let end: UTime = 4500.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot)>::new();
+ expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+    // let expected: serde_json::Value =
+    //     serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
+
+    let (filter, mut rx_api) = mock_filter(Some(storage_command_tx.clone()));
+
+    let handle = tokio::spawn(async move {
+        let evt = rx_api.recv().await;
+        match evt {
+            Some(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
+                response_sender_tx
+                    .send(get_test_block_graph())
+                    .expect("failed to send block graph");
+            }
+            None => {}
+            _ => {}
+        }
+    });
+
+    let start: UTime = 2500.into();
+    let end: UTime = 9000.into();
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
+    let mut expected = Vec::<(Hash, Slot)>::new();
+    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
+    expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+    // let expected: serde_json::Value =
+    //     serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
+    for item in obtained.iter() {
+        assert!(expected.contains(&item))
+    }
+    for item in expected {
+        assert!(obtained.contains(&item))
+    }
+    handle.await.unwrap();
 }
 
 #[tokio::test]
