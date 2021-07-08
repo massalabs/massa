@@ -398,7 +398,7 @@ impl ConsensusWorker {
                 let mut thread_changes: Vec<HashMap<Address, LedgerChange>> =
                     vec![HashMap::new(); self.cfg.thread_count as usize];
                 thread_changes[cur_slot.thread as usize] = op
-                    .get_changes(&creator_addr, self.cfg.thread_count)?
+                    .get_ledger_changes(&creator_addr, self.cfg.thread_count, self.cfg.roll_price)?
                     .swap_remove(cur_slot.thread as usize);
 
                 // add missing entries to the ledger

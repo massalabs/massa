@@ -57,6 +57,13 @@ impl RollUpdates {
         RollUpdates(HashMap::new())
     }
 
+    pub fn chain(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
+        for (addr, update) in updates.0.iter() {
+            self.apply(addr, update)?;
+        }
+        Ok(())
+    }
+
     pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<(), ConsensusError> {
         if update.is_nil() {
             return Ok(());
@@ -374,7 +381,7 @@ impl ProofOfStake {
 
             // get final data for all threads
             let mut rng_seed_bits = BitVec::<Lsb0, u8>::with_capacity(blocks_in_cycle);
-            let target_cycle_last_period = (target_cycle + 1) * self.cfg.periods_per_cycle - 1;
+
             let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
             let mut cum_sum_cursor = 0u64;
             for scan_thread in 0..self.cfg.thread_count {
@@ -384,7 +391,7 @@ impl ProofOfStake {
                     target_cycle, scan_thread
                 )),
                 )?;
-                if final_data.last_final_slot.period != target_cycle_last_period {
+                if !final_data.is_complete(self.cfg.periods_per_cycle) {
                     // the target cycle is not final yet
                     return Err(ConsensusError::PosCycleUnavailable(format!("tryign to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
                 }
@@ -590,6 +597,36 @@ impl ProofOfStake {
             None
         }
     }
+
+    pub fn get_roll_sell_credit(
+        &self,
+        slot: Slot,
+    ) -> Result<HashMap<Address, u64>, ConsensusError> {
+        let cycle = slot.get_cycle(self.cfg.periods_per_cycle);
+        let mut res = HashMap::new();
+        if let Some(target_cycle) =
+            cycle.checked_sub(self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1)
+        {
+            let roll_data = self
+                .get_final_roll_data(target_cycle, slot.thread)
+                .ok_or(ConsensusError::NotFinalRollError)?;
+            if !roll_data.is_complete(self.cfg.periods_per_cycle) {
+                return Err(ConsensusError::NotFinalRollError); //target_cycle not completly final
+            }
+            for (addr, update) in roll_data.cycle_updates.0.iter() {
+                if !update.roll_increment && !update.is_nil() {
+                    res.insert(
+                        *addr,
+                        update
+                            .roll_delta
+                            .checked_mul(self.cfg.roll_price)
+                            .ok_or(ConsensusError::RollOverflowError)?,
+                    );
+                }
+            }
+        }
+        Ok(res)
+    }
 }
 
 impl ThreadCycleState {
@@ -611,5 +648,10 @@ impl ThreadCycleState {
             cycle_updates: RollUpdates(export.cycle_updates.into_iter().collect()),
             rng_seed: export.rng_seed,
         }
+    }
+
+    /// returns true if all slots of this cycle for this thread are final
+    fn is_complete(&self, periods_per_cycle: u64) -> bool {
+        self.last_final_slot.period == (self.cycle + 1) * periods_per_cycle - 1
     }
 }

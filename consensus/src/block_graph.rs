@@ -5,7 +5,7 @@ use crate::{
     ledger::{
         Ledger, LedgerChange, LedgerData, LedgerExport, LedgerSubset, OperationLedgerInterface,
     },
-    pos::{ProofOfStake, RollCounts, RollUpdates},
+    pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdates},
 };
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
@@ -773,7 +773,7 @@ enum BlockCheckOutcome {
         dependencies: HashSet<BlockId>,
         incompatibilities: HashSet<BlockId>,
         inherited_incompatibilities_count: usize,
-        block_changes: Vec<HashMap<Address, LedgerChange>>,
+        block_ledger_changes: Vec<HashMap<Address, LedgerChange>>,
         roll_updates: RollUpdates,
     },
     Discard(DiscardReason),
@@ -785,7 +785,7 @@ enum BlockCheckOutcome {
 enum BlockOperationsCheckOutcome {
     Proceed {
         dependencies: HashSet<BlockId>,
-        block_changes: Vec<HashMap<Address, LedgerChange>>,
+        block_ledger_changes: Vec<HashMap<Address, LedgerChange>>,
         roll_updates: RollUpdates,
     },
     Discard(DiscardReason),
@@ -970,19 +970,11 @@ impl BlockGraph {
         &self,
         block_id: BlockId,
         addrs: HashSet<Address>,
-        pos: ProofOfStake,
+        pos: &ProofOfStake,
     ) -> Result<RollCounts, ConsensusError> {
         // get target block and its cycle/thread
-        let (target_cycle, target_thread) = match self.block_statuses.get(&block_id) {
-            Some(BlockStatus::Active(a_block)) => (
-                a_block
-                    .block
-                    .header
-                    .content
-                    .slot
-                    .get_cycle(self.cfg.periods_per_cycle),
-                a_block.block.header.content.slot.thread,
-            ),
+        let target_thread = match self.block_statuses.get(&block_id) {
+            Some(BlockStatus::Active(a_block)) => a_block.block.header.content.slot.thread,
             _ => {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "block missing or non-active: {:?}",
@@ -994,7 +986,7 @@ impl BlockGraph {
         // stack back to latest final slot
         let mut stack = Vec::new();
         let mut cur_block_id = block_id;
-        let mut final_cycle = 0;
+        let final_cycle;
         loop {
             // get block
             let cur_a_block = match self.block_statuses.get(&cur_block_id) {
@@ -1454,7 +1446,7 @@ impl BlockGraph {
                         dependencies,
                         incompatibilities,
                         inherited_incompatibilities_count,
-                        block_changes,
+                        block_ledger_changes,
                         roll_updates,
                     } => {
                         // block is valid: remove it from Incoming and return it
@@ -1467,7 +1459,7 @@ impl BlockGraph {
                             dependencies,
                             incompatibilities,
                             inherited_incompatibilities_count,
-                            block_changes,
+                            block_ledger_changes,
                             operation_set,
                             roll_updates,
                         )
@@ -1721,6 +1713,7 @@ impl BlockGraph {
         }
 
         // check if it was the creator's turn to create this block
+        // (step 1 in consensus/pos.md)
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
         let slot_draw_address = match pos.draw(header.content.slot) {
@@ -2002,13 +1995,13 @@ impl BlockGraph {
         }
 
         // check operations
-        let (operations_deps, block_changes, roll_updates) =
-            match self.check_operations(block, operation_set)? {
+        let (operations_deps, block_ledger_changes, roll_updates) =
+            match self.check_operations(block, operation_set, pos)? {
                 BlockOperationsCheckOutcome::Proceed {
                     dependencies,
-                    block_changes,
+                    block_ledger_changes,
                     roll_updates,
-                } => (dependencies, block_changes, roll_updates),
+                } => (dependencies, block_ledger_changes, roll_updates),
                 BlockOperationsCheckOutcome::Discard(reason) => {
                     return Ok(BlockCheckOutcome::Discard(reason))
                 }
@@ -2027,7 +2020,7 @@ impl BlockGraph {
             dependencies: deps,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
-            block_changes,
+            block_ledger_changes,
             roll_updates,
         })
     }
@@ -2039,6 +2032,7 @@ impl BlockGraph {
         &self,
         block_to_check: &Block,
         operation_set: &HashMap<OperationId, (usize, u64)>,
+        pos: &ProofOfStake,
     ) -> Result<BlockOperationsCheckOutcome, ConsensusError> {
         // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
         let mut dependencies: HashSet<BlockId> = HashSet::new();
@@ -2123,34 +2117,58 @@ impl BlockGraph {
                     ));
                 }
             };
-        let mut involved_addresses: HashSet<Address> = HashSet::new();
-        involved_addresses.insert(block_creator_address);
+        let mut ledger_involved_addresses: HashSet<Address> = HashSet::new();
+        let mut roll_involved_addresses: HashSet<Address> = HashSet::new();
+        ledger_involved_addresses.insert(block_creator_address);
         for op in block_to_check.operations.iter() {
-            match op.get_involved_addresses(Some(block_creator_address)) {
+            match op.get_ledger_involved_addresses(Some(block_creator_address)) {
                 Ok(addrs) => {
-                    involved_addresses.extend(addrs);
+                    ledger_involved_addresses.extend(addrs);
                 }
                 Err(err) => {
                     warn!(
-                        "block graph check_operations error, error during get_involved_addresses :{}",
+                        "block graph check_operations error, error during get_ledger_involved_addresses :{}",
                         err
                     );
                     return Ok(BlockOperationsCheckOutcome::Discard(
                         DiscardReason::Invalid(format!(
-                            "error during get_involved_addresses :{}",
+                            "error during get_ledger_involved_addresses :{}",
+                            err
+                        )),
+                    ));
+                }
+            };
+
+            // (step 2 in consensus/pos.md)
+            match op.get_roll_involved_addresses() {
+                Ok(addrs) => {
+                    roll_involved_addresses.extend(addrs);
+                }
+                Err(err) => {
+                    warn!(
+                        "block graph check_operations error, error during get_roll_involved_addresses :{}",
+                        err
+                    );
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!(
+                            "error during get_roll_involved_addresses :{}",
                             err
                         )),
                     ));
                 }
             };
         }
-        involved_addresses.retain(|addr| {
+        ledger_involved_addresses.retain(|addr| {
+            addr.get_thread(self.cfg.thread_count) == block_to_check.header.content.slot.thread
+        });
+        roll_involved_addresses.retain(|addr| {
             addr.get_thread(self.cfg.thread_count) == block_to_check.header.content.slot.thread
         });
 
-        let mut current_ledger = match self
-            .get_ledger_at_parents(&block_to_check.header.content.parents, &involved_addresses)
-        {
+        let mut current_ledger = match self.get_ledger_at_parents(
+            &block_to_check.header.content.parents,
+            &ledger_involved_addresses,
+        ) {
             Ok(ledger) => ledger,
             Err(err) => {
                 warn!(
@@ -2163,12 +2181,30 @@ impl BlockGraph {
             }
         };
 
-        let mut block_changes: Vec<HashMap<Address, LedgerChange>> =
-            vec![HashMap::new(); self.cfg.thread_count as usize];
+        // (step 3 in consensus/pos.md)
+        let mut roll_counts = self.get_roll_data_at_parent(
+            block_to_check.header.content.parents
+                [block_to_check.header.content.slot.thread as usize],
+            roll_involved_addresses,
+            pos,
+        )?;
 
-        // credit roll sales after lock
-        // TODO credit all roll sales that happened at N-1-lookback-lock
-        // see #397
+        // (step 4 in consensus/pos.md)
+        let mut roll_updates = RollUpdates::new();
+        let parent_cycle = self
+            .get_active_block(
+                &block_to_check.header.content.parents
+                    [block_to_check.header.content.slot.thread as usize],
+            )
+            .ok_or(ConsensusError::MissingBlock)?
+            .block
+            .header
+            .content
+            .slot
+            .get_cycle(self.cfg.periods_per_cycle);
+
+        let mut block_ledger_changes: Vec<HashMap<Address, LedgerChange>> =
+            vec![HashMap::new(); self.cfg.thread_count as usize];
 
         // block constant reward
         let creator_thread = block_creator_address.get_thread(self.cfg.thread_count);
@@ -2188,7 +2224,7 @@ impl BlockGraph {
                 ));
             }
         }
-        match block_changes[creator_thread as usize].entry(block_creator_address) {
+        match block_ledger_changes[creator_thread as usize].entry(block_creator_address) {
             hash_map::Entry::Occupied(mut occ) => {
                 if let Err(err) = occ.get_mut().chain(&reward_ledger_change) {
                     warn!(
@@ -2205,10 +2241,98 @@ impl BlockGraph {
             }
         }
 
+        // crediting roll sales after a lock cycle
+        // (step 5 in consensus/pos.md)
+        if parent_cycle
+            != block_to_check
+                .header
+                .content
+                .slot
+                .get_cycle(self.cfg.periods_per_cycle)
+        {
+            // We credit addresses that sold a roll after a lock cycle.
+            // (step 5.1 in consensus/pos.md)
+            let thread = block_to_check.header.content.slot.thread;
+            let credits = pos
+                .get_roll_sell_credit(block_to_check.header.content.slot)?
+                .into_iter()
+                .filter_map(|(addr, amount)| {
+                    if addr.get_thread(self.cfg.thread_count) == thread {
+                        Some((
+                            addr,
+                            LedgerChange {
+                                balance_delta: amount,
+                                balance_increment: true,
+                            },
+                        ))
+                    } else {
+                        None
+                    }
+                });
+
+            for (addr, change) in credits {
+                if let Err(err) = current_ledger.apply_change((&addr, &change)) {
+                    warn!("block graph check_operations error, can't apply cycle sell credit to block current_ledger :{}", err);
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!(
+                            "can't apply cycle sell credit to block current_ledger :{}",
+                            err
+                        )),
+                    ));
+                }
+                // add ledger change to block ledger changes
+                match block_ledger_changes[thread as usize].entry(addr) {
+                    hash_map::Entry::Occupied(mut occ) => {
+                        if let Err(err) = occ.get_mut().chain(&change) {
+                            warn!(
+                                "block graph check_operations error, can't chain cycle sell credit :{}",
+                                err
+                            );
+                            return Ok(BlockOperationsCheckOutcome::Discard(
+                                DiscardReason::Invalid(format!(
+                                    "can't chain cycle sell credit :{}",
+                                    err
+                                )),
+                            ));
+                        }
+                    }
+                    hash_map::Entry::Vacant(vac) => {
+                        vac.insert(change);
+                    }
+                }
+            }
+        }
+
         // all operations
+        // (including step 6 in consensus/pos.md)
         for operation in block_to_check.operations.iter() {
-            let changes = match operation.get_changes(&block_creator_address, self.cfg.thread_count)
-            {
+            let op_roll_updates = operation.get_roll_updates()?;
+            // (step 6.1 in consensus/pos.md)
+            if let Err(err) = roll_counts.apply(&op_roll_updates) {
+                warn!("could not apply roll update in block: {}", err);
+                return Ok(BlockOperationsCheckOutcome::Discard(
+                    DiscardReason::Invalid(format!(
+                        "could not apply roll update in block: {}",
+                        err
+                    )),
+                ));
+            }
+            // (step 6.2 in consensus/pos.md)
+            if let Err(err) = roll_updates.chain(&op_roll_updates) {
+                warn!("could not chain roll update in block: {}", err);
+                return Ok(BlockOperationsCheckOutcome::Discard(
+                    DiscardReason::Invalid(format!(
+                        "could not chain roll update in block: {}",
+                        err
+                    )),
+                ));
+            }
+
+            let op_ledger_changes = match operation.get_ledger_changes(
+                &block_creator_address,
+                self.cfg.thread_count,
+                self.cfg.roll_price,
+            ) {
                 Err(err) => {
                     warn!(
                         "block graph check_operations error, can't get changes :{}",
@@ -2218,15 +2342,14 @@ impl BlockGraph {
                         DiscardReason::Invalid(format!("can't get changes :{}", err)),
                     ));
                 }
-                Ok(changes) => changes,
+                Ok(op_ledger_changes) => op_ledger_changes,
             };
-            //TODO use get_roll_changes to get compensated roll changes
-            // apply buys/sales to ledger and rolls see #397
-            for (thread, changes) in changes.into_iter().enumerate() {
-                for (change_addr, change) in changes.into_iter() {
+
+            for (thread, op_thread_changes) in op_ledger_changes.into_iter().enumerate() {
+                for (change_addr, op_change) in op_thread_changes.into_iter() {
                     // apply change to ledger and check if ok
                     if thread == (block_to_check.header.content.slot.thread as usize) {
-                        if let Err(err) = current_ledger.apply_change((&change_addr, &change)) {
+                        if let Err(err) = current_ledger.apply_change((&change_addr, &op_change)) {
                             warn!("block graph check_operations error, can't apply change to block current_ledger :{}", err);
                             return Ok(BlockOperationsCheckOutcome::Discard(
                                 DiscardReason::Invalid(format!(
@@ -2237,9 +2360,9 @@ impl BlockGraph {
                         }
                     }
                     // add change to block changes
-                    match block_changes[thread].entry(change_addr) {
+                    match block_ledger_changes[thread].entry(change_addr) {
                         hash_map::Entry::Occupied(mut occ) => {
-                            if let Err(err) = occ.get_mut().chain(&change) {
+                            if let Err(err) = occ.get_mut().chain(&op_change) {
                                 warn!(
                                     "block graph check_operations error, can't chain change :{}",
                                     err
@@ -2250,7 +2373,7 @@ impl BlockGraph {
                             }
                         }
                         hash_map::Entry::Vacant(vac) => {
-                            vac.insert(change);
+                            vac.insert(op_change);
                         }
                     }
                 }
@@ -2259,8 +2382,8 @@ impl BlockGraph {
 
         Ok(BlockOperationsCheckOutcome::Proceed {
             dependencies,
-            block_changes,
-            roll_updates: todo!(), // see #397
+            block_ledger_changes,
+            roll_updates,
         })
     }
 
@@ -3984,6 +4107,7 @@ mod tests {
             pos_lookback_cycles: 4,
             pos_lock_cycles: 1,
             pos_draw_cached_cycles: 2,
+            roll_price: 10,
         }
     }
 }

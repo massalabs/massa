@@ -19,6 +19,10 @@ pub enum ConsensusError {
     SmallSeedError,
     #[error("time overflow")]
     TimeOverflowError,
+    #[error("not final roll")]
+    NotFinalRollError,
+    #[error("roll overflow")]
+    RollOverflowError,
     #[error("slot overflow")]
     SlotOverflowError,
     #[error("thread overflow")]

@@ -111,7 +111,7 @@ impl StorageCleaner {
                                 ops.remove(&op_id.to_bytes())?;
 
                                 // remove involved addrs from address => operation index
-                                let involved_addrs = op.get_involved_addresses(Some(fee_addr)).map_err(|err| {
+                                let involved_addrs = op.get_ledger_involved_addresses(Some(fee_addr)).map_err(|err| {
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError(format!(
                                             "error computing op-involved addresses: {:?}",
@@ -343,8 +343,9 @@ impl BlockStorage {
                         [&block_id.to_bytes()[..], &(idx as u64).to_be_bytes()[..]].concat(),
                     )?;
                     // add to involved addrs
-                    let involved_addrs =
-                        op.get_involved_addresses(Some(fee_target)).map_err(|err| {
+                    let involved_addrs = op
+                        .get_ledger_involved_addresses(Some(fee_target))
+                        .map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
                                     "error getting involved addrs: {:?}",
