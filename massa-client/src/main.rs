@@ -89,7 +89,7 @@ fn main() {
     )
     .new_command(
         "blockinterval",
-        "get the block within the specifed time interval. Optinal parameters: [from] <start> and [to] <end> (excluded) time interval. ",
+        "get the block within the specifed time interval. Optinal parameters: [from]=<start> and [to]=<end> (excluded) time interval. ",
     //    &["from", "to"],
         0,
         2,
@@ -267,25 +267,6 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
     Ok(())
 }
 
-fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    let url = format_url_with_to_from("blockinterval", data.node_ip, params)?;
-    if let Some(resp) = request_data(data, &url)? {
-        let mut blocks: Vec<apimodel::HashSlot> = resp.json()?;
-        if blocks.len() == 0 {
-            println!("Not block found.");
-        } else {
-            blocks.sort_unstable_by_key(|v| (v.slot, v.hash));
-            let formated: Vec<String> = blocks
-                .iter()
-                .map(|hash_slot| hash_slot.to_string())
-                .collect();
-            println!("blocks: {:#?}", formated);
-        }
-    }
-
-    Ok(())
-}
-
 fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/our_ip", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
@@ -334,18 +315,36 @@ fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
     Ok(())
 }
 
+fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format_url_with_to_from("blockinterval", data.node_ip, params)?;
+    if let Some(resp) = request_data(data, &url)? {
+        let mut blocks: Vec<apimodel::HashSlot> = resp.json()?;
+        if blocks.len() == 0 {
+            println!("Not block found.");
+        } else {
+            blocks.sort_unstable_by_key(|v| (v.slot, v.hash));
+            let formated: Vec<String> = blocks
+                .iter()
+                .map(|hash_slot| hash_slot.to_string())
+                .collect();
+            println!("blocks: {:#?}", formated);
+        }
+    }
+
+    Ok(())
+}
+
 fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format_url_with_to_from("graph_interval", data.node_ip, params)?;
-
     if let Some(resp) = request_data(data, &url)? {
-        if resp.content_length().unwrap() > 0 {
-            let mut blocks = resp.json::<Vec<apimodel::BlockInfo>>()?;
+        let mut blocks = resp.json::<Vec<apimodel::BlockInfo>>()?;
+        if blocks.len() > 0 {
             blocks.sort_unstable_by_key(|v| (v.hash_slot.slot, v.hash_slot.hash));
             blocks.iter().for_each(|block| {
                 println!("{}", block);
             });
         } else {
-            println!("Empty graph found.");
+            println!("Not block found.");
         }
     }
     Ok(())

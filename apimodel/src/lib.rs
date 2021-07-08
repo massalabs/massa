@@ -6,6 +6,7 @@ use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{Block, BlockHeader, Operation, Slot};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::time::Duration;
 use std::{collections::HashSet, net::IpAddr};
 use std::{
@@ -29,7 +30,7 @@ impl From<&'_ Hash> for WrappedHash {
         WrappedHash(*hash)
     }
 }
-impl std::fmt::Display for WrappedHash {
+impl Display for WrappedHash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
             write!(f, "{}", &self.0.to_bs58_check()[..4])
@@ -39,7 +40,7 @@ impl std::fmt::Display for WrappedHash {
     }
 }
 
-impl std::fmt::Debug for WrappedHash {
+impl Debug for WrappedHash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
             write!(f, "{}", &self.0.to_bs58_check()[..4])
@@ -52,7 +53,7 @@ impl std::fmt::Debug for WrappedHash {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct WrappedSlot(Slot);
 
-impl std::fmt::Display for WrappedSlot {
+impl Display for WrappedSlot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "period:{} thread:{}", self.0.period, self.0.thread)
     }
@@ -83,7 +84,7 @@ impl From<&'_ BlockHeader> for WrappedBlockHeader {
     }
 }
 
-impl std::fmt::Display for WrappedBlockHeader {
+impl Display for WrappedBlockHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let pk = self.0.content.creator.to_string();
         let pk = if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
@@ -123,7 +124,7 @@ impl From<Block> for WrapperBlock {
     }
 }
 
-impl std::fmt::Display for WrapperBlock {
+impl Display for WrapperBlock {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let signature = self.signature.to_string();
         let signature = if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
@@ -142,7 +143,7 @@ pub struct StakerInfo {
     pub staker_next_draws: Vec<Slot>,
 }
 
-impl std::fmt::Display for StakerInfo {
+impl Display for StakerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "  active blocks:")?;
         let mut blocks: Vec<&(Hash, BlockHeader)> = self.staker_active_blocks.iter().collect();
@@ -185,7 +186,7 @@ pub struct HashSlot {
     pub slot: Slot,
 }
 
-impl std::fmt::Display for HashSlot {
+impl Display for HashSlot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -269,9 +270,9 @@ pub enum StatusInfo {
 impl Display for StatusInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            StatusInfo::Stale => writeln!(f, "stale"),
-            StatusInfo::Active => writeln!(f, "active"),
-            StatusInfo::Final => writeln!(f, "final"),
+            StatusInfo::Stale => write!(f, "stale"),
+            StatusInfo::Active => write!(f, "active"),
+            StatusInfo::Final => write!(f, "final"),
         }
     }
 }
@@ -282,7 +283,7 @@ impl Display for StatusInfo {
 //     }
 // }
 
-impl std::fmt::Display for BlockInfo {
+impl Display for BlockInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Block: {} Status:{}", self.hash_slot, self.status)?;
         writeln!(
@@ -292,8 +293,8 @@ impl std::fmt::Display for BlockInfo {
                 .iter()
                 .map(|h| h.into())
                 .collect::<Vec<WrappedHash>>()
-        )?;
-        writeln!(f)
+        )
+        // writeln!(f)
     }
 }
 
@@ -308,7 +309,7 @@ pub struct Cliques {
     pub content: Vec<HashSet<HashSlot>>,
 }
 
-impl std::fmt::Display for Cliques {
+impl Display for Cliques {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Nb of cliques: {}", self.number)?;
         writeln!(f, "Cliques: ")?;
@@ -330,7 +331,7 @@ pub struct NetworkInfo {
     pub peers: Vec<PeerInfo>,
 }
 
-impl std::fmt::Display for NetworkInfo {
+impl Display for NetworkInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(
             f,
@@ -380,7 +381,7 @@ pub struct HashSlotTime {
     pub time: UTime,
 }
 
-impl std::fmt::Display for HashSlotTime {
+impl Display for HashSlotTime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -400,7 +401,7 @@ pub struct State {
     pub nb_cliques: u64,
     pub nb_peers: u64,
 }
-impl std::fmt::Display for State {
+impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let duration: Duration = self.time.into();
 
