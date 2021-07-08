@@ -203,7 +203,6 @@ impl OperationPool {
     pub fn get_operation(&self, id: OperationId) -> Option<Operation> {
         self.ops.get(&id).map(|wrapped_op| wrapped_op.op.clone())
     }
-
 }
 
 #[cfg(test)]
