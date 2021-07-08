@@ -5,6 +5,7 @@ use super::{
     with_serialization_context,
 };
 use crate::error::ModelsError;
+use crypto::hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto, fmt};
 
@@ -37,6 +38,10 @@ impl fmt::Display for Slot {
 impl Slot {
     pub fn new(period: u64, thread: u8) -> Slot {
         Slot { period, thread }
+    }
+
+    pub fn get_first_bit(&self) -> bool {
+        Hash::hash(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }
 
     /// Returns a fixed-size sortable binary key

@@ -54,6 +54,10 @@ impl BlockId {
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
+
+    pub fn get_first_bit(&self) -> bool {
+        Hash::hash(&self.to_bytes()).to_bytes()[0] >> 7 == 1
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
