@@ -166,13 +166,15 @@ async fn test_protocol_sends_blocks_when_asked_for() {
         let received_hash =
             match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
                 match evt {
-                    evt @ ProtocolEvent::GetBlock(..) => Some(evt),
+                    evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
                     _ => None,
                 }
             })
             .await
             {
-                Some(ProtocolEvent::GetBlock(hash)) => hash,
+                Some(ProtocolEvent::GetBlocks(mut list)) => {
+                    list.pop().expect("Empty list of hashes.")
+                }
                 _ => panic!("Unexpected or no protocol event."),
             };
 
@@ -298,12 +300,14 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         .await;
 
     match tools::wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| match evt {
-        evt @ ProtocolEvent::GetBlock(..) => Some(evt),
+        evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
         _ => None,
     })
     .await
     {
-        Some(ProtocolEvent::GetBlock(hash)) => assert_eq!(hash, ref_hash),
+        Some(ProtocolEvent::GetBlocks(mut list)) => {
+            assert_eq!(list.pop().expect("Empty list of hashes."), ref_hash)
+        }
         _ => panic!("timeout reached while sending get block"),
     }
 
@@ -475,12 +479,12 @@ async fn test_protocol_block_not_found() {
     let hash =
         match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
         {
-            evt @ ProtocolEvent::GetBlock(..) => Some(evt),
+            evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
             _ => None,
         })
         .await
         {
-            Some(ProtocolEvent::GetBlock(hash)) => hash,
+            Some(ProtocolEvent::GetBlocks(mut list)) => list.pop().expect("Empty list of hashes."),
             _ => panic!("Unexpected or no protocol event."),
         };
     assert_eq!(expected_hash, hash);

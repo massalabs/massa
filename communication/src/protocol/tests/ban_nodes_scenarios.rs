@@ -315,13 +315,15 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
         let received_hash =
             match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
                 match evt {
-                    evt @ ProtocolEvent::GetBlock(..) => Some(evt),
+                    evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
                     _ => None,
                 }
             })
             .await
             {
-                Some(ProtocolEvent::GetBlock(hash)) => hash,
+                Some(ProtocolEvent::GetBlocks(mut list)) => {
+                    list.pop().expect("Received empty list of hashes.")
+                }
                 _ => panic!("Unexpected or no protocol event."),
             };
 

@@ -58,7 +58,9 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     .await;
 
     // Ask for the block to consensus.
-    protocol_controller.receive_get_active_block(hasht0s1).await;
+    protocol_controller
+        .receive_get_active_blocks(vec![hasht0s1])
+        .await;
 
     // Consensus should send the block.
     tools::validate_send_block(&mut protocol_controller, hasht0s1, 100).await;
@@ -113,7 +115,9 @@ async fn test_consensus_block_not_found() {
     );
 
     // Ask for the block to consensus.
-    protocol_controller.receive_get_active_block(hasht0s1).await;
+    protocol_controller
+        .receive_get_active_blocks(vec![hasht0s1])
+        .await;
 
     // Consensus should not have the block.
     match protocol_controller

@@ -345,35 +345,37 @@ impl ConsensusWorker {
                 );
                 // todo (see issue #108)
             }
-            ProtocolEvent::GetBlock(block_hash) => {
+            ProtocolEvent::GetBlocks(list) => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_protocol_event.get_block",
-                    { "hash": block_hash }
+                    "consensus.consensus_worker.process_protocol_event.get_blocks",
+                    { "list": list }
                 );
-                if let Some(block) = self.block_db.get_active_block(block_hash) {
-                    massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
-                    self.protocol_command_sender
-                        .found_block(block_hash, block.clone())
-                        .await?;
-                } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
-                    if let Some(block) = storage_command_sender.get_block(block_hash).await? {
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});
+                for block_hash in list {
+                    if let Some(block) = self.block_db.get_active_block(block_hash) {
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
                         self.protocol_command_sender
-                            .found_block(block_hash, block)
+                            .found_block(block_hash, block.clone())
                             .await?;
+                    } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
+                        if let Some(block) = storage_command_sender.get_block(block_hash).await? {
+                            massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});
+                            self.protocol_command_sender
+                                .found_block(block_hash, block)
+                                .await?;
+                        } else {
+                            // not found in given storage
+                            massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_not_found", { "hash": block_hash});
+                            self.protocol_command_sender
+                                .block_not_found(block_hash)
+                                .await?
+                        }
                     } else {
-                        // not found in given storage
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_not_found", { "hash": block_hash});
+                        // not found in consensus and no storage provided
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
                         self.protocol_command_sender
                             .block_not_found(block_hash)
                             .await?
                     }
-                } else {
-                    // not found in consensus and no storage provided
-                    massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
-                    self.protocol_command_sender
-                        .block_not_found(block_hash)
-                        .await?
                 }
             }
         }
