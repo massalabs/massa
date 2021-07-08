@@ -34,6 +34,12 @@ impl TryFrom<Duration> for UTime {
     }
 }
 
+impl Into<Duration> for UTime {
+    fn into(self) -> Duration {
+        Duration::from_millis(self.to_millis())
+    }
+}
+
 impl UTime {
     pub fn now() -> Result<Self, TimeError> {
         Ok(UTime(

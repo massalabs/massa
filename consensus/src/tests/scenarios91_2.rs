@@ -1,12 +1,13 @@
 use crypto::hash::Hash;
 use std::time::Duration;
 use time::UTime;
-use tokio::time::timeout;
+use tokio::time::{sleep_until, timeout};
 
 use crate::{
     consensus_controller::{ConsensusController, ConsensusControllerInterface},
     default_consensus_controller::DefaultConsensusController,
     random_selector::RandomSelector,
+    timeslots::get_block_slot_timestamp,
 };
 
 use super::{
@@ -494,11 +495,12 @@ async fn test_test_parents() {
 
 #[tokio::test]
 async fn test_block_creation() {
+    use std::convert::TryInto;
     let node_ids = tools::create_node_ids(2);
 
     let (protocol_controller, mut protocol_controler_interface) = mock_protocol_controller::new();
     let mut cfg = tools::default_consensus_config(&node_ids);
-    cfg.t0 = 500.into();
+    cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
     cfg.thread_count = 1;
@@ -518,11 +520,22 @@ async fn test_block_creation() {
         .await
         .expect("Could not create consensus controller");
 
-    let timeout_ms = 500;
-
     for (i, &draw) in expected_slots.iter().enumerate() {
+        sleep_until(
+            get_block_slot_timestamp(
+                cfg.thread_count,
+                cfg.t0,
+                cfg.genesis_timestamp,
+                ((i + 1usize) as u64, 0),
+            )
+            .unwrap()
+            .estimate_instant()
+            .unwrap(),
+        )
+        .await;
+
         match timeout(
-            Duration::from_millis(timeout_ms),
+            cfg.t0.checked_div_u64(2).unwrap().into(),
             protocol_controler_interface.wait_command(),
         )
         .await
