@@ -1,7 +1,8 @@
-use super::error::ModelsError;
-use super::operation::Operation;
-use crypto::signature::Signature;
-use crypto::{hash::Hash, signature::PublicKey};
+use super::{error::ModelsError, operation::Operation, slot::Slot};
+use crypto::{
+    hash::Hash,
+    signature::{PublicKey, Signature},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,8 +27,7 @@ impl Block {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
     pub creator: PublicKey,
-    pub thread_number: u8,
-    pub period_number: u64,
+    pub slot: Slot,
     pub roll_number: u32,
     pub parents: Vec<Hash>,
     pub endorsements: Vec<Option<Signature>>,

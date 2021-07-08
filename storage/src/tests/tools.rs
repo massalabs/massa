@@ -1,5 +1,8 @@
 use crypto::hash::Hash;
-use models::block::{Block, BlockHeader};
+use models::{
+    block::{Block, BlockHeader},
+    slot::Slot,
+};
 
 use crate::config::StorageConfig;
 
@@ -11,8 +14,7 @@ pub fn get_test_block() -> Block {
                 operation_merkle_root: get_test_hash(),
                 out_ledger_hash: get_test_hash(),
                 parents: vec![],
-                period_number: 1,
-                thread_number: 0,
+                slot: Slot::new(1, 0),
                 roll_number: 0,
             },
             operations: vec![],

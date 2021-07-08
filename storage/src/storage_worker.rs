@@ -82,10 +82,7 @@ impl BlockStorage {
                 )))
             })?;
             hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
-            slot_tx.insert(
-                &Slot::new(block.header.period_number, block.header.thread_number).to_bytes(),
-                &hash.to_bytes(),
-            )?;
+            slot_tx.insert(&block.header.slot.to_bytes(), &hash.to_bytes())?;
             Ok(())
         })?;
         Ok(())
@@ -112,13 +109,13 @@ impl BlockStorage {
 
     pub fn get_slot_range(
         &self,
-        start: (u64, u8),
-        end: (u64, u8),
+        start: Slot,
+        end: Slot,
     ) -> Result<HashMap<Hash, Block>, StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-        let start = Slot::from_tuple(start).to_bytes();
-        let end = Slot::from_tuple(end).to_bytes();
+        let start = start.to_bytes();
+        let end = end.to_bytes();
         slot_to_hash
             .range(start..end)
             .map(|res| {

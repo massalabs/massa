@@ -2,6 +2,7 @@ use super::super::{config::StorageConfig, storage_controller::start_storage_cont
 use super::tools;
 use crate::storage_controller::StorageCommandSender;
 use crypto::hash::Hash;
+use models::slot::Slot;
 
 #[tokio::test]
 async fn test_max_nb_blocks() {
@@ -18,16 +19,22 @@ async fn test_max_nb_blocks() {
 
     let (storage, manager) = start_storage_controller(config).unwrap();
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
-    add_block(2, 1, &storage).await;
-    add_block(1, 1, &storage).await;
-    add_block(3, 0, &storage).await;
-    add_block(1, 0, &storage).await;
-    add_block(3, 1, &storage).await;
-    add_block(4, 0, &storage).await;
-    let result = storage.get_slot_range((0, 0), (1, 1)).await.unwrap();
+    add_block(Slot::new(2, 1), &storage).await;
+    add_block(Slot::new(1, 1), &storage).await;
+    add_block(Slot::new(3, 0), &storage).await;
+    add_block(Slot::new(1, 0), &storage).await;
+    add_block(Slot::new(3, 1), &storage).await;
+    add_block(Slot::new(4, 0), &storage).await;
+    let result = storage
+        .get_slot_range(Slot::new(0, 0), Slot::new(1, 1))
+        .await
+        .unwrap();
     assert_eq!(0, result.len());
-    add_block(4, 1, &storage).await;
-    let result = storage.get_slot_range((0, 0), (2, 1)).await.unwrap();
+    add_block(Slot::new(4, 1), &storage).await;
+    let result = storage
+        .get_slot_range(Slot::new(0, 0), Slot::new(2, 1))
+        .await
+        .unwrap();
     assert_eq!(0, result.len());
 
     manager.stop().await.unwrap();
@@ -48,51 +55,71 @@ async fn test_get_slot_range() {
 
     let (storage, manager) = start_storage_controller(config).unwrap();
     //add block in this order depending on there periode and thread
-    add_block(2, 1, &storage).await;
-    add_block(1, 0, &storage).await;
-    add_block(1, 1, &storage).await;
-    add_block(3, 0, &storage).await;
-    add_block(3, 1, &storage).await;
-    add_block(4, 0, &storage).await;
+    add_block(Slot::new(2, 1), &storage).await;
+    add_block(Slot::new(1, 0), &storage).await;
+    add_block(Slot::new(1, 1), &storage).await;
+    add_block(Slot::new(3, 0), &storage).await;
+    add_block(Slot::new(3, 1), &storage).await;
+    add_block(Slot::new(4, 0), &storage).await;
 
     // search for (1,2) (3,1)
-    let result = storage.get_slot_range((1, 1), (3, 1)).await.unwrap();
+    let result = storage
+        .get_slot_range(Slot::new(1, 1), Slot::new(3, 1))
+        .await
+        .unwrap();
     //println!("result:{:#?}", result);
-    assert!(result.contains_key(&Hash::hash(b"(1,1)")));
-    assert!(result.contains_key(&Hash::hash(b"(2,1)")));
-    assert!(result.contains_key(&Hash::hash(b"(3,0)")));
-    assert!(!result.contains_key(&Hash::hash(b"(3,1)")));
-    assert!(!result.contains_key(&Hash::hash(b"(1,0)")));
-    assert!(!result.contains_key(&Hash::hash(b"(2,0)")));
+    assert!(result.contains_key(&Hash::hash(b"(period: 1, thread: 1)")));
+    assert!(result.contains_key(&Hash::hash(b"(period: 2, thread: 1)")));
+    assert!(result.contains_key(&Hash::hash(b"(period: 3, thread: 0)")));
+    assert!(!result.contains_key(&Hash::hash(b"(period: 3, thread: 1)")));
+    assert!(!result.contains_key(&Hash::hash(b"(period: 1, thread: 0)")));
+    assert!(!result.contains_key(&Hash::hash(b"(period: 2, thread: 0)")));
 
     //range too low
-    let result = storage.get_slot_range((0, 0), (1, 0)).await.unwrap();
+    let result = storage
+        .get_slot_range(Slot::new(0, 0), Slot::new(1, 0))
+        .await
+        .unwrap();
     assert_eq!(0, result.len());
     //range too after
-    let result = storage.get_slot_range((4, 1), (6, 1)).await.unwrap();
+    let result = storage
+        .get_slot_range(Slot::new(4, 1), Slot::new(6, 1))
+        .await
+        .unwrap();
     //    println!("result:{:?}", result);
     assert_eq!(0, result.len());
     //unique range be after
-    let result = storage.get_slot_range((1, 1), (1, 1)).await.unwrap();
+    let result = storage
+        .get_slot_range(Slot::new(1, 1), Slot::new(1, 1))
+        .await
+        .unwrap();
     assert_eq!(0, result.len());
     //bad range
-    let result = storage.get_slot_range((3, 1), (1, 1)).await.unwrap();
+    let result = storage
+        .get_slot_range(Slot::new(3, 1), Slot::new(1, 1))
+        .await
+        .unwrap();
     assert_eq!(0, result.len());
 
     //unique range inf out
-    let result = storage.get_slot_range((0, 0), (1, 1)).await.unwrap();
-    assert!(result.contains_key(&Hash::hash(b"(1,0)")));
+    let result = storage
+        .get_slot_range(Slot::new(0, 0), Slot::new(1, 1))
+        .await
+        .unwrap();
+    assert!(result.contains_key(&Hash::hash(b"(period: 1, thread: 0)")));
     //unique range sup out
-    let result = storage.get_slot_range((4, 0), (5, 1)).await.unwrap();
-    assert!(result.contains_key(&Hash::hash(b"(4,0)")));
+    let result = storage
+        .get_slot_range(Slot::new(4, 0), Slot::new(5, 1))
+        .await
+        .unwrap();
+    assert!(result.contains_key(&Hash::hash(b"(period: 4, thread: 0)")));
 
     manager.stop().await.unwrap();
 }
 
-async fn add_block(period: u64, slot: u8, storage: &StorageCommandSender) {
+async fn add_block(slot: Slot, storage: &StorageCommandSender) {
     let mut block = tools::get_test_block();
-    block.header.period_number = period;
-    block.header.thread_number = slot;
-    let hash = Hash::hash(format!("({},{})", period, slot).as_bytes());
+    block.header.slot = slot;
+    let hash = Hash::hash(format!("{}", slot).as_bytes());
     storage.add_block(hash, block).await.unwrap();
 }

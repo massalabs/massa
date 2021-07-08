@@ -5,7 +5,10 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, SignatureEngine},
 };
-use models::block::{Block, BlockHeader};
+use models::{
+    block::{Block, BlockHeader},
+    slot::Slot,
+};
 use std::{collections::HashSet, time::Duration};
 use time::UTime;
 
@@ -138,13 +141,12 @@ pub async fn create_and_test_block(
     protocol_controller: &mut MockProtocolController,
     cfg: &ConsensusConfig,
     source_node_id: NodeId,
-    thread_number: u8,
-    period_number: u64,
+    slot: Slot,
     best_parents: Vec<Hash>,
     valid: bool,
     trace: bool,
 ) -> Hash {
-    let (block_hash, block, _) = create_block(&cfg, thread_number, period_number, best_parents);
+    let (block_hash, block, _) = create_block(&cfg, slot, best_parents);
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -185,15 +187,13 @@ pub async fn propagate_block(
 // returns hash and resulting discarded blocks
 pub fn create_block(
     cfg: &ConsensusConfig,
-    thread_number: u8,
-    period_number: u64,
+    slot: Slot,
     best_parents: Vec<Hash>,
 ) -> (Hash, Block, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
         Hash::hash("default_val".as_bytes()),
-        thread_number,
-        period_number,
+        slot,
         best_parents,
     )
 }
@@ -201,8 +201,7 @@ pub fn create_block(
 pub fn create_block_with_merkle_root(
     cfg: &ConsensusConfig,
     operation_merkle_root: Hash,
-    thread_number: u8,
-    period_number: u64,
+    slot: Slot,
     best_parents: Vec<Hash>,
 ) -> (Hash, Block, PrivateKey) {
     let signature_engine = SignatureEngine::new();
@@ -216,8 +215,7 @@ pub fn create_block_with_merkle_root(
 
     let header = BlockHeader {
         creator: public_key,
-        thread_number,
-        period_number,
+        slot,
         roll_number: cfg.current_node_index,
         parents: best_parents,
         endorsements: Vec::new(),

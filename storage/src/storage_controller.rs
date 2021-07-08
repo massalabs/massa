@@ -2,7 +2,7 @@ use crate::storage_worker::BlockStorage;
 use crate::{config::StorageConfig, error::StorageError};
 use crypto::hash::Hash;
 use logging::{debug, massa_trace};
-use models::block::Block;
+use models::{block::Block, slot::Slot};
 use std::collections::HashMap;
 
 pub fn start_storage_controller(
@@ -40,8 +40,8 @@ impl StorageCommandSender {
 
     pub async fn get_slot_range(
         &self,
-        start: (u64, u8),
-        end: (u64, u8),
+        start: Slot,
+        end: Slot,
     ) -> Result<HashMap<Hash, Block>, StorageError> {
         let db = self.0.clone();
         tokio::task::spawn_blocking(move || db.get_slot_range(start, end)).await?

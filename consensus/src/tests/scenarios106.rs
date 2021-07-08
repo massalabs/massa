@@ -3,6 +3,7 @@
 use super::{mock_protocol_controller::MockProtocolController, tools};
 use crate::{start_consensus_controller, timeslots};
 use crypto::hash::Hash;
+use models::slot::Slot;
 use std::collections::HashSet;
 use time::UTime;
 
@@ -34,7 +35,7 @@ async fn test_unsorted_block() {
         .await
         .expect("could not start consensus controller");
 
-    let start_slot = 3;
+    let start_period = 3;
     let genesis_hashes = consensus_command_sender
         .get_block_graph_status()
         .await
@@ -42,24 +43,44 @@ async fn test_unsorted_block() {
         .genesis_blocks;
     //create test blocks
 
-    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, 0, 1 + start_slot, genesis_hashes.clone());
+    let (hasht0s1, t0s1, _) =
+        tools::create_block(&cfg, Slot::new(1 + start_period, 0), genesis_hashes.clone());
 
-    let (hasht1s1, t1s1, _) = tools::create_block(&cfg, 1, 1 + start_slot, genesis_hashes.clone());
+    let (hasht1s1, t1s1, _) =
+        tools::create_block(&cfg, Slot::new(1 + start_period, 1), genesis_hashes.clone());
 
-    let (hasht0s2, t0s2, _) =
-        tools::create_block(&cfg, 0, 2 + start_slot, vec![hasht0s1, hasht1s1]);
-    let (hasht1s2, t1s2, _) =
-        tools::create_block(&cfg, 1, 2 + start_slot, vec![hasht0s1, hasht1s1]);
+    let (hasht0s2, t0s2, _) = tools::create_block(
+        &cfg,
+        Slot::new(2 + start_period, 0),
+        vec![hasht0s1, hasht1s1],
+    );
+    let (hasht1s2, t1s2, _) = tools::create_block(
+        &cfg,
+        Slot::new(2 + start_period, 1),
+        vec![hasht0s1, hasht1s1],
+    );
 
-    let (hasht0s3, t0s3, _) =
-        tools::create_block(&cfg, 0, 3 + start_slot, vec![hasht0s2, hasht1s2]);
-    let (hasht1s3, t1s3, _) =
-        tools::create_block(&cfg, 1, 3 + start_slot, vec![hasht0s2, hasht1s2]);
+    let (hasht0s3, t0s3, _) = tools::create_block(
+        &cfg,
+        Slot::new(3 + start_period, 0),
+        vec![hasht0s2, hasht1s2],
+    );
+    let (hasht1s3, t1s3, _) = tools::create_block(
+        &cfg,
+        Slot::new(3 + start_period, 1),
+        vec![hasht0s2, hasht1s2],
+    );
 
-    let (hasht0s4, t0s4, _) =
-        tools::create_block(&cfg, 0, 4 + start_slot, vec![hasht0s3, hasht1s3]);
-    let (hasht1s4, t1s4, _) =
-        tools::create_block(&cfg, 1, 4 + start_slot, vec![hasht0s3, hasht1s3]);
+    let (hasht0s4, t0s4, _) = tools::create_block(
+        &cfg,
+        Slot::new(4 + start_period, 0),
+        vec![hasht0s3, hasht1s3],
+    );
+    let (hasht1s4, t1s4, _) = tools::create_block(
+        &cfg,
+        Slot::new(4 + start_period, 1),
+        vec![hasht0s3, hasht1s3],
+    );
 
     //send blocks  t0s1, t1s1,
     protocol_controller
@@ -93,7 +114,7 @@ async fn test_unsorted_block() {
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &hash_list,
-        3000 + start_slot * 1000,
+        3000 + start_period * 1000,
     )
     .await;
     tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
@@ -156,19 +177,22 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         .genesis_blocks;
 
     // a block in the past must be propagated
-    let (hash1, block1, _) = tools::create_block(&cfg, 0, 1, genesis_hashes.clone());
+    let (hash1, block1, _) = tools::create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone());
     protocol_controller
         .receive_block(node_ids[0].1.clone(), block1)
         .await;
     tools::validate_propagate_block(&mut protocol_controller, hash1, 1000).await;
 
     // this block is slightly in the future: will wait for it
-    let (last_period, last_thread) =
+    let slot =
         timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
             .unwrap()
             .unwrap();
-    let (hash2, block2, _) =
-        tools::create_block(&cfg, last_thread, last_period + 2, genesis_hashes.clone());
+    let (hash2, block2, _) = tools::create_block(
+        &cfg,
+        Slot::new(slot.period + 2, slot.thread),
+        genesis_hashes.clone(),
+    );
     protocol_controller
         .receive_block(node_ids[0].1.clone(), block2)
         .await;
@@ -176,14 +200,13 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     tools::validate_propagate_block(&mut protocol_controller, hash2, 2500).await;
 
     // this block is too much in the future: do not process
-    let (last_period, last_thread) =
+    let slot =
         timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
             .unwrap()
             .unwrap();
     let (hash3, block3, _) = tools::create_block(
         &cfg,
-        last_thread,
-        last_period + 1000,
+        Slot::new(slot.period + 1000, slot.thread),
         genesis_hashes.clone(),
     );
     protocol_controller
@@ -246,14 +269,17 @@ async fn test_too_many_blocks_in_the_future() {
     // generate 5 blocks but there is only space for 2 in the waiting line
     let mut expected_block_hashes: HashSet<Hash> = HashSet::new();
     let mut max_period = 0;
-    let (last_period, last_thread) =
+    let slot =
         timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
             .unwrap()
             .unwrap();
     for period in 0..5 {
-        max_period = last_period + 2 + period;
-        let (hash, block, _) =
-            tools::create_block(&cfg, last_thread, max_period, genesis_hashes.clone());
+        max_period = slot.period + 2 + period;
+        let (hash, block, _) = tools::create_block(
+            &cfg,
+            Slot::new(max_period, slot.thread),
+            genesis_hashes.clone(),
+        );
         protocol_controller
             .receive_block(node_ids[0].1.clone(), block)
             .await;
@@ -280,7 +306,7 @@ async fn test_too_many_blocks_in_the_future() {
     while timeslots::get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)
         .unwrap()
         .unwrap()
-        < (max_period + 1, 0)
+        < Slot::new(max_period + 1, 0)
     {}
     // ensure that the graph contains only what we expect
     let graph = consensus_command_sender
@@ -340,18 +366,18 @@ async fn test_dep_in_back_order() {
         .genesis_blocks;
 
     //create test blocks
-    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, 0, 1, genesis_hashes.clone());
+    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone());
 
-    let (hasht1s1, t1s1, _) = tools::create_block(&cfg, 1, 1, genesis_hashes.clone());
+    let (hasht1s1, t1s1, _) = tools::create_block(&cfg, Slot::new(1, 1), genesis_hashes.clone());
 
-    let (hasht0s2, t0s2, _) = tools::create_block(&cfg, 0, 2, vec![hasht0s1, hasht1s1]);
-    let (hasht1s2, t1s2, _) = tools::create_block(&cfg, 1, 2, vec![hasht0s1, hasht1s1]);
+    let (hasht0s2, t0s2, _) = tools::create_block(&cfg, Slot::new(2, 0), vec![hasht0s1, hasht1s1]);
+    let (hasht1s2, t1s2, _) = tools::create_block(&cfg, Slot::new(2, 1), vec![hasht0s1, hasht1s1]);
 
-    let (hasht0s3, t0s3, _) = tools::create_block(&cfg, 0, 3, vec![hasht0s2, hasht1s2]);
-    let (hasht1s3, t1s3, _) = tools::create_block(&cfg, 1, 3, vec![hasht0s2, hasht1s2]);
+    let (hasht0s3, t0s3, _) = tools::create_block(&cfg, Slot::new(3, 0), vec![hasht0s2, hasht1s2]);
+    let (hasht1s3, t1s3, _) = tools::create_block(&cfg, Slot::new(3, 1), vec![hasht0s2, hasht1s2]);
 
-    let (hasht0s4, t0s4, _) = tools::create_block(&cfg, 0, 4, vec![hasht0s3, hasht1s3]);
-    let (hasht1s4, t1s4, _) = tools::create_block(&cfg, 1, 4, vec![hasht0s3, hasht1s3]);
+    let (hasht0s4, t0s4, _) = tools::create_block(&cfg, Slot::new(4, 0), vec![hasht0s3, hasht1s3]);
+    let (hasht1s4, t1s4, _) = tools::create_block(&cfg, Slot::new(4, 1), vec![hasht0s3, hasht1s3]);
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
     protocol_controller
@@ -443,15 +469,15 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
     //create test blocks
 
-    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, 0, 1, genesis_hashes.clone());
+    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone());
 
-    let (hasht1s1, t1s1, _) = tools::create_block(&cfg, 1, 1, genesis_hashes.clone());
+    let (hasht1s1, t1s1, _) = tools::create_block(&cfg, Slot::new(1, 1), genesis_hashes.clone());
 
-    let (hasht0s2, t0s2, _) = tools::create_block(&cfg, 0, 2, vec![hasht0s1, hasht1s1]);
-    let (hasht1s2, t1s2, _) = tools::create_block(&cfg, 1, 2, vec![hasht0s1, hasht1s1]);
+    let (hasht0s2, t0s2, _) = tools::create_block(&cfg, Slot::new(2, 0), vec![hasht0s1, hasht1s1]);
+    let (hasht1s2, t1s2, _) = tools::create_block(&cfg, Slot::new(2, 1), vec![hasht0s1, hasht1s1]);
 
-    let (hasht0s3, t0s3, _) = tools::create_block(&cfg, 0, 3, vec![hasht0s2, hasht1s2]);
-    let (hasht1s3, t1s3, _) = tools::create_block(&cfg, 1, 3, vec![hasht0s2, hasht1s2]);
+    let (hasht0s3, t0s3, _) = tools::create_block(&cfg, Slot::new(3, 0), vec![hasht0s2, hasht1s2]);
+    let (hasht1s3, t1s3, _) = tools::create_block(&cfg, Slot::new(3, 1), vec![hasht0s2, hasht1s2]);
 
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
     protocol_controller
@@ -543,16 +569,16 @@ async fn test_add_block_that_depends_on_invalid_block() {
         .genesis_blocks;
 
     //create test blocks
-    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, 0, 1, genesis_hashes.clone());
+    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone());
 
-    let (hasht1s1, t1s1, _) = tools::create_block(&cfg, 1, 1, genesis_hashes.clone());
+    let (hasht1s1, t1s1, _) = tools::create_block(&cfg, Slot::new(1, 1), genesis_hashes.clone());
 
     // blocks t3s2 with wrong thread and (t0s1, t1s1) parents.
-    let (hasht3s2, t3s2, _) = tools::create_block(&cfg, 3, 2, vec![hasht0s1, hasht1s1]);
+    let (hasht3s2, t3s2, _) = tools::create_block(&cfg, Slot::new(2, 3), vec![hasht0s1, hasht1s1]);
 
     // blocks t0s3 and t1s3 with (t3s2, t1s2) parents.
-    let (hasht0s3, t0s3, _) = tools::create_block(&cfg, 0, 3, vec![hasht3s2, hasht1s1]);
-    let (hasht1s3, t1s3, _) = tools::create_block(&cfg, 1, 3, vec![hasht3s2, hasht1s1]);
+    let (hasht0s3, t0s3, _) = tools::create_block(&cfg, Slot::new(3, 0), vec![hasht3s2, hasht1s1]);
+    let (hasht1s3, t1s3, _) = tools::create_block(&cfg, Slot::new(3, 1), vec![hasht3s2, hasht1s1]);
 
     // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2
     //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
