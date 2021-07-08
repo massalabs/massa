@@ -21,9 +21,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use time::UTime;
 
-pub const HASH_SIZE_BYTES: usize = 32;
-pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true); //never set to zero.
-
 #[derive(Clone, Debug, Deserialize)]
 pub struct ErrorMessage {
     pub message: String,
@@ -262,38 +259,5 @@ impl std::fmt::Display for WrappedPeerInfo {
             , self.0.active_out_connection_attempts
             , self.0.active_out_connections
             , self.0.active_in_connections)
-    }
-}
-
-#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Deserialize)]
-pub struct WrappedHash(Hash);
-
-impl From<Hash> for WrappedHash {
-    fn from(hash: Hash) -> Self {
-        WrappedHash(hash)
-    }
-}
-impl From<&'_ Hash> for WrappedHash {
-    fn from(hash: &Hash) -> Self {
-        WrappedHash(*hash)
-    }
-}
-impl std::fmt::Display for WrappedHash {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
-            write!(f, "{}", &self.0.to_bs58_check()[..4])
-        } else {
-            write!(f, "{}", &self.0.to_bs58_check())
-        }
-    }
-}
-
-impl std::fmt::Debug for WrappedHash {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
-            write!(f, "{}", &self.0.to_bs58_check()[..4])
-        } else {
-            write!(f, "{}", &self.0.to_bs58_check())
-        }
     }
 }

@@ -2,6 +2,7 @@
 
 members = [
 	"api",
+    "apimodel",
     "crypto",
     "logging",
     "models",

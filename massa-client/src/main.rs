@@ -29,8 +29,10 @@ use std::str::FromStr;
 use std::sync::atomic::Ordering;
 
 mod config;
-mod data;
+//mod data;
 mod repl;
+
+pub const HASH_SIZE_BYTES: usize = 32;
 
 ///Start the massa-client.
 fn main() {
