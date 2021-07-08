@@ -98,6 +98,14 @@ struct PendingAckBlockState {
 * prune useless final blocks
 * return pruned blocks' hashes and discarded final blocks
 
+#### prune blocks
+* remove blocks from cliques and gi_head (both directions)
+* retain : gi_head and latest_final_blocks
+* fill the holes and keep grand parents
+* in milestone 0.3 : keep blocks used in transaction compatibility check
+* set Discard reason (stale or final)
+* return discarded blocks
+
 #### unlock dependencies
 
 #### check header
