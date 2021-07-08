@@ -583,10 +583,37 @@ impl ConsensusWorker {
     }
 
     async fn get_operation(
-        &self,
+        &mut self,
         id: OperationId,
     ) -> Result<Option<(Operation, bool, HashMap<BlockId, bool>)>, ConsensusError> {
-        todo!()
+        // consensus
+        let consensus_res = self.block_db.get_operation(id)?;
+
+        // pool
+        let pool_res = self.pool_command_sender.get_operation(id).await?;
+
+        let is_in_pool = pool_res.is_some();
+        let pool = if let Some(op) = pool_res {
+            Ok(Some((op, true, HashMap::new())))
+        } else {
+            Ok(None)
+        };
+
+        if let Some((op, map)) = consensus_res {
+            Ok(Some((op, is_in_pool, map)))
+        } else {
+            if let Some(access) = &self.opt_storage_command_sender {
+                if let Some((block_id, _, op)) = access.get_operation(id).await? {
+                    let mut map = HashMap::new();
+                    map.insert(block_id, true);
+                    Ok(Some((op, is_in_pool, map)))
+                } else {
+                    pool
+                }
+            } else {
+                pool
+            }
+        }
     }
 
     /// Manages received protocolevents.
