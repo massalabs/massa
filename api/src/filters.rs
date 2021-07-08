@@ -165,6 +165,7 @@ use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
 };
+use storage::storage_controller::StorageCommandSender;
 use time::UTime;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
@@ -201,18 +202,22 @@ pub fn get_filter(
     _protocol_config: ProtocolConfig,
     network_config: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
+    opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> BoxedFilter<(impl Reply,)> {
     let evt_tx = event_tx.clone();
+    let storage = opt_storage_command_sender.clone();
     let block = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("block"))
         .and(warp::path::param::<Hash>()) //block hash
         .and(warp::path::end())
-        .and_then(move |hash| get_block(evt_tx.clone(), hash));
+        .and_then(move |hash| get_block(evt_tx.clone(), hash, storage.clone()));
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
+
+    let storage = opt_storage_command_sender.clone();
     let blockinterval = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -220,7 +225,13 @@ pub fn get_filter(
         .and(warp::query::<TimeInterval>()) //start, end
         .and(warp::path::end())
         .and_then(move |TimeInterval { start, end }| {
-            get_block_interval(evt_tx.clone(), consensus_cfg.clone(), start, end)
+            get_block_interval(
+                evt_tx.clone(),
+                consensus_cfg.clone(),
+                start,
+                end,
+                storage.clone(),
+            )
         });
 
     let evt_tx = event_tx.clone();
@@ -241,6 +252,7 @@ pub fn get_filter(
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
+    let storage = opt_storage_command_sender.clone();
     let graph_interval = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -248,7 +260,13 @@ pub fn get_filter(
         .and(warp::query::<TimeInterval>()) //start, end //end
         .and(warp::path::end())
         .and_then(move |TimeInterval { start, end }| {
-            get_graph_interval(evt_tx.clone(), consensus_cfg.clone(), start, end)
+            get_graph_interval(
+                evt_tx.clone(),
+                consensus_cfg.clone(),
+                start,
+                end,
+                storage.clone(),
+            )
         });
 
     let evt_tx = event_tx.clone();
@@ -374,7 +392,11 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
 
 /// Returns block with given hash as a reply
 ///
-async fn get_block(event_tx: mpsc::Sender<ApiEvent>, hash: Hash) -> Result<impl Reply, Rejection> {
+async fn get_block(
+    event_tx: mpsc::Sender<ApiEvent>,
+    hash: Hash,
+    opt_storage_command_sender: Option<StorageCommandSender>,
+) -> Result<impl Reply, Rejection> {
     match retrieve_block(hash, &event_tx).await {
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
@@ -552,6 +574,7 @@ async fn get_block_interval(
     consensus_cfg: ConsensusConfig,
     start: UTime,
     end: UTime,
+    opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut res = Vec::new();
     let graph = match retrieve_graph_export(&event_tx).await {
@@ -604,6 +627,7 @@ async fn get_graph_interval(
     consensus_cfg: ConsensusConfig,
     start: UTime,
     end: UTime,
+    opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut res = HashMap::new();
     let graph = match retrieve_graph_export(&event_tx).await {

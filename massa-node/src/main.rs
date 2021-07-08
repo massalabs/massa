@@ -44,7 +44,7 @@ async fn run(cfg: config::Config) {
             cfg.consensus.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
-            Some(storage_command_sender),
+            Some(storage_command_sender.clone()),
         )
         .await
         .expect("could not start consensus controller");
@@ -55,6 +55,7 @@ async fn run(cfg: config::Config) {
         cfg.consensus.clone(),
         cfg.protocol.clone(),
         cfg.network.clone(),
+        Some(storage_command_sender),
     )
     .await
     .expect("could not start API controller");

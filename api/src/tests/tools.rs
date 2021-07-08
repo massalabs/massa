@@ -111,6 +111,7 @@ pub fn mock_filter() -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
             get_protocol_config(),
             get_network_config(),
             evt_tx,
+            None,
         ),
         evt_rx,
     )
