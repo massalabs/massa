@@ -488,6 +488,7 @@ async fn test_dep_in_back_order() {
         500,
     )
     .await;
+
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &vec![hasht1s1, hasht0s2],
@@ -496,7 +497,7 @@ async fn test_dep_in_back_order() {
     .await;
     tools::validate_wishlist(
         &mut protocol_controller,
-        vec![hasht1s2].into_iter().collect(),
+        vec![].into_iter().collect(),
         vec![hasht1s1].into_iter().collect(),
         500,
     )
