@@ -1,4 +1,5 @@
 use crate::{get_filter, ApiConfig, ApiEvent};
+use apimodel::BlockInfo;
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 use consensus::{
     get_block_slot_timestamp, BlockGraphExport, ConsensusConfig, ExportCompiledBlock,
@@ -28,6 +29,27 @@ pub fn get_test_hash() -> Hash {
 
 pub fn get_another_test_hash() -> Hash {
     Hash::hash("another test".as_bytes())
+}
+
+pub fn block_info(
+    block: Block,
+    status: apimodel::StatusInfo,
+    parents: Vec<Hash>,
+    serialization_context: &SerializationContext,
+) -> BlockInfo {
+    BlockInfo {
+        hash_slot: (
+            block
+                .header
+                .content
+                .compute_hash(serialization_context)
+                .unwrap(),
+            block.header.content.slot,
+        )
+            .into(),
+        status,
+        parents,
+    }
 }
 
 pub fn get_consensus_config() -> ConsensusConfig {
