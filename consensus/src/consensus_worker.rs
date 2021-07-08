@@ -230,27 +230,28 @@ impl ConsensusWorker {
                     ))
                 }),
             ConsensusCommand::GetSelectionDraws(slot_start, slot_end, response_tx) => {
-                let mut result: Result<Vec<(Slot, PublicKey)>, ConsensusError> = Ok(Vec::new());
+                let mut res = Vec::new();
                 let mut cur_slot = slot_start;
-                while cur_slot < slot_end {
-                    if let Ok(res) = result.as_mut() {
-                        res.push((
-                            cur_slot,
-                            if cur_slot.period == 0 {
-                                self.genesis_public_key
-                            } else {
-                                self.cfg.nodes[self.selector.draw(cur_slot) as usize].0
-                            },
-                        ));
+                let result = loop {
+                    if cur_slot >= slot_end {
+                        break Ok(res);
                     }
+
+                    res.push((
+                        cur_slot,
+                        if cur_slot.period == 0 {
+                            self.genesis_public_key
+                        } else {
+                            self.cfg.nodes[self.selector.draw(cur_slot) as usize].0
+                        },
+                    ));
                     cur_slot = match cur_slot.get_next_slot(self.cfg.thread_count) {
                         Ok(next_slot) => next_slot,
                         Err(_) => {
-                            result = Err(ConsensusError::SlotOverflowError);
-                            break;
+                            break Err(ConsensusError::SlotOverflowError);
                         }
                     }
-                }
+                };
                 response_tx.send(result).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send GetSelectionDraws response: {:?}",
