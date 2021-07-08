@@ -1842,7 +1842,7 @@ impl BlockGraph {
         })
     }
 
-    fn get_past_operations(
+    pub fn get_past_operations(
         &self,
         parents: &Vec<BlockId>,
     ) -> Result<Vec<OperationId>, ConsensusError> {

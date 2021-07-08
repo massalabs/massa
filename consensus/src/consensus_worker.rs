@@ -256,7 +256,12 @@ impl ConsensusWorker {
 
             ledger.apply_change(reward_change, self.cfg.thread_count)?;
         }
-        // todo exclude operations in ancestry
+
+        excluded.extend(
+            self.block_db
+                .get_past_operations(&self.block_db.get_best_parents())?,
+        );
+
         while ops.len() < self.cfg.max_operations_per_block as usize {
             let to_exclude = [excluded.clone(), ids_to_keep.clone()].concat();
             let (response_tx, response_rx) = oneshot::channel();
