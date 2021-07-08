@@ -13,6 +13,7 @@
 //!
 //! The help command display all available commands.
 
+use crate::data::parse_amount;
 use crate::data::AddressStates;
 use crate::data::GetOperationContent;
 use crate::data::WrappedAddressState;
@@ -356,10 +357,9 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
     if let Some(wallet) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let roll_count: u64 = FromStr::from_str(&params[1]).map_err(|err| {
-            ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
-        })?;
-        let fee: u64 = FromStr::from_str(&params[2])
+        let roll_count: u64 = FromStr::from_str(&params[1])
+            .map_err(|err| ReplError::GeneralError(format!("Incorrect roll buy count: {}", err)))?;
+        let fee: u64 = parse_amount(&params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
 
@@ -374,9 +374,9 @@ fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let roll_count: u64 = FromStr::from_str(&params[1]).map_err(|err| {
-            ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
+            ReplError::GeneralError(format!("Incorrect roll sell count: {}", err))
         })?;
-        let fee: u64 = FromStr::from_str(&params[2])
+        let fee: u64 = parse_amount(&params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollSell { roll_count };
 
@@ -509,10 +509,8 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let recipient_address = Address::from_bs58_check(params[1])
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let amount: u64 = FromStr::from_str(&params[2]).map_err(|err| {
-            ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
-        })?;
-        let fee: u64 = FromStr::from_str(&params[3])
+        let amount = parse_amount(params[2]).map_err(|e| ReplError::GeneralError(e))?;
+        let fee: u64 = parse_amount(&params[3])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::Transaction {
             recipient_address,
