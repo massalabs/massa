@@ -140,7 +140,7 @@ async fn test_operations_check() {
     );
     propagate_block(&mut protocol_controller, block_b, true).await;
 
-    // todo assert address 2 has 5 coins at block B (see #269)
+    // assert address 2 has 5 coins at block B
     let mut set = HashSet::new();
     set.insert(address_2);
     let res = consensus_command_sender

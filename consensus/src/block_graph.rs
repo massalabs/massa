@@ -135,7 +135,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
 
         let addresses_to_operations = block.block.involved_addresses()?;
         let roll_updates = RollThreadUpdates::empty();
-        // todo update export active block
+        // todo update export active block see #398
         Ok(ActiveBlock {
             block: block.block,
             parents: block.parents,
@@ -882,7 +882,7 @@ impl BlockGraph {
                     dependencies: HashSet::new(),
                     descendants: HashSet::new(),
                     is_final: true,
-                    block_ledger_change: vec![HashMap::new(); cfg.thread_count as usize], // todo add initial coin repartition see #311
+                    block_ledger_change: vec![HashMap::new(); cfg.thread_count as usize], // no changes in genesis blocks
                     operation_set: HashMap::with_capacity(0),
                     addresses_to_operations: HashMap::with_capacity(0),
                     roll_updates,
@@ -989,7 +989,7 @@ impl BlockGraph {
     }
 
     fn get_roll_data_at_parent(&self, id: BlockId, addrs: HashSet<Address>) -> RollThreadUpdates {
-        todo!()
+        todo!() // see #408
     }
 
     /// gets Ledger data export for given Addressses
@@ -2103,6 +2103,7 @@ impl BlockGraph {
 
         // credit roll sales after lock
         // TODO credit all roll sales that happened at N-1-lookback-lock
+        // see #397
 
         // block constant reward
         let creator_thread = block_creator_address.get_thread(self.cfg.thread_count);
@@ -2155,7 +2156,7 @@ impl BlockGraph {
                 Ok(changes) => changes,
             };
             //TODO use get_roll_changes to get compensated roll changes
-            // apply buys/sales to ledger and rolls
+            // apply buys/sales to ledger and rolls see #397
             for (thread, changes) in changes.into_iter().enumerate() {
                 for (change_addr, change) in changes.into_iter() {
                     // apply change to ledger and check if ok
@@ -2194,7 +2195,7 @@ impl BlockGraph {
         Ok(BlockOperationsCheckOutcome::Proceed {
             dependencies,
             block_changes,
-            roll_updates: todo!(),
+            roll_updates: todo!(), // see #397
         })
     }
 
@@ -2990,7 +2991,6 @@ impl BlockGraph {
         }
 
         // TODO keep enough blocks in each thread to test for still-valid, non-reusable transactions
-        // see issue #98
 
         // remove unused final active blocks
         let mut discarded_finals: HashMap<BlockId, Block> = HashMap::new();
