@@ -165,7 +165,7 @@ pub fn extract_addresses_from_ledger<'a>(
         .collect();
     //get balance at best parents.
     ledger
-        .final_data
+        .candidate_data
         .data
         .iter()
         .flatten()
