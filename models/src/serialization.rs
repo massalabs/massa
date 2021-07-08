@@ -307,4 +307,11 @@ mod tests {
         cursor += delta;
         assert_eq!(cursor, buf.len());
     }
+
+    #[test]
+    fn test_array_from_slice_with_zero_u64() {
+        let zero: u64 = 0;
+        let res = array_from_slice(&zero.to_be_bytes()).unwrap();
+        assert_eq!(zero, u64::from_be_bytes(res));
+    }
 }
