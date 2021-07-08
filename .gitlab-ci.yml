@@ -33,7 +33,6 @@ test:
   image: "xd009642/tarpaulin"
   script:
     - cargo tarpaulin -v
-  coverage: /([\d\.]+)\% coverage/
 
 # Use cargo to build the project
 build:
