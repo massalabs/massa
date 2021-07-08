@@ -10,8 +10,8 @@ use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    DeserializeCompact, DeserializeVarInt, ModelsError, OperationId, SerializationContext,
-    SerializeCompact, SerializeVarInt, Slot,
+    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationId,
+    SerializationContext, SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -62,6 +62,21 @@ impl ActiveBlock {
             })
         */
         1
+    }
+
+    fn get_operation(
+        &self,
+        op_id: OperationId,
+        context: &SerializationContext,
+    ) -> Result<Option<Operation>, ConsensusError> {
+        if self.operation_set.contains(&op_id) {
+            for op in self.block.operations.iter() {
+                if op.get_operation_id(context)? == op_id {
+                    return Ok(Some(op.clone()));
+                }
+            }
+        }
+        Ok(None)
     }
 }
 
