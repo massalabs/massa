@@ -7,6 +7,7 @@ members = [
     "models",
     "communication",
     "consensus",
+    "hang-monitor",
     "massa-node",
     "massa-client",
     "time",

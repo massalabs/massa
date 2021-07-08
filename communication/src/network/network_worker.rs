@@ -14,6 +14,10 @@ use crate::logging::debug;
 use crypto::hash::Hash;
 use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
+use hang_monitor::{
+    HangAnnotation, HangMonitorCommandSender, MonitoredComponentId, NetworkHangAnnotation,
+    ProtocolHangAnnotation,
+};
 use models::{Block, BlockHeader, SerializationContext};
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -48,6 +52,19 @@ pub enum NetworkCommand {
     },
 }
 
+impl From<&NetworkCommand> for NetworkHangAnnotation {
+    fn from(msg: &NetworkCommand) -> Self {
+        match msg {
+            NetworkCommand::AskForBlock { .. } => Self::AskForBlock,
+            NetworkCommand::SendBlock { .. } => Self::SendBlock,
+            NetworkCommand::SendBlockHeader { .. } => Self::SendBlockHeader,
+            NetworkCommand::GetPeers { .. } => Self::GetPeers,
+            NetworkCommand::Ban(_) => Self::Ban,
+            NetworkCommand::BlockNotFound { .. } => Self::CommandBlockNotFound,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum NetworkEvent {
     NewConnection(NodeId),
@@ -72,6 +89,19 @@ pub enum NetworkEvent {
         node: NodeId,
         hash: Hash,
     },
+}
+
+impl From<&NetworkEvent> for ProtocolHangAnnotation {
+    fn from(msg: &NetworkEvent) -> Self {
+        match msg {
+            NetworkEvent::NewConnection(_) => Self::NewConnection,
+            NetworkEvent::ConnectionClosed(_) => Self::ConnectionClosed,
+            NetworkEvent::ReceivedBlock { .. } => Self::ReceivedBlock,
+            NetworkEvent::ReceivedBlockHeader { .. } => Self::ReceivedBlockHeader,
+            NetworkEvent::AskedForBlock { .. } => Self::AskedForBlock,
+            NetworkEvent::BlockNotFound { .. } => Self::BlockNotFound,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -118,6 +148,8 @@ pub struct NetworkWorker {
     >,
     /// Map of connection to ip, is_outgoing.
     active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
+    /// Hang monitor.
+    hang_monitor: Option<HangMonitorCommandSender>,
 }
 
 impl NetworkWorker {
@@ -142,6 +174,7 @@ impl NetworkWorker {
         controller_command_rx: mpsc::Receiver<NetworkCommand>,
         controller_event_tx: mpsc::Sender<NetworkEvent>,
         controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
+        hang_monitor: Option<HangMonitorCommandSender>,
     ) -> NetworkWorker {
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         NetworkWorker {
@@ -161,12 +194,23 @@ impl NetworkWorker {
             node_event_rx,
             active_nodes: HashMap::new(),
             active_connections: HashMap::new(),
+            hang_monitor,
         }
     }
 
     /// Runs the main loop of the network_worker
     /// There is a tokio::select! insside the loop
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            // Register the worker with the hang-monitor.
+            monitor
+                .register(MonitoredComponentId::Network)
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError("Register with hang-monitor failed".into())
+                })?;
+        }
+
         let mut out_connecting_futures = FuturesUnordered::new();
         let mut cur_connection_id = ConnectionId::default();
 
@@ -195,6 +239,14 @@ impl NetworkWorker {
                 }
             }
 
+            if let Some(monitor) = self.hang_monitor.as_mut() {
+                // Notify the hang-monitor we are about to wait on a select.
+                monitor.notify_wait().await.map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Wait notification to hang-monitor failed".into(),
+                    )
+                })?;
+            }
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => match cmd {
@@ -287,6 +339,18 @@ impl NetworkWorker {
         new_connection_id: ConnectionId,
         outcome: HandshakeReturnType,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Network(
+                    NetworkHangAnnotation::HandshakeFinished,
+                ))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match outcome {
             // a handshake finished, and succeeded
             Ok((new_node_id, socket_reader, socket_writer)) => {
@@ -350,6 +414,7 @@ impl NetworkWorker {
                             mpsc::channel::<NodeCommand>(CHANNEL_SIZE);
                         let node_event_tx_clone = self.node_event_tx.clone();
                         let cfg_copy = self.cfg.clone();
+                        let monitor = self.hang_monitor.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             NodeWorker::new(
                                 cfg_copy,
@@ -358,6 +423,7 @@ impl NetworkWorker {
                                 socket_writer,
                                 node_command_rx,
                                 node_event_tx_clone,
+                                monitor,
                             )
                             .run_loop()
                             .await
@@ -392,12 +458,25 @@ impl NetworkWorker {
         Ok(())
     }
 
-    fn new_connection(
+    async fn new_connection(
         &mut self,
         connection_id: ConnectionId,
         reader: ReadHalf,
         writer: WriteHalf,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Network(
+                    NetworkHangAnnotation::NewConnection,
+                ))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
+
         // add connection ID to running_handshakes
         // launch async handshake_fn(connectionId, socket)
         // add its handle to handshake_futures
@@ -439,6 +518,18 @@ impl NetworkWorker {
         id: ConnectionId,
         reason: ConnectionClosureReason,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Network(
+                    NetworkHangAnnotation::ConnectionClosed,
+                ))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         let (ip, is_outgoing) = self
             .active_connections
             .remove(&id)
@@ -481,6 +572,16 @@ impl NetworkWorker {
         &mut self,
         cmd: NetworkCommand,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Network((&cmd).into()))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match cmd {
             NetworkCommand::Ban(node) => {
                 // get all connection IDs to ban
@@ -588,6 +689,18 @@ impl NetworkWorker {
         ip_addr: IpAddr,
         cur_connection_id: &mut ConnectionId,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Network(
+                    NetworkHangAnnotation::ManageOutConnections,
+                ))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match res {
             Ok((reader, writer)) => {
                 if self
@@ -607,7 +720,7 @@ impl NetworkWorker {
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (ip_addr, true));
-                    self.new_connection(connection_id, reader, writer)?;
+                    self.new_connection(connection_id, reader, writer).await?;
                 } else {
                     debug!("out connection towards ip={:?} refused", ip_addr);
                     massa_trace!("out_connection_refused", { "ip": ip_addr });
@@ -642,6 +755,18 @@ impl NetworkWorker {
         res: std::io::Result<(ReadHalf, WriteHalf, SocketAddr)>,
         cur_connection_id: &mut ConnectionId,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Network(
+                    NetworkHangAnnotation::ManageInConnections,
+                ))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match res {
             Ok((reader, writer, remote_addr)) => {
                 if self.peer_info_db.try_new_in_connection(&remote_addr.ip())? {
@@ -657,7 +782,7 @@ impl NetworkWorker {
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (remote_addr.ip(), false));
-                    self.new_connection(connection_id, reader, writer)?;
+                    self.new_connection(connection_id, reader, writer).await?;
                 } else {
                     debug!("inbound connection from addr={:?} refused", remote_addr);
                     massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
@@ -677,6 +802,16 @@ impl NetworkWorker {
     /// # Argument
     /// * evt: optional node event to process.
     async fn on_node_event(&mut self, evt: NodeEvent) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Network((&evt).into()))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match evt {
             // received a list of peers
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {

@@ -4,6 +4,10 @@ use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
+use hang_monitor::{
+    ConsensusHangAnnotation, HangAnnotation, HangMonitorCommandSender, MonitoredComponentId,
+    ProtocolHangAnnotation,
+};
 use models::{Block, BlockHeader, SerializationContext};
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -23,6 +27,17 @@ pub enum ProtocolEvent {
     ReceivedBlockHeader { hash: Hash, header: BlockHeader },
     /// Ask for a block from consensus.
     GetBlock(Hash),
+}
+
+impl From<&ProtocolEvent> for ConsensusHangAnnotation {
+    fn from(msg: &ProtocolEvent) -> Self {
+        match msg {
+            ProtocolEvent::ReceivedTransaction(_) => Self::ReceivedTransaction,
+            ProtocolEvent::ReceivedBlock { .. } => Self::ReceivedBlock,
+            ProtocolEvent::ReceivedBlockHeader { .. } => Self::ReceivedBlockHeader,
+            ProtocolEvent::GetBlock(_) => Self::GetBlock,
+        }
+    }
 }
 
 /// Commands that protocol worker can process
@@ -46,6 +61,18 @@ pub enum ProtocolCommand {
         remove: HashSet<Hash>,
     },
     BlockNotFound(Hash),
+}
+
+impl From<&ProtocolCommand> for ProtocolHangAnnotation {
+    fn from(msg: &ProtocolCommand) -> Self {
+        match msg {
+            ProtocolCommand::IntegratedBlock { .. } => Self::IntegratedBlock,
+            ProtocolCommand::AttackBlockDetected(_) => Self::AttackBlockDetected,
+            ProtocolCommand::FoundBlock { .. } => Self::FoundBlock,
+            ProtocolCommand::WishlistDelta { .. } => Self::WishlistDelta,
+            ProtocolCommand::BlockNotFound(_) => Self::CommandBlockNotFound,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -153,6 +180,8 @@ pub struct ProtocolWorker {
     active_nodes: HashMap<NodeId, nodeinfo::NodeInfo>,
     /// List of wanted blocks.
     block_wishlist: HashSet<Hash>,
+    /// Hang monitor.
+    hang_monitor: Option<HangMonitorCommandSender>,
 }
 
 impl ProtocolWorker {
@@ -173,6 +202,7 @@ impl ProtocolWorker {
         controller_event_tx: mpsc::Sender<ProtocolEvent>,
         controller_command_rx: mpsc::Receiver<ProtocolCommand>,
         controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+        hang_monitor: Option<HangMonitorCommandSender>,
     ) -> ProtocolWorker {
         ProtocolWorker {
             serialization_context,
@@ -184,6 +214,7 @@ impl ProtocolWorker {
             controller_manager_rx,
             active_nodes: HashMap::new(),
             block_wishlist: HashSet::new(),
+            hang_monitor,
         }
     }
 
@@ -198,9 +229,27 @@ impl ProtocolWorker {
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            // Register the worker with the hang-monitor.
+            monitor
+                .register(MonitoredComponentId::Protocol)
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError("Register with hang-monitor failed".into())
+                })?;
+        }
+
         let block_ask_timer = sleep(self.cfg.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
         loop {
+            if let Some(monitor) = self.hang_monitor.as_mut() {
+                // Notify the hang-monitor we are about to wait on a select.
+                monitor.notify_wait().await.map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Wait notification to hang-monitor failed".into(),
+                    )
+                })?;
+            }
             tokio::select! {
                 // block ask timer
                 _ = &mut block_ask_timer => self.update_ask_block(&mut block_ask_timer).await?,
@@ -227,6 +276,16 @@ impl ProtocolWorker {
         cmd: ProtocolCommand,
         timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Protocol((&cmd).into()))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match cmd {
             ProtocolCommand::IntegratedBlock { hash, block } => {
                 massa_trace!("integrated_block", { "block_header": block.header });
@@ -513,6 +572,16 @@ impl ProtocolWorker {
         evt: NetworkEvent,
         block_ask_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Protocol((&evt).into()))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match evt {
             NetworkEvent::NewConnection(node_id) => {
                 self.active_nodes.insert(node_id, nodeinfo::NodeInfo::new());

@@ -2,6 +2,7 @@ use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
     signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES},
 };
+use hang_monitor::NodeHangAnnotation;
 use models::{
     array_from_slice, Block, BlockHeader, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializationContext, SerializeCompact, SerializeVarInt,
@@ -45,6 +46,21 @@ pub enum Message {
     PeerList(Vec<IpAddr>),
     /// Block not found
     BlockNotFound(Hash),
+}
+
+impl From<&Message> for NodeHangAnnotation {
+    fn from(msg: &Message) -> Self {
+        match msg {
+            Message::Block(_) => NodeHangAnnotation::Block,
+            Message::BlockHeader(_) => NodeHangAnnotation::BlockHeader,
+            Message::AskForBlock(_) => NodeHangAnnotation::AskForBlock,
+            Message::PeerList(_) => NodeHangAnnotation::PeerList,
+            Message::AskPeerList => NodeHangAnnotation::AskPeerList,
+            Message::BlockNotFound(_) => NodeHangAnnotation::BlockNotFound,
+            Message::HandshakeInitiation { .. } => NodeHangAnnotation::HandshakeInitiation,
+            Message::HandshakeReply { .. } => NodeHangAnnotation::HandshakeReply,
+        }
+    }
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]

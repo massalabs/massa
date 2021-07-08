@@ -6,6 +6,10 @@ use super::{
 use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use crypto::hash::Hash;
+use hang_monitor::{
+    HangAnnotation, HangMonitorCommandSender, MonitoredComponentId, NetworkHangAnnotation,
+    NodeHangAnnotation,
+};
 use models::{Block, BlockHeader};
 use std::net::IpAddr;
 use tokio::{sync::mpsc, time::timeout};
@@ -24,6 +28,19 @@ pub enum NodeCommand {
     Close(ConnectionClosureReason),
     /// Block not founf
     BlockNotFound(Hash),
+}
+
+impl From<&NodeCommand> for NodeHangAnnotation {
+    fn from(msg: &NodeCommand) -> Self {
+        match msg {
+            NodeCommand::SendPeerList(_) => NodeHangAnnotation::SendPeerList,
+            NodeCommand::SendBlock(_) => NodeHangAnnotation::SendBlock,
+            NodeCommand::SendBlockHeader(_) => NodeHangAnnotation::SendBlockHeader,
+            NodeCommand::AskForBlock(_) => NodeHangAnnotation::CommandAskForBlock,
+            NodeCommand::Close(_) => NodeHangAnnotation::Close,
+            NodeCommand::BlockNotFound(_) => NodeHangAnnotation::CommandBlockNotFound,
+        }
+    }
 }
 
 /// Event types that node worker can emit
@@ -50,6 +67,20 @@ pub enum NodeEventType {
 #[derive(Clone, Debug)]
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
+impl From<&NodeEvent> for NetworkHangAnnotation {
+    fn from(msg: &NodeEvent) -> Self {
+        match msg.1 {
+            NodeEventType::AskedPeerList => NetworkHangAnnotation::ReceivedAskedPeerList,
+            NodeEventType::ReceivedPeerList(_) => NetworkHangAnnotation::ReceivedPeerList,
+            NodeEventType::ReceivedBlock(_) => NetworkHangAnnotation::ReceivedBlock,
+            NodeEventType::ReceivedBlockHeader(_) => NetworkHangAnnotation::ReceivedBlockHeader,
+            NodeEventType::ReceivedAskForBlock(_) => NetworkHangAnnotation::ReceivedAskForBlock,
+            NodeEventType::Closed(_) => NetworkHangAnnotation::ReceivedClosed,
+            NodeEventType::BlockNotFound(_) => NetworkHangAnnotation::ReceivedBlockNotFound,
+        }
+    }
+}
+
 /// Manages connections
 /// One worker per node.
 pub struct NodeWorker {
@@ -65,6 +96,8 @@ pub struct NodeWorker {
     node_command_rx: mpsc::Receiver<NodeCommand>,
     /// Channel to send node events.
     node_event_tx: mpsc::Sender<NodeEvent>,
+    /// Hang monitor.
+    hang_monitor: Option<HangMonitorCommandSender>,
 }
 
 impl NodeWorker {
@@ -85,6 +118,7 @@ impl NodeWorker {
         socket_writer: WriteBinder,
         node_command_rx: mpsc::Receiver<NodeCommand>,
         node_event_tx: mpsc::Sender<NodeEvent>,
+        hang_monitor: Option<HangMonitorCommandSender>,
     ) -> NodeWorker {
         NodeWorker {
             cfg,
@@ -93,11 +127,22 @@ impl NodeWorker {
             socket_writer_opt: Some(socket_writer),
             node_command_rx,
             node_event_tx,
+            hang_monitor,
         }
     }
 
     /// node event loop. Consumes self.
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            // Register the worker with the hang-monitor.
+            monitor
+                .register(MonitoredComponentId::Node)
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError("Register with hang-monitor failed".into())
+                })?;
+        }
+
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(CHANNEL_SIZE);
         let (writer_event_tx, mut writer_event_rx) = mpsc::channel::<bool>(1);
         let mut socket_writer =
@@ -132,10 +177,26 @@ impl NodeWorker {
             tokio::time::interval(self.cfg.ask_peer_list_interval.to_duration());
         let mut exit_reason = ConnectionClosureReason::Normal;
         loop {
+            if let Some(monitor) = self.hang_monitor.as_mut() {
+                // Notify the hang-monitor we are about to wait on a select.
+                monitor.notify_wait().await.map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Wait notification to hang-monitor failed".into(),
+                    )
+                })?;
+            }
             tokio::select! {
                 // incoming socket data
                 res = self.socket_reader.next() => match res {
                     Ok(Some((_, msg))) => {
+                        if let Some(monitor) = self.hang_monitor.as_mut() {
+                            monitor
+                                .notify_activity(HangAnnotation::Node((&msg).into()))
+                                .await
+                                .map_err(|_| {
+                                    CommunicationError::ChannelError("Activity notification to hang-monitor failed".into())
+                                })?;
+                        }
                         match msg {
                             Message::Block(block) => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))
@@ -169,39 +230,52 @@ impl NodeWorker {
                 },
 
                 // node command
-                cmd = self.node_command_rx.recv() => match cmd {
-                    Some(NodeCommand::Close(r)) => {
-                        exit_reason = r;
-                        break;
-                    },
-                    Some(NodeCommand::SendPeerList(ip_vec)) => {
-                        writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(
-                            |_| CommunicationError::ChannelError("send peer list node command send failed".into())
-                        )?;
-                    },
-                    Some(NodeCommand::SendBlockHeader(header)) => {
-                        writer_command_tx.send(Message::BlockHeader(header)).await.map_err(
-                            |_| CommunicationError::ChannelError("send peer block header node command send failed".into())
-                        )?;
-                    },
-                    Some(NodeCommand::SendBlock(block)) => {
-                        writer_command_tx.send(Message::Block(block)).await.map_err(
-                            |_| CommunicationError::ChannelError("send peer block node command send failed".into())
-                        )?;
-                    },
-                    Some(NodeCommand::AskForBlock(block)) => {
-                        writer_command_tx.send(Message::AskForBlock(block)).await.map_err(
-                            |_| CommunicationError::ChannelError("ask peer block node command send failed".into())
-                        )?;
-                    },
-                    Some(NodeCommand::BlockNotFound(hash)) =>  {
-                        writer_command_tx.send(Message::BlockNotFound(hash)).await.map_err(
-                            |_| CommunicationError::ChannelError("send peer block not found node command send failed".into())
-                        )?;
-                    },
-                    None => {
-                        return Err(CommunicationError::UnexpectedProtocolControllerClosureError);
-                    },
+                cmd = self.node_command_rx.recv() => {
+                    if let Some(monitor) = self.hang_monitor.as_mut() {
+                        if let Some(cmd) = cmd.as_ref() {
+                            monitor
+                                .notify_activity(HangAnnotation::Node(cmd.into()))
+                                .await
+                                .map_err(|_| {
+                                    CommunicationError::ChannelError("Activity notification to hang-monitor failed".into())
+                                })?;
+                        }
+                    }
+
+                    match cmd {
+                        Some(NodeCommand::Close(r)) => {
+                            exit_reason = r;
+                            break;
+                        },
+                        Some(NodeCommand::SendPeerList(ip_vec)) => {
+                            writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(
+                                |_| CommunicationError::ChannelError("send peer list node command send failed".into())
+                            )?;
+                        },
+                        Some(NodeCommand::SendBlockHeader(header)) => {
+                            writer_command_tx.send(Message::BlockHeader(header)).await.map_err(
+                                |_| CommunicationError::ChannelError("send peer block header node command send failed".into())
+                            )?;
+                        },
+                        Some(NodeCommand::SendBlock(block)) => {
+                            writer_command_tx.send(Message::Block(block)).await.map_err(
+                                |_| CommunicationError::ChannelError("send peer block node command send failed".into())
+                            )?;
+                        },
+                        Some(NodeCommand::AskForBlock(block)) => {
+                            writer_command_tx.send(Message::AskForBlock(block)).await.map_err(
+                                |_| CommunicationError::ChannelError("ask peer block node command send failed".into())
+                            )?;
+                        },
+                        Some(NodeCommand::BlockNotFound(hash)) =>  {
+                            writer_command_tx.send(Message::BlockNotFound(hash)).await.map_err(
+                                |_| CommunicationError::ChannelError("send peer block not found node command send failed".into())
+                            )?;
+                        },
+                        None => {
+                            return Err(CommunicationError::UnexpectedProtocolControllerClosureError);
+                        },
+                    }
                 },
 
                 // writer event
@@ -216,6 +290,15 @@ impl NodeWorker {
                 },
 
                 _ = ask_peer_list_interval.tick() => {
+                    if let Some(monitor) = self.hang_monitor.as_mut() {
+                        monitor
+                            .notify_activity(HangAnnotation::Node(NodeHangAnnotation::SendAskPeerList))
+                            .await
+                            .map_err(|_| {
+                                CommunicationError::ChannelError("Activity notification to hang-monitor failed".into())
+                            })?;
+                    }
+
                     debug!("timer-based asking node_id={:?} for peer list", self.node_id);
                     massa_trace!("timer_ask_peer_list", {"node_id": self.node_id});
                     writer_command_tx.send(Message::AskPeerList).await.map_err(
@@ -229,6 +312,17 @@ impl NodeWorker {
         drop(writer_command_tx);
         while let Some(_) = writer_event_rx.recv().await {}
         node_writer_handle.await?;
+
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Node(NodeHangAnnotation::Closed))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
 
         // notify protocol controller of closure
         self.node_event_tx

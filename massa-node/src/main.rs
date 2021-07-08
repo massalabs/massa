@@ -10,6 +10,7 @@ use communication::{
     protocol::start_protocol_controller,
 };
 use consensus::start_consensus_controller;
+use hang_monitor::start_hang_monitor_controller;
 use log::{error, info};
 use models::SerializationContext;
 use storage::start_storage;
@@ -40,6 +41,11 @@ async fn run(cfg: config::Config) {
     .await
     .unwrap();
 
+    // Launch hang-monitor.
+    let (hang_monitor_sender, hang_monitor_command_sender) =
+        start_hang_monitor_controller(cfg.hang_monitor.clone())
+            .expect("Failed to start hang-monitor.");
+
     // launch network controller
     let (mut network_command_sender, network_event_receiver, network_manager, private_key) =
         start_network_controller(
@@ -47,6 +53,7 @@ async fn run(cfg: config::Config) {
             serialization_context.clone(),
             Establisher::new(),
             clock_compensation,
+            hang_monitor_sender.clone(),
         )
         .await
         .expect("could not start network controller");
@@ -62,6 +69,7 @@ async fn run(cfg: config::Config) {
             serialization_context.clone(),
             network_command_sender.clone(),
             network_event_receiver,
+            hang_monitor_sender.clone(),
         )
         .await
         .expect("could not start protocol controller");
@@ -76,6 +84,7 @@ async fn run(cfg: config::Config) {
             Some(storage_command_sender.clone()),
             boot_graph,
             clock_compensation,
+            hang_monitor_sender.clone(),
         )
         .await
         .expect("could not start consensus controller");
@@ -199,6 +208,14 @@ async fn run(cfg: config::Config) {
         .stop(network_event_receiver)
         .await
         .expect("network shutdown failed");
+
+    // Stop hang monitor.
+    if let Some(hang_monitor_command_sender) = hang_monitor_command_sender {
+        hang_monitor_command_sender
+            .stop()
+            .await
+            .expect("hang-monitor shutdown failed");
+    }
 }
 
 #[tokio::main]

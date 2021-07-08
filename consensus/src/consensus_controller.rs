@@ -8,6 +8,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
+use hang_monitor::HangMonitorCommandSender;
 use logging::debug;
 use models::{Block, SerializationContext, Slot};
 use std::collections::VecDeque;
@@ -31,6 +32,7 @@ pub async fn start_consensus_controller(
     opt_storage_command_sender: Option<StorageAccess>,
     boot_graph: Option<BoostrapableGraph>,
     clock_compensation: i64,
+    hang_monitor: Option<HangMonitorCommandSender>,
 ) -> Result<
     (
         ConsensusCommandSender,
@@ -76,6 +78,7 @@ pub async fn start_consensus_controller(
             event_tx,
             manager_rx,
             clock_compensation,
+            hang_monitor,
         )?
         .run_loop()
         .await;

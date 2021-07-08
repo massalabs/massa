@@ -7,6 +7,7 @@ use crate::{
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
 use crypto::hash::Hash;
+use hang_monitor::HangMonitorCommandSender;
 use models::{Block, SerializationContext};
 use std::collections::{HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
@@ -25,6 +26,7 @@ pub async fn start_protocol_controller(
     serialization_context: SerializationContext,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    hang_monitor: Option<HangMonitorCommandSender>,
 ) -> Result<
     (
         ProtocolCommandSender,
@@ -48,6 +50,7 @@ pub async fn start_protocol_controller(
             event_tx,
             command_rx,
             manager_rx,
+            hang_monitor,
         )
         .run_loop()
         .await;

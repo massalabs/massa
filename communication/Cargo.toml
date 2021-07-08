@@ -23,6 +23,7 @@ logging = { path = "../logging" }
 crypto = { path = "../crypto" }
 models = { path = "../models" }
 time = { path = "../time" }
+hang-monitor = { path = "../hang-monitor" }
 
 
 [dev-dependencies]

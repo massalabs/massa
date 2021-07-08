@@ -16,6 +16,7 @@ communication = {path = "../communication"}
 logging = { path = "../logging" }
 rand = { version = "0.8"}
 serde = { version = "1.0", features = ["derive"] }
+hang-monitor = { path = "../hang-monitor" }
 models = {path = "../models"}
 serde_json = { version = "1.0" }
 log = { version = "0.4" }

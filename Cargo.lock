@@ -224,6 +224,7 @@ version = "0.1.0"
 dependencies = [
  "crypto",
  "futures",
+ "hang-monitor",
  "itertools",
  "log",
  "logging",
@@ -249,6 +250,7 @@ dependencies = [
  "communication",
  "crypto",
  "futures",
+ "hang-monitor",
  "log",
  "logging",
  "models",
@@ -644,6 +646,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "hang-monitor"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "logging",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "time 0.1.0",
+ "tokio",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -897,6 +912,7 @@ dependencies = [
  "communication",
  "consensus",
  "futures",
+ "hang-monitor",
  "log",
  "logging",
  "models",

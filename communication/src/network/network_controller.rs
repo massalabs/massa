@@ -10,6 +10,7 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, SignatureEngine},
 };
+use hang_monitor::HangMonitorCommandSender;
 use models::{Block, BlockHeader, SerializationContext};
 use std::{
     collections::{HashMap, VecDeque},
@@ -29,6 +30,7 @@ pub async fn start_network_controller(
     serialization_context: SerializationContext,
     mut establisher: Establisher,
     clock_compensation: i64,
+    hang_monitor: Option<HangMonitorCommandSender>,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -101,6 +103,7 @@ pub async fn start_network_controller(
             command_rx,
             event_tx,
             manager_rx,
+            hang_monitor,
         )
         .run_loop()
         .await;

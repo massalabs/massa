@@ -4,6 +4,9 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
+use hang_monitor::{
+    ConsensusHangAnnotation, HangAnnotation, HangMonitorCommandSender, MonitoredComponentId,
+};
 use models::{Block, Slot};
 use std::collections::HashSet;
 use storage::StorageAccess;
@@ -29,6 +32,17 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     },
     GetBootGraph(oneshot::Sender<BoostrapableGraph>),
+}
+
+impl From<&ConsensusCommand> for ConsensusHangAnnotation {
+    fn from(msg: &ConsensusCommand) -> Self {
+        match msg {
+            ConsensusCommand::GetBlockGraphStatus(_) => Self::GetBlockGraphStatus,
+            ConsensusCommand::GetActiveBlock { .. } => Self::GetActiveBlock,
+            ConsensusCommand::GetSelectionDraws { .. } => Self::GetSelectionDraws,
+            ConsensusCommand::GetBootGraph(_) => Self::GetBootGraph,
+        }
+    }
 }
 
 /// Events that are emitted by consensus.
@@ -67,6 +81,8 @@ pub struct ConsensusWorker {
     next_slot: Slot,
     /// blocks we want
     wishlist: HashSet<Hash>,
+    /// Hang monitor.
+    hang_monitor: Option<HangMonitorCommandSender>,
 }
 
 impl ConsensusWorker {
@@ -90,6 +106,7 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
+        hang_monitor: Option<HangMonitorCommandSender>,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
         let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
@@ -118,12 +135,23 @@ impl ConsensusWorker {
             previous_slot,
             next_slot,
             wishlist: HashSet::new(),
+            hang_monitor,
         })
     }
 
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver, ConsensusError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            // Register the worker with the hang-monitor.
+            monitor
+                .register(MonitoredComponentId::Consensus)
+                .await
+                .map_err(|_| {
+                    ConsensusError::SendChannelError("Register with hang-monitor failed".into())
+                })?;
+        }
+
         let next_slot_timer = sleep_until(
             get_block_slot_timestamp(
                 self.cfg.thread_count,
@@ -135,6 +163,14 @@ impl ConsensusWorker {
         );
         tokio::pin!(next_slot_timer);
         loop {
+            if let Some(monitor) = self.hang_monitor.as_mut() {
+                // Notify the hang-monitor we are about to wait on a select.
+                monitor.notify_wait().await.map_err(|_| {
+                    ConsensusError::SendChannelError(
+                        "Wait notification to hang-monitor failed".into(),
+                    )
+                })?;
+            }
             tokio::select! {
                 // slot timer
                 _ = &mut next_slot_timer => self.slot_tick(&mut next_slot_timer).await?,
@@ -163,6 +199,17 @@ impl ConsensusWorker {
         &mut self,
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Consensus(ConsensusHangAnnotation::Slot))
+                .await
+                .map_err(|_| {
+                    ConsensusError::SendChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
+
         let cur_slot = self.next_slot;
         self.previous_slot = Some(cur_slot);
         self.next_slot = self.next_slot.get_next_slot(self.cfg.thread_count)?;
@@ -208,6 +255,16 @@ impl ConsensusWorker {
         &mut self,
         cmd: ConsensusCommand,
     ) -> Result<(), ConsensusError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Consensus((&cmd).into()))
+                .await
+                .map_err(|_| {
+                    ConsensusError::SendChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match cmd {
             ConsensusCommand::GetBlockGraphStatus(response_tx) => response_tx
                 .send(BlockGraphExport::from(&self.block_db))
@@ -276,6 +333,16 @@ impl ConsensusWorker {
     /// # Arguments
     /// * event: event type to process.
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
+        if let Some(monitor) = self.hang_monitor.as_mut() {
+            monitor
+                .notify_activity(HangAnnotation::Consensus((&event).into()))
+                .await
+                .map_err(|_| {
+                    ConsensusError::SendChannelError(
+                        "Activity notification to hang-monitor failed".into(),
+                    )
+                })?;
+        }
         match event {
             ProtocolEvent::ReceivedBlock { hash, block } => {
                 self.block_db.incoming_block(

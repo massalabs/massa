@@ -3,6 +3,7 @@ use bootstrap::config::BootstrapConfig;
 use communication::network::NetworkConfig;
 use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
+use hang_monitor::HangMonitorConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
 use toml;
@@ -21,6 +22,7 @@ pub struct Config {
     pub api: ApiConfig,
     pub storage: StorageConfig,
     pub bootstrap: BootstrapConfig,
+    pub hang_monitor: HangMonitorConfig,
 }
 
 impl Config {
