@@ -40,8 +40,6 @@ impl MockConsensusControllerInterface {
         let best_parents = vec![];
         let discarded_blocks = ExportDiscardedBlocks {
             map: HashMap::new(),
-            vec_deque: VecDeque::new(),
-            max_size: 0,
         };
 
         MockConsensusControllerInterface {

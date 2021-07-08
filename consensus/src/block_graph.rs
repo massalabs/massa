@@ -34,8 +34,6 @@ impl<'a> From<&'a CompiledBlock> for ExportCompiledBlock {
 #[derive(Debug, Clone)]
 pub struct ExportDiscardedBlocks {
     pub map: HashMap<Hash, (DiscardReason, BlockHeader)>,
-    pub vec_deque: VecDeque<Hash>,
-    pub max_size: usize,
 }
 
 impl<'a> From<&'a DiscardedBlocks> for ExportDiscardedBlocks {
@@ -46,8 +44,6 @@ impl<'a> From<&'a DiscardedBlocks> for ExportDiscardedBlocks {
     fn from(block: &'a DiscardedBlocks) -> Self {
         ExportDiscardedBlocks {
             map: block.map.clone(),
-            vec_deque: block.vec_deque.clone(),
-            max_size: block.max_size,
         }
     }
 }
