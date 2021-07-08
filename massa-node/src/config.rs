@@ -1,4 +1,5 @@
 use api::ApiConfig;
+use bootstrap::config::BootstrapConfig;
 use communication::network::NetworkConfig;
 use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
@@ -19,6 +20,7 @@ pub struct Config {
     pub consensus: ConsensusConfig,
     pub api: ApiConfig,
     pub storage: StorageConfig,
+    pub bootstrap: BootstrapConfig,
 }
 
 impl Config {

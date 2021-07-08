@@ -40,6 +40,7 @@ async fn test_storage() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             Some(storage_access.clone()),
+            None,
         )
         .await
         .expect("could not start consensus controller");

@@ -36,6 +36,7 @@ async fn test_ti() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -196,6 +197,7 @@ async fn test_gpi() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await
@@ -370,6 +372,7 @@ async fn test_old_stale() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await

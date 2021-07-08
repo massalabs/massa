@@ -29,6 +29,7 @@ pub async fn start_consensus_controller(
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     opt_storage_command_sender: Option<StorageAccess>,
+    boot_graph: Option<BoostrapableGraph>,
 ) -> Result<
     (
         ConsensusCommandSender,
@@ -58,7 +59,7 @@ pub async fn start_consensus_controller(
     }
 
     // start worker
-    let block_db = BlockGraph::new(cfg.clone(), serialization_context.clone())?;
+    let block_db = BlockGraph::new(cfg.clone(), serialization_context.clone(), boot_graph)?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
@@ -148,6 +149,17 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
         })?
+    }
+
+    pub async fn get_bootstrap_graph(&self) -> Result<BoostrapableGraph, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<BoostrapableGraph>();
+        self.0
+            .send(ConsensusCommand::GetBootGraph(response_tx))
+            .await
+            .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+        })
     }
 }
 

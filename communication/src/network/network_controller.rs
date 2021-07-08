@@ -28,7 +28,15 @@ pub async fn start_network_controller(
     cfg: NetworkConfig,
     serialization_context: SerializationContext,
     mut establisher: Establisher,
-) -> Result<(NetworkCommandSender, NetworkEventReceiver, NetworkManager), CommunicationError> {
+) -> Result<
+    (
+        NetworkCommandSender,
+        NetworkEventReceiver,
+        NetworkManager,
+        PrivateKey,
+    ),
+    CommunicationError,
+> {
     debug!("starting network controller");
 
     // check that local IP is routable
@@ -106,6 +114,7 @@ pub async fn start_network_controller(
             join_handle,
             manager_tx,
         },
+        private_key,
     ))
 }
 

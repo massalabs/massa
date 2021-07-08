@@ -24,6 +24,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -88,6 +89,7 @@ async fn test_consensus_block_not_found() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await

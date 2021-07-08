@@ -22,6 +22,7 @@ async fn test_thread_incompatibility() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             None,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -183,6 +184,7 @@ async fn test_grandpa_incompatibility() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
             None,
         )
         .await

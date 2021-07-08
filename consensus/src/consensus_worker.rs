@@ -28,6 +28,7 @@ pub enum ConsensusCommand {
         end: Slot,
         response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     },
+    GetBootGraph(oneshot::Sender<BoostrapableGraph>),
 }
 
 /// Events that are emitted by consensus.
@@ -254,6 +255,14 @@ impl ConsensusWorker {
                     ))
                 })
             }
+            ConsensusCommand::GetBootGraph(response_tx) => response_tx
+                .send(BoostrapableGraph::from(&self.block_db))
+                .map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send GetBootGraph answer:{:?}",
+                        err
+                    ))
+                }),
         }
     }
 

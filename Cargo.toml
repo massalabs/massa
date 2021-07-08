@@ -11,4 +11,5 @@ members = [
     "massa-client",
     "time",
     "storage",
+    "bootstrap",
 ]

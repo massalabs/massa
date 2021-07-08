@@ -1,11 +1,8 @@
 //! Flexbuffer layer between raw data and our objects.
-use super::messages::Message;
-use crate::error::CommunicationError;
-use crate::network::{ReadHalf, WriteHalf};
-use models::{
-    DeserializeCompact, DeserializeMinBEInt, SerializationContext, SerializeCompact,
-    SerializeMinBEInt,
-};
+use super::messages::BootstrapMessage;
+use crate::error::BootstrapError;
+use crate::establisher::{ReadHalf, WriteHalf};
+use models::{DeserializeCompact, SerializationContext, SerializeCompact};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -35,17 +32,17 @@ impl WriteBinder {
     ///
     /// # Argument
     /// * msg: date to transmit.
-    pub async fn send(&mut self, msg: &Message) -> Result<u64, CommunicationError> {
+    pub async fn send(&mut self, msg: &BootstrapMessage) -> Result<u64, BootstrapError> {
         // serialize
         let bytes_vec = msg.to_bytes_compact(&self.serialization_context)?;
         let msg_size: u32 = bytes_vec
             .len()
             .try_into()
-            .map_err(|_| CommunicationError::GeneralProtocolError("messsage too long".into()))?;
+            .map_err(|_| BootstrapError::GeneralBootstrapError("messsage too long".into()))?;
 
         // send length
         self.write_half
-            .write_all(&msg_size.to_be_bytes_min(self.serialization_context.max_message_size)?[..])
+            .write_all(&msg_size.to_be_bytes()[..])
             .await?;
 
         // send message
@@ -80,10 +77,9 @@ impl ReadBinder {
     }
 
     /// Awaits the next incomming message and deserializes it.
-    pub async fn next(&mut self) -> Result<Option<(u64, Message)>, CommunicationError> {
+    pub async fn next(&mut self) -> Result<Option<(u64, BootstrapMessage)>, BootstrapError> {
         // read message length
-        let msg_len_len = u32::be_bytes_min_length(self.serialization_context.max_message_size);
-        let mut msg_len_buf = vec![0u8; msg_len_len];
+        let mut msg_len_buf = [0u8; 4];
         if let Err(err) = self.read_half.read_exact(&mut msg_len_buf).await {
             if err.kind() == std::io::ErrorKind::UnexpectedEof {
                 return Ok(None);
@@ -91,14 +87,13 @@ impl ReadBinder {
                 return Err(err.into());
             }
         }
-        let (msg_len, _) =
-            u32::from_be_bytes_min(&msg_len_buf, self.serialization_context.max_message_size)?;
+        let msg_len = u32::from_be_bytes(msg_len_buf);
 
         // read message
         let mut msg_buffer = vec![0u8; msg_len as usize];
         self.read_half.read_exact(&mut msg_buffer).await?;
         let (res_msg, _res_msg_len) =
-            Message::from_bytes_compact(&msg_buffer, &self.serialization_context)?;
+            BootstrapMessage::from_bytes_compact(&msg_buffer, &self.serialization_context)?;
         // note: it is possible that _res_msg_len < msg_len if some extras have not been read
 
         let res_index = self.message_index;

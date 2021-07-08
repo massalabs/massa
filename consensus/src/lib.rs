@@ -13,6 +13,7 @@ mod consensus_worker;
 mod error;
 mod random_selector;
 mod timeslots;
+pub use block_graph::BoostrapableGraph;
 pub use block_graph::{
     BlockGraphExport, DiscardReason, ExportCompiledBlock, ExportDiscardedBlocks,
 };

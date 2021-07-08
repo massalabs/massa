@@ -31,6 +31,8 @@
 [protocol]
     message_timeout = 5000
     ask_block_timeout = 10000
+    max_node_known_blocks_size = 100
+    max_node_wanted_blocks_size = 100
 
 [network]
     bind = "0.0.0.0:31234"
@@ -57,5 +59,12 @@
     cache_capacity = 10000
     #flush_every_ms = 
 
-    
-
+[bootstrap]
+    bootstrap_ip = "200.200.200.200"
+    bootstrap_port = 42
+    bootstrap_public_key = '4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb'
+    #listen_port =
+    connect_timeout = 1000
+    bootstrap_time_after_genesis = 100000000000
+    retry_delay = 5000
+    our_bootstrap_private_key = 'LGXe9RrR1QNSsSn8bAEgrsYM8WwX67oHLjGj6e19bCW9ZKo6p'
