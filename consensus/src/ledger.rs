@@ -26,6 +26,12 @@ pub struct LedgerData {
     pub balance: u64,
 }
 
+impl LedgerData {
+    pub fn get_balance(&self) -> u64 {
+        self.balance
+    }
+}
+
 impl SerializeCompact for LedgerData {
     fn to_bytes_compact(
         &self,
@@ -53,13 +59,13 @@ impl LedgerData {
     fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if change.balance_increment {
             self.balance = self.balance.checked_add(change.balance_delta).ok_or(
-                ConsensusError::LedgerOverflowError(
+                ConsensusError::InvalidLedgerChange(
                     "balance overflow in LedgerData::apply_change".into(),
                 ),
             )?;
         } else {
             self.balance = self.balance.checked_sub(change.balance_delta).ok_or(
-                ConsensusError::LedgerOverflowError(
+                ConsensusError::InvalidLedgerChange(
                     "balance underflow in LedgerData::apply_change".into(),
                 ),
             )?;
@@ -75,19 +81,26 @@ pub struct LedgerChange {
 }
 
 impl LedgerChange {
+    pub fn new(balance_delta: u64, balance_increment: bool) -> Self {
+        LedgerChange {
+            balance_delta,
+            balance_increment,
+        }
+    }
+
     fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
             self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
-                ConsensusError::LedgerOverflowError("overflow in LedgerChange::chain".into()),
+                ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into()),
             )?;
         } else if change.balance_delta > self.balance_delta {
             self.balance_delta = change.balance_delta.checked_sub(self.balance_delta).ok_or(
-                ConsensusError::LedgerOverflowError("underflow in LedgerChange::chain".into()),
+                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
             )?;
             self.balance_increment = !self.balance_increment;
         } else {
             self.balance_delta = self.balance_delta.checked_sub(change.balance_delta).ok_or(
-                ConsensusError::LedgerOverflowError("underflow in LedgerChange::chain".into()),
+                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
             )?;
         }
         if self.balance_delta == 0 {
@@ -178,7 +191,8 @@ impl Ledger {
         let latest_final_periods = db.open_tree("latest_final_periods")?;
         if latest_final_periods.is_empty() {
             for thread in 0..cfg.thread_count {
-                latest_final_periods.insert([thread], &[0u8; 4])?; // 0u64
+                let zero: u64 = 0;
+                latest_final_periods.insert([thread], &zero.to_be_bytes())?;
             }
         }
         Ok(Ledger {
@@ -190,7 +204,7 @@ impl Ledger {
     }
 
     /// Returns the final balance of an address. 0 if the address does not exist.
-    fn get_final_balance(&self, address: &Address) -> Result<u64, ConsensusError> {
+    pub fn get_final_balance(&self, address: &Address) -> Result<u64, ConsensusError> {
         let thread = address.get_thread(self.cfg.thread_count);
         if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
             Ok(LedgerData::from_bytes_compact(&res, &self.context)?
@@ -208,8 +222,8 @@ impl Ledger {
     /// * If the balance of an address falls exactly to 0, it is removed from the ledger.
     /// * If the balance of a non-existing address increases, the address is added to the ledger.
     /// * If we attempt to substract more than the balance of an address, the transaction is cancelled and the function returns an error.
-    fn apply_final_changes(
-        &mut self,
+    pub fn apply_final_changes(
+        &self,
         thread: u8,
         changes: Vec<(Address, LedgerChange)>,
         latest_final_period: u64,
@@ -217,8 +231,20 @@ impl Ledger {
         let ledger = self.ledger_per_thread.get(thread as usize).ok_or(
             ConsensusError::LedgerInconsistency(format!("missing ledger for thread {:?}", thread)),
         )?;
+
         ledger.transaction(|db| {
             for (address, change) in changes.iter() {
+                // Check that the right thread for the address was specified.
+                let address_thread = address.get_thread(self.cfg.thread_count);
+                if address_thread != thread {
+                    return Err(sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!(
+                            "Wrong thread for address {:?}",
+                            address
+                        )),
+                    ));
+                }
+
                 let address_bytes = address.to_bytes();
                 let mut data = if let Some(old_bytes) = &db.get(address_bytes)? {
                     let (old, _) = LedgerData::from_bytes_compact(old_bytes, &self.context)
@@ -276,21 +302,23 @@ impl Ledger {
         Ok(())
     }
 
-    /// returns the final periods if they are saved
-    fn get_latest_final_periods(&self) -> Result<Option<Vec<u64>>, ConsensusError> {
+    /// returns the final periods.
+    pub fn get_latest_final_periods(&self) -> Result<Vec<u64>, ConsensusError> {
         let mut res = Vec::new();
         for thread in 0..self.cfg.thread_count {
             if let Some(val) = self.latest_final_periods.get([thread])? {
-                res.push(u64::from_be_bytes(array_from_slice(&val)?))
+                res.push(u64::from_be_bytes(array_from_slice(&val)?));
             } else {
-                return Ok(None);
+                // Note: this should never happen,
+                // since they are initialized in ::new().
+                panic!("Unitialized latest final periods.");
             }
         }
-        Ok(Some(res))
+        Ok(res)
     }
 
     /// To empty the db
-    fn clear(&self) -> Result<(), ConsensusError> {
+    pub fn clear(&self) -> Result<(), ConsensusError> {
         for db in self.ledger_per_thread.iter() {
             db.clear()?;
         }
@@ -299,7 +327,7 @@ impl Ledger {
     }
 
     /// Used for bootstrap
-    fn read_whole(&self) -> Result<Vec<HashMap<Address, LedgerData>>, ConsensusError> {
+    pub fn read_whole(&self) -> Result<Vec<HashMap<Address, LedgerData>>, ConsensusError> {
         let mut res = Vec::new();
         for tree in self.ledger_per_thread.iter() {
             let mut map = HashMap::new();

@@ -7,6 +7,7 @@ mod scenarios91_2;
 mod scenarios_basic;
 mod scenarios_header_check;
 mod scenarios_incompatibilities;
+mod scenarios_ledger;
 mod scenarios_note_attack_attempt;
 mod scenarios_parents;
 mod scenarios_pool_commands;

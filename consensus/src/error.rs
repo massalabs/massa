@@ -19,8 +19,6 @@ pub enum ConsensusError {
     SmallSeedError,
     #[error("time overflow")]
     TimeOverflowError,
-    #[error("ledger overflow: {0}")]
-    LedgerOverflowError(String),
     #[error("slot overflow")]
     SlotOverflowError,
     #[error("thread overflow")]
@@ -63,7 +61,7 @@ pub enum ConsensusError {
     TryFromSliceError(#[from] TryFromSliceError),
     #[error("ledger inconsistency error {0}")]
     LedgerInconsistency(String),
-    #[error("ivalid ledger change {0}")]
+    #[error("ivalid ledger change: {0}")]
     InvalidLedgerChange(String),
     #[error("sled error {0}")]
     SledTransactionError(#[from] sled::transaction::TransactionError<InternalError>),
