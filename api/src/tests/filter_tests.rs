@@ -1,5 +1,5 @@
 use crate::ApiEvent;
-use apimodel::{BlockInfo, HashSlot, NetworkInfo};
+use apimodel::{BlockInfo, Cliques, HashSlot, NetworkInfo};
 use storage::{start_storage_controller, StorageConfig};
 
 use super::tools::*;
@@ -42,7 +42,11 @@ async fn test_cliques() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value = serde_json::from_str(
-            &serde_json::to_string(&(0, Vec::<HashSet<Hash>>::new())).unwrap(),
+            &serde_json::to_string(&Cliques {
+                number: 0,
+                content: Vec::<HashSet<HashSlot>>::new(),
+            })
+            .unwrap(),
         )
         .unwrap();
         assert_eq!(obtained, expected);
@@ -98,11 +102,15 @@ async fn test_cliques() {
     handle.await.unwrap();
     let expected = hash_set
         .iter()
-        .map(|hash| (hash, get_test_block().header.content.slot))
-        .collect::<Vec<(&Hash, Slot)>>();
+        .map(|hash| (hash.clone(), get_test_block().header.content.slot).into())
+        .collect::<HashSet<HashSlot>>();
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&(2, vec![expected.clone(), expected.clone()])).unwrap(),
+        &serde_json::to_string(&Cliques {
+            number: 2,
+            content: vec![expected.clone(), expected.clone()],
+        })
+        .unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -685,10 +693,8 @@ async fn test_peers() {
         handle.await.unwrap();
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-        let expected: serde_json::Value = serde_json::from_str(
-            &serde_json::to_string(&HashMap::<IpAddr, String>::new()).unwrap(),
-        )
-        .unwrap();
+        let expected: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&Vec::<PeerInfo>::new()).unwrap()).unwrap();
         assert_eq!(obtained, expected);
 
         drop(filter);
@@ -747,8 +753,16 @@ async fn test_peers() {
     handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&peers).unwrap()).unwrap();
+    let expected: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(
+            &peers
+                .iter()
+                .map(|(_ip, p)| p.clone())
+                .collect::<Vec<PeerInfo>>(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);

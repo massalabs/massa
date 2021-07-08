@@ -146,7 +146,7 @@ impl std::fmt::Display for StakerInfo {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct HashSlot {
     pub hash: Hash,
     pub slot: Slot,
