@@ -1,17 +1,18 @@
-use crate::{get_filter, ApiConfig};
-use communication::{
-    network::{NetworkCommandSender, NetworkConfig},
-    protocol::{ProtocolCommandSender, ProtocolConfig},
-};
-use consensus::{ConsensusCommandSender, ConsensusConfig, ExportCompiledBlock};
+use crate::{get_filter, ApiConfig, ApiEvent};
+use communication::{network::NetworkConfig, protocol::ProtocolConfig};
+use consensus::{BlockGraphExport, ConsensusConfig, ExportCompiledBlock, ExportDiscardedBlocks};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
 use models::block::{Block, BlockHeader};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    vec,
+};
 use time::UTime;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Receiver};
 use warp::{filters::BoxedFilter, reply::Reply};
 
 pub fn get_test_hash() -> Hash {
@@ -101,22 +102,38 @@ pub fn get_header(
     }
 }
 
-pub fn mock_filter(
-    consensus_cmd: ConsensusCommandSender,
-    protocol_cmd: ProtocolCommandSender,
-    network_cmd: NetworkCommandSender,
-) -> BoxedFilter<(impl Reply,)> {
-    let (evt_tx, _evt_rx) = mpsc::channel(1);
-    get_filter(
-        get_api_config(),
-        get_consensus_config(),
-        get_protocol_config(),
-        get_network_config(),
-        evt_tx,
-        consensus_cmd,
-        protocol_cmd,
-        network_cmd,
+pub fn mock_filter() -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
+    let (evt_tx, evt_rx) = mpsc::channel(1);
+    (
+        get_filter(
+            get_api_config(),
+            get_consensus_config(),
+            get_protocol_config(),
+            get_network_config(),
+            evt_tx,
+        ),
+        evt_rx,
     )
+}
+
+pub fn get_test_block_graph() -> BlockGraphExport {
+    BlockGraphExport {
+        genesis_blocks: vec![get_test_hash(), get_another_test_hash()],
+        active_blocks: HashMap::new(),
+        discarded_blocks: ExportDiscardedBlocks {
+            map: HashMap::new(),
+        },
+        best_parents: Vec::new(),
+        latest_final_blocks_periods: Vec::new(),
+        gi_head: HashMap::new(),
+        max_cliques: Vec::new(),
+    }
+}
+
+pub fn get_dummy_staker() -> PublicKey {
+    let signature_engine = SignatureEngine::new();
+    let private_key = SignatureEngine::generate_random_private_key();
+    signature_engine.derive_public_key(&private_key)
 }
 
 pub fn get_test_block() -> Block {
@@ -139,12 +156,12 @@ pub fn get_test_block() -> Block {
 }
 
 pub fn get_test_compiled_exported_block(
-    _period: u64,
-    _thread: u8,
+    period: u64,
+    thread: u8,
     creator: Option<PublicKey>,
 ) -> ExportCompiledBlock {
     ExportCompiledBlock {
-        block: get_header(2, 0, creator),
+        block: get_header(period, thread, creator),
         children: Vec::new(),
     }
 }

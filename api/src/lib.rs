@@ -5,13 +5,10 @@ mod filters;
 #[cfg(test)]
 mod tests;
 
-use communication::{
-    network::{NetworkCommandSender, NetworkConfig},
-    protocol::{ProtocolCommandSender, ProtocolConfig},
-};
+use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 pub use config::ApiConfig;
 use config::CHANNEL_SIZE;
-use consensus::{ConsensusCommandSender, ConsensusConfig};
+use consensus::ConsensusConfig;
 use filters::get_filter;
 use std::collections::VecDeque;
 use tokio::sync::mpsc;
@@ -33,9 +30,6 @@ pub async fn start_api_controller(
     consensus_config: ConsensusConfig,
     protocol_config: ProtocolConfig,
     network_config: NetworkConfig,
-    consensus_command_sender: ConsensusCommandSender,
-    protocol_command_sender: ProtocolCommandSender,
-    network_command_sender: NetworkCommandSender,
 ) -> Result<(ApiEventReceiver, ApiManager), ApiError> {
     let (event_tx, event_rx) = mpsc::channel::<ApiEvent>(CHANNEL_SIZE);
     let (manager_tx, mut manager_rx) = mpsc::channel::<ApiManagementCommand>(1);
@@ -47,9 +41,6 @@ pub async fn start_api_controller(
         protocol_config,
         network_config,
         event_tx,
-        consensus_command_sender,
-        protocol_command_sender,
-        network_command_sender,
     ))
     .try_bind_with_graceful_shutdown(bind, async move {
         loop {
