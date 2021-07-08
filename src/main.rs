@@ -2,6 +2,7 @@
 mod config;
 mod crypto;
 mod network;
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), failure::Error> {
@@ -19,7 +20,8 @@ async fn main() -> Result<(), failure::Error> {
         .get_matches();
 
     // load config
-    let config = config::Config::from_toml(&std::fs::read_to_string(args.value_of("config").unwrap())?)?;
+    let config =
+        config::Config::from_toml(&std::fs::read_to_string(args.value_of("config").unwrap())?)?;
 
     // setup logging
     stderrlog::new()
@@ -35,8 +37,12 @@ async fn main() -> Result<(), failure::Error> {
         .init()
         .unwrap();
 
+    // launch network
+    const NETWORK_COMMAND_MPSC_CAPACITY: usize = 128;
+    let (network_command_tx, network_command_rx) = mpsc::channel(NETWORK_COMMAND_MPSC_CAPACITY);
+
     // run network layer
-    network::run(config.network).await?;
+    network::run(&config.network, network_command_rx).await?;
 
     // exit
     Ok(())

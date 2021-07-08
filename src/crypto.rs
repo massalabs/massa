@@ -1,14 +1,13 @@
 use bs58;
 use failure::{bail, Error};
 use secp256k1;
-pub use secp256k1::{PublicKey,SecretKey,PublicKeyFormat};
-use sha2::{Sha256, Digest};
+pub use secp256k1::{PublicKey, PublicKeyFormat, SecretKey};
+use sha2::{Digest, Sha256};
 
 /// Useful constants
 pub const SECRET_KEY_SIZE: usize = secp256k1::util::SECRET_KEY_SIZE;
 pub const COMPRESSED_PUBLIC_KEY_SIZE: usize = secp256k1::util::COMPRESSED_PUBLIC_KEY_SIZE;
 pub const SIGNATURE_SIZE: usize = secp256k1::util::SIGNATURE_SIZE;
-
 
 /// Trait representing an object that can be converted to base58
 pub trait B58able: Sized {
@@ -66,11 +65,11 @@ impl B58able for PublicKey {
 /// Trait representing an object that can sign messages
 pub trait SignatureProducer {
     /// Generate message signature
-    fn generate_signature(&self, data: &[u8]) -> Result<[u8 ; SIGNATURE_SIZE], Error>;
+    fn generate_signature(&self, data: &[u8]) -> Result<[u8; SIGNATURE_SIZE], Error>;
 }
 
 impl SignatureProducer for SecretKey {
-    fn generate_signature(&self, data: &[u8]) -> Result<[u8 ; SIGNATURE_SIZE], Error> {
+    fn generate_signature(&self, data: &[u8]) -> Result<[u8; SIGNATURE_SIZE], Error> {
         let mut hasher = Sha256::new();
         hasher.input(data);
         let hashed = hasher.result();
@@ -83,18 +82,18 @@ impl SignatureProducer for SecretKey {
 /// Trait representing an object that can verify signed messages
 pub trait SignatureVerifier {
     /// Verify message signature
-    fn verify_signature(&self, data: &[u8], sig: &[u8 ; SIGNATURE_SIZE]) -> Result<(), Error>;
+    fn verify_signature(&self, data: &[u8], sig: &[u8; SIGNATURE_SIZE]) -> Result<(), Error>;
 }
 
 impl SignatureVerifier for PublicKey {
-    fn verify_signature(&self, data: &[u8], sig: &[u8 ; SIGNATURE_SIZE]) -> Result<(), Error> {
+    fn verify_signature(&self, data: &[u8], sig: &[u8; SIGNATURE_SIZE]) -> Result<(), Error> {
         let mut hasher = Sha256::new();
         hasher.input(data);
         let hashed = hasher.result();
         let msg = secp256k1::Message::parse_slice(&hashed[..])?;
         match secp256k1::verify(&msg, &secp256k1::Signature::parse(sig), &self) {
             true => Ok(()),
-            false => bail!("Signature verification failed")
+            false => bail!("Signature verification failed"),
         }
     }
 }
