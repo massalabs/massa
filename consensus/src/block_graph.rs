@@ -601,7 +601,9 @@ impl BlockGraph {
         for (hash, block) in self.blocks.get_all_ready_for_ack(slot) {
             self.update_consensus_with_new_block(hash, block);
         }
-
+		
+		
+		// TODO: send finals back for storage.
         HashMap::new()
     }
 
