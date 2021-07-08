@@ -45,8 +45,8 @@ pub enum Message {
     PeerList(Vec<IpAddr>),
     /// Block not found
     BlockNotFound(BlockId),
-    /// Operation
-    Operation(Operation),
+    /// Operations
+    Operations(Vec<Operation>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -60,7 +60,7 @@ enum MessageTypeId {
     AskPeerList = 5,
     PeerList = 6,
     BlockNotFound = 7,
-    Operation = 8,
+    Operations = 8,
 }
 
 impl SerializeCompact for Message {
@@ -113,9 +113,12 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
                 res.extend(&hash.to_bytes());
             }
-            Message::Operation(operation) => {
-                res.extend(u32::from(MessageTypeId::Operation).to_varint_bytes());
-                res.extend(&operation.to_bytes_compact(&context)?);
+            Message::Operations(operations) => {
+                res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
+                res.extend((operations.len() as u64).to_varint_bytes());
+                for op in operations.into_iter() {
+                    res.extend(op.to_bytes_compact(&context)?);
+                }
             }
         }
         Ok(res)
@@ -203,10 +206,21 @@ impl DeserializeCompact for Message {
                 cursor += HASH_SIZE_BYTES;
                 Message::BlockNotFound(hash)
             }
-            MessageTypeId::Operation => {
-                let (op, delta) = Operation::from_bytes_compact(&buffer[cursor..], &context)?;
+            MessageTypeId::Operations => {
+                // length
+                let (length, delta) = u32::from_varint_bytes_bounded(
+                    &buffer[cursor..],
+                    context.max_operations_per_message,
+                )?;
                 cursor += delta;
-                Message::Operation(op)
+                // operations
+                let mut ops: Vec<Operation> = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let (op, delta) = Operation::from_bytes_compact(&buffer[cursor..], &context)?;
+                    cursor += delta;
+                    ops.push(op);
+                }
+                Message::Operations(ops)
             }
         };
         Ok((res, cursor))

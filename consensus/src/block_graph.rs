@@ -2553,6 +2553,7 @@ mod tests {
             max_bootstrap_deps: 100,
             max_bootstrap_children: 100,
             max_ask_blocks_per_message: 10,
+            max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         };
 
@@ -2738,6 +2739,7 @@ mod tests {
                 max_bootstrap_deps: 100,
                 max_bootstrap_children: 100,
                 max_ask_blocks_per_message: 10,
+                max_operations_per_message: 1024,
                 max_bootstrap_message_size: 100000000,
             },
         )

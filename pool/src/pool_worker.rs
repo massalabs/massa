@@ -125,11 +125,9 @@ impl PoolWorker {
             PoolCommand::AddOperations(mut ops) => {
                 let newly_added = self.operation_pool.add_operations(ops.clone(), context)?;
                 ops.retain(|op_id, _op| newly_added.contains(op_id));
-                for (op_id, op) in ops.into_iter() {
-                    self.protocol_command_sender
-                        .propagate_operation(op_id, op)
-                        .await?;
-                }
+                self.protocol_command_sender
+                    .propagate_operations(ops)
+                    .await?;
             }
             PoolCommand::UpdateCurrentSlot(slot) => self.operation_pool.update_current_slot(slot),
             PoolCommand::UpdateLatestFinalPeriods(periods) => {
@@ -160,20 +158,12 @@ impl PoolWorker {
         context: &SerializationContext,
     ) -> Result<(), PoolError> {
         match event {
-            ProtocolPoolEvent::ReceivedOperation {
-                operation_id,
-                operation,
-            } => {
-                let mut ops: HashMap<OperationId, Operation> = HashMap::new();
-                ops.insert(operation_id, operation);
-
+            ProtocolPoolEvent::ReceivedOperations(mut ops) => {
                 let newly_added = self.operation_pool.add_operations(ops.clone(), context)?;
                 ops.retain(|op_id, _op| newly_added.contains(op_id));
-                for (op_id, op) in ops.into_iter() {
-                    self.protocol_command_sender
-                        .propagate_operation(op_id, op)
-                        .await?;
-                }
+                self.protocol_command_sender
+                    .propagate_operations(ops)
+                    .await?;
             }
         }
         Ok(())

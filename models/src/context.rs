@@ -12,4 +12,5 @@ pub struct SerializationContext {
     pub max_bootstrap_children: u32,
     pub max_bootstrap_message_size: u32,
     pub max_ask_blocks_per_message: u32,
+    pub max_operations_per_message: u32,
 }

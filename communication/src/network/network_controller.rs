@@ -231,16 +231,16 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    pub async fn send_operation(
+    pub async fn send_operations(
         &self,
         node: NodeId,
-        operation: Operation,
+        operations: Vec<Operation>,
     ) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::SendOperation { node, operation })
+            .send(NetworkCommand::SendOperations { node, operations })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("cound not send block_not_found command".into())
+                CommunicationError::ChannelError("cound not send SendOperations command".into())
             })?;
         Ok(())
     }

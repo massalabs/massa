@@ -52,9 +52,9 @@ pub enum NetworkCommand {
         node: NodeId,
         block_id: BlockId,
     },
-    SendOperation {
+    SendOperations {
         node: NodeId,
-        operation: Operation,
+        operations: Vec<Operation>,
     },
 }
 
@@ -82,9 +82,9 @@ pub enum NetworkEvent {
         node: NodeId,
         block_id: BlockId,
     },
-    ReceivedOperation {
+    ReceivedOperations {
         node: NodeId,
-        operation: Operation,
+        operations: Vec<Operation>,
     },
 }
 
@@ -759,14 +759,14 @@ impl NetworkWorker {
                 )
                 .await;
             }
-            NetworkCommand::SendOperation { node, operation } => {
+            NetworkCommand::SendOperations { node, operations } => {
                 massa_trace!(
-                    "network_worker.manage_network_command receive NetworkCommand::Operation",
-                    { "operation": operation, "node": node }
+                    "network_worker.manage_network_command receive NetworkCommand::SendOperations",
+                    { "node": node, "operations": operations }
                 );
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
-                    NodeCommand::SendOperation(operation),
+                    NodeCommand::SendOperations(operations),
                 )
                 .await;
             }
@@ -977,10 +977,9 @@ impl NetworkWorker {
                     .send_network_event(NetworkEvent::BlockNotFound { node, block_id })
                     .await;
             }
-            NodeEvent(node, NodeEventType::ReceivedOperation(operation)) => {
-                // todo in th
+            NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
                 let _ = self
-                    .send_network_event(NetworkEvent::ReceivedOperation { node, operation })
+                    .send_network_event(NetworkEvent::ReceivedOperations { node, operations })
                     .await;
             }
         }

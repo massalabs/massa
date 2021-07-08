@@ -29,7 +29,7 @@ pub enum NodeCommand {
     /// Block not found
     BlockNotFound(BlockId),
     /// Operation
-    SendOperation(Operation),
+    SendOperations(Vec<Operation>),
 }
 
 /// Event types that node worker can emit
@@ -48,7 +48,7 @@ pub enum NodeEventType {
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Operation
-    ReceivedOperation(Operation),
+    ReceivedOperations(Vec<Operation>),
 }
 
 /// Events node worker can emit.
@@ -217,9 +217,9 @@ impl NodeWorker {
                                 massa_trace!("node_worker.run_loop. receive Message::BlockNotFound", {"hash": hash, "node": self.node_id});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
                             }
-                            Message::Operation(operation) => {
-                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"operation": operation, "node": self.node_id});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperation(operation))).await;
+                            Message::Operations(operations) => {
+                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operations});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
                             _ => {  // wrong message
                                 warn!("node_worker.run_loop.self.socket_reader.next(). other message Error");
@@ -280,10 +280,13 @@ impl NodeWorker {
                                 break;
                             }
                         },
-                        Some(NodeCommand::SendOperation(operation)) => {
-                            massa_trace!("node_worker.run_loop. send Message::OPeration", {"operation": operation, "node": self.node_id});
-                            if writer_command_tx.send(Message::Operation(operation)).await.is_err() {
-                                break;
+                        Some(NodeCommand::SendOperations(operations)) => {
+                            massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
+                            //cut operation list if it exceed max_operations_per_message
+                            for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
+                                if writer_command_tx.send(Message::Operations(to_send_list.iter().cloned().collect())).await.is_err() {
+                                    break 'select_loop;
+                                }
                             }
                         },
                         None => {

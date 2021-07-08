@@ -29,11 +29,8 @@ pub enum ProtocolEvent {
 /// Possible types of pool events that can happen.
 #[derive(Debug, Serialize)]
 pub enum ProtocolPoolEvent {
-    /// An operation was received
-    ReceivedOperation {
-        operation_id: OperationId,
-        operation: Operation,
-    },
+    /// Operations were received
+    ReceivedOperations(HashMap<OperationId, Operation>),
 }
 
 /// Commands that protocol worker can process
@@ -50,11 +47,8 @@ pub enum ProtocolCommand {
     },
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(HashMap<BlockId, Option<Block>>),
-    /// Operation
-    PropagateOperation {
-        operation_id: OperationId,
-        operation: Operation,
-    },
+    /// Propagate operations
+    PropagateOperations(HashMap<OperationId, Operation>),
 }
 
 #[derive(Debug, Serialize)]
@@ -441,17 +435,15 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::PropagateOperation {
-                operation_id,
-                operation,
-            } => {
+            ProtocolCommand::PropagateOperations(ops) => {
                 massa_trace!(
-                    "protocol.protocol_worker.process_command.operation.begin",
-                    { "operation_id": operation_id, "operation": operation }
+                    "protocol.protocol_worker.process_command.propagate_operations.begin",
+                    { "operations": ops }
                 );
+                let ops: Vec<Operation> = ops.into_values().collect();
                 for (node, _) in self.active_nodes.iter() {
                     self.network_command_sender
-                        .send_operation(node.clone(), operation.clone())
+                        .send_operations(node.clone(), ops.clone())
                         .await?
                 }
             }
@@ -704,24 +696,29 @@ impl ProtocolWorker {
         }
     }
 
-    /// Check a an operation
-    fn note_operation_from_node(
+    /// Check operations
+    fn note_operations_from_node(
         &mut self,
-        operation: &Operation,
+        operations: Vec<Operation>,
         source_node_id: &NodeId,
-    ) -> Result<Option<OperationId>, CommunicationError> {
-        massa_trace!("protocol.protocol_worker.note_operation_from_node", { "node": source_node_id, "opearation": operation });
-        match operation.verify_integrity(&self.serialization_context, &self.signature_engine) {
-            Ok(operation_id) => Ok(Some(operation_id)),
-            Err(err) => {
-                massa_trace!("protocol.protocol_worker.note_operation_from_node.invalid", { "node": source_node_id, "opearation": operation, "err": format!("{:?}", err) });
-                warn!(
-                    "node {:?} sent an invalid operation: {:?}",
-                    source_node_id, err
-                );
-                Ok(None)
+    ) -> HashMap<OperationId, Operation> {
+        massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "opearations": operations });
+        let mut result = HashMap::new();
+        for op in operations.into_iter() {
+            match op.verify_integrity(&self.serialization_context, &self.signature_engine) {
+                Ok(operation_id) => {
+                    result.insert(operation_id, op);
+                }
+                Err(err) => {
+                    massa_trace!("protocol.protocol_worker.note_operations_from_node.invalid", { "node": source_node_id, "opearation": op, "err": format!("{:?}", err) });
+                    warn!(
+                        "node {:?} sent an invalid operation: {:?}",
+                        source_node_id, err
+                    );
+                }
             }
         }
+        result
     }
 
     /// Manages network event
@@ -823,17 +820,11 @@ impl ProtocolWorker {
                 }
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::ReceivedOperation { node, operation } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_operation", { "node": node, "operation": operation});
-                if let Some(operation_id) = self.note_operation_from_node(&operation, &node)? {
-                    self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperation {
-                        operation_id,
-                        operation,
-                    })
+            NetworkEvent::ReceivedOperations { node, operations } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
+                let operations = self.note_operations_from_node(operations, &node);
+                self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations(operations))
                     .await;
-                } else {
-                    massa_trace!("protocol.protocol_worker.on_network_event.received_operation.noack_invalid", { "node": node, "operation": operation});
-                }
             }
         }
         Ok(())

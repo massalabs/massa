@@ -63,6 +63,7 @@ pub fn create_network_config(
             ask_peer_list_interval: UTime::from(50000u64),
             private_key_file: get_temp_private_key_file().path().to_path_buf(),
             max_ask_blocks_per_message: 10,
+            max_operations_per_message: 1024,
             max_send_wait: UTime::from(100),
         },
         SerializationContext {
@@ -76,6 +77,7 @@ pub fn create_network_config(
             max_bootstrap_deps: 100,
             max_bootstrap_children: 100,
             max_ask_blocks_per_message: 10,
+            max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         },
     )
