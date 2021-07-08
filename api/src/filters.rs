@@ -156,7 +156,6 @@ use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
     ConsensusConfig, ConsensusError, DiscardReason, LedgerDataExport,
 };
-use crypto::signature::PublicKey;
 use logging::massa_trace;
 use models::Address;
 use models::ModelsError;

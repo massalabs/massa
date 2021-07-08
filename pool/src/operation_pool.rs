@@ -345,6 +345,8 @@ mod tests {
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
+            max_bootstrap_pos_entries: 1000,
+            max_bootstrap_pos_cycles: 5,
         });
 
         (

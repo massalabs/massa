@@ -1,5 +1,4 @@
 use crate::error::InternalError;
-use crypto::hash::HASH_SIZE_BYTES;
 use sled::{Transactional, Tree};
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -9,7 +8,8 @@ use std::{
 
 use crate::{ConsensusConfig, ConsensusError};
 use models::{
-    array_from_slice, u8_from_slice, Address, DeserializeCompact, SerializeCompact, SerializeVarInt,
+    array_from_slice, u8_from_slice, Address, DeserializeCompact, ModelsError, SerializeCompact,
+    SerializeVarInt, ADDRESS_SIZE_BYTES,
 };
 use models::{DeserializeVarInt, Operation};
 use serde::{Deserialize, Serialize};
@@ -103,12 +103,8 @@ impl LedgerChange {
 impl SerializeCompact for LedgerChange {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
+        res.push(if self.balance_increment { 1u8 } else { 0u8 });
         res.extend(self.balance_delta.to_varint_bytes());
-        if self.balance_increment {
-            res.push(1);
-        } else {
-            res.push(0);
-        }
         Ok(res)
     }
 }
@@ -116,21 +112,26 @@ impl SerializeCompact for LedgerChange {
 impl DeserializeCompact for LedgerChange {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
+
+        let balance_increment = match u8_from_slice(&buffer[cursor..])? {
+            0u8 => false,
+            1u8 => true,
+            _ => {
+                return Err(ModelsError::DeserializeError(
+                    "wrong boolean balance_increment encoding in LedgerChange deserialization"
+                        .into(),
+                ))
+            }
+        };
+        cursor += 1;
+
         let (balance_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
-        let balance_increment_u8 = u8_from_slice(&buffer)?;
-        cursor += 1;
-        let balance_increment = if balance_increment_u8 == 0 {
-            false
-        } else {
-            true
-        };
-
         Ok((
             LedgerChange {
-                balance_delta,
                 balance_increment,
+                balance_delta,
             },
             cursor,
         ))
@@ -745,7 +746,7 @@ impl DeserializeCompact for LedgerExport {
 
             for _ in 0..(vec_count as usize) {
                 let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += HASH_SIZE_BYTES;
+                cursor += ADDRESS_SIZE_BYTES;
 
                 let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;

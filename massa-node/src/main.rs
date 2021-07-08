@@ -35,9 +35,11 @@ async fn run(cfg: config::Config) {
         max_ask_blocks_per_message: cfg.network.max_ask_blocks_per_message,
         max_operations_per_message: cfg.network.max_operations_per_message,
         max_bootstrap_message_size: cfg.bootstrap.max_bootstrap_message_size,
+        max_bootstrap_pos_cycles: cfg.bootstrap.max_bootstrap_pos_cycles,
+        max_bootstrap_pos_entries: cfg.bootstrap.max_bootstrap_pos_entries,
     });
 
-    let (boot_graph, clock_compensation, initial_peers) = get_state(
+    let (boot_pos, boot_graph, clock_compensation, initial_peers) = get_state(
         cfg.bootstrap.clone(),
         bootstrap::establisher::Establisher::new(),
     )
@@ -93,6 +95,7 @@ async fn run(cfg: config::Config) {
             protocol_event_receiver,
             pool_command_sender.clone(),
             Some(storage_command_sender.clone()),
+            boot_pos,
             boot_graph,
             clock_compensation,
         )

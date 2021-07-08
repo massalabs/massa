@@ -30,6 +30,8 @@ async fn test_max_block_count() {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_bootstrap_message_size: 100000000,
+        max_bootstrap_pos_entries: 1000,
+        max_bootstrap_pos_cycles: 5,
     });
 
     let (storage, manager) = start_storage(config).unwrap();
@@ -98,6 +100,8 @@ async fn test_max_nb_blocks() {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_bootstrap_message_size: 100000000,
+        max_bootstrap_pos_entries: 1000,
+        max_bootstrap_pos_cycles: 5,
     });
 
     let (storage, manager) = start_storage(config).unwrap();
@@ -165,6 +169,8 @@ async fn test_get_slot_range() {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_bootstrap_message_size: 100000000,
+        max_bootstrap_pos_entries: 1000,
+        max_bootstrap_pos_cycles: 5,
     });
 
     let (storage, manager) = start_storage(config).unwrap();

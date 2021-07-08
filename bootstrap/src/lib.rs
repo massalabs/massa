@@ -1,6 +1,6 @@
 use binders::{ReadBinder, WriteBinder};
 use communication::network::{BootstrapPeers, NetworkCommandSender};
-use consensus::{BootsrapableGraph, ConsensusCommandSender};
+use consensus::{BootsrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use establisher::{ReadHalf, WriteHalf};
 use log::{debug, warn};
 use std::net::SocketAddr;
@@ -30,7 +30,7 @@ async fn get_state_internal(
     cfg: &BootstrapConfig,
     bootstrap_addr: SocketAddr,
     establisher: &mut Establisher,
-) -> Result<(BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
+) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
 
     // connect and handshake
@@ -139,7 +139,8 @@ async fn get_state_internal(
     let sig_prev = sig;
 
     // Third, handle state message.
-    let (graph, sig) = match tokio::time::timeout(cfg.read_timeout.into(), reader.next()).await {
+    let (pos, graph, sig) = match tokio::time::timeout(cfg.read_timeout.into(), reader.next()).await
+    {
         Err(_) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -149,24 +150,38 @@ async fn get_state_internal(
         }
         Ok(Err(e)) => return Err(e),
         Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
-        Ok(Ok(Some((_, BootstrapMessage::ConsensusState { graph, signature })))) => {
-            (graph, signature)
-        }
+        Ok(Ok(Some((
+            _,
+            BootstrapMessage::ConsensusState {
+                pos,
+                graph,
+                signature,
+            },
+        )))) => (pos, graph, signature),
         Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
     // check signature
     let mut signed_data = sig_prev.to_bytes().to_vec();
+    signed_data.extend(pos.to_bytes_compact()?);
     signed_data.extend(graph.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
     verify_signature(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
 
-    Ok((graph, compensation_millis, peers))
+    Ok((pos, graph, compensation_millis, peers))
 }
 
 pub async fn get_state(
     mut cfg: BootstrapConfig,
     mut establisher: Establisher,
-) -> Result<(Option<BootsrapableGraph>, i64, Option<BootstrapPeers>), BootstrapError> {
+) -> Result<
+    (
+        Option<ExportProofOfStake>,
+        Option<BootsrapableGraph>,
+        i64,
+        Option<BootstrapPeers>,
+    ),
+    BootstrapError,
+> {
     massa_trace!("bootstrap.lib.get_state", {});
     if let Some(addr) = cfg.bootstrap_addr.take() {
         loop {
@@ -175,13 +190,13 @@ pub async fn get_state(
                     warn!("error {:?} while bootstraping", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
-                Ok((graph, compensation, peers)) => {
-                    return Ok((Some(graph), compensation, Some(peers)))
+                Ok((pos, graph, compensation, peers)) => {
+                    return Ok((Some(pos), Some(graph), compensation, Some(peers)))
                 }
             }
         }
     }
-    Ok((None, 0, None))
+    Ok((None, None, 0, None))
 }
 
 pub struct BootstrapManager {
@@ -358,16 +373,18 @@ impl BootstrapServer {
         }
         let last_sig = signature;
 
-        // Third, send state.
-        let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
+        // Third, send consensus state.
+        let (pos, graph) = self.consensus_command_sender.get_bootstrap_state().await?;
         let mut signed_data = vec![];
         signed_data.extend(&last_sig.into_bytes());
+        signed_data.extend(pos.to_bytes_compact()?);
         signed_data.extend(graph.to_bytes_compact()?);
         let signed_data_hash = Hash::hash(&signed_data);
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::ConsensusState {
+                pos,
                 graph,
                 signature: signature.clone(),
             }),

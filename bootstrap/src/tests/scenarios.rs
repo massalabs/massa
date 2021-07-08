@@ -10,7 +10,7 @@ use crate::{get_state, start_bootstrap_server};
 use super::{
     mock_establisher,
     tools::{
-        bridge_mock_streams, get_boot_graph, get_bootstrap_config, get_keys, get_peers,
+        bridge_mock_streams, get_boot_state, get_bootstrap_config, get_keys, get_peers,
         wait_consensus_command, wait_network_command,
     },
 };
@@ -18,6 +18,12 @@ use super::{
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
+    stderrlog::new()
+        .verbosity(4)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();
+
     let (private_key, public_key) = get_keys();
     let cfg = get_bootstrap_config(public_key);
 
@@ -93,7 +99,7 @@ async fn test_bootstrap_server() {
     // wait for bootstrap to ask consensus for bootstrap graph, send it
     let response = match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd
     {
-        ConsensusCommand::GetBootGraph(resp) => Some(resp),
+        ConsensusCommand::GetBootstrapState(resp) => Some(resp),
         _ => None,
     })
     .await
@@ -101,11 +107,13 @@ async fn test_bootstrap_server() {
         Some(resp) => resp,
         None => panic!("timeout waiting for get boot graph consensus command"),
     };
-    let sent_graph = get_boot_graph();
-    response.send(sent_graph.clone()).unwrap();
+    let (sent_pos, sent_graph) = get_boot_state();
+    response
+        .send((sent_pos.clone(), sent_graph.clone()))
+        .unwrap();
 
     // wait for get_state
-    let (maybe_recv_graph, _comp, maybe_recv_peers) = get_state_h
+    let (maybe_recv_pos, maybe_recv_graph, _comp, maybe_recv_peers) = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
 
@@ -114,6 +122,12 @@ async fn test_bootstrap_server() {
     bridge_h2.await.expect("bridge 2 join failed");
 
     // check states
+    let recv_pos = maybe_recv_pos.unwrap();
+    assert_eq!(
+        sent_pos.to_bytes_compact().unwrap(),
+        recv_pos.to_bytes_compact().unwrap(),
+        "mismatch between sent and received pos"
+    );
     let recv_graph = maybe_recv_graph.unwrap();
     assert_eq!(
         sent_graph.to_bytes_compact().unwrap(),

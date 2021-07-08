@@ -1,4 +1,7 @@
-use crate::ledger::{LedgerChange, LedgerSubset, OperationLedgerInterface};
+use crate::{
+    ledger::{LedgerChange, LedgerSubset, OperationLedgerInterface},
+    pos::ExportProofOfStake,
+};
 
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, pos::ProofOfStake, timeslots::*,
@@ -40,8 +43,8 @@ pub enum ConsensusCommand {
         end: Slot,
         response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
     },
-    /// Returns the bootstrap graph
-    GetBootGraph(oneshot::Sender<BootsrapableGraph>),
+    /// Returns the bootstrap state
+    GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootsrapableGraph)>),
     /// Returns through a channel current blockgraph without block operations.
     GetLedgerData {
         addresses: HashSet<Address>,
@@ -552,19 +555,21 @@ impl ConsensusWorker {
                     ))
                 })
             }
-            ConsensusCommand::GetBootGraph(response_tx) => {
+            ConsensusCommand::GetBootstrapState(response_tx) => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_boot_graph",
+                    "consensus.consensus_worker.process_consensus_command.get_bootstrap_state",
                     {}
                 );
-                response_tx
-                    .send(BootsrapableGraph::try_from(&self.block_db)?)
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send GetBootGraph answer:{:?}",
-                            err
-                        ))
-                    })
+                let resp = (
+                    self.pos.export(),
+                    BootsrapableGraph::try_from(&self.block_db)?,
+                );
+                response_tx.send(resp).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send GetBootstrapState answer:{:?}",
+                        err
+                    ))
+                })
             }
             ConsensusCommand::GetLedgerData {
                 addresses,

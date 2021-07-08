@@ -25,3 +25,4 @@ log = { version = "0.4" }
 stderrlog = { version = "0.5" }
 pretty_assertions = "0.6"
 serial_test = "0.5.1"
+bitvec = { version = "0.22.3", features = ["serde"] }

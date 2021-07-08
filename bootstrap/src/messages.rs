@@ -1,5 +1,5 @@
 use communication::network::BootstrapPeers;
-use consensus::BootsrapableGraph;
+use consensus::{BootsrapableGraph, ExportProofOfStake};
 use crypto::signature::{Signature, SIGNATURE_SIZE_BYTES};
 use models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
@@ -36,7 +36,9 @@ pub enum BootstrapMessage {
     },
     /// Global consensus state
     ConsensusState {
-        /// Content
+        /// PoS
+        pos: ExportProofOfStake,
+        /// block graph
         graph: BootsrapableGraph,
         /// Signature of [BootstrapPeers.signature + peers]
         signature: Signature,
@@ -73,9 +75,14 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(&signature.to_bytes());
                 res.extend(&peers.to_bytes_compact()?);
             }
-            BootstrapMessage::ConsensusState { graph, signature } => {
+            BootstrapMessage::ConsensusState {
+                pos,
+                graph,
+                signature,
+            } => {
                 res.extend(u32::from(MessageTypeId::ConsensusState).to_varint_bytes());
                 res.extend(&signature.to_bytes());
+                res.extend(&pos.to_bytes_compact()?);
                 res.extend(&graph.to_bytes_compact()?);
             }
         }
@@ -124,125 +131,18 @@ impl DeserializeCompact for BootstrapMessage {
             MessageTypeId::ConsensusState => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
+                let (pos, delta) = ExportProofOfStake::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
                 let (graph, delta) = BootsrapableGraph::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
-                BootstrapMessage::ConsensusState { signature, graph }
+                BootstrapMessage::ConsensusState {
+                    pos,
+                    signature,
+                    graph,
+                }
             }
         };
         Ok((res, cursor))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tests::tools::get_dummy_block_id;
-    use consensus::LedgerExport;
-    use rand::{rngs::StdRng, RngCore, SeedableRng};
-    use serial_test::serial;
-
-    #[test]
-    #[serial]
-    fn test_message_serialize_compact() {
-        //test with 2 thread
-        models::init_serialization_context(models::SerializationContext {
-            max_block_operations: 1024,
-            parent_count: 2,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_block_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-        });
-
-        let mut base_random_bytes = [0u8; 32];
-        StdRng::from_entropy().fill_bytes(&mut base_random_bytes);
-        let message1 = BootstrapMessage::BootstrapInitiation {
-            random_bytes: base_random_bytes,
-        };
-
-        let bytes = message1.to_bytes_compact().unwrap();
-        let (new_message1, cursor) = BootstrapMessage::from_bytes_compact(&bytes).unwrap();
-        assert_eq!(bytes.len(), cursor);
-
-        if let BootstrapMessage::BootstrapInitiation { random_bytes } = new_message1 {
-            assert_eq!(base_random_bytes, random_bytes);
-        } else {
-            panic!("not the right message variant expected BootstrapInitiation");
-        }
-
-        let base_graph = BootsrapableGraph {
-            /// Map of active blocks, were blocks are in their exported version.
-            active_blocks: Vec::new(),
-            /// Best parents hashe in each thread.
-            best_parents: vec![
-                get_dummy_block_id("parent11"),
-                get_dummy_block_id("parent12"),
-            ],
-            /// Latest final period and block hash in each thread.
-            latest_final_blocks_periods: vec![
-                (get_dummy_block_id("lfinal11"), 23),
-                (get_dummy_block_id("lfinal12"), 24),
-            ],
-            /// Head of the incompatibility graph.
-            gi_head: vec![
-                (
-                    get_dummy_block_id("gi_head11"),
-                    vec![get_dummy_block_id("set11"), get_dummy_block_id("set12")]
-                        .into_iter()
-                        .collect(),
-                ),
-                (
-                    get_dummy_block_id("gi_head12"),
-                    vec![get_dummy_block_id("set21"), get_dummy_block_id("set22")]
-                        .into_iter()
-                        .collect(),
-                ),
-                (
-                    get_dummy_block_id("gi_head13"),
-                    vec![get_dummy_block_id("set31"), get_dummy_block_id("set32")]
-                        .into_iter()
-                        .collect(),
-                ),
-            ]
-            .into_iter()
-            .collect(),
-
-            /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![vec![
-                get_dummy_block_id("max_cliques11"),
-                get_dummy_block_id("max_cliques12"),
-            ]
-            .into_iter()
-            .collect()],
-
-            ledger: LedgerExport::new(2),
-        };
-
-        let base_signature = crypto::signature::Signature::from_bs58_check(
-                    "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
-                ).unwrap();
-
-        let message2 = BootstrapMessage::ConsensusState {
-            graph: base_graph,
-            signature: base_signature,
-        };
-        let bytes = message2.to_bytes_compact().unwrap();
-        let (new_message2, cursor) = BootstrapMessage::from_bytes_compact(&bytes).unwrap();
-
-        assert_eq!(bytes.len(), cursor);
-        if let BootstrapMessage::ConsensusState { graph, signature } = new_message2 {
-            assert_eq!(base_signature, signature);
-            assert_eq!(get_dummy_block_id("parent11"), graph.best_parents[0]);
-            assert_eq!(get_dummy_block_id("parent12"), graph.best_parents[1]);
-        } else {
-            panic!("not the right message variant expected ConsensusState");
-        }
     }
 }

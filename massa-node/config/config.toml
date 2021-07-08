@@ -88,6 +88,8 @@
     max_bootstrap_message_size = 100000000
     read_timeout = 100000
     write_timeout = 10000
+    max_bootstrap_pos_entries = 100000000
+    max_bootstrap_pos_cycles = 5
 
 [pool]
     max_pool_size_per_thread = 100000

@@ -28,4 +28,8 @@ pub struct BootstrapConfig {
     pub max_bootstrap_children: u32,
     /// Max ping delay.
     pub max_ping: UTime,
+    /// Max number of cycles in PoS bootstrap
+    pub max_bootstrap_pos_cycles: u32,
+    /// Max number of address and rng entries for PoS bootstrap
+    pub max_bootstrap_pos_entries: u32,
 }
