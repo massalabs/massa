@@ -1,5 +1,6 @@
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
+use crate::network::NetworkCommand;
 use crate::protocol::{ProtocolConfig, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{
     hash::Hash,
@@ -70,7 +71,7 @@ pub fn create_block(
 pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
     (
         ProtocolConfig {
-            ask_block_timeout: 10.into(),
+            ask_block_timeout: 500.into(),
         },
         SerializationContext {
             max_block_size: 1024 * 1024,
@@ -101,4 +102,27 @@ where
             _ = &mut timer => return None
         }
     }
+}
+
+pub async fn assert_hash_asked_to_node(
+    hash_1: Hash,
+    node_id: NodeId,
+    network_controller: &mut MockNetworkController,
+) {
+    let ask_for_block_cmd_filter = |cmd| match cmd {
+        cmd @ NetworkCommand::AskForBlock(..) => Some(cmd),
+        b => {
+            println!("{:?}", b);
+            None
+        }
+    };
+    let (ask_to_node_id, asked_for_hash) = match network_controller
+        .wait_command(1000.into(), ask_for_block_cmd_filter)
+        .await
+    {
+        Some(NetworkCommand::AskForBlock(node_id, hash)) => (node_id, hash),
+        cmd => panic!("Unexpected network command. {:?}", cmd),
+    };
+    assert_eq!(hash_1, asked_for_hash);
+    assert_eq!(ask_to_node_id, node_id);
 }

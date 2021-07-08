@@ -81,4 +81,11 @@ impl MockNetworkController {
             .await
             .expect("Couldn't send ask for block to protocol.");
     }
+
+    pub async fn send_block_not_found(&mut self, source_node_id: NodeId, hash: Hash) {
+        self.network_event_tx
+            .send(NetworkEvent::BlockNotFound(source_node_id, hash))
+            .await
+            .expect("Couldn't send ask for block to protocol.");
+    }
 }
