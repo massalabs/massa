@@ -1,40 +1,51 @@
+use crate::storage_worker::BlockStorage;
+use crypto::hash::Hash;
 use logging::{debug, massa_trace};
+use models::block::Block;
+use std::collections::HashMap;
 use std::collections::VecDeque;
-
-use tokio::{sync::mpsc, task::JoinHandle};
+use tokio::sync::mpsc;
 
 use crate::{
     config::{StorageConfig, CHANNEL_SIZE},
     error::StorageError,
-    storage_worker::{StorageCommand, StorageEvent, StorageManagementCommand, StorageWorker},
+    storage_worker::StorageEvent,
 };
 
-pub async fn start_storage_controller(
+pub fn start_storage_controller(
     cfg: StorageConfig,
 ) -> Result<(StorageCommandSender, StorageEventReceiver, StorageManager), StorageError> {
     debug!("starting storage controller");
     massa_trace!("start", {});
-    let (command_tx, command_rx) = mpsc::channel::<StorageCommand>(CHANNEL_SIZE);
-    let (event_tx, event_rx) = mpsc::channel::<StorageEvent>(CHANNEL_SIZE);
-    let (manager_tx, manager_rx) = mpsc::channel::<StorageManagementCommand>(1);
-    let cfg_copy = cfg.clone();
-    let join_handle = tokio::spawn(async move {
-        StorageWorker::new(cfg_copy, command_rx, event_tx, manager_rx)?
-            .run_loop()
-            .await
-    });
+    let (_event_tx, event_rx) = mpsc::channel::<StorageEvent>(CHANNEL_SIZE);
+    let db = BlockStorage::open(&cfg)?;
     Ok((
-        StorageCommandSender(command_tx),
+        StorageCommandSender(db.clone()),
         StorageEventReceiver(event_rx),
-        StorageManager {
-            join_handle,
-            manager_tx,
-        },
+        StorageManager(db),
     ))
 }
 
 #[derive(Clone)]
-pub struct StorageCommandSender(pub mpsc::Sender<StorageCommand>);
+pub struct StorageCommandSender(pub BlockStorage);
+
+impl StorageCommandSender {
+    pub async fn add_block(&'static self, hash: Hash, block: Block) -> Result<(), StorageError> {
+        tokio::task::spawn_blocking(move || self.0.add_block(hash, block)).await?
+    }
+
+    pub async fn get_block(&'static self, hash: Hash) -> Result<Option<Block>, StorageError> {
+        tokio::task::spawn_blocking(move || self.0.get_block(hash)).await?
+    }
+
+    pub async fn get_slot_range(
+        &'static self,
+        start: (u64, u8),
+        end: (u64, u8),
+    ) -> Result<HashMap<Hash, Block>, StorageError> {
+        tokio::task::spawn_blocking(move || self.0.get_slot_range(start, end)).await?
+    }
+}
 
 pub struct StorageEventReceiver(pub mpsc::Receiver<StorageEvent>);
 
@@ -55,18 +66,14 @@ impl StorageEventReceiver {
     }
 }
 
-pub struct StorageManager {
-    join_handle: JoinHandle<Result<(), StorageError>>,
-    manager_tx: mpsc::Sender<StorageManagementCommand>,
-}
+pub struct StorageManager(pub BlockStorage);
 
 impl StorageManager {
     pub async fn stop(
         self,
         storage_event_receiver: StorageEventReceiver,
     ) -> Result<(), StorageError> {
-        drop(self.manager_tx);
         let _remaining_events = storage_event_receiver.drain().await;
-        self.join_handle.await?
+        Ok(())
     }
 }
