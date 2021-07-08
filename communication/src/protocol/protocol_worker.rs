@@ -2,7 +2,8 @@ use super::config::ProtocolConfig;
 use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
-use models::{Block, BlockHeader, BlockId, Operation, OperationId, SerializationContext};
+use crypto::hash::Hash;
+use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId, SerializationContext};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -685,11 +686,76 @@ impl ProtocolWorker {
                 }
                 Ok(None)
             }
-            Err(_) => {
-                let _ = self.ban_node(source_node_id).await;
+            Err(err) => {
+                massa_trace!("protocol.protocol_worker.note_header_from_node.err", { "node": source_node_id, "header": header, "err": format!("{:?}", err)});
                 Ok(None)
             }
         }
+    }
+
+    /// Check a header's signature, and if valid note the node knows the block.
+    async fn note_block_from_node(
+        &mut self,
+        block: &Block,
+        source_node_id: &NodeId,
+    ) -> Result<Option<BlockId>, CommunicationError> {
+        massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
+
+        // check header
+        let block_id = match block.header.verify_integrity(&self.serialization_context) {
+            Ok(block_id) => block_id,
+            Err(err) => {
+                massa_trace!("protocol.protocol_worker.note_block_from_node.err_header", { "node": source_node_id, "block": block, "err": format!("{:?}", err)});
+                return Ok(None);
+            }
+        };
+
+        // check operations (signatures, threads, ops hash)
+        let mut op_ids: Vec<u8> = Vec::new();
+        for op in block.operations.iter() {
+            match Address::from_public_key(&op.content.sender_public_key) {
+                Ok(addr) => {
+                    if addr.get_thread(self.serialization_context.parent_count)
+                        != block.header.content.slot.thread
+                    {
+                        massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
+                            { "node": source_node_id,"block_id":block_id, "block": block, "op": op});
+                        return Ok(None);
+                    }
+                }
+                Err(err) => {
+                    massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_creator_address",
+                        { "node": source_node_id,"block_id":block_id, "block": block, "op": op, "err": format!("{:?}", err)});
+                    return Ok(None);
+                }
+            }
+            match op.verify_integrity(&self.serialization_context) {
+                Ok(op_id) => op_ids.extend(&op_id.into_bytes()),
+                Err(err) => {
+                    massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_integrity",
+                        { "node": source_node_id,"block_id":block_id, "block": block, "op": op, "err": format!("{:?}", err)});
+                    return Ok(None);
+                }
+            }
+        }
+        if block.header.content.operation_merkle_root != Hash::hash(&op_ids) {
+            massa_trace!("protocol.protocol_worker.note_block_from_node.err_header_op_hash",
+                { "node": source_node_id,"block_id":block_id, "block": block });
+            return Ok(None);
+        }
+
+        // add to known blocks
+        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            node_info.insert_known_block(
+                block_id,
+                true,
+                Instant::now(),
+                self.cfg.max_node_known_blocks_size,
+            );
+            massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
+            return Ok(Some(block_id));
+        }
+        Ok(None)
     }
 
     /// Check operations
@@ -749,10 +815,7 @@ impl ProtocolWorker {
                 block,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
-                if let Some(block_id) = self
-                    .note_header_from_node(&block.header, &from_node_id)
-                    .await?
-                {
+                if let Some(block_id) = self.note_block_from_node(&block, &from_node_id).await? {
                     let mut set = HashSet::with_capacity(1);
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
@@ -763,7 +826,8 @@ impl ProtocolWorker {
                     warn!(
                         "node {:?} sent us critically incorrect block {:?}",
                         from_node_id, block
-                    )
+                    );
+                    let _ = self.ban_node(&from_node_id).await;
                 }
             }
             NetworkEvent::AskedForBlocks {
@@ -801,7 +865,8 @@ impl ProtocolWorker {
                     warn!(
                         "node {:?} sent us critically incorrect header {:?}",
                         source_node_id, header
-                    )
+                    );
+                    let _ = self.ban_node(&source_node_id).await;
                 }
             }
             NetworkEvent::BlockNotFound { node, block_id } => {
