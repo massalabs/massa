@@ -80,7 +80,7 @@ impl ConnectionController {
         })
     }
 
-    pub async fn stop(mut self) {
+    pub async fn stop(self) {
         drop(self.upstream_command_tx);
         self.controller_fn_handle
             .await
