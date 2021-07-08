@@ -1679,6 +1679,11 @@ impl BlockGraph {
             self.max_cliques = self.compute_max_cliques();
             let after = self.max_cliques.len();
             if before != after {
+                massa_trace!(
+                    "consensus.block_graph.add_block_to_graph.clique_full_computing more than one clique",
+                    { "cliques": self.max_cliques, "gi_head": self.gi_head }
+                );
+                //gi_head
                 warn!(
                     "clique number went from {:?} to {:?} after adding {:?}",
                     before, after, hash
