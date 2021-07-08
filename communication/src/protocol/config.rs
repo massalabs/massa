@@ -10,4 +10,6 @@ pub struct ProtocolConfig {
     pub max_node_known_blocks_size: usize,
     pub max_node_wanted_blocks_size: usize,
     pub max_simultaneous_ask_blocks_per_node: usize,
+    /// Max wait time for sending a Network or Node event.
+    pub max_send_wait: UTime,
 }
