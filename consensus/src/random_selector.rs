@@ -5,6 +5,8 @@ use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::convert::TryInto;
 
+use crate::error::ConsensusError;
+
 pub const RANDOM_SELECTOR_MIN_SEED_LENGTH: usize = 32;
 
 pub struct RandomSelector {
@@ -14,25 +16,31 @@ pub struct RandomSelector {
 }
 
 impl RandomSelector {
-    pub fn new(seed: &Vec<u8>, thread_count: u8, participant_weights: Vec<u64>) -> Self {
+    pub fn new(
+        seed: &Vec<u8>,
+        thread_count: u8,
+        participant_weights: Vec<u64>,
+    ) -> Result<Self, ConsensusError> {
         if seed.len() < RANDOM_SELECTOR_MIN_SEED_LENGTH {
-            panic!("random selector seed is too short to be safe");
+            return Err(ConsensusError::SmallSeedError);
         }
         let mut thread_generators = Vec::with_capacity(thread_count as usize);
         thread_generators.push(Xoshiro256PlusPlus::from_seed(
-            Hash::hash(&seed).to_bytes().try_into().unwrap(),
+            Hash::hash(&seed)
+                .to_bytes()
+                .try_into()
+                .map_err(|_| ConsensusError::HashConversionError)?,
         ));
         for i in 1..(thread_count as usize) {
             let mut derived_generator = thread_generators[i - 1].clone();
             derived_generator.long_jump();
             thread_generators.push(derived_generator);
         }
-        RandomSelector {
+        Ok(RandomSelector {
             thread_generators,
-            distribution: WeightedIndex::new(participant_weights)
-                .expect("could not initialize weighted distribution"),
+            distribution: WeightedIndex::new(participant_weights)?,
             cache: vec![Vec::new(); thread_count as usize],
-        }
+        })
     }
 
     pub fn draw(&mut self, thread_index: u8, iteration: u64) -> u32 {
@@ -54,7 +62,7 @@ mod tests {
     fn get_3thread_4participant_random_selector() -> RandomSelector {
         let seed = vec![0u8; RANDOM_SELECTOR_MIN_SEED_LENGTH];
         let distrib = vec![1u64, 2u64, 1u64, 3u64];
-        RandomSelector::new(&seed, 3, distrib)
+        RandomSelector::new(&seed, 3, distrib).unwrap() // in a test
     }
 
     #[test]

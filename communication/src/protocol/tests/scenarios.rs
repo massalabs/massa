@@ -30,9 +30,7 @@ async fn test_new_connection() {
     let (network_controller, mut network_controler_interface) = mock_network_controller::new();
 
     // start protocol controller
-    let protocol = DefaultProtocolController::new(protocol_config, network_controller)
-        .await
-        .unwrap();
+    let protocol = DefaultProtocolController::new(protocol_config, network_controller).await;
 
     // establish a full connection with the controller
     {
@@ -64,7 +62,7 @@ async fn test_new_connection() {
                         resp_tx.send(vec![]).unwrap()
                     }
                     evt @ Some(_) => panic!("controller sent unexpected event: {:?}", evt),
-                    None => panic!("controller exited unexpectedly"),
+                    None => panic!("controller exited unexpectedly"), // in a loop
                 }
             }
         })
@@ -77,5 +75,7 @@ async fn test_new_connection() {
     }
 
     // stop controller while ignoring all commands
-    tools::ignore_commands_while(protocol.stop(), &mut network_controler_interface).await;
+    tools::ignore_commands_while(protocol.stop(), &mut network_controler_interface)
+        .await
+        .unwrap();
 }

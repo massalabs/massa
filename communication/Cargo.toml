@@ -18,6 +18,7 @@ flexbuffers = { version = "0.2" }
 async-trait = "0.1.42"
 itertools = "0.9.0"
 rand = { version = "0.7.3"}
+thiserror = "1.0"
 
 logging = { path = "../logging" }
 crypto = { path = "../crypto" }

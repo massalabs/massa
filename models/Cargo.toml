@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 crypto = {path = "../crypto"}
+flexbuffers = { version = "0.2" }
+thiserror = "1.0"

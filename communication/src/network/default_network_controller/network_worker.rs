@@ -5,6 +5,7 @@ use super::super::{
     network_controller::*,
     peer_info_database::*,
 };
+use crate::error::CommunicationError;
 use crate::logging::debug;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -49,7 +50,7 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
         }
     }
 
-    pub async fn run_loop(mut self) {
+    pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         let mut out_connecting_futures = FuturesUnordered::new();
         let mut cur_connection_id = ConnectionId::default();
         let mut active_connections: HashMap<ConnectionId, (IpAddr, bool)> = HashMap::new(); // ip, is_outgoing
@@ -59,16 +60,15 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
         loop {
             {
                 // try to connect to candidate IPs
-                let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips();
+                let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips()?;
                 for ip in candidate_ips {
                     debug!("starting outgoing connection attempt towards ip={:?}", ip);
                     massa_trace!("out_connection_attempt_start", { "ip": ip });
-                    self.peer_info_db.new_out_connection_attempt(&ip);
+                    self.peer_info_db.new_out_connection_attempt(&ip)?;
                     let mut connector = self
                         .establisher
                         .get_connector(self.cfg.connect_timeout)
-                        .await
-                        .expect("could not get connector");
+                        .await?;
                     let addr = SocketAddr::new(ip, self.cfg.protocol_port);
                     out_connecting_futures.push(async move {
                         match connector.connect(addr).await {
@@ -90,7 +90,7 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
                         &mut self.peer_info_db,
                         &mut active_connections,
                         &self.event_tx
-                    ).await,
+                    ).await?,
                     None => break,
                 },
                 // out-connector event
@@ -101,7 +101,7 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
                     &mut cur_connection_id,
                     &mut active_connections,
                     &self.event_tx,
-                ).await,
+                ).await?,
 
                 // listener socket received
                 res = self.listener.accept() => manage_in_connections(res,
@@ -109,7 +109,7 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
                     &mut cur_connection_id,
                     &mut active_connections,
                     &self.event_tx
-                ).await,
+                ).await?,
             }
         }
 
@@ -117,7 +117,8 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
         while let Some(_) = out_connecting_futures.next().await {}
 
         // stop peer info db
-        self.peer_info_db.stop().await;
+        self.peer_info_db.stop().await?;
+        Ok(())
     }
 }
 
@@ -126,22 +127,27 @@ async fn manage_network_command<EstablisherT: Establisher>(
     peer_info_db: &mut PeerInfoDatabase,
     active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
     event_tx: &mpsc::Sender<NetworkEvent<EstablisherT::ReaderT, EstablisherT::WriterT>>,
-) {
+) -> Result<(), CommunicationError> {
     match cmd {
         NetworkCommand::MergeAdvertisedPeerList(ips) => {
             debug!("merging incoming peer list: {:?}", ips);
             massa_trace!("merge_incoming_peer_list", { "ips": ips });
-            peer_info_db.merge_candidate_peers(&ips);
+            peer_info_db.merge_candidate_peers(&ips)?;
         }
         NetworkCommand::GetAdvertisablePeerList(response_tx) => {
             response_tx
                 .send(peer_info_db.get_advertisable_peer_ips())
-                .expect("upstream disappeared");
+                .map_err(|err| {
+                    CommunicationError::GetAdvertisablePeerListChannelError(format!(
+                        "could not send GetAdvertisablePeerListChannelError upstream:{:?}",
+                        err
+                    ))
+                })?;
         }
         NetworkCommand::ConnectionClosed((id, reason)) => {
             let (ip, is_outgoing) = active_connections
                 .remove(&id)
-                .expect("missing connection closed");
+                .ok_or(CommunicationError::ActiveConnectionMissing(id))?;
             debug!(
                 "connection closed connedtion_id={:?}, ip={:?}, reason={:?}",
                 id, ip, reason
@@ -154,10 +160,10 @@ async fn manage_network_command<EstablisherT: Establisher>(
             match reason {
                 ConnectionClosureReason::Normal => {}
                 ConnectionClosureReason::Failed => {
-                    peer_info_db.peer_failed(&ip);
+                    peer_info_db.peer_failed(&ip)?;
                 }
                 ConnectionClosureReason::Banned => {
-                    peer_info_db.peer_banned(&ip);
+                    peer_info_db.peer_banned(&ip)?;
                     // notify all other banned connections to close
                     // note: they must close using Normal reason or else risk of feedback loop
                     let target_ids =
@@ -174,23 +180,29 @@ async fn manage_network_command<EstablisherT: Establisher>(
                         event_tx
                             .send(NetworkEvent::ConnectionBanned(*target_id))
                             .await
-                            .expect("could not send connection banned notification upstream");
+                            .map_err(|err| {
+                                CommunicationError::NetworkEventChannelError(format!(
+                                    "could not send connection banned notification upstream:{}",
+                                    err
+                                ))
+                            })?;
                     }
                 }
             }
             if is_outgoing {
-                peer_info_db.out_connection_closed(&ip);
+                peer_info_db.out_connection_closed(&ip)?;
             } else {
-                peer_info_db.in_connection_closed(&ip);
+                peer_info_db.in_connection_closed(&ip)?;
             }
         }
         NetworkCommand::ConnectionAlive(id) => {
             let (ip, _) = active_connections
                 .get(&id)
-                .expect("missing connection alive");
-            peer_info_db.peer_alive(&ip);
+                .ok_or(CommunicationError::ActiveConnectionMissing(id))?;
+            peer_info_db.peer_alive(&ip)?;
         }
     }
+    Ok(())
 }
 
 async fn manage_out_connections<ReaderT, WriterT>(
@@ -200,13 +212,14 @@ async fn manage_out_connections<ReaderT, WriterT>(
     cur_connection_id: &mut ConnectionId,
     active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
     event_tx: &mpsc::Sender<NetworkEvent<ReaderT, WriterT>>,
-) where
+) -> Result<(), CommunicationError>
+where
     ReaderT: AsyncRead + Send + Sync + Unpin + std::fmt::Debug,
     WriterT: AsyncWrite + Send + Sync + Unpin + std::fmt::Debug,
 {
     match res {
         Ok((reader, writer)) => {
-            if peer_info_db.try_out_connection_attempt_success(&ip_addr) {
+            if peer_info_db.try_out_connection_attempt_success(&ip_addr)? {
                 // outgoing connection established
                 let connection_id = *cur_connection_id;
                 debug!(
@@ -222,7 +235,12 @@ async fn manage_out_connections<ReaderT, WriterT>(
                 event_tx
                     .send(NetworkEvent::NewConnection((connection_id, reader, writer)))
                     .await
-                    .expect("could not send new out connection notification");
+                    .map_err(|err| {
+                        CommunicationError::NetworkEventChannelError(format!(
+                            "could not send new out connection notification:{}",
+                            err
+                        ))
+                    })?;
             } else {
                 debug!("out connection towards ip={:?} refused", ip_addr);
                 massa_trace!("out_connection_refused", { "ip": ip_addr });
@@ -237,9 +255,10 @@ async fn manage_out_connections<ReaderT, WriterT>(
                 "ip": ip_addr,
                 "err": err.to_string()
             });
-            peer_info_db.out_connection_attempt_failed(&ip_addr);
+            peer_info_db.out_connection_attempt_failed(&ip_addr)?;
         }
     }
+    Ok(())
 }
 
 async fn manage_in_connections<ReaderT, WriterT>(
@@ -248,13 +267,14 @@ async fn manage_in_connections<ReaderT, WriterT>(
     cur_connection_id: &mut ConnectionId,
     active_connections: &mut HashMap<ConnectionId, (IpAddr, bool)>,
     event_tx: &mpsc::Sender<NetworkEvent<ReaderT, WriterT>>,
-) where
+) -> Result<(), CommunicationError>
+where
     ReaderT: AsyncRead + Send + Sync + Unpin + std::fmt::Debug,
     WriterT: AsyncWrite + Send + Sync + Unpin + std::fmt::Debug,
 {
     match res {
         Ok((reader, writer, remote_addr)) => {
-            if peer_info_db.try_new_in_connection(&remote_addr.ip()) {
+            if peer_info_db.try_new_in_connection(&remote_addr.ip())? {
                 let connection_id = *cur_connection_id;
                 debug!(
                     "inbound connection from addr={:?} succeeded => connection_id={:?}",
@@ -269,7 +289,13 @@ async fn manage_in_connections<ReaderT, WriterT>(
                 event_tx
                     .send(NetworkEvent::NewConnection((connection_id, reader, writer)))
                     .await
-                    .expect("could not send new in connection notification");
+                    .map_err(|err| {
+                        CommunicationError::NetworkEventChannelError(format!(
+                            "could not send new in connection notification:{}",
+                            err
+                        ))
+                    })?;
+            //.expect("could not send new in connection notification");
             } else {
                 debug!("inbound connection from addr={:?} refused", remote_addr);
                 massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
@@ -280,4 +306,5 @@ async fn manage_in_connections<ReaderT, WriterT>(
             massa_trace!("in_connection_failed", {"err": err.to_string()});
         }
     }
+    Ok(())
 }

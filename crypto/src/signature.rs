@@ -1,25 +1,11 @@
 use super::hash::Hash;
+use crate::error::CryptoError;
 use bs58;
 use secp256k1::{Message, Secp256k1};
 
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 33;
 pub const SIGNATURE_SIZE_BYTES: usize = 64;
-
-#[derive(Debug)]
-pub enum SignatureError {
-    ParseError,
-}
-
-impl std::error::Error for SignatureError {}
-
-impl std::fmt::Display for SignatureError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            SignatureError::ParseError => write!(f, "Parse error"),
-        }
-    }
-}
 
 /// Private Key used to sign messages
 /// Generated using SignatureEngine.
@@ -100,11 +86,12 @@ impl PrivateKey {
     /// let serialized: String = private_key.to_bs58_check();
     /// let deserialized: PrivateKey = PrivateKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<PrivateKey, SignatureError> {
-        match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(PrivateKey::from_bytes(&s)?),
-            _ => Err(SignatureError::ParseError),
-        }
+    pub fn from_bs58_check(data: &str) -> Result<PrivateKey, CryptoError> {
+        bs58::decode(data)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| CryptoError::PrivateKeyParseError(format!("{:?}", err)))
+            .and_then(|key| PrivateKey::from_bytes(&key))
     }
 
     /// Deserialize a PrivateKey from bytes.
@@ -120,11 +107,10 @@ impl PrivateKey {
     /// let serialized = private_key.to_bytes();
     /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<PrivateKey, SignatureError> {
-        match secp256k1::SecretKey::from_slice(&data) {
-            Ok(k) => Ok(PrivateKey(k)),
-            _ => Err(SignatureError::ParseError),
-        }
+    pub fn from_bytes(data: &[u8]) -> Result<PrivateKey, CryptoError> {
+        secp256k1::SecretKey::from_slice(&data)
+            .map(|key| PrivateKey(key))
+            .map_err(|err| CryptoError::PrivateKeyParseError(format!("{:?}", err)))
     }
 }
 
@@ -343,11 +329,12 @@ impl PublicKey {
     /// let serialized: String = public_key.to_bs58_check();
     /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<PublicKey, SignatureError> {
-        match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(PublicKey::from_bytes(&s)?),
-            _ => Err(SignatureError::ParseError),
-        }
+    pub fn from_bs58_check(data: &str) -> Result<PublicKey, CryptoError> {
+        bs58::decode(data)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| CryptoError::PublicKeyParseError(format!("{:?}", err)))
+            .and_then(|key| PublicKey::from_bytes(&key))
     }
 
     /// Deserialize a PublicKey from bytes.
@@ -365,11 +352,10 @@ impl PublicKey {
     /// let serialized = public_key.into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<PublicKey, SignatureError> {
-        match secp256k1::PublicKey::from_slice(data) {
-            Ok(k) => Ok(PublicKey(k)),
-            _ => Err(SignatureError::ParseError),
-        }
+    pub fn from_bytes(data: &[u8]) -> Result<PublicKey, CryptoError> {
+        secp256k1::PublicKey::from_slice(data)
+            .map(|key| PublicKey(key))
+            .map_err(|err| CryptoError::PublicKeyParseError(format!("{:?}", err)))
     }
 }
 
@@ -536,7 +522,7 @@ impl Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// ```
@@ -555,7 +541,7 @@ impl Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// ```
@@ -574,7 +560,7 @@ impl Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.into_bytes();
     /// ```
@@ -593,16 +579,17 @@ impl Signature {
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
     /// let secp = SignatureEngine::new();
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Signature, SignatureError> {
-        match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(Signature::from_bytes(&s)?),
-            _ => Err(SignatureError::ParseError),
-        }
+    pub fn from_bs58_check(data: &str) -> Result<Signature, CryptoError> {
+        bs58::decode(data)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| CryptoError::SignatureParseError(format!("{:?}", err)))
+            .and_then(|signature| Signature::from_bytes(&signature))
     }
 
     /// Deserialize a Signature from bytes.
@@ -616,16 +603,15 @@ impl Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8]) -> Result<Signature, SignatureError> {
-        match secp256k1::Signature::from_compact(data) {
-            Ok(k) => Ok(Signature(k)),
-            _ => Err(SignatureError::ParseError),
-        }
+    pub fn from_bytes(data: &[u8]) -> Result<Signature, CryptoError> {
+        secp256k1::Signature::from_compact(data)
+            .map(|signature| Signature(signature))
+            .map_err(|err| CryptoError::SignatureParseError(format!("{:?}", err)))
     }
 }
 
@@ -646,7 +632,7 @@ impl ::serde::Serialize for Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = serde_json::to_string(&signature).unwrap();
     /// ```
@@ -660,7 +646,7 @@ impl ::serde::Serialize for Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// signature.serialize(&mut s).unwrap();
@@ -692,7 +678,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = serde_json::to_string(&signature).unwrap();
     /// let deserialized: Signature = serde_json::from_str(&serialized).unwrap();
@@ -707,7 +693,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// let secp = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// signature.serialize(&mut s).unwrap();
@@ -837,11 +823,11 @@ impl SignatureEngine {
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key: PublicKey = secp.derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
     /// ```
-    pub fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Signature {
-        let message = Message::from_slice(&hash.to_bytes()).expect("wrong hash size");
-        Signature(self.0.sign(&message, &private_key.0))
+    pub fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, CryptoError> {
+        let message = Message::from_slice(&hash.to_bytes())?;
+        Ok(Signature(self.0.sign(&message, &private_key.0)))
     }
 
     /// Checks if the Signature associated with data bytes
@@ -857,12 +843,17 @@ impl SignatureEngine {
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key: PublicKey = secp.derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key);
-    /// let verification: bool = secp.verify(&data, &signature, &public_key);
+    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let verification: bool = secp.verify(&data, &signature, &public_key).unwrap();
     /// ```
-    pub fn verify(&self, hash: &Hash, signature: &Signature, public_key: &PublicKey) -> bool {
-        let message = Message::from_slice(&hash.to_bytes()).expect("wrong hash size");
-        self.0.verify(&message, &signature.0, &public_key.0).is_ok()
+    pub fn verify(
+        &self,
+        hash: &Hash,
+        signature: &Signature,
+        public_key: &PublicKey,
+    ) -> Result<bool, CryptoError> {
+        let message = Message::from_slice(&hash.to_bytes())?;
+        Ok(self.0.verify(&message, &signature.0, &public_key.0).is_ok())
     }
 }
 
@@ -880,8 +871,8 @@ mod tests {
         let public_key = secp.derive_public_key(&private_key);
         let message = "Hello World!".as_bytes();
         let hash = Hash::hash(&message);
-        let signature = secp.sign(&hash, &private_key);
-        assert!(secp.verify(&hash, &signature, &public_key))
+        let signature = secp.sign(&hash, &private_key).unwrap();
+        assert!(secp.verify(&hash, &signature, &public_key).unwrap())
     }
 
     #[test]
@@ -912,7 +903,7 @@ mod tests {
         let private_key = SignatureEngine::generate_random_private_key();
         let message = "Hello World!".as_bytes();
         let hash = Hash::hash(&message);
-        let signature = secp.sign(&hash, &private_key);
+        let signature = secp.sign(&hash, &private_key).unwrap();
         let serialized =
             serde_json::to_string(&signature).expect("could not serialize signature key");
         let deserialized =
@@ -940,7 +931,7 @@ mod tests {
         let secp = SignatureEngine::new();
         let private_key = SignatureEngine::generate_random_private_key();
         let data = "Hello World!".as_bytes();
-        let signature = secp.sign(&Hash::hash(&data), &private_key);
+        let signature = secp.sign(&Hash::hash(&data), &private_key).unwrap();
         signature
             .serialize(&mut s)
             .expect("could not serialize signature key");

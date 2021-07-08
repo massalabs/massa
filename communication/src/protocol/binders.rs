@@ -1,12 +1,13 @@
+use crate::CommunicationError;
+
 use super::messages::Message;
 use futures::SinkExt;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
+
 use std::marker::Unpin;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::stream::StreamExt;
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 pub struct WriteBinder<T: AsyncWrite + Unpin> {
     framed_writer: FramedWrite<T, LengthDelimitedCodec>,
@@ -21,7 +22,7 @@ impl<T: AsyncWrite + Unpin> WriteBinder<T> {
         }
     }
 
-    pub async fn send(&mut self, msg: &Message) -> BoxResult<u64> {
+    pub async fn send(&mut self, msg: &Message) -> Result<u64, CommunicationError> {
         let mut serializer = flexbuffers::FlexbufferSerializer::new();
         msg.serialize(&mut serializer)?;
         self.framed_writer
@@ -46,7 +47,7 @@ impl<T: AsyncRead + Unpin> ReadBinder<T> {
         }
     }
 
-    pub async fn next(&mut self) -> BoxResult<Option<(u64, Message)>> {
+    pub async fn next(&mut self) -> Result<Option<(u64, Message)>, CommunicationError> {
         let buf: Vec<u8> = match self.framed_reader.next().await {
             Some(b) => b?.into_iter().collect(),
             None => return Ok(None),

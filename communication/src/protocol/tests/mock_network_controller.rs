@@ -1,6 +1,9 @@
-use crate::network::establisher::{Connector, Establisher, Listener};
 use crate::network::network_controller::{
     ConnectionClosureReason, ConnectionId, NetworkController, NetworkEvent,
+};
+use crate::{
+    network::establisher::{Connector, Establisher, Listener},
+    CommunicationError,
 };
 use async_trait::async_trait;
 use std::io;
@@ -102,43 +105,60 @@ impl NetworkController for MockNetworkController {
     type ReaderT = ReadHalf;
     type WriterT = WriteHalf;
 
-    async fn stop(mut self) {}
+    async fn stop(mut self) -> Result<(), CommunicationError> {
+        Ok(())
+    }
 
-    async fn wait_event(&mut self) -> NetworkEvent<ReadHalf, WriteHalf> {
+    async fn wait_event(
+        &mut self,
+    ) -> Result<NetworkEvent<ReadHalf, WriteHalf>, CommunicationError> {
         self.network_event_rx
             .recv()
             .await
-            .expect("MockNetworkController wait_event channel close")
+            .ok_or(CommunicationError::MockError(format!(
+                "MockNetworkController wait_event channel closed"
+            )))
     }
 
-    async fn merge_advertised_peer_list(&mut self, ips: Vec<IpAddr>) {
+    async fn merge_advertised_peer_list(
+        &mut self,
+        ips: Vec<IpAddr>,
+    ) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(MockNetworkCommand::MergeAdvertisedPeerList(ips))
             .await
-            .expect("network controller disappeared");
+            .map_err(|_| CommunicationError::MockError(format!("Network controller disappeared")))
     }
 
-    async fn get_advertisable_peer_list(&mut self) -> Vec<IpAddr> {
+    async fn get_advertisable_peer_list(&mut self) -> Result<Vec<IpAddr>, CommunicationError> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<IpAddr>>();
         self.network_command_tx
             .send(MockNetworkCommand::GetAdvertisablePeerList(response_tx))
             .await
-            .expect("network controller disappeared");
-        response_rx.await.expect("network controller disappeared")
+            .map_err(|_| {
+                CommunicationError::MockError(format!("Network controller disappeared"))
+            })?;
+        response_rx
+            .await
+            .map_err(|_| CommunicationError::MockError(format!("Network controller disappeared")))
     }
 
-    async fn connection_closed(&mut self, id: ConnectionId, reason: ConnectionClosureReason) {
+    async fn connection_closed(
+        &mut self,
+        id: ConnectionId,
+        reason: ConnectionClosureReason,
+    ) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(MockNetworkCommand::ConnectionClosed((id, reason)))
             .await
-            .expect("network controller disappeared");
+            .map_err(|_| CommunicationError::MockError(format!("Network controller disappeared")))
     }
 
-    async fn connection_alive(&mut self, id: ConnectionId) {
+    async fn connection_alive(&mut self, id: ConnectionId) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(MockNetworkCommand::ConnectionAlive(id))
             .await
-            .expect("network controller disappeared");
+            .map_err(|_| CommunicationError::MockError(format!("Network controller disappeared")))
     }
 }
 

@@ -1,7 +1,6 @@
 #![feature(ip)]
 #![feature(destructuring_assignment)]
 
-#[macro_use]
 extern crate logging;
 pub mod config;
 
@@ -10,18 +9,19 @@ use communication::network::default_network_controller::DefaultNetworkController
 use communication::protocol::default_protocol_controller::DefaultProtocolController;
 use consensus::consensus_controller::ConsensusController;
 use consensus::default_consensus_controller::DefaultConsensusController;
-use std::error::Error;
 use tokio::fs::read_to_string;
 
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
-
-async fn run(cfg: config::Config) -> BoxResult<()> {
+async fn run(cfg: config::Config) -> () {
     let establisher = DefaultEstablisher::new();
-    let network = DefaultNetworkController::new(&cfg.network, establisher).await?;
+    let network = DefaultNetworkController::new(&cfg.network, establisher)
+        .await
+        .expect("Could not create network controller");
 
     // launch consensus controller
-    let ptcl = DefaultProtocolController::new(cfg.protocol, network).await?;
-    let mut cnss = DefaultConsensusController::new(&cfg.consensus, ptcl).await?;
+    let ptcl = DefaultProtocolController::new(cfg.protocol, network).await;
+    let mut cnss = DefaultConsensusController::new(&cfg.consensus, ptcl)
+        .await
+        .expect("Could not create consensus controller");
 
     // loop over messages
     loop {
@@ -55,10 +55,5 @@ async fn main() {
         .init()
         .unwrap();
 
-    match run(cfg).await {
-        Ok(_) => {}
-        Err(e) => {
-            error!("error in program root: {}", e);
-        }
-    }
+    run(cfg).await
 }

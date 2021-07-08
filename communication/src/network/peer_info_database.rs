@@ -1,15 +1,13 @@
 use super::config::NetworkConfig;
+use crate::error::CommunicationError;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::error::Error;
 use std::net::IpAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
-
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct PeerInfo {
@@ -50,11 +48,9 @@ pub struct PeerInfoDatabase {
     wakeup_interval_millis: u64,
 }
 
-fn now_as_millis() -> u64 {
+fn now_as_millis() -> Result<u64, CommunicationError> {
     let now = SystemTime::now();
-    now.duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_millis() as u64
+    Ok(now.duration_since(UNIX_EPOCH)?.as_millis() as u64)
 }
 
 /// Saves banned, advertised and bootstrap peers to a file.
@@ -62,7 +58,7 @@ fn now_as_millis() -> u64 {
 async fn dump_peers(
     peers: &HashMap<IpAddr, PeerInfo>,
     file_path: &std::path::PathBuf,
-) -> BoxResult<()> {
+) -> Result<(), CommunicationError> {
     let peer_vec: Vec<PeerInfo> = peers
         .values()
         .filter(|v| v.banned || v.advertised || v.bootstrap)
@@ -180,7 +176,7 @@ impl PeerInfoDatabase {
     /// Creates new peerInfoDatabase from NetworkConfig.
     /// Can fail reading the file containing peers.
     /// will only emit a warning if peers dumping failed.
-    pub async fn new(cfg: &NetworkConfig) -> BoxResult<Self> {
+    pub async fn new(cfg: &NetworkConfig) -> Result<Self, CommunicationError> {
         // wakeup interval
         let wakeup_interval_millis = cfg.wakeup_interval.as_millis() as u64;
 
@@ -210,6 +206,7 @@ impl PeerInfoDatabase {
                             if !delay.is_elapsed() {
                                 continue;
                             }
+                            //unwrap pending set to some before.
                             if let Err(e) = dump_peers(pending.as_ref().unwrap(), &peers_file).await {
                                 warn!("could not dump peers to file: {}", e);
                             } else {
@@ -246,22 +243,23 @@ impl PeerInfoDatabase {
     }
 
     /// Request peers dump to file
-    fn request_dump(&self) {
+    fn request_dump(&self) -> Result<(), CommunicationError> {
+        //use map_err to avoir Ok(self.saver_watch_tx.send(self.peers.clone())?)
+        //which to unwrap that Ok
         self.saver_watch_tx
             .send(self.peers.clone())
-            .expect("peer database saver task disappeared");
+            .map_err(|err| err.into())
     }
 
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.
     /// A warining is raised on dump failure.
-    pub async fn stop(self) {
+    pub async fn stop(self) -> Result<(), CommunicationError> {
         drop(self.saver_watch_tx);
-        self.saver_join_handle
-            .await
-            .expect("could not join peer database saver");
+        self.saver_join_handle.await?;
         if let Err(e) = dump_peers(&self.peers, &self.cfg.peers_file).await {
             warn!("could not dump peers to file: {}", e);
         }
+        Ok(())
     }
 
     /// Gets avaible out connection attempts
@@ -280,7 +278,7 @@ impl PeerInfoDatabase {
 
     /// Sorts peers by ( last_failure, rev(last_success) )
     /// and returns as many peers as there are avaible slots to attempt outgoing connections to.
-    pub fn get_out_connection_candidate_ips(&self) -> Vec<IpAddr> {
+    pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, CommunicationError> {
         /*
             get_connect_candidate_ips must return the full sorted list where:
                 advertised && !banned && out_connection_attempts==0 && out_connections==0 && in_connections=0
@@ -288,9 +286,9 @@ impl PeerInfoDatabase {
         */
         let available_slots = self.get_available_out_connection_attempts();
         if available_slots == 0 {
-            return Vec::new();
+            return Ok(Vec::new());
         }
-        let now = now_as_millis();
+        let now = now_as_millis()?;
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
             .values()
@@ -316,11 +314,11 @@ impl PeerInfoDatabase {
                 std::cmp::Reverse(p.last_alive_millis),
             )
         });
-        sorted_peers
+        Ok(sorted_peers
             .into_iter()
             .take(available_slots)
             .map(|p| p.ip)
-            .collect()
+            .collect::<Vec<IpAddr>>())
     }
 
     /// Returns a vec of advertisable IpAddrs sorted by ( last_failure, rev(last_success) )
@@ -355,66 +353,74 @@ impl PeerInfoDatabase {
     /// - target ip is not global
     /// - there are too many out connection attempts
     /// - ip does not match with a known peer
-    pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) {
+    pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if !ip.is_global() {
-            panic!("target IP is not global");
+            return Err(CommunicationError::TargetIpIsNotGLobal(ip.clone()));
         }
         if self.get_available_out_connection_attempts() == 0 {
-            panic!("too many out connection attempts");
+            return Err(CommunicationError::ToManyConnectionAttempt(ip.clone()));
         }
         self.peers
             .get_mut(&ip)
-            .expect("attempting connection towards unknown peer")
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?
             .active_out_connection_attempts += 1;
         self.active_out_connection_attempts += 1;
+        Ok(())
     }
 
     /// Merges new_peers with our peers using the cleanup_peers function.
     /// A dump is requested afterwards.
-    pub fn merge_candidate_peers(&mut self, new_peers: &Vec<IpAddr>) {
+    pub fn merge_candidate_peers(
+        &mut self,
+        new_peers: &Vec<IpAddr>,
+    ) -> Result<(), CommunicationError> {
         if new_peers.is_empty() {
-            return;
+            return Ok(());
         }
         cleanup_peers(&self.cfg, &mut self.peers, Some(&new_peers));
-        self.request_dump();
+        self.request_dump()
     }
 
     /// Sets the peer status as alive.
     /// Panics if ip does not match a known peer.
     /// Requests a subsequent dump.
-    pub fn peer_alive(&mut self, ip: &IpAddr) {
+    pub fn peer_alive(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         self.peers
             .get_mut(&ip)
-            .expect("unknown peer alive")
-            .last_alive_millis = Some(now_as_millis());
-        self.request_dump();
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?
+            .last_alive_millis = Some(now_as_millis()?);
+        self.request_dump()
     }
 
     /// Sets the peer status as failed.
     /// Panics if the peer is unknown.
     /// Requests a dump.
-    pub fn peer_failed(&mut self, ip: &IpAddr) {
+    pub fn peer_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         self.peers
             .get_mut(&ip)
-            .expect("unknown peer failed")
-            .last_failure_millis = Some(now_as_millis());
-        self.request_dump();
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?
+            .last_failure_millis = Some(now_as_millis()?);
+        self.request_dump()
     }
 
     /// Sets that the peer is banned now.
     /// Panics if the ip does not match an unknown peer.
     /// If the peer is not active, the database is cleaned up.
     /// A dump is requested.
-    pub fn peer_banned(&mut self, ip: &IpAddr) {
-        let peer = self.peers.get_mut(&ip).expect("unknown peer failed");
-        peer.last_failure_millis = Some(now_as_millis());
+    pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+        let peer = self
+            .peers
+            .get_mut(&ip)
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?;
+        peer.last_failure_millis = Some(now_as_millis()?);
         if !peer.banned {
             peer.banned = true;
             if !peer.is_active() && !peer.bootstrap {
                 cleanup_peers(&self.cfg, &mut self.peers, None);
             }
         }
-        self.request_dump();
+        self.request_dump()?;
+        Ok(())
     }
 
     /// Notifies of a closed outgoing connection.
@@ -426,22 +432,25 @@ impl PeerInfoDatabase {
     ///
     /// If the peer is not active nor bootstrap,
     /// peers are cleaned up and a dump is requested
-    pub fn out_connection_closed(&mut self, ip: &IpAddr) {
+    pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_out_connections == 0 {
-            panic!("too many out connections closed");
+            return Err(CommunicationError::ToManyActiveConnectionClosed(ip.clone()));
         }
         let peer = self
             .peers
             .get_mut(&ip)
-            .expect("unknown peer out connection closed");
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?;
+
         if peer.active_out_connections == 0 {
-            panic!("too many out connections closed for peer");
+            return Err(CommunicationError::ToManyActiveConnectionClosed(ip.clone()));
         }
         self.active_out_connections -= 1;
         peer.active_out_connections -= 1;
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(&self.cfg, &mut self.peers, None);
-            self.request_dump();
+            self.request_dump()
+        } else {
+            Ok(())
         }
     }
 
@@ -454,22 +463,25 @@ impl PeerInfoDatabase {
     ///
     /// If the peer is not active nor bootstrap
     /// peers are cleaned up and a dump is requested.
-    pub fn in_connection_closed(&mut self, ip: &IpAddr) {
+    pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_in_connections == 0 {
-            panic!("too many in connections closed");
+            return Err(CommunicationError::ToManyActiveConnectionClosed(ip.clone()));
         }
         let peer = self
             .peers
             .get_mut(&ip)
-            .expect("unknown peer in connection closed");
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?;
+
         if peer.active_in_connections == 0 {
-            panic!("too many in connections closed for peer");
+            return Err(CommunicationError::ToManyActiveConnectionClosed(ip.clone()));
         }
         self.active_in_connections -= 1;
         peer.active_in_connections -= 1;
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(&self.cfg, &mut self.peers, None);
-            self.request_dump();
+            self.request_dump()
+        } else {
+            Ok(())
         }
     }
 
@@ -483,37 +495,41 @@ impl PeerInfoDatabase {
     /// - too many out connection attempts succeded for that peer
     ///
     /// A dump is requested.
-    pub fn try_out_connection_attempt_success(&mut self, ip: &IpAddr) -> bool {
+    pub fn try_out_connection_attempt_success(
+        &mut self,
+        ip: &IpAddr,
+    ) -> Result<bool, CommunicationError> {
         // a connection attempt succeeded
         // remove out connection attempt and add out connection
         if self.active_out_connection_attempts == 0 {
-            panic!("too many out connection attempts succeeded");
+            return Err(CommunicationError::ToManyConnectionAttempt(ip.clone()));
         }
         if self.active_out_connections >= self.cfg.target_out_connections {
-            return false;
+            return Ok(false);
         }
         let peer = self
             .peers
             .get_mut(&ip)
-            .expect("unknown peer connection attempt succeeded");
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?;
+
         if peer.active_out_connection_attempts == 0 {
-            panic!("too many out connection attempts succeeded for peer");
+            return Err(CommunicationError::ToManyConnectionAttempt(ip.clone()));
         }
         self.active_out_connection_attempts -= 1;
         peer.active_out_connection_attempts -= 1;
         peer.advertised = true; // we just connected to it. Assume advertised.
         if peer.banned {
-            peer.last_failure_millis = Some(now_as_millis());
+            peer.last_failure_millis = Some(now_as_millis()?);
             if !peer.is_active() && !peer.bootstrap {
                 cleanup_peers(&self.cfg, &mut self.peers, None);
             }
-            self.request_dump();
-            return false;
+            self.request_dump()?;
+            return Ok(false);
         }
         self.active_out_connections += 1;
         peer.active_out_connections += 1;
-        self.request_dump();
-        true
+        self.request_dump()?;
+        Ok(true)
     }
 
     /// Oh no an out connection attempt failed.
@@ -524,24 +540,24 @@ impl PeerInfoDatabase {
     /// - too many out connection attampts failed for tha peer
     ///
     /// A dump is requested.
-    pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) {
+    pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
         if self.active_out_connection_attempts == 0 {
-            panic!("too many out connection attempts failed");
+            return Err(CommunicationError::ToManyConnectionFailure(ip.clone()));
         }
         let peer = self
             .peers
             .get_mut(&ip)
-            .expect("unknown peer connection attempt failed");
+            .ok_or(CommunicationError::PeerInfoNotFoundError(ip.clone()))?;
         if peer.active_out_connection_attempts == 0 {
-            panic!("too many out connection attempts failures for peer");
+            return Err(CommunicationError::ToManyConnectionFailure(ip.clone()));
         }
         self.active_out_connection_attempts -= 1;
         peer.active_out_connection_attempts -= 1;
-        peer.last_failure_millis = Some(now_as_millis());
+        peer.last_failure_millis = Some(now_as_millis()?);
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(&self.cfg, &mut self.peers, None);
         }
-        self.request_dump();
+        self.request_dump()
     }
 
     /// An ip has successfully connected to us.
@@ -549,19 +565,19 @@ impl PeerInfoDatabase {
     /// If the corresponding peer exists, it is updated,
     /// otherwise it is created (not advertised).
     /// A dump is requested.
-    pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> bool {
+    pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<bool, CommunicationError> {
         // try to create a new input connection, return false if no slots
         if !ip.is_global()
             || self.active_in_connections >= self.cfg.max_in_connections
             || self.cfg.max_in_connections_per_ip == 0
         {
-            return false;
+            return Ok(false);
         }
         if let Some(our_ip) = self.cfg.routable_ip {
             // avoid our own IP
             if *ip == our_ip {
                 warn!("incomming connection from our own IP");
-                return false;
+                return Ok(false);
             }
         }
         let peer = self.peers.entry(*ip).or_insert(PeerInfo {
@@ -577,18 +593,18 @@ impl PeerInfoDatabase {
         });
         if peer.banned {
             massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
-            peer.last_failure_millis = Some(now_as_millis());
-            self.request_dump();
-            return false;
+            peer.last_failure_millis = Some(now_as_millis()?);
+            self.request_dump()?;
+            return Ok(false);
         }
         if peer.active_in_connections >= self.cfg.max_in_connections_per_ip {
-            self.request_dump();
-            return false;
+            self.request_dump()?;
+            return Ok(false);
         }
         self.active_in_connections += 1;
         peer.active_in_connections += 1;
-        self.request_dump();
-        true
+        self.request_dump()?;
+        Ok(true)
     }
 }
 
@@ -632,11 +648,11 @@ mod tests {
                 bootstrap: (ip[1] % 2) == 0,
                 last_alive_millis: match i % 4 {
                     0 => None,
-                    _ => Some(now_as_millis() - rng.gen_range(0, 1000000)),
+                    _ => Some(now_as_millis().unwrap() - rng.gen_range(0, 1000000)),
                 },
                 last_failure_millis: match i % 5 {
                     0 => None,
-                    _ => Some(now_as_millis() - rng.gen_range(0, 10000)),
+                    _ => Some(now_as_millis().unwrap() - rng.gen_range(0, 10000)),
                 },
                 advertised: (ip[2] % 2) == 0,
                 active_out_connection_attempts: 0,
