@@ -95,7 +95,7 @@ impl HandshakeWorker {
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => {
                 return Err(CommunicationError::HandshakeError(
-                    HandshakeErrorType::HandshakeInterruptionError,
+                    HandshakeErrorType::HandshakeInterruptionError("init".into()),
                 ))
             }
             Ok(Ok((_, Some((_, msg))))) => match msg {
@@ -147,7 +147,7 @@ impl HandshakeWorker {
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => {
                 return Err(CommunicationError::HandshakeError(
-                    HandshakeErrorType::HandshakeInterruptionError,
+                    HandshakeErrorType::HandshakeInterruptionError("repl".into()),
                 ))
             }
             Ok(Ok((_, Some((_, msg))))) => match msg {

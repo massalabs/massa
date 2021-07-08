@@ -876,20 +876,23 @@ impl NetworkWorker {
                 debug!("node_id={:?} asked us for peer list", from_node_id);
                 massa_trace!("node_asked_peer_list", { "node_id": from_node_id });
                 let peer_list = self.peer_info_db.get_advertisable_peer_ips();
-                let (_, node_command_tx) = self
-                    .active_nodes
-                    .get(&from_node_id)
-                    .ok_or(CommunicationError::MissingNodeError)?;
-                let res = node_command_tx
-                    .send(NodeCommand::SendPeerList(peer_list))
-                    .await;
-                if res.is_err() {
+                if let Some((_, node_command_tx)) = self.active_nodes.get(&from_node_id) {
+                    let res = node_command_tx
+                        .send(NodeCommand::SendPeerList(peer_list))
+                        .await;
+                    if res.is_err() {
+                        warn!(
+                            "{}",
+                            CommunicationError::ChannelError(
+                                "node command send send_peer_list failed".into(),
+                            )
+                        );
+                    }
+                } else {
                     warn!(
-                        "{}",
-                        CommunicationError::ChannelError(
-                            "node command send send_peer_list failed".into(),
-                        )
-                    );
+                        "node_id={:?} asked us for peer list and disappeared",
+                        from_node_id
+                    )
                 }
             }
 
