@@ -43,6 +43,8 @@ pub enum Message {
     /// If the ip of the node that sent that message is routable,
     /// it is the first ip of the list.
     PeerList(Vec<IpAddr>),
+    /// Block not found
+    BlockNotFound(Hash),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -55,6 +57,7 @@ enum MessageTypeId {
     AskForBlock = 4,
     AskPeerList = 5,
     PeerList = 6,
+    BlockNotFound = 7,
 }
 
 impl SerializeCompact for Message {
@@ -94,6 +97,10 @@ impl SerializeCompact for Message {
                 for ip in ip_vec.into_iter() {
                     res.extend(ip.to_bytes_compact(&context)?)
                 }
+            }
+            Message::BlockNotFound(hash) => {
+                res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
+                res.extend(&hash.to_bytes());
             }
         }
         Ok(res)
@@ -165,6 +172,16 @@ impl DeserializeCompact for Message {
                     peers.push(ip);
                 }
                 Message::PeerList(peers)
+            }
+            MessageTypeId::BlockNotFound => {
+                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
+                Message::BlockNotFound(hash)
+            }
+            _ => {
+                return Err(ModelsError::DeserializeError(
+                    "unsupported message type".into(),
+                ))
             }
         };
         Ok((res, cursor))

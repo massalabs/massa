@@ -22,6 +22,8 @@ pub enum NodeCommand {
     AskForBlock(Hash),
     /// Close the node worker.
     Close(ConnectionClosureReason),
+    /// Block not founf
+    BlockNotFound(Hash),
 }
 
 /// Event types that node worker can emit
@@ -185,6 +187,11 @@ impl NodeWorker {
                     Some(NodeCommand::AskForBlock(block)) => {
                         writer_command_tx.send(Message::AskForBlock(block)).await.map_err(
                             |_| CommunicationError::ChannelError("ask peer block node command send failed".into())
+                        )?;
+                    },
+                    Some(NodeCommand::BlockNotFound(hash)) =>  {
+                        writer_command_tx.send(Message::BlockNotFound(hash)).await.map_err(
+                            |_| CommunicationError::ChannelError("send peer block not found node command send failed".into())
                         )?;
                     },
                     None => {
