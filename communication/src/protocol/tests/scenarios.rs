@@ -513,3 +513,89 @@ async fn test_protocol_does_not_send_header_it_receives_with_invalid_signature()
         .await
         .expect("Failed to shutdown protocol.");
 }
+
+#[tokio::test]
+async fn test_protocol_block_not_found() {
+    let (protocol_config, serialization_context) = tools::create_protocol_config();
+
+    let mut signature_engine = SignatureEngine::new();
+
+    let (mut network_controller, network_command_sender, network_event_receiver) =
+        MockNetworkController::new();
+
+    // start protocol controller
+    let (mut protocol_command_sender, mut protocol_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            protocol_config.clone(),
+            serialization_context.clone(),
+            network_command_sender,
+            network_event_receiver,
+        )
+        .await
+        .expect("could not start protocol controller");
+
+    // Create 1 node.
+    let mut nodes =
+        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+
+    let creator_node = nodes.pop().expect("Failed to get node info.");
+
+    // 1. Create a block coming from one node.
+    let block = tools::create_block(
+        &creator_node.private_key,
+        &creator_node.id.0,
+        &serialization_context,
+        &mut signature_engine,
+    );
+
+    let expected_hash = block
+        .header
+        .content
+        .compute_hash(&serialization_context)
+        .expect("Couldn't compute hash.");
+
+    // 3. Ask block to protocol.
+    network_controller
+        .send_ask_for_block(creator_node.id, expected_hash)
+        .await;
+
+    // Check protocol sends ask block to consensus.
+    let hash =
+        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
+        {
+            evt @ ProtocolEvent::GetBlock(..) => Some(evt),
+            _ => None,
+        })
+        .await
+        {
+            Some(ProtocolEvent::GetBlock(hash)) => hash,
+            _ => panic!("Unexpected or no protocol event."),
+        };
+    assert_eq!(expected_hash, hash);
+
+    // consensus didn't found block
+    protocol_command_sender
+        .block_not_found(expected_hash)
+        .await
+        .unwrap();
+
+    // protocol transmits blockNotFound
+    let (node, hash) = match network_controller
+        .wait_command(100.into(), |cmd| match cmd {
+            cmd @ NetworkCommand::BlockNotFound { .. } => Some(cmd),
+            _ => None,
+        })
+        .await
+    {
+        Some(NetworkCommand::BlockNotFound { node, hash }) => (node, hash),
+        _ => panic!("Unexpected or no network command."),
+    };
+
+    assert_eq!(expected_hash, hash);
+    assert_eq!(creator_node.id, node);
+
+    protocol_manager
+        .stop(protocol_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
+}
