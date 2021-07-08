@@ -38,6 +38,27 @@ impl HeaderOrBlock {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// subset of addresses whose rolls changed in a block
+pub struct RollThreadUpdates {
+    /// roll counts in the cycle so far for the involved addressses
+    roll_count: HashMap<Address, u64>,
+    /// compensated number of rolls an address has bought in the cycle so far for the involved addressses
+    cycle_purchases: HashMap<Address, u64>,
+    /// compensated number of rolls an address has sold in the cycle so far for the involved addressses
+    cycle_sales: HashMap<Address, u64>,
+}
+
+impl RollThreadUpdates {
+    fn empty() -> RollThreadUpdates {
+        RollThreadUpdates {
+            roll_count: HashMap::new(),
+            cycle_purchases: HashMap::new(),
+            cycle_sales: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
     pub block: Block,
     pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
@@ -48,6 +69,7 @@ pub struct ActiveBlock {
     pub block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
     pub operation_set: HashMap<OperationId, (usize, u64)>, // index in the block, end of validity period
     pub addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
+    pub roll_updates: RollThreadUpdates,
 }
 
 impl ActiveBlock {
@@ -112,6 +134,8 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             .collect::<Result<_, _>>()?;
 
         let addresses_to_operations = block.block.involved_addresses()?;
+        let roll_updates = RollThreadUpdates::empty();
+        // todo update export active block
         Ok(ActiveBlock {
             block: block.block,
             parents: block.parents,
@@ -130,6 +154,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
                 .collect(),
             operation_set,
             addresses_to_operations,
+            roll_updates,
         })
     }
 
@@ -769,6 +794,7 @@ enum BlockCheckOutcome {
         incompatibilities: HashSet<BlockId>,
         inherited_incompatibilities_count: usize,
         block_changes: Vec<HashMap<Address, LedgerChange>>,
+        roll_updates: RollThreadUpdates,
     },
     Discard(DiscardReason),
     WaitForSlot,
@@ -780,6 +806,7 @@ enum BlockOperationsCheckOutcome {
     Proceed {
         dependencies: HashSet<BlockId>,
         block_changes: Vec<HashMap<Address, LedgerChange>>,
+        roll_updates: RollThreadUpdates,
     },
     Discard(DiscardReason),
     WaitForDependencies(HashSet<BlockId>),
@@ -842,6 +869,9 @@ impl BlockGraph {
             let (hash, block) = create_genesis_block(&cfg, thread).map_err(|err| {
                 ConsensusError::GenesisCreationError(format!("genesis error {:?}", err))
             })?;
+
+            let roll_updates = RollThreadUpdates::empty();
+
             block_hashes.push(hash);
             block_statuses.insert(
                 hash,
@@ -855,6 +885,7 @@ impl BlockGraph {
                     block_ledger_change: vec![HashMap::new(); cfg.thread_count as usize], // todo add initial coin repartition see #311
                     operation_set: HashMap::with_capacity(0),
                     addresses_to_operations: HashMap::with_capacity(0),
+                    roll_updates,
                 }),
             );
         }
@@ -955,6 +986,10 @@ impl BlockGraph {
     /// Gets best parents.
     pub fn get_best_parents(&self) -> &Vec<BlockId> {
         &self.best_parents
+    }
+
+    fn get_roll_data_at_parent(&self, id: BlockId, addrs: HashSet<Address>) -> RollThreadUpdates {
+        todo!()
     }
 
     /// gets Ledger data export for given Addressses
@@ -1228,7 +1263,8 @@ impl BlockGraph {
             valid_block_incomp,
             valid_block_inherited_incomp_count,
             valid_block_changes,
-            operation_set,
+            valid_block_operation_set,
+            valid_block_roll_updates,
         ) = match self.block_statuses.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
@@ -1362,6 +1398,7 @@ impl BlockGraph {
                         incompatibilities,
                         inherited_incompatibilities_count,
                         block_changes,
+                        roll_updates,
                     } => {
                         // block is valid: remove it from Incoming and return it
                         massa_trace!("consensus.block_graph.process.incomming_block.valid", {
@@ -1375,6 +1412,7 @@ impl BlockGraph {
                             inherited_incompatibilities_count,
                             block_changes,
                             operation_set,
+                            roll_updates,
                         )
                     }
                     BlockCheckOutcome::WaitForDependencies(dependencies) => {
@@ -1487,7 +1525,7 @@ impl BlockGraph {
             }
         };
 
-        let addresses_to_operations = valid_block.involved_addresses()?;
+        let valid_block_addresses_to_operations = valid_block.involved_addresses()?;
 
         // add block to graph
         self.add_block_to_graph(
@@ -1498,8 +1536,9 @@ impl BlockGraph {
             valid_block_incomp,
             valid_block_inherited_incomp_count,
             valid_block_changes,
-            operation_set,
-            addresses_to_operations,
+            valid_block_operation_set,
+            valid_block_addresses_to_operations,
+            valid_block_roll_updates,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
@@ -1898,18 +1937,20 @@ impl BlockGraph {
         }
 
         // check operations
-        let (operations_deps, block_changes) = match self.check_operations(block, operation_set)? {
-            BlockOperationsCheckOutcome::Proceed {
-                dependencies,
-                block_changes,
-            } => (dependencies, block_changes),
-            BlockOperationsCheckOutcome::Discard(reason) => {
-                return Ok(BlockCheckOutcome::Discard(reason))
-            }
-            BlockOperationsCheckOutcome::WaitForDependencies(deps) => {
-                return Ok(BlockCheckOutcome::WaitForDependencies(deps))
-            }
-        };
+        let (operations_deps, block_changes, roll_updates) =
+            match self.check_operations(block, operation_set)? {
+                BlockOperationsCheckOutcome::Proceed {
+                    dependencies,
+                    block_changes,
+                    roll_updates,
+                } => (dependencies, block_changes, roll_updates),
+                BlockOperationsCheckOutcome::Discard(reason) => {
+                    return Ok(BlockCheckOutcome::Discard(reason))
+                }
+                BlockOperationsCheckOutcome::WaitForDependencies(deps) => {
+                    return Ok(BlockCheckOutcome::WaitForDependencies(deps))
+                }
+            };
         deps.extend(operations_deps);
 
         massa_trace!("consensus.block_graph.check_block.ok", {
@@ -1922,12 +1963,13 @@ impl BlockGraph {
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
             block_changes,
+            roll_updates,
         })
     }
 
     /// Check if operations are consistent.
     ///
-    /// Returns changes done by that block to the ledger (one hashmap per thread)
+    /// Returns changes done by that block to the ledger (one hashmap per thread) and rolls
     fn check_operations(
         &self,
         block_to_check: &Block,
@@ -2059,7 +2101,10 @@ impl BlockGraph {
         let mut block_changes: Vec<HashMap<Address, LedgerChange>> =
             vec![HashMap::new(); self.cfg.thread_count as usize];
 
-        // reward
+        // credit roll sales after lock
+        // TODO credit all roll sales that happened at N-1-loocback-lock
+
+        // block constant reward
         let creator_thread = block_creator_address.get_thread(self.cfg.thread_count);
         let reward_ledger_change = LedgerChange {
             balance_delta: self.cfg.block_reward,
@@ -2109,6 +2154,8 @@ impl BlockGraph {
                 }
                 Ok(changes) => changes,
             };
+            //TODO use get_roll_changes to get compensated roll changes
+            // apply buys/sales to ledger and rolls
             for (thread, changes) in changes.into_iter().enumerate() {
                 for (change_addr, change) in changes.into_iter() {
                     // apply change to ledger and check if ok
@@ -2147,6 +2194,7 @@ impl BlockGraph {
         Ok(BlockOperationsCheckOutcome::Proceed {
             dependencies,
             block_changes,
+            roll_updates: todo!(),
         })
     }
 
@@ -2332,9 +2380,9 @@ impl BlockGraph {
         block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
         operation_set: HashMap<OperationId, (usize, u64)>,
         addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
+        roll_updates: RollThreadUpdates,
     ) -> Result<(), ConsensusError> {
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
-
         // add block to status structure
         self.block_statuses.insert(
             hash,
@@ -2348,6 +2396,7 @@ impl BlockGraph {
                 block_ledger_change,
                 operation_set,
                 addresses_to_operations,
+                roll_updates,
             }),
         );
 

@@ -1,8 +1,25 @@
 use bitvec::prelude::*;
-use models::{Address, Slot};
+use models::{Address, Operation, Slot};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::{block_graph::ActiveBlock, ConsensusError};
+
+pub trait OperationPosInterface {
+    /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
+    fn get_roll_changes(
+        &self,
+        thread_count: u8,
+    ) -> Result<Vec<HashMap<Address, (u64, u64)>>, ConsensusError>;
+}
+
+impl OperationPosInterface for Operation {
+    fn get_roll_changes(
+        &self,
+        thread_count: u8,
+    ) -> Result<Vec<HashMap<Address, (u64, u64)>>, ConsensusError> {
+        todo!()
+    }
+}
 
 struct FinalRollThreadData {
     /// Cycle number
