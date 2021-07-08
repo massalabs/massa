@@ -7,7 +7,7 @@
     bind = "127.0.0.1:3030"
 
 [consensus]
-    genesis_timestamp = 1618644864000 # to update while testing
+    genesis_timestamp = 1619426358000 # to update while testing
     t0 = 16000
     thread_count = 32
     selection_rng_seed = 42
@@ -19,7 +19,7 @@
         ['5KdMBTJAU9JpJggACMx5gd8x8tSQFZEwfpxrzFV2Znz6M7FyAN','5nLsiHcZHCLSWnquQtrninDQRMJdXYKgt3fEyqBQ6ju6a2K6t']
     ]
     current_node_index = 0 # To update
-    max_discarded_blocks = 10
+    max_discarded_blocks = 500
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 320
     max_dependency_blocks = 1048
@@ -59,7 +59,7 @@
     max_send_wait = 250
 
 [storage]
-    max_stored_blocks= 10000
+    max_stored_blocks= 1000
     path = "block_store"
     cache_capacity = 10000
     #flush_every_ms = 
