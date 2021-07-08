@@ -29,9 +29,8 @@ async fn run(cfg: config::Config) -> () {
         .expect("Could not create consensus controller");
 
     // spawn API
-    let cnss_interface = cnss.get_interface();
     let mut api_handle = api::spawn_server(
-        cnss_interface,
+        cnss.get_interface(),
         cfg.api.clone(),
         cfg.consensus.clone(),
         cfg.network.clone(),
