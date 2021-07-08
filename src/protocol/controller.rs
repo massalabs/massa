@@ -35,7 +35,7 @@ pub enum ProtocolEvent {
 
 #[derive(Clone, Debug)]
 enum NodeCommand {
-    ProvidePeerList(Vec<IpAddr>),
+    SendPeerList(Vec<IpAddr>),
     Close,
 }
 
@@ -152,7 +152,7 @@ async fn protocol_controller_fn(
                     }
                     let messsage_timeout_copy = Duration::from_secs_f32(cfg.message_timeout_seconds);
                     let handshake_fn_handle = tokio::spawn(async move {
-                        fn_handshake(
+                        handshake_fn(
                             connection_id,
                             socket,
                             self_node_id,
@@ -258,7 +258,7 @@ async fn protocol_controller_fn(
                 NodeEventType::AskedPeerList => {
                     let (_, node_command_tx, _) = active_nodes.get(&from_node_id).expect("event received from missing node");
                     node_command_tx
-                        .send(NodeCommand::ProvidePeerList(connection_controller.get_advertisable_peer_list().await))
+                        .send(NodeCommand::SendPeerList(connection_controller.get_advertisable_peer_list().await))
                         .await.expect("controller event tx failed");
                 }
             }
@@ -279,13 +279,13 @@ async fn protocol_controller_fn(
 
     // wait for all running handshakes
     running_handshakes.clear();
-    while let Some(res) = handshake_futures.next().await {}
+    while let Some(_) = handshake_futures.next().await {}
 
     // stop connection controller
     connection_controller.stop().await;
 }
 
-async fn fn_handshake(
+async fn handshake_fn(
     connection_id: ConnectionId,
     socket: TcpStream,
     self_node_id: NodeId, // NodeId.0 is our PublicKey
@@ -399,6 +399,10 @@ async fn node_controller_fn(
         node_writer_fn(cfg_copy, socket_writer, writer_event_tx, writer_command_rx).await;
     });
 
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f32(
+        cfg.ask_peer_list_interval_seconds,
+    ));
+
     let mut exit_reason = ConnectionClosureReason::Normal;
 
     loop {
@@ -435,7 +439,7 @@ async fn node_controller_fn(
             // node command
             cmd = node_command_rx.next() => match cmd {
                 Some(NodeCommand::Close) => break,
-                Some(NodeCommand::ProvidePeerList(ip_vec)) => {
+                Some(NodeCommand::SendPeerList(ip_vec)) => {
                     writer_command_tx.send(Message::PeerList(ip_vec)).await.expect("writer disappeared");
                 }
                 /*Some(_) => {
@@ -454,7 +458,9 @@ async fn node_controller_fn(
                 break;
             },
 
-            // TODO add timer and ask for peer list via writer_command_tx
+            _ = interval.tick() => {
+                writer_command_tx.send(Message::AskPeerList).await.expect("writer disappeared");
+            }
         }
     }
 
