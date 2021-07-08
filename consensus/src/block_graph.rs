@@ -2698,12 +2698,12 @@ mod tests {
         }
     }
     fn example_consensus_config() -> (ConsensusConfig, SerializationContext) {
-        let secp = SignatureEngine::new();
+        let signature_engine = SignatureEngine::new();
         let genesis_key = SignatureEngine::generate_random_private_key();
         let mut nodes = Vec::new();
         for _ in 0..2 {
             let private_key = SignatureEngine::generate_random_private_key();
-            let public_key = secp.derive_public_key(&private_key);
+            let public_key = signature_engine.derive_public_key(&private_key);
             nodes.push((public_key, private_key));
         }
         let thread_count: u8 = 2;
