@@ -238,14 +238,14 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move |hash| get_block(evt_tx.clone(), hash, storage.clone()));
 
-        let evt_tx = event_tx.clone();
-        let operation = warp::get()
-            .and(warp::path("api"))
-            .and(warp::path("v1"))
-            .and(warp::path("operation"))
-            .and(warp::path::param::<OperationId>()) // operation id
-            .and(warp::path::end())
-            .and_then(move |hash| get_operation(evt_tx.clone(), hash));
+    let evt_tx = event_tx.clone();
+    let operation = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("operation"))
+        .and(warp::path::param::<OperationId>()) // operation id
+        .and(warp::path::end())
+        .and_then(move |hash| get_operation(evt_tx.clone(), hash));
 
     let evt_tx = event_tx.clone();
     let operation = warp::get()
