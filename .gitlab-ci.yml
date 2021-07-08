@@ -35,7 +35,7 @@ test:
   script:
     - cargo install cargo-tarpaulin
     - cargo tarpaulin -v
-  coverage: ([\d\.]+)\% coverage
+  coverage: /([\d\.]+)\% coverage/
 
 # Use cargo to build the project
 build:
