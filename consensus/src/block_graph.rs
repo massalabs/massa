@@ -1769,3 +1769,94 @@ impl BlockGraph {
         mem::replace(&mut self.to_propagate, Default::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use time::UTime;
+
+    #[test]
+    fn test_clique_calculation() {
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg, serialization_context).unwrap();
+        let hashes: Vec<Hash> = vec![
+            "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
+            "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
+            "xtvLedxC7CigAPytS5qh9nbTuYyLbQKCfbX8finiHsKMWH6SG",
+            "2Qs9sSbc5sGpVv5GnTeDkTKdDpKhp4AgCVT4XFcMaf55msdvJN",
+            "2VNc8pR4tNnZpEPudJr97iNHxXbHiubNDmuaSzrxaBVwKXxV6w",
+            "2bsrYpfLdvVWAJkwXoJz1kn4LWshdJ6QjwTrA7suKg8AY3ecH1",
+            "kfUeGj3ZgBprqFRiAQpE47dW5tcKTAueVaWXZquJW6SaPBd4G",
+        ]
+        .into_iter()
+        .map(|h| Hash::from_bs58_check(h).unwrap())
+        .collect();
+        block_graph.gi_head = vec![
+            (0, vec![1, 2, 3, 4]),
+            (1, vec![0]),
+            (2, vec![0]),
+            (3, vec![0]),
+            (4, vec![0]),
+            (5, vec![6]),
+            (6, vec![5]),
+        ]
+        .into_iter()
+        .map(|(idx, lst)| (hashes[idx], lst.into_iter().map(|i| hashes[i]).collect()))
+        .collect();
+        let computed_sets = block_graph.compute_max_cliques();
+
+        let expected_sets: Vec<HashSet<Hash>> = vec![
+            vec![1, 2, 3, 4, 5],
+            vec![1, 2, 3, 4, 6],
+            vec![0, 5],
+            vec![0, 6],
+        ]
+        .into_iter()
+        .map(|lst| lst.into_iter().map(|i| hashes[i]).collect())
+        .collect();
+
+        assert_eq!(computed_sets.len(), expected_sets.len());
+        for expected in expected_sets.into_iter() {
+            assert!(computed_sets.iter().any(|v| v == &expected));
+        }
+    }
+    fn example_consensus_config() -> (ConsensusConfig, SerializationContext) {
+        let secp = SignatureEngine::new();
+        let genesis_key = SignatureEngine::generate_random_private_key();
+        let mut nodes = Vec::new();
+        for _ in 0..2 {
+            let private_key = SignatureEngine::generate_random_private_key();
+            let public_key = secp.derive_public_key(&private_key);
+            nodes.push((public_key, private_key));
+        }
+        let thread_count: u8 = 2;
+        let max_block_size = 1024 * 1024;
+        let max_operations_per_block = 1024;
+        (
+            ConsensusConfig {
+                genesis_timestamp: UTime::now().unwrap(),
+                thread_count,
+                t0: 32.into(),
+                selection_rng_seed: 42,
+                genesis_key,
+                nodes,
+                current_node_index: 0,
+                max_discarded_blocks: 10,
+                future_block_processing_max_periods: 3,
+                max_future_processing_blocks: 10,
+                max_dependency_blocks: 10,
+                delta_f0: 5,
+                disable_block_creation: true,
+                max_block_size,
+                max_operations_per_block,
+            },
+            SerializationContext {
+                max_block_size,
+                max_block_operations: max_operations_per_block,
+                parent_count: thread_count,
+                max_peer_list_length: 128,
+                max_message_size: 3 * 1024 * 1024,
+            },
+        )
+    }
+}
