@@ -12,7 +12,7 @@ use communication::{
 use consensus::start_consensus_controller;
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
-use models::SerializationContext;
+use models::{init_serialization_context, SerializationContext};
 use pool::start_pool_controller;
 use storage::start_storage;
 use tokio::{
@@ -21,8 +21,8 @@ use tokio::{
 };
 
 async fn run(cfg: config::Config) {
-    // generate serialization context
-    let serialization_context = SerializationContext {
+    // Init the global serialization context
+    init_serialization_context(SerializationContext {
         max_block_operations: cfg.consensus.max_operations_per_block,
         parent_count: cfg.consensus.thread_count,
         max_block_size: cfg.consensus.max_block_size,
@@ -35,11 +35,10 @@ async fn run(cfg: config::Config) {
         max_ask_blocks_per_message: cfg.network.max_ask_blocks_per_message,
         max_operations_per_message: cfg.network.max_operations_per_message,
         max_bootstrap_message_size: cfg.bootstrap.max_bootstrap_message_size,
-    };
+    });
 
     let (boot_graph, clock_compensation, initial_peers) = get_state(
         cfg.bootstrap.clone(),
-        serialization_context.clone(),
         bootstrap::establisher::Establisher::new(),
     )
     .await
@@ -49,7 +48,6 @@ async fn run(cfg: config::Config) {
     let (network_command_sender, network_event_receiver, network_manager, private_key) =
         start_network_controller(
             cfg.network.clone(),
-            serialization_context.clone(),
             Establisher::new(),
             clock_compensation,
             initial_peers,
@@ -59,8 +57,7 @@ async fn run(cfg: config::Config) {
 
     // start storage
     let (storage_command_sender, storage_manager) =
-        start_storage(cfg.storage.clone(), serialization_context.clone())
-            .expect("could not start storage controller");
+        start_storage(cfg.storage.clone()).expect("could not start storage controller");
 
     // launch protocol controller
     let (
@@ -71,7 +68,6 @@ async fn run(cfg: config::Config) {
     ) = start_protocol_controller(
         cfg.protocol.clone(),
         cfg.consensus.operation_validity_periods.clone(),
-        serialization_context.clone(),
         network_command_sender.clone(),
         network_event_receiver,
     )
@@ -85,7 +81,6 @@ async fn run(cfg: config::Config) {
         cfg.consensus.operation_validity_periods,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
-        serialization_context.clone(),
     )
     .await
     .expect("could not start pool controller");
@@ -94,7 +89,6 @@ async fn run(cfg: config::Config) {
     let (consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.consensus.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
@@ -114,7 +108,6 @@ async fn run(cfg: config::Config) {
         cfg.pool.clone(),
         Some(storage_command_sender),
         clock_compensation,
-        serialization_context.clone(),
     )
     .await
     .expect("could not start API controller");
@@ -123,7 +116,6 @@ async fn run(cfg: config::Config) {
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         cfg.bootstrap,
-        serialization_context.clone(),
         bootstrap::Establisher::new(),
         private_key,
         clock_compensation,

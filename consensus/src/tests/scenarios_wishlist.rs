@@ -15,23 +15,21 @@ use std::iter::FromIterator;
 #[serial]
 async fn test_wishlist_delta_with_empty_remove() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -51,7 +49,6 @@ async fn test_wishlist_delta_with_empty_remove() {
     //create test blocks
     let (hasht0s1, t0s1, _) = tools::create_block(
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         genesis_hashes.clone(),
         cfg.nodes[0].clone(),
@@ -84,23 +81,21 @@ async fn test_wishlist_delta_with_empty_remove() {
 #[serial]
 async fn test_wishlist_delta_remove() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 500.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -120,7 +115,6 @@ async fn test_wishlist_delta_remove() {
     //create test blocks
     let (hasht0s1, t0s1, _) = tools::create_block(
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         genesis_hashes.clone(),
         cfg.nodes[0].clone(),

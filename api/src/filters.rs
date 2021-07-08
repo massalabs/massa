@@ -163,7 +163,6 @@ use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
-use models::SerializationContext;
 use models::{Block, BlockHeader, BlockId, Slot};
 use pool::PoolConfig;
 use serde::Deserialize;
@@ -235,7 +234,6 @@ pub fn get_filter(
     event_tx: mpsc::Sender<ApiEvent>,
     opt_storage_command_sender: Option<StorageAccess>,
     clock_compensation: i64,
-    context: SerializationContext,
 ) -> BoxedFilter<(impl Reply,)> {
     massa_trace!("api.filters.get_filter", {});
     let evt_tx = event_tx.clone();
@@ -346,13 +344,12 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || get_network_info(network_cfg.clone(), evt_tx.clone()));
 
-    let context_cfg = context.clone();
     let node_config = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("node_config"))
         .and(warp::path::end())
-        .and_then(move || get_node_config(context_cfg.clone()));
+        .and_then(move || get_node_config());
 
     let pool_cfg = pool_config.clone();
     let pool_config = warp::get()
@@ -442,16 +439,13 @@ pub fn get_filter(
         .and_then(move || stop_node(evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
-    let op_context = context.clone();
     let send_operations = warp::path("api")
         .and(warp::path("v1"))
         .and(warp::path("operations"))
         .and(warp::path::end())
         .and(warp::post())
         .and(warp::body::json())
-        .and_then(move |operations| {
-            send_operations(operations, evt_tx.clone(), op_context.clone())
-        });
+        .and_then(move |operations| send_operations(operations, evt_tx.clone()));
 
     block
         .or(blockinterval)
@@ -489,10 +483,9 @@ async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::R
 /// Note: as our ip adress is in the config,
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
-async fn get_node_config(
-    context: SerializationContext,
-) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_node_config() -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_node_config", {});
+    let context = models::with_serialization_context(|context| context.clone());
     Ok(warp::reply::json(&context))
 }
 
@@ -538,10 +531,9 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
 async fn send_operations(
     operations: Vec<Operation>,
     evt_tx: mpsc::Sender<ApiEvent>,
-    context: SerializationContext,
 ) -> Result<impl Reply, Rejection> {
     massa_trace!("api.filters.send_operations ", { "operations": operations });
-
+    let context = models::with_serialization_context(|context| context.clone());
     let to_send: Result<HashMap<OperationId, Operation>, ModelsError> = operations
         .into_iter()
         .map(|op| Ok((op.verify_integrity(&context)?, op)))

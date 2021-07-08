@@ -68,12 +68,27 @@ pub fn get_block_with_op(context: &SerializationContext) -> (Block, BlockId, Ope
         },
         operations: vec![op.clone()]
     };
-    let id = block.header.compute_block_id(context).unwrap();
+    let id = block.header.compute_block_id().unwrap();
     (block, id, op.get_operation_id(context).unwrap())
 }
 
 pub fn get_test_config() -> (StorageConfig, SerializationContext) {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
+    let context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_bootstrap_message_size: 100000000,
+    };
+    models::init_serialization_context(context.clone());
     (
         StorageConfig {
             max_stored_blocks: 100000,
@@ -82,20 +97,7 @@ pub fn get_test_config() -> (StorageConfig, SerializationContext) {
             flush_interval: Some(200.into()),
             reset_at_startup: true,
         },
-        SerializationContext {
-            max_block_size: 1024 * 1024,
-            max_block_operations: 1024,
-            parent_count: 2,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-        },
+        context,
     )
 }
 

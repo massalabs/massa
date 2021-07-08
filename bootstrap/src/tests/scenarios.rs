@@ -1,6 +1,6 @@
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
-use models::SerializeCompact;
+use models::{get_serialization_context, init_serialization_context, SerializeCompact};
 use serial_test::serial;
 use std::str::FromStr;
 use tokio::sync::mpsc;
@@ -11,13 +11,14 @@ use super::{
     mock_establisher,
     tools::{
         bridge_mock_streams, get_boot_graph, get_bootstrap_config, get_keys, get_peers,
-        get_serialization_context, wait_consensus_command, wait_network_command,
+        wait_consensus_command, wait_network_command,
     },
 };
 
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
+    init_serialization_context(Default::default());
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let (private_key, public_key) = get_keys();
@@ -28,7 +29,6 @@ async fn test_bootstrap_server() {
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
         cfg.clone(),
-        get_serialization_context(),
         bootstrap_establisher,
         private_key,
         0,
@@ -40,11 +40,8 @@ async fn test_bootstrap_server() {
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let cfg_copy = cfg.clone();
-    let get_state_h = tokio::spawn(async move {
-        get_state(cfg_copy, get_serialization_context(), remote_establisher)
-            .await
-            .unwrap()
-    });
+    let get_state_h =
+        tokio::spawn(async move { get_state(cfg_copy, remote_establisher).await.unwrap() });
 
     // accept connection attempt from remote
     let (remote_r, remote_w, conn_addr, resp) = tokio::time::timeout(

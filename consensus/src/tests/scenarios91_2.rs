@@ -27,7 +27,7 @@ async fn test_queueing() {
     //     .unwrap();
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -38,16 +38,14 @@ async fn test_queueing() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -69,7 +67,6 @@ async fn test_queueing() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -81,7 +78,6 @@ async fn test_queueing() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -94,7 +90,6 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -106,7 +101,6 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -117,7 +111,6 @@ async fn test_queueing() {
 
     let (missed_hash, _missed_block, _missed_key) = tools::create_block(
         &cfg,
-        &serialization_context,
         Slot::new(32, 0),
         vec![valid_hasht0, valid_hasht1],
         cfg.nodes[0].clone(),
@@ -127,7 +120,6 @@ async fn test_queueing() {
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(33, 0),
         vec![missed_hash, valid_hasht1],
         false,
@@ -140,7 +132,6 @@ async fn test_queueing() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 34, 0),
             vec![valid_hasht0, valid_hasht1],
             false,
@@ -152,7 +143,6 @@ async fn test_queueing() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 34, 1),
             vec![valid_hasht0, valid_hasht1],
             false,
@@ -181,7 +171,7 @@ async fn test_doubles() {
     //     .unwrap();
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -192,16 +182,14 @@ async fn test_doubles() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -223,7 +211,6 @@ async fn test_doubles() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -235,7 +222,6 @@ async fn test_doubles() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -248,7 +234,6 @@ async fn test_doubles() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -260,7 +245,6 @@ async fn test_doubles() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -273,7 +257,6 @@ async fn test_doubles() {
     valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
         true,
@@ -286,13 +269,7 @@ async fn test_doubles() {
         .await
         .unwrap()
     {
-        tools::propagate_block(
-            &serialization_context,
-            &mut protocol_controller,
-            block,
-            false,
-        )
-        .await;
+        tools::propagate_block(&mut protocol_controller, block, false).await;
     };
 
     // stop controller while ignoring all commands
@@ -315,7 +292,7 @@ async fn test_double_staking() {
     //     .unwrap();
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -326,16 +303,14 @@ async fn test_double_staking() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -357,7 +332,6 @@ async fn test_double_staking() {
     let mut valid_hasht0 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -369,7 +343,6 @@ async fn test_double_staking() {
     let mut valid_hasht1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -382,7 +355,6 @@ async fn test_double_staking() {
         valid_hasht0 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 2, 0),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -394,7 +366,6 @@ async fn test_double_staking() {
         valid_hasht1 = tools::create_and_test_block(
             &mut protocol_controller,
             &cfg,
-            &serialization_context,
             Slot::new(i + 2, 1),
             vec![valid_hasht0, valid_hasht1],
             true,
@@ -407,36 +378,22 @@ async fn test_double_staking() {
     let operation_merkle_root = Hash::hash("42".as_bytes());
     let (hash_1, block_1, _key) = tools::create_block_with_merkle_root(
         &cfg,
-        &serialization_context,
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
         cfg.nodes[0].clone(),
     );
-    tools::propagate_block(
-        &serialization_context,
-        &mut protocol_controller,
-        block_1,
-        true,
-    )
-    .await;
+    tools::propagate_block(&mut protocol_controller, block_1, true).await;
 
     let operation_merkle_root = Hash::hash("so long and thanks for all the fish".as_bytes());
     let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
         &cfg,
-        &serialization_context,
         operation_merkle_root,
         Slot::new(41, 0),
         vec![valid_hasht0, valid_hasht1],
         cfg.nodes[0].clone(),
     );
-    tools::propagate_block(
-        &serialization_context,
-        &mut protocol_controller,
-        block_2,
-        true,
-    )
-    .await;
+    tools::propagate_block(&mut protocol_controller, block_2, true).await;
 
     let graph = consensus_command_sender
         .get_block_graph_status()
@@ -466,7 +423,7 @@ async fn test_test_parents() {
     //     .unwrap();
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
@@ -477,16 +434,14 @@ async fn test_test_parents() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -508,7 +463,6 @@ async fn test_test_parents() {
     let valid_hasht0s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         genesis_hashes.clone(),
         true,
@@ -520,7 +474,6 @@ async fn test_test_parents() {
     let valid_hasht1s1 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         genesis_hashes.clone(),
         true,
@@ -532,7 +485,6 @@ async fn test_test_parents() {
     let valid_hasht0s2 = tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(2, 0),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
@@ -544,7 +496,6 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(2, 1),
         vec![valid_hasht0s1, valid_hasht1s1],
         true,
@@ -557,7 +508,6 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(3, 0),
         vec![valid_hasht0s2, genesis_hashes[1usize]],
         false,
@@ -569,7 +519,6 @@ async fn test_test_parents() {
     tools::create_and_test_block(
         &mut protocol_controller,
         &cfg,
-        &serialization_context,
         Slot::new(3, 1),
         vec![genesis_hashes[0usize], genesis_hashes[0usize]],
         false,
@@ -596,7 +545,7 @@ async fn test_block_creation() {
     //     .init()
     //     .unwrap();
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(2, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(2, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -615,15 +564,13 @@ async fn test_block_creation() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (mut pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,

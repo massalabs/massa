@@ -9,10 +9,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
-use models::{
-    Address, Block, BlockId, Operation, OperationId, OperationSearchResult, SerializationContext,
-    Slot,
-};
+use models::{Address, Block, BlockId, Operation, OperationId, OperationSearchResult, Slot};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet, VecDeque};
 use storage::StorageAccess;
@@ -29,7 +26,6 @@ use tokio::{
 /// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
-    serialization_context: SerializationContext,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,
@@ -68,7 +64,7 @@ pub async fn start_consensus_controller(
     }
 
     // start worker
-    let block_db = BlockGraph::new(cfg.clone(), serialization_context.clone(), boot_graph).await?;
+    let block_db = BlockGraph::new(cfg.clone(), boot_graph).await?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
@@ -85,7 +81,6 @@ pub async fn start_consensus_controller(
             event_tx,
             manager_rx,
             clock_compensation,
-            serialization_context,
         )?
         .run_loop()
         .await;

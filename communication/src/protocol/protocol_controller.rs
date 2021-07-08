@@ -9,7 +9,7 @@ use crate::{
     error::CommunicationError,
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
-use models::{Block, BlockId, Operation, OperationId, SerializationContext};
+use models::{Block, BlockId, Operation, OperationId};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -25,7 +25,6 @@ use tokio::{sync::mpsc, task::JoinHandle};
 pub async fn start_protocol_controller(
     cfg: ProtocolConfig,
     operation_validity_periods: u64,
-    serialization_context: SerializationContext,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
 ) -> Result<
@@ -48,7 +47,6 @@ pub async fn start_protocol_controller(
         let res = ProtocolWorker::new(
             cfg,
             operation_validity_periods,
-            serialization_context,
             network_command_sender,
             network_event_receiver,
             event_tx,

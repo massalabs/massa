@@ -8,7 +8,7 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
-use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
+use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
 use pool::PoolConfig;
 use std::{
     collections::HashMap,
@@ -114,11 +114,7 @@ pub fn get_api_config() -> ApiConfig {
     }
 }
 
-pub fn get_header(
-    serialization_context: &SerializationContext,
-    slot: Slot,
-    creator: Option<PublicKey>,
-) -> (BlockId, BlockHeader) {
+pub fn get_header(slot: Slot, creator: Option<PublicKey>) -> (BlockId, BlockHeader) {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
 
@@ -134,7 +130,6 @@ pub fn get_header(
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
         },
-        serialization_context,
     )
     .unwrap()
 }
@@ -142,20 +137,6 @@ pub fn get_header(
 pub fn mock_filter(
     storage_cmd: Option<StorageAccess>,
 ) -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
-    let serialization_context = SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    };
     let (evt_tx, evt_rx) = mpsc::channel(1);
     (
         get_filter(
@@ -167,7 +148,6 @@ pub fn mock_filter(
             evt_tx,
             storage_cmd,
             0,
-            serialization_context,
         ),
         evt_rx,
     )
@@ -192,10 +172,7 @@ pub fn get_dummy_staker() -> PublicKey {
     derive_public_key(&private_key)
 }
 
-pub async fn get_test_storage(
-    cfg: ConsensusConfig,
-    serialization_context: SerializationContext,
-) -> (StorageAccess, (Block, Block, Block)) {
+pub async fn get_test_storage(cfg: ConsensusConfig) -> (StorageAccess, (Block, Block, Block)) {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
     let storage_config = StorageConfig {
@@ -207,8 +184,7 @@ pub async fn get_test_storage(
         flush_interval: None, //defaut
         reset_at_startup: true,
     };
-    let (storage_command_tx, _storage_manager) =
-        start_storage(storage_config, serialization_context.clone()).unwrap();
+    let (storage_command_tx, _storage_manager) = start_storage(storage_config).unwrap();
 
     let mut blocks = HashMap::new();
 
@@ -224,13 +200,7 @@ pub async fn get_test_storage(
         .unwrap(),
         2000.into()
     );
-    blocks.insert(
-        block_a
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
-        block_a.clone(),
-    );
+    blocks.insert(block_a.header.compute_block_id().unwrap(), block_a.clone());
 
     let mut block_b = get_test_block();
     block_b.header.content.slot = Slot::new(1, 1);
@@ -244,13 +214,7 @@ pub async fn get_test_storage(
         .unwrap(),
         3000.into()
     );
-    blocks.insert(
-        block_b
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
-        block_b.clone(),
-    );
+    blocks.insert(block_b.header.compute_block_id().unwrap(), block_b.clone());
 
     let mut block_c = get_test_block();
     block_c.header.content.slot = Slot::new(2, 0);
@@ -264,13 +228,7 @@ pub async fn get_test_storage(
         .unwrap(),
         4000.into()
     );
-    blocks.insert(
-        block_c
-            .header
-            .compute_block_id(&serialization_context)
-            .unwrap(),
-        block_c.clone(),
-    );
+    blocks.insert(block_c.header.compute_block_id().unwrap(), block_c.clone());
 
     storage_command_tx.add_block_batch(blocks).await.unwrap();
 
@@ -312,12 +270,11 @@ pub fn get_empty_graph_handle(mut rx_api: Receiver<ApiEvent>) -> JoinHandle<()> 
     })
 }
 pub fn get_test_compiled_exported_block(
-    serialization_context: &SerializationContext,
     slot: Slot,
     creator: Option<PublicKey>,
 ) -> ExportCompiledBlock {
     ExportCompiledBlock {
-        block: get_header(&serialization_context, slot, creator).1,
+        block: get_header(slot, creator).1,
         children: Vec::new(),
         status: consensus::Status::Active,
     }

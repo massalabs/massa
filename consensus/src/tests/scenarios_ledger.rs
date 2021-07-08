@@ -19,8 +19,8 @@ use time::UTime;
 #[serial]
 async fn test_ledger_init() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None);
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None);
     assert!(ledger.is_ok());
 }
 
@@ -28,8 +28,8 @@ async fn test_ledger_init() {
 #[serial]
 async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -47,8 +47,8 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 #[serial]
 async fn test_ledger_final_balance_increment_new_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -73,8 +73,8 @@ async fn test_ledger_final_balance_increment_new_address() {
 #[serial]
 async fn test_ledger_apply_change_wrong_thread() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -102,8 +102,8 @@ async fn test_ledger_apply_change_wrong_thread() {
 #[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -133,8 +133,8 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -174,8 +174,8 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -221,8 +221,8 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -240,8 +240,8 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -260,8 +260,8 @@ async fn test_ledger_final_balance_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_duplicate_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -284,8 +284,8 @@ async fn test_ledger_final_balance_duplicate_address() {
 #[serial]
 async fn test_ledger_final_balance_multiple_addresses() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let mut addresses = vec![];
     for _ in 0..5 {
@@ -313,8 +313,8 @@ async fn test_ledger_final_balance_multiple_addresses() {
 #[serial]
 async fn test_ledger_clear() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -349,8 +349,8 @@ async fn test_ledger_clear() {
 #[serial]
 async fn test_ledger_read_whole() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
-    let ledger = Ledger::new(cfg.clone(), serialization_context.clone(), None).unwrap();
+    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -443,7 +443,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     ledger.insert(address_2, LedgerData { balance: 3000 });
 
     let ledger_file = generate_ledger_file(&ledger);
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
@@ -457,16 +457,14 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -484,20 +482,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         .genesis_blocks;
 
     // A -> B [amount 10, fee 3]
-    let operation_1 = create_transaction(
-        private_key_1,
-        public_key_1,
-        address_2,
-        10,
-        &serialization_context,
-        10,
-        3,
-    );
+    let operation_1 = create_transaction(private_key_1, public_key_1, address_2, 10, 10, 3);
 
     // Add block B3
     let (block_a_id, block_a, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         &genesis_ids,
         nodes[0],
@@ -507,31 +496,14 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     tools::validate_propagate_block(&mut protocol_controller, block_a_id, 150).await;
 
     // B -> A [amount 9, fee 2]
-    let operation_2 = create_transaction(
-        private_key_2,
-        public_key_2,
-        address_1,
-        9,
-        &serialization_context,
-        10,
-        2,
-    );
+    let operation_2 = create_transaction(private_key_2, public_key_2, address_1, 9, 10, 2);
 
     // B -> C [amount 3, fee 1]
-    let operation_3 = create_transaction(
-        private_key_2,
-        public_key_2,
-        address_3,
-        3,
-        &serialization_context,
-        10,
-        1,
-    );
+    let operation_3 = create_transaction(private_key_2, public_key_2, address_3, 3, 10, 1);
 
     // Add block B4
     let (block_b_id, block_b, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         &genesis_ids,
         nodes[0],
@@ -541,20 +513,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     tools::validate_propagate_block(&mut protocol_controller, block_b_id, 150).await;
 
     // A -> C [amount 3, fee 4]
-    let operation_4 = create_transaction(
-        private_key_1,
-        public_key_1,
-        address_3,
-        3,
-        &serialization_context,
-        10,
-        4,
-    );
+    let operation_4 = create_transaction(private_key_1, public_key_1, address_3, 3, 10, 4);
 
     // Add block B5
     let (block_c_id, block_c, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(2, 0),
         &vec![block_a_id, block_b_id],
         nodes[0],
@@ -566,7 +529,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Add block B6, no operations.
     let (block_d_id, block_d, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(2, 1),
         &vec![block_a_id, block_b_id],
         nodes[0],
@@ -576,19 +538,10 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     tools::validate_propagate_block(&mut protocol_controller, block_d_id, 150).await;
 
     // A -> B [amount 11, fee 7]
-    let operation_5 = create_transaction(
-        private_key_1,
-        public_key_1,
-        address_2,
-        11,
-        &serialization_context,
-        10,
-        7,
-    );
+    let operation_5 = create_transaction(private_key_1, public_key_1, address_2, 11, 10, 7);
     // Add block B7
     let (block_e_id, block_e, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(3, 0),
         &vec![block_c_id, block_b_id],
         nodes[0],
@@ -598,19 +551,10 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     tools::validate_propagate_block(&mut protocol_controller, block_e_id, 150).await;
 
     // B -> A [amount 17, fee 4]
-    let operation_6 = create_transaction(
-        private_key_2,
-        public_key_2,
-        address_1,
-        17,
-        &serialization_context,
-        10,
-        4,
-    );
+    let operation_6 = create_transaction(private_key_2, public_key_2, address_1, 17, 10, 4);
     // Add block B8
     let (block_f_id, block_f, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(3, 1),
         &vec![block_c_id, block_d_id],
         nodes[0],
@@ -622,7 +566,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Add block B9
     let (block_g_id, block_g, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(4, 0),
         &vec![block_e_id, block_f_id],
         nodes[0],
@@ -661,7 +604,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Add block B10
     let (block_h_id, block_h, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(5, 0),
         &vec![block_g_id, block_f_id],
         nodes[0],
@@ -673,7 +615,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Add block B11
     let (block_i_id, block_i, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(6, 0),
         &vec![block_h_id, block_f_id],
         nodes[0],
@@ -713,7 +654,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Add block B12
     let (block_j_id, block_j, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(7, 0),
         &vec![block_i_id, block_f_id],
         nodes[0],
@@ -753,7 +693,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Add block B13
     let (block_k_id, block_k, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(8, 0),
         &vec![block_j_id, block_f_id],
         nodes[0],

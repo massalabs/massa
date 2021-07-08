@@ -9,8 +9,8 @@ use std::{
 
 use crate::{ConsensusConfig, ConsensusError};
 use models::{
-    array_from_slice, u8_from_slice, Address, DeserializeCompact, SerializationContext,
-    SerializeCompact, SerializeVarInt,
+    array_from_slice, get_serialization_context, u8_from_slice, Address, DeserializeCompact,
+    SerializationContext, SerializeCompact, SerializeVarInt,
 };
 use models::{DeserializeVarInt, Operation};
 use serde::{Deserialize, Serialize};
@@ -261,9 +261,9 @@ impl Ledger {
     /// if there is a ledger in the given file, it is loaded
     pub fn new(
         cfg: ConsensusConfig,
-        context: SerializationContext,
         datas: Option<HashMap<Address, LedgerData>>,
     ) -> Result<Ledger, ConsensusError> {
+        let context = get_serialization_context();
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
             .cache_capacity(cfg.ledger_cache_capacity)
@@ -376,12 +376,12 @@ impl Ledger {
     pub fn from_export(
         export: LedgerExport,
         cfg: ConsensusConfig,
-        context: SerializationContext,
     ) -> Result<Ledger, ConsensusError> {
-        let ledger = Ledger::new(cfg.clone(), context.clone(), None)?;
+        let ledger = Ledger::new(cfg.clone(), None)?;
         ledger.clear()?;
 
         // fill ledger per thread
+        let context = get_serialization_context();
         for thread in 0..cfg.thread_count {
             for (address, balance) in export.ledger_per_thread[thread as usize].iter() {
                 if let Some(_) = ledger.ledger_per_thread[thread as usize]

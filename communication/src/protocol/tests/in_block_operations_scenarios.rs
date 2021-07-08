@@ -24,7 +24,8 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     // .timestamp(stderrlog::Timestamp::Millisecond)
     // .init()
     // .unwrap();
-    let (protocol_config, serialization_context) = create_protocol_config();
+    let protocol_config = create_protocol_config();
+    let serialization_context = models::get_serialization_context();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -34,7 +35,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
         start_protocol_controller(
             protocol_config.clone(),
             5u64,
-            serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
         )
@@ -62,22 +62,19 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
     // block with ok operation
     {
-        let op =
-            create_operation_with_expire_period(&serialization_context, private_key, public_key, 5);
+        let op = create_operation_with_expire_period(private_key, public_key, 5);
 
         let block = create_block_with_operations(
             &creator_node.private_key,
             &creator_node.id.0,
             slot_a,
             vec![op],
-            &serialization_context,
         );
 
         send_and_propagate_block(
             &mut network_controller,
             block,
             true,
-            &serialization_context,
             creator_node.id,
             &mut protocol_event_receiver,
         )
@@ -86,26 +83,19 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
     // block with operation too far in the future
     {
-        let op = create_operation_with_expire_period(
-            &serialization_context,
-            private_key,
-            public_key,
-            50,
-        );
+        let op = create_operation_with_expire_period(private_key, public_key, 50);
 
         let block = create_block_with_operations(
             &creator_node.private_key,
             &creator_node.id.0,
             slot_a,
             vec![op],
-            &serialization_context,
         );
 
         send_and_propagate_block(
             &mut network_controller,
             block,
             false,
-            &serialization_context,
             creator_node.id,
             &mut protocol_event_receiver,
         )
@@ -113,22 +103,19 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     }
     // block with an operation twice
     {
-        let op =
-            create_operation_with_expire_period(&serialization_context, private_key, public_key, 5);
+        let op = create_operation_with_expire_period(private_key, public_key, 5);
 
         let block = create_block_with_operations(
             &creator_node.private_key,
             &creator_node.id.0,
             slot_a,
             vec![op.clone(), op],
-            &serialization_context,
         );
 
         send_and_propagate_block(
             &mut network_controller,
             block,
             false,
-            &serialization_context,
             creator_node.id,
             &mut protocol_event_receiver,
         )
@@ -136,8 +123,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     }
     // block with wrong merkle root
     {
-        let op =
-            create_operation_with_expire_period(&serialization_context, private_key, public_key, 5);
+        let op = create_operation_with_expire_period(private_key, public_key, 5);
 
         let block = {
             let operation_merkle_root = Hash::hash("merkle roor".as_bytes());
@@ -150,7 +136,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     parents: Vec::new(),
                     operation_merkle_root,
                 },
-                &serialization_context,
             )
             .unwrap();
 
@@ -164,7 +149,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             &mut network_controller,
             block,
             false,
-            &serialization_context,
             creator_node.id,
             &mut protocol_event_receiver,
         )
@@ -173,22 +157,19 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
     // block with operation with wrong signature
     {
-        let mut op =
-            create_operation_with_expire_period(&serialization_context, private_key, public_key, 5);
+        let mut op = create_operation_with_expire_period(private_key, public_key, 5);
         op.content.fee = 10;
         let block = create_block_with_operations(
             &creator_node.private_key,
             &creator_node.id.0,
             slot_a,
             vec![op],
-            &serialization_context,
         );
 
         send_and_propagate_block(
             &mut network_controller,
             block,
             false,
-            &serialization_context,
             creator_node.id,
             &mut protocol_event_receiver,
         )
@@ -197,22 +178,19 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
     // block with operation in wrong thread
     {
-        let mut op =
-            create_operation_with_expire_period(&serialization_context, private_key, public_key, 5);
+        let mut op = create_operation_with_expire_period(private_key, public_key, 5);
         op.content.fee = 10;
         let block = create_block_with_operations(
             &creator_node.private_key,
             &creator_node.id.0,
             Slot::new(1, 1),
             vec![op],
-            &serialization_context,
         );
 
         send_and_propagate_block(
             &mut network_controller,
             block,
             false,
-            &serialization_context,
             creator_node.id,
             &mut protocol_event_receiver,
         )

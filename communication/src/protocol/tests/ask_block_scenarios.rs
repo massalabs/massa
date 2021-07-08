@@ -10,8 +10,7 @@ use tools::{asked_list, assert_hash_asked_to_node};
 #[serial]
 async fn test_without_a_priori() {
     // start
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
-
+    let protocol_config = tools::create_protocol_config();
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -24,7 +23,6 @@ async fn test_without_a_priori() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -45,11 +43,8 @@ async fn test_without_a_priori() {
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
-    let hash_1 = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+    let hash_1 = block.header.compute_block_id().unwrap();
     // end set up
 
     // send wishlist
@@ -91,8 +86,7 @@ async fn test_without_a_priori() {
 #[serial]
 async fn test_someone_knows_it() {
     // start
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
-
+    let protocol_config = tools::create_protocol_config();
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -105,7 +99,6 @@ async fn test_someone_knows_it() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -126,11 +119,8 @@ async fn test_someone_knows_it() {
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
-    let hash_1 = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+    let hash_1 = block.header.compute_block_id().unwrap();
     // end set up
 
     // node c must know about block
@@ -180,8 +170,7 @@ async fn test_someone_knows_it() {
 #[serial]
 async fn test_dont_want_it_anymore() {
     // start
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
-
+    let protocol_config = tools::create_protocol_config();
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -194,7 +183,6 @@ async fn test_dont_want_it_anymore() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -215,11 +203,8 @@ async fn test_dont_want_it_anymore() {
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
-    let hash_1 = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+    let hash_1 = block.header.compute_block_id().unwrap();
     // end set up
 
     // send wishlist
@@ -263,8 +248,7 @@ async fn test_dont_want_it_anymore() {
 #[serial]
 async fn test_no_one_has_it() {
     // start
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
-
+    let protocol_config = tools::create_protocol_config();
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -277,7 +261,6 @@ async fn test_no_one_has_it() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -298,11 +281,8 @@ async fn test_no_one_has_it() {
         .unwrap();
 
     // 2. Create a block coming from node 0.
-    let block = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
-    let hash_1 = block
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+    let hash_1 = block.header.compute_block_id().unwrap();
     // end set up
 
     // send wishlist
@@ -350,8 +330,7 @@ async fn test_no_one_has_it() {
 #[serial]
 async fn test_multiple_blocks_without_a_priori() {
     // start
-    let (protocol_config, serialization_context) = tools::create_protocol_config();
-
+    let protocol_config = tools::create_protocol_config();
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -364,7 +343,6 @@ async fn test_multiple_blocks_without_a_priori() {
     ) = start_protocol_controller(
         protocol_config.clone(),
         5u64,
-        serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
     )
@@ -385,17 +363,11 @@ async fn test_multiple_blocks_without_a_priori() {
         .unwrap();
 
     // 2. Create two blocks coming from node 0.
-    let block_1 = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
-    let hash_1 = block_1
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let block_1 = tools::create_block(&node_a.private_key, &node_a.id.0);
+    let hash_1 = block_1.header.compute_block_id().unwrap();
 
-    let block_2 = tools::create_block(&node_a.private_key, &node_a.id.0, &serialization_context);
-    let hash_2 = block_2
-        .header
-        .compute_block_id(&serialization_context)
-        .unwrap();
+    let block_2 = tools::create_block(&node_a.private_key, &node_a.id.0);
+    let hash_2 = block_2.header.compute_block_id().unwrap();
 
     // node a is disconnected so no node knows about wanted blocks
     network_controller.close_connection(node_a.id).await;

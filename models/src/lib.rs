@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 mod address;
 mod block;
 mod composite;
@@ -10,7 +13,10 @@ mod slot;
 pub use address::{Address, ADDRESS_SIZE_BYTES};
 pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId, BLOCK_ID_SIZE_BYTES};
 pub use composite::OperationSearchResult;
-pub use context::SerializationContext;
+pub use context::{
+    get_serialization_context, init_serialization_context, with_serialization_context,
+    SerializationContext,
+};
 pub use error::ModelsError;
 pub use operation::{Operation, OperationContent, OperationId, OperationType};
 pub use serialization::{

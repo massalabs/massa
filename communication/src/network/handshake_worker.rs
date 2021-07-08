@@ -13,7 +13,6 @@ use crypto::{
     signature::{sign, verify_signature, PrivateKey},
 };
 use futures::future::try_join;
-use models::SerializationContext;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use time::UTime;
 use tokio::time::timeout;
@@ -45,13 +44,13 @@ impl HandshakeWorker {
     /// * private_key : our private key.
     /// * timeout_duration: after timeout_duration millis, the handshake attempt is dropped.
     pub fn new(
-        serialization_context: SerializationContext,
         socket_reader: ReadHalf,
         socket_writer: WriteHalf,
         self_node_id: NodeId,
         private_key: PrivateKey,
         timeout_duration: UTime,
     ) -> HandshakeWorker {
+        let serialization_context = models::with_serialization_context(|context| context.clone());
         HandshakeWorker {
             reader: ReadBinder::new(socket_reader, serialization_context.clone()),
             writer: WriteBinder::new(socket_writer, serialization_context),

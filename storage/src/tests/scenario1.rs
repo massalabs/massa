@@ -17,7 +17,7 @@ async fn test_max_block_count() {
         flush_interval: None, //defaut
         reset_at_startup: true,
     };
-    let serialization_context = SerializationContext {
+    models::init_serialization_context(SerializationContext {
         max_block_size: 1024 * 1024,
         max_block_operations: 1024,
         parent_count: 2,
@@ -30,9 +30,9 @@ async fn test_max_block_count() {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_bootstrap_message_size: 100000000,
-    };
+    });
 
-    let (storage, manager) = start_storage(config, serialization_context).unwrap();
+    let (storage, manager) = start_storage(config).unwrap();
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
     add_block(Slot::new(2, 1), &storage).await;
@@ -85,7 +85,7 @@ async fn test_max_nb_blocks() {
         flush_interval: None, //defaut
         reset_at_startup: true,
     };
-    let serialization_context = SerializationContext {
+    models::init_serialization_context(SerializationContext {
         max_block_size: 1024 * 1024,
         max_block_operations: 1024,
         parent_count: 2,
@@ -98,9 +98,9 @@ async fn test_max_nb_blocks() {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_bootstrap_message_size: 100000000,
-    };
+    });
 
-    let (storage, manager) = start_storage(config, serialization_context).unwrap();
+    let (storage, manager) = start_storage(config).unwrap();
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
     add_block(Slot::new(2, 1), &storage).await;
@@ -152,7 +152,7 @@ async fn test_get_slot_range() {
         flush_interval: None, //defaut
         reset_at_startup: true,
     };
-    let serialization_context = SerializationContext {
+    models::init_serialization_context(SerializationContext {
         max_block_size: 1024 * 1024,
         max_block_operations: 1024,
         parent_count: 2,
@@ -165,9 +165,9 @@ async fn test_get_slot_range() {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_bootstrap_message_size: 100000000,
-    };
+    });
 
-    let (storage, manager) = start_storage(config, serialization_context).unwrap();
+    let (storage, manager) = start_storage(config).unwrap();
     assert_eq!(0, storage.len().await.unwrap());
     //add block in this order depending on there periode and thread
     add_block(Slot::new(2, 1), &storage).await;

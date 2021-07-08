@@ -15,21 +15,19 @@ use time::UTime;
 #[serial]
 async fn test_update_current_slot_cmd_notification() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 2000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (mut pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -73,7 +71,7 @@ async fn test_update_current_slot_cmd_notification() {
 #[serial]
 async fn test_update_latest_final_block_cmd_notification() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
     cfg.delta_f0 = 2;
@@ -81,15 +79,13 @@ async fn test_update_latest_final_block_cmd_notification() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (mut pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,

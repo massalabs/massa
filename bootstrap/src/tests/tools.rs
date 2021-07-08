@@ -4,7 +4,7 @@ use super::mock_establisher::{ReadHalf, WriteHalf};
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{BootsrapableGraph, ConsensusCommand, LedgerExport};
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
-use models::{BlockId, SerializationContext};
+use models::BlockId;
 use time::UTime;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -38,23 +38,6 @@ pub fn get_keys() -> (PrivateKey, PublicKey) {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     (private_key, public_key)
-}
-
-pub fn get_serialization_context() -> SerializationContext {
-    SerializationContext {
-        max_block_size: 1024 * 1024,
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-    }
 }
 
 pub async fn wait_consensus_command<F, T>(

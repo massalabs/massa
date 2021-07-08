@@ -8,7 +8,7 @@ use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
 use crypto::signature;
-use models::BlockId;
+use models::{get_serialization_context, BlockId, SerializationContext};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
@@ -28,10 +28,10 @@ use tools::get_transaction;
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
-    let (network_conf, serialization_context) =
-        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
+    let serialization_context = get_serialization_context();
     let reader = ReadBinder::new(duplex_mock_read, serialization_context.clone());
     let writer = WriteBinder::new(duplex_mock_write, serialization_context.clone());
 
@@ -51,7 +51,7 @@ async fn test_node_worker_shutdown() {
             node_command_rx,
             node_event_tx,
         )
-        .run_loop(serialization_context)
+        .run_loop()
         .await
     });
 
@@ -92,8 +92,7 @@ async fn test_multiple_connections_to_controller() {
     //test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
-    let (mut network_conf, serialization_context) =
-        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     network_conf.max_in_connections = 2;
     network_conf.max_in_connections_per_ip = 1;
 
@@ -105,15 +104,10 @@ async fn test_multiple_connections_to_controller() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (_, mut network_event_receiver, network_manager, _) = start_network_controller(
-        network_conf.clone(),
-        serialization_context.clone(),
-        establisher,
-        0,
-        None,
-    )
-    .await
-    .expect("could not start network controller");
+    let (_, mut network_event_receiver, network_manager, _) =
+        start_network_controller(network_conf.clone(), establisher, 0, None)
+            .await
+            .expect("could not start network controller");
 
     // note: the peers list is empty so the controller will not attempt outgoing connections
 
@@ -125,7 +119,6 @@ async fn test_multiple_connections_to_controller() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
     let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l110
@@ -138,7 +131,6 @@ async fn test_multiple_connections_to_controller() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
     assert_ne!(
@@ -155,7 +147,6 @@ async fn test_multiple_connections_to_controller() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
 
@@ -167,7 +158,6 @@ async fn test_multiple_connections_to_controller() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
 
@@ -218,8 +208,7 @@ async fn test_peer_ban() {
         active_in_connections: 0,
     }]);
 
-    let (mut network_conf, serialization_context) =
-        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     network_conf.target_out_connections = 10;
 
     // create establisher
@@ -227,15 +216,9 @@ async fn test_peer_ban() {
 
     // launch network controller
     let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(
-            network_conf.clone(),
-            serialization_context.clone(),
-            establisher,
-            0,
-            None,
-        )
-        .await
-        .expect("could not start network controller");
+        start_network_controller(network_conf.clone(), establisher, 0, None)
+            .await
+            .expect("could not start network controller");
 
     // accept connection from controller to peer
     let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
@@ -245,7 +228,6 @@ async fn test_peer_ban() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
     let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l220
@@ -260,7 +242,6 @@ async fn test_peer_ban() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
     let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l221
@@ -280,7 +261,6 @@ async fn test_peer_ban() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
 
@@ -329,8 +309,7 @@ async fn test_advertised_and_wakeup_interval() {
         active_out_connections: 0,
         active_in_connections: 0,
     }]);
-    let (mut network_conf, serialization_context) =
-        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     network_conf.wakeup_interval = UTime::from(500);
     network_conf.connect_timeout = UTime::from(2000);
 
@@ -338,15 +317,10 @@ async fn test_advertised_and_wakeup_interval() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (_, mut network_event_receiver, network_manager, _) = start_network_controller(
-        network_conf.clone(),
-        serialization_context.clone(),
-        establisher,
-        0,
-        None,
-    )
-    .await
-    .expect("could not start network controller");
+    let (_, mut network_event_receiver, network_manager, _) =
+        start_network_controller(network_conf.clone(), establisher, 0, None)
+            .await
+            .expect("could not start network controller");
 
     // 1) open a connection, advertize peer, disconnect
     {
@@ -357,7 +331,6 @@ async fn test_advertised_and_wakeup_interval() {
             1_000u64,
             1_000u64,
             1_000u64,
-            serialization_context.clone(),
         )
         .await;
         tools::advertise_peers_in_connection(&mut conn2_w, vec![mock_addr.ip()]).await;
@@ -405,7 +378,6 @@ async fn test_advertised_and_wakeup_interval() {
                 .unwrap(),
             1_000u64,
             1_000u64,
-            serialization_context.clone(),
         )
         .await;
         if start_instant.elapsed() < network_conf.wakeup_interval.to_duration() {
@@ -463,26 +435,23 @@ async fn test_block_not_found() {
         active_in_connections: 0,
     }]);
 
-    let (mut network_conf, mut serialization_context) =
-        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     network_conf.target_out_connections = 10;
     network_conf.max_ask_blocks_per_message = 3;
+
+    // Overwrite the context.
+    let mut serialization_context: SerializationContext = Default::default();
     serialization_context.max_ask_blocks_per_message = 3;
+    models::init_serialization_context(serialization_context);
 
     // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
     let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(
-            network_conf.clone(),
-            serialization_context.clone(),
-            establisher,
-            0,
-            None,
-        )
-        .await
-        .expect("could not start network controller");
+        start_network_controller(network_conf.clone(), establisher, 0, None)
+            .await
+            .expect("could not start network controller");
 
     // accept connection from controller to peer
     let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
@@ -492,7 +461,6 @@ async fn test_block_not_found() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
     //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
@@ -650,23 +618,16 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
     }]);
 
-    let (network_conf, serialization_context) =
-        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
 
     // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
     let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(
-            network_conf.clone(),
-            serialization_context.clone(),
-            establisher,
-            0,
-            None,
-        )
-        .await
-        .expect("could not start network controller");
+        start_network_controller(network_conf.clone(), establisher, 0, None)
+            .await
+            .expect("could not start network controller");
 
     let (node_id, _read, _write) = tools::full_connection_to_controller(
         &mut network_event_receiver,
@@ -675,7 +636,6 @@ async fn test_retry_connection_closed() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
 
@@ -752,26 +712,23 @@ async fn test_operation_messages() {
         active_in_connections: 0,
     }]);
 
-    let (mut network_conf, mut serialization_context) =
-        super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     network_conf.target_out_connections = 10;
     network_conf.max_ask_blocks_per_message = 3;
+
+    // Overwrite the context.
+    let mut serialization_context: SerializationContext = Default::default();
     serialization_context.max_ask_blocks_per_message = 3;
+    models::init_serialization_context(serialization_context);
 
     // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
     let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(
-            network_conf.clone(),
-            serialization_context.clone(),
-            establisher,
-            0,
-            None,
-        )
-        .await
-        .expect("could not start network controller");
+        start_network_controller(network_conf.clone(), establisher, 0, None)
+            .await
+            .expect("could not start network controller");
 
     // accept connection from controller to peer
     let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
@@ -781,13 +738,14 @@ async fn test_operation_messages() {
         1_000u64,
         1_000u64,
         1_000u64,
-        serialization_context.clone(),
     )
     .await;
     //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
+    let serialization_context = models::get_serialization_context();
+
     // Send tansaction message from connected peer
-    let (transaction, _) = get_transaction(50, 10, &serialization_context);
+    let (transaction, _) = get_transaction(50, 10);
     let ref_id = transaction
         .verify_integrity(&serialization_context)
         .unwrap();
@@ -814,7 +772,7 @@ async fn test_operation_messages() {
         panic!("Timeout while waiting for asked for block event");
     }
 
-    let (transaction2, _) = get_transaction(10, 50, &serialization_context);
+    let (transaction2, _) = get_transaction(10, 50);
     let ref_id2 = transaction2
         .verify_integrity(&serialization_context)
         .unwrap();

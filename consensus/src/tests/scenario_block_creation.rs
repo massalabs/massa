@@ -61,7 +61,8 @@ async fn test_order_of_inclusion() {
     let mut ledger = HashMap::new();
     ledger.insert(address_a, LedgerData { balance: 100 });
     let ledger_file = generate_ledger_file(&ledger);
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let serialization_context = models::get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -72,47 +73,21 @@ async fn test_order_of_inclusion() {
     //to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0).unwrap();
 
-    let op1 = create_transaction(
-        priv_a,
-        pubkey_a,
-        address_b,
-        5,
-        &serialization_context,
-        10,
-        1,
-    );
-    let op2 = create_transaction(
-        priv_a,
-        pubkey_a,
-        address_b,
-        50,
-        &serialization_context,
-        10,
-        10,
-    );
-    let op3 = create_transaction(
-        priv_b,
-        pubkey_b,
-        address_a,
-        10,
-        &serialization_context,
-        10,
-        15,
-    );
+    let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
+    let op2 = create_transaction(priv_a, pubkey_a, address_b, 50, 10, 10);
+    let op3 = create_transaction(priv_b, pubkey_b, address_a, 10, 10, 15);
 
     // there is only one node so it should be drawn at every slot
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (mut pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -251,7 +226,8 @@ async fn test_with_two_cliques() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let serialization_context = models::get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -261,33 +237,9 @@ async fn test_with_two_cliques() {
     cfg.max_operations_per_block = 50;
     //to avoid timing pb for block in the future
 
-    let op1 = create_transaction(
-        priv_a,
-        pubkey_a,
-        address_b,
-        5,
-        &serialization_context,
-        10,
-        1,
-    );
-    let op2 = create_transaction(
-        priv_a,
-        pubkey_a,
-        address_b,
-        50,
-        &serialization_context,
-        10,
-        10,
-    );
-    let op3 = create_transaction(
-        priv_b,
-        pubkey_b,
-        address_a,
-        10,
-        &serialization_context,
-        10,
-        15,
-    );
+    let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
+    let op2 = create_transaction(priv_a, pubkey_a, address_b, 50, 10, 10);
+    let op3 = create_transaction(priv_b, pubkey_b, address_a, 10, 10, 15);
 
     let boot_ledger = LedgerExport {
         ledger_per_thread: vec![vec![(address_a, LedgerData { balance: 100 })], vec![]],
@@ -304,9 +256,8 @@ async fn test_with_two_cliques() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (mut pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(4).unwrap())
@@ -315,7 +266,6 @@ async fn test_with_two_cliques() {
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -450,7 +400,7 @@ fn get_export_active_test_block(
             }
         }
     }
-    let id = block.header.compute_block_id(context).unwrap();
+    let id = block.header.compute_block_id().unwrap();
     (
         ExportActiveBlock {
             parents,
@@ -603,7 +553,8 @@ async fn test_block_filling() {
         },
     );
     let ledger_file = generate_ledger_file(&ledger);
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let serialization_context = models::get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -616,30 +567,20 @@ async fn test_block_filling() {
     cfg.genesis_timestamp = UTime::now(0).unwrap();
     let mut ops = Vec::new();
     for _ in 0..500 {
-        ops.push(create_transaction(
-            priv_a,
-            pubkey_a,
-            address_a,
-            5,
-            &serialization_context,
-            10,
-            1,
-        ))
+        ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
     }
 
     // there is only one node so it should be drawn at every slot
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (mut pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
     // launch consensus controller
     let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -729,7 +670,6 @@ async fn test_block_filling() {
             parents: block.header.content.parents.clone(),
             operation_merkle_root: Hash::hash(&Vec::new()[..]),
         },
-        &serialization_context,
     )
     .unwrap();
     let empty = Block {

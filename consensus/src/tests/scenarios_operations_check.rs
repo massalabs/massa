@@ -62,7 +62,7 @@ async fn test_operations_check() {
     ledger.insert(address_1, LedgerData { balance: 5 });
 
     let ledger_file = generate_ledger_file(&ledger);
-    let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
+    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -75,16 +75,14 @@ async fn test_operations_check() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(serialization_context.clone());
-    let (pool_controller, pool_command_sender) =
-        MockPoolController::new(serialization_context.clone());
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
     let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -102,30 +100,15 @@ async fn test_operations_check() {
         .genesis_blocks;
 
     // Valid block A sending 5 from addr1 to addr2 + reward 1 to addr1
-    let operation_1 = create_transaction(
-        private_key_1,
-        public_key_1,
-        address_2,
-        5,
-        &serialization_context,
-        5,
-        1,
-    );
+    let operation_1 = create_transaction(private_key_1, public_key_1, address_2, 5, 5, 1);
     let (id_a, block_a, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         &genesis_ids,
         (public_key_1, private_key_1),
         vec![operation_1.clone()],
     );
-    propagate_block(
-        &serialization_context,
-        &mut protocol_controller,
-        block_a,
-        true,
-    )
-    .await;
+    propagate_block(&mut protocol_controller, block_a, true).await;
 
     // assert address 1 has 1 coin at blocks (A, genesis_ids[1]) (see #269)
     let mut set = HashSet::new();
@@ -140,47 +123,25 @@ async fn test_operations_check() {
     assert_eq!(res.get_balance(), 1);
 
     // receive block b with invalid operation (not enough coins)
-    let operation_2 = create_transaction(
-        private_key_2,
-        public_key_2,
-        address_1,
-        10,
-        &serialization_context,
-        8,
-        1,
-    );
+    let operation_2 = create_transaction(private_key_2, public_key_2, address_1, 10, 8, 1);
     let (_, block_2b, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         &vec![id_a, genesis_ids[1]],
         (public_key_1, private_key_1),
         vec![operation_2],
     );
-    propagate_block(
-        &serialization_context,
-        &mut protocol_controller,
-        block_2b,
-        false,
-    )
-    .await;
+    propagate_block(&mut protocol_controller, block_2b, false).await;
 
     // receive empty block b
     let (id_b, block_b, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(1, 1),
         &vec![id_a, genesis_ids[1]],
         (public_key_1, private_key_1),
         vec![],
     );
-    propagate_block(
-        &serialization_context,
-        &mut protocol_controller,
-        block_b,
-        true,
-    )
-    .await;
+    propagate_block(&mut protocol_controller, block_b, true).await;
 
     // todo assert address 2 has 5 coins at block B (see #269)
     let mut set = HashSet::new();
@@ -197,19 +158,12 @@ async fn test_operations_check() {
     // receive block with reused operation
     let (_, block_1c, _) = create_block_with_operations(
         &cfg,
-        &serialization_context,
         Slot::new(1, 0),
         &vec![id_a, id_b],
         (public_key_1, private_key_1),
         vec![operation_1.clone()],
     );
-    propagate_block(
-        &serialization_context,
-        &mut protocol_controller,
-        block_1c,
-        false,
-    )
-    .await;
+    propagate_block(&mut protocol_controller, block_1c, false).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
