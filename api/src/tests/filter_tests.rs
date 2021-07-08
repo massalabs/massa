@@ -317,7 +317,7 @@ async fn test_last_final() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -364,8 +364,10 @@ async fn test_last_final() {
                 .latest_final_blocks_periods
                 .iter()
                 .enumerate()
-                .map(|(thread_number, (hash, period))| (hash.clone(), *period, thread_number as u8))
-                .collect::<Vec<(Hash, u64, u8)>>(),
+                .map(|(thread_number, (hash, period))| {
+                    (hash.clone(), Slot::new(*period, thread_number as u8))
+                })
+                .collect::<Vec<(Hash, Slot)>>(),
         )
         .unwrap(),
     )

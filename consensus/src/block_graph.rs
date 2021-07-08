@@ -329,15 +329,15 @@ impl BlockGraph {
         &self,
         parent_hashes: &Vec<Hash>,
     ) -> Result<bool, HashSet<Hash>> {
-        let mut gp_max_slots = vec![0u64; self.cfg.thread_count as usize];
+        let mut gp_max_periods = vec![0u64; self.cfg.thread_count as usize];
         let mut missing: HashSet<Hash> = HashSet::new();
         for parent_i in 0..self.cfg.thread_count {
             let parent_h = parent_hashes[parent_i as usize];
             if let Some(parent) = self.active_blocks.get(&parent_h) {
-                if parent.block.header.slot.period < gp_max_slots[parent_i as usize] {
+                if parent.block.header.slot.period < gp_max_periods[parent_i as usize] {
                     return Ok(false);
                 }
-                gp_max_slots[parent_i as usize] = parent.block.header.slot.period;
+                gp_max_periods[parent_i as usize] = parent.block.header.slot.period;
                 if parent.block.header.slot.period == 0 {
                     // genesis
                     continue;
@@ -348,11 +348,11 @@ impl BlockGraph {
                     }
                     let gp_h = parent.block.header.parents[gp_i as usize];
                     if let Some(gp) = self.active_blocks.get(&gp_h) {
-                        if gp.block.header.slot.period > gp_max_slots[gp_i as usize] {
+                        if gp.block.header.slot.period > gp_max_periods[gp_i as usize] {
                             if gp_i < parent_i {
                                 return Ok(false);
                             }
-                            gp_max_slots[gp_i as usize] = gp.block.header.slot.period;
+                            gp_max_periods[gp_i as usize] = gp.block.header.slot.period;
                         }
                     } else {
                         missing.insert(gp_h);

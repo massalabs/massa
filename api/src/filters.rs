@@ -558,8 +558,8 @@ async fn get_last_final(
         .latest_final_blocks_periods
         .iter()
         .enumerate()
-        .map(|(i, (hash, period))| (hash, *period, i as u8))
-        .collect::<Vec<(&Hash, u64, u8)>>();
+        .map(|(i, (hash, period))| (hash, Slot::new(*period, i as u8)))
+        .collect::<Vec<(&Hash, Slot)>>();
     Ok(warp::reply::json(&finals).into_response())
 }
 
@@ -960,7 +960,7 @@ async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply,
 /// Returns a summary of the current state:
 /// * time in UTime
 /// * lastest slot (optional)
-/// * last final block as Vec<(&Hash, u64, u8, UTime)>
+/// * last final block as Vec<(&Hash, Slot UTime)>
 /// * number of cliques
 /// * number of connected peers
 ///
@@ -1041,8 +1041,7 @@ async fn get_state(
         .map(|(thread, (hash, period))| {
             Ok((
                 hash,
-                *period,
-                thread as u8,
+                Slot::new(*period, thread as u8),
                 get_block_slot_timestamp(
                     consensus_cfg.thread_count,
                     consensus_cfg.t0,
@@ -1051,7 +1050,7 @@ async fn get_state(
                 )?,
             ))
         })
-        .collect::<Result<Vec<(&Hash, u64, u8, UTime)>, consensus::ConsensusError>>()
+        .collect::<Result<Vec<(&Hash, Slot, UTime)>, consensus::ConsensusError>>()
     {
         Ok(finals) => finals,
         Err(err) => {
