@@ -105,7 +105,7 @@ async fn test_ti() {
     );
 
     protocol_controller.receive_block(block).await;
-    tools::validate_propagate_block(&mut protocol_controller, fork_block_hash, 200).await;
+    tools::validate_propagate_block(&mut protocol_controller, fork_block_hash, 500).await;
     //two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
     //test the first clique hasn't changed.
     let block_graph = consensus_command_sender
