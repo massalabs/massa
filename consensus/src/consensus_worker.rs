@@ -1,13 +1,12 @@
 use crate::ledger::{LedgerChange, LedgerSubset, OperationLedgerInterface};
 
 use super::{
-    block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
-    timeslots::*,
+    block_graph::*, config::ConsensusConfig, error::ConsensusError, pos::ProofOfStake, timeslots::*,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{
     hash::Hash,
-    signature::{derive_public_key, PublicKey},
+    signature::{derive_public_key, PrivateKey, PublicKey},
 };
 use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
@@ -35,11 +34,11 @@ pub enum ConsensusCommand {
         block_id: BlockId,
         response_tx: oneshot::Sender<Option<Block>>,
     },
-    /// Returns through a channel the list of slots with public key of the selected staker.
+    /// Returns through a channel the list of slots with the address of the selected staker.
     GetSelectionDraws {
         start: Slot,
         end: Slot,
-        response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
+        response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
     },
     /// Returns the bootstrap graph
     GetBootGraph(oneshot::Sender<BootsrapableGraph>),
@@ -90,8 +89,8 @@ pub struct ConsensusWorker {
     _controller_event_tx: mpsc::Sender<ConsensusEvent>,
     /// Channel receiving consensus management commands.
     controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
-    /// Selector used to select roll numbers.
-    selector: RandomSelector,
+    /// Proof of stake module.
+    pos: ProofOfStake,
     /// Previous slot.
     previous_slot: Option<Slot>,
     /// Next slot
@@ -102,6 +101,8 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
+    // staking keys
+    staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
 }
 
 impl ConsensusWorker {
@@ -115,21 +116,19 @@ impl ConsensusWorker {
     /// * controller_command_rx: Channel receiving consensus commands.
     /// * controller_event_tx: Channel sending out consensus events.
     /// * controller_manager_rx: Channel receiving consensus management commands.
-    pub fn new(
+    pub async fn new(
         cfg: ConsensusConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
         pool_command_sender: PoolCommandSender,
         opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
+        pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
     ) -> Result<ConsensusWorker, ConsensusError> {
-        let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
-        let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
-        let selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights)?;
         let previous_slot = get_current_latest_block_slot(
             cfg.thread_count,
             cfg.t0,
@@ -144,6 +143,17 @@ impl ConsensusWorker {
             .iter()
             .map(|(_block_id, period)| *period)
             .collect();
+        let staking_keys = cfg
+            .staking_keys
+            .iter()
+            .map(|private_key| {
+                let public_key = derive_public_key(&private_key);
+                Ok((
+                    Address::from_public_key(&public_key)?,
+                    (public_key, private_key.clone()),
+                ))
+            })
+            .collect::<Result<HashMap<Address, (PublicKey, PrivateKey)>, ConsensusError>>()?;
 
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
@@ -157,13 +167,14 @@ impl ConsensusWorker {
             controller_command_rx,
             _controller_event_tx: controller_event_tx,
             controller_manager_rx,
-            selector,
+            pos,
             previous_slot,
             next_slot,
             wishlist: HashSet::new(),
             latest_final_periods,
             clock_compensation,
             pool_command_sender,
+            staking_keys,
         })
     }
 
@@ -238,24 +249,31 @@ impl ConsensusWorker {
 
         massa_trace!("consensus.consensus_worker.slot_tick", { "slot": cur_slot });
 
-        let block_creator = self.selector.draw(cur_slot);
-
         // signal tick to pool
         self.pool_command_sender
             .update_current_slot(cur_slot)
             .await?;
 
         // create a block if enabled and possible
-        if !self.cfg.disable_block_creation
-            && cur_slot.period > 0
-            && block_creator == self.cfg.current_node_index
-        {
-            self.create_block(cur_slot).await?;
+        if !self.cfg.disable_block_creation && cur_slot.period > 0 {
+            let creator_info = match self.pos.draw(cur_slot) {
+                Ok(addr) => {
+                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
+                        Some((addr.clone(), pub_k.clone(), priv_k.clone()))
+                    } else {
+                        None
+                    }
+                }
+                Err(ConsensusError::PosCycleUnavailable(_)) => None,
+                Err(err) => return Err(err),
+            };
+            if let Some((addr, pub_k, priv_k)) = creator_info {
+                self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+            }
         }
 
         // signal tick to block graph
-        self.block_db
-            .slot_tick(&mut self.selector, Some(cur_slot))?;
+        self.block_db.slot_tick(&mut self.pos, Some(cur_slot))?;
 
         // take care of block db changes
         self.block_db_changed().await?;
@@ -274,24 +292,21 @@ impl ConsensusWorker {
         Ok(())
     }
 
-    async fn create_block(&mut self, cur_slot: Slot) -> Result<(), ConsensusError> {
-        // get creator info
-        // TODO temporary: use PoS draw system in the future
-        let (creator_pub, creator_priv) = self
-            .cfg
-            .nodes
-            .get(self.cfg.current_node_index as usize)
-            .ok_or(ConsensusError::KeyError)?;
-        let creator_addr = Address::from_public_key(creator_pub)?;
-
+    async fn create_block(
+        &mut self,
+        cur_slot: Slot,
+        creator_addr: &Address,
+        creator_public_key: &PublicKey,
+        creator_private_key: &PrivateKey,
+    ) -> Result<(), ConsensusError> {
         // get parents
         let parents = self.block_db.get_best_parents();
 
         // create empty block
         let (_block_id, header) = BlockHeader::new_signed(
-            creator_priv,
+            creator_private_key,
             BlockHeaderContent {
-                creator: *creator_pub,
+                creator: creator_public_key.clone(),
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&Vec::new()[..]),
@@ -338,9 +353,10 @@ impl ConsensusWorker {
         // get thread ledger and apply block reward
         let mut thread_ledger = LedgerSubset::new(self.cfg.thread_count);
         if creator_addr.get_thread(self.cfg.thread_count) == cur_slot.thread {
-            let mut fee_ledger = self
-                .block_db
-                .get_ledger_at_parents(&parents, &vec![creator_addr].into_iter().collect())?;
+            let mut fee_ledger = self.block_db.get_ledger_at_parents(
+                &parents,
+                &vec![creator_addr.clone()].into_iter().collect(),
+            )?;
             fee_ledger.apply_change((
                 &creator_addr,
                 &LedgerChange {
@@ -422,9 +438,9 @@ impl ConsensusWorker {
 
         // compile resulting block
         let (block_id, header) = BlockHeader::new_signed(
-            creator_priv,
+            creator_private_key,
             BlockHeaderContent {
-                creator: *creator_pub,
+                creator: creator_public_key.clone(),
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&total_hash),
@@ -439,7 +455,7 @@ impl ConsensusWorker {
             block_id,
             block,
             operation_set,
-            &mut self.selector,
+            &mut self.pos,
             Some(cur_slot),
         )?;
 
@@ -510,9 +526,16 @@ impl ConsensusWorker {
                     res.push((
                         cur_slot,
                         if cur_slot.period == 0 {
-                            self.genesis_public_key
+                            match Address::from_public_key(&self.genesis_public_key) {
+                                Ok(addr) => addr,
+                                Err(err) => break Err(err.into()),
+                            }
                         } else {
-                            self.cfg.nodes[self.selector.draw(cur_slot) as usize].0
+                            match self.pos.draw(cur_slot) {
+                                Err(ConsensusError::PosCycleUnavailable(_)) => continue,
+                                Err(err) => break Err(err),
+                                Ok(sel_addr) => sel_addr,
+                            }
                         },
                     ));
                     cur_slot = match cur_slot.get_next_slot(self.cfg.thread_count) {
@@ -697,7 +720,7 @@ impl ConsensusWorker {
                     block_id,
                     block,
                     operation_set,
-                    &mut self.selector,
+                    &mut self.pos,
                     self.previous_slot,
                 )?;
                 self.block_db_changed().await?;
@@ -707,7 +730,7 @@ impl ConsensusWorker {
                 self.block_db.incoming_header(
                     block_id,
                     header,
-                    &mut self.selector,
+                    &mut self.pos,
                     self.previous_slot,
                 )?;
                 self.block_db_changed().await?;

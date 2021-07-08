@@ -19,8 +19,8 @@ pub struct ConsensusConfig {
     pub selection_rng_seed: u64,
     /// Private_key to sign genesis blocks.
     pub genesis_key: PrivateKey,
-    /// List of key for every node in the network.
-    pub nodes: Vec<(PublicKey, PrivateKey)>,
+    /// Staking private keys
+    pub staking_keys: Vec<PrivateKey>,
     /// Index of our node in the previous list.
     pub current_node_index: u32,
     /// Maximum number of blocks allowed in discarded blocks.

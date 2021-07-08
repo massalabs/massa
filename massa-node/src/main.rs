@@ -192,11 +192,11 @@ async fn run(cfg: config::Config) {
                             warn!("could not send get_peers response in api_event_receiver.wait_event");
                         }
                     },
-                Ok(ApiEvent::GetSelectionDraw { start, end, response_tx}) => {
+                Ok(ApiEvent::GetSelectionDraw {start, end, response_tx}) => {
                     massa_trace!("massa-node.main.run.select.api_event.get_selection_draws", {});
                     if response_tx.send(
                         consensus_command_sender
-                            .get_selection_draws(start, end )
+                            .get_selection_draws(start, end)
                             .await
                         ).is_err() {
                             warn!("could not send get_selection_draws response in api_event_receiver.wait_event");

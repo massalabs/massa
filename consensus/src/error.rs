@@ -73,6 +73,8 @@ pub enum ConsensusError {
     OneshotReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
     #[error("block creation error {0}")]
     BlockCreationError(String),
+    #[error("Proof of stake cycle unavailable {0}")]
+    PosCycleUnavailable(String),
 }
 
 #[derive(Error, Debug)]

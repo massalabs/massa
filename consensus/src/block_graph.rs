@@ -1,5 +1,5 @@
 //! All information concerning blocks, the block graph and cliques is managed here.
-use super::{config::ConsensusConfig, random_selector::RandomSelector};
+use super::{config::ConsensusConfig, pos::ProofOfStake};
 use crate::{
     error::ConsensusError,
     ledger::{
@@ -1095,7 +1095,7 @@ impl BlockGraph {
     // signal new slot
     pub fn slot_tick(
         &mut self,
-        selector: &mut RandomSelector,
+        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // list all elements for which the time has come
@@ -1117,7 +1117,7 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.slot_tick", {});
         // process those elements
-        self.rec_process(to_process, selector, current_slot)?;
+        self.rec_process(to_process, pos, current_slot)?;
 
         Ok(())
     }
@@ -1127,7 +1127,7 @@ impl BlockGraph {
         &mut self,
         hash: BlockId,
         header: BlockHeader,
-        selector: &mut RandomSelector,
+        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // ignore genesis blocks
@@ -1159,7 +1159,7 @@ impl BlockGraph {
         }
 
         // process
-        self.rec_process(to_ack, selector, current_slot)?;
+        self.rec_process(to_ack, pos, current_slot)?;
 
         Ok(())
     }
@@ -1170,7 +1170,7 @@ impl BlockGraph {
         block_id: BlockId,
         block: Block,
         operation_set: HashMap<OperationId, (usize, u64)>,
-        selector: &mut RandomSelector,
+        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // ignore genesis blocks
@@ -1219,7 +1219,7 @@ impl BlockGraph {
         }
 
         // process
-        self.rec_process(to_ack, selector, current_slot)?;
+        self.rec_process(to_ack, pos, current_slot)?;
 
         Ok(())
     }
@@ -1234,12 +1234,12 @@ impl BlockGraph {
     fn rec_process(
         &mut self,
         mut to_ack: BTreeSet<(Slot, BlockId)>,
-        selector: &mut RandomSelector,
+        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // order processing by (slot, hash)
         while let Some((_slot, hash)) = to_ack.pop_first() {
-            to_ack.extend(self.process(hash, selector, current_slot)?)
+            to_ack.extend(self.process(hash, pos, current_slot)?)
         }
         Ok(())
     }
@@ -1248,7 +1248,7 @@ impl BlockGraph {
     fn process(
         &mut self,
         block_id: BlockId,
-        selector: &mut RandomSelector,
+        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<BTreeSet<(Slot, BlockId)>, ConsensusError> {
         // list items to reprocess
@@ -1300,7 +1300,7 @@ impl BlockGraph {
                         block_id
                     )));
                 };
-                match self.check_header(&block_id, &header, selector, current_slot)? {
+                match self.check_header(&block_id, &header, pos, current_slot)? {
                     HeaderCheckOutcome::Proceed { .. } => {
                         // set as waiting dependencies
                         let mut dependencies = HashSet::new();
@@ -1391,7 +1391,7 @@ impl BlockGraph {
                         block_id
                     )));
                 };
-                match self.check_block(&block_id, &block, &operation_set, selector, current_slot)? {
+                match self.check_block(&block_id, &block, &operation_set, pos, current_slot)? {
                     BlockCheckOutcome::Proceed {
                         parents_hash_period,
                         dependencies,
@@ -1623,7 +1623,7 @@ impl BlockGraph {
         &self,
         block_id: &BlockId,
         header: &BlockHeader,
-        selector: &mut RandomSelector,
+        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<HeaderCheckOutcome, ConsensusError> {
         massa_trace!("consensus.block_graph.check_header", {
@@ -1666,7 +1666,15 @@ impl BlockGraph {
         // check if it was the creator's turn to create this block
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
-        if header.content.creator != self.cfg.nodes[selector.draw(header.content.slot) as usize].0 {
+        let slot_draw_address = match pos.draw(header.content.slot) {
+            Ok(addr) => addr,
+            Err(ConsensusError::PosCycleUnavailable(_)) => {
+                // slot is not available yet
+                return Ok(HeaderCheckOutcome::WaitForSlot);
+            }
+            Err(err) => return Err(err),
+        };
+        if Address::from_public_key(&header.content.creator)? != slot_draw_address {
             // it was not the creator's turn to create a block for this slot
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                 format!("Bad creator turn for the slot:{}", header.content.slot),
@@ -1904,7 +1912,7 @@ impl BlockGraph {
         block_id: &BlockId,
         block: &Block,
         operation_set: &HashMap<OperationId, (usize, u64)>,
-        selector: &mut RandomSelector,
+        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<BlockCheckOutcome, ConsensusError> {
         massa_trace!("consensus.block_graph.check_block", {
@@ -1916,7 +1924,7 @@ impl BlockGraph {
         let inherited_incomp_count;
 
         // check header
-        match self.check_header(block_id, &block.header, selector, current_slot)? {
+        match self.check_header(block_id, &block.header, pos, current_slot)? {
             HeaderCheckOutcome::Proceed {
                 parents_hash_period,
                 dependencies,
@@ -3860,11 +3868,9 @@ mod tests {
 
     fn example_consensus_config(initial_ledger_path: &Path) -> ConsensusConfig {
         let genesis_key = crypto::generate_random_private_key();
-        let mut nodes = Vec::new();
+        let mut staking_keys = Vec::new();
         for _ in 0..2 {
-            let private_key = crypto::generate_random_private_key();
-            let public_key = crypto::derive_public_key(&private_key);
-            nodes.push((public_key, private_key));
+            staking_keys.push(crypto::generate_random_private_key());
         }
         let thread_count: u8 = 2;
         let max_block_size = 1024 * 1024;
@@ -3893,7 +3899,7 @@ mod tests {
             t0: 32.into(),
             selection_rng_seed: 42,
             genesis_key,
-            nodes,
+            staking_keys,
             current_node_index: 0,
             max_discarded_blocks: 10,
             future_block_processing_max_periods: 3,

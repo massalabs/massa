@@ -191,7 +191,7 @@ pub enum ApiEvent {
     GetSelectionDraw {
         start: Slot,
         end: Slot,
-        response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
+        response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
     },
     AddOperations(HashMap<OperationId, Operation>),
     GetLedgerData {
@@ -413,7 +413,7 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("staker_info"))
-        .and(warp::path::param::<PublicKey>())
+        .and(warp::path::param::<Address>())
         .and(warp::path::end())
         .and_then(move |creator| {
             get_staker_info(
@@ -740,7 +740,7 @@ async fn retrieve_selection_draw(
     start: Slot,
     end: Slot,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Vec<(Slot, PublicKey)>, ApiError> {
+) -> Result<Vec<(Slot, Address)>, ApiError> {
     massa_trace!("api.filters.retrieve_selection_draw", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1755,7 +1755,7 @@ async fn get_staker_info(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
     consensus_cfg: ConsensusConfig,
-    creator: PublicKey,
+    creator: Address,
     clock_compensation: i64,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_staker_info", {});
@@ -1775,7 +1775,9 @@ async fn get_staker_info(
     let blocks = graph
         .active_blocks
         .iter()
-        .filter(|(_hash, block)| block.block.content.creator == creator)
+        .filter(|(_hash, block)| {
+            Address::from_public_key(&block.block.content.creator).unwrap() == creator
+        })
         .map(|(hash, block)| (hash, block.block.clone()))
         .collect::<Vec<(&BlockId, BlockHeader)>>();
 
@@ -1783,7 +1785,9 @@ async fn get_staker_info(
         .discarded_blocks
         .map
         .iter()
-        .filter(|(_hash, (_reason, header))| header.content.creator == creator)
+        .filter(|(_hash, (_reason, header))| {
+            Address::from_public_key(&header.content.creator).unwrap() == creator
+        })
         .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
         .collect::<Vec<(&BlockId, DiscardReason, BlockHeader)>>();
     let cur_time = match UTime::now(clock_compensation) {
