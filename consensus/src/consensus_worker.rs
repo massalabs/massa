@@ -442,12 +442,9 @@ impl ConsensusWorker {
         ack_map.insert(hash, block);
         while let Some(bh) = ack_map.keys().next().cloned() {
             if let Some(b) = ack_map.remove(&bh) {
-                let AcknowledgeBlockReturn {
-                    to_retry,
-                    finals: next_finals,
-                } = self.acknowledge_block(bh, b).await?;
-                ack_map.extend(to_retry);
-                finals.extend(next_finals);
+                let ack_out = self.acknowledge_block(bh, b).await?;
+                ack_map.extend(ack_out.to_retry);
+                finals.extend(ack_out.finals);
             }
         }
         if let Some(cmd_tx) = &self.opt_storage_command_sender {
