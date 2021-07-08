@@ -874,7 +874,7 @@ async fn get_last_stale(
 async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
-) -> Result<Vec<(Hash, Slot)>, ApiError> {
+) -> Result<Vec<HashSlot>, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
     let discarded = graph.discarded_blocks.clone();
 
@@ -882,8 +882,8 @@ async fn get_last_invalid(
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Invalid)
-        .map(|(hash, (_reason, header))| (hash.clone(), header.content.slot))
-        .collect::<Vec<(Hash, Slot)>>();
+        .map(|(hash, (_reason, header))| (hash.clone(), header.content.slot).into())
+        .collect::<Vec<HashSlot>>();
     if discarded.len() > 0 {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
