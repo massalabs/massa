@@ -186,7 +186,7 @@ impl ConsensusWorker {
 	            cmd_tx.add_block_batch(finals).await?
 	        }
 
-            // 3. Run a pruning checkpoint(prunes queues, active are pruned at 2).
+            // 3. Run a pruning checkpoint(prunes queues and discarded, active are pruned at 2).
             self.block_db.run_pruning_checkpoint(&current_slot);
         }
         // end loop
