@@ -83,6 +83,6 @@
 [pool]
     thread_count = 32
     operation_validity_periods= 1000000
-    max_pool_size = 100000
+    max_pool_size_per_thread = 100000
 
 

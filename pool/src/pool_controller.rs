@@ -21,6 +21,7 @@ use tokio::{
 /// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.
 pub async fn start_pool_controller(
     cfg: PoolConfig,
+    thread_count: u8,
     protocol_command_sender: ProtocolCommandSender,
     protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     context: SerializationContext,
@@ -35,6 +36,7 @@ pub async fn start_pool_controller(
     let join_handle = tokio::spawn(async move {
         let res = PoolWorker::new(
             cfg_copy,
+            thread_count,
             protocol_command_sender,
             protocol_pool_event_receiver,
             command_rx,

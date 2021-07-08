@@ -133,6 +133,19 @@ impl ConsensusWorker {
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver, ConsensusError> {
+        // signal initial state to pool
+        if let Some(previous_slot) = self.previous_slot {
+            self.pool_command_sender
+            .update_current_slot(previous_slot)
+            .await?;
+        }
+        if let Some(final_periods) = self.block_db.get_changed_latest_final_blocks_periods() {
+            self.pool_command_sender
+                .update_latest_final_periods(final_periods)
+                .await?;
+        }
+
+        // set slot timer
         let next_slot_timer = sleep_until(
             get_block_slot_timestamp(
                 self.cfg.thread_count,
@@ -143,6 +156,7 @@ impl ConsensusWorker {
             .estimate_instant(self.clock_compensation)?,
         );
         tokio::pin!(next_slot_timer);
+
         loop {
             massa_trace!("consensus.consensus_worker.run_loop.select", {});
             tokio::select! {
@@ -220,10 +234,11 @@ impl ConsensusWorker {
             .estimate_instant(self.clock_compensation)?,
         ));
 
-        //send transaction pool new slot.
+        // signal tick to pool
         self.pool_command_sender
             .update_current_slot(self.next_slot)
             .await?;
+
         Ok(())
     }
 
@@ -419,7 +434,7 @@ impl ConsensusWorker {
             self.wishlist = new_wishlist;
         }
 
-        //send transaction pool new final block period.
+        // send latest final periods to pool
         if let Some(final_periods) = self.block_db.get_changed_latest_final_blocks_periods() {
             self.pool_command_sender
                 .update_latest_final_periods(final_periods)

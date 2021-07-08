@@ -79,6 +79,7 @@ async fn run(cfg: config::Config) {
     // launch pool controller
     let (pool_command_sender, pool_manager) = start_pool_controller(
         cfg.pool.clone(),
+        cfg.consensus.thread_count,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
         serialization_context.clone(),
