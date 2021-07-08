@@ -212,10 +212,14 @@ fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
 pub struct BlockStorage {
     cfg: StorageConfig,
     block_count: Arc<AtomicUsize>,
+    /// BlockId -> Block
     hash_to_block: sled::Tree,
+    /// Slot -> BlockId
     slot_to_hash: sled::Tree,
+    /// OperationId -> (BlockId, index_in_block: usize)
     op_to_block: sled::Tree,
-    addr_to_op: sled::Tree, // address -> Vec<operationId>
+    /// Address -> HashSet<OperationId>
+    addr_to_op: sled::Tree,
     notify: Arc<Notify>,
 }
 
