@@ -17,10 +17,10 @@ enum ConsensusBlock {
     NotReceivedYet(PendingAckBlockState)
     HeaderOnly(Header, PendingAckBlockState),
     FullBlock(Block, PendingAckBlockState),
-    Discarded(Header, DiscardReason),
+    Discarded(Header, DiscardReason, u64), // u64 is a sequence number
     Genesis(Block),
     Active(CompiledBlock),
-    Final(Block),
+    Final(CompiledBlock),
 }
 
 struct PendingAckBlockState {
@@ -77,9 +77,38 @@ struct PendingAckBlockState {
 
 #### acknowledge block in block graph
 
-#### unlock
+#### unlock dependencies
 
 #### check header
+
+#### check if received block is in block database
+* it's NotReceivedYet
+    * promote to FullBlock
+    * can start acknowledgement process
+
+* it's HeaderOnly
+    * promote to FullBlock
+    * check header
+    * if it isn't waiting for anything else acknowledge block
+
+* it's FullBlock
+    * if it isn't waiting for anything else acknowledge block
+
+* it's Active
+    * do nothing
+
+* it's Final
+    * do nothing
+
+* it's Discarded
+    * update sequence number
+
+* it's Genesis
+    * Do something with the node that send that ?
+
+#### check if received header is in block database
+
+Same as check if received block is in block database, except if it was already just a header. In that case do nothing.
 
 ## Transitions between ConsensusBlock states
 ```mermaid
@@ -97,3 +126,11 @@ graph LR
     C --> G
     D --> G
 ```
+
+### into discarded
+* promote into discarded block with given reason and curent_sequence_number
+* increment current_sequence_number
+* check how many Discarded are in block_db, if needed remove these with low sequence number.
+* return definitively discarded blocks (we want to keep definitely discarded final blocks)
+
+Do we need to remove blocks one by one ?
