@@ -823,8 +823,12 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
                 let operations = self.note_operations_from_node(operations, &node);
-                self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations(operations))
+                if !operations.is_empty() {
+                    self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations(
+                        operations,
+                    ))
                     .await;
+                }
             }
         }
         Ok(())
