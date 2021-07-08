@@ -529,25 +529,9 @@ impl BlockGraph {
                         "discarded parent".to_string(),
                     )); // a parent is discarded
                 }
-                if let Some(parent) = self.active_blocks.get(&parent_hash) {
-                    // check that the parent is from an earlier slot in the right thread
-                    if parent.block.header.content.slot.thread != parent_thread
-                        || parent.block.header.content.slot >= header.content.slot
-                    {
-                        // a parent is in the wrong thread or has a slot not strictly before the block
-                        self.discarded_blocks.insert(
-                            hash.clone(),
-                            header.clone(),
-                            DiscardReason::Invalid,
-                        )?;
-                        return Err(BlockAcknowledgeError::InvalidParents(
-                            "wrong thread or slot number".to_string(),
-                        ));
-                    }
-                } else {
-                    // a parent is missing
-                    missing_dependencies.insert(parent_hash);
-                }
+            } else {
+                // a parent is missing
+                missing_dependencies.insert(parent_hash);
             }
             // check that the parents are mutually compatible
             {
