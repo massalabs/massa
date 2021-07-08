@@ -465,6 +465,15 @@ pub struct LedgerDataExport {
     pub final_data: LedgerSubset,
 }
 
+impl LedgerDataExport {
+    pub fn new(thread_count: u8) -> LedgerDataExport {
+        LedgerDataExport {
+            candidate_data: LedgerSubset::new(thread_count),
+            final_data: LedgerSubset::new(thread_count),
+        }
+    }
+}
+
 impl<'a> From<&'a BlockGraph> for BlockGraphExport {
     /// Conversion from blockgraph.
     fn from(block_graph: &'a BlockGraph) -> Self {
