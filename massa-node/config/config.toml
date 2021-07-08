@@ -1,5 +1,5 @@
 [logging]
-    level = 4
+    level = 1
 
 [api]
     max_return_invalid_blocks = 10
@@ -70,7 +70,7 @@
     max_send_wait = 500
 
 [storage]
-    max_stored_blocks= 1000000
+    max_stored_blocks= 1000
     path = "block_store"
     cache_capacity = 10000
     #flush_every_ms = 
