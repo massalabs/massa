@@ -323,7 +323,7 @@ impl std::fmt::Display for WrappedPeerInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-struct HashSlotTime {
+pub struct HashSlotTime {
     pub hash_slot: HashSlot,
     pub time: UTime,
 }
@@ -341,12 +341,12 @@ impl std::fmt::Display for HashSlotTime {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct State {
-    time: UTime,
-    latest_slot: Option<Slot>,
-    our_ip: Option<IpAddr>,
-    last_final: Vec<HashSlotTime>,
-    nb_cliques: u64,
-    nb_peers: u64,
+    pub time: UTime,
+    pub latest_slot: Option<Slot>,
+    pub our_ip: Option<IpAddr>,
+    pub last_final: Vec<HashSlotTime>,
+    pub nb_cliques: u64,
+    pub nb_peers: u64,
 }
 impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

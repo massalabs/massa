@@ -147,7 +147,7 @@
 
 use crate::ApiError;
 
-use apimodel::{BlockInfo, Cliques, HashSlot, NetworkInfo};
+use apimodel::{BlockInfo, Cliques, HashSlot, HashSlotTime, NetworkInfo, State};
 
 use super::config::ApiConfig;
 use communication::{
@@ -797,7 +797,7 @@ async fn get_state(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
     network_cfg: NetworkConfig,
-) -> Result<serde_json::Value, ApiError> {
+) -> Result<State, ApiError> {
     let cur_time = UTime::now()?;
 
     let latest_slot_opt = get_latest_block_slot_at_timestamp(
@@ -824,27 +824,26 @@ async fn get_state(
         .iter()
         .enumerate()
         .map(|(thread, (hash, period))| {
-            Ok((
-                hash,
-                Slot::new(*period, thread as u8),
-                get_block_slot_timestamp(
+            Ok(HashSlotTime {
+                hash_slot: (hash.clone(), Slot::new(*period, thread as u8)).into(),
+                time: get_block_slot_timestamp(
                     consensus_cfg.thread_count,
                     consensus_cfg.t0,
                     consensus_cfg.genesis_timestamp,
                     Slot::new(*period, thread as u8),
                 )?,
-            ))
+            })
         })
-        .collect::<Result<Vec<(&Hash, Slot, UTime)>, consensus::ConsensusError>>()?;
+        .collect::<Result<Vec<HashSlotTime>, consensus::ConsensusError>>()?;
 
-    Ok(json!({
-        "time": cur_time,
-        "latest_slot": latest_slot_opt,
-        "our_ip": network_cfg.routable_ip,
-        "last_final": finals,
-        "nb_cliques": graph.max_cliques.len(),
-        "nb_peers": connected_peers.len(),
-    }))
+    Ok(State {
+        time: cur_time,
+        latest_slot: latest_slot_opt,
+        our_ip: network_cfg.routable_ip,
+        last_final: finals,
+        nb_cliques: graph.max_cliques.len() as u64,
+        nb_peers: connected_peers.len() as u64,
+    })
 }
 
 /// Returns a number of last stale blocks as a Vec<(Hash, Slot)> wrapped in a reply.
