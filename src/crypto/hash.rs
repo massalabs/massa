@@ -1,6 +1,6 @@
 use bitcoin_hashes;
 
-struct HashEngine(bitcoin_hashes::sha256::HashEngine);
+pub struct HashEngine(bitcoin_hashes::sha256::HashEngine);
 
 impl HashEngine {
     /// Add data to the hash engine
@@ -10,7 +10,7 @@ impl HashEngine {
     /// let mut engine = Hash::engine();
     /// engine.input(&data);
     /// ```
-    fn input(&mut self, data: &Vec<u8>) {
+    pub fn input(&mut self, data: &Vec<u8>) {
         use bitcoin_hashes::HashEngine;
         self.0.input(&data[..]);
     }
@@ -41,7 +41,7 @@ impl Hash {
     /// ```
     /// let mut engine = Hash::engine();
     /// ```
-    fn engine() -> HashEngine {
+    pub fn engine() -> HashEngine {
         use bitcoin_hashes::Hash;
         HashEngine(bitcoin_hashes::sha256::Hash::engine())
     }
@@ -52,7 +52,7 @@ impl Hash {
     /// ```
     /// let hash = Hash::from_engine(engine)
     /// ```
-    fn from_engine(engine: HashEngine) -> Hash {
+    pub fn from_engine(engine: HashEngine) -> Hash {
         use bitcoin_hashes::Hash;
         Hash(bitcoin_hashes::sha256::Hash::from_engine(engine.0))
     }
