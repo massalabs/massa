@@ -19,12 +19,14 @@ We are now releasing the **Massa testnet** in this Gitlab repository, with its e
 
 As decentralization is our core value, we would like to help you start and run a Massa node. 
 Running a node during the testnet phase also helps us finding bugs and improving usability, so it will be rewarded with real Massa on mainnet launch. 
+
 The mechanics and amounts of those rewards are currently in discussion, the main idea is that the more block rewards you receive, the more Massa you will get at launch, with a per-person cap.
  
 
 ## Testnet Discussions
 
 Please come to our link:https://discord.com/invite/TnsJQzXkRN[Discord] for testnet discussions, in the testnet channel.
+
 For project announcements we mainly use link:https://t.me/massanetwork[Telegram]. 
 
 ## Install on ubuntu
@@ -56,7 +58,9 @@ For project announcements we mainly use link:https://t.me/massanetwork[Telegram]
 
 
 ### Tutorial
+
 Here is a set of tutorials:
+
 * link:docs/wallet.adoc[creating a wallet]
 * link:docs/staking.adoc[staking]
 * link:docs/transaction.adoc[sending transactions]
