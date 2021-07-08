@@ -9,7 +9,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, watch};
 
 use crate::config::NetworkConfig;
-use crate::crypto::*;
+use crate::crypto::{B58able, SecretKey, PublicKey};
 
 mod channel;
 
