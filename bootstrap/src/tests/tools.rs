@@ -127,10 +127,7 @@ pub fn get_boot_graph() -> BootsrapableGraph {
             get_dummy_block_id("parent1"),
             get_dummy_block_id("parent2"),
         ]],
-        ledger: LedgerExport {
-            ledger_per_thread,
-            latest_final_periods: vec![10, 10],
-        },
+        ledger: LedgerExport { ledger_per_thread },
     }
 }
 
