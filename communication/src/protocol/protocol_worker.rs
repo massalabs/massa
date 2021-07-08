@@ -18,7 +18,11 @@ use tokio::{
 #[derive(Debug, Serialize)]
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
-    ReceivedBlock { block_id: BlockId, block: Block },
+    ReceivedBlock {
+        block_id: BlockId,
+        block: Block,
+        operation_set: HashSet<OperationId>,
+    },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
         block_id: BlockId,
@@ -704,7 +708,7 @@ impl ProtocolWorker {
         &mut self,
         block: &Block,
         source_node_id: &NodeId,
-    ) -> Result<Option<BlockId>, CommunicationError> {
+    ) -> Result<Option<(BlockId, HashSet<OperationId>)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
@@ -769,7 +773,6 @@ impl ProtocolWorker {
                 }
             }
         }
-        drop(seen_ops);
 
         // check root hash
         {
@@ -793,9 +796,7 @@ impl ProtocolWorker {
                 self.cfg.max_node_known_blocks_size,
             );
             massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
-
-            // TODO maybe return op_ids so that they don't have to be computed again in block_graph
-            return Ok(Some(block_id));
+            return Ok(Some((block_id, seen_ops)));
         }
         Ok(None)
     }
@@ -857,12 +858,18 @@ impl ProtocolWorker {
                 block,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
-                if let Some(block_id) = self.note_block_from_node(&block, &from_node_id).await? {
+                if let Some((block_id, operation_set)) =
+                    self.note_block_from_node(&block, &from_node_id).await?
+                {
                     let mut set = HashSet::with_capacity(1);
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
-                    self.send_protocol_event(ProtocolEvent::ReceivedBlock { block_id, block })
-                        .await;
+                    self.send_protocol_event(ProtocolEvent::ReceivedBlock {
+                        block_id,
+                        block,
+                        operation_set,
+                    })
+                    .await;
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(

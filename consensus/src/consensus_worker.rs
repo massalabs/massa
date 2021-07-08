@@ -220,8 +220,15 @@ impl ConsensusWorker {
         {
             let (hash, block) = self.block_db.create_block("block".to_string(), cur_slot)?;
             massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
-            self.block_db
-                .incoming_block(hash, block, &mut self.selector, Some(cur_slot))?;
+
+            // TODO: pass the actual operation set of the block.
+            self.block_db.incoming_block(
+                hash,
+                block,
+                Default::default(),
+                &mut self.selector,
+                Some(cur_slot),
+            )?;
         }
 
         // signal tick to block graph
@@ -352,11 +359,16 @@ impl ConsensusWorker {
     /// * event: event type to process.
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
         match event {
-            ProtocolEvent::ReceivedBlock { block_id, block } => {
+            ProtocolEvent::ReceivedBlock {
+                block_id,
+                block,
+                operation_set,
+            } => {
                 massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
                 self.block_db.incoming_block(
                     block_id,
                     block,
+                    operation_set,
                     &mut self.selector,
                     self.previous_slot,
                 )?;
