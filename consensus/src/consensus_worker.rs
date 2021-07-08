@@ -343,8 +343,9 @@ impl ConsensusWorker {
                             ))
                         })
                         .collect();
+                    let res = res?;
                     Ok(AcknowledgeBlockReturn {
-                        to_retry: res?,
+                        to_retry: res,
                         finals: final_blocks,
                     })
                 } else {
