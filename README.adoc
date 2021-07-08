@@ -1,7 +1,30 @@
+# Massa: The Decentralized and Scaled Blockchain
 
-Example link: link:docs/intro.adoc[click here]
+Massa is a truly decentralized blockchain controlled by thousands of people. 
+With the breakthrough multithreaded technology, we’re set for mass adoption.
 
-## Setup from scratch for ubuntu
+
+## Introduction
+
+[Massa](massa.net) is a new blockchain reaching a high transaction throughput in a fully decentralized network, thanks to a parallel block technology. 
+Our research is published in this [technical paper](https://arxiv.org/pdf/1803.09029) showing that a throughput of 10'000 transactions per second is reached even in a decentralized network with thousands of nodes.
+
+An easy-to-read blog post introduction is written [here](https://massa.net/blog/post/0/).
+
+We are now releasing the **Massa testnet** in this Gitlab repository, with its explorer available at [test.massa.net](test.massa.net).
+
+In the next months, we will be constantly improving the testnet software, which will lead to bugs and reboots. A stable demo of Massa written in Python is live on [demo.massa.net](demo.massa.net) in the meantime.
+
+## Testnet Incentives
+
+As decentralization is our core value, we would like to help you start and run a Massa node. Running a node during the testnet phase helps us find bugs and improve usability, so it will be rewarded with real Massa on mainnet launch. The mechanics and amounts of those rewards are currently in discussion. 
+
+## Testnet Discussions
+
+Come to our [Discord](https://discord.com/invite/TnsJQzXkRN) for testnet discussions, in the testnet channel.
+We mainly use [Telegram](https://t.me/joinchat/WbAhso_0YhE4NTg0) for project announcements. 
+
+## Install on ubuntu
 
 * curl : `sudo apt install curl`
 * [rustup](https://www.rust-lang.org/tools/install) : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
@@ -14,3 +37,20 @@ Example link: link:docs/intro.adoc[click here]
 * clone this repo: `git clone https://gitlab.com/massalabs/massa-network.git`
 * `sudo apt install build-essential`
 * `sudo apt install libssl-dev`
+
+## Run
+
+### Start the node
+
+`cd massa-node/`
+`RUST_BACKTRACE=full cargo run --release |& tee logs.txt`
+
+
+### Start the client
+
+`cd massa-client/`
+`cargo run --release`
+
+
+### Tutorial
+Here is a tutorial for creating a wallet, staking, sending transactions: link:docs/tuto.adoc[testnet tutorial].
