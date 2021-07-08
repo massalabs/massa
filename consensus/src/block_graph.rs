@@ -266,7 +266,7 @@ impl Blocks {
     }
 
     fn prune(&mut self, slot: &Slot) {
-		// TODO: prune awaiting ack. 
+        // TODO: prune awaiting ack.
         let mut discarded = BTreeMap::new();
 
         for (hash, block) in self.blocks.iter() {
@@ -602,9 +602,8 @@ impl BlockGraph {
         for (hash, block) in self.blocks.get_all_ready_for_ack(slot) {
             self.update_consensus_with_new_block(hash, block);
         }
-		
-		
-		// TODO: send finals back for storage.
+
+        // TODO: send finals back for storage.
         HashMap::new()
     }
 

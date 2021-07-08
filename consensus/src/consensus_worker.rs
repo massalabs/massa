@@ -182,9 +182,9 @@ impl ConsensusWorker {
 
             // 2. Run an ack checkpoint.
             let finals = self.block_db.run_ack_checkpoint(&current_slot);
-	        if let Some(cmd_tx) = &self.opt_storage_command_sender {
-	            cmd_tx.add_block_batch(finals).await?
-	        }
+            if let Some(cmd_tx) = &self.opt_storage_command_sender {
+                cmd_tx.add_block_batch(finals).await?
+            }
 
             // 3. Run a pruning checkpoint(prunes queues and discarded, active are pruned at 2).
             self.block_db.run_pruning_checkpoint(&current_slot);
