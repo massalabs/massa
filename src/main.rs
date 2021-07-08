@@ -22,9 +22,9 @@ async fn run(cfg: config::Config) -> BoxResult<()> {
                     network::controller::NetworkControllerEvent::CandidateConnection {ip, socket, is_outgoing} => {
                         info!("new peer: {}", ip);
                         delay_for(Duration::from_secs(2)).await;
-                        net.feedback_peer_alive(ip).await;
+                        net.peer_alive(ip).await;
                         delay_for(Duration::from_secs(20)).await;
-                        net.feedback_peer_closed(ip, network::controller::PeerClosureReason::Normal).await;
+                        net.peer_closed(ip, network::controller::PeerClosureReason::Normal).await;
                         info!("peer closed: {}", ip);
                     }
                 },

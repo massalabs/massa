@@ -25,7 +25,9 @@ pub enum PeerStatus {
 pub struct PeerInfo {
     pub ip: IpAddr,
     pub status: PeerStatus,
-    pub last_connection: Option<DateTime<Utc>>,
+    pub advertised_as_reachable: bool,
+    pub bootstrap: bool,
+    pub last_alive: Option<DateTime<Utc>>,
     pub last_failure: Option<DateTime<Utc>>,
 }
 
@@ -39,11 +41,20 @@ async fn load_peers(file_name: &String) -> BoxResult<HashMap<IpAddr, PeerInfo>> 
     let result =
         serde_json::from_str::<Vec<PeerInfo>>(&tokio::fs::read_to_string(file_name).await?)?
             .iter()
-            .map(|p| match p.status {
-                PeerStatus::Idle | PeerStatus::Banned => Ok((p.ip, *p)),
-                _ => Err(format!("invalid peer status in peers file")),
+            .filter(|&p| p.advertised_as_reachable || p.bootstrap)
+            .map(|&p| {
+                (
+                    p.ip,
+                    PeerInfo {
+                        status: match p.status {
+                            PeerStatus::Banned => PeerStatus::Banned,
+                            _ => PeerStatus::Idle,
+                        },
+                        ..p
+                    },
+                )
             })
-            .collect::<Result<HashMap<IpAddr, PeerInfo>, _>>()?;
+            .collect::<HashMap<IpAddr, PeerInfo>>();
     if result.is_empty() {
         return Err("known peers file is empty".into());
     }
@@ -53,6 +64,7 @@ async fn load_peers(file_name: &String) -> BoxResult<HashMap<IpAddr, PeerInfo>> 
 async fn dump_peers(peers: &HashMap<IpAddr, PeerInfo>, file_name: &String) -> BoxResult<()> {
     let peer_vec: Vec<PeerInfo> = peers
         .values()
+        .filter(|&p| p.advertised_as_reachable || p.bootstrap)
         .map(|&p| PeerInfo {
             status: match p.status {
                 PeerStatus::Banned => PeerStatus::Banned,
@@ -137,41 +149,62 @@ impl PeerDatabase {
     }
 
     pub fn cleanup(&mut self, max_idle_peers: usize, max_banned_peers: usize) {
-        // remove excess idle peers
-        if self.count_peers_with_status(PeerStatus::Idle) > max_idle_peers {
+        // remove any idle non-reachable non-bootstrap peers
+        self.peers.retain(
+            |&k, &mut v| match (v.status, v.advertised_as_reachable, v.bootstrap) {
+                (PeerStatus::Idle, false, false) => false,
+                _ => true,
+            },
+        );
+
+        // remove excess idle non-bootstrap peers
+        let n_idle_nonbootstrap_peers = self
+            .peers
+            .values()
+            .filter(|&p| (p.status, p.bootstrap) == (PeerStatus::Idle, false))
+            .count();
+        if n_idle_nonbootstrap_peers > max_idle_peers {
             let mut keep_ips: Vec<IpAddr> = self
                 .peers
                 .values()
-                .filter(|&p| p.status == PeerStatus::Idle)
+                .filter(|&p| (p.status, p.bootstrap) == (PeerStatus::Idle, false))
                 .map(|&p| p.ip)
                 .collect();
             keep_ips.sort_unstable_by_key(|&k| {
                 let p = self.peers.get(&k).unwrap(); // should never fail
-                (std::cmp::Reverse(p.last_connection), p.last_failure)
+                (std::cmp::Reverse(p.last_alive), p.last_failure)
             });
             keep_ips.truncate(max_idle_peers);
-            self.peers.retain(|&k, &mut v| match v.status {
-                PeerStatus::Idle => keep_ips.contains(&k),
-                _ => true,
-            })
+            self.peers
+                .retain(|&k, &mut v| match (v.status, v.bootstrap) {
+                    (PeerStatus::Idle, false) => keep_ips.contains(&k),
+                    _ => true,
+                })
         }
 
         // remove excess banned peers
-        if self.count_peers_with_status(PeerStatus::Banned) > max_banned_peers {
+        let n_banned_nonbootstrap_peers = self
+            .peers
+            .values()
+            .filter(|&p| (p.status, p.bootstrap) == (PeerStatus::Banned, false))
+            .count();
+        if n_banned_nonbootstrap_peers > max_banned_peers {
             let mut keep_ips: Vec<IpAddr> = self
                 .peers
                 .values()
-                .filter(|&p| p.status == PeerStatus::Banned)
+                .filter(|&p| (p.status, p.bootstrap) == (PeerStatus::Banned, false))
                 .map(|&p| p.ip)
                 .collect();
             keep_ips.sort_unstable_by_key(|&k| {
-                std::cmp::Reverse(self.peers.get(&k).unwrap().last_failure); // should never fail
+                let p = self.peers.get(&k).unwrap(); // should never fail
+                (std::cmp::Reverse(p.last_failure), p.last_alive);
             });
             keep_ips.truncate(max_banned_peers);
-            self.peers.retain(|&k, &mut v| match v.status {
-                PeerStatus::Banned => keep_ips.contains(&k),
-                _ => true,
-            })
+            self.peers
+                .retain(|&k, &mut v| match (v.status, v.bootstrap) {
+                    (PeerStatus::Banned, false) => keep_ips.contains(&k),
+                    _ => true,
+                })
         }
     }
 
@@ -209,7 +242,7 @@ impl PeerDatabase {
             .collect();
         peers_sorted.sort_unstable_by_key(|&ip| {
             let p = self.peers.get(&ip).unwrap();
-            (std::cmp::Reverse(p.last_connection), p.last_failure)
+            (std::cmp::Reverse(p.last_alive), p.last_failure)
         });
         peers_sorted
             .into_iter()
@@ -219,15 +252,36 @@ impl PeerDatabase {
 
     pub fn merge_candidate_peers(&mut self, new_peers: &HashSet<IpAddr>) {
         for &new_peer_ip in new_peers {
-            if new_peer_ip.is_global() {
-                // check if IP is globally routable
-                self.peers.entry(new_peer_ip).or_insert(PeerInfo {
+            self.peers
+                .entry(new_peer_ip)
+                .or_insert(PeerInfo {
                     ip: new_peer_ip.clone(),
                     status: PeerStatus::Idle,
-                    last_connection: None,
+                    advertised_as_reachable: true,
+                    bootstrap: false,
+                    last_alive: None,
                     last_failure: None,
-                });
-            }
+                })
+                .advertised_as_reachable = true;
         }
+    }
+
+    pub fn get_advertisable_peer_ips(&self) -> Vec<IpAddr> {
+        // get the list of peers sorted from best to worst
+        let mut peers_sorted: Vec<IpAddr> = self
+            .peers
+            .values()
+            .filter(|&p| p.status != PeerStatus::Banned && p.advertised_as_reachable)
+            .map(|&p| p.ip)
+            .collect();
+        peers_sorted.sort_unstable_by_key(|&ip| {
+            let p = self.peers.get(&ip).unwrap();
+            (
+                std::cmp::Reverse(p.bootstrap),
+                std::cmp::Reverse(p.last_alive),
+                p.last_failure,
+            )
+        });
+        peers_sorted
     }
 }

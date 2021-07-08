@@ -2,13 +2,17 @@
   {
     "ip": "100.100.100.100",
     "status": "Idle",
-    "last_connection": null,
+    "advertised_as_reachable": true,
+    "bootstrap": true,
+    "last_alive": null,
     "last_failure": null
   },
   {
-    "ip": "150.150.150.150",
+    "ip": "100.100.100.100",
     "status": "Banned",
-    "last_connection": null,
+    "advertised_as_reachable": true,
+    "bootstrap": false,
+    "last_alive": null,
     "last_failure": null
   }
 ]

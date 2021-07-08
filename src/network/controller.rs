@@ -17,11 +17,12 @@ use super::config::NetworkConfig;
 
 pub struct NetworkController {
     stop_tx: oneshot::Sender<()>,
-    peer_feedback_tx: mpsc::Sender<PeerFeedbackEvent>,
+    upstream_command_tx: mpsc::Sender<UpstreamCommand>,
     event_rx: mpsc::Receiver<NetworkControllerEvent>,
     controller_fn_handle: JoinHandle<()>,
 }
 
+#[derive(Debug)]
 pub enum NetworkControllerEvent {
     CandidateConnection {
         ip: IpAddr,
@@ -30,15 +31,20 @@ pub enum NetworkControllerEvent {
     },
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum PeerClosureReason {
     Normal,
     ConnectionFailed,
     Banned,
 }
 
-pub enum PeerFeedbackEvent {
-    PeerList {
+#[derive(Debug)]
+pub enum UpstreamCommand {
+    MergePeerList {
         ips: HashSet<IpAddr>,
+    },
+    GetAdvertisablePeerList {
+        response_tx: oneshot::Sender<Vec<IpAddr>>,
     },
     PeerClosed {
         ip: IpAddr,
@@ -59,15 +65,15 @@ impl NetworkController {
 
         // launch controller
         let (stop_tx, stop_rx) = oneshot::channel::<()>();
-        let (peer_feedback_tx, peer_feedback_rx) = mpsc::channel::<PeerFeedbackEvent>(1024);
+        let (upstream_command_tx, upstream_command_rx) = mpsc::channel::<UpstreamCommand>(1024);
         let (event_tx, event_rx) = mpsc::channel::<NetworkControllerEvent>(1024);
         let controller_fn_handle = tokio::spawn(async move {
-            controller_fn(cfg, peer_db, stop_rx, peer_feedback_rx, event_tx).await;
+            controller_fn(cfg, peer_db, stop_rx, upstream_command_rx, event_tx).await;
         });
 
         Ok(NetworkController {
             stop_tx,
-            peer_feedback_tx,
+            upstream_command_tx,
             event_rx,
             controller_fn_handle,
         })
@@ -86,33 +92,41 @@ impl NetworkController {
             .ok_or("error reading events".into())
     }
 
-    pub async fn feedback_peer_list(
+    pub async fn merge_peer_list(
         &mut self,
         ips: HashSet<IpAddr>,
-    ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
-        self.peer_feedback_tx
-            .send(PeerFeedbackEvent::PeerList { ips })
+    ) -> Result<(), mpsc::error::SendError<UpstreamCommand>> {
+        self.upstream_command_tx
+            .send(UpstreamCommand::MergePeerList { ips })
             .await?;
         Ok(())
     }
 
-    pub async fn feedback_peer_closed(
+    pub async fn get_advertisable_peer_list(&mut self) -> BoxResult<Vec<IpAddr>> {
+        let (response_tx, response_rx) = oneshot::channel::<Vec<IpAddr>>();
+        self.upstream_command_tx
+            .send(UpstreamCommand::GetAdvertisablePeerList { response_tx })
+            .await?;
+        Ok(response_rx.await?)
+    }
+
+    pub async fn peer_closed(
         &mut self,
         ip: IpAddr,
         reason: PeerClosureReason,
-    ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
-        self.peer_feedback_tx
-            .send(PeerFeedbackEvent::PeerClosed { ip, reason })
+    ) -> Result<(), mpsc::error::SendError<UpstreamCommand>> {
+        self.upstream_command_tx
+            .send(UpstreamCommand::PeerClosed { ip, reason })
             .await?;
         Ok(())
     }
 
-    pub async fn feedback_peer_alive(
+    pub async fn peer_alive(
         &mut self,
         ip: IpAddr,
-    ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
-        self.peer_feedback_tx
-            .send(PeerFeedbackEvent::PeerAlive { ip })
+    ) -> Result<(), mpsc::error::SendError<UpstreamCommand>> {
+        self.upstream_command_tx
+            .send(UpstreamCommand::PeerAlive { ip })
             .await?;
         Ok(())
     }
@@ -122,7 +136,7 @@ async fn controller_fn(
     cfg: NetworkConfig,
     mut peer_db: PeerDatabase,
     mut stop_rx: oneshot::Receiver<()>,
-    mut peer_feedback_rx: mpsc::Receiver<PeerFeedbackEvent>,
+    mut upstream_command_rx: mpsc::Receiver<UpstreamCommand>,
     mut event_tx: mpsc::Sender<NetworkControllerEvent>,
 ) {
     let listen_addr = cfg.bind;
@@ -159,16 +173,23 @@ async fn controller_fn(
 
         tokio::select! {
             // peer feedback event
-            res = peer_feedback_rx.next() => match res {
-                Some(PeerFeedbackEvent::PeerList{ips}) => {
+            res = upstream_command_rx.next() => match res {
+                Some(UpstreamCommand::MergePeerList{ips}) => {
                     peer_db.merge_candidate_peers(&ips);
                 },
-                Some(PeerFeedbackEvent::PeerClosed{ip, reason}) => {
+                Some(UpstreamCommand::GetAdvertisablePeerList{response_tx}) => {
+                    let mut result = peer_db.get_advertisable_peer_ips();
+                    if let Some(routable_ip) = cfg.routable_ip {
+                        result.insert(0, routable_ip)
+                    }
+                    let _ = response_tx.send(result);
+                },
+                Some(UpstreamCommand::PeerClosed{ip, reason}) => {
                     let mut peer = peer_db.peers.get_mut(&ip).expect("disconnected from an unkonwn peer");
                     match reason {
                         PeerClosureReason::Normal => {
                             peer.status = PeerStatus::Idle;
-                            peer.last_connection = Some(Utc::now());
+                            peer.last_alive = Some(Utc::now());
                         },
                         PeerClosureReason::ConnectionFailed => {
                             peer.status = PeerStatus::Idle;
@@ -180,14 +201,14 @@ async fn controller_fn(
                         }
                     }
                 },
-                Some(PeerFeedbackEvent::PeerAlive { ip } ) => {
+                Some(UpstreamCommand::PeerAlive { ip } ) => {
                     let mut peer = peer_db.peers.get_mut(&ip).expect("conection OK from an unkonwn peer");
                     peer.status = match peer.status {
                         PeerStatus::InHandshaking => PeerStatus::InAlive,
                         PeerStatus::OutHandshaking => PeerStatus::OutAlive,
                         _ => unreachable!("connection OK from peer that was not in the process of connecting")
                     };
-                    peer.last_connection = Some(Utc::now());
+                    peer.last_alive = Some(Utc::now());
                 }
                 None => unreachable!("peer feedback channel disappeared"),
             },
@@ -225,7 +246,9 @@ async fn controller_fn(
                     let peer = peer_db.peers.entry(ip_addr).or_insert(PeerInfo {
                         ip: ip_addr,
                         status: PeerStatus::Idle,
-                        last_connection: None,
+                        advertised_as_reachable: false,
+                        bootstrap: false,
+                        last_alive: None,
                         last_failure: None
                     });
                     match peer.status {

@@ -1,9 +1,10 @@
 use serde::Deserialize;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkConfig {
     pub bind: SocketAddr,
+    pub routable_ip: Option<IpAddr>,
     pub known_peers_file: String,
     pub retry_wait_seconds: f32,
     pub timeout_seconds: f32,
