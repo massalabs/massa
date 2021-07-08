@@ -2,7 +2,7 @@ use super::mock_pool_controller::MockPoolController;
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
-    ledger::{LedgerData, OperationLedgerInterface},
+    ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
     ConsensusConfig,
 };
@@ -16,6 +16,7 @@ use models::{
     OperationType, SerializeCompact, Slot,
 };
 use pool::PoolCommand;
+use rand_xoshiro::rand_core::block;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -154,14 +155,16 @@ pub async fn validate_propagate_block(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                if block_id == valid_hash {
+                    return Some(());
+                }
+                None
+            }
             _ => None,
         })
-        .await;
-    match param {
-        Some(hash) => assert_eq!(valid_hash, hash, "not the valid hash propagated"),
-        None => panic!("Block not propagated before timeout."),
-    }
+        .await
+        .expect("Block not propagated before timeout.");
 }
 
 pub async fn validate_notify_block_attack_attempt(
@@ -291,17 +294,42 @@ pub async fn propagate_block(
     block_hash
 }
 
+pub fn create_roll_transaction(
+    priv_key: PrivateKey,
+    sender_public_key: PublicKey,
+    roll_count: u64,
+    buy: bool,
+    expire_period: u64,
+    fee: u64,
+) -> Operation {
+    let op = if buy {
+        OperationType::RollBuy { roll_count }
+    } else {
+        OperationType::RollSell { roll_count }
+    };
+
+    let content = OperationContent {
+        sender_public_key,
+        fee,
+        expire_period,
+        op,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    Operation { content, signature }
+}
+
 pub async fn wait_pool_slot(
     pool_controller: &mut MockPoolController,
     t0: UTime,
     period: u64,
     thread: u8,
-) {
+) -> Slot {
     pool_controller
         .wait_command(t0.checked_mul(2).unwrap(), |cmd| match cmd {
             PoolCommand::UpdateCurrentSlot(s) => {
                 if s >= Slot::new(period, thread) {
-                    Some(())
+                    Some(s)
                 } else {
                     None
                 }
@@ -309,7 +337,7 @@ pub async fn wait_pool_slot(
             _ => None,
         })
         .await
-        .expect("timeout while waiting for slot");
+        .expect("timeout while waiting for slot")
 }
 
 pub fn create_transaction(
