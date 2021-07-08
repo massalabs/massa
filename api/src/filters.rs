@@ -432,7 +432,7 @@ pub fn get_filter(
         .and(warp::path("recent_operations"))
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
-        .and_then(move |address| get_recent_operations(evt_tx.clone(), address));
+        .and_then(move |address| get_operations_involving_address(evt_tx.clone(), address));
 
     let evt_tx = event_tx.clone();
     let address_data = warp::get()
@@ -1512,11 +1512,13 @@ async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply,
     Ok(warp::reply::json(&peers).into_response())
 }
 
-async fn get_recent_operations(
+async fn get_operations_involving_address(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_recent_operations", { "address": address });
+    massa_trace!("api.filters.get_operations_involving_address", {
+        "address": address
+    });
     let (response_tx, response_rx) = oneshot::channel();
     if let Err(err) = event_tx
         .send(ApiEvent::GetRecentOperations {
