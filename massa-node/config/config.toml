@@ -78,7 +78,7 @@
 
 [bootstrap]
     bootstrap_list = [
-        ["149.202.86.103:31235", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3W"]
+        ["149.202.86.103:31235", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"]
     ]
     bind = "0.0.0.0:31235" # if you want to bootstrap people
     connect_timeout = 1000
