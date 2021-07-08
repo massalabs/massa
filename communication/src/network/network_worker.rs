@@ -978,7 +978,7 @@ impl NetworkWorker {
                     .send_network_event(NetworkEvent::BlockNotFound { node, hash })
                     .await;
             }
-            NodeEvent(node, NodeEventType::Operation(operation)) => {
+            NodeEvent(node, NodeEventType::ReceivedOperation(operation)) => {
                 // todo in th
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedOperation { node, operation })

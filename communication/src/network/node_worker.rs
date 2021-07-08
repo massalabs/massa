@@ -49,7 +49,7 @@ pub enum NodeEventType {
     /// Didn't found given block,
     BlockNotFound(Hash),
     /// Operation
-    Operation(Operation),
+    ReceivedOperation(Operation),
 }
 
 /// Events node worker can emit.
@@ -220,7 +220,7 @@ impl NodeWorker {
                             }
                             Message::Operation(operation) => {
                                 massa_trace!("node_worker.run_loop. receive Message::Operation", {"operation": operation, "node": self.node_id});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::Operation(operation))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperation(operation))).await;
                             }
                             _ => {  // wrong message
                                 warn!("node_worker.run_loop.self.socket_reader.next(). other message Error");
