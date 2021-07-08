@@ -179,6 +179,7 @@ graph LR
 * promote into discarded block with given reason and curent_sequence_number
 * increment current_sequence_number
 * check how many Discarded are in block_db, if needed remove these with low sequence number.
+* discard dependencies
 * return definitively discarded blocks (we want to keep definitely discarded final blocks)
 
 Do we need to remove blocks one by one ?
@@ -291,7 +292,7 @@ graph TD
     A --> C[get Granda incomp]
     A --> D[get transaction incomp]
     B & C & D --> E[Extend incomp]
-    E --> F{{Check incomp with final block}}
+    E --> F{{Check incomp with final block and parents/ancestors}}
     F --> G((Yes))
     F --> H((No))
 
