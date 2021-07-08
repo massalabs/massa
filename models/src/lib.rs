@@ -1,5 +1,6 @@
 #![feature(min_const_generics)]
 
+mod automate;
 mod block;
 mod context;
 mod error;
