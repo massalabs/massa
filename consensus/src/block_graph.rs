@@ -1858,8 +1858,8 @@ impl BlockGraph {
             return Ok(HeaderCheckOutcome::WaitForSlot);
         }
 
-        // TODO check if we already have a block for that slot
-        // TODO denounce ? see issue #101
+        // Note: here we will check if we already have a block for that slot
+        // and if someone double staked, they will be denounced
 
         // list parents and ensure they are present
         let parent_set: HashSet<BlockId> = header.content.parents.iter().copied().collect();

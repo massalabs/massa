@@ -1,4 +1,5 @@
 //! Flexbuffer layer between raw data and our objects.
+//! TODO : is this still true ?
 use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::{ReadHalf, WriteHalf};
@@ -38,7 +39,7 @@ impl WriteBinder {
         let msg_size: u32 = bytes_vec
             .len()
             .try_into()
-            .map_err(|_| BootstrapError::GeneralBootstrapError("messsage too long".into()))?;
+            .map_err(|_| BootstrapError::GeneralBootstrapError("message too long".into()))?;
 
         // send length
         self.write_half
@@ -80,7 +81,7 @@ impl ReadBinder {
         }
     }
 
-    /// Awaits the next incomming message and deserializes it. Async cancel-safe.
+    /// Awaits the next incoming message and deserializes it. Async cancel-safe.
     pub async fn next(&mut self) -> Result<Option<(u64, BootstrapMessage)>, BootstrapError> {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
@@ -101,10 +102,10 @@ impl ReadBinder {
                         self.cursor += nr;
                     }
                     Err(err) => {
-                        if err.kind() == std::io::ErrorKind::UnexpectedEof {
-                            return Ok(None);
+                        return if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                            Ok(None)
                         } else {
-                            return Err(err.into());
+                            Err(err.into())
                         }
                     }
                 }

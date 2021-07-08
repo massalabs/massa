@@ -298,7 +298,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         .expect("Failed to ask for block.");
 
     // 6. Check that protocol propagates the header to the rigth nodes.
-    // node_a created the block and should receive nothing (todo after #202 the hash) (closed see wiki)
+    // node_a created the block and should receive nothing
     // node_b asked for the block and should receive the full block
     // node_c did nothing, it should receive the header
     // node_d was disconnected, so nothing should be send to it

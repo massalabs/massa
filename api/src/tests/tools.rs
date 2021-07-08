@@ -231,9 +231,9 @@ pub async fn get_test_storage(cfg: ConsensusConfig) -> (StorageAccess, (Block, B
         /// Max number of bytes we want to store
         max_stored_blocks: 5,
         /// path to db
-        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //defaut
+        path: tempdir.path().to_path_buf(), // in target to be ignored by git and different file between test.
+        cache_capacity: 256,  // little to force flush cache
+        flush_interval: None, // default
         reset_at_startup: true,
     };
     let (storage_command_tx, _storage_manager) = start_storage(storage_config).unwrap();

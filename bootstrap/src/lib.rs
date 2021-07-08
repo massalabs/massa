@@ -188,7 +188,7 @@ pub async fn get_state(
         loop {
             match get_state_internal(&cfg, cfg.bootstrap_list[idx], &mut establisher).await {
                 Err(e) => {
-                    warn!("error {:?} while bootstraping", e);
+                    warn!("error {:?} while bootstrapping", e);
                     idx = (idx + 1) % cfg.bootstrap_list.len();
                     sleep(cfg.retry_delay.into()).await;
                 }

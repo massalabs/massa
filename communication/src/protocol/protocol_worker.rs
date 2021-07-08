@@ -360,7 +360,7 @@ impl ProtocolWorker {
                                 })?;
                         } else {
                             massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "node": node_id, "block_id": block_id });
-                            // todo broadcast hash (see #202) (it's closed because this is more of an optimization see wiki)
+                            // Optimization: broadcast block id
                         }
                     }
                 }
