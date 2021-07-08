@@ -36,6 +36,8 @@ pub enum ProtocolEvent {
 #[derive(Clone, Debug)]
 enum NodeCommand {
     SendPeerList(Vec<IpAddr>),
+    SendBlock(String),
+    SendTransaction(String),
     Close,
 }
 
@@ -441,6 +443,12 @@ async fn node_controller_fn(
                 Some(NodeCommand::Close) => break,
                 Some(NodeCommand::SendPeerList(ip_vec)) => {
                     writer_command_tx.send(Message::PeerList(ip_vec)).await.expect("writer disappeared");
+                }
+                Some(NodeCommand::SendBlock(block)) => {
+                    writer_command_tx.send(Message::Block(block)).await.expect("writer disappeared");
+                }
+                Some(NodeCommand::SendTransaction(transaction)) => {
+                    writer_command_tx.send(Message::Transaction(transaction)).await.expect("writer disappeared");
                 }
                 /*Some(_) => {
                     panic!("unknown protocol command")
