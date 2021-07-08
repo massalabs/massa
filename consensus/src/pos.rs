@@ -1,25 +1,53 @@
 use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
+use models::{Address, Block, BlockId, Operation, Slot};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crypto::hash::Hash;
-use models::{Address, BlockId, Operation, Slot};
 use serde::{Deserialize, Serialize};
 
 pub trait OperationPosInterface {
     /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
-    fn get_roll_changes(
-        &self,
-        thread_count: u8,
-    ) -> Result<Vec<HashMap<Address, (u64, u64)>>, ConsensusError>;
+    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError>;
 }
 
 impl OperationPosInterface for Operation {
-    fn get_roll_changes(
-        &self,
-        thread_count: u8,
-    ) -> Result<Vec<HashMap<Address, (u64, u64)>>, ConsensusError> {
-        todo!()
+    /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
+    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError> {
+        let mut res = HashMap::new();
+        match self.content.op {
+            models::OperationType::Transaction { .. } => {}
+            models::OperationType::RollBuy { roll_count } => {
+                res.insert(
+                    Address::from_public_key(&self.content.sender_public_key)?,
+                    (roll_count, 0),
+                );
+            }
+            models::OperationType::RollSell { roll_count } => {
+                res.insert(
+                    Address::from_public_key(&self.content.sender_public_key)?,
+                    (0, roll_count),
+                );
+            }
+        }
+        Ok(res)
+    }
+}
+
+impl OperationPosInterface for Block {
+    fn get_roll_changes(&self) -> Result<HashMap<Address, (u64, u64)>, ConsensusError> {
+        let mut res = HashMap::new();
+        for op in self.operations.iter() {
+            let op_res = op.get_roll_changes()?;
+            for (address, (bought, sold)) in op_res.into_iter() {
+                if let Some(&(old_bought, old_sold)) = res.get(&address) {
+                    res.insert(address, (old_bought + bought, old_sold + sold));
+                } else {
+                    res.insert(address, (bought, sold));
+                }
+            }
+        }
+        Ok(res)
     }
 }
 
