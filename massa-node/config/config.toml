@@ -7,7 +7,7 @@
     bind = "127.0.0.1:3030"
 
 [consensus]
-    genesis_timestamp = 1625414954000 # to update while testing
+    genesis_timestamp = 1625432267000 # to update while testing
     t0 = 16000
     thread_count = 32
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
@@ -33,7 +33,7 @@
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 10
-    staking_keys = ["9ryBFrMEt1sYEieJTFWFthNWskKy7HVpurxPmeGSaMDmFV6C8"]
+    staking_keys = ["qzuqi2KQn94etp1bvofW3ibxfYKdD1ynDcLMeLwWXF5yoeyxF"]
     roll_price = 1
     #stats
     stats_timespan = 30000
@@ -77,9 +77,9 @@
     reset_at_startup = true
 
 [bootstrap]
-    bootstrap_addr =  "93.31.10.235:31235" #if you want to bootstrap from that ip
+    # bootstrap_addr =  "93.31.10.235:31235" #if you want to bootstrap from that ip
     bootstrap_public_key = '7d87uuBsjsvWdewepv8FUy8J6fJbUqWZxEM2nveeRcJJQJ1ZgZ'
-    # bind = "0.0.0.0:31235" # if you want to bootstrap people
+    bind = "0.0.0.0:31235" # if you want to bootstrap people
     connect_timeout = 1000
     retry_delay = 5000
     max_bootstrap_blocks = 1000000
