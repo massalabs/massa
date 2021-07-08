@@ -30,7 +30,7 @@ impl<ProtocolControllerT: ProtocolController + 'static>
         debug!("starting consensus controller");
         massa_trace!("start", {});
 
-        let block_db = BlockDatabase::new();
+        let block_db = BlockDatabase::new(cfg);
         let (consensus_command_tx, consensus_command_rx) = mpsc::channel::<ConsensusCommand>(1024);
         let (consensus_event_tx, consensus_event_rx) = mpsc::channel::<ConsensusEvent>(1024);
         let cfg_copy = cfg.clone();

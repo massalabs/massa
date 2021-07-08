@@ -84,11 +84,13 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                 // todo
             }
             ProtocolEventType::AskedBlock(block_hash) => {
-                if let Some(block) = self.block_db.0.get(&block_hash) {
-                    massa_trace!("sending_block", {"dest_node_id": source_node_id, "block": block});
-                    self.protocol_controller
-                        .propagate_block(block, None, Some(source_node_id))
-                        .await;
+                for db in &self.block_db.0 {
+                    if let Some(block) = db.get(&block_hash) {
+                        massa_trace!("sending_block", {"dest_node_id": source_node_id, "block": block});
+                        self.protocol_controller
+                            .propagate_block(block, None, Some(source_node_id))
+                            .await;
+                    }
                 }
             }
         }
