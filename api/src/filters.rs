@@ -707,7 +707,7 @@ async fn get_block_interval(
                     consensus_cfg.genesis_timestamp,
                     slot,
                 ) {
-                    Ok(start_time) => start_time,
+                    Ok(end_time) => end_time,
                     Err(e) => {
                         return Ok(warp::reply::with_status(
                             warp::reply::json(&json!({
@@ -717,7 +717,7 @@ async fn get_block_interval(
                         )
                         .into_response())
                     }
-                } == start
+                } == end
                 {
                     slot
                 } else {
@@ -934,7 +934,7 @@ async fn get_graph_interval(
                     consensus_cfg.genesis_timestamp,
                     slot,
                 ) {
-                    Ok(start_time) => start_time,
+                    Ok(end_time) => end_time,
                     Err(e) => {
                         return Ok(warp::reply::with_status(
                             warp::reply::json(&json!({
@@ -944,7 +944,7 @@ async fn get_graph_interval(
                         )
                         .into_response())
                     }
-                } == start
+                } == end
                 {
                     slot
                 } else {
