@@ -91,13 +91,13 @@ impl ProofOfStake {
 
     pub fn from_export(export: ExportProofOfStake) -> ProofOfStake {
         ProofOfStake {
-            last_final_block_cycle: export.last_final_block_cycle.clone(),
+            last_final_block_cycle: export.last_final_block_cycle,
             final_roll_data: export
                 .final_roll_data
-                .iter()
+                .into_iter()
                 .map(|vec| {
                     vec.into_iter()
-                        .map(|frtd| FinalRollThreadData::from_export(frtd.clone()))
+                        .map(|frtd| FinalRollThreadData::from_export(frtd))
                         .collect::<VecDeque<FinalRollThreadData>>()
                 })
                 .collect(),
@@ -169,10 +169,10 @@ impl FinalRollThreadData {
         FinalRollThreadData {
             cycle: export.cycle,
             last_final_slot: export.last_final_slot,
-            roll_count: export.roll_count.iter().cloned().collect(),
-            cycle_purchases: export.cycle_purchases.iter().cloned().collect(),
-            cycle_sales: export.cycle_sales.iter().cloned().collect(),
-            rng_seed: export.rng_seed.clone(),
+            roll_count: export.roll_count.into_iter().collect(),
+            cycle_purchases: export.cycle_purchases.into_iter().collect(),
+            cycle_sales: export.cycle_sales.into_iter().collect(),
+            rng_seed: export.rng_seed,
         }
     }
 }
