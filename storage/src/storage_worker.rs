@@ -64,7 +64,6 @@ impl BlockStorage {
                             .transpose()
                     })?;
                     Ok(())
-                    //.map_err(|err| err.into())
                 } else {
                     self.nb_stored_blocks
                         .write()
