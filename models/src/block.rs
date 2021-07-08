@@ -5,7 +5,7 @@ use crate::{
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
     signature::{
-        PrivateKey, PublicKey, Signature, SignatureEngine, PUBLIC_KEY_SIZE_BYTES,
+        sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
         SIGNATURE_SIZE_BYTES,
     },
 };
@@ -137,7 +137,7 @@ impl BlockHeader {
     /// and generate a block id if ok.
     pub fn verify_integrity(&self, context: &SerializationContext) -> Result<BlockId, ModelsError> {
         let hash = self.content.compute_hash(context)?;
-        self.verify_signature(&hash, &SignatureEngine::new())?;
+        self.verify_signature(&hash)?;
         Ok(BlockId(Hash::hash(&self.to_bytes_compact(context)?)))
     }
 
@@ -161,24 +161,23 @@ impl BlockHeader {
         slot: &Slot,
         hash: &Hash,
         signature: &Signature,
-        sig_engine: &SignatureEngine,
         public_key: &PublicKey,
     ) -> Result<(), ModelsError> {
-        Ok(sig_engine.verify(
+        verify_signature(
             &BlockHeader::get_signature_message(slot, hash),
             signature,
             public_key,
-        )?)
+        )
+        .map_err(|err| err.into())
     }
 
     pub fn new_signed(
-        sig_engine: &mut SignatureEngine,
         private_key: &PrivateKey,
         content: BlockHeaderContent,
         context: &SerializationContext,
     ) -> Result<(BlockId, Self), ModelsError> {
         let hash = content.compute_hash(&context)?;
-        let signature = sig_engine.sign(
+        let signature = sign(
             &BlockHeader::get_signature_message(&content.slot, &hash),
             private_key,
         )?;
@@ -187,16 +186,11 @@ impl BlockHeader {
         Ok((block_id, header))
     }
 
-    pub fn verify_signature(
-        &self,
-        hash: &Hash,
-        sig_engine: &SignatureEngine,
-    ) -> Result<(), ModelsError> {
+    pub fn verify_signature(&self, hash: &Hash) -> Result<(), ModelsError> {
         BlockHeader::verify_slot_hash_signature(
             &self.content.slot,
             hash,
             &self.signature,
-            sig_engine,
             &self.content.creator,
         )
     }
@@ -347,13 +341,11 @@ mod test {
             max_operations_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         };
-        let mut sig_engine = SignatureEngine::new();
-        let private_key = SignatureEngine::generate_random_private_key();
-        let public_key = sig_engine.derive_public_key(&private_key);
+        let private_key = crypto::generate_random_private_key();
+        let public_key = crypto::derive_public_key(&private_key);
 
         // create block header
         let (orig_id, orig_header) = BlockHeader::new_signed(
-            &mut sig_engine,
             &private_key,
             BlockHeaderContent {
                 creator: public_key,

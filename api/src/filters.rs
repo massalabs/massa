@@ -157,7 +157,6 @@ use consensus::{
     ConsensusConfig, ConsensusError, DiscardReason,
 };
 use crypto::signature::PublicKey;
-use crypto::signature::SignatureEngine;
 use logging::massa_trace;
 use models::ModelsError;
 use models::Operation;
@@ -437,11 +436,10 @@ async fn send_operations(
     context: SerializationContext,
 ) -> Result<impl Reply, Rejection> {
     massa_trace!("api.filters.send_operations ", { "operations": operations });
-    let signature_engine = SignatureEngine::new();
 
     let to_send: Result<HashMap<OperationId, Operation>, ModelsError> = operations
         .into_iter()
-        .map(|op| Ok((op.verify_integrity(&context, &signature_engine)?, op)))
+        .map(|op| Ok((op.verify_integrity(&context)?, op)))
         .collect();
     let to_send = match to_send {
         Err(err) => {

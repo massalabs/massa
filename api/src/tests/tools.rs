@@ -6,7 +6,7 @@ use consensus::{
 };
 use crypto::{
     hash::Hash,
-    signature::{PrivateKey, PublicKey, SignatureEngine},
+    signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
 use std::{
@@ -103,12 +103,10 @@ pub fn get_header(
     slot: Slot,
     creator: Option<PublicKey>,
 ) -> (BlockId, BlockHeader) {
-    let mut sig_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
-    let public_key = sig_engine.derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
 
     BlockHeader::new_signed(
-        &mut sig_engine,
         &private_key,
         BlockHeaderContent {
             creator: if creator.is_none() {
@@ -174,9 +172,8 @@ pub fn get_test_block_graph() -> BlockGraphExport {
 }
 
 pub fn get_dummy_staker() -> PublicKey {
-    let signature_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
-    signature_engine.derive_public_key(&private_key)
+    let private_key = generate_random_private_key();
+    derive_public_key(&private_key)
 }
 
 pub async fn get_test_storage(
