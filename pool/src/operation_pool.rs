@@ -178,8 +178,8 @@ impl OperationPool {
         &mut self,
         block_slot: Slot,
         exclude: HashSet<OperationId>,
-        max_count: usize,
-        size_left: u64,
+        batch_size: usize,
+        max_size: u64,
     ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
         self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
@@ -189,7 +189,7 @@ impl OperationPool {
                 }
                 if let Some(w_op) = self.ops.get(id) {
                     if !(w_op.op.content.expire_period.saturating_sub(self.operation_validity_periods)..=w_op.op.content.expire_period)
-                        .contains(&block_slot.period) || w_op.byte_count > size_left {
+                        .contains(&block_slot.period) || w_op.byte_count > max_size {
                         return None;
                     }
                     Some(Ok((id.clone(), w_op.op.clone(), w_op.byte_count)))
@@ -199,7 +199,7 @@ impl OperationPool {
                     )))
                 }
             })
-            .take(max_count)
+            .take(batch_size)
             .collect()
     }
 }

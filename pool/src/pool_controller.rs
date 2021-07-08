@@ -9,7 +9,7 @@ use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
 use models::{Operation, OperationId, SerializationContext, Slot};
 use tokio::{
-    sync::{mpsc, oneshot::Sender},
+    sync::{mpsc, oneshot},
     task::JoinHandle,
 };
 
@@ -111,29 +111,36 @@ impl PoolCommandSender {
         res
     }
 
+    /// Returns a batch of operations ordered from highest to lowest rentability
+    /// Return value: vector of (OpetationId, Operation, operation_size: u64)
     pub async fn get_operation_batch(
         &mut self,
         target_slot: Slot,
         exclude: HashSet<OperationId>,
-        max_count: usize,
-        size_left: u64,
-        response_tx: Sender<Vec<(OperationId, Operation, u64)>>,
-    ) -> Result<(), PoolError> {
+        batch_size: usize,
+        max_size: u64,
+    ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
         massa_trace!("pool.command_sender.get_operation_batch", {
             "target_slot": target_slot
         });
-        let res = self
-            .0
+
+        let (response_tx, response_rx) = oneshot::channel::<Vec<(OperationId, Operation, u64)>>();
+        self.0
             .send(PoolCommand::GetOperationBatch {
                 target_slot,
                 exclude,
-                max_count,
-                size_left,
+                batch_size,
+                max_size,
                 response_tx,
             })
             .await
-            .map_err(|_| PoolError::ChannelError("get_operation_batch command send error".into()));
-        res
+            .map_err(|_| {
+                PoolError::ChannelError("get_operation_batch command send error".into())
+            })?;
+
+        response_rx
+            .await
+            .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
     }
 }
 

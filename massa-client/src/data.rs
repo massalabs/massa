@@ -162,11 +162,10 @@ impl std::fmt::Display for WrappedBlockHeader {
         };
         writeln!(
             f,
-            "creator: {} period:{} thread:{} ledger:{} merkle_root:{} parents:{:?}",
+            "creator: {} period:{} thread:{} merkle_root:{} parents:{:?}",
             pk,
             self.0.content.slot.period,
             self.0.content.slot.thread,
-            self.0.content.out_ledger_hash,
             self.0.content.operation_merkle_root,
             self.0.content.parents,
         )

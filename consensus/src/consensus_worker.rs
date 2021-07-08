@@ -1,4 +1,4 @@
-use crate::ledger::{LedgerChange, OperationLedgerInterface};
+use crate::ledger::{LedgerChange, LedgerSubset, OperationLedgerInterface};
 
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, random_selector::*,
@@ -10,10 +10,11 @@ use crypto::{
     signature::{derive_public_key, PublicKey},
 };
 use models::{
-    Address, Block, BlockId, Operation, OperationId, SerializationContext, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
+    SerializationContext, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -221,120 +222,6 @@ impl ConsensusWorker {
         Ok(self.protocol_event_receiver)
     }
 
-    async fn get_best_operations(
-        &mut self,
-        cur_slot: Slot,
-        mut left_size: u64,
-    ) -> Result<Vec<Operation>, ConsensusError> {
-        let mut ops = Vec::new();
-        let mut excluded: Vec<OperationId> = Vec::new();
-        let mut ids_to_keep: Vec<OperationId> = Vec::new();
-
-        let fee_target = Address::from_public_key(
-            &self
-                .cfg
-                .nodes
-                .get(self.cfg.current_node_index as usize)
-                .and_then(|(public_key, private_key)| {
-                    Some((public_key.clone(), private_key.clone()))
-                })
-                .ok_or(ConsensusError::KeyError)?
-                .0,
-        )?;
-
-        let mut query_addr = HashSet::new();
-        if fee_target.get_thread(self.cfg.thread_count) == cur_slot.thread {
-            query_addr.insert(fee_target);
-        }
-
-        let asked_nb = self.cfg.operation_batch_size;
-        let mut ledger = self
-            .block_db
-            .get_ledger_at_parents(&self.block_db.get_best_parents(), &query_addr)?;
-
-        if fee_target.get_thread(self.cfg.thread_count) == cur_slot.thread {
-            // reward
-            let reward_ledger_change = LedgerChange {
-                balance_delta: self.cfg.block_reward,
-                balance_increment: true,
-            };
-            let reward_change = (&fee_target, &reward_ledger_change);
-
-            ledger.apply_change(reward_change, self.cfg.thread_count)?;
-        }
-
-        excluded.extend(self.block_db.get_past_operations(
-            cur_slot,
-            &self.block_db.get_best_parents()[cur_slot.thread as usize],
-        )?);
-
-        while ops.len() < self.cfg.max_operations_per_block as usize {
-            let to_exclude = [excluded.clone(), ids_to_keep.clone()].concat();
-            let (response_tx, response_rx) = oneshot::channel();
-            self.pool_command_sender
-                .get_operation_batch(
-                    cur_slot,
-                    to_exclude.iter().cloned().collect(),
-                    asked_nb,
-                    left_size,
-                    response_tx,
-                )
-                .await?;
-
-            let candidates = response_rx.await?;
-
-            // operations are already sorted by interest
-            let involved_addresses: HashSet<Address> = candidates
-                .iter()
-                .map(|(_, op, size)| op.get_involved_addresses(&fee_target))
-                .flatten()
-                .flatten()
-                .filter(|a| a.get_thread(self.cfg.thread_count) == cur_slot.thread)
-                .collect();
-
-            // if new addresses are needed, update ledger
-            ledger.merge(
-                self.block_db.get_ledger_at_parents(
-                    &self.block_db.get_best_parents(),
-                    &involved_addresses,
-                )?,
-            );
-
-            let mut cpt = 0;
-            for (id, op, size) in candidates.iter() {
-                if *size > left_size {
-                    cpt += 1;
-                    continue;
-                }
-                let changes = op.get_changes(&fee_target, self.cfg.thread_count)?;
-                match ledger.try_apply_changes(changes) {
-                    Ok(_) => {
-                        // that operation can be included
-                        ops.push(op.clone());
-                        ids_to_keep.push(*id);
-                        left_size = left_size - size;
-                    }
-                    Err(e) => {
-                        // Something went wrong with that op, exclude it
-                        info!("operation {:?} was rejected due to {:?}", id, e);
-                        excluded.push(*id);
-                    }
-                }
-            }
-            // break if every operation was rejected due to size
-            if cpt == candidates.len() {
-                break;
-            }
-
-            // no operations left to select
-            if candidates.len() < asked_nb {
-                break;
-            }
-        }
-
-        Ok(ops)
-    }
-
     async fn slot_tick(
         &mut self,
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
@@ -382,34 +269,155 @@ impl ConsensusWorker {
     }
 
     async fn create_block(&mut self, cur_slot: Slot) -> Result<(), ConsensusError> {
-        let (size, prepared) = self
-            .block_db
-            .prepare_block_creation("block".to_string(), cur_slot)?;
-        let left_size = self.cfg.max_block_size as u64 - size;
-        let operations = self.get_best_operations(cur_slot, left_size).await?;
-        let ids: HashSet<OperationId> = operations
-            .iter()
-            .map(|op| op.get_operation_id(&self.serialization_context))
-            .collect::<Result<_, _>>()?;
+        // get creator info
+        // TODO temporary: use PoS draw system in the future
+        let (creator_pub, creator_priv) = self
+            .cfg
+            .nodes
+            .get(self.cfg.current_node_index as usize)
+            .ok_or(ConsensusError::KeyError)?;
+        let creator_addr = Address::from_public_key(creator_pub)?;
 
-        let operation_merkle_root = Hash::hash(
-            &operations.iter().fold(Vec::new(), |acc, v| {
-                let res = [
-                    acc,
-                    v.to_bytes_compact(&self.serialization_context).unwrap(),
-                ]
-                .concat();
-                res
-            })[..],
-        );
+        // get parents
+        let parents = self.block_db.get_best_parents();
 
-        let (hash, block) =
-            self.block_db
-                .create_block(operations, operation_merkle_root, prepared)?;
-        massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
+        // create empty block
+        let (_block_id, header) = BlockHeader::new_signed(
+            creator_priv,
+            BlockHeaderContent {
+                creator: *creator_pub,
+                slot: cur_slot,
+                parents: parents.clone(),
+                operation_merkle_root: Hash::hash(&Vec::new()[..]),
+            },
+            &self.serialization_context,
+        )?;
+        let block = Block {
+            header,
+            operations: Vec::new(),
+        };
 
-        self.block_db
-            .incoming_block(hash, block, ids, &mut self.selector, Some(cur_slot))?;
+        // initialize remaining block space and remaining operation count
+        let mut remaining_block_space = (self.cfg.max_block_size as u64)
+            .checked_sub(block.to_bytes_compact(&self.serialization_context)?.len() as u64)
+            .ok_or(ConsensusError::BlockCreationError(
+                "consensus config max_block_size is smaller than an ampty block".into(),
+            ))?;
+        let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
+
+        // exclude operations that were used in block ancestry
+        let mut exclude_operations: HashSet<OperationId> = HashSet::new();
+        let mut ancestor_id = block.header.content.parents[cur_slot.thread as usize];
+        let stop_period = cur_slot
+            .period
+            .saturating_sub(self.cfg.operation_validity_periods);
+        loop {
+            let ancestor = self.block_db.get_active_block(&ancestor_id).ok_or(
+                ConsensusError::ContainerInconsistency(format!(
+                    "missing ancestor to check operation reuse for block creation: {:?}",
+                    ancestor_id
+                )),
+            )?;
+            if ancestor.block.header.content.slot.period < stop_period {
+                break;
+            }
+            exclude_operations.extend(&ancestor.operation_set);
+            if ancestor.parents.is_empty() {
+                break;
+            }
+            ancestor_id = ancestor.parents[cur_slot.thread as usize].0;
+        }
+
+        // get thread ledger and apply block reward
+        let mut thread_ledger = LedgerSubset::new(self.cfg.thread_count);
+        if creator_addr.get_thread(self.cfg.thread_count) == cur_slot.thread {
+            let mut fee_ledger = self
+                .block_db
+                .get_ledger_at_parents(&parents, &vec![creator_addr].into_iter().collect())?;
+            fee_ledger.apply_change((
+                &creator_addr,
+                &LedgerChange {
+                    balance_delta: self.cfg.block_reward,
+                    balance_increment: true,
+                },
+            ))?;
+            thread_ledger.extend(fee_ledger);
+        }
+
+        // gather operations
+        let mut total_hash: Vec<u8> = Vec::new();
+        let mut operations: Vec<Operation> = Vec::new();
+        let mut operation_set: HashSet<OperationId> = HashSet::new();
+        let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
+        while !finished {
+            // get a batch of operations
+            let operation_batch = self
+                .pool_command_sender
+                .get_operation_batch(
+                    cur_slot,
+                    exclude_operations.clone(),
+                    self.cfg.operation_batch_size,
+                    remaining_block_space,
+                )
+                .await?;
+            finished = operation_batch.len() < self.cfg.operation_batch_size;
+
+            for (op_id, op, op_size) in operation_batch.into_iter() {
+                // exclude operation from future batches
+                exclude_operations.insert(op_id);
+
+                // check that the operation fits in size
+                if op_size > remaining_block_space {
+                    continue;
+                }
+
+                // try update thread ledger
+                let mut thread_changes: Vec<HashMap<Address, LedgerChange>> =
+                    vec![HashMap::new(); self.cfg.thread_count as usize];
+                thread_changes[cur_slot.thread as usize] = op
+                    .get_changes(&creator_addr, self.cfg.thread_count)?
+                    .swap_remove(cur_slot.thread as usize);
+                if thread_ledger.try_apply_changes(&thread_changes).is_err() {
+                    continue;
+                }
+
+                // add operation
+                operations.push(op);
+                operation_set.insert(op_id);
+                remaining_block_space -= op_size;
+                remaining_operation_count -= 1;
+                total_hash.extend(op_id.to_bytes());
+
+                // check if the block still has some space
+                if remaining_block_space == 0 || remaining_operation_count == 0 {
+                    finished = true;
+                    break;
+                }
+            }
+        }
+
+        // compile resulting block
+        let (block_id, header) = BlockHeader::new_signed(
+            creator_priv,
+            BlockHeaderContent {
+                creator: *creator_pub,
+                slot: cur_slot,
+                parents: parents.clone(),
+                operation_merkle_root: Hash::hash(&total_hash),
+            },
+            &self.serialization_context,
+        )?;
+        let block = Block { header, operations };
+
+        // add block to db
+        self.block_db.incoming_block(
+            block_id,
+            block,
+            operation_set,
+            &mut self.selector,
+            Some(cur_slot),
+        )?;
+
         Ok(())
     }
 
@@ -446,7 +454,11 @@ impl ConsensusWorker {
                     {}
                 );
                 response_tx
-                    .send(self.block_db.get_active_block(&block_id).cloned())
+                    .send(
+                        self.block_db
+                            .get_active_block(&block_id)
+                            .map(|v| v.block.clone()),
+                    )
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBlock answer:{:?}",
@@ -577,9 +589,9 @@ impl ConsensusWorker {
                 );
                 let mut results = HashMap::new();
                 for block_hash in list {
-                    if let Some(block) = self.block_db.get_active_block(&block_hash) {
+                    if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
-                        results.insert(block_hash, Some(block.clone()));
+                        results.insert(block_hash, Some(a_block.block.clone()));
                     } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
                         if let Some(block) = storage_command_sender.get_block(block_hash).await? {
                             massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});

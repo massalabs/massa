@@ -3,7 +3,6 @@ use models::SerializeCompact;
 use models::Slot;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use tokio::sync::oneshot;
 
 use crate::pool_controller;
 
@@ -95,12 +94,10 @@ async fn test_pool() {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 3;
-            let (response_tx, response_rx) = oneshot::channel();
-            pool_command_sender
-                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000, response_tx)
+            let res = pool_command_sender
+                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
                 .await
                 .unwrap();
-            let res = response_rx.await.unwrap();
             assert!(res
                 .iter()
                 .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
@@ -127,12 +124,10 @@ async fn test_pool() {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 4;
-            let (response_tx, response_rx) = oneshot::channel();
-            pool_command_sender
-                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000, response_tx)
+            let res = pool_command_sender
+                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
                 .await
                 .unwrap();
-            let res = response_rx.await.unwrap();
             assert!(res
                 .iter()
                 .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
@@ -166,18 +161,15 @@ async fn test_pool() {
             Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
             None => {} // no propagation
         };
-        let (response_tx, response_rx) = oneshot::channel();
-        pool_command_sender
+        let res = pool_command_sender
             .get_operation_batch(
                 Slot::new(expire_period - 1, thread),
                 HashSet::new(),
                 10,
                 10000,
-                response_tx,
             )
             .await
             .unwrap();
-        let res = response_rx.await.unwrap();
         assert!(res.is_empty());
     }
 

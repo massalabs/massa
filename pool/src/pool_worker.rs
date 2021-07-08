@@ -19,8 +19,8 @@ pub enum PoolCommand {
     GetOperationBatch {
         target_slot: Slot,
         exclude: HashSet<OperationId>,
-        max_count: usize,
-        size_left: u64,
+        batch_size: usize,
+        max_size: u64,
         response_tx: oneshot::Sender<Vec<(OperationId, Operation, u64)>>,
     },
 }
@@ -139,15 +139,15 @@ impl PoolWorker {
             PoolCommand::GetOperationBatch {
                 target_slot,
                 exclude,
-                max_count,
+                batch_size,
+                max_size,
                 response_tx,
-                size_left,
             } => response_tx
                 .send(self.operation_pool.get_operation_batch(
                     target_slot,
                     exclude,
-                    max_count,
-                    size_left,
+                    batch_size,
+                    max_size,
                 )?)
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }

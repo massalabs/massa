@@ -38,14 +38,14 @@ impl HeaderOrBlock {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
-    block: Block,
-    parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
-    children: Vec<HashMap<BlockId, u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    dependencies: HashSet<BlockId>,       // dependencies required for validity check
-    descendants: HashSet<BlockId>,
-    is_final: bool,
-    block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
-    operation_set: HashSet<OperationId>,
+    pub block: Block,
+    pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
+    pub children: Vec<HashMap<BlockId, u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
+    pub dependencies: HashSet<BlockId>,       // dependencies required for validity check
+    pub descendants: HashSet<BlockId>,
+    pub is_final: bool,
+    pub block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
+    pub operation_set: HashSet<OperationId>,
 }
 
 impl ActiveBlock {
@@ -784,7 +784,6 @@ fn create_genesis_block(
             creator: public_key,
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
-            out_ledger_hash: Hash::hash("Hello world !".as_bytes()),
             operation_merkle_root: Hash::hash(&Vec::new()),
         },
         &serialization_context,
@@ -916,74 +915,6 @@ impl BlockGraph {
         }
     }
 
-    pub fn prepare_block_creation(
-        &self,
-        val: String,
-        slot: Slot,
-    ) -> Result<(u64, Block), ConsensusError> {
-        let (public_key, private_key) = self
-            .cfg
-            .nodes
-            .get(self.cfg.current_node_index as usize)
-            .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
-            .ok_or(ConsensusError::KeyError)?;
-
-        let example_hash = Hash::hash(&val.as_bytes());
-
-        let (hash, header) = BlockHeader::new_signed(
-            &private_key,
-            BlockHeaderContent {
-                creator: public_key,
-                slot: slot,
-                parents: self.best_parents.clone(),
-                out_ledger_hash: example_hash,
-                operation_merkle_root: Hash::hash(&Vec::new()[..]),
-            },
-            &self.serialization_context,
-        )?;
-        let res = (
-            hash,
-            Block {
-                header,
-                operations: Vec::new(),
-            },
-        );
-        massa_trace!("consensus.block_graph.prepare_create_block", {"hash": res.0, "block": res.1});
-        let bytes = res.1.bytes_count(&self.serialization_context)?;
-        Ok((bytes, res.1))
-    }
-
-    /// Returns hash and resulting discarded blocks
-    ///
-    /// # Arguments
-    /// * val : dummy value used to generate dummy hash
-    /// * slot : generated block is in slot slot.
-    pub fn create_block(
-        &mut self,
-        operations: Vec<Operation>,
-        operation_merkle_root: Hash,
-        prepared: Block,
-    ) -> Result<(BlockId, Block), ConsensusError> {
-        let (public_key, private_key) = self
-            .cfg
-            .nodes
-            .get(self.cfg.current_node_index as usize)
-            .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
-            .ok_or(ConsensusError::KeyError)?;
-
-        let (hash, header) = BlockHeader::new_signed(
-            &private_key,
-            BlockHeaderContent {
-                operation_merkle_root,
-                ..prepared.header.content
-            },
-            &self.serialization_context,
-        )?;
-        let res = (hash, Block { header, operations });
-        massa_trace!("consensus.block_graph.create_block", {"hash": res.0, "block": res.1});
-        Ok(res)
-    }
-
     /// Gets lastest final blocks (hash, period) for each thread.
     pub fn get_latest_final_blocks_periods(&self) -> &Vec<(BlockId, u64)> {
         &self.latest_final_blocks_periods
@@ -994,15 +925,12 @@ impl BlockGraph {
         &self.best_parents
     }
 
-    /// Gets whole block corresponding to given hash, if it is active.
+    /// Gets whole compiled block corresponding to given hash, if it is active.
     ///
     /// # Argument
     /// * block_id : block ID
-    pub fn get_active_block(&self, block_id: &BlockId) -> Option<&Block> {
-        match BlockGraph::get_full_active_block(&self.block_statuses, *block_id) {
-            Some(ActiveBlock { block, .. }) => Some(&block),
-            _ => None,
-        }
+    pub fn get_active_block(&self, block_id: &BlockId) -> Option<&ActiveBlock> {
+        BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
 
     // signal new slot
@@ -1651,7 +1579,7 @@ impl BlockGraph {
                     if gp_i == parent_i {
                         continue;
                     }
-                    let gp_h = parent.header.content.parents[gp_i as usize];
+                    let gp_h = parent.parents[gp_i as usize].0;
                     deps.insert(gp_h);
                     match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
@@ -2002,7 +1930,7 @@ impl BlockGraph {
         };
         let reward_change = (&block_creator_address, &reward_ledger_change);
         if creator_thread == block_to_check.header.content.slot.thread {
-            if let Err(err) = current_ledger.apply_change(reward_change, self.cfg.thread_count) {
+            if let Err(err) = current_ledger.apply_change(reward_change) {
                 warn!("block graph check_operations error, can't apply reward_change to block current_ledger: {}", err);
                 return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
             }
@@ -2039,9 +1967,7 @@ impl BlockGraph {
                 for (change_addr, change) in changes.into_iter() {
                     // apply change to ledger and check if ok
                     if thread == (block_to_check.header.content.slot.thread as usize) {
-                        if let Err(err) = current_ledger
-                            .apply_change((&change_addr, &change), self.cfg.thread_count)
-                        {
+                        if let Err(err) = current_ledger.apply_change((&change_addr, &change)) {
                             warn!("block graph check_operations error, can't apply change to block current_ledger :{}", err);
                             return Ok(BlockOperationsCheckOutcome::Discard(
                                 DiscardReason::Invalid,
@@ -2189,7 +2115,7 @@ impl BlockGraph {
         let mut res_ledger = self.ledger.get_final_ledger_subset(query_addrs)?;
         for thread in 0u8..self.cfg.thread_count {
             for (addr, change) in accumulated_changes[thread as usize].iter() {
-                res_ledger.apply_change((addr, change), self.cfg.thread_count)?;
+                res_ledger.apply_change((addr, change))?;
             }
         }
 
@@ -2681,11 +2607,9 @@ impl BlockGraph {
                 retain_active.extend(
                     self.get_active_block(&retain_h)
                         .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and retaining the parents of the selected blocks - {:?} is missing", retain_h)))?
-                        .header
-                        .content
                         .parents
                         .iter()
-                        .copied(),
+                        .map(|(b_id, _p)| *b_id),
                 )
             }
 
@@ -2699,7 +2623,7 @@ impl BlockGraph {
                 let retain_slot = &self
                     .get_active_block(retain_h)
                     .ok_or(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and finding earliest kept slots in each thread - {:?} is missing", retain_h)))?
-                    .header
+                    .block.header
                     .content
                     .slot;
                 earliest_retained_periods[retain_slot.thread as usize] = std::cmp::min(
@@ -2712,17 +2636,17 @@ impl BlockGraph {
             for thread in 0..self.cfg.thread_count {
                 let mut cursor = self.latest_final_blocks_periods[thread as usize].0; // hash of tha latest final in that thread
                 while let Some(c_block) = self.get_active_block(&cursor) {
-                    if c_block.header.content.slot.period
+                    if c_block.block.header.content.slot.period
                         < earliest_retained_periods[thread as usize]
                     {
                         break;
                     }
                     retain_active.insert(cursor);
-                    if c_block.header.content.parents.len() < self.cfg.thread_count as usize {
+                    if c_block.parents.is_empty() {
                         // genesis
                         break;
                     }
-                    cursor = c_block.header.content.parents[thread as usize];
+                    cursor = c_block.parents[thread as usize].0;
                 }
             }
         }
@@ -3081,7 +3005,6 @@ mod tests {
                 content: BlockHeaderContent{
                     creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
                     operation_merkle_root: Hash::hash(&Vec::new()),
-                    out_ledger_hash: Hash::hash("out_ledger_hash".as_bytes()),
                     parents: vec![
                         BlockId::for_tests("parent1").unwrap(),
                         BlockId::for_tests("parent2").unwrap(),

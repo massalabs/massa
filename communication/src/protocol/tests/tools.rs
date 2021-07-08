@@ -52,15 +52,12 @@ pub fn create_block(
     public_key: &PublicKey,
     serialization_context: &SerializationContext,
 ) -> Block {
-    let example_hash = Hash::hash("default_val".as_bytes());
-
     let (_, header) = BlockHeader::new_signed(
         private_key,
         BlockHeaderContent {
             creator: public_key.clone(),
             slot: Slot::new(0, 0),
             parents: Vec::new(),
-            out_ledger_hash: example_hash,
             operation_merkle_root: Hash::hash(&Vec::new()),
         },
         &serialization_context,

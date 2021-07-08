@@ -8,7 +8,6 @@ pub fn get_test_block() -> Block {
                 content: BlockHeaderContent{
                     creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
                     operation_merkle_root: Hash::hash(&Vec::new()),
-                    out_ledger_hash: Hash::hash("test".as_bytes()),
                     parents: vec![
                         BlockId::for_tests("parent1").unwrap(),
 						BlockId::for_tests("parent2").unwrap(),

@@ -310,15 +310,12 @@ pub fn create_block_with_merkle_root(
         .and_then(|(public_key, private_key)| Some((public_key.clone(), private_key.clone())))
         .unwrap();
 
-    let example_hash = Hash::hash("default_val".as_bytes());
-
     let (hash, header) = BlockHeader::new_signed(
         &private_key,
         BlockHeaderContent {
             creator: public_key,
             slot,
             parents: best_parents,
-            out_ledger_hash: example_hash,
             operation_merkle_root,
         },
         &serialization_context,

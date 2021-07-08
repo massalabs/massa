@@ -308,7 +308,7 @@ impl Ledger {
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
     pub fn get_final_datas(
         &self,
-        mut addresses: HashSet<&Address>,
+        addresses: HashSet<&Address>,
     ) -> Result<HashMap<Address, LedgerData>, ConsensusError> {
         // TODO: only run the transaction on a subset of relevant ledgers?
         self.ledger_per_thread
@@ -595,52 +595,66 @@ pub struct LedgerSubset {
 }
 
 impl LedgerSubset {
+    /// Create an empty ledger subset
+    pub fn new(thread_count: u8) -> Self {
+        LedgerSubset {
+            data: vec![HashMap::new(); thread_count as usize],
+        }
+    }
+
     pub fn apply_change(
         &mut self,
-        (change_adrress, change): (&Address, &LedgerChange),
-        thread_count: u8,
+        (change_address, change): (&Address, &LedgerChange),
     ) -> Result<(), ConsensusError> {
-        self.data[change_adrress.get_thread(thread_count) as usize]
-            .entry(*change_adrress)
+        let thread_count = self.data.len() as u8;
+        self.data[change_address.get_thread(thread_count) as usize]
+            .entry(*change_address)
             .or_insert_with(|| LedgerData { balance: 0 })
             .apply_change(change)
     }
 
     /// apply batch of changes only if all changes
-    /// in that batch passed
+    /// in that batch passed, leave self untouched on failure
     pub fn try_apply_changes(
         &mut self,
-        changes: Vec<HashMap<Address, LedgerChange>>,
+        changes: &Vec<HashMap<Address, LedgerChange>>,
     ) -> Result<(), ConsensusError> {
-        let thread_count = changes.len() as u8;
-        let mut ledger = self.clone();
-        for thread in 0..thread_count {
-            for change in changes[thread as usize].iter() {
-                ledger.apply_change(change, thread_count)?;
+        // copy involved addresses
+        let mut new_ledger = LedgerSubset {
+            data: self
+                .data
+                .iter()
+                .enumerate()
+                .map(|(thread, thread_data)| {
+                    thread_data
+                        .iter()
+                        .filter_map(|(addr, addr_data)| {
+                            if changes[thread].contains_key(addr) {
+                                return Some((*addr, addr_data.clone()));
+                            }
+                            None
+                        })
+                        .collect()
+                })
+                .collect(),
+        };
+        // try applying changes to the new ledger
+        for thread_changes in changes.iter() {
+            for thread_change in thread_changes.iter() {
+                new_ledger.apply_change(thread_change)?;
             }
         }
-        // every change was sucessfully applied on the copy
-        // we can really apply them
-        *self = ledger;
+        // overwrite updated addresses in self
+        self.extend(new_ledger);
         Ok(())
     }
 
-    /// merge main and new ledger subset
-    /// if an address is in both ledgers
-    /// only its value in the main ledger is kept.
-    pub fn merge(&mut self, other: LedgerSubset) {
-        let thread_count = self.data.len();
-        for thread in 0..thread_count {
-            for (new_addr, new_change) in other.data[thread].iter() {
-                match self.data[thread].entry(*new_addr) {
-                    hash_map::Entry::Occupied(_) => {
-                        // do nothing, keep old value
-                    }
-                    hash_map::Entry::Vacant(vac) => {
-                        vac.insert(*new_change);
-                    }
-                }
-            }
+    /// merge another ledger subset into self
+    pub fn extend(&mut self, other: LedgerSubset) {
+        for (self_thread_data, other_thread_data) in
+            self.data.iter_mut().zip(other.data.into_iter())
+        {
+            self_thread_data.extend(other_thread_data)
         }
     }
 }

@@ -79,10 +79,6 @@ impl Block {
             })
             .is_some())
     }
-
-    pub fn bytes_count(&self, context: &SerializationContext) -> Result<u64, ModelsError> {
-        Ok(self.to_bytes_compact(context)?.len() as u64)
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,7 +86,6 @@ pub struct BlockHeaderContent {
     pub creator: PublicKey,
     pub slot: Slot,
     pub parents: Vec<BlockId>,
-    pub out_ledger_hash: Hash,
     pub operation_merkle_root: Hash, // all operations hash
 }
 
@@ -279,9 +274,6 @@ impl SerializeCompact for BlockHeaderContent {
             res.extend(&parent_h.0.to_bytes());
         }
 
-        // output ledger hash
-        res.extend(&self.out_ledger_hash.to_bytes());
-
         // operations merkle root
         res.extend(&self.operation_merkle_root.to_bytes());
 
@@ -323,10 +315,6 @@ impl DeserializeCompact for BlockHeaderContent {
             ));
         };
 
-        // output ledger hash
-        let out_ledger_hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += HASH_SIZE_BYTES;
-
         // operation merkle tree root
         let operation_merkle_root = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
         cursor += HASH_SIZE_BYTES;
@@ -336,7 +324,6 @@ impl DeserializeCompact for BlockHeaderContent {
                 creator,
                 slot,
                 parents,
-                out_ledger_hash,
                 operation_merkle_root,
             },
             cursor,
@@ -378,7 +365,6 @@ mod test {
                     BlockId(Hash::hash("def".as_bytes())),
                     BlockId(Hash::hash("ghi".as_bytes())),
                 ],
-                out_ledger_hash: Hash::hash("jkl".as_bytes()),
                 operation_merkle_root: Hash::hash("mno".as_bytes()),
             },
             &ctx,
