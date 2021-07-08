@@ -888,6 +888,40 @@ impl ProofOfStake {
         Ok(res)
     }
 
+    /// gets the number of locked rolls at a given slot for a set of addresses
+    pub fn get_locked_roll_count(
+        &self,
+        cycle: u64,
+        thread: u8,
+        addrs: &HashSet<Address>,
+    ) -> HashMap<Address, u64> {
+        if cycle < 1 + self.cfg.pos_lookback_cycles {
+            return HashMap::new();
+        }
+        let start_cycle = cycle
+            .saturating_sub(self.cfg.pos_lookback_cycles)
+            .saturating_sub(self.cfg.pos_lock_cycles);
+        let end_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
+        let mut res: HashMap<Address, u64> = HashMap::new();
+        for origin_cycle in start_cycle..=end_cycle {
+            if let Some(origin_state) = self.get_final_roll_data(origin_cycle, thread) {
+                for addr in addrs.iter() {
+                    if let Some(updates) = origin_state.cycle_updates.0.get(addr) {
+                        let compensated_sales =
+                            updates.roll_sales.saturating_sub(updates.roll_purchases);
+                        if compensated_sales == 0 {
+                            continue;
+                        }
+                        res.entry(*addr)
+                            .and_modify(|v| *v += compensated_sales)
+                            .or_insert(compensated_sales);
+                    }
+                }
+            }
+        }
+        res
+    }
+
     /// Gets cycle in which we are drawing at source_cycle
     pub fn get_lookback_roll_count(
         &self,

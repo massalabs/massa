@@ -120,11 +120,12 @@ async fn test_operations_check() {
     let mut set = HashSet::new();
     set.insert(address_1);
     let res = consensus_command_sender
-        .get_ledger_data(set)
+        .get_addresses_info(set)
         .await
         .unwrap()
-        .candidate_data
-        .get_data(&address_1, cfg.thread_count)
+        .get(&address_1)
+        .unwrap()
+        .candidate_ledger_data
         .clone();
     assert_eq!(res.balance, 1);
 
@@ -153,11 +154,12 @@ async fn test_operations_check() {
     let mut set = HashSet::new();
     set.insert(address_2);
     let res = consensus_command_sender
-        .get_ledger_data(set)
+        .get_addresses_info(set)
         .await
         .unwrap()
-        .candidate_data
-        .get_data(&address_2, cfg.thread_count)
+        .get(&address_2)
+        .unwrap()
+        .candidate_ledger_data
         .clone();
     assert_eq!(res.balance, 5);
 

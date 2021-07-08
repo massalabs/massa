@@ -1,5 +1,5 @@
 use crate::{
-    ledger::{LedgerChange, LedgerSubset, OperationLedgerInterface},
+    ledger::{LedgerChange, LedgerData, LedgerSubset, OperationLedgerInterface},
     pos::ExportProofOfStake,
 };
 
@@ -12,9 +12,8 @@ use crypto::{
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
 use models::{
-    Address, AddressRollState, AddressesRollState, Block, BlockHeader, BlockHeaderContent, BlockId,
-    Operation, OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact,
-    Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
+    OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
@@ -29,6 +28,16 @@ use tokio::{
     sync::{mpsc, oneshot},
     time::{sleep_until, Sleep},
 };
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AddressState {
+    pub final_rolls: u64,
+    pub active_rolls: Option<u64>,
+    pub candidate_rolls: u64,
+    pub locked_balance: u64,
+    pub candidate_ledger_data: LedgerData,
+    pub final_ledger_data: LedgerData,
+}
 
 /// Commands that can be proccessed by consensus.
 #[derive(Debug)]
@@ -53,13 +62,11 @@ pub enum ConsensusCommand {
     },
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootsrapableGraph)>),
-    /// Returns through a channel current blockgraph without block operations.
-    GetLedgerData {
+    /// Returns info for a set of addresses (rolls and balance)
+    GetAddressesInfo {
         addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<LedgerDataExport>,
+        response_tx: oneshot::Sender<HashMap<Address, AddressState>>,
     },
-    /// Returns through a channel for given address
-    /// hashmap: Operation id -> if it is final
     GetRecentOperations {
         address: Address,
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
@@ -67,10 +74,6 @@ pub enum ConsensusCommand {
     GetOperations {
         operation_ids: HashSet<OperationId>,
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
-    },
-    GetRollState {
-        addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<AddressesRollState>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
 }
@@ -633,19 +636,19 @@ impl ConsensusWorker {
                     ))
                 })
             }
-            ConsensusCommand::GetLedgerData {
+            ConsensusCommand::GetAddressesInfo {
                 addresses,
                 response_tx,
             } => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_ledger_data",
+                    "consensus.consensus_worker.process_consensus_command.get_addresses_info",
                     { "addresses": addresses }
                 );
                 response_tx
-                    .send(self.block_db.get_ledger_data_export(&addresses)?)
+                    .send(self.get_addresses_info(&addresses)?)
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
-                            "could not send GetLedgerData response: {:?}",
+                            "could not send GetAddressesInfo response: {:?}",
                             err
                         ))
                     })
@@ -708,22 +711,6 @@ impl ConsensusWorker {
                     ))
                 })
             }
-            ConsensusCommand::GetRollState {
-                addresses,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_roll_state",
-                    { "addresses": addresses }
-                );
-                let res = self.get_roll_state(&addresses).await?;
-                response_tx.send(res).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get_roll_state response: {:?}",
-                        err
-                    ))
-                })
-            }
             ConsensusCommand::GetStats(response_tx) => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_stats",
@@ -761,23 +748,20 @@ impl ConsensusWorker {
         })
     }
 
-    async fn get_roll_state(
+    fn get_addresses_info(
         &self,
         addresses: &HashSet<Address>,
-    ) -> Result<AddressesRollState, ConsensusError> {
+    ) -> Result<HashMap<Address, AddressState>, ConsensusError> {
         let thread_count = self.cfg.thread_count;
         let mut addresses_by_thread = vec![HashSet::new(); thread_count as usize];
         for addr in addresses.iter() {
             addresses_by_thread[addr.get_thread(thread_count) as usize].insert(*addr);
         }
-
         let mut states = HashMap::new();
-
+        let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
+        let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
         for thread in 0..thread_count {
-            let lookback_data = match self.pos.get_lookback_roll_count(
-                self.next_slot.get_cycle(self.cfg.periods_per_cycle),
-                thread,
-            ) {
+            let lookback_data = match self.pos.get_lookback_roll_count(cur_cycle, thread) {
                 Ok(rolls) => Some(rolls),
                 Err(ConsensusError::PosCycleUnavailable(_)) => None,
                 Err(e) => return Err(e),
@@ -793,11 +777,16 @@ impl ConsensusWorker {
                 Some(&addresses_by_thread[thread as usize]),
                 &self.pos,
             )?;
+            let locked_rolls = self.pos.get_locked_roll_count(
+                cur_cycle,
+                thread,
+                &addresses_by_thread[thread as usize],
+            );
 
             for addr in addresses_by_thread[thread as usize].iter() {
                 states.insert(
                     *addr,
-                    AddressRollState {
+                    AddressState {
                         final_rolls: *final_data.roll_count.0.get(addr).unwrap_or(&0),
                         active_rolls: if let Some(data) = lookback_data {
                             Some(*data.0.get(addr).unwrap_or(&0))
@@ -805,11 +794,24 @@ impl ConsensusWorker {
                             None
                         },
                         candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&0),
+                        locked_balance: locked_rolls
+                            .get(addr)
+                            .unwrap_or(&0)
+                            .checked_mul(self.cfg.roll_price)
+                            .ok_or(ConsensusError::RollOverflowError)?,
+                        candidate_ledger_data: ledger_data
+                            .candidate_data
+                            .get_data(addr, self.cfg.thread_count)
+                            .clone(),
+                        final_ledger_data: ledger_data
+                            .final_data
+                            .get_data(addr, self.cfg.thread_count)
+                            .clone(),
                     },
                 );
             }
         }
-        Ok(AddressesRollState { states })
+        Ok(states)
     }
 
     async fn get_operations(
