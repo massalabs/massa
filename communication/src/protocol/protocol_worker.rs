@@ -12,6 +12,7 @@ use crypto::{hash::Hash, signature::PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::block::Block;
 use std::collections::{hash_map, HashMap, HashSet};
+use storage::storage_controller::StorageCommandSender;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 /// Possible types of events that can happen.
@@ -46,6 +47,7 @@ pub struct ProtocolWorker {
     network_command_sender: NetworkCommandSender,
     /// Associated nework event receiver.
     network_event_receiver: NetworkEventReceiver,
+    opt_storage_command_sender: Option<StorageCommandSender>,
     /// Channel to send protocol events to the controller.
     controller_event_tx: mpsc::Sender<ProtocolEvent>,
     /// Channel receiving commands from the controller.
@@ -87,6 +89,7 @@ impl ProtocolWorker {
         private_key: PrivateKey,
         network_command_sender: NetworkCommandSender,
         network_event_receiver: NetworkEventReceiver,
+        opt_storage_command_sender: Option<StorageCommandSender>,
         controller_event_tx: mpsc::Sender<ProtocolEvent>,
         controller_command_rx: mpsc::Receiver<ProtocolCommand>,
         controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
@@ -98,6 +101,7 @@ impl ProtocolWorker {
             private_key,
             network_command_sender,
             network_event_receiver,
+            opt_storage_command_sender,
             controller_event_tx,
             controller_command_rx,
             controller_manager_rx,

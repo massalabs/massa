@@ -34,6 +34,7 @@ async fn test_new_connection() {
             protocol_config.clone(),
             network_command_sender.clone(),
             network_event_receiver,
+            None,
         )
         .await
         .expect("could not start protocol controller");

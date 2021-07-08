@@ -24,18 +24,20 @@ async fn run(cfg: config::Config) {
             .await
             .expect("could not start network controller");
 
+    let (storage_command_sender, storage_manager) =
+        start_storage_controller(cfg.storage).expect("could not start storage controller");
+
     // launch protocol controller
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
             cfg.protocol.clone(),
             network_command_sender.clone(),
             network_event_receiver,
+            Some(storage_command_sender.clone()),
         )
         .await
         .expect("could not start protocol controller");
 
-    let (storage_command_sender, storage_manager) =
-        start_storage_controller(cfg.storage).expect("could not start storage controller");
     // launch consensus controller
     let (consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
         start_consensus_controller(

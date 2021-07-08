@@ -10,6 +10,7 @@ use crate::{
 use crypto::{hash::Hash, signature::SignatureEngine};
 use models::block::Block;
 use std::collections::VecDeque;
+use storage::storage_controller::StorageCommandSender;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 /// start a new ProtocolController from a ProtocolConfig
@@ -25,6 +26,7 @@ pub async fn start_protocol_controller(
     cfg: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<
     (
         ProtocolCommandSender,
@@ -54,6 +56,7 @@ pub async fn start_protocol_controller(
             private_key,
             network_command_sender,
             network_event_receiver,
+            opt_storage_command_sender,
             event_tx,
             command_rx,
             manager_rx,

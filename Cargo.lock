@@ -212,6 +212,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stderrlog",
+ "storage",
  "tempfile",
  "thiserror",
  "time 0.1.0",
