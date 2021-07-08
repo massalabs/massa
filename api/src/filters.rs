@@ -147,7 +147,7 @@
 
 use crate::ApiError;
 
-use apimodel::{self, BlockInfo, HashSlot};
+use apimodel::{self, BlockInfo, Cliques, HashSlot};
 
 use super::config::ApiConfig;
 use communication::{
@@ -712,9 +712,7 @@ async fn get_graph_interval(
 /// Returns number of cliques and current cliques as Vec<HashSet<(hash, (period, thread))>>
 /// The result is a tuple (number_of_cliques, current_cliques) wrapped in a reply.
 ///
-async fn get_cliques(
-    event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<(usize, Vec<HashSet<(Hash, Slot)>>), ApiError> {
+async fn get_cliques(event_tx: mpsc::Sender<ApiEvent>) -> Result<Cliques, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
 
     let mut hashes = HashSet::new();
@@ -739,7 +737,7 @@ async fn get_cliques(
         for hash in clique.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
-                    set.insert((k.clone(), v.clone()));
+                    set.insert((k.clone(), v.clone()).into());
                 }
                 None => {
                     return Err(ApiError::DataInconsistencyError(format!(
@@ -751,7 +749,10 @@ async fn get_cliques(
         res.push(set)
     }
 
-    Ok((graph.max_cliques.len(), res))
+    Ok(Cliques {
+        number: graph.max_cliques.len() as u64,
+        content: res,
+    })
 }
 
 /// Returns network information:
