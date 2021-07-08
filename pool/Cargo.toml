@@ -1,0 +1,24 @@
+[package]
+name = "pool"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2018"
+
+[dependencies]
+communication = {path = "../communication"}
+logging = { path = "../logging" }
+crypto = { path = "../crypto" }
+models = {path = "../models"}
+log = { version = "0.4" }
+thiserror = "1.0"
+num = "0.4"
+time= { path = "../time"}
+serde_json = { version = "1.0" }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.6", features = ["full"] }
+futures = { version = "0.3" }
+
+[dev-dependencies]
+stderrlog = { version = "0.5" }
+pretty_assertions = "0.7"
+serial_test = "0.5.1"
