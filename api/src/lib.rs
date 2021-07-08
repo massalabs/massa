@@ -1,7 +1,6 @@
 mod config;
 mod error;
 mod filters;
-pub mod models;
 
 #[cfg(test)]
 mod tests;
