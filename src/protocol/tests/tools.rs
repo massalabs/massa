@@ -6,8 +6,7 @@ use std::time::Duration;
 // generate random node ID (public key) and private key
 pub fn generate_node_keys() -> (PrivateKey, NodeId) {
     let signature_engine = SignatureEngine::new();
-    let private_key =
-        SignatureEngine::generate_random_private_key(&mut SignatureEngine::create_rng());
+    let private_key = SignatureEngine::generate_random_private_key();
     let self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
     (private_key, self_node_id)
 }

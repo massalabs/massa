@@ -1,6 +1,10 @@
-use bitcoin_hashes::sha256;
+use super::hash::Hash;
 use bs58;
 use secp256k1::{Message, Secp256k1};
+
+pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
+pub const PUBLIC_KEY_SIZE_BYTES: usize = 33;
+pub const SIGNATURE_SIZE_BYTES: usize = 64;
 
 #[derive(Debug)]
 pub enum SignatureError {
@@ -24,13 +28,13 @@ pub struct PrivateKey(secp256k1::SecretKey);
 
 impl std::fmt::Display for PrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for PrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
@@ -39,43 +43,50 @@ impl PrivateKey {
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
-    /// let serialized: String = private_key.serialize_bs58_check();
+    /// let serialized: String = private_key.to_bs58_check();
     /// ```
-    pub fn serialize_bs58_check(&self) -> String {
-        bs58::encode(self.serialize_binary())
-            .with_check()
-            .into_string()
+    pub fn to_bs58_check(&self) -> String {
+        bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
     /// Serialize a PrivateKey as bytes.
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
-    /// let serialized : Vec<u8> = private_key.serialize_binary();
+    /// let serialized = private_key.to_bytes();
     /// ```
-    pub fn serialize_binary(&self) -> Vec<u8> {
-        self.0.as_ref().to_vec()
+    pub fn to_bytes(&self) -> [u8; PRIVATE_KEY_SIZE_BYTES] {
+        *self.0.as_ref()
+    }
+
+    /// Serialize a PrivateKey into bytes.
+    ///
+    /// # Example
+    ///  ```
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    ///
+    /// let serialized = private_key.into_bytes();
+    /// ```
+    pub fn into_bytes(self) -> [u8; PRIVATE_KEY_SIZE_BYTES] {
+        *self.0.as_ref()
     }
 
     /// Deserialize a PrivateKey using bs58 encoding with checksum.
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
-    /// let serialized: String = private_key.serialize_bs58_check();
-    /// let deserialized: PrivateKey = PrivateKey::deserialize_bs58_check(&serialized).unwrap();
+    /// let serialized: String = private_key.to_bs58_check();
+    /// let deserialized: PrivateKey = PrivateKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn deserialize_bs58_check(data: &str) -> Result<PrivateKey, SignatureError> {
+    pub fn from_bs58_check(data: &str) -> Result<PrivateKey, SignatureError> {
         match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(PrivateKey::deserialize_binary(&s)?),
+            Ok(s) => Ok(PrivateKey::from_bytes(&s)?),
             _ => Err(SignatureError::ParseError),
         }
     }
@@ -84,14 +95,13 @@ impl PrivateKey {
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
-    /// let serialized : Vec<u8> = private_key.serialize_binary();
-    /// let deserialized: PrivateKey = PrivateKey::deserialize_binary(&serialized).unwrap();
+    /// let serialized = private_key.to_bytes();
+    /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn deserialize_binary(data: &Vec<u8>) -> Result<PrivateKey, SignatureError> {
-        match secp256k1::key::SecretKey::from_slice(&data[..]) {
+    pub fn from_bytes(data: &[u8]) -> Result<PrivateKey, SignatureError> {
+        match secp256k1::SecretKey::from_slice(&data) {
             Ok(k) => Ok(PrivateKey(k)),
             _ => Err(SignatureError::ParseError),
         }
@@ -108,16 +118,14 @@ impl ::serde::Serialize for PrivateKey {
     ///
     /// Human readable serialization :
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
     /// let serialized: String = serde_json::to_string(&private_key).unwrap();
     /// ```
     ///
     /// Not human readable serialization :
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// private_key.serialize(&mut s).unwrap();
@@ -125,9 +133,9 @@ impl ::serde::Serialize for PrivateKey {
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
-            s.collect_str(&self.serialize_bs58_check())
+            s.collect_str(&self.to_bs58_check())
         } else {
-            s.serialize_bytes(&self.serialize_binary())
+            s.serialize_bytes(&self.to_bytes())
         }
     }
 }
@@ -142,8 +150,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
     ///
     /// Human readable deserialization :
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
     /// let serialized = serde_json::to_string(&private_key).unwrap();
     /// let deserialized: PrivateKey = serde_json::from_str(&serialized).unwrap();
@@ -151,8 +158,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
     ///
     /// Not human readable deserialization :
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// private_key.serialize(&mut s).unwrap();
@@ -176,7 +182,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        PrivateKey::deserialize_bs58_check(&v_str).map_err(E::custom)
+                        PrivateKey::from_bs58_check(&v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -186,7 +192,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PrivateKey::deserialize_bs58_check(&v).map_err(E::custom)
+                    PrivateKey::from_bs58_check(&v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)
@@ -204,7 +210,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PrivateKey::deserialize_binary(&v.to_vec()).map_err(E::custom)
+                    PrivateKey::from_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -221,13 +227,13 @@ pub struct PublicKey(secp256k1::PublicKey);
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
@@ -237,16 +243,13 @@ impl PublicKey {
     /// # Example
     ///  ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
     /// let serialized: String = public_key.serialize_bs58_check();
     /// ```
-    pub fn serialize_bs58_check(&self) -> String {
-        bs58::encode(self.serialize_binary())
-            .with_check()
-            .into_string()
+    pub fn to_bs58_check(&self) -> String {
+        bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
     /// Serialize a PublicKey as bytes.
@@ -254,14 +257,27 @@ impl PublicKey {
     /// # Example
     ///  ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
-    /// let serialized: Vec<u8> = public_key.serialize_binary();
+    /// let serialize = public_key.to_bytes();
     /// ```
-    pub fn serialize_binary(&self) -> Vec<u8> {
-        self.0.serialize().to_vec()
+    pub fn to_bytes(&self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
+        self.0.serialize()
+    }
+
+    /// Serialize into bytes.
+    ///
+    /// # Example
+    ///  ```
+    /// let secp = SignatureEngine::new();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let public_key = secp.derive_public_key(&private_key);
+    ///
+    /// let serialize = public_key.to_bytes();
+    /// ```
+    pub fn into_bytes(self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
+        self.0.serialize()
     }
 
     /// Deserialize a PublicKey using bs58 encoding with checksum.
@@ -269,16 +285,15 @@ impl PublicKey {
     /// # Example
     ///  ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
-    /// let serialized: String = public_key.serialize_bs58_check();
-    /// let deserialized: PublicKey = PublicKey::deserialize_bs58_check(&serialized).unwrap();
+    /// let serialized: String = public_key.to_bs58_check();
+    /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn deserialize_bs58_check(data: &str) -> Result<PublicKey, SignatureError> {
+    pub fn from_bs58_check(data: &str) -> Result<PublicKey, SignatureError> {
         match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(PublicKey::deserialize_binary(&s)?),
+            Ok(s) => Ok(PublicKey::from_bytes(&s)?),
             _ => Err(SignatureError::ParseError),
         }
     }
@@ -287,16 +302,15 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
-    /// let serialized : Vec<u8> = public_key.serialize_binary();
-    /// let deserialized: PublicKey = PublicKey::deserialize_binary(&serialized).unwrap();
+    /// let serialized = public_key.from_bytes();
+    /// let deserialized: PublicKey = PublicKey::to_bytes(&serialized).unwrap();
     /// ```
-    pub fn deserialize_binary(data: &Vec<u8>) -> Result<PublicKey, SignatureError> {
-        match secp256k1::key::PublicKey::from_slice(&data[..]) {
+    pub fn from_bytes(data: &[u8]) -> Result<PublicKey, SignatureError> {
+        match secp256k1::PublicKey::from_slice(data) {
             Ok(k) => Ok(PublicKey(k)),
             _ => Err(SignatureError::ParseError),
         }
@@ -314,8 +328,7 @@ impl ::serde::Serialize for PublicKey {
     /// Human readable serialization :
     /// ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
     /// let serialized: String = serde_json::to_string(&public_key).unwrap();
@@ -324,8 +337,7 @@ impl ::serde::Serialize for PublicKey {
     /// Not human readable serialization :
     /// ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
@@ -334,9 +346,9 @@ impl ::serde::Serialize for PublicKey {
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
-            s.collect_str(&self.serialize_bs58_check())
+            s.collect_str(&self.to_bs58_check())
         } else {
-            s.serialize_bytes(&self.serialize_binary())
+            s.serialize_bytes(&self.to_bytes())
         }
     }
 }
@@ -351,9 +363,8 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     ///
     /// Human readable deserialization :
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
     /// let serialized = serde_json::to_string(&public_key).unwrap();
@@ -363,8 +374,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     /// Not human readable deserialization :
     /// ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key = secp.derive_public_key(&private_key);
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
@@ -389,7 +399,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        PublicKey::deserialize_bs58_check(&v_str).map_err(E::custom)
+                        PublicKey::from_bs58_check(&v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -399,7 +409,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PublicKey::deserialize_bs58_check(&v).map_err(E::custom)
+                    PublicKey::from_bs58_check(&v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)
@@ -417,7 +427,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
                 where
                     E: ::serde::de::Error,
                 {
-                    PublicKey::deserialize_binary(&v.to_vec()).map_err(E::custom)
+                    PublicKey::from_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -432,13 +442,13 @@ pub struct Signature(secp256k1::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
@@ -447,52 +457,62 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes();
     /// let signature = secp.sign(&data, &private_key);
     ///
-    /// let serialized: String = signature.serialize_bs58_check();
+    /// let serialized: String = signature.to_bs58_check();
     /// ```
-    pub fn serialize_bs58_check(&self) -> String {
-        bs58::encode(self.serialize_binary())
-            .with_check()
-            .into_string()
+    pub fn to_bs58_check(&self) -> String {
+        bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
     /// Serialize a Signature as bytes.
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature = secp.sign(&data, &private_key);
     ///
-    /// let serialized : Vec<u8> = signature.serialize_binary();
+    /// let serialized = signature.to_bytes();
     /// ```
-    pub fn serialize_binary(&self) -> Vec<u8> {
-        self.0.serialize_compact().to_vec()
+    pub fn to_bytes(&self) -> [u8; SIGNATURE_SIZE_BYTES] {
+        self.0.serialize_compact()
+    }
+
+    /// Serialize a Signature into bytes.
+    ///
+    /// # Example
+    ///  ```
+    /// let secp = SignatureEngine::new();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
+    /// let signature = secp.sign(&data, &private_key);
+    ///
+    /// let serialized = signature.into_bytes();
+    /// ```
+    pub fn into_bytes(self) -> [u8; SIGNATURE_SIZE_BYTES] {
+        self.0.serialize_compact()
     }
 
     /// Deserialize a Signature using bs58 encoding with checksum.
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let secp = SignatureEngine::new();
     /// let signature = secp.sign(&data, &private_key);
     ///
-    /// let serialized: String = signature.serialize_bs58_check();
-    /// let deserialized: Signature = Signature::deserialize_bs58_check(&serialized).unwrap();
+    /// let serialized: String = signature.to_bs58_check();
+    /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn deserialize_bs58_check(data: &str) -> Result<Signature, SignatureError> {
+    pub fn from_bs58_check(data: &str) -> Result<Signature, SignatureError> {
         match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(Signature::deserialize_binary(&s)?),
+            Ok(s) => Ok(Signature::from_bytes(&s)?),
             _ => Err(SignatureError::ParseError),
         }
     }
@@ -501,17 +521,16 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature = secp.sign(&data, &private_key);
     ///
-    /// let serialized: Vec<u8> = signature.serialize_binary();
-    /// let deserialized: Signature = Signature::deserialize_binary(&serialized).unwrap();
+    /// let serialized = signature.to_bytes();
+    /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn deserialize_binary(data: &Vec<u8>) -> Result<Signature, SignatureError> {
-        match secp256k1::Signature::from_compact(&data[..]) {
+    pub fn from_bytes(data: &[u8]) -> Result<Signature, SignatureError> {
+        match secp256k1::Signature::from_compact(data) {
             Ok(k) => Ok(Signature(k)),
             _ => Err(SignatureError::ParseError),
         }
@@ -521,17 +540,16 @@ impl Signature {
 impl ::serde::Serialize for Signature {
     /// ::serde::Serialize trait for Signature
     /// if the serializer is human readable,
-    /// serialization is done using serialize_bs58_check
-    /// else, it uses serialize_binary
+    /// serialization is done using to_bs58_check
+    /// else, it uses to_bytes
     ///
     /// # Example
     ///
     /// Human readable serialization :
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature = secp.sign(&data, &private_key);
     ///
     /// let serialized: String = serde_json::to_string(&signature).unwrap();
@@ -540,20 +558,19 @@ impl ::serde::Serialize for Signature {
     /// Not human readable serialization :
     /// ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature = secp.sign(&data, &private_key);
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// signature.serialize(&mut s).unwrap();
-    /// let serialized: Vec<u8> = s.view().to_vec();
+    /// let serialized = s.view();
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
-            s.collect_str(&self.serialize_bs58_check())
+            s.collect_str(&self.to_bs58_check())
         } else {
-            s.serialize_bytes(&self.serialize_binary())
+            s.serialize_bytes(&self.to_bytes())
         }
     }
 }
@@ -561,17 +578,16 @@ impl ::serde::Serialize for Signature {
 impl<'de> ::serde::Deserialize<'de> for Signature {
     /// ::serde::Deserialize trait for Signature
     /// if the deserializer is human readable,
-    /// deserialization is done using deserialize_bs58_check
-    /// else, it uses deserialize_binary
+    /// deserialization is done using from_bs58_check
+    /// else, it uses from_bytes
     ///
     /// # Example
     ///
     /// Human readable deserialization :
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature = secp.sign(&data, &private_key);
     ///
     /// let serialized = serde_json::to_string(&signature).unwrap();
@@ -581,9 +597,8 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// Not human readable deserialization :
     /// ```
     /// let secp = SignatureEngine::new();
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let private_key = SignatureEngine::generate_random_private_key();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature = secp.sign(&data, &private_key);
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
@@ -608,7 +623,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        Signature::deserialize_bs58_check(&v_str).map_err(E::custom)
+                        Signature::from_bs58_check(&v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -618,7 +633,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
                 where
                     E: ::serde::de::Error,
                 {
-                    Signature::deserialize_bs58_check(&v).map_err(E::custom)
+                    Signature::from_bs58_check(&v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)
@@ -636,7 +651,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
                 where
                     E: ::serde::de::Error,
                 {
-                    Signature::deserialize_binary(&v.to_vec()).map_err(E::custom)
+                    Signature::from_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -661,37 +676,25 @@ impl SignatureEngine {
         SignatureEngine(Secp256k1::new())
     }
 
-    /// Generate a new Random Number Generator compatible with the signature engine, seeded with entropy.
-    ///
-    /// # Example
-    /// ```
-    /// let rng = SignatureEngine::create_rng();
-    /// ```
-    #[allow(deprecated)]
-    pub fn create_rng() -> secp256k1::rand::StdRng {
-        use secp256k1::rand::FromEntropy;
-        secp256k1::rand::StdRng::from_entropy()
-    }
-
     /// Generate a random private key from a RNG.
     /// # Example
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
-    /// let private_key: PrivateKey = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key: PrivateKey = SignatureEngine::generate_random_private_key();
     /// ```
-    pub fn generate_random_private_key<R: secp256k1::rand::Rng + ?Sized>(
-        rng: &mut R,
-    ) -> PrivateKey {
-        PrivateKey(secp256k1::key::SecretKey::new(rng))
+    #[allow(deprecated)]
+    pub fn generate_random_private_key() -> PrivateKey {
+        use secp256k1::rand::FromEntropy;
+        PrivateKey(secp256k1::key::SecretKey::new(
+            &mut secp256k1::rand::StdRng::from_entropy(),
+        ))
     }
 
     /// Derives a PublicKey from a PrivateKey.
     ///
     /// # Example
     /// ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key: PublicKey = secp.derive_public_key(&private_key);
     /// ```
     pub fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
@@ -706,15 +709,14 @@ impl SignatureEngine {
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key: PublicKey = secp.derive_public_key(&private_key);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature: Signature = secp.sign(&data, &private_key);
     /// ```
-    pub fn sign(&self, data: &Vec<u8>, private_key: &PrivateKey) -> Signature {
-        let message = Message::from_hashed_data::<sha256::Hash>(data);
+    pub fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Signature {
+        let message = Message::from_slice(&hash.to_bytes()).expect("wrong hash size");
         Signature(self.0.sign(&message, &private_key.0))
     }
 
@@ -723,16 +725,15 @@ impl SignatureEngine {
     ///
     /// # Example
     ///  ```
-    /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let secp = SignatureEngine::new();
-    /// let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+    /// let private_key = SignatureEngine::generate_random_private_key();
     /// let public_key: PublicKey = secp.derive_public_key(&private_key);
-    /// let data = "Hello World!".as_bytes().to_vec();
+    /// let data = "Hello World!".to_bytes().to_vec();
     /// let signature = secp.sign(&data, &private_key);
     /// let verification: bool = secp.verify(&data, &signature, &public_key);
     /// ```
-    pub fn verify(&self, data: &Vec<u8>, signature: &Signature, public_key: &PublicKey) -> bool {
-        let message = Message::from_hashed_data::<sha256::Hash>(data);
+    pub fn verify(&self, hash: &Hash, signature: &Signature, public_key: &PublicKey) -> bool {
+        let message = Message::from_slice(&hash.to_bytes()).expect("wrong hash size");
         self.0.verify(&message, &signature.0, &public_key.0).is_ok()
     }
 }
@@ -741,40 +742,24 @@ impl SignatureEngine {
 mod tests {
     use super::*;
     use flexbuffers;
-    use secp256k1::rand::rngs::OsRng;
     use serde::{Deserialize, Serialize};
-
-    #[test]
-    fn test_secp256k1_crate_usage() {
-        use bitcoin_hashes::sha256;
-        use secp256k1::rand::rngs::OsRng;
-        use secp256k1::{Message, Secp256k1};
-
-        let secp = Secp256k1::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let (secret_key, public_key) = secp.generate_keypair(&mut rng);
-        let message = Message::from_hashed_data::<sha256::Hash>("Hello World!".as_bytes());
-        let sig = secp.sign(&message, &secret_key);
-        assert!(secp.verify(&message, &sig, &public_key).is_ok());
-    }
 
     #[test]
     fn test_example() {
         let secp = SignatureEngine::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+        let private_key = SignatureEngine::generate_random_private_key();
         let public_key = secp.derive_public_key(&private_key);
-        let message = "Hello World!".as_bytes().to_vec();
-        let signature = secp.sign(&message, &private_key);
-        assert!(secp.verify(&message, &signature, &public_key))
+        let message = "Hello World!".as_bytes();
+        let hash = Hash::hash(&message);
+        let signature = secp.sign(&hash, &private_key);
+        assert!(secp.verify(&hash, &signature, &public_key))
     }
 
     #[test]
     fn test_serde_private_key() {
-        let mut rng = OsRng::new().expect("OsRng");
-        let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+        let private_key = SignatureEngine::generate_random_private_key();
         let serialized =
-            serde_json::to_string(&private_key).expect("Could not serialize private key");
+            serde_json::to_string(&private_key).expect("could not serialize private key");
         let deserialized =
             serde_json::from_str(&serialized).expect("could not deserialize private key");
         assert_eq!(private_key, deserialized);
@@ -783,8 +768,7 @@ mod tests {
     #[test]
     fn test_serde_public_key() {
         let secp = SignatureEngine::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+        let private_key = SignatureEngine::generate_random_private_key();
         let public_key = secp.derive_public_key(&private_key);
         let serialized =
             serde_json::to_string(&public_key).expect("Could not serialize public key");
@@ -796,12 +780,12 @@ mod tests {
     #[test]
     fn test_serde_signature() {
         let secp = SignatureEngine::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-        let data = "Hello World!".as_bytes().to_vec();
-        let signature = secp.sign(&data, &private_key);
+        let private_key = SignatureEngine::generate_random_private_key();
+        let message = "Hello World!".as_bytes();
+        let hash = Hash::hash(&message);
+        let signature = secp.sign(&hash, &private_key);
         let serialized =
-            serde_json::to_string(&signature).expect("Could not serialize signature key");
+            serde_json::to_string(&signature).expect("could not serialize signature key");
         let deserialized =
             serde_json::from_str(&serialized).expect("could not deserialize signature key");
         assert_eq!(signature, deserialized);
@@ -811,8 +795,7 @@ mod tests {
     fn test_serde_buf_public_key() {
         let mut s = flexbuffers::FlexbufferSerializer::new();
         let secp = SignatureEngine::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+        let private_key = SignatureEngine::generate_random_private_key();
         let public_key = secp.derive_public_key(&private_key);
         public_key
             .serialize(&mut s)
@@ -826,10 +809,9 @@ mod tests {
     fn test_serde_buf_signature() {
         let mut s = flexbuffers::FlexbufferSerializer::new();
         let secp = SignatureEngine::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let private_key = SignatureEngine::generate_random_private_key(&mut rng);
-        let data = "Hello World!".as_bytes().to_vec();
-        let signature = secp.sign(&data, &private_key);
+        let private_key = SignatureEngine::generate_random_private_key();
+        let data = "Hello World!".as_bytes();
+        let signature = secp.sign(&Hash::hash(&data), &private_key);
         signature
             .serialize(&mut s)
             .expect("could not serialize signature key");
@@ -841,8 +823,7 @@ mod tests {
     #[test]
     fn test_serde_buf_private_key() {
         let mut s = flexbuffers::FlexbufferSerializer::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let private_key = SignatureEngine::generate_random_private_key(&mut rng);
+        let private_key = SignatureEngine::generate_random_private_key();
         private_key
             .serialize(&mut s)
             .expect("could not serialize private key");

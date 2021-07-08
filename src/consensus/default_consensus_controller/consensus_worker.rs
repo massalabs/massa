@@ -20,6 +20,7 @@ pub struct ConsensusWorker<ProtocolControllerT: ProtocolController + 'static> {
     block_db: BlockDatabase,
     controller_command_rx: Receiver<ConsensusCommand>,
     controller_event_tx: Sender<ConsensusEvent>,
+    selector: RandomSelector,
 }
 
 impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<ProtocolControllerT> {
@@ -30,12 +31,16 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         controller_command_rx: Receiver<ConsensusCommand>,
         controller_event_tx: Sender<ConsensusEvent>,
     ) -> ConsensusWorker<ProtocolControllerT> {
+        let seed = vec![0u8; 32]; // TODO temporary
+        let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO
+        let selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights);
         ConsensusWorker {
             cfg,
             protocol_controller,
             block_db,
             controller_command_rx,
             controller_event_tx,
+            selector,
         }
     }
 
@@ -57,9 +62,6 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                 next_slot_number,
             ),
         ));
-        let seed = vec![0u8; 32]; // TODO temporary
-        let participants_weights = vec![1u64; self.cfg.nodes.len()];
-        let mut selector = RandomSelector::new(&seed, self.cfg.thread_count, participants_weights);
 
         loop {
             tokio::select! {
@@ -77,7 +79,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                     });
 
                     // check if it is our turn to create a block
-                    let block_creator = selector.draw(next_slot_thread, next_slot_number);
+                    let block_creator = self.selector.draw(next_slot_thread, next_slot_number);
                     if block_creator == self.cfg.current_node_index {
                         // TODO create new block at slot (next_slot_thread, next_slot_number)
                     }
@@ -108,9 +110,13 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     async fn process_consensus_command(&mut self, cmd: ConsensusCommand) {
         match cmd {
             ConsensusCommand::CreateBlock(block) => {
+                // TODO remove ?
                 massa_trace!("created_block", { "block": block });
                 let block = self.block_db.create_block(block);
-                if self.block_db.acknowledge_new_block(&block) {
+                if self
+                    .block_db
+                    .acknowledge_new_block(&block, &mut self.selector)
+                {
                     self.protocol_controller
                         .propagate_block(&block, None, None)
                         .await;
@@ -122,7 +128,10 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     async fn process_protocol_event(&mut self, source_node_id: NodeId, event: ProtocolEventType) {
         match event {
             ProtocolEventType::ReceivedBlock(block) => {
-                if self.block_db.acknowledge_new_block(&block) {
+                if self
+                    .block_db
+                    .acknowledge_new_block(&block, &mut self.selector)
+                {
                     massa_trace!("received_block_ok", {"source_node_id": source_node_id, "block": block});
                     self.protocol_controller
                         .propagate_block(&block, Some(source_node_id), None)
@@ -135,7 +144,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                 // todo
             }
             ProtocolEventType::AskedBlock(block_hash) => {
-                for db in &self.block_db.0 {
+                for db in &self.block_db.active_blocks {
                     if let Some(block) = db.get(&block_hash) {
                         massa_trace!("sending_block", {"dest_node_id": source_node_id, "block": block});
                         self.protocol_controller

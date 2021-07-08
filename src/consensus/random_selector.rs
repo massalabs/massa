@@ -19,13 +19,8 @@ impl RandomSelector {
             panic!("random selector seed is too short to be safe");
         }
         let mut thread_generators = Vec::with_capacity(thread_count as usize);
-        let mut hash_engine = Hash::engine();
-        hash_engine.input(&seed);
         thread_generators.push(Xoshiro256PlusPlus::from_seed(
-            Hash::from_engine(hash_engine)
-                .serialize_binary()
-                .try_into()
-                .unwrap(),
+            Hash::hash(&seed).to_bytes().try_into().unwrap(),
         ));
         for i in 1..(thread_count as usize) {
             let mut derived_generator = thread_generators[i - 1].clone();

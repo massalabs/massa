@@ -1,20 +1,6 @@
 use bitcoin_hashes;
 
-pub struct HashEngine(bitcoin_hashes::sha256::HashEngine);
-
-impl HashEngine {
-    /// Add data to the hash engine
-    ///
-    /// # Example
-    /// ```
-    /// let mut engine = Hash::engine();
-    /// engine.input(&data);
-    /// ```
-    pub fn input(&mut self, data: &Vec<u8>) {
-        use bitcoin_hashes::HashEngine;
-        self.0.input(&data[..]);
-    }
-}
+pub const HASH_SIZE_BYTES: usize = 32;
 
 #[derive(Debug)]
 pub enum HashError {
@@ -26,7 +12,7 @@ impl std::error::Error for HashError {}
 impl std::fmt::Display for HashError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            HashError::ParseError => write!(f, "Parse Error"),
+            HashError::ParseError => write!(f, "parse error"),
         }
     }
 }
@@ -36,71 +22,69 @@ pub struct Hash(bitcoin_hashes::sha256::Hash);
 
 impl std::fmt::Display for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.serialize_bs58_check())
+        write!(f, "{}", self.to_bs58_check())
     }
 }
 
 impl Hash {
-    /// Construct a new engine.
+    /// Compute a hash from data.
     ///
     /// # Example
+    ///  ```
+    /// let hash = Hash::hash(&data);
     /// ```
-    /// let mut engine = Hash::engine();
-    /// ```
-    pub fn engine() -> HashEngine {
+    pub fn hash(data: &[u8]) -> Self {
         use bitcoin_hashes::Hash;
-        HashEngine(bitcoin_hashes::sha256::Hash::engine())
-    }
-
-    /// Produce a hash from the current state of a given engine.
-    ///
-    /// # Example
-    /// ```
-    /// let hash = Hash::from_engine(engine)
-    /// ```
-    pub fn from_engine(engine: HashEngine) -> Hash {
-        use bitcoin_hashes::Hash;
-        Hash(bitcoin_hashes::sha256::Hash::from_engine(engine.0))
+        Hash(bitcoin_hashes::sha256::Hash::hash(data))
     }
 
     /// Serialize a Hash using bs58 encoding with checksum.
     ///
     /// # Example
     ///  ```
-    /// let serialized: String = hash.serialize_bs58_check();
+    /// let serialized: String = hash.to_bs58_check();
     /// ```
-    pub fn serialize_bs58_check(&self) -> String {
-        bs58::encode(self.serialize_binary())
-            .with_check()
-            .into_string()
+    pub fn to_bs58_check(&self) -> String {
+        bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
     /// Serialize a Hash as bytes.
     ///
     /// # Example
     ///  ```
-    /// let serialized: String = hash.serialize_binary();
+    /// let serialized: String = hash.to_bytes();
     /// ```
-    pub fn serialize_binary(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
         use bitcoin_hashes::Hash;
-        self.0.as_inner().to_vec()
+        *self.0.as_inner()
     }
 
-    /// Deserialize a using bs58 encoding with checksum.
+    /// Convert into bytes.
     ///
     /// # Example
     ///  ```
-    /// let deserialized: Hash = Hash::deserialize_bs58_check(data);
+    /// let serialized: String = hash.into_bytes();
     /// ```
-    pub fn deserialize_bs58_check(data: &str) -> Result<Hash, HashError> {
+    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+        use bitcoin_hashes::Hash;
+        self.0.into_inner()
+    }
+
+    /// Deserialize using bs58 encoding with checksum.
+    ///
+    /// # Example
+    ///  ```
+    /// let deserialized: Hash = Hash::from_bs58_check(data);
+    /// ```
+    pub fn from_bs58_check(data: &str) -> Result<Hash, HashError> {
         match bs58::decode(data).with_check(None).into_vec() {
-            Ok(s) => Ok(Hash::deserialize_binary(&s)?),
+            Ok(s) => Ok(Hash::from_bytes(&s)?),
             _ => Err(HashError::ParseError),
         }
     }
@@ -109,13 +93,12 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// let deserialized: Hash = Hash::deserialize_binary(data);
+    /// let deserialized: Hash = Hash::from_bytes(data);
     /// ```
-    pub fn deserialize_binary(data: &Vec<u8>) -> Result<Hash, HashError> {
+    pub fn from_bytes(data: &[u8]) -> Result<Hash, HashError> {
         use bitcoin_hashes::Hash;
         use std::convert::TryInto;
-        let res_inner: Result<<bitcoin_hashes::sha256::Hash as Hash>::Inner, _> =
-            data.as_slice().try_into();
+        let res_inner: Result<<bitcoin_hashes::sha256::Hash as Hash>::Inner, _> = data.try_into();
         match res_inner {
             Ok(inner) => Ok(Hash(bitcoin_hashes::sha256::Hash::from_inner(inner))),
             Err(_) => Err(HashError::ParseError),
@@ -144,9 +127,9 @@ impl ::serde::Serialize for Hash {
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
-            s.collect_str(&self.serialize_bs58_check())
+            s.collect_str(&self.to_bs58_check())
         } else {
-            s.serialize_bytes(&self.serialize_binary())
+            s.serialize_bytes(&self.to_bytes())
         }
     }
 }
@@ -185,7 +168,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        Hash::deserialize_bs58_check(&v_str).map_err(E::custom)
+                        Hash::from_bs58_check(&v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -195,7 +178,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
                 where
                     E: ::serde::de::Error,
                 {
-                    Hash::deserialize_bs58_check(&v).map_err(E::custom)
+                    Hash::from_bs58_check(&v).map_err(E::custom)
                 }
             }
             d.deserialize_str(Base58CheckVisitor)
@@ -213,7 +196,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
                 where
                     E: ::serde::de::Error,
                 {
-                    Hash::deserialize_binary(&v.to_vec()).map_err(E::custom)
+                    Hash::from_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -228,10 +211,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     fn example() -> Hash {
-        let data = "hello world".as_bytes().to_vec();
-        let mut engine = Hash::engine();
-        engine.input(&data);
-        Hash::from_engine(engine)
+        Hash::hash(&"hello world".as_bytes())
     }
 
     #[test]
@@ -247,7 +227,6 @@ mod tests {
         let mut s = flexbuffers::FlexbufferSerializer::new();
         let hash = example();
         hash.serialize(&mut s).unwrap();
-        //let serialized = s.view();
         let r = flexbuffers::Reader::get_root(s.view()).unwrap();
         let deserialized = Hash::deserialize(r).unwrap();
         assert_eq!(deserialized, hash)
@@ -255,14 +234,12 @@ mod tests {
 
     #[test]
     fn test_hash() {
-        let data = "abc".as_bytes().to_vec();
-        let mut engine = Hash::engine();
-        engine.input(&data);
-        let hash = Hash::from_engine(engine);
-        let hash_ref: Vec<u8> = vec![
+        let data = "abc".as_bytes();
+        let hash = Hash::hash(&data);
+        let hash_ref: [u8; HASH_SIZE_BYTES] = [
             186, 120, 22, 191, 143, 1, 207, 234, 65, 65, 64, 222, 93, 174, 34, 35, 176, 3, 97, 163,
             150, 23, 122, 156, 180, 16, 255, 97, 242, 0, 21, 173,
         ];
-        assert_eq!(hash.serialize_binary(), hash_ref);
+        assert_eq!(hash.to_bytes(), hash_ref);
     }
 }
