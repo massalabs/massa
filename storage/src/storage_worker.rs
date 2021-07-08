@@ -36,7 +36,17 @@ impl BlockStorage {
     pub fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-        (&hash_to_block, &slot_to_hash).transaction(|(hash_tx, slot_tx)| {
+        self.add_block_internal(hash, block, &hash_to_block, &slot_to_hash)
+    }
+
+    fn add_block_internal(
+        &self,
+        hash: Hash,
+        block: Block,
+        hash_to_block: &Tree,
+        slot_to_hash: &Tree,
+    ) -> Result<(), StorageError> {
+        (hash_to_block, slot_to_hash).transaction(|(hash_tx, slot_tx)| {
             let block_vec = block.into_bytes().map_err(|err| {
                 ConflictableTransactionError::Abort(InternalError::TransactionError(format!(
                     "error serializing block: {:?}",
@@ -50,6 +60,15 @@ impl BlockStorage {
             )?;
             Ok(())
         })?;
+        Ok(())
+    }
+
+    pub fn add_multiple_blocks(&self, blocks: HashMap<Hash, Block>) -> Result<(), StorageError> {
+        let hash_to_block = self.db.open_tree("hash_to_block")?;
+        let slot_to_hash = self.db.open_tree("slot_to_hash")?;
+        for (hash, block) in blocks {
+            self.add_block_internal(hash, block, &hash_to_block, &slot_to_hash)?
+        }
         Ok(())
     }
 

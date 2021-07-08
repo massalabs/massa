@@ -450,9 +450,7 @@ impl ConsensusWorker {
             }
         }
         if let Some(cmd_tx) = &self.opt_storage_command_sender {
-            for (hash, block) in finals {
-                cmd_tx.add_block(hash, block).await?
-            }
+            cmd_tx.add_multiple_blocks(finals).await?
         }
         Ok(())
     }

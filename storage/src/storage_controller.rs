@@ -28,6 +28,14 @@ impl StorageCommandSender {
         tokio::task::spawn_blocking(move || db.add_block(hash, block)).await?
     }
 
+    pub async fn add_multiple_blocks(
+        &self,
+        blocks: HashMap<Hash, Block>,
+    ) -> Result<(), StorageError> {
+        let db = self.0.clone();
+        tokio::task::spawn_blocking(move || db.add_multiple_blocks(blocks)).await?
+    }
+
     pub async fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
         let db = self.0.clone();
         tokio::task::spawn_blocking(move || db.get_block(hash)).await?
