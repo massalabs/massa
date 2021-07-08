@@ -5,6 +5,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CommunicationError {
+    #[error("wrong signature")]
+    WrongSignature,
     #[error("Protocol err:{0}")]
     GeneralProtocolError(String),
     #[error("An error occured during channel communication: {0}")]

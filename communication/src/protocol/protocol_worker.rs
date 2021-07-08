@@ -8,7 +8,7 @@ use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::network::{
     ConnectionClosureReason, ConnectionId, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
-use crypto::{hash::Hash, signature::PrivateKey, signature::Signature};
+use crypto::{hash::Hash, signature::PrivateKey, signature::Signature, signature::SignatureEngine};
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::block::{Block, BlockHeader};
 use std::collections::{hash_map, HashMap, HashSet};
@@ -19,13 +19,10 @@ use tokio::{sync::mpsc, task::JoinHandle};
 pub enum ProtocolEvent {
     /// A isolated transaction was received.
     ReceivedTransaction(String),
-    /// A block was received
-    ReceivedBlock(Block),
-    /// A block header was received
-    ReceivedBlockHeader {
-        signature: Signature,
-        header: BlockHeader,
-    },
+    /// A block with a valid signature has been received.
+    ReceivedBlock { hash: Hash, block: Block },
+    /// A block header with a valid signature has been received.
+    ReceivedBlockHeader { hash: Hash, header: BlockHeader },
     /// Ask for a block from consensus.
     GetBlock(Hash),
 }
@@ -459,6 +456,36 @@ impl ProtocolWorker {
         Ok(())
     }
 
+    /// Check a header's signature, and if valid note the node knows the block.
+    /// TODO: instead of propagating errors, which will break the run loop of the worker,
+    /// handle them.
+    fn note_header_from_node(
+        &mut self,
+        header: &BlockHeader,
+        signature: &Signature,
+        source_node_id: &NodeId,
+    ) -> Result<Hash, CommunicationError> {
+        let hash = header
+            .compute_hash()
+            .map_err(|err| CommunicationError::HeaderHashError(err))?;
+
+        // check signature
+        if !SignatureEngine::new().verify(&hash, &signature, &header.creator)? {
+            // the signature is wrong.
+            // TODO in the future, ban sender node
+            // TODO re-ask ? (see issue #107)
+            return Err(CommunicationError::WrongSignature);
+        }
+
+        let node_info = self
+            .active_nodes
+            .get_mut(source_node_id)
+            .ok_or(CommunicationError::MissingNodeError)?;
+        node_info.known_blocks.insert(hash.clone());
+
+        Ok(hash)
+    }
+
     /// Manages node events.
     /// Only used by the worker.
     ///
@@ -484,13 +511,16 @@ impl ProtocolWorker {
                     .merge_advertised_peer_list(lst)
                     .await?;
             }
-            NodeEvent(_from_node_id, NodeEventType::ReceivedBlock(data)) => self
-                .controller_event_tx
-                .send(ProtocolEvent::ReceivedBlock(data))
-                .await
-                .map_err(|_| {
-                    CommunicationError::ChannelError("receive block event send failed".into())
-                })?,
+            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block)) => {
+                let hash =
+                    self.note_header_from_node(&block.header, &block.signature, &from_node_id)?;
+                self.controller_event_tx
+                    .send(ProtocolEvent::ReceivedBlock { hash, block })
+                    .await
+                    .map_err(|_| {
+                        CommunicationError::ChannelError("receive block event send failed".into())
+                    })
+            }?,
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlock(data)) => {
                 let node_info = self
                     .active_nodes
@@ -507,17 +537,9 @@ impl ProtocolWorker {
                     })?
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedBlockHeader { signature, header }) => {
-                let node_info = self
-                    .active_nodes
-                    .get_mut(&from_node_id)
-                    .ok_or(CommunicationError::MissingNodeError)?;
-                node_info.known_blocks.insert(
-                    header
-                        .compute_hash()
-                        .map_err(|err| CommunicationError::HeaderHashError(err))?,
-                );
+                let hash = self.note_header_from_node(&header, &signature, &from_node_id)?;
                 self.controller_event_tx
-                    .send(ProtocolEvent::ReceivedBlockHeader { signature, header })
+                    .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
                     .await
                     .map_err(|_| {
                         CommunicationError::ChannelError("receive block event send failed".into())
