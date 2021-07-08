@@ -365,6 +365,7 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             max_block_size,
             max_operations_per_block,
             operation_validity_periods: 50,
+            max_pool_size: 100000,
         },
         SerializationContext {
             max_block_size,

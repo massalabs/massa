@@ -3,7 +3,7 @@ use std::{
     collections::{BTreeSet, HashMap, HashSet},
 };
 
-use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
+use crypto::{hash::Hash, signature::SignatureEngine};
 use models::{Address, Operation, SerializationContext, SerializeCompact, Slot};
 use num::rational::Ratio;
 
@@ -108,7 +108,7 @@ impl OperationPool {
         self.ops.insert(op_id, wrapped_op);
         // remove excess
         while self.ops_by_thread_and_interest[thread as usize].len()
-            > self.cfg.max_operations_per_block as usize
+            > self.cfg.max_pool_size as usize
         {
             // normalement 1 seule itération
             let (_removed_rentability, removed_id) = self.ops_by_thread_and_interest
@@ -218,6 +218,7 @@ mod tests {
                 max_block_size,
                 max_operations_per_block,
                 operation_validity_periods: 50,
+                max_pool_size: 100000,
             },
             SerializationContext {
                 max_block_size,
@@ -267,23 +268,94 @@ mod tests {
     }
 
     #[test]
-    fn test_new_operation() {
-        let (cfg, context) = example_consensus_config();
+    fn test_pool() {
+        let (mut cfg, context) = example_consensus_config();
+        cfg.max_pool_size = 10;
         let periods = vec![0, 0]; // thread_count =2
         let mut pool = OperationPool::new(periods, cfg);
-        let (t1, thread) = get_transaction(25, 10, &context);
-        pool.new_operation(t1.clone(), &context).unwrap();
 
-        let res = pool
-            .get_ops(Slot::new(1, thread), HashSet::new(), 50)
-            .unwrap();
-        assert_eq!(res.len(), 1);
-        assert_eq!(res[0].1, t1);
+        // generate transactions
+        // t0 -> t10 -> valids
+        // t11 -> t17 -> not yet managed
+        let mut vec = Vec::new();
+        for i in 0..18 {
+            let (op, thread) = get_transaction(40 + i, 40 + i, &context);
+            let res = pool.new_operation(op.clone(), &context).unwrap();
+            if i > 10 {
+                // not yet valid
+                assert!(!res);
+            } else {
+                // valid ops
+                vec.push((op.clone(), thread));
+                assert!(res);
+            }
+        }
 
-        pool.ack_final_block(vec![100, 100]).unwrap(); // t1 should be expired after 50
-        let res = pool
-            .get_ops(Slot::new(1, thread), HashSet::new(), 50)
-            .unwrap();
-        assert_eq!(res.len(), 0);
+        // t18 -> t21 -> duplicates
+        let add = Vec::new();
+        for (op, _thread) in vec[0..5].iter() {
+            //add.push((op.clone(), thread.clone()));
+            assert!(!pool.new_operation(op.clone(), &context).unwrap());
+        }
+
+        vec.extend(add.into_iter());
+
+        let mut thread0: Vec<_> = vec
+            .iter()
+            .filter(|(_op, thread)| *thread == 0)
+            .cloned()
+            .collect();
+        let mut thread1: Vec<_> = vec
+            .iter()
+            .filter(|(_op, thread)| *thread == 1)
+            .cloned()
+            .collect();
+
+        // sort from bigger fee to smaller
+        thread0.reverse();
+        thread1.reverse();
+
+        // checks ops for thread 0
+        let res = pool.get_ops(Slot::new(1, 0), HashSet::new(), 50).unwrap();
+        assert_eq!(res.len(), thread0.len());
+        let res_op: Vec<_> = res.iter().map(|(_id, op)| op.clone()).collect();
+        let thread0_op: Vec<_> = thread0.iter().map(|(op, _thread)| op.clone()).collect();
+        assert_eq!(res_op, thread0_op);
+
+        // checks ops for thread 1
+        let res = pool.get_ops(Slot::new(1, 1), HashSet::new(), 50).unwrap();
+        assert_eq!(res.len(), thread1.len());
+        let res_op: Vec<_> = res.iter().map(|(_id, op)| op.clone()).collect();
+        let thread1_op: Vec<_> = thread1.iter().map(|(op, _thread)| op.clone()).collect();
+        assert_eq!(res_op, thread1_op);
+
+        // op after before 45 should be discarded
+        pool.ack_final_block(vec![45, 45]).unwrap();
+
+        // Update expected
+        let thread0: Vec<_> = thread0
+            .iter()
+            .filter(|(op, _thread)| op.content.expiration_period >= 45)
+            .cloned()
+            .collect();
+        let thread1: Vec<_> = thread1
+            .iter()
+            .filter(|(op, _thread)| op.content.expiration_period >= 45)
+            .cloned()
+            .collect();
+
+        // checks ops for thread 0
+        let res = pool.get_ops(Slot::new(1, 0), HashSet::new(), 50).unwrap();
+        assert_eq!(res.len(), thread0.len());
+        let res_op: Vec<_> = res.iter().map(|(_id, op)| op.clone()).collect();
+        let thread0_op: Vec<_> = thread0.iter().map(|(op, _thread)| op.clone()).collect();
+        assert_eq!(res_op, thread0_op);
+
+        // checks ops for thread 1
+        let res = pool.get_ops(Slot::new(1, 1), HashSet::new(), 50).unwrap();
+        assert_eq!(res.len(), thread1.len());
+        let res_op: Vec<_> = res.iter().map(|(_id, op)| op.clone()).collect();
+        let thread1_op: Vec<_> = thread1.iter().map(|(op, _thread)| op.clone()).collect();
+        assert_eq!(res_op, thread1_op);
     }
 }

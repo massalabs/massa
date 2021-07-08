@@ -39,6 +39,8 @@ pub struct ConsensusConfig {
     pub max_block_size: u32,
     /// number of periods before expire_period when an operation is valid
     pub operation_validity_periods: u64,
+    /// pool size
+    pub max_pool_size: u64,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
