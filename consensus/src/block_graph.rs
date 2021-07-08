@@ -961,6 +961,41 @@ impl BlockGraph {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
 
+    pub fn get_operation(
+        &self,
+        op_id: OperationId,
+    ) -> Result<Option<(Operation, HashMap<BlockId, bool>)>, ConsensusError> {
+        let active_blocks = self.block_statuses.iter().filter(|(_, block)| match block {
+            BlockStatus::Active(_) => true,
+            _ => false,
+        });
+        let mut res = HashMap::new();
+        let mut op = None;
+        for (id, block) in active_blocks {
+            match block {
+                BlockStatus::Active(active_block) => {
+                    if active_block.operation_set.contains(&op_id) {
+                        // op should never be none
+                        // as we checked it's here before
+                        // maybe add a consistency check
+                        op = active_block.get_operation(op_id, &self.serialization_context)?;
+                        res.insert(*id, active_block.is_final);
+                    }
+                }
+                _ => {
+                    return Err(ConsensusError::ContainerInconsistency(
+                        "that block should still be active".to_string(),
+                    ))
+                }
+            }
+        }
+        if let Some(operation) = op {
+            Ok(Some((operation, res)))
+        } else {
+            Ok(None)
+        }
+    }
+
     // signal new slot
     pub fn slot_tick(
         &mut self,
