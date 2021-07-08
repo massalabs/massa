@@ -11,7 +11,7 @@ use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
 use consensus::DiscardReason;
-use consensus::LedgerDataExport;
+use consensus::{LedgerData, LedgerDataExport};
 use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::Address;
@@ -138,55 +138,69 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
     list.into_iter().map(|v| from_hash_slot(*v)).collect()
 }
 
-#[derive(Debug, Clone)]
-pub struct WrapperAddressLedgerDataExport<'a> {
-    pub ledger: LedgerDataExport,
-    pub search_addr: &'a Address,
+pub fn extract_addresses_from_ledger<'a>(
+    ledger: &'a LedgerDataExport,
+) -> Vec<WrapperAddressLedgerDataExport<'a>> {
+    //extract address from final_data
+    let mut base_ledger_map: HashMap<&Address, WrapperAddressLedger<'a>> = ledger
+        .final_data
+        .data
+        .iter()
+        .flatten()
+        .map(|(addr, ledger)| {
+            (
+                addr,
+                WrapperAddressLedger {
+                    final_balance: Some(ledger),
+                    candidate_balance: None,
+                },
+            )
+        })
+        .collect();
+    //get balance at best parents.
+    ledger
+        .final_data
+        .data
+        .iter()
+        .flatten()
+        .for_each(|(addr, ledger)| {
+            let mut data = base_ledger_map
+                .entry(addr)
+                .or_insert_with(|| WrapperAddressLedger {
+                    final_balance: None,
+                    candidate_balance: None,
+                });
+            data.candidate_balance = Some(ledger);
+        });
+
+    base_ledger_map
+        .into_iter()
+        .map(|(address, balances)| WrapperAddressLedgerDataExport { address, balances })
+        .collect()
 }
 
-impl<'a> WrapperAddressLedgerDataExport<'a> {
-    pub fn new(search_addr: &Address, ledger: LedgerDataExport) -> WrapperAddressLedgerDataExport {
-        WrapperAddressLedgerDataExport {
-            ledger,
-            search_addr,
-        }
-    }
+#[derive(Debug, Clone)]
+pub struct WrapperAddressLedger<'a> {
+    pub final_balance: Option<&'a LedgerData>,
+    pub candidate_balance: Option<&'a LedgerData>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WrapperAddressLedgerDataExport<'a> {
+    pub address: &'a Address,
+    pub balances: WrapperAddressLedger<'a>,
 }
 
 impl<'a> std::fmt::Display for WrapperAddressLedgerDataExport<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let final_balance = self
-            .ledger
-            .final_data
-            .data
-            .iter()
-            .flatten()
-            .find(|(addr, _)| {
-                if addr == &self.search_addr {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map(|(_, data)| data.get_balance().to_string())
-            .unwrap_or("Not balance found".to_string());
-        writeln!(f, "Balance at final blocks:{} ", final_balance)?;
-        let parent_balance = self
-            .ledger
-            .candidate_data
-            .data
-            .iter()
-            .flatten()
-            .find(|(addr, _)| {
-                if addr == &self.search_addr {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map(|(_, data)| data.get_balance().to_string())
-            .unwrap_or("Not balance found".to_string());
-        writeln!(f, "Balance at best parents:{} ", parent_balance)
+        write!(f, "address:{}", self.address)?;
+        if let Some(balance) = self.balances.final_balance {
+            write!(f, ", balance at final blocks:{}", balance.balance)?;
+        }
+        if let Some(balance) = self.balances.candidate_balance {
+            write!(f, ", balance at best parents:{}", balance.balance)?;
+        }
+        Ok(())
     }
 }
 #[derive(Debug, Clone, Deserialize)]

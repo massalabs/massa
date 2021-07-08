@@ -19,8 +19,10 @@ bitcoin_hashes = "0.9"
 serde_json = { version = "1.0" }
 chrono = "0.4.19"
 log = { version = "0.4" }
+serde_qs = {version= "0.8.3"} 
 
 time = { path = "../time" }
+api = { path = "../api" }
 models = {path = "../models"}
 consensus = {path = "../consensus"}
 communication = {path = "../communication"}
