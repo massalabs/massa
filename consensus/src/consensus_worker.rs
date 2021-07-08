@@ -6,7 +6,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::{Block, Operation, Slot};
+use models::{Block, Operation, SerializationContext, Slot};
 use std::collections::{HashMap, HashSet};
 use storage::StorageAccess;
 use tokio::{
@@ -76,6 +76,8 @@ pub struct ConsensusWorker {
     wishlist: HashSet<Hash>,
     /// operation pool
     pool: Pool,
+    /// serialization_context
+    context: SerializationContext,
 }
 
 impl ConsensusWorker {
@@ -99,6 +101,7 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
+        context: SerializationContext,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let seed = vec![0u8; 32]; // TODO temporary (see issue #103)
         let participants_weights = vec![1u64; cfg.nodes.len()]; // TODO (see issue #104)
@@ -129,6 +132,7 @@ impl ConsensusWorker {
             next_slot,
             wishlist: HashSet::new(),
             pool: Pool::new(next_slot, cfg.clone()),
+            context,
         })
     }
 
@@ -316,7 +320,7 @@ impl ConsensusWorker {
                     })
             }
             ConsensusCommand::CreatedOperation(operation) => {
-                if self.pool.new_operation(operation.clone()) {
+                if let Ok(true) = self.pool.new_operation(operation.clone(), &self.context) {
                     self.protocol_command_sender
                         .propagate_operation(operation)
                         .await
@@ -396,7 +400,7 @@ impl ConsensusWorker {
                     .await?;
             }
             ProtocolEvent::Operation(operation) => {
-                if self.pool.new_operation(operation.clone()) {
+                if let Ok(true) = self.pool.new_operation(operation.clone(), &self.context) {
                     self.protocol_command_sender
                         .propagate_operation(operation)
                         .await?;

@@ -79,6 +79,7 @@ pub async fn start_consensus_controller(
             event_tx,
             manager_rx,
             clock_compensation,
+            serialization_context,
         )?
         .run_loop()
         .await;

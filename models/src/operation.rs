@@ -28,11 +28,11 @@ pub enum Operation {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionContent {
-    expire_period: u64,
-    sender_public_key: PublicKey,
-    recipient_address: Hash, // Hash of the recipient's public key
-    amount: u64,
-    fee: u64,
+    pub expire_period: u64,
+    pub sender_public_key: PublicKey,
+    pub recipient_address: Hash, // Hash of the recipient's public key
+    pub amount: u64,
+    pub fee: u64,
 }
 
 impl SerializeCompact for TransactionContent {
@@ -95,6 +95,11 @@ impl DeserializeCompact for TransactionContent {
             },
             cursor,
         ))
+    }
+}
+impl TransactionContent {
+    pub fn compute_hash(&self, context: &SerializationContext) -> Result<Hash, ModelsError> {
+        Ok(Hash::hash(&self.to_bytes_compact(&context)?))
     }
 }
 
