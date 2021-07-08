@@ -1419,7 +1419,7 @@ async fn test_last_stale() {
         (
             get_test_block_id(),
             (
-                DiscardReason::Invalid,
+                DiscardReason::Invalid("for test reason".to_string()),
                 get_header(&serialization_context, Slot::new(1, 1), None).1,
             ),
         ),
@@ -1519,7 +1519,7 @@ async fn test_last_invalid() {
         (
             get_test_block_id(),
             (
-                DiscardReason::Invalid,
+                DiscardReason::Invalid("for test reason".to_string()),
                 get_header(&serialization_context, Slot::new(1, 1), None).1,
             ),
         ),
@@ -1630,7 +1630,7 @@ async fn test_staker_info() {
     let staker_s_discarded = vec![(
         get_test_block_id(),
         (
-            DiscardReason::Invalid,
+            DiscardReason::Invalid("for test reason".to_string()),
             get_header(&serialization_context, Slot::new(1, 1), Some(staker)).1,
         ),
     )];

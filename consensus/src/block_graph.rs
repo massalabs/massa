@@ -329,10 +329,10 @@ impl DeserializeCompact for ExportActiveBlock {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscardReason {
-    /// Block is invalid, either structurally, or because of some incompatibility.
-    Invalid,
+    /// Block is invalid, either structurally, or because of some incompatibility. The String contains the reason for info or debugging.
+    Invalid(String),
     /// Block is incompatible with a final block.
     Stale,
     /// Block has enough fitness.
@@ -1195,12 +1195,12 @@ impl BlockGraph {
                     }
                     HeaderCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
-
+                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"block_id": block_id, "reason": reason});
                         // discard
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                header: header,
+                                header,
                                 reason,
                                 sequence_number: BlockGraph::new_sequence_number(
                                     &mut self.sequence_counter,
@@ -1208,7 +1208,6 @@ impl BlockGraph {
                             },
                         );
 
-                        massa_trace!("consensus.block_graph.process.incomming_header.discarded", {"block_id": block_id, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
@@ -1284,6 +1283,7 @@ impl BlockGraph {
                     }
                     BlockCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
+                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"block_id": block_id, "reason": reason});
 
                         // add to discard
                         self.block_statuses.insert(
@@ -1297,7 +1297,6 @@ impl BlockGraph {
                             },
                         );
 
-                        massa_trace!("consensus.block_graph.process.incomming_block.discarded", {"block_id": block_id, "reason": reason});
                         return Ok(BTreeSet::new());
                     }
                 }
@@ -1405,7 +1404,11 @@ impl BlockGraph {
         massa_trace!("consensus.block_graph.maybe_note_attack_attempt", {"hash": hash, "reason": reason});
         // If invalid, note the attack attempt.
         match reason {
-            &DiscardReason::Invalid => {
+            DiscardReason::Invalid(reason) => {
+                info!(
+                    "consensus.block_graph.maybe_note_attack_attempt DiscardReason::Invalid:{}",
+                    reason
+                );
                 self.attack_attempts.push(hash.clone());
             }
             _ => {}
@@ -1469,7 +1472,9 @@ impl BlockGraph {
             || header.content.slot.period == 0
             || header.content.slot.thread >= self.cfg.thread_count
         {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                "Basic structural header checks failed".to_string(),
+            )));
         }
 
         // check that is older than the latest final block in that thread
@@ -1496,7 +1501,9 @@ impl BlockGraph {
         //       to avoid doing too many draws to check blocks in the distant future
         if header.content.creator != self.cfg.nodes[selector.draw(header.content.slot) as usize].0 {
             // it was not the creator's turn to create a block for this slot
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                format!("Bad creator turn for the slot:{}", header.content.slot),
+            )));
         }
 
         // check if block is in the future: queue it
@@ -1517,7 +1524,10 @@ impl BlockGraph {
             match self.block_statuses.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
-                    return Ok(HeaderCheckOutcome::Discard(*reason));
+                    return Ok(HeaderCheckOutcome::Discard(match reason {
+                        DiscardReason::Invalid(invalid_reason) => DiscardReason::Invalid(format!("discarded because a parent was discarded for the following reason: {:?}", invalid_reason)),
+                        r @ _ => r.clone()
+                    }));
                 }
                 Some(BlockStatus::Active(parent)) => {
                     // parent is active
@@ -1526,14 +1536,21 @@ impl BlockGraph {
                     if parent.block.header.content.slot.thread != parent_thread
                         || parent.block.header.content.slot >= header.content.slot
                     {
-                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                            format!(
+                                "Bad parent thread:{} or slot:{}.",
+                                parent_thread, parent.block.header.content.slot
+                            ),
+                        )));
                     }
 
                     // inherit parent incompatibilities
                     // and ensure parents are mutually compatible
                     if let Some(p_incomp) = self.gi_head.get(&parent_hash) {
                         if !p_incomp.is_disjoint(&parent_set) {
-                            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                                "Parent not mutually compatible".to_string(),
+                            )));
                         }
                         incomp.extend(p_incomp);
                     }
@@ -1568,7 +1585,10 @@ impl BlockGraph {
                 )?;
                 if parent_period < gp_max_slots[parent_i as usize] {
                     // a parent is earlier than a block known by another parent in that thread
-                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        "a parent is earlier than a block known by another parent in that thread"
+                            .to_string(),
+                    )));
                 }
                 gp_max_slots[parent_i as usize] = parent_period;
                 if parent_period == 0 {
@@ -1584,13 +1604,17 @@ impl BlockGraph {
                     match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
-                            return Ok(HeaderCheckOutcome::Discard(*reason));
+                            return Ok(HeaderCheckOutcome::Discard(reason.clone()));
                         }
                         // this grandpa is active
                         Some(BlockStatus::Active(gp)) => {
                             if gp.block.header.content.slot.period > gp_max_slots[gp_i as usize] {
                                 if gp_i < parent_i {
-                                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+                                    return Ok(HeaderCheckOutcome::Discard(
+                                        DiscardReason::Invalid(
+                                            "grandpa erro: gp_i < parent_i".to_string(),
+                                        ),
+                                    ));
                                 }
                                 gp_max_slots[gp_i as usize] = gp.block.header.content.slot.period;
                             }
@@ -1671,7 +1695,9 @@ impl BlockGraph {
 
         // check if the block is incompatible with a parent
         if !incomp.is_disjoint(&parents.iter().map(|(h, _p)| *h).collect()) {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                "Block incompatible with a parent".to_string(),
+            )));
         }
 
         // check if the block is incompatible with a final block
@@ -1829,7 +1855,12 @@ impl BlockGraph {
                         "block graph check_operations error, bad operation sender_public_key address :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!(
+                            "bad operation sender_public_key address :{}",
+                            err
+                        )),
+                    ));
                 }
             };
             let op_start_validity_period = operation
@@ -1860,7 +1891,11 @@ impl BlockGraph {
                 // check if present
                 if !current_block.operation_set.is_disjoint(operation_set) {
                     error!("block graph check_operations error, block operation already integrated in another block");
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(
+                            "Block operation already integrated in another block".to_string(),
+                        ),
+                    ));
                 }
                 dependencies.insert(current_block_id);
 
@@ -1883,7 +1918,9 @@ impl BlockGraph {
                         "block graph check_operations error, bad block creator address :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!("bad block creator address :{}", err)),
+                    ));
                 }
             };
         let mut involved_addresses: HashSet<Address> = HashSet::new();
@@ -1898,7 +1935,12 @@ impl BlockGraph {
                         "block graph check_operations error, error during get_involved_addresses :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!(
+                            "error during get_involved_addresses :{}",
+                            err
+                        )),
+                    ));
                 }
             };
         }
@@ -1915,7 +1957,9 @@ impl BlockGraph {
                     "block graph check_operations error, error retrieving ledger at parents :{}",
                     err
                 );
-                return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                return Ok(BlockOperationsCheckOutcome::Discard(
+                    DiscardReason::Invalid(format!("error retrieving ledger at parents :{}", err)),
+                ));
             }
         };
 
@@ -1932,7 +1976,12 @@ impl BlockGraph {
         if creator_thread == block_to_check.header.content.slot.thread {
             if let Err(err) = current_ledger.apply_change(reward_change) {
                 warn!("block graph check_operations error, can't apply reward_change to block current_ledger: {}", err);
-                return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                return Ok(BlockOperationsCheckOutcome::Discard(
+                    DiscardReason::Invalid(format!(
+                        "can't apply reward_change to block current_ledger: {}",
+                        err
+                    )),
+                ));
             }
         }
         match block_changes[creator_thread as usize].entry(block_creator_address) {
@@ -1942,7 +1991,9 @@ impl BlockGraph {
                         "block graph check_operations error, can't chain reward change :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!("Can't chain reward change :{}", err)),
+                    ));
                 }
             }
             hash_map::Entry::Vacant(vac) => {
@@ -1959,7 +2010,9 @@ impl BlockGraph {
                         "block graph check_operations error, can't get changes :{}",
                         err
                     );
-                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(BlockOperationsCheckOutcome::Discard(
+                        DiscardReason::Invalid(format!("can't get changes :{}", err)),
+                    ));
                 }
                 Ok(changes) => changes,
             };
@@ -1970,7 +2023,10 @@ impl BlockGraph {
                         if let Err(err) = current_ledger.apply_change((&change_addr, &change)) {
                             warn!("block graph check_operations error, can't apply change to block current_ledger :{}", err);
                             return Ok(BlockOperationsCheckOutcome::Discard(
-                                DiscardReason::Invalid,
+                                DiscardReason::Invalid(format!(
+                                    "can't apply change to block current_ledger :{}",
+                                    err
+                                )),
                             ));
                         }
                     }
@@ -1983,7 +2039,7 @@ impl BlockGraph {
                                     err
                                 );
                                 return Ok(BlockOperationsCheckOutcome::Discard(
-                                    DiscardReason::Invalid,
+                                    DiscardReason::Invalid(format!("can't chain change :{}", err)),
                                 ));
                             }
                         }
@@ -2181,8 +2237,9 @@ impl BlockGraph {
         block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
         operation_set: HashSet<OperationId>,
     ) -> Result<(), ConsensusError> {
-        // add block to status structure
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
+
+        // add block to status structure
         self.block_statuses.insert(
             hash,
             BlockStatus::Active(ActiveBlock {
@@ -2492,6 +2549,10 @@ impl BlockGraph {
             }
             final_blocks
         };
+
+        // Save latest_final_blocks_periods for later use when updating the ledger.
+        let old_latest_final_blocks_periods = self.latest_final_blocks_periods.clone();
+
         // mark final blocks and update latest_final_blocks_periods
         massa_trace!(
             "consensus.block_graph.add_block_to_graph.mark_final_blocks",
@@ -2528,6 +2589,7 @@ impl BlockGraph {
                     "hash": final_block_hash
                 });
                 *is_final = true;
+                // update latest final blocks
                 if final_block.header.content.slot.period
                     > self.latest_final_blocks_periods
                         [final_block.header.content.slot.thread as usize]
@@ -2542,6 +2604,107 @@ impl BlockGraph {
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", hash, final_block_hash)));
             }
+        }
+
+        // list threads where latest final block changed
+        let changed_threads_old_block_thread_id_period = self
+            .latest_final_blocks_periods
+            .iter()
+            .enumerate()
+            .filter_map(|(thread, b_id_period)| {
+                if b_id_period.0 != old_latest_final_blocks_periods[thread].0 {
+                    return Some((
+                        thread as u8,
+                        b_id_period.0,
+                        old_latest_final_blocks_periods[thread].1,
+                    ));
+                }
+                None
+            });
+
+        // Update ledger with changes from final blocks, "B2".
+        for (changed_thread, old_block_id, old_period) in changed_threads_old_block_thread_id_period
+        {
+            // Get the old block
+            let old_block = match self.block_statuses.get(&old_block_id) {
+                Some(BlockStatus::Active(latest)) => latest,
+                _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - active old latest final block {:?} is missing in thread {:?}", old_block_id, changed_thread))),
+            };
+
+            // Get the latest final in the same thread.
+            let latest_final_in_thread_id =
+                self.latest_final_blocks_periods[changed_thread as usize].0;
+
+            // Init the stop backtrack stop periods
+            let mut stop_backtrack_periods = vec![0u64; self.cfg.thread_count as usize];
+            for limit_thread in 0u8..self.cfg.thread_count {
+                if limit_thread == limit_thread {
+                    // in the same thread, set the stop backtrack period to B1.period + 1
+                    stop_backtrack_periods[limit_thread as usize] = old_period + 1;
+                } else if !old_block.parents.is_empty() {
+                    // In every other thread, set it to B1.parents[tau*].period + 1
+                    stop_backtrack_periods[limit_thread as usize] =
+                        old_block.parents[limit_thread as usize].1 + 1;
+                }
+            }
+
+            // Backtrack blocks starting from B2.
+            let mut ancestry: HashSet<BlockId> = HashSet::new();
+            let mut to_scan: Vec<BlockId> = vec![latest_final_in_thread_id]; // B2
+            let mut accumulated_changes: HashMap<Address, LedgerChange> = HashMap::new();
+            while let Some(scan_b_id) = to_scan.pop() {
+                // insert into ancestry, ignore if already scanned
+                if !ancestry.insert(scan_b_id) {
+                    continue;
+                }
+
+                // get block, quit if not found or not active
+                let scan_b = match self.block_statuses.get(&scan_b_id) {
+                    Some(BlockStatus::Active(b)) => b,
+                    _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - block {:?} is missing", scan_b_id)))
+                };
+
+                // accumulate ledger changes
+                // Warning 1: this uses ledger change commutativity and associativity, may not work with smart contracts
+                // Warning 2: we assume that overflows cannot happen here (they won't be deterministic)
+                if scan_b.block.header.content.slot.period
+                    < stop_backtrack_periods[scan_b.block.header.content.slot.thread as usize]
+                {
+                    continue;
+                }
+                for (addr, changes) in scan_b.block_ledger_change
+                    [scan_b.block.header.content.slot.thread as usize]
+                    .iter()
+                    .filter(|(addr, _changes)| {
+                        addr.get_thread(self.cfg.thread_count) == changed_thread
+                    })
+                {
+                    match accumulated_changes.entry(*addr) {
+                        hash_map::Entry::Occupied(mut occ) => {
+                            occ.get_mut().chain(changes)?;
+                        }
+                        hash_map::Entry::Vacant(vac) => {
+                            vac.insert(changes.clone());
+                        }
+                    }
+                }
+
+                // Explore parents
+                to_scan.extend(
+                    scan_b
+                        .parents
+                        .iter()
+                        .map(|(b_id, _period)| *b_id)
+                        .collect::<Vec<BlockId>>(),
+                );
+            }
+
+            // update ledger
+            self.ledger.apply_final_changes(
+                changed_thread,
+                accumulated_changes.into_iter().collect(),
+                self.latest_final_blocks_periods[changed_thread as usize].1,
+            )?;
         }
 
         massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
@@ -2597,6 +2760,36 @@ impl BlockGraph {
                 .iter()
                 .map(|(h, _)| h.clone()),
         );
+
+        for (thread, id) in latest_final_blocks.iter().enumerate() {
+            let mut current_block_id = *id;
+            loop {
+                //get block to process.
+                let current_block = match self.get_active_block(&current_block_id) {
+                    Some(b) => b,
+                    None => break,
+                };
+
+                // stop traversing when reaching a block with period number low enough
+                // so that any of its operations will have their validity period expired at the latest final block in thread
+                if current_block.header.content.slot.period
+                    < self.latest_final_blocks_periods[thread]
+                        .1
+                        .saturating_sub(self.cfg.operation_validity_periods)
+                {
+                    break;
+                }
+
+                // retain block
+                retain_active.insert(current_block_id);
+
+                // if not genesis, traverse parent
+                if current_block.header.content.parents.is_empty() {
+                    break;
+                }
+                current_block_id = current_block.header.content.parents[thread as usize];
+            }
+        }
 
         // grow with parents & fill thread holes twice
         for _ in 0..2 {
@@ -2751,8 +2944,8 @@ impl BlockGraph {
                         {
                             discarded_dep_found = true;
                             match reason {
-                                DiscardReason::Invalid => {
-                                    discard_reason = Some(DiscardReason::Invalid);
+                                DiscardReason::Invalid(reason) => {
+                                    discard_reason = Some(DiscardReason::Invalid(format!("disgarded because depend on block:{} that has disgard reason:{}", hash, reason)));
                                     break;
                                 }
                                 DiscardReason::Stale => discard_reason = Some(DiscardReason::Stale),
@@ -2794,8 +2987,8 @@ impl BlockGraph {
                         if let Some(reason) = to_discard.get(dep) {
                             dep_to_discard_found = true;
                             match reason {
-                                Some(DiscardReason::Invalid) => {
-                                    discard_reason = Some(DiscardReason::Invalid);
+                                Some(DiscardReason::Invalid(reason)) => {
+                                    discard_reason = Some(DiscardReason::Invalid(format!("disgarded because depend on block:{} that has disgard reason:{}", hash, reason)));
                                     break;
                                 }
                                 Some(DiscardReason::Stale) => {

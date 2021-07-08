@@ -272,7 +272,7 @@ pub async fn propagate_block(
     protocol_controller.receive_block(block).await;
     if valid {
         //see if the block is propagated.
-        validate_propagate_block(protocol_controller, block_hash, 1000).await;
+        validate_propagate_block(protocol_controller, block_hash, 150).await;
     } else {
         //see if the block is propagated.
         validate_notpropagate_block(protocol_controller, block_hash, 1000).await;
@@ -376,7 +376,7 @@ pub fn default_consensus_config(
             disable_block_creation: true,
             max_block_size,
             max_operations_per_block,
-            operation_validity_periods: 3,
+            operation_validity_periods: 2,
             ledger_path: tempdir.path().to_path_buf(),
             ledger_cache_capacity: 1000000,
             ledger_flush_interval: Some(200.into()),
