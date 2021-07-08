@@ -1864,6 +1864,7 @@ impl BlockGraph {
         }
 
         //union for operation in block { operation.get_involved_adresses(block.creator.address) } union block.creator.address;
+        //with only the addresses in the block's thread retained
         let block_creator_address =
             match Address::from_public_key(&block_to_check.header.content.creator) {
                 Ok(addr) => addr,
@@ -1891,6 +1892,9 @@ impl BlockGraph {
                 }
             };
         }
+        involved_addresses.retain(|addr| {
+            addr.get_thread(self.cfg.thread_count) == block_to_check.header.content.slot.thread
+        });
 
         let mut current_ledger = match self
             .get_ledger_at_parents(&block_to_check.header.content.parents, &involved_addresses)
@@ -1909,15 +1913,31 @@ impl BlockGraph {
             vec![HashMap::new(); self.cfg.thread_count as usize];
 
         // reward
+        let creator_thread = block_creator_address.get_thread(self.cfg.thread_count);
         let reward_ledger_change = LedgerChange {
             balance_delta: self.cfg.block_reward,
             balance_increment: true,
         };
         let reward_change = (&block_creator_address, &reward_ledger_change);
-
-        if let Err(err) = current_ledger.apply_change(reward_change, self.cfg.thread_count) {
-            warn!("block graph check_operations error, can't apply reward_change to block current_ledger: {}", err);
-            return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+        if creator_thread == block_to_check.header.content.slot.thread {
+            if let Err(err) = current_ledger.apply_change(reward_change, self.cfg.thread_count) {
+                warn!("block graph check_operations error, can't apply reward_change to block current_ledger: {}", err);
+                return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+            }
+        }
+        match block_changes[creator_thread as usize].entry(block_creator_address) {
+            hash_map::Entry::Occupied(mut occ) => {
+                if let Err(err) = occ.get_mut().chain(&reward_ledger_change) {
+                    warn!(
+                        "block graph check_operations error, can't chain reward change :{}",
+                        err
+                    );
+                    return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                }
+            }
+            hash_map::Entry::Vacant(vac) => {
+                vac.insert(reward_ledger_change);
+            }
         }
 
         // all operations
@@ -1936,13 +1956,16 @@ impl BlockGraph {
             for (thread, changes) in changes.into_iter().enumerate() {
                 for (change_addr, change) in changes.into_iter() {
                     // apply change to ledger and check if ok
-                    if let Err(err) =
-                        current_ledger.apply_change((&change_addr, &change), self.cfg.thread_count)
-                    {
-                        warn!("block graph check_operations error, can't apply change to block current_ledger :{}", err);
-                        return Ok(BlockOperationsCheckOutcome::Discard(DiscardReason::Invalid));
+                    if thread == (block_to_check.header.content.slot.thread as usize) {
+                        if let Err(err) = current_ledger
+                            .apply_change((&change_addr, &change), self.cfg.thread_count)
+                        {
+                            warn!("block graph check_operations error, can't apply change to block current_ledger :{}", err);
+                            return Ok(BlockOperationsCheckOutcome::Discard(
+                                DiscardReason::Invalid,
+                            ));
+                        }
                     }
-
                     // add change to block changes
                     match block_changes[thread].entry(change_addr) {
                         hash_map::Entry::Occupied(mut occ) => {
@@ -1975,6 +1998,32 @@ impl BlockGraph {
         parents: &Vec<BlockId>,
         query_addrs: &HashSet<Address>,
     ) -> Result<LedgerSubset, ConsensusError> {
+        // check that all addresses belong to threads with parents later or equal to the latest_final_block of that thread
+        let involved_threads: HashSet<u8> = query_addrs
+            .iter()
+            .map(|addr| addr.get_thread(self.cfg.thread_count))
+            .collect();
+        for thread in involved_threads.into_iter() {
+            match self.block_statuses.get(&parents[thread as usize]) {
+                Some(BlockStatus::Active(b)) => {
+                    if b.block.header.content.slot.period
+                        < self.latest_final_blocks_periods[thread as usize].1
+                    {
+                        return Err(ConsensusError::ContainerInconsistency(format!(
+                            "asking for operations in thread {:?}, for which the given parent is older than the latest final block of that thread",
+                            thread
+                        )));
+                    }
+                }
+                _ => {
+                    return Err(ConsensusError::ContainerInconsistency(format!(
+                        "parent block missing or in non-active state: {:?}",
+                        parents[thread as usize]
+                    )));
+                }
+            }
+        }
+
         // compute backtrack ending slots for each thread
         let mut stop_periods =
             vec![vec![0u64; self.cfg.thread_count as usize]; self.cfg.thread_count as usize];
