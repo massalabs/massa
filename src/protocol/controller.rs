@@ -8,7 +8,7 @@ use crate::network::connection_controller::{
 use futures::{
     future::try_join, future::FusedFuture, stream::FuturesUnordered, FutureExt, StreamExt,
 };
-use log::{debug, info};
+use log::{debug, info, trace};
 use rand::{rngs::StdRng, FromEntropy, RngCore};
 use std::collections::{hash_map, HashMap, HashSet};
 use std::error::Error;
@@ -75,6 +75,7 @@ pub struct ProtocolController {
 impl ProtocolController {
     pub async fn new(cfg: &ProtocolConfig) -> BoxResult<Self> {
         debug!("starting protocol controller");
+        trace!("massa-network__protocol__controllers__ProtocolController::new__start");
 
         // instantiate connection controller
         let connection_controller = ConnectionController::new(&cfg.network).await?;
@@ -89,6 +90,10 @@ impl ProtocolController {
             self_node_id = NodeId(signature_engine.derive_public_key(&private_key));
         }
         debug!("local protocol node_id={:?}", self_node_id);
+        trace!(
+            "massa-network__protocol__controllers__ProtocolController::new__key::{:?}",
+            self_node_id
+        );
 
         // launch worker
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(1024);
@@ -107,6 +112,7 @@ impl ProtocolController {
         });
 
         debug!("protocol controller ready");
+        trace!("massa-network__protocol__controllers__ProtocolController::new__ready");
 
         Ok(ProtocolController {
             protocol_event_rx,
@@ -127,12 +133,14 @@ impl ProtocolController {
     //stop the protocol controller
     pub async fn stop(mut self) {
         debug!("stopping protocol controller");
+        trace!("massa-network__protocol__controllers__ProtocolController::stop__start");
         drop(self.protocol_command_tx);
         while let Some(_) = self.protocol_event_rx.next().await {}
         self.protocol_controller_handle
             .await
             .expect("failed joining protocol controller");
         debug!("protocol controller stopped");
+        trace!("massa-network__protocol__controllers__ProtocolController::stop__stop");
     }
 }
 
@@ -175,6 +183,7 @@ async fn protocol_controller_fn(
                     }
 
                     debug!("starting handshake with connection_id={:?}", connection_id);
+                    trace!("massa-network__protocol__controllers__protocol_controller_fn__handshake::start::{:?}", connection_id);
 
                     let messsage_timeout_copy = cfg.message_timeout;
                     let handshake_fn_handle = tokio::spawn(async move {
@@ -211,10 +220,12 @@ async fn protocol_controller_fn(
                 // a handshake finished, and succeeded
                 Ok((new_connection_id, Ok((new_node_id, socket_reader, socket_writer)))) =>  {
                     debug!("handshake with connection_id={:?} succeeded => node_id={:?}", new_connection_id, new_node_id);
+                    trace!("massa-network__protocol__controllers__protocol_controller_fn__handshake::ok::{:?}::{:?}", new_connection_id, new_node_id);
 
                     // connection was banned in the meantime
                     if !running_handshakes.remove(&new_connection_id) {
-                        debug!("connection_id={:?}, node_id={:?} peer was banend while handshaking", new_connection_id, new_node_id);
+                        debug!("connection_id={:?}, node_id={:?} peer was banned while handshaking", new_connection_id, new_node_id);
+                        trace!("massa-network__protocol__controllers__protocol_controller_fn__handshake::banned::{:?}::{:?}", new_connection_id, new_node_id);
                         connection_controller
                             .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                             .await;
@@ -225,6 +236,7 @@ async fn protocol_controller_fn(
                         // we already have this node ID
                         hash_map::Entry::Occupied(_) => {
                             debug!("connection_id={:?}, node_id={:?} protocol channel would be redundant", new_connection_id, new_node_id);
+                            trace!("massa-network__protocol__controllers__protocol_controller_fn__handshake::redundant::{:?}::{:?}", new_connection_id, new_node_id);
                             connection_controller
                                 .connection_closed(new_connection_id, ConnectionClosureReason::Normal)
                                 .await;
@@ -232,7 +244,7 @@ async fn protocol_controller_fn(
                         // we don't have this node ID
                         hash_map::Entry::Vacant(entry) => {
                             info!("established protocol channel with connection_id={:?} => node_id={:?}", new_connection_id, new_node_id);
-
+                            trace!("massa-network__protocol__controllers__protocol_controller_fn__handshake::connection::ok::{:?}::{:?}", new_connection_id, new_node_id);
                             // spawn node_controller_fn
                             let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1024);
                             let node_event_tx_clone = node_event_tx.clone();
@@ -255,6 +267,7 @@ async fn protocol_controller_fn(
                 // a handshake finished and failed
                 Ok((connection_id, Err(err))) => {
                     debug!("handshake failed with connection_id={:?}: {:?}", connection_id, err);
+                    trace!("massa-network__protocol__controllers__protocol_controller_fn__handshake::fail::{:?}::{:?}", connection_id, err);
                     running_handshakes.remove(&connection_id);
                     connection_controller.connection_closed(connection_id, ConnectionClosureReason::Failed).await;
                 },
@@ -266,6 +279,7 @@ async fn protocol_controller_fn(
                 // received a list of peers
                 Some(NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst))) => {
                     debug!("node_id={:?} sent us a peer list: {:?}", from_node_id, lst);
+                    trace!("massa-network__protocol__controllers__protocol_controller_fn__ReceivedPeerList::{:?}::{:?}", from_node_id, lst);
                     let (connection_id, _, _) = active_nodes.get(&from_node_id).expect("event from msising node");
                     connection_controller.connection_alive(*connection_id).await;
                     connection_controller.merge_advertised_peer_list(lst).await;
@@ -284,12 +298,14 @@ async fn protocol_controller_fn(
                 Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
                     let (connection_id, _, handle) = active_nodes.remove(&from_node_id).expect("event from msising node");
                     info!("protocol channel closed peer_id={:?}", from_node_id);
+                    trace!("massa-network__protocol__controllers__protocol_controller_fn__protocol::closed::{:?}", from_node_id);
                     connection_controller.connection_closed(connection_id, reason).await;
                     handle.await.expect("could not join node handle");
                 },
                 // asked peer list
                 Some(NodeEvent(from_node_id, NodeEventType::AskedPeerList)) => {
                     debug!("node_id={:?} asked us for peer list", from_node_id);
+                    trace!("massa-network__protocol__controllers__protocol_controller_fn__AskedPeerList::{:?}", from_node_id);
                     let (_, node_command_tx, _) = active_nodes.get(&from_node_id).expect("event received from missing node");
                     node_command_tx
                         .send(NodeCommand::SendPeerList(connection_controller.get_advertisable_peer_list().await))
@@ -426,7 +442,10 @@ async fn node_controller_fn(
     node_event_tx: Sender<NodeEvent>,
 ) {
     debug!("node_controller_fn start node_id={:?}", node_id);
-
+    trace!(
+        "massa-network__protocol__controllers__node_controller_fn__start::{:?}",
+        node_id
+    );
     let (writer_command_tx, writer_command_rx) = mpsc::channel::<Message>(1024);
     let (writer_event_tx, writer_event_rx) = oneshot::channel::<bool>(); // true = OK, false = ERROR
     let mut fused_writer_event_rx = writer_event_rx.fuse();
@@ -501,6 +520,7 @@ async fn node_controller_fn(
 
             _ = interval.tick() => {
                 debug!("timer-based asking node_id={:?} for peer list", node_id);
+                trace!("massa-network__protocol__controllers__node_controller_fn__time::AskPeerList::{:?}", node_id);
                 writer_command_tx.send(Message::AskPeerList).await.expect("writer disappeared");
             }
         }
@@ -524,6 +544,10 @@ async fn node_controller_fn(
         .expect("node_event_tx already closed");
 
     debug!("node_controller_fn close node_id={:?}", node_id);
+    trace!(
+        "massa-network__protocol__controllers__node_controller_fn__stop::{:?}",
+        node_id
+    );
 }
 
 async fn node_writer_fn(
