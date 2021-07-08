@@ -20,7 +20,8 @@ pub enum PoolCommand {
         target_slot: Slot,
         exclude: HashSet<OperationId>,
         max_count: usize,
-        response_tx: oneshot::Sender<Vec<(OperationId, Operation)>>,
+        size_left: u64,
+        response_tx: oneshot::Sender<Vec<(OperationId, Operation, u64)>>,
     },
 }
 
@@ -140,6 +141,7 @@ impl PoolWorker {
                 exclude,
                 max_count,
                 response_tx,
+                size_left,
             } => response_tx
                 .send(
                     self.operation_pool

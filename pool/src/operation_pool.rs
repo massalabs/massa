@@ -179,7 +179,7 @@ impl OperationPool {
         block_slot: Slot,
         exclude: HashSet<OperationId>,
         max_count: usize,
-    ) -> Result<Vec<(OperationId, Operation)>, PoolError> {
+    ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
         self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
             .filter_map(|(_rentability, id)| {
@@ -191,7 +191,7 @@ impl OperationPool {
                         .contains(&block_slot.period) {
                         return None;
                     }
-                    Some(Ok((id.clone(), w_op.op.clone())))
+                    Some(Ok((id.clone(), w_op.op.clone(), w_op.byte_count)))
                 } else {
                     Some(Err(PoolError::ContainerInconsistency(
                         format!("operation pool get_ops inconsistency: op_id={:?} is in ops_by_thread_and_interest but not in ops", id)

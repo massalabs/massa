@@ -922,6 +922,7 @@ impl BlockGraph {
         val: String,
         slot: Slot,
         operations: Vec<Operation>,
+        operation_merkle_root: Hash,
     ) -> Result<(BlockId, Block), ConsensusError> {
         let (public_key, private_key) = self
             .cfg
@@ -931,17 +932,6 @@ impl BlockGraph {
             .ok_or(ConsensusError::KeyError)?;
 
         let example_hash = Hash::hash(&val.as_bytes());
-
-        let operation_merkle_root = Hash::hash(
-            &operations.iter().fold(Vec::new(), |acc, v| {
-                let res = [
-                    acc,
-                    v.to_bytes_compact(&self.serialization_context).unwrap(),
-                ]
-                .concat();
-                res
-            })[..],
-        );
 
         let (hash, header) = BlockHeader::new_signed(
             &private_key,

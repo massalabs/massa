@@ -116,7 +116,8 @@ impl PoolCommandSender {
         target_slot: Slot,
         exclude: HashSet<OperationId>,
         max_count: usize,
-        response_tx: Sender<Vec<(OperationId, Operation)>>,
+        size_left: u64,
+        response_tx: Sender<Vec<(OperationId, Operation, u64)>>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.get_operation_batch", {
             "target_slot": target_slot
@@ -127,6 +128,7 @@ impl PoolCommandSender {
                 target_slot,
                 exclude,
                 max_count,
+                size_left,
                 response_tx,
             })
             .await

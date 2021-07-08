@@ -5,8 +5,13 @@ use super::{
     timeslots::*,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
-use crypto::signature::{derive_public_key, PublicKey};
-use models::{Address, Block, BlockId, Operation, OperationId, SerializationContext, Slot};
+use crypto::{
+    hash::Hash,
+    signature::{derive_public_key, PublicKey},
+};
+use models::{
+    Address, Block, BlockId, Operation, OperationId, SerializationContext, SerializeCompact, Slot,
+};
 use pool::PoolCommandSender;
 use std::convert::TryFrom;
 use std::{
@@ -235,6 +240,8 @@ impl ConsensusWorker {
         let mut ledger = self
             .block_db
             .get_ledger_at_parents(&self.block_db.get_best_parents(), &HashSet::new())?;
+
+        // todo apply block creation fee
         while ops.len() < self.cfg.max_operations_per_block as usize {
             let op_ids: Vec<OperationId> = ops
                 .iter()
@@ -244,7 +251,7 @@ impl ConsensusWorker {
             let asked_nb = self.cfg.max_operations_per_block as usize - ops.len();
             let (response_tx, response_rx) = oneshot::channel();
             self.pool_command_sender
-                .get_operation_batch(cur_slot, to_exclude, asked_nb, response_tx)
+                .get_operation_batch(cur_slot, to_exclude, asked_nb, 1000, response_tx) // todo add real left size
                 .await?;
 
             let candidates = response_rx.await?;
@@ -252,7 +259,7 @@ impl ConsensusWorker {
             // operations are already sorted by interest
             let involved_addresses: HashSet<Address> = candidates
                 .iter()
-                .map(|(_, op)| op.get_involved_addresses(&fee_target))
+                .map(|(_, op, size)| op.get_involved_addresses(&fee_target))
                 .flatten()
                 .flatten()
                 .collect();
@@ -265,7 +272,7 @@ impl ConsensusWorker {
                 )?,
             );
 
-            for (id, op) in candidates.iter() {
+            for (id, op, size) in candidates.iter() {
                 let changes = op.get_changes(&fee_target, self.cfg.thread_count)?;
                 match ledger.try_apply_changes(changes) {
                     Ok(_) => {
@@ -307,13 +314,28 @@ impl ConsensusWorker {
             && block_creator == self.cfg.current_node_index
         {
             let operations = self.get_best_operations(cur_slot).await?;
-            let ids = operations
+            let ids: HashSet<OperationId> = operations
                 .iter()
                 .map(|op| op.get_operation_id(&self.serialization_context))
                 .collect::<Result<_, _>>()?;
-            let (hash, block) =
-                self.block_db
-                    .create_block("block".to_string(), cur_slot, operations)?;
+
+            let operation_merkle_root = Hash::hash(
+                &operations.iter().fold(Vec::new(), |acc, v| {
+                    let res = [
+                        acc,
+                        v.to_bytes_compact(&self.serialization_context).unwrap(),
+                    ]
+                    .concat();
+                    res
+                })[..],
+            );
+
+            let (hash, block) = self.block_db.create_block(
+                "block".to_string(),
+                cur_slot,
+                operations,
+                operation_merkle_root,
+            )?;
             massa_trace!("consensus.consensus_worker.slot_tick.create_block", {"hash": hash, "block": block});
 
             self.block_db
