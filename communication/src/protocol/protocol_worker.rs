@@ -5,6 +5,7 @@ use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
 use models::{Block, BlockHeader, SerializationContext};
+use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
 use tokio::{
@@ -14,7 +15,7 @@ use tokio::{
 };
 
 /// Possible types of events that can happen.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum ProtocolEvent {
     /// A isolated transaction was received.
     ReceivedTransaction(String),
@@ -27,7 +28,7 @@ pub enum ProtocolEvent {
 }
 
 /// Commands that protocol worker can process
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
@@ -49,7 +50,7 @@ pub enum ProtocolCommand {
     BlockNotFound(Hash),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum ProtocolManagementCommand {}
 
 //put in a module to block private access from Protocol_worker.
@@ -199,13 +200,13 @@ impl ProtocolWorker {
         match result {
             Ok(()) => {}
             Err(SendTimeoutError::Closed(event)) => {
-                debug!(
+                warn!(
                     "Failed to send ProtocolEvent due to channel closure: {:?}.",
                     event
                 );
             }
             Err(SendTimeoutError::Timeout(event)) => {
-                debug!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
+                warn!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
             }
         }
     }
@@ -224,35 +225,36 @@ impl ProtocolWorker {
         let block_ask_timer = sleep(self.cfg.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
         loop {
-            trace!("before select! in protocol_worker run_loop");
+            massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             tokio::select! {
                 // block ask timer
                 _ = &mut block_ask_timer => {
-                    trace!("after select! block_ask_timer in protocol_worker run_loop");
+                    massa_trace!("protocol.protocol_worker.run_loop.block_ask_timer", { });
                     self.update_ask_block(&mut block_ask_timer).await?;
                 }
 
                 // listen to incoming commands
                 Some(cmd) = self.controller_command_rx.recv() => {
-                    trace!("after select! Some(cmd) in protocol_worker run_loop cmd:{:?}", cmd);
+                    massa_trace!("protocol.protocol_worker.run_loop.protocol_command_rx", { "cmd": cmd });
                     self.process_command(cmd, &mut block_ask_timer).await?;
                 }
 
                 // listen to network controller events
                 evt = self.network_event_receiver.wait_event() => {
-                    trace!("after select! evt in protocol_worker run_loop");
+                    massa_trace!("protocol.protocol_worker.run_loop.network_event_rx", {});
                     self.on_network_event(evt?, &mut block_ask_timer).await?;
                 }
 
                 // listen to management commands
                 cmd = self.controller_manager_rx.recv() => {
-                    trace!("after select! cmd in protocol_worker run_loop");
+                    massa_trace!("protocol.protocol_worker.run_loop.controller_manager_rx", { "cmd": cmd });
                     match cmd {
                         None => break,
                         Some(_) => {}
                     };
                 }
             } //end select!
+            massa_trace!("protocol.protocol_worker.run_loop.end", {});
         } //end loop
 
         Ok(self.network_event_receiver)
@@ -263,9 +265,12 @@ impl ProtocolWorker {
         cmd: ProtocolCommand,
         timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), CommunicationError> {
+        massa_trace!("protocol.protocol_worker.process_command.begin", {
+            "cmd": cmd
+        });
         match cmd {
             ProtocolCommand::IntegratedBlock { hash, block } => {
-                massa_trace!("protocol_worker process_command integrated_block", { "block_header": block.header });
+                massa_trace!("protocol.protocol_worker.process_command.integrated_block.begin", { "hash": hash, "block": block });
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
                     if node_info.remove_wanted_block(&hash) {
@@ -275,6 +280,7 @@ impl ProtocolWorker {
                             Instant::now(),
                             self.cfg.max_node_known_blocks_size,
                         );
+                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "hash": hash, "block": block });
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
                             .await
@@ -288,6 +294,7 @@ impl ProtocolWorker {
                         let cond = node_info.get_known_block(&hash);
                         // if we don't know if that node knowns that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
+                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "hash": hash, "header": block.header });
                             self.network_command_sender
                                 .send_block_header(*node_id, block.header.clone())
                                 .await
@@ -297,14 +304,22 @@ impl ProtocolWorker {
                                     )
                                 })?;
                         } else {
+                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "node": node_id, "hash": hash });
                             // todo broadcast hash (see #202)
                         }
                     }
                 }
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.integrated_block.end",
+                    {}
+                );
             }
             ProtocolCommand::AttackBlockDetected(hash) => {
                 // Ban all the nodes that sent us this object.
-                debug!("protocol_worker process_command ProtocolCommand::AttackBlockDetected");
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.attack_block_detected.begin",
+                    { "hash": hash }
+                );
                 let to_ban: Vec<NodeId> = self
                     .active_nodes
                     .iter()
@@ -314,11 +329,16 @@ impl ProtocolWorker {
                     })
                     .collect();
                 for id in to_ban.iter() {
+                    massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "hash": hash });
                     self.ban_node(id).await?;
                 }
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.attack_block_detected.end",
+                    {}
+                );
             }
             ProtocolCommand::FoundBlock { hash, block } => {
-                debug!("protocol_worker process_command ProtocolCommand::FoundBlock");
+                massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "hash": hash, "block": block });
                 // Send the block once to all nodes who asked for it.
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     if node_info.remove_wanted_block(&hash) {
@@ -328,6 +348,7 @@ impl ProtocolWorker {
                             Instant::now(),
                             self.cfg.max_node_known_blocks_size,
                         );
+                        massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "hash": hash, "block": block });
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
                             .await
@@ -338,25 +359,41 @@ impl ProtocolWorker {
                             })?;
                     }
                 }
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.found_block.end",
+                    {}
+                );
             }
             ProtocolCommand::WishlistDelta { new, remove } => {
-                debug!("protocol_worker process_command ProtocolCommand::WishlistDelta");
+                massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;
                 self.block_wishlist.extend(new);
                 self.update_ask_block(timer).await?;
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.wishlist_delta.end",
+                    {}
+                );
             }
             ProtocolCommand::BlockNotFound(hash) => {
-                debug!("protocol_worker process_command ProtocolCommand::BlockNotFound");
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.block_not_found.begin",
+                    { "hash": hash }
+                );
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     if node_info.contains_wanted_block(&hash) {
+                        massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "hash": hash });
                         self.network_command_sender
                             .block_not_found(*node_id, hash)
                             .await?
                     }
                 }
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.block_not_found.end",
+                    {}
+                );
             }
         }
-        debug!("END protocol_worker");
+        massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
     }
 
@@ -364,6 +401,9 @@ impl ProtocolWorker {
         &mut self,
         remove_hashes: HashSet<Hash>,
     ) -> Result<(), CommunicationError> {
+        massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
+            "remove": remove_hashes
+        });
         for node_info in self.active_nodes.values_mut() {
             node_info
                 .asked_blocks
@@ -377,6 +417,8 @@ impl ProtocolWorker {
         &mut self,
         ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), CommunicationError> {
+        massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
+
         let now = Instant::now();
 
         // init timer
@@ -541,6 +583,9 @@ impl ProtocolWorker {
 
         //send AskBlockEvents
         if !ask_block_list.is_empty() {
+            massa_trace!("protocol.protocol_worker.update_ask_block", {
+                "list": ask_block_list
+            });
             self.network_command_sender
                 .ask_for_block_list(ask_block_list)
                 .await
@@ -559,6 +604,7 @@ impl ProtocolWorker {
 
     // Ban a node.
     async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), CommunicationError> {
+        massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
         self.network_command_sender
             .ban(node_id.clone())
@@ -573,6 +619,7 @@ impl ProtocolWorker {
         header: &BlockHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<Hash>, CommunicationError> {
+        massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
         if let Ok(hash) = header.content.compute_hash(&self.serialization_context) {
             // check signature
             if let Err(_err) = header.verify_signature(&hash, &SignatureEngine::new()) {
@@ -586,6 +633,7 @@ impl ProtocolWorker {
                     Instant::now(),
                     self.cfg.max_node_known_blocks_size,
                 );
+                massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"hash":hash, "header": header});
                 return Ok(Some(hash));
             }
         }
@@ -604,10 +652,18 @@ impl ProtocolWorker {
     ) -> Result<(), CommunicationError> {
         match evt {
             NetworkEvent::NewConnection(node_id) => {
+                massa_trace!(
+                    "protocol.protocol_worker.on_network_event.new_connection",
+                    { "node": node_id }
+                );
                 self.active_nodes.insert(node_id, nodeinfo::NodeInfo::new());
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
+                massa_trace!(
+                    "protocol.protocol_worker.on_network_event.connection_closed",
+                    { "node": node_id }
+                );
                 self.active_nodes.remove(&node_id); // deletes all node info
                 self.update_ask_block(block_ask_timer).await?;
             }
@@ -615,6 +671,7 @@ impl ProtocolWorker {
                 node: from_node_id,
                 block,
             } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
                 if let Some(hash) = self
                     .note_header_from_node(&block.header, &from_node_id)
                     .await?
@@ -636,6 +693,7 @@ impl ProtocolWorker {
                 node: from_node_id,
                 list,
             } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
                     for hash in &list {
                         node_info.insert_wanted_blocks(
@@ -655,6 +713,7 @@ impl ProtocolWorker {
                 source_node_id,
                 header,
             } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.received_block_header", { "node": source_node_id, "header": header});
                 if let Some(hash) = self.note_header_from_node(&header, &source_node_id).await? {
                     self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader { hash, header })
                         .await;
@@ -667,6 +726,7 @@ impl ProtocolWorker {
                 }
             }
             NetworkEvent::BlockNotFound { node, hash } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.block_not_found", { "node": node, "hash": hash});
                 if let Some(info) = self.active_nodes.get_mut(&node) {
                     info.insert_known_block(
                         hash,

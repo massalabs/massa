@@ -134,12 +134,10 @@ pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
     pub async fn ban(&mut self, node_id: NodeId) -> Result<(), CommunicationError> {
-        trace!("before sending NetworkCommand::Ban from NetworkCommandSender.0 in NetworkCommandSender ban");
         self.0
             .send(NetworkCommand::Ban(node_id))
             .await
             .map_err(|_| CommunicationError::ChannelError("cound not send Ban command".into()))?;
-        trace!("after sending NetworkCommand::Ban from NetworkCommandSender.0 in NetworkCommandSender ban");
         Ok(())
     }
 
@@ -149,14 +147,12 @@ impl NetworkCommandSender {
         node: NodeId,
         block: Block,
     ) -> Result<(), CommunicationError> {
-        trace!("before sending NetworkCommand::SendBlock from NetworkCommandSender.0 in NetworkCommandSender send_block");
         self.0
             .send(NetworkCommand::SendBlock { node, block })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send SendBlock command".into())
             })?;
-        trace!("after sending NetworkCommand::SendBlock from NetworkCommandSender.0 in NetworkCommandSender send_block");
         Ok(())
     }
 
@@ -165,14 +161,12 @@ impl NetworkCommandSender {
         &mut self,
         list: HashMap<NodeId, Vec<Hash>>,
     ) -> Result<(), CommunicationError> {
-        trace!("before sending NetworkCommand::AskForBlock from NetworkCommandSender.0 in NetworkCommandSender ask_for_block");
         self.0
             .send(NetworkCommand::AskForBlocks { list })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send AskForBlock command".into())
             })?;
-        trace!("after sending NetworkCommand::AskForBlock from NetworkCommandSender.0 in NetworkCommandSender ask_for_block");
         Ok(())
     }
 
@@ -182,28 +176,24 @@ impl NetworkCommandSender {
         node: NodeId,
         header: BlockHeader,
     ) -> Result<(), CommunicationError> {
-        trace!("before sending NetworkCommand::SendBlockHeader from NetworkCommandSender.0 in NetworkCommandSender send_block_header");
         self.0
             .send(NetworkCommand::SendBlockHeader { node, header })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send SendBlockHeader command".into())
             })?;
-        trace!("after sending NetworkCommand::SendBlockHeader from NetworkCommandSender.0 in NetworkCommandSender send_block_header");
         Ok(())
     }
 
     /// Send the order to get peers.
     pub async fn get_peers(&mut self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
         let (response_tx, response_rx) = oneshot::channel::<HashMap<IpAddr, PeerInfo>>();
-        trace!("before sending NetworkCommand::GetPeers from NetworkCommandSender.0 in NetworkCommandSender get_peers");
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send GetPeers command".into())
             })?;
-        trace!("after sending NetworkCommand::GetPeers from NetworkCommandSender.0 in NetworkCommandSender get_peers");
         Ok(response_rx.await.map_err(|_| {
             CommunicationError::ChannelError(
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
@@ -216,14 +206,12 @@ impl NetworkCommandSender {
         node: NodeId,
         hash: Hash,
     ) -> Result<(), CommunicationError> {
-        trace!("before sending NetworkCommand::BlockNotFound from NetworkCommandSender.0 in NetworkCommandSender block_not_found");
         self.0
             .send(NetworkCommand::BlockNotFound { node, hash })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("cound not send block_not_found command".into())
             })?;
-        trace!("after sending NetworkCommand::BlockNotFound from NetworkCommandSender.0 in NetworkCommandSender block_not_found");
         Ok(())
     }
 }
@@ -232,11 +220,9 @@ pub struct NetworkEventReceiver(pub mpsc::Receiver<NetworkEvent>);
 
 impl NetworkEventReceiver {
     pub async fn wait_event(&mut self) -> Result<NetworkEvent, CommunicationError> {
-        trace!("before receiving NetworkEvent from NetworkEventReceiver.0 in network_controler wait_event");
         let res = self.0.recv().await.ok_or(CommunicationError::ChannelError(
             "could not receive event".into(),
         ));
-        trace!("after receiving NetworkEvent from NetworkEventReceiver.0 in network_controler wait_event");
         res
     }
 
@@ -245,7 +231,6 @@ impl NetworkEventReceiver {
     pub async fn drain(mut self) -> VecDeque<NetworkEvent> {
         let mut remaining_events: VecDeque<NetworkEvent> = VecDeque::new();
         while let Some(evt) = self.0.recv().await {
-            trace!("after receiving NetworkEvent from NetworkEventReceiver.0 in network_controler drain");
             remaining_events.push_back(evt);
         }
         remaining_events

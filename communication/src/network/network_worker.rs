@@ -221,11 +221,9 @@ impl NetworkWorker {
                 }
             }
 
-            trace!("before select! in network_worker run_loop");
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
-                    trace!("after receiving cmd from controller_manager_rx in network_worker run_loop");
                         match cmd {
                             None => break,
                             Some(_) => {}
@@ -233,18 +231,16 @@ impl NetworkWorker {
                     },
 
                 // wake up interval
-                _ = wakeup_interval.tick() => {trace!("after receiving tick from wakeup_interval in network_worker run_loop");},
+                _ = wakeup_interval.tick() => (),
 
                 // wait for a handshake future to complete
                 Some(res) = self.handshake_futures.next() => {
-                    trace!("after receiving res from handshake_futures in network_worker run_loop");
                     let (conn_id, outcome) = res?;
                     self.on_handshake_finished(conn_id, outcome).await?;
                 },
 
                 // event received from a node
                 evt = self.node_event_rx.recv() => {
-                    trace!("after receiving event from node_event_rx in network_worker run_loop");
                     self.on_node_event(
                         evt.ok_or(CommunicationError::ChannelError("node event rx failed".into()))?
                     ).await?
@@ -253,7 +249,6 @@ impl NetworkWorker {
                 // peer feedback event
                 Some(cmd) =
                     self.controller_command_rx.recv() => {
-                        trace!("after receiving cmd from controller_command_rx in network_worker run_loop");
                         self.manage_network_command(
                             cmd,
                         ).await?
@@ -262,7 +257,6 @@ impl NetworkWorker {
 
                 // out-connector event
                 Some((ip_addr, res)) = out_connecting_futures.next() => {
-                    trace!("after receiving connection from out_connecting_futures in network_worker run_loop");
                     self.manage_out_connections(
                         res,
                         ip_addr,
@@ -272,7 +266,6 @@ impl NetworkWorker {
 
                 // listener socket received
                 res = self.listener.accept() => {
-                    trace!("after receiving listener from listener.accept() in network_worker run_loop");
                     self.manage_in_connections(
                         res,
                         &mut cur_connection_id,
@@ -335,6 +328,9 @@ impl NetworkWorker {
         new_connection_id: ConnectionId,
         outcome: HandshakeReturnType,
     ) -> Result<(), CommunicationError> {
+        massa_trace!("network_worker.on_handshake_finished.", {
+            "node": new_connection_id
+        });
         match outcome {
             // a handshake finished, and succeeded
             Ok((new_node_id, socket_reader, socket_writer)) => {
@@ -398,6 +394,7 @@ impl NetworkWorker {
                             mpsc::channel::<NodeCommand>(CHANNEL_SIZE);
                         let node_event_tx_clone = self.node_event_tx.clone();
                         let cfg_copy = self.cfg.clone();
+                        let node_serialization_context = self.serialization_context.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             NodeWorker::new(
                                 cfg_copy,
@@ -407,7 +404,7 @@ impl NetworkWorker {
                                 node_command_rx,
                                 node_event_tx_clone,
                             )
-                            .run_loop()
+                            .run_loop(node_serialization_context)
                             .await
                         });
                         entry.insert((new_connection_id, node_command_tx.clone(), node_fn_handle));
@@ -468,7 +465,9 @@ impl NetworkWorker {
         }
 
         debug!("starting handshake with connection_id={:?}", connection_id);
-        massa_trace!("handshake_start", { "connection_id": connection_id });
+        massa_trace!("network_worker.new_connection", {
+            "connection_id": connection_id
+        });
 
         let self_node_id = self.self_node_id;
         let private_key = self.private_key;
@@ -507,7 +506,7 @@ impl NetworkWorker {
             "connection closed connedtion_id={:?}, ip={:?}, reason={:?}",
             id, ip, reason
         );
-        massa_trace!("connection_closed", {
+        massa_trace!("network_worker.connection_closed", {
             "connnection_id": id,
             "ip": ip,
             "reason": reason
@@ -543,6 +542,10 @@ impl NetworkWorker {
     ) -> Result<(), CommunicationError> {
         match cmd {
             NetworkCommand::Ban(node) => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::Ban",
+                    { "node": node }
+                );
                 // get all connection IDs to ban
                 let mut ban_connection_ids: HashSet<ConnectionId> = HashSet::new();
                 if let Some((orig_conn_id, _, _)) = self.active_nodes.get(&node) {
@@ -561,7 +564,6 @@ impl NetworkWorker {
                 }
                 for (conn_id, node_command_tx, _) in self.active_nodes.values() {
                     if ban_connection_ids.contains(conn_id) {
-                        trace!("before sending NodeCommand::Close from node_command_tx in network_worker manage_network_command");
                         let res = node_command_tx
                             .send(NodeCommand::Close(ConnectionClosureReason::Banned))
                             .await;
@@ -573,12 +575,12 @@ impl NetworkWorker {
                                 )
                             );
                         }
-                        trace!("after sending NodeCommand::Close from node_command_tx in network_worker manage_network_command");
                     };
                 }
             }
             NetworkCommand::SendBlockHeader { node, header } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"hash": header.content.compute_hash(&self.serialization_context)?, "header": header, "node": node});
                     let res = node_command_tx
                         .send(NodeCommand::SendBlockHeader(header))
                         .await;
@@ -599,6 +601,10 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::AskForBlocks { list } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
+                    { "hashlist": list }
+                );
                 for (node, hash_list) in list.into_iter() {
                     if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
                         let res = node_command_tx
@@ -617,6 +623,10 @@ impl NetworkWorker {
             }
             NetworkCommand::SendBlock { node, block } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                    massa_trace!(
+                        "network_worker.manage_network_command send NodeCommand::SendBlock",
+                        {"hash": block.header.content.compute_hash(&self.serialization_context)?, "block": block, "node": node}
+                    );
                     let res = node_command_tx.send(NodeCommand::SendBlock(block)).await;
                     if res.is_err() {
                         warn!(
@@ -635,6 +645,10 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::GetPeers(response_tx) => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::GetPeers",
+                    {}
+                );
                 response_tx
                     .send(self.peer_info_db.get_peers().clone())
                     .map_err(|_| {
@@ -644,6 +658,10 @@ impl NetworkWorker {
                     })?;
             }
             NetworkCommand::BlockNotFound { node, hash } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::BlockNotFound",
+                    { "hash": hash, "node": node }
+                );
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
                     let res = node_command_tx.send(NodeCommand::BlockNotFound(hash)).await;
                     if res.is_err() {
@@ -784,10 +802,14 @@ impl NetworkWorker {
                 self.peer_info_db.merge_candidate_peers(&lst)?;
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
+                    {"hash": data.header.content.compute_hash(&self.serialization_context)?, "block": data, "node": from_node_id}
+                );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlock {
                         node: from_node_id,
-                        block: data,
+                        block: data.clone(), // todo remove clone when removing trace
                     })
                     .await;
             }
@@ -800,10 +822,14 @@ impl NetworkWorker {
                     .await;
             }
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
+                    {"hash": header.content.compute_hash(&self.serialization_context)?, "header": header, "node": source_node_id}
+                );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlockHeader {
                         source_node_id,
-                        header,
+                        header: header.clone(), // todo remove clone
                     })
                     .await;
             }
