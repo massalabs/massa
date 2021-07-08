@@ -144,8 +144,12 @@ impl DeserializeCompact for ActiveBlock {
                 parents.push((parent_h, period));
             }
             parents
-        } else {
+        } else if has_parents == 0 {
             Vec::new()
+        } else {
+            return Err(ModelsError::SerializeError(
+                "ActiveBlock from_bytes_compact bad hasparents flags.".into(),
+            ));
         };
 
         //childrens
