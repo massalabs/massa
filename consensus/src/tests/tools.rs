@@ -10,8 +10,8 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    with_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    Operation, OperationContent, OperationType, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    OperationType, SerializeCompact, Slot,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -253,7 +253,8 @@ pub async fn create_and_test_block(
     valid: bool,
     trace: bool,
 ) -> BlockId {
-    let (block_hash, block, _) = create_block(&cfg, slot, best_parents, cfg.nodes[0].clone());
+    let (block_hash, block, _) =
+        create_block(&cfg, slot, best_parents, cfg.staking_keys[0].clone());
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -315,7 +316,7 @@ pub fn create_block(
     cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: Vec<BlockId>,
-    creator: (PublicKey, PrivateKey),
+    creator: PrivateKey,
 ) -> (BlockId, Block, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
@@ -332,12 +333,11 @@ pub fn create_block_with_merkle_root(
     operation_merkle_root: Hash,
     slot: Slot,
     best_parents: Vec<BlockId>,
-    creator: (PublicKey, PrivateKey),
+    creator: PrivateKey,
 ) -> (BlockId, Block, PrivateKey) {
-    let (public_key, private_key) = creator;
-
+    let public_key = crypto::derive_public_key(&creator);
     let (hash, header) = BlockHeader::new_signed(
-        &private_key,
+        &creator,
         BlockHeaderContent {
             creator: public_key,
             slot,
@@ -352,7 +352,7 @@ pub fn create_block_with_merkle_root(
         operations: Vec::new(),
     };
 
-    (hash, block, private_key)
+    (hash, block, creator)
 }
 
 pub fn get_export_active_test_block(
@@ -386,22 +386,6 @@ pub fn get_export_active_test_block(
         },
         operations: operations.clone(),
     };
-
-    let parent_count = with_serialization_context(|context| context.parent_count);
-    let mut block_ledger_change = vec![HashMap::new(); parent_count as usize];
-    for op in operations.iter() {
-        let mut changes = op
-            .get_changes(&Address::from_public_key(&creator).unwrap(), parent_count)
-            .unwrap();
-        for i in 0..changes.len() {
-            for (address, change) in changes[i].iter_mut() {
-                if let Some(old) = block_ledger_change[i].get(address) {
-                    change.chain(old).unwrap();
-                }
-                block_ledger_change[i].insert(address.clone(), change.clone());
-            }
-        }
-    }
     let id = block.header.compute_block_id().unwrap();
     (
         ExportActiveBlock {
@@ -410,14 +394,7 @@ pub fn get_export_active_test_block(
             block,
             children: vec![vec![], vec![]],
             is_final,
-            block_ledger_change: block_ledger_change
-                .iter()
-                .map(|map| {
-                    map.into_iter()
-                        .map(|(a, c)| (a.clone(), c.clone()))
-                        .collect()
-                })
-                .collect(),
+            block_ledger_change: vec![],
         },
         id,
     )
@@ -427,10 +404,10 @@ pub fn create_block_with_operations(
     _cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: &Vec<BlockId>,
-    creator: (PublicKey, PrivateKey),
+    creator: PrivateKey,
     operations: Vec<Operation>,
 ) -> (BlockId, Block, PrivateKey) {
-    let (public_key, private_key) = creator;
+    let public_key = crypto::derive_public_key(&creator);
 
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {
@@ -440,7 +417,7 @@ pub fn create_block_with_operations(
     );
 
     let (hash, header) = BlockHeader::new_signed(
-        &private_key,
+        &creator,
         BlockHeaderContent {
             creator: public_key,
             slot,
@@ -452,7 +429,7 @@ pub fn create_block_with_operations(
 
     let block = Block { header, operations };
 
-    (hash, block, private_key)
+    (hash, block, creator)
 }
 
 /// generate a named temporary JSON ledger file
@@ -473,12 +450,8 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
     let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
     let max_operations_per_block: u32 = 1024;
-    let nodes = (0..nb_nodes)
-        .map(|_| {
-            let private_key = crypto::generate_random_private_key();
-            let public_key = crypto::derive_public_key(&private_key);
-            (public_key, private_key)
-        })
+    let staking_keys = (0..nb_nodes)
+        .map(|_| crypto::generate_random_private_key())
         .collect();
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
@@ -507,7 +480,7 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
         t0: 32000.into(),
         selection_rng_seed: 42,
         genesis_key,
-        nodes,
+        staking_keys,
         current_node_index: 0,
         max_discarded_blocks: 10,
         future_block_processing_max_periods: 3,
@@ -530,6 +503,8 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
         periods_per_cycle: 100,
         pos_lookback_cycles: 4,
         pos_lock_cycles: 1,
+        pos_draw_cached_cycles: 0,
+        roll_price: 0,
     }
 }
 

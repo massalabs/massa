@@ -51,7 +51,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         Hash::hash("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     protocol_controller.receive_block(block).await;
 
@@ -108,7 +108,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         Hash::hash("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
     protocol_controller.receive_header(block.header).await;
 

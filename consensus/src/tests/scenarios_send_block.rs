@@ -52,7 +52,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
         &cfg,
         Slot::new(1 + start_slot, 0),
         genesis_hashes.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
 
     // Send the actual block.
@@ -126,7 +126,7 @@ async fn test_consensus_block_not_found() {
         &cfg,
         Slot::new(1 + start_slot, 0),
         genesis_hashes.clone(),
-        cfg.nodes[0].clone(),
+        cfg.staking_keys[0].clone(),
     );
 
     // Ask for the block to consensus.

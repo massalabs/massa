@@ -83,8 +83,11 @@ async fn test_storage() {
         ledger_per_thread: vec![vec![(address_a, LedgerData { balance: 100 })], vec![]],
     };
 
-    let (boot_graph, b1, b2) =
-        get_bootgraph(cfg.nodes[0].0, vec![op2.clone(), op3.clone()], boot_ledger);
+    let (boot_graph, b1, b2) = get_bootgraph(
+        crypto::derive_public_key(&cfg.staking_keys[0]),
+        vec![op2.clone(), op3.clone()],
+        boot_ledger,
+    );
     // there is only one node so it should be drawn at every slot
 
     // start storage
@@ -93,7 +96,7 @@ async fn test_storage() {
     let block = Block {
         header: BlockHeader {
             content: BlockHeaderContent{
-                creator: cfg.nodes[0].0,
+                creator: crypto::derive_public_key(&cfg.staking_keys[0]),
                 operation_merkle_root: Hash::hash(&vec![op4.clone()].iter().map(|op|{
                     op
                         .get_operation_id()

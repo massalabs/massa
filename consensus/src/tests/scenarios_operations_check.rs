@@ -66,7 +66,7 @@ async fn test_operations_check() {
     cfg.block_reward = 1;
     cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
-    cfg.nodes = vec![(public_key_1, private_key_1)];
+    cfg.staking_keys = vec![private_key_1];
     cfg.disable_block_creation = true;
     cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(10000.into());
 
@@ -102,7 +102,7 @@ async fn test_operations_check() {
         &cfg,
         Slot::new(1, 0),
         &genesis_ids,
-        (public_key_1, private_key_1),
+        private_key_1,
         vec![operation_1.clone()],
     );
     propagate_block(&mut protocol_controller, block_a, true).await;
@@ -125,7 +125,7 @@ async fn test_operations_check() {
         &cfg,
         Slot::new(1, 1),
         &vec![id_a, genesis_ids[1]],
-        (public_key_1, private_key_1),
+        private_key_1,
         vec![operation_2],
     );
     propagate_block(&mut protocol_controller, block_2b, false).await;
@@ -135,7 +135,7 @@ async fn test_operations_check() {
         &cfg,
         Slot::new(1, 1),
         &vec![id_a, genesis_ids[1]],
-        (public_key_1, private_key_1),
+        private_key_1,
         vec![],
     );
     propagate_block(&mut protocol_controller, block_b, true).await;
@@ -157,7 +157,7 @@ async fn test_operations_check() {
         &cfg,
         Slot::new(1, 0),
         &vec![id_a, id_b],
-        (public_key_1, private_key_1),
+        private_key_1,
         vec![operation_1.clone()],
     );
     propagate_block(&mut protocol_controller, block_1c, false).await;
