@@ -260,8 +260,10 @@ impl DeserializeCompact for Operation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_operation_type() {
         let context = SerializationContext {
             max_block_size: 100000,

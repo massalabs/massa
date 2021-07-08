@@ -12,9 +12,11 @@ use crate::{
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
 use models::{Address, Slot};
+use serial_test::serial;
 use time::UTime;
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_init() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -23,6 +25,7 @@ async fn test_ledger_init() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -41,6 +44,7 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_increment_new_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -66,6 +70,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_apply_change_wrong_thread() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -94,6 +99,7 @@ async fn test_ledger_apply_change_wrong_thread() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -124,6 +130,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -164,6 +171,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -210,6 +218,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -228,6 +237,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -247,6 +257,7 @@ async fn test_ledger_final_balance_non_existing_address() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_duplicate_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -270,6 +281,7 @@ async fn test_ledger_final_balance_duplicate_address() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_final_balance_multiple_addresses() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -298,6 +310,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_clear() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -333,6 +346,7 @@ async fn test_ledger_clear() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_read_whole() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -372,6 +386,7 @@ async fn test_ledger_read_whole() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let thread_count = 2;
 

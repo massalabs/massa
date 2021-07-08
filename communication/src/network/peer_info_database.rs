@@ -677,8 +677,10 @@ impl PeerInfoDatabase {
 mod tests {
     use super::super::config::NetworkConfig;
     use super::*;
+    use serial_test::serial;
 
     #[tokio::test]
+    #[serial]
     async fn test_try_new_in_connection_in_connection_closed() {
         let mut network_config = example_network_config();
         network_config.target_out_connections = 5;
@@ -784,6 +786,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_out_connection_attempt_failed() {
         let mut network_config = example_network_config();
         network_config.target_out_connections = 5;
@@ -882,6 +885,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_try_out_connection_attempt_success() {
         let mut network_config = example_network_config();
         network_config.target_out_connections = 5;
@@ -982,6 +986,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_new_out_connection_closed() {
         let mut network_config = example_network_config();
         network_config.max_out_connnection_attempts = 5;
@@ -1066,6 +1071,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_new_out_connection_attempt() {
         let mut network_config = example_network_config();
         network_config.max_out_connnection_attempts = 5;
@@ -1129,6 +1135,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_get_advertisable_peer_ips() {
         let network_config = example_network_config();
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -1215,6 +1222,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_get_out_connection_candidate_ips() {
         let network_config = example_network_config();
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -1329,6 +1337,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_cleanup_peers() {
         let mut network_config = example_network_config();
         network_config.max_banned_peers = 1;
@@ -1428,6 +1437,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test() {
         let peer_db = peer_database_example(5);
         let p = peer_db.peers.values().next().unwrap();

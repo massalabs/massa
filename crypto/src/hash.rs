@@ -216,12 +216,14 @@ impl FromStr for Hash {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     fn example() -> Hash {
         Hash::hash(&"hello world".as_bytes())
     }
 
     #[test]
+    #[serial]
     fn test_serde_json() {
         let hash = example();
         let serialized = serde_json::to_string(&hash).unwrap();
@@ -230,6 +232,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_hash() {
         let data = "abc".as_bytes();
         let hash = Hash::hash(&data);

@@ -25,6 +25,7 @@ models = {path = "../models"}
 consensus = {path = "../consensus"}
 communication = {path = "../communication"}
 pool = {path = "../pool"}
+serial_test = "0.5.1"
 
 
 

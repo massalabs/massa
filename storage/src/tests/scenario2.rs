@@ -1,8 +1,10 @@
 use super::tools::*;
 use crate::start_storage;
+use serial_test::serial;
 use std::collections::HashMap;
 
 #[tokio::test]
+#[serial]
 async fn test_add() {
     let (cfg, serialization_context) = get_test_config();
     let (command_sender, manager) = start_storage(cfg, serialization_context).unwrap();
@@ -16,6 +18,7 @@ async fn test_add() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_find_operation() {
     let (cfg, serialization_context) = get_test_config();
     let (command_sender, manager) = start_storage(cfg, serialization_context.clone()).unwrap();
@@ -32,6 +35,7 @@ async fn test_find_operation() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_add_multiple() {
     let (cfg, serialization_context) = get_test_config();
     let (command_sender, manager) = start_storage(cfg, serialization_context).unwrap();
@@ -45,6 +49,7 @@ async fn test_add_multiple() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get() {
     // stderrlog::new()
     //     .verbosity(2)
@@ -82,6 +87,7 @@ async fn test_get() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_contains() {
     let (cfg, serialization_context) = get_test_config();
     let (command_sender, manager) = start_storage(cfg, serialization_context).unwrap();

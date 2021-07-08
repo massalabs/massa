@@ -340,8 +340,10 @@ impl DeserializeCompact for BlockHeaderContent {
 #[cfg(test)]
 mod test {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_block_serialization() {
         let ctx = SerializationContext {
             max_block_size: 1024 * 1024,

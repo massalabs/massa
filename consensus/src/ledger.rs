@@ -808,8 +808,10 @@ impl DeserializeCompact for LedgerExport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_ledger_change_chain() {
         for &v1 in &[-100i32, -10, 0, 10, 100] {
             for &v2 in &[-100i32, -10, 0, 10, 100] {

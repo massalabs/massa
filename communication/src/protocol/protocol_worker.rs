@@ -949,8 +949,10 @@ impl ProtocolWorker {
 mod tests {
     use super::nodeinfo::NodeInfo;
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_node_info_know_block() {
         let max_node_known_blocks_size = 10;
         let mut nodeinfo = NodeInfo::new();
@@ -999,6 +1001,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_node_info_wanted_block() {
         let max_node_wanted_blocks_size = 10;
         let mut nodeinfo = NodeInfo::new();

@@ -9,8 +9,10 @@ use super::{
 };
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_consensus_asks_for_block() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -71,6 +73,7 @@ async fn test_consensus_asks_for_block() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_consensus_does_not_ask_for_block() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());

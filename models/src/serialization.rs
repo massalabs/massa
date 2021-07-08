@@ -250,8 +250,10 @@ impl DeserializeCompact for UTime {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_varint() {
         let x32 = 70_000u32;
         let x64 = 10_000_000_000u64;
@@ -281,6 +283,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_be_min() {
         let x32 = 70_000u32;
         let x64 = 10_000_000_000u64;
@@ -309,6 +312,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_array_from_slice_with_zero_u64() {
         let zero: u64 = 0;
         let res = array_from_slice(&zero.to_be_bytes()).unwrap();

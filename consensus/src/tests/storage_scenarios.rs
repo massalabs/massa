@@ -7,12 +7,14 @@ use super::{
 };
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
+use serial_test::serial;
 use time::UTime;
 
 //create 2 clique. Extend the first until the second is disgarded.
 //verify the disgarded block are in storage.
 //verify that genesis and other click blocks aren't in storage.
 #[tokio::test]
+#[serial]
 async fn test_storage() {
     // setup logging
     /*stderrlog::new()

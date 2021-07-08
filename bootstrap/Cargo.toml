@@ -19,5 +19,9 @@ time = {path = "../time"}
 logging = {path = "../logging"}
 serde_json = { version = "1.0" }
 rand = { version = "0.8"}
-
 log = { version = "0.4" }
+
+[dev-dependencies]
+stderrlog = { version = "0.5" }
+pretty_assertions = "0.6"
+serial_test = "0.5.1"

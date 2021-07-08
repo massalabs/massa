@@ -43,24 +43,11 @@ impl MockNetworkController {
         }
     }
 
-    // Ensure the event has been received,
-    // before the test can do anything else.
-    async fn await_event_receipt(&self) {
-        loop {
-            if self.network_event_tx.capacity() == CHANNEL_SIZE {
-                // The message has been received.
-                break;
-            }
-            tokio::task::yield_now().await;
-        }
-    }
-
     pub async fn new_connection(&mut self, new_node_id: NodeId) {
         self.network_event_tx
             .send(NetworkEvent::NewConnection(new_node_id))
             .await
             .expect("Couldn't connect node to protocol.");
-        self.await_event_receipt().await;
     }
 
     pub async fn close_connection(&mut self, node_id: NodeId) {
@@ -68,7 +55,6 @@ impl MockNetworkController {
             .send(NetworkEvent::ConnectionClosed(node_id))
             .await
             .expect("Couldn't connect node to protocol.");
-        self.await_event_receipt().await;
     }
 
     pub async fn send_header(&mut self, source_node_id: NodeId, header: BlockHeader) {
@@ -79,7 +65,6 @@ impl MockNetworkController {
             })
             .await
             .expect("Couldn't send header to protocol.");
-        self.await_event_receipt().await;
     }
 
     pub async fn send_block(&mut self, source_node_id: NodeId, block: Block) {
@@ -90,7 +75,6 @@ impl MockNetworkController {
             })
             .await
             .expect("Couldn't send block to protocol.");
-        self.await_event_receipt().await;
     }
 
     pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Vec<Operation>) {
@@ -101,7 +85,6 @@ impl MockNetworkController {
             })
             .await
             .expect("Couldn't send operations to protocol.");
-        self.await_event_receipt().await;
     }
 
     pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: Vec<BlockId>) {
@@ -112,7 +95,6 @@ impl MockNetworkController {
             })
             .await
             .expect("Couldn't send ask for block to protocol.");
-        self.await_event_receipt().await;
     }
 
     pub async fn send_block_not_found(&mut self, source_node_id: NodeId, block_id: BlockId) {
@@ -123,6 +105,5 @@ impl MockNetworkController {
             })
             .await
             .expect("Couldn't send ask for block to protocol.");
-        self.await_event_receipt().await;
     }
 }

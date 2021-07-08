@@ -7,8 +7,10 @@ use super::{
 };
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_parent_in_the_future() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -74,6 +76,7 @@ async fn test_parent_in_the_future() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_parents() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());
@@ -153,6 +156,7 @@ async fn test_parents() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_parents_in_incompatible_cliques() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let (mut cfg, serialization_context) = tools::default_consensus_config(1, ledger_file.path());

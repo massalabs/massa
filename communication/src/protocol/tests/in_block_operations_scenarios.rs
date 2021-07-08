@@ -13,8 +13,10 @@ use crate::protocol::{
     },
     ProtocolEvent,
 };
+use serial_test::serial;
 
 #[tokio::test]
+#[serial]
 async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     //         // setup logging
     // stderrlog::new()
