@@ -92,11 +92,11 @@ impl StorageAccess {
         self.0.add_block_batch(blocks).await
     }
 
-    pub async fn get_recent_operations(
+    pub async fn get_operations_involving_address(
         &self,
         address: &Address,
     ) -> Result<HashSet<OperationId>, StorageError> {
-        self.0.get_recent_operations(address).await
+        self.0.get_operations_involving_address(address).await
     }
 
     pub async fn get_block(&self, hash: BlockId) -> Result<Option<Block>, StorageError> {

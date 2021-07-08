@@ -163,11 +163,11 @@ impl PoolCommandSender {
             .map_err(|_| PoolError::ChannelError(format!("pool command response read error")))
     }
 
-    pub async fn get_recent_operations(
+    pub async fn get_operations_involving_address(
         &mut self,
         address: Address,
     ) -> Result<HashSet<OperationId>, PoolError> {
-        massa_trace!("pool.command_sender.get_recent_operations", {
+        massa_trace!("pool.command_sender.get_operations_involving_address", {
             "addrese": address
         });
 
@@ -179,7 +179,9 @@ impl PoolCommandSender {
             })
             .await
             .map_err(|_| {
-                PoolError::ChannelError("get_recent_operations command send error".into())
+                PoolError::ChannelError(
+                    "get_operations_involving_address command send error".into(),
+                )
             })?;
 
         response_rx
