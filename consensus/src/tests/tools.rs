@@ -85,7 +85,7 @@ pub async fn validate_ask_for_block(
             assert_eq!(new.len(), 1);
             valid_hash
         }
-        Some(_) | None => panic!("Block not asked for before timeout."),
+        None => panic!("Block not asked for before timeout."),
     }
 }
 
