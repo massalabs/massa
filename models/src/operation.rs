@@ -58,6 +58,8 @@ impl OperationId {
 #[repr(u32)]
 enum OperationTypeId {
     Transaction = 0,
+    RollBuy = 1,
+    RollSell = 2,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
@@ -79,6 +81,12 @@ pub enum OperationType {
         recipient_address: Address,
         amount: u64,
     },
+    RollBuy {
+        roll_count: u64,
+    },
+    RollSell {
+        roll_count: u64,
+    },
 }
 
 impl SerializeCompact for OperationType {
@@ -97,6 +105,20 @@ impl SerializeCompact for OperationType {
 
                 // amount
                 res.extend(&amount.to_varint_bytes());
+            }
+            OperationType::RollBuy { roll_count } => {
+                // type id
+                res.extend(u32::from(OperationTypeId::RollBuy).to_varint_bytes());
+
+                // roll_count
+                res.extend(&roll_count.to_varint_bytes());
+            }
+            OperationType::RollSell { roll_count } => {
+                // type id
+                res.extend(u32::from(OperationTypeId::RollSell).to_varint_bytes());
+
+                // roll_count
+                res.extend(&roll_count.to_varint_bytes());
             }
         }
         Ok(res)
@@ -129,6 +151,20 @@ impl DeserializeCompact for OperationType {
                     recipient_address,
                     amount,
                 }
+            }
+            OperationTypeId::RollBuy => {
+                // roll_count
+                let (roll_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                OperationType::RollBuy { roll_count }
+            }
+            OperationTypeId::RollSell => {
+                // roll_count
+                let (roll_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                OperationType::RollSell { roll_count }
             }
         };
         Ok((res, cursor))
@@ -225,6 +261,22 @@ impl Operation {
                 recipient_address, ..
             } => {
                 res.insert(recipient_address);
+            }
+            OperationType::RollBuy { .. } => {}
+            OperationType::RollSell { .. } => {}
+        }
+        Ok(res)
+    }
+
+    pub fn get_roll_involved_addresses(&self) -> Result<HashSet<Address>, ModelsError> {
+        let mut res = HashSet::new();
+        match self.content.op {
+            OperationType::Transaction { .. } => {}
+            OperationType::RollBuy { .. } => {
+                res.insert(Address::from_public_key(&self.content.sender_public_key)?);
+            }
+            OperationType::RollSell { .. } => {
+                res.insert(Address::from_public_key(&self.content.sender_public_key)?);
             }
         }
         Ok(res)
