@@ -1,6 +1,5 @@
 use super::block::BlockId;
 use super::operation::Operation;
-use crate::Address;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -34,16 +33,4 @@ impl OperationSearchResult {
         self.in_pool = self.in_pool || other.in_pool;
         self.in_blocks.extend(other.in_blocks.iter());
     }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct AddressRollState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AddressesRollState {
-    pub states: HashMap<Address, AddressRollState>,
 }

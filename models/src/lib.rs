@@ -13,8 +13,7 @@ mod slot;
 pub use address::{Address, ADDRESS_SIZE_BYTES};
 pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId, BLOCK_ID_SIZE_BYTES};
 pub use composite::{
-    AddressRollState, AddressesRollState, OperationSearchResult, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus,
+    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
 };
 pub use context::{
     get_serialization_context, init_serialization_context, with_serialization_context,

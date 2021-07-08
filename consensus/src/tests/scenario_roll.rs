@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use bitvec::vec;
-use models::{Address, AddressRollState, Slot};
+use models::{Address, Slot};
 use pool::{PoolCommand, PoolCommandSender};
 use serial_test::serial;
 use time::UTime;

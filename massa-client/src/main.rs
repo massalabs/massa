@@ -22,13 +22,12 @@ use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
 use communication::network::PeerInfo;
+use consensus::AddressState;
 use consensus::ExportBlockStatus;
-use consensus::LedgerDataExport;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
-use models::AddressesRollState;
 use models::Operation;
 use models::OperationId;
 use models::OperationType;
@@ -349,7 +348,7 @@ fn cmd_address_roll_state(data: &mut ReplData, params: &[&str]) -> Result<(), Re
         .map(|str| Address::from_bs58_check(str.trim()))
         .collect::<Result<HashSet<Address>, _>>();
 
-    let addrs = match addr_list {
+    let search_addresses = match addr_list {
         Ok(addrs) => addrs,
         Err(err) => {
             println!("Error during addresses parsing: {}", err);
@@ -357,32 +356,34 @@ fn cmd_address_roll_state(data: &mut ReplData, params: &[&str]) -> Result<(), Re
         }
     };
 
-    let url = format!(
-        "http://{}/api/v1/addresses_roll_state?{}",
-        data.node_ip,
-        serde_qs::to_string(&Addresses { addrs })?
-    );
-
-    if let Some(resp) = request_data(data, &url)? {
-        //println!("resp {:?}", resp.text());
-        if resp.status() == StatusCode::OK {
-            let rolls = resp.json::<AddressesRollState>()?.states;
-            for (addr, roll_state) in rolls.into_iter() {
+    let resp = query_addresses(&data, search_addresses.iter().copied().collect())?;
+    if resp.status() != StatusCode::OK {
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
+            .unwrap();
+        println!("Server error response: {} - {}", status, message);
+    } else {
+        if data.cli {
+            println!("{}", resp.text().unwrap());
+        } else {
+            let ledger = resp.json::<HashMap<Address, AddressState>>()?;
+            for (addr, state) in ledger.into_iter() {
                 println!("Roll for addresses:");
                 println!(
                     "({}: final rolls: {}, active_rolls: {}, candidate_rolls: {}):",
                     addr,
-                    roll_state.final_rolls,
-                    if let Some(nb) = roll_state.active_rolls {
+                    state.final_rolls,
+                    if let Some(nb) = state.active_rolls {
                         nb.to_string()
                     } else {
                         "none".to_string()
                     },
-                    roll_state.candidate_rolls,
+                    state.candidate_rolls,
                 );
             }
-        } else {
-            println!("not ok status code: {:?}", resp);
         }
     }
     Ok(())
@@ -518,7 +519,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                     if data.cli {
                         Ok(format!("{}", resp.text().unwrap()))
                     } else {
-                        let ledger = resp.json::<LedgerDataExport>()?;
+                        let ledger = resp.json::<HashMap<Address, AddressState>>()?;
                         let balance_list = data::extract_addresses_from_ledger(&ledger, None);
                         if balance_list.len() == 0 {
                             Ok("Error no balance found".to_string())
@@ -616,7 +617,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
         if data.cli {
             println!("{}", resp.text().unwrap());
         } else {
-            let ledger = resp.json::<LedgerDataExport>()?;
+            let ledger = resp.json::<HashMap<Address, AddressState>>()?;
             let balance_list = data::extract_addresses_from_ledger(&ledger, Some(search_addresses));
             if balance_list.len() == 0 {
                 return Err(ReplError::GeneralError("No balance found.".to_string()));
@@ -973,7 +974,7 @@ fn send_operation(operation: Operation, data: &ReplData) -> Result<(), ReplError
 
 fn query_addresses<'a>(data: &'a ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
     let url = format!(
-        "http://{}/api/v1/addresses_data?{}",
+        "http://{}/api/v1/addresses_info?{}",
         data.node_ip,
         serde_qs::to_string(&Addresses { addrs })?
     );
