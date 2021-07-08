@@ -78,34 +78,35 @@ fn cleanup_peers(
         new_peers
             .iter()
             .unique()
-            .take(cfg.max_advertise_length)
-            .filter_map(|&ip| {
+            .filter(|&ip| {
                 if let Some(mut p) = peers.get_mut(&ip) {
                     // avoid already-known IPs, but mark them as advertised
                     p.advertised = true;
-                    return None;
+                    return false;
                 }
                 if !ip.is_global() {
                     // avoid non-global IPs
-                    return None;
+                    return false;
                 }
                 if let Some(our_ip) = cfg.routable_ip {
                     // avoid our own IP
-                    if ip == our_ip {
-                        return None;
+                    if ip == &our_ip {
+                        return false;
                     }
                 }
-                Some(PeerInfo {
-                    ip,
-                    banned: false,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: true,
-                    active_out_connection_attempts: 0,
-                    active_out_connections: 0,
-                    active_in_connections: 0,
-                })
+                true
+            })
+            .take(cfg.max_advertise_length)
+            .map(|&ip| PeerInfo {
+                ip,
+                banned: false,
+                bootstrap: false,
+                last_alive: None,
+                last_failure: None,
+                advertised: true,
+                active_out_connection_attempts: 0,
+                active_out_connections: 0,
+                active_in_connections: 0,
             })
             .collect()
     } else {
@@ -407,8 +408,7 @@ impl PeerInfoDatabase {
                 cleanup_peers(&self.cfg, &mut self.peers, None);
             }
         }
-        self.request_dump()?;
-        Ok(())
+        self.request_dump()
     }
 
     /// Notifies of a closed outgoing connection.
@@ -620,10 +620,769 @@ impl PeerInfoDatabase {
     }
 }
 
+//to start alone RUST_BACKTRACE=1 cargo test peer_info_database -- --nocapture --test-threads=1
 #[cfg(test)]
 mod tests {
     use super::super::config::NetworkConfig;
     use super::*;
+
+    #[tokio::test]
+    async fn test_try_new_in_connection_in_connection_closed() {
+        let mut network_config = example_network_config();
+        network_config.target_out_connections = 5;
+        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+
+        //add peers
+        //peer Ok, return
+        let connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        connected_peers1.bootstrap = true;
+        connected_peers1.banned = true;
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+
+        let wakeup_interval = network_config.wakeup_interval;
+        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
+
+        let saver_join_handle = tokio::spawn(async move {
+            loop {
+                match saver_watch_rx.changed().await {
+                    Ok(()) => (),
+                    _ => break,
+                }
+            }
+        });
+
+        let mut db = PeerInfoDatabase {
+            cfg: network_config,
+            peers,
+            saver_join_handle,
+            saver_watch_tx,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+            wakeup_interval,
+        };
+
+        //test with no connection attempt before
+        let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            assert!(false, "ToManyConnectionAttempt error not return");
+        }
+
+        let res = db
+            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)))
+            .unwrap();
+        assert!(!res, "not global ip not detected.");
+        let res = db
+            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)))
+            .unwrap();
+        assert!(!res, "local ip not detected.");
+
+        let res = db
+            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .unwrap();
+        assert!(res, "in connection not accepted.");
+        let res = db
+            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)))
+            .unwrap();
+        assert!(!res, "banned peer not detected.");
+
+        //test with a not connected peer
+        let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
+        } else {
+            assert!(false, "ToManyConnectionAttempt error not return");
+        }
+
+        //test with a not connected peer
+        let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
+        } else {
+            assert!(false, "PeerInfoNotFoundError error not return");
+        }
+
+        db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .unwrap();
+        let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            assert!(false, "ToManyConnectionAttempt error not return");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_out_connection_attempt_failed() {
+        let mut network_config = example_network_config();
+        network_config.target_out_connections = 5;
+        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+
+        //add peers
+        //peer Ok, return
+        let connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        connected_peers1.bootstrap = true;
+        connected_peers1.banned = true;
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+
+        let wakeup_interval = network_config.wakeup_interval;
+        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
+
+        let saver_join_handle = tokio::spawn(async move {
+            loop {
+                match saver_watch_rx.changed().await {
+                    Ok(()) => (),
+                    _ => break,
+                }
+            }
+        });
+
+        let mut db = PeerInfoDatabase {
+            cfg: network_config,
+            peers,
+            saver_join_handle,
+            saver_watch_tx,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+            wakeup_interval,
+        };
+
+        //test with no connection attempt before
+        let res =
+            db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            println!("res:{:?}", res);
+            assert!(false, "ToManyConnectionFailure error not return");
+        }
+
+        db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .unwrap();
+
+        //peer not found.
+        let res =
+            db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
+        } else {
+            println!("res:{:?}", res);
+            assert!(false, "PeerInfoNotFoundError error not return");
+        }
+        //peer with no attempt.
+        let res =
+            db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
+        } else {
+            println!("res:{:?}", res);
+            assert!(false, "ToManyConnectionFailure error not return");
+        }
+
+        //call ok.
+        db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .expect("out_connection_attempt_failed failed");
+
+        let res =
+            db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            assert!(false, "ToManyConnectionFailure error not return");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_try_out_connection_attempt_success() {
+        let mut network_config = example_network_config();
+        network_config.target_out_connections = 5;
+        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+
+        //add peers
+        //peer Ok, return
+        let connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        connected_peers1.bootstrap = true;
+        connected_peers1.banned = true;
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+
+        let wakeup_interval = network_config.wakeup_interval;
+        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
+
+        let saver_join_handle = tokio::spawn(async move {
+            loop {
+                match saver_watch_rx.changed().await {
+                    Ok(()) => (),
+                    _ => break,
+                }
+            }
+        });
+
+        let mut db = PeerInfoDatabase {
+            cfg: network_config,
+            peers,
+            saver_join_handle,
+            saver_watch_tx,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+            wakeup_interval,
+        };
+
+        //test with no connection attempt before
+        let res = db.try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
+            169, 202, 0, 11,
+        )));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            assert!(false, "ToManyConnectionAttempt error not return");
+        }
+
+        db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .unwrap();
+
+        //peer not found.
+        let res = db.try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
+            169, 202, 0, 13,
+        )));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
+        } else {
+            println!("res:{:?}", res);
+            assert!(false, "PeerInfoNotFoundError error not return");
+        }
+
+        let res = db
+            .try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
+                169, 202, 0, 11,
+            )))
+            .unwrap();
+        assert!(res, "try_out_connection_attempt_success failed");
+
+        let res = db.try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
+            169, 202, 0, 12,
+        )));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
+        } else {
+            assert!(false, "PeerInfoNotFoundError error not return");
+        }
+
+        db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)))
+            .unwrap();
+        let res = db
+            .try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
+                169, 202, 0, 12,
+            )))
+            .unwrap();
+        assert!(!res, "try_out_connection_attempt_success not banned");
+    }
+
+    #[tokio::test]
+    async fn test_new_out_connection_closed() {
+        let mut network_config = example_network_config();
+        network_config.max_out_connnection_attempts = 5;
+        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+
+        //add peers
+        //peer Ok, return
+        let connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        let wakeup_interval = network_config.wakeup_interval;
+        let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
+        let saver_join_handle = tokio::spawn(async move {
+            loop {
+                match saver_watch_rx.changed().await {
+                    Ok(()) => (),
+                    _ => break,
+                }
+            }
+        });
+
+        let mut db = PeerInfoDatabase {
+            cfg: network_config,
+            peers,
+            saver_join_handle,
+            saver_watch_tx,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+            wakeup_interval,
+        };
+
+        //
+        let res = db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            assert!(
+                false,
+                "CloseConnectionWithNoConnectionToClose error not return"
+            );
+        }
+
+        //add a new connection attempt
+        db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .unwrap();
+        let res = db
+            .try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
+                169, 202, 0, 11,
+            )))
+            .unwrap();
+        assert!(res, "try_out_connection_attempt_success failed");
+
+        let res = db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
+        } else {
+            assert!(false, "PeerInfoNotFoundError error not return");
+        }
+
+        db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .unwrap();
+        let res = db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            assert!(
+                false,
+                "CloseConnectionWithNoConnectionToClose error not return"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_new_out_connection_attempt() {
+        let mut network_config = example_network_config();
+        network_config.max_out_connnection_attempts = 5;
+        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+
+        //add peers
+        //peer Ok, return
+        let connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        let wakeup_interval = network_config.wakeup_interval;
+        let (saver_watch_tx, _) = watch::channel(peers.clone());
+        let saver_join_handle = tokio::spawn(async move {});
+
+        let mut db = PeerInfoDatabase {
+            cfg: network_config,
+            peers,
+            saver_join_handle,
+            saver_watch_tx,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+            wakeup_interval,
+        };
+
+        //test with no peers.
+        let res =
+            db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)));
+        if let Err(CommunicationError::InvalidIpError(ip_err)) = res {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)), ip_err);
+        } else {
+            assert!(false, "InvalidIpError not return");
+        }
+
+        let res =
+            db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
+        } else {
+            assert!(false, "PeerInfoNotFoundError error not return");
+        }
+
+        (0..5).for_each(|_| {
+            db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+                .unwrap()
+        });
+        let res =
+            db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        if let Err(CommunicationError::PeerConnectionError(
+            NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
+        )) = res
+        {
+            assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
+        } else {
+            assert!(false, "ToManyConnectionAttempt error not return");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_advertisable_peer_ips() {
+        let network_config = example_network_config();
+        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+
+        //add peers
+        //peer Ok, return
+        let connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        //peer banned not return.
+        let mut banned_host1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
+        banned_host1.bootstrap = true;
+        banned_host1.banned = true;
+        banned_host1.last_alive = Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        peers.insert(banned_host1.ip.clone(), banned_host1);
+        //peer not advertised, not return
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 18)));
+        connected_peers1.advertised = false;
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        //peer Ok, return
+        let mut connected_peers2 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
+        connected_peers2.last_alive = Some(UTime::now().unwrap().checked_sub(800.into()).unwrap());
+        connected_peers2.last_failure =
+            Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        peers.insert(connected_peers2.ip.clone(), connected_peers2);
+        //peer Ok, connected return
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 17)));
+        connected_peers1.active_out_connections = 1;
+        connected_peers1.last_alive = Some(UTime::now().unwrap().checked_sub(900.into()).unwrap());
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        //peer failure before alive but to early. return
+        let mut connected_peers2 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)));
+        connected_peers2.last_alive = Some(UTime::now().unwrap().checked_sub(800.into()).unwrap());
+        connected_peers2.last_failure =
+            Some(UTime::now().unwrap().checked_sub(2000.into()).unwrap());
+        peers.insert(connected_peers2.ip.clone(), connected_peers2);
+
+        let wakeup_interval = network_config.wakeup_interval;
+        let (saver_watch_tx, _) = watch::channel(peers.clone());
+        let saver_join_handle = tokio::spawn(async move {});
+
+        let db = PeerInfoDatabase {
+            cfg: network_config,
+            peers,
+            saver_join_handle,
+            saver_watch_tx,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+            wakeup_interval,
+        };
+
+        //test with no peers.
+        let ip_list = db.get_advertisable_peer_ips();
+
+        assert_eq!(5, ip_list.len());
+
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+            ip_list[0]
+        );
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
+            ip_list[1]
+        );
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)),
+            ip_list[2]
+        );
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 17)),
+            ip_list[3]
+        );
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
+            ip_list[4]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_out_connection_candidate_ips() {
+        let network_config = example_network_config();
+        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+
+        //add peers
+        //peer Ok, return
+        let connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        //peer failure to early. not return
+        let mut connected_peers2 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        connected_peers2.last_failure =
+            Some(UTime::now().unwrap().checked_sub(900.into()).unwrap());
+        peers.insert(connected_peers2.ip.clone(), connected_peers2);
+        //peer failure before alive but to early. return
+        let mut connected_peers2 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
+        connected_peers2.last_alive = Some(UTime::now().unwrap().checked_sub(900.into()).unwrap());
+        connected_peers2.last_failure =
+            Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        peers.insert(connected_peers2.ip.clone(), connected_peers2);
+        //peer alive no failure. return
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)));
+        connected_peers1.last_alive = Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        //peer banned not return.
+        let mut banned_host1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
+        banned_host1.bootstrap = true;
+        banned_host1.banned = true;
+        banned_host1.last_alive = Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        peers.insert(banned_host1.ip.clone(), banned_host1);
+        //peer failure after alive not to early. return
+        let mut connected_peers2 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 15)));
+        connected_peers2.last_alive =
+            Some(UTime::now().unwrap().checked_sub(12000.into()).unwrap());
+        connected_peers2.last_failure =
+            Some(UTime::now().unwrap().checked_sub(11000.into()).unwrap());
+        peers.insert(connected_peers2.ip.clone(), connected_peers2);
+        //peer failure after alive to early. not return
+        let mut connected_peers2 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 16)));
+        connected_peers2.last_alive = Some(UTime::now().unwrap().checked_sub(2000.into()).unwrap());
+        connected_peers2.last_failure =
+            Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        peers.insert(connected_peers2.ip.clone(), connected_peers2);
+        //peer Ok, connected, not return
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 17)));
+        connected_peers1.active_out_connections = 1;
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        //peer Ok, not advertised, not return
+        let mut connected_peers1 =
+            default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 18)));
+        connected_peers1.advertised = false;
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+
+        let wakeup_interval = network_config.wakeup_interval;
+        let (saver_watch_tx, _) = watch::channel(peers.clone());
+        let saver_join_handle = tokio::spawn(async move {});
+
+        let db = PeerInfoDatabase {
+            cfg: network_config,
+            peers,
+            saver_join_handle,
+            saver_watch_tx,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+            wakeup_interval,
+        };
+
+        //test with no peers.
+        let ip_list = db.get_out_connection_candidate_ips().unwrap();
+        assert_eq!(4, ip_list.len());
+
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
+            ip_list[0]
+        );
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
+            ip_list[1]
+        );
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 15)),
+            ip_list[2]
+        );
+        assert_eq!(
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)),
+            ip_list[3]
+        );
+    }
+    fn default_peer_info_not_connected(ip: IpAddr) -> PeerInfo {
+        PeerInfo {
+            ip,
+            banned: false,
+            bootstrap: true,
+            last_alive: None,
+            last_failure: None,
+            advertised: true,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_peers() {
+        let mut network_config = example_network_config();
+        network_config.max_banned_peers = 1;
+        network_config.max_idle_peers = 1;
+        let mut peers = HashMap::new();
+
+        //Call with empty db.
+        cleanup_peers(&network_config, &mut peers, None);
+        assert!(peers.is_empty());
+
+        let mut connected_peers1 =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        connected_peers1.last_alive = Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+
+        let mut connected_peers2 =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
+        connected_peers2.last_alive = Some(UTime::now().unwrap().checked_sub(900.into()).unwrap());
+        let same_connected_peer = connected_peers2.clone();
+
+        let non_global =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 10)));
+        let same_host =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)));
+
+        let mut banned_host1 =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
+        banned_host1.bootstrap = false;
+        banned_host1.banned = true;
+        banned_host1.active_out_connections = 0;
+        banned_host1.last_alive = Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        let mut banned_host2 =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 24)));
+        banned_host2.bootstrap = false;
+        banned_host2.banned = true;
+        banned_host2.active_out_connections = 0;
+        banned_host2.last_alive = Some(UTime::now().unwrap().checked_sub(900.into()).unwrap());
+        let mut banned_host3 =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 25)));
+        banned_host3.bootstrap = false;
+        banned_host3.banned = true;
+        banned_host3.last_alive = Some(UTime::now().unwrap().checked_sub(900.into()).unwrap());
+
+        let mut advertised_host1 =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 35)));
+        advertised_host1.bootstrap = false;
+        advertised_host1.advertised = true;
+        advertised_host1.active_out_connections = 0;
+        advertised_host1.last_alive = Some(UTime::now().unwrap().checked_sub(1000.into()).unwrap());
+        let mut advertised_host2 =
+            default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 36)));
+        advertised_host2.bootstrap = false;
+        advertised_host2.advertised = true;
+        advertised_host2.active_out_connections = 0;
+        advertised_host2.last_alive = Some(UTime::now().unwrap().checked_sub(900.into()).unwrap());
+
+        peers.insert(advertised_host1.ip.clone(), advertised_host1);
+        peers.insert(banned_host1.ip.clone(), banned_host1);
+        peers.insert(non_global.ip.clone(), non_global);
+        peers.insert(same_connected_peer.ip.clone(), same_connected_peer);
+        peers.insert(connected_peers2.ip.clone(), connected_peers2);
+        peers.insert(connected_peers1.ip.clone(), connected_peers1);
+        peers.insert(advertised_host2.ip.clone(), advertised_host2);
+        peers.insert(same_host.ip.clone(), same_host);
+        peers.insert(banned_host3.ip.clone(), banned_host3);
+        peers.insert(banned_host2.ip.clone(), banned_host2);
+
+        cleanup_peers(&network_config, &mut peers, None);
+
+        assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11))));
+        assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12))));
+
+        assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23))));
+        assert!(!peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 24))));
+        assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 25))));
+
+        assert!(!peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 35))));
+        assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 36))));
+
+        //test with adversized peers
+        let adversized = vec![
+            IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 10)),
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 43)),
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 44)),
+            IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+        ];
+
+        network_config.max_advertise_length = 1;
+        network_config.max_idle_peers = 5;
+
+        cleanup_peers(&network_config, &mut peers, Some(&adversized));
+
+        assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 43))));
+    }
+
+    #[tokio::test]
+    async fn test() {
+        let peer_db = peer_database_example(5);
+        let p = peer_db.peers.values().next().unwrap();
+        assert_eq!(p.is_active(), false);
+    }
+    fn default_peer_info_connected(ip: IpAddr) -> PeerInfo {
+        PeerInfo {
+            ip,
+            banned: false,
+            bootstrap: true,
+            last_alive: None,
+            last_failure: None,
+            advertised: false,
+            active_out_connection_attempts: 0,
+            active_out_connections: 1,
+            active_in_connections: 0,
+        }
+    }
 
     fn example_network_config() -> NetworkConfig {
         use std::net::{Ipv4Addr, SocketAddr};
@@ -698,12 +1457,5 @@ mod tests {
             active_in_connections: 0,
             wakeup_interval,
         }
-    }
-
-    #[tokio::test]
-    async fn test() {
-        let peer_db = peer_database_example(5);
-        let p = peer_db.peers.values().next().unwrap();
-        assert_eq!(p.is_active(), false);
     }
 }

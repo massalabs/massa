@@ -13,6 +13,8 @@ use time::UTime;
 use tokio::io::DuplexStream;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
+use crate::error::ConsensusError;
+
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
 
