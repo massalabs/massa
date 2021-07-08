@@ -328,7 +328,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("network_info"))
         .and(warp::path::end())
-        .and_then(move || get_network_info(network_cfg.clone(), evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_network_info(network_cfg.clone(), evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let network_cfg = network_config.clone();
@@ -874,25 +874,13 @@ async fn get_cliques(
 async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving peers : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+) -> Result<serde_json::Value, ApiError> {
+    let peers = retrieve_peers(&event_tx).await?;
     let our_ip = network_cfg.routable_ip;
-    Ok(warp::reply::json(&json!({
+    Ok(json!({
         "our_ip": our_ip,
         "peers": peers,
     }))
-    .into_response())
 }
 
 /// Returns connected peers :
