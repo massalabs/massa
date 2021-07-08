@@ -1,3 +1,4 @@
+use super::mock_pool_controller::MockPoolController;
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
@@ -14,6 +15,7 @@ use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationType, SerializeCompact, Slot,
 };
+use pool::PoolCommand;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -275,17 +277,39 @@ pub async fn propagate_block(
     protocol_controller: &mut MockProtocolController,
     block: Block,
     valid: bool,
+    timeout_ms: u64,
 ) -> BlockId {
     let block_hash = block.header.compute_block_id().unwrap();
     protocol_controller.receive_block(block).await;
     if valid {
         //see if the block is propagated.
-        validate_propagate_block(protocol_controller, block_hash, 150).await;
+        validate_propagate_block(protocol_controller, block_hash, timeout_ms).await;
     } else {
         //see if the block is propagated.
-        validate_notpropagate_block(protocol_controller, block_hash, 1000).await;
+        validate_notpropagate_block(protocol_controller, block_hash, timeout_ms).await;
     }
     block_hash
+}
+
+pub async fn wait_pool_slot(
+    pool_controller: &mut MockPoolController,
+    t0: UTime,
+    period: u64,
+    thread: u8,
+) {
+    pool_controller
+        .wait_command(t0.checked_mul(2).unwrap(), |cmd| match cmd {
+            PoolCommand::UpdateCurrentSlot(s) => {
+                if s >= Slot::new(period, thread) {
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for slot");
 }
 
 pub fn create_transaction(
@@ -301,6 +325,44 @@ pub fn create_transaction(
         amount,
     };
 
+    let content = OperationContent {
+        sender_public_key,
+        fee,
+        expire_period,
+        op,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    Operation { content, signature }
+}
+
+pub fn create_roll_buy(
+    priv_key: PrivateKey,
+    roll_count: u64,
+    expire_period: u64,
+    fee: u64,
+) -> Operation {
+    let op = OperationType::RollBuy { roll_count };
+    let sender_public_key = crypto::derive_public_key(&priv_key);
+    let content = OperationContent {
+        sender_public_key,
+        fee,
+        expire_period,
+        op,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    Operation { content, signature }
+}
+
+pub fn create_roll_sell(
+    priv_key: PrivateKey,
+    roll_count: u64,
+    expire_period: u64,
+    fee: u64,
+) -> Operation {
+    let op = OperationType::RollSell { roll_count };
+    let sender_public_key = crypto::derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
         fee,

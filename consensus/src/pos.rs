@@ -193,13 +193,15 @@ impl RollCounts {
             match self.0.entry(*addr) {
                 btree_map::Entry::Occupied(mut occ) => {
                     if update.roll_purchases >= update.roll_sales {
-                        occ.get_mut()
+                        let cur_val = *occ.get();
+                        *occ.get_mut() = cur_val
                             .checked_add(update.roll_purchases - update.roll_sales)
                             .ok_or(ConsensusError::InvalidRollUpdate(
                                 "overflow while incrementing roll count".into(),
                             ))?;
                     } else {
-                        occ.get_mut()
+                        let cur_val = *occ.get();
+                        *occ.get_mut() = cur_val
                             .checked_sub(update.roll_sales - update.roll_purchases)
                             .ok_or(ConsensusError::InvalidRollUpdate(
                                 "underflow while decrementing roll count".into(),
@@ -270,6 +272,7 @@ impl OperationRollInterface for Operation {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ThreadCycleState {
     /// Cycle number
     cycle: u64,
@@ -579,9 +582,8 @@ impl ProofOfStake {
 
     fn generate_initial_seeds(cfg: &ConsensusConfig) -> Vec<Vec<u8>> {
         let mut cur_seed = cfg.initial_draw_seed.as_bytes().to_vec();
-        let mut initial_seeds =
-            Vec::with_capacity((cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1) as usize);
-        for _ in 0..(cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1) {
+        let mut initial_seeds = Vec::with_capacity((cfg.pos_lookback_cycles + 1) as usize);
+        for _ in 0..(cfg.pos_lookback_cycles + 1) {
             cur_seed = Hash::hash(&cur_seed).to_bytes().to_vec();
             initial_seeds.push(cur_seed.clone());
         }
@@ -803,7 +805,6 @@ impl ProofOfStake {
                         (self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 2) as usize,
                     );
                 }
-
                 // apply the miss/block to the latest cycle_states
                 // (step 2 in the spec)
                 let entry = &mut self.cycle_states[thread as usize][0];
@@ -894,7 +895,7 @@ impl ProofOfStake {
         if source_cycle >= self.cfg.pos_lookback_cycles + 1 {
             // nominal case: lookback after or at cycle 0
             let target_cycle = source_cycle - self.cfg.pos_lookback_cycles - 1;
-            if let Some(state) = self.cycle_states[thread as usize].get(target_cycle as usize) {
+            if let Some(state) = self.get_final_roll_data(target_cycle, thread) {
                 Ok(&state.roll_count)
             } else {
                 Err(ConsensusError::PosCycleUnavailable(

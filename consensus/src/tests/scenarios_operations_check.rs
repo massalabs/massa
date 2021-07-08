@@ -114,7 +114,7 @@ async fn test_operations_check() {
         private_key_1,
         vec![operation_1.clone()],
     );
-    propagate_block(&mut protocol_controller, block_a, true).await;
+    propagate_block(&mut protocol_controller, block_a, true, 150).await;
 
     // assert address 1 has 1 coin at blocks (A, genesis_ids[1]) (see #269)
     let mut set = HashSet::new();
@@ -137,7 +137,7 @@ async fn test_operations_check() {
         private_key_1,
         vec![operation_2],
     );
-    propagate_block(&mut protocol_controller, block_2b, false).await;
+    propagate_block(&mut protocol_controller, block_2b, false, 1000).await;
 
     // receive empty block b
     let (id_b, block_b, _) = create_block_with_operations(
@@ -147,7 +147,7 @@ async fn test_operations_check() {
         private_key_1,
         vec![],
     );
-    propagate_block(&mut protocol_controller, block_b, true).await;
+    propagate_block(&mut protocol_controller, block_b, true, 150).await;
 
     // assert address 2 has 5 coins at block B
     let mut set = HashSet::new();
@@ -169,7 +169,7 @@ async fn test_operations_check() {
         private_key_1,
         vec![operation_1.clone()],
     );
-    propagate_block(&mut protocol_controller, block_1c, false).await;
+    propagate_block(&mut protocol_controller, block_1c, false, 1000).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
