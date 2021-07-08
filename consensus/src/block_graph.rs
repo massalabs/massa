@@ -9,7 +9,7 @@ use models::{
     DeserializeVarInt, ModelsError, SerializationContext, SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map, BTreeSet, HashMap, HashSet};
+use std::collections::{hash_map, BTreeSet, HashMap, HashSet, VecDeque};
 use std::convert::TryInto;
 use std::mem;
 
@@ -34,6 +34,7 @@ pub struct ActiveBlock {
     parents: Vec<(Hash, u64)>, // one (hash, period) per thread ( if not genesis )
     children: Vec<HashMap<Hash, u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
     dependencies: HashSet<Hash>,       // dependencies required for validity check
+    descendants: HashSet<Hash>,
     is_final: bool,
 }
 
@@ -90,6 +91,7 @@ impl<'a> From<ExportActiveBlock> for ActiveBlock {
                 .map(|map| map.into_iter().collect())
                 .collect(),
             dependencies: block.dependencies.into_iter().collect(),
+            descendants: HashSet::new(),
             is_final: block.is_final,
         }
     }
@@ -691,6 +693,7 @@ impl BlockGraph {
                     parents: Vec::new(),
                     children: vec![HashMap::new(); cfg.thread_count as usize],
                     dependencies: HashSet::new(),
+                    descendants: HashSet::new(),
                     is_final: true,
                 }),
             );
@@ -698,7 +701,7 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
-            Ok(BlockGraph {
+            let mut res_graph = BlockGraph {
                 cfg,
                 serialization_context,
                 sequence_counter: 0,
@@ -722,7 +725,37 @@ impl BlockGraph {
                     .collect(),
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
-            })
+            };
+            // compute block descendants
+            let active_blocks_map: HashMap<Hash, Vec<Hash>> = res_graph
+                .block_statuses
+                .iter()
+                .filter_map(|(h, s)| {
+                    if let BlockStatus::Active(a) = s {
+                        Some((*h, a.parents.iter().map(|(ph, _)| *ph).collect()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            for (b_hash, b_parents) in active_blocks_map.into_iter() {
+                let mut ancestors: VecDeque<Hash> = b_parents.into_iter().collect();
+                let mut visited: HashSet<Hash> = HashSet::new();
+                while let Some(ancestor_h) = ancestors.pop_back() {
+                    if !visited.insert(ancestor_h) {
+                        continue;
+                    }
+                    if let Some(BlockStatus::Active(ab)) =
+                        res_graph.block_statuses.get_mut(&ancestor_h)
+                    {
+                        ab.descendants.insert(b_hash);
+                        for (ancestor_parent_h, _) in ab.parents.iter() {
+                            ancestors.push_front(*ancestor_parent_h);
+                        }
+                    }
+                }
+            }
+            Ok(res_graph)
         } else {
             Ok(BlockGraph {
                 cfg,
@@ -1650,11 +1683,14 @@ impl BlockGraph {
             BlockStatus::Active(ActiveBlock {
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
+                descendants: HashSet::new(),
                 block: block.clone(),
                 children: vec![HashMap::new(); self.cfg.thread_count as usize],
                 is_final: false,
             }),
         );
+
+        // add as child to parents
         for (parent_h, _parent_period) in parents_hash_period.iter() {
             if let Some(BlockStatus::Active(a_parent)) = self.block_statuses.get_mut(parent_h) {
                 a_parent.children[block.header.content.slot.thread as usize]
@@ -1667,7 +1703,29 @@ impl BlockGraph {
             }
         }
 
+        // add as descendant to ancestors. Note: descendants are never removed.
+        {
+            let mut ancestors: VecDeque<Hash> =
+                parents_hash_period.iter().map(|(h, _)| *h).collect();
+            let mut visited: HashSet<Hash> = HashSet::new();
+            while let Some(ancestor_h) = ancestors.pop_back() {
+                if !visited.insert(ancestor_h) {
+                    continue;
+                }
+                if let Some(BlockStatus::Active(ab)) = self.block_statuses.get_mut(&ancestor_h) {
+                    ab.descendants.insert(hash);
+                    for (ancestor_parent_h, _) in ab.parents.iter() {
+                        ancestors.push_front(*ancestor_parent_h);
+                    }
+                }
+            }
+        }
+
         // add incompatibilities to gi_head
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.add_incompatibilities",
+            {}
+        );
         for incomp_h in incomp.iter() {
             self.gi_head
                 .get_mut(incomp_h)
@@ -1677,6 +1735,10 @@ impl BlockGraph {
         self.gi_head.insert(hash, incomp.clone());
 
         // max cliques update
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.max_cliques_update",
+            {}
+        );
         if incomp.len() == inherited_incomp_count {
             // clique optimization routine:
             //   the block only has incompatibilities inherited from its parents
@@ -1708,6 +1770,7 @@ impl BlockGraph {
         }
 
         // compute clique fitnesses and find blockclique
+        massa_trace!("consensus.block_graph.add_block_to_graph.compute_clique_fitnesses_and_find_blockclique", {});
         // note: clique_fitnesses is pair (fitness, -hash_sum) where the second parameter is negative for sorting
         let mut clique_fitnesses = vec![(0u64, num::BigInt::default()); self.max_cliques.len()];
         let mut blockclique_i = 0usize;
@@ -1732,6 +1795,10 @@ impl BlockGraph {
         }
 
         // update best parents
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.update_best_parents",
+            {}
+        );
         {
             let blockclique = &self.max_cliques[blockclique_i];
             let mut parents_updated = 0u8;
@@ -1754,6 +1821,10 @@ impl BlockGraph {
         }
 
         // list stale blocks
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.list_stale_blocks",
+            {}
+        );
         let stale_blocks = {
             let fitnesss_threshold = clique_fitnesses[blockclique_i]
                 .0
@@ -1792,6 +1863,10 @@ impl BlockGraph {
             &low_set - &high_set
         };
         // mark stale blocks
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.mark_stale_blocks",
+            {}
+        );
         for stale_block_hash in stale_blocks.into_iter() {
             if let Some(BlockStatus::Active(active_block)) =
                 self.block_statuses.remove(&stale_block_hash)
@@ -1849,8 +1924,12 @@ impl BlockGraph {
         }
 
         // list final blocks
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.list_final_blocks",
+            {}
+        );
         let final_blocks = {
-            //  short-circuiting intersection of cliques from smallest to largest
+            // short-circuiting intersection of cliques from smallest to largest
             let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
             indices.sort_unstable_by_key(|&i| self.max_cliques[i].len());
             let mut final_candidates = self.max_cliques[indices[0]].clone();
@@ -1860,51 +1939,57 @@ impl BlockGraph {
                     break;
                 }
             }
-            // restrict search to cliques with high enough fitness
+
+            // restrict search to cliques with high enough fitness, sort cliques by fitness (highest to lowest)
+            massa_trace!(
+                "consensus.block_graph.add_block_to_graph.list_final_blocks.restrict",
+                {}
+            );
             indices.retain(|&i| clique_fitnesses[i].0 > self.cfg.delta_f0);
-            indices.sort_unstable_by_key(|&i| clique_fitnesses[i].0);
+            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(clique_fitnesses[i].0));
+
             let mut final_blocks: HashSet<Hash> = HashSet::new();
-            for clique_i in indices.into_iter().rev() {
+            for clique_i in indices.into_iter() {
+                massa_trace!(
+                    "consensus.block_graph.add_block_to_graph.list_final_blocks.loop",
+                    { "clique_i": clique_i }
+                );
                 // check in cliques from highest to lowest fitness
                 if final_candidates.is_empty() {
                     // no more final candidates
                     break;
                 }
                 let clique = &self.max_cliques[clique_i];
-                // sum the descendence fitness for each candidate
-                let cloned_candidates = final_candidates.clone();
-                for candidate_h in cloned_candidates.into_iter() {
-                    let mut visited: HashSet<Hash> = HashSet::new();
-                    let mut stack: Vec<Hash> = vec![candidate_h];
-                    let mut desc_rem_fitness = self.cfg.delta_f0; // remaining required fitness
-                    while let Some(h) = stack.pop() {
-                        let root = h == candidate_h;
-                        if !root {
-                            if !visited.insert(h) {
-                                continue;
-                            }
-                        }
-                        let b = BlockGraph::get_full_active_block(&self.block_statuses, h)
-                            .ok_or(ConsensusError::MissingBlock)?;
-                        b.children.iter().for_each(|c_set| {
-                            stack.extend(clique.intersection(&c_set.keys().copied().collect()))
-                        });
-                        if !root {
-                            if let Some(v) = desc_rem_fitness.checked_sub(b.fitness()) {
-                                desc_rem_fitness = v;
-                            } else {
-                                // block is final
-                                final_candidates.remove(&candidate_h);
-                                final_blocks.insert(candidate_h);
-                                break;
-                            }
-                        }
+
+                // compute the total fitness of all the descendants of the candidate within the clique
+                let loc_candidates = final_candidates.clone();
+                for candidate_h in loc_candidates.into_iter() {
+                    let desc_fit: u64 =
+                        BlockGraph::get_full_active_block(&self.block_statuses, candidate_h)
+                            .ok_or(ConsensusError::MissingBlock)?
+                            .descendants
+                            .intersection(clique)
+                            .map(|h| {
+                                if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(h) {
+                                    return ab.fitness();
+                                }
+                                0
+                            })
+                            .sum();
+                    if desc_fit > self.cfg.delta_f0 {
+                        // candidate is final
+                        final_candidates.remove(&candidate_h);
+                        final_blocks.insert(candidate_h);
                     }
                 }
             }
             final_blocks
         };
         // mark final blocks and update latest_final_blocks_periods
+        massa_trace!(
+            "consensus.block_graph.add_block_to_graph.mark_final_blocks",
+            {}
+        );
         for final_block_hash in final_blocks.into_iter() {
             // remove from gi_head
             if let Some(other_incomps) = self.gi_head.remove(&final_block_hash) {
@@ -1952,6 +2037,7 @@ impl BlockGraph {
             }
         }
 
+        massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
         Ok(())
     }
 

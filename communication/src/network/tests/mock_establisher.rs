@@ -6,7 +6,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
 const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
-const CHANNEL_SIZE: usize = 16;
+const CHANNEL_SIZE: usize = 256;
 
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;

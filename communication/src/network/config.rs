@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
 use time::UTime;
 
-pub const CHANNEL_SIZE: usize = 16;
+pub const CHANNEL_SIZE: usize = 256;
 
 /// Network configuration
 #[derive(Debug, Deserialize, Clone)]

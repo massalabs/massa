@@ -5,7 +5,7 @@ use models::{Block, BlockHeader};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
-const CHANNEL_SIZE: usize = 16;
+const CHANNEL_SIZE: usize = 256;
 
 pub struct MockNetworkController {
     network_command_rx: mpsc::Receiver<NetworkCommand>,

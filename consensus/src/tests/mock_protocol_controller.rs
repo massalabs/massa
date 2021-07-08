@@ -6,7 +6,7 @@ use models::{Block, BlockHeader, SerializationContext};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
-const CHANNEL_SIZE: usize = 16;
+const CHANNEL_SIZE: usize = 256;
 
 pub struct MockProtocolController {
     serialization_context: SerializationContext,
