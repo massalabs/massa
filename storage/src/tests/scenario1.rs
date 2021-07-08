@@ -45,18 +45,27 @@ async fn test_max_block_count() {
     add_block(Slot::new(3, 1), &storage).await;
     assert_eq!(5, storage.len().await.unwrap());
     add_block(Slot::new(4, 0), &storage).await;
-    assert_eq!(5, storage.len().await.unwrap());
+
+    while storage.len().await.unwrap() > 5 {
+        tokio::task::yield_now().await;
+    }
     let result = storage
         .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
         .await
         .unwrap();
-    assert_eq!(0, result.len());
+    assert_eq!(result.len(), 0);
+
     add_block(Slot::new(4, 1), &storage).await;
-    let result = storage
-        .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
-        .await
-        .unwrap();
-    assert_eq!(0, result.len());
+    loop {
+        let result = storage
+            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
+            .await
+            .unwrap();
+        if result.len() == 0 {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
 
     manager.stop().await.unwrap();
 }
@@ -104,18 +113,27 @@ async fn test_max_nb_blocks() {
     add_block(Slot::new(3, 1), &storage).await;
     assert_eq!(5, storage.len().await.unwrap());
     add_block(Slot::new(4, 0), &storage).await;
-    assert_eq!(5, storage.len().await.unwrap());
+
+    while storage.len().await.unwrap() > 5 {
+        tokio::task::yield_now().await;
+    }
     let result = storage
         .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
         .await
         .unwrap();
-    assert_eq!(0, result.len());
+    assert_eq!(result.len(), 0);
+
     add_block(Slot::new(4, 1), &storage).await;
-    let result = storage
-        .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
-        .await
-        .unwrap();
-    assert_eq!(0, result.len());
+    loop {
+        let result = storage
+            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
+            .await
+            .unwrap();
+        if result.len() == 0 {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
 
     manager.stop().await.unwrap();
 }
