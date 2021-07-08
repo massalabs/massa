@@ -4,15 +4,12 @@ use std::collections::HashMap;
 use communication::protocol::ProtocolCommand;
 use crypto::{hash::Hash, signature::PublicKey};
 use models::SerializeCompact;
-use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, SerializationContext, Slot,
-};
+use models::{Address, Block, BlockHeader, BlockHeaderContent, Operation, Slot};
 use pool::PoolCommand;
 use time::UTime;
 
 use crate::{
-    block_graph::ExportActiveBlock,
-    ledger::{LedgerData, OperationLedgerInterface},
+    ledger::LedgerData,
     start_consensus_controller,
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
@@ -209,7 +206,6 @@ async fn test_with_two_cliques() {
 
     let ledger_file = generate_ledger_file(&HashMap::new());
     let mut cfg = tools::default_consensus_config(1, ledger_file.path());
-    let serialization_context = models::get_serialization_context();
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
@@ -230,7 +226,6 @@ async fn test_with_two_cliques() {
 
     let boot_graph = get_two_cliques_bootgraph(
         cfg.nodes[0].0,
-        &serialization_context,
         vec![op1.clone(), op2.clone(), op3.clone()],
         boot_ledger,
     );
@@ -323,32 +318,18 @@ async fn test_with_two_cliques() {
 
 fn get_two_cliques_bootgraph(
     creator: PublicKey,
-    context: &SerializationContext,
     operations: Vec<Operation>,
     ledger: LedgerExport,
 ) -> BootsrapableGraph {
-    let (genesis_0, g0_id) = get_export_active_test_block(
-        creator.clone(),
-        vec![],
-        vec![],
-        Slot::new(0, 0),
-        context,
-        true,
-    );
-    let (genesis_1, g1_id) = get_export_active_test_block(
-        creator.clone(),
-        vec![],
-        vec![],
-        Slot::new(0, 1),
-        context,
-        true,
-    );
+    let (genesis_0, g0_id) =
+        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
+    let (genesis_1, g1_id) =
+        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 1), true);
     let (p1t0, p1t0_id) = get_export_active_test_block(
         creator.clone(),
         vec![(g0_id, 0), (g1_id, 0)],
         vec![operations[1].clone()],
         Slot::new(1, 0),
-        context,
         false,
     );
     let (p1t1, p1t1_id) = get_export_active_test_block(
@@ -356,7 +337,6 @@ fn get_two_cliques_bootgraph(
         vec![(g0_id, 0), (g1_id, 0)],
         vec![],
         Slot::new(1, 1),
-        context,
         false,
     );
     let (p2t0, p2t0_id) = get_export_active_test_block(
@@ -364,7 +344,6 @@ fn get_two_cliques_bootgraph(
         vec![(g0_id, 0), (g1_id, 0)],
         vec![operations[0].clone()],
         Slot::new(2, 0),
-        context,
         false,
     );
     let (p2t1, p2t1_id) = get_export_active_test_block(
@@ -372,7 +351,6 @@ fn get_two_cliques_bootgraph(
         vec![(g0_id, 0), (p1t1_id, 1)],
         vec![],
         Slot::new(2, 1),
-        context,
         false,
     );
     let (p3t0, p3t0_id) = get_export_active_test_block(
@@ -380,7 +358,6 @@ fn get_two_cliques_bootgraph(
         vec![(p2t0_id, 2), (p2t1_id, 2)],
         vec![],
         Slot::new(3, 0),
-        context,
         false,
     );
     let (p3t1, p3t1_id) = get_export_active_test_block(
@@ -388,7 +365,6 @@ fn get_two_cliques_bootgraph(
         vec![(p2t0_id, 2), (p2t1_id, 2)],
         vec![],
         Slot::new(3, 1),
-        context,
         false,
     );
     BootsrapableGraph {
