@@ -1,9 +1,12 @@
+use std::{collections::HashMap, net::IpAddr};
+
 use crate::error::CommunicationError;
 use crate::network::network_controller::NetworkController;
 use async_trait::async_trait;
 use crypto::{hash::Hash, signature::PublicKey};
 use models::block::Block;
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Sender;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct NodeId(pub PublicKey);
@@ -42,5 +45,9 @@ where
         &mut self,
         hash: Hash,
         block: &Block,
+    ) -> Result<(), CommunicationError>;
+    async fn get_peers(
+        &self,
+        response_tx: Sender<HashMap<IpAddr, String>>,
     ) -> Result<(), CommunicationError>;
 }

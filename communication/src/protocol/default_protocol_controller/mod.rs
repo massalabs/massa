@@ -117,4 +117,14 @@ impl<NetworkControllerT: NetworkController> ProtocolController
             .await
             .map_err(|err| ChannelError::from(err).into())
     }
+
+    async fn get_peers(
+        &self,
+        response_tx: Sender<std::collections::HashMap<std::net::IpAddr, String>>,
+    ) -> Result<(), CommunicationError> {
+        self.protocol_command_tx
+            .send(ProtocolCommand::GetPeers(response_tx))
+            .await
+            .map_err(|err| ChannelError::from(err).into())
+    }
 }

@@ -529,7 +529,10 @@ async fn test_gpi() {
     let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let fork_clic = tools::get_cliques(&block_graph, valid_hasht1s2);
     assert_eq!(0, fork_clic.len());
-    assert!(block_graph.discarded_blocks.set.contains(&valid_hasht1s2));
+    assert!(block_graph
+        .discarded_blocks
+        .map
+        .contains_key(&valid_hasht1s2));
     assert!(block_graph.active_blocks.contains_key(&valid_hasht0s2));
     assert!(!block_graph.active_blocks.contains_key(&valid_hasht1s2));
 }

@@ -18,7 +18,7 @@ async fn run(cfg: config::Config) -> () {
         .expect("Could not create network controller");
 
     // launch consensus controller
-    let ptcl = DefaultProtocolController::new(cfg.protocol, network).await;
+    let ptcl = DefaultProtocolController::new(cfg.protocol.clone(), network).await;
     let mut cnss = DefaultConsensusController::new(&cfg.consensus, ptcl)
         .await
         .expect("Could not create consensus controller");
@@ -26,7 +26,7 @@ async fn run(cfg: config::Config) -> () {
     // spawn API
     let cnss_interface = cnss.get_interface();
     let api_handle = tokio::spawn(async move {
-        api::serve(cnss_interface).await;
+        api::serve(cnss_interface, cfg.consensus.clone(), cfg.network.clone()).await;
     });
 
     // loop over messages

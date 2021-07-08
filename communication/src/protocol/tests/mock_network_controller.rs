@@ -6,11 +6,11 @@ use crate::{
     CommunicationError,
 };
 use async_trait::async_trait;
-use std::io;
 use std::net::{IpAddr, SocketAddr};
+use std::{collections::HashMap, io};
 use time::UTime;
-use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
+use tokio::{io::DuplexStream, sync::mpsc::Sender};
 
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
@@ -65,6 +65,7 @@ pub enum MockNetworkCommand {
     GetAdvertisablePeerList(oneshot::Sender<Vec<IpAddr>>),
     ConnectionClosed((ConnectionId, ConnectionClosureReason)),
     ConnectionAlive(ConnectionId),
+    GetPeers(Sender<HashMap<IpAddr, String>>),
 }
 
 pub fn new() -> (MockNetworkController, MockNetworkControllerInterface) {
@@ -157,6 +158,16 @@ impl NetworkController for MockNetworkController {
     async fn connection_alive(&mut self, id: ConnectionId) -> Result<(), CommunicationError> {
         self.network_command_tx
             .send(MockNetworkCommand::ConnectionAlive(id))
+            .await
+            .map_err(|_| CommunicationError::MockError(format!("Network controller disappeared")))
+    }
+
+    async fn get_peers(
+        &mut self,
+        response_tx: mpsc::Sender<std::collections::HashMap<IpAddr, String>>,
+    ) -> Result<(), CommunicationError> {
+        self.network_command_tx
+            .send(MockNetworkCommand::GetPeers(response_tx))
             .await
             .map_err(|_| CommunicationError::MockError(format!("Network controller disappeared")))
     }

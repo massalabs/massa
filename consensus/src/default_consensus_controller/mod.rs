@@ -1,5 +1,7 @@
 mod consensus_worker;
 mod misc_collections;
+use std::{collections::HashMap, net::IpAddr};
+
 use crate::error::ConsensusError;
 
 pub use consensus_worker::ConsensusCommand;
@@ -156,7 +158,21 @@ impl ConsensusControllerInterface for DefaultConsensusControllerInterface {
             )))
     }
 
-    fn get_config(&self) -> &ConsensusConfig {
-        &self.cfg
+    async fn get_peers(
+        &self,
+    ) -> Result<std::collections::HashMap<std::net::IpAddr, String>, ConsensusError> {
+        let (response_tx, mut response_rx) = mpsc::channel::<HashMap<IpAddr, String>>(1);
+        self.consensus_command_tx
+            .send(ConsensusCommand::GetPeers(response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        response_rx
+            .recv()
+            .await
+            .ok_or(ConsensusError::ReceiveChannelError(format!(
+                "receive error"
+            )))
     }
 }

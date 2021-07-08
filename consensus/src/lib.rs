@@ -12,6 +12,10 @@ pub mod default_consensus_controller;
 mod error;
 mod random_selector;
 mod timeslots;
+pub use block_graph::{BlockGraphExport, ExportCompiledBlock, ExportDiscardedBlocks};
+pub use error::ConsensusError;
+pub use timeslots::get_block_slot_timestamp;
+pub use timeslots::get_latest_block_slot_at_timestamp;
 
 #[cfg(test)]
 mod tests;

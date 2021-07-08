@@ -1,9 +1,11 @@
+use std::{collections::HashMap, net::IpAddr};
+
 use async_trait::async_trait;
 use communication::protocol::protocol_controller::ProtocolController;
 use crypto::hash::Hash;
 use models::block::Block;
 
-use crate::{block_graph::BlockGraphExport, config::ConsensusConfig, error::ConsensusError};
+use crate::{block_graph::BlockGraphExport, error::ConsensusError};
 
 #[derive(Clone, Debug)]
 pub enum ConsensusEvent {}
@@ -15,7 +17,7 @@ where
 {
     async fn get_block_graph_status(&self) -> Result<BlockGraphExport, ConsensusError>;
     async fn get_active_block(&self, hash: Hash) -> Result<Option<Block>, ConsensusError>;
-    fn get_config(&self) -> &ConsensusConfig;
+    async fn get_peers(&self) -> Result<HashMap<IpAddr, String>, ConsensusError>;
 }
 
 #[async_trait]

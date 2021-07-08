@@ -8,8 +8,11 @@ use super::network_controller::*;
 use super::peer_info_database::*;
 use async_trait::async_trait;
 pub use network_worker::{NetworkCommand, NetworkWorker};
-use std::net::IpAddr;
-use tokio::sync::{mpsc, oneshot};
+use std::{collections::HashMap, net::IpAddr};
+use tokio::sync::{
+    mpsc::{self, Sender},
+    oneshot,
+};
 use tokio::task::JoinHandle;
 
 #[derive(Debug)]
@@ -120,6 +123,17 @@ impl<EstablisherT: Establisher> NetworkController for DefaultNetworkController<E
             .await
             .map_err(|err| ChannelError::from(err))?;
         Ok(response_rx.await.map_err(|err| ChannelError::from(err))?)
+    }
+
+    async fn get_peers(
+        &mut self,
+        response_tx: Sender<HashMap<IpAddr, String>>,
+    ) -> Result<(), CommunicationError> {
+        self.network_command_tx
+            .send(NetworkCommand::GetPeers(response_tx))
+            .await
+            .map_err(|err| ChannelError::from(err))?;
+        Ok(())
     }
 
     async fn connection_closed(

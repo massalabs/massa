@@ -42,6 +42,8 @@ pub enum CommunicationError {
     UnexpectedProtocolControllerClosureError,
     #[error("Time error {0}")]
     TimeError(#[from] time::TimeError),
+    #[error("missing peers")]
+    MissingPeersError,
 }
 
 #[derive(Error, Debug)]
@@ -80,6 +82,10 @@ pub enum ChannelError {
     ControllerEventReceiverError,
     #[error("protocol event channel error {0}")]
     SendProtocolEventError(#[from] tokio::sync::mpsc::error::SendError<ProtocolEvent>),
+    #[error("Send error")]
+    SendError,
+    #[error("CommunicationError")]
+    DatabaseCommunicationError,
 }
 
 #[derive(Error, Debug)]
