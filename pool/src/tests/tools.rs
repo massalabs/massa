@@ -1,4 +1,4 @@
-use crypto::{hash::Hash, signature::SignatureEngine};
+use crypto::hash::Hash;
 use models::{
     Address, Operation, OperationContent, OperationType, SerializationContext, SerializeCompact,
 };
@@ -6,11 +6,10 @@ use models::{
 use crate::PoolConfig;
 
 pub fn example_pool_config() -> (PoolConfig, SerializationContext, u8, u64) {
-    let sig_engine = SignatureEngine::new();
     let mut nodes = Vec::new();
     for _ in 0..2 {
-        let private_key = SignatureEngine::generate_random_private_key();
-        let public_key = sig_engine.derive_public_key(&private_key);
+        let private_key = crypto::generate_random_private_key();
+        let public_key = crypto::derive_public_key(&private_key);
         nodes.push((public_key, private_key));
     }
     let thread_count: u8 = 2;
@@ -46,12 +45,11 @@ pub fn get_transaction(
     fee: u64,
     context: &SerializationContext,
 ) -> (Operation, u8) {
-    let sig_engine = SignatureEngine::new();
-    let sender_priv = SignatureEngine::generate_random_private_key();
-    let sender_pub = sig_engine.derive_public_key(&sender_priv);
+    let sender_priv = crypto::generate_random_private_key();
+    let sender_pub = crypto::derive_public_key(&sender_priv);
 
-    let recv_priv = SignatureEngine::generate_random_private_key();
-    let recv_pub = sig_engine.derive_public_key(&recv_priv);
+    let recv_priv = crypto::generate_random_private_key();
+    let recv_pub = crypto::derive_public_key(&recv_priv);
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -64,7 +62,7 @@ pub fn get_transaction(
         expire_period,
     };
     let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
-    let signature = sig_engine.sign(&hash, &sender_priv).unwrap();
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
     (
         Operation { content, signature },

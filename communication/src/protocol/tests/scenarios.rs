@@ -4,14 +4,11 @@ use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolEvent;
-use crypto::signature::SignatureEngine;
 use std::collections::{HashMap, HashSet};
 
 #[tokio::test]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
-
-    let mut signature_engine = SignatureEngine::new();
 
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
@@ -36,8 +33,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     .await
     .expect("could not start protocol controller");
 
-    let mut nodes =
-        tools::create_and_connect_nodes(3, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -49,7 +45,6 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     // 3. Send header to protocol.
@@ -115,8 +110,6 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 async fn test_protocol_sends_blocks_when_asked_for() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let send_block_or_header_cmd_filter = |cmd| match cmd {
         cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
         cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
@@ -141,8 +134,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     .await
     .expect("could not start protocol controller");
 
-    let mut nodes =
-        tools::create_and_connect_nodes(4, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -154,7 +146,6 @@ async fn test_protocol_sends_blocks_when_asked_for() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     let expected_hash = block
@@ -243,8 +234,6 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -264,8 +253,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
     .expect("could not start protocol controller");
 
     // Create 4 nodes.
-    let nodes =
-        tools::create_and_connect_nodes(4, &signature_engine, &mut network_controller).await;
+    let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
     let (node_a, node_b, node_c, node_d) = (
         nodes[0].clone(),
         nodes[1].clone(),
@@ -283,7 +271,6 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     // 3. Send header to protocol.
@@ -379,8 +366,6 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -396,8 +381,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
         .expect("could not start protocol controller");
 
     // Create 1 node.
-    let mut nodes =
-        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -406,7 +390,6 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     let expected_hash = block
@@ -441,8 +424,6 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 async fn test_protocol_block_not_found() {
     let (protocol_config, serialization_context) = tools::create_protocol_config();
 
-    let mut signature_engine = SignatureEngine::new();
-
     let (mut network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
 
@@ -462,8 +443,7 @@ async fn test_protocol_block_not_found() {
     .expect("could not start protocol controller");
 
     // Create 1 node.
-    let mut nodes =
-        tools::create_and_connect_nodes(1, &signature_engine, &mut network_controller).await;
+    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
     let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -472,7 +452,6 @@ async fn test_protocol_block_not_found() {
         &creator_node.private_key,
         &creator_node.id.0,
         &serialization_context,
-        &mut signature_engine,
     );
 
     let expected_hash = block
