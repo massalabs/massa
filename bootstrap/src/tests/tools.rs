@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    net::{IpAddr, Ipv4Addr},
-};
+use std::net::{IpAddr, Ipv4Addr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use consensus::{BoostrapableGraph, ConsensusCommand};
@@ -83,7 +80,7 @@ pub fn get_boot_graph() -> BoostrapableGraph {
             (Hash::hash(&"parent2".as_bytes()), 10),
         ],
         gi_head: Default::default(),
-        max_cliques: vec![HashSet::new()],
+        max_cliques: vec![Vec::new()],
     }
 }
 
