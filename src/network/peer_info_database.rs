@@ -52,13 +52,16 @@ pub struct PeerInfoDatabase {
 
 /// Saves banned, advertised and bootstrap peers to a file.
 /// Can return an error if the writing fails.
-async fn dump_peers(peers: &HashMap<IpAddr, PeerInfo>, file_name: &String) -> BoxResult<()> {
+async fn dump_peers(
+    peers: &HashMap<IpAddr, PeerInfo>,
+    file_path: &std::path::PathBuf,
+) -> BoxResult<()> {
     let peer_vec: Vec<PeerInfo> = peers
         .values()
         .filter(|v| v.banned || v.advertised || v.bootstrap)
         .cloned()
         .collect();
-    tokio::fs::write(file_name, serde_json::to_string_pretty(&peer_vec)?).await?;
+    tokio::fs::write(file_path, serde_json::to_string_pretty(&peer_vec)?).await?;
     Ok(())
 }
 
@@ -549,7 +552,7 @@ mod tests {
             routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             protocol_port: 0,
             connect_timeout_seconds: 180.0,
-            peers_file: "".to_string(),
+            peers_file: std::path::PathBuf::new(),
             target_out_connections: 10,
             max_in_connections: 5,
             max_in_connections_per_ip: 2,
