@@ -42,14 +42,14 @@ We mainly use link:https://t.me/joinchat/WbAhso_0YhE4NTg0[Telegram] for project 
 
 ### Start the node
 
-`cd massa-node/`
-`RUST_BACKTRACE=full cargo run --release |& tee logs.txt`
+* `cd massa-node/`
+* `RUST_BACKTRACE=full cargo run --release |& tee logs.txt`
 
 
 ### Start the client
 
-`cd massa-client/`
-`cargo run --release`
+* `cd massa-client/`
+* `cargo run --release`
 
 
 ### Tutorial
