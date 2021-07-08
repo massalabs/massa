@@ -14,13 +14,13 @@ use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
 use consensus::DiscardReason;
-use consensus::{LedgerData, LedgerDataExport};
+use consensus::{ExportBlockStatus, LedgerData, LedgerDataExport};
 use crypto::hash::Hash;
 use crypto::signature::Signature;
-use models::Address;
-use models::BlockId;
-use models::OperationType;
-use models::{Block, BlockHeader, Operation, Slot};
+use models::{
+    Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
+    OperationSearchResultStatus, OperationType, Slot,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -82,16 +82,46 @@ impl std::fmt::Display for WrapperOperation {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct OperationSearchResultStatusWrapper<'a>(&'a OperationSearchResultStatus);
+
+impl<'a> std::fmt::Display for OperationSearchResultStatusWrapper<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let status = match &self.0 {
+            OperationSearchResultStatus::Pending => "Pending",
+            OperationSearchResultStatus::InBlock(block_status) => match block_status {
+                OperationSearchResultBlockStatus::Incoming => "InBlock(Incoming)",
+                OperationSearchResultBlockStatus::WaitingForSlot => "InBlock(WaitingForSlot)",
+                OperationSearchResultBlockStatus::WaitingForDependencies => {
+                    "InBlock(WaitingForDependencies)"
+                }
+                OperationSearchResultBlockStatus::Active => "InBlock(Active)",
+                OperationSearchResultBlockStatus::Discarded => "InBlock(Discarded)",
+                OperationSearchResultBlockStatus::Stored => "InBlock(Stored)",
+            },
+            OperationSearchResultStatus::Discarded => "Discarded",
+        };
+        write!(f, "{}", status)
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct GetOperationContent {
     pub op: WrapperOperation,
     pub in_pool: bool,
     pub in_blocks: HashMap<BlockId, (usize, bool)>,
+    pub status: OperationSearchResultStatus,
 }
 
 impl std::fmt::Display for GetOperationContent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "{} in pool:{}", self.op, self.in_pool)?;
+        writeln!(
+            f,
+            "{} status:{} in pool:{}",
+            OperationSearchResultStatusWrapper(&self.status),
+            self.op,
+            self.in_pool
+        )?;
         writeln!(
             f,
             "block list:{}",
@@ -215,6 +245,49 @@ impl<'a> std::fmt::Display for WrapperAddressLedgerDataExport<'a> {
         Ok(())
     }
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub enum WrappedBlockStatus {
+    Incoming,
+    WaitingForSlot,
+    WaitingForDependencies,
+    Active(WrapperBlock),
+    Discarded(DiscardReason),
+    Stored(WrapperBlock),
+}
+
+impl From<ExportBlockStatus> for WrappedBlockStatus {
+    fn from(block: ExportBlockStatus) -> Self {
+        match block {
+            ExportBlockStatus::Incoming => WrappedBlockStatus::Incoming,
+            ExportBlockStatus::WaitingForSlot => WrappedBlockStatus::WaitingForSlot,
+            ExportBlockStatus::WaitingForDependencies => WrappedBlockStatus::WaitingForDependencies,
+            ExportBlockStatus::Active(block) => WrappedBlockStatus::Active(block.into()),
+            ExportBlockStatus::Discarded(reason) => WrappedBlockStatus::Discarded(reason),
+            ExportBlockStatus::Stored(block) => WrappedBlockStatus::Stored(block.into()),
+        }
+    }
+}
+
+impl std::fmt::Display for WrappedBlockStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self {
+            WrappedBlockStatus::Incoming => write!(f, "status: Incoming"),
+            WrappedBlockStatus::WaitingForSlot => write!(f, "status: WaitingForSlot"),
+            WrappedBlockStatus::WaitingForDependencies => {
+                write!(f, "status: WaitingForDependencies")
+            }
+            WrappedBlockStatus::Active(block) => {
+                write!(f, "status: Active, {}", block)
+            }
+            WrappedBlockStatus::Discarded(reason) => write!(f, "status: Discarded({:?})", reason),
+            WrappedBlockStatus::Stored(block) => {
+                write!(f, "status: Stored, {}", block)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct WrapperBlock {
     pub header: WrappedBlockHeader,

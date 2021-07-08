@@ -16,8 +16,8 @@ mod timeslots;
 
 pub use block_graph::BootsrapableGraph;
 pub use block_graph::{
-    BlockGraphExport, DiscardReason, ExportActiveBlock, ExportCompiledBlock, ExportDiscardedBlocks,
-    LedgerDataExport, Status,
+    BlockGraphExport, DiscardReason, ExportActiveBlock, ExportBlockStatus, ExportCompiledBlock,
+    ExportDiscardedBlocks, LedgerDataExport, Status,
 };
 pub use config::ConsensusConfig;
 pub use consensus_controller::{

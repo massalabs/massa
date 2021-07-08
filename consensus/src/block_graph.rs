@@ -12,8 +12,8 @@ use crypto::signature::derive_public_key;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
     BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, OperationId,
-    OperationSearchResult, SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
-    BLOCK_ID_SIZE_BYTES,
+    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
+    SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES,
 };
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -407,6 +407,31 @@ enum BlockStatus {
         reason: DiscardReason,
         sequence_number: u64,
     },
+}
+
+/// Block status in the graph that can be exported.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ExportBlockStatus {
+    Incoming,
+    WaitingForSlot,
+    WaitingForDependencies,
+    Active(Block),
+    Discarded(DiscardReason),
+    Stored(Block),
+}
+
+impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
+    fn from(block: &BlockStatus) -> Self {
+        match block {
+            BlockStatus::Incoming(_) => ExportBlockStatus::Incoming,
+            BlockStatus::WaitingForSlot(_) => ExportBlockStatus::WaitingForSlot,
+            BlockStatus::WaitingForDependencies { .. } => ExportBlockStatus::WaitingForDependencies,
+            BlockStatus::Active(active_block) => {
+                ExportBlockStatus::Active(active_block.block.clone())
+            }
+            BlockStatus::Discarded { reason, .. } => ExportBlockStatus::Discarded(reason.clone()),
+        }
+    }
 }
 
 /// The block version that can be exported.
@@ -1113,6 +1138,9 @@ impl BlockGraph {
                             in_blocks: vec![(block.header.compute_block_id()?, (*idx, *is_final))]
                                 .into_iter()
                                 .collect(),
+                            status: OperationSearchResultStatus::InBlock(
+                                OperationSearchResultBlockStatus::Active,
+                            ),
                         };
                         if let Some(old_search) = res.get_mut(op) {
                             old_search.extend(&search);
@@ -1132,6 +1160,12 @@ impl BlockGraph {
     /// * block_id : block ID
     pub fn get_active_block(&self, block_id: &BlockId) -> Option<&ActiveBlock> {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
+    }
+
+    pub fn get_export_block_status(&self, block_id: &BlockId) -> Option<ExportBlockStatus> {
+        self.block_statuses
+            .get(block_id)
+            .map(|block_status| block_status.into())
     }
 
     /// Retrieves operations from operation Ids
@@ -1162,6 +1196,9 @@ impl BlockGraph {
                             op: op.clone(),
                             in_pool: false,
                             in_blocks: vec![(*block_id, (*idx, *is_final))].into_iter().collect(),
+                            status: OperationSearchResultStatus::InBlock(
+                                OperationSearchResultBlockStatus::Active,
+                            ),
                         };
                         res.entry(*op_id)
                             .and_modify(|search_old| search_old.extend(&search_new))

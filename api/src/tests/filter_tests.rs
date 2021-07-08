@@ -3,6 +3,7 @@ use crate::Addresses;
 use crate::ApiEvent;
 use crate::OperationIds;
 use communication::network::PeerInfo;
+use consensus::ExportBlockStatus;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use consensus::{LedgerChange, LedgerDataExport};
 use crypto::hash::Hash;
@@ -1299,7 +1300,7 @@ async fn test_get_block() {
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
-            Some(ApiEvent::GetActiveBlock { response_tx, .. }) => {
+            Some(ApiEvent::GetBlockStatus { response_tx, .. }) => {
                 response_tx.send(None).expect("failed to send block");
             }
 
@@ -1330,9 +1331,9 @@ async fn test_get_block() {
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
-            Some(ApiEvent::GetActiveBlock { response_tx, .. }) => {
+            Some(ApiEvent::GetBlockStatus { response_tx, .. }) => {
                 response_tx
-                    .send(Some(get_test_block()))
+                    .send(Some(ExportBlockStatus::Active(get_test_block())))
                     .expect("failed to send block");
             }
 
@@ -1347,8 +1348,10 @@ async fn test_get_block() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&get_test_block()).unwrap()).unwrap();
+    let expected: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(&ExportBlockStatus::Active(get_test_block())).unwrap(),
+    )
+    .unwrap();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
     drop(filter);
@@ -1370,7 +1373,7 @@ async fn test_get_block() {
     let handle = tokio::spawn(async move {
         let evt = rx_api.recv().await;
         match evt {
-            Some(ApiEvent::GetActiveBlock { response_tx, .. }) => {
+            Some(ApiEvent::GetBlockStatus { response_tx, .. }) => {
                 response_tx.send(None).expect("failed to send block");
             }
 
