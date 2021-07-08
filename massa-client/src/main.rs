@@ -228,6 +228,12 @@ fn main() {
         true,
         cmd_address_roll_state,
     )
+    .new_command_noargs(
+        "get_active_stakers",
+        "returns the active stakers and their roll counts for the current cycle.",
+        true,
+        cmd_get_active_stakers,
+    )
     //non active wellet command
     .new_command_noargs("wallet_info", "Shows wallet info", false, wallet_info)
     .new_command_noargs("wallet_new_privkey", "Generates a new private key and adds it to the wallet. Returns the associated address.", false, wallet_new_privkey)
@@ -374,6 +380,23 @@ fn cmd_address_roll_state(data: &mut ReplData, params: &[&str]) -> Result<(), Re
                     },
                     roll_state.candidate_rolls,
                 );
+            }
+        } else {
+            println!("not ok status code: {:?}", resp);
+        }
+    }
+    Ok(())
+}
+
+fn cmd_get_active_stakers(data: &mut ReplData) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/active_stakers", data.node_ip);
+
+    if let Some(resp) = request_data(data, &url)? {
+        if resp.status() == StatusCode::OK {
+            let rolls = resp.json::<HashMap<Address, u64>>()?;
+            println!("Staking addresses (roll count):");
+            for (addr, roll_count) in rolls.into_iter() {
+                println!("\t{}: {}", addr, roll_count);
             }
         } else {
             println!("not ok status code: {:?}", resp);

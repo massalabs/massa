@@ -302,6 +302,22 @@ impl ConsensusCommandSender {
         })
     }
 
+    pub async fn get_active_stakers(
+        &self,
+    ) -> Result<Option<HashMap<Address, u64>>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_active_stakers", {});
+        self.0
+            .send(ConsensusCommand::GetActiveStakers(response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+        })
+    }
+
     pub async fn register_staking_private_keys(
         &self,
         keys: Vec<PrivateKey>,

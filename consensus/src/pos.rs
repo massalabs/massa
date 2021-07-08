@@ -932,6 +932,11 @@ impl ProofOfStake {
             // nominal case: lookback after or at cycle 0
             let target_cycle = source_cycle - self.cfg.pos_lookback_cycles - 1;
             if let Some(state) = self.get_final_roll_data(target_cycle, thread) {
+                if !state.is_complete(self.cfg.periods_per_cycle) {
+                    return Err(ConsensusError::PosCycleUnavailable(
+                        "target cycle incomplete".to_string(),
+                    ));
+                }
                 Ok(&state.roll_count)
             } else {
                 Err(ConsensusError::PosCycleUnavailable(
