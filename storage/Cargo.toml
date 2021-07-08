@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }

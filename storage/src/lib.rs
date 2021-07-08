@@ -1,5 +1,7 @@
-pub mod config;
-pub mod error;
+mod config;
+mod error;
+mod storage_controller;
+mod storage_worker;
 
 #[cfg(test)]
 mod tests {
