@@ -586,6 +586,9 @@ impl NetworkWorker {
                 );
                 // get all connection IDs to ban
                 let mut ban_connection_ids: HashSet<ConnectionId> = HashSet::new();
+
+                // Note: if we can't find the node, there is no need to resend the close event,
+                // since protocol will have already removed the node from it's list of active ones.
                 if let Some((orig_conn_id, _)) = self.active_nodes.get(&node) {
                     if let Some((orig_ip, _)) = self.active_connections.get(orig_conn_id) {
                         self.peer_info_db.peer_banned(orig_ip)?;
@@ -617,70 +620,36 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::SendBlockHeader { node, header } => {
-                if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
-                    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"hash": header.content.compute_hash(&self.serialization_context)?, "header": header, "node": node});
-                    let res = node_command_tx
-                        .send(NodeCommand::SendBlockHeader(header))
-                        .await;
-                    if res.is_err() {
-                        warn!(
-                            "{}",
-                            CommunicationError::ChannelError(
-                                "send block header node command send failed".into(),
-                            )
-                        );
-                    }
-                } else {
-                    // We probably weren't able to send this event previously,
-                    // retry it now.
-                    let _ = self
-                        .send_network_event(NetworkEvent::ConnectionClosed(node))
-                        .await;
-                }
+                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"hash": header.content.compute_hash(&self.serialization_context)?, "header": header, "node": node});
+                self.forward_message_to_node_or_resend_close_event(
+                    &node,
+                    NodeCommand::SendBlockHeader(header),
+                )
+                .await;
             }
             NetworkCommand::AskForBlocks { list } => {
-                massa_trace!(
-                    "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
-                    { "hashlist": list }
-                );
                 for (node, hash_list) in list.into_iter() {
-                    if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
-                        let res = node_command_tx
-                            .send(NodeCommand::AskForBlocks(hash_list))
-                            .await;
-                        if res.is_err() {
-                            warn!(
-                                "{}",
-                                CommunicationError::ChannelError(
-                                    "ask for block node command send failed".into(),
-                                )
-                            );
-                        }
-                    }
+                    massa_trace!(
+                        "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
+                        { "hashlist": hash_list, "node": node }
+                    );
+                    self.forward_message_to_node_or_resend_close_event(
+                        &node,
+                        NodeCommand::AskForBlocks(hash_list.clone()),
+                    )
+                    .await;
                 }
             }
             NetworkCommand::SendBlock { node, block } => {
-                if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
-                    massa_trace!(
-                        "network_worker.manage_network_command send NodeCommand::SendBlock",
-                        {"hash": block.header.content.compute_hash(&self.serialization_context)?, "block": block, "node": node}
-                    );
-                    let res = node_command_tx.send(NodeCommand::SendBlock(block)).await;
-                    if res.is_err() {
-                        warn!(
-                            "{}",
-                            CommunicationError::ChannelError(
-                                "send block node command send failed".into(),
-                            )
-                        )
-                    };
-                } else {
-                    // We probably weren't able to send this event previously,
-                    // retry it now.
-                    let _ = self
-                        .send_network_event(NetworkEvent::ConnectionClosed(node))
-                        .await;
-                }
+                massa_trace!(
+                    "network_worker.manage_network_command send NodeCommand::SendBlock",
+                    {"hash": block.header.content.compute_hash(&self.serialization_context)?, "block": block, "node": node}
+                );
+                self.forward_message_to_node_or_resend_close_event(
+                    &node,
+                    NodeCommand::SendBlock(block),
+                )
+                .await;
             }
             NetworkCommand::GetPeers(response_tx) => {
                 massa_trace!(
@@ -700,26 +669,38 @@ impl NetworkWorker {
                     "network_worker.manage_network_command receive NetworkCommand::BlockNotFound",
                     { "hash": hash, "node": node }
                 );
-                if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
-                    let res = node_command_tx.send(NodeCommand::BlockNotFound(hash)).await;
-                    if res.is_err() {
-                        warn!(
-                            "{}",
-                            CommunicationError::ChannelError(
-                                "send block not found node command send failed".into(),
-                            )
-                        )
-                    };
-                } else {
-                    // We probably weren't able to send this event previously,
-                    // retry it now.
-                    let _ = self
-                        .send_network_event(NetworkEvent::ConnectionClosed(node))
-                        .await;
-                }
+                self.forward_message_to_node_or_resend_close_event(
+                    &node,
+                    NodeCommand::BlockNotFound(hash),
+                )
+                .await;
             }
         }
         Ok(())
+    }
+
+    /// Forward a message to a node worker, returning whether it was successful.
+    async fn forward_message_to_node_or_resend_close_event(
+        &mut self,
+        node: &NodeId,
+        message: NodeCommand,
+    ) {
+        if let Some((_, node_command_tx)) = self.active_nodes.get(&node) {
+            if !node_command_tx.send(message).await.is_ok() {
+                warn!(
+                    "{}",
+                    CommunicationError::ChannelError(
+                        "send block not found node command send failed".into(),
+                    )
+                )
+            };
+        } else {
+            // We probably weren't able to send this event previously,
+            // retry it now.
+            let _ = self
+                .send_network_event(NetworkEvent::ConnectionClosed(node.clone()))
+                .await;
+        }
     }
 
     /// Manages out connection
