@@ -1,11 +1,8 @@
 use super::establisher::Establisher;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::net::IpAddr;
 use tokio::prelude::*;
-
-type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ConnectionId(pub u64);
