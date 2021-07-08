@@ -48,6 +48,11 @@ pub enum ConsensusCommand {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<LedgerDataExport>,
     },
+    GetOperation {
+        id: OperationId,
+        /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
+        response_tx: oneshot::Sender<Option<(Operation, bool, HashMap<BlockId, bool>)>>,
+    },
 }
 
 /// Events that are emitted by consensus.
@@ -548,7 +553,27 @@ impl ConsensusWorker {
                     ))
                 })
             }
+            ConsensusCommand::GetOperation { id, response_tx } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_operation",
+                    { "operation": id }
+                );
+                let res = self.get_operation(id).await?;
+                response_tx.send(res).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get operation response: {:?}",
+                        err
+                    ))
+                })
+            }
         }
+    }
+
+    async fn get_operation(
+        &self,
+        id: OperationId,
+    ) -> Result<Option<(Operation, bool, HashMap<BlockId, bool>)>, ConsensusError> {
+        todo!()
     }
 
     /// Manages received protocolevents.
