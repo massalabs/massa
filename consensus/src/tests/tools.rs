@@ -6,11 +6,9 @@ use crypto::{
     signature::{PrivateKey, SignatureEngine},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
-use std::{collections::HashSet, time::Duration};
+use std::collections::HashSet;
 use storage::{StorageAccess, StorageConfig};
 use time::UTime;
-
-use tokio::time::timeout;
 
 //return true if another block has been seen
 pub async fn validate_notpropagate_block(
@@ -19,22 +17,12 @@ pub async fn validate_notpropagate_block(
     timeout_ms: u64,
 ) -> bool {
     loop {
-        match timeout(
-            Duration::from_millis(timeout_ms),
-            protocol_controller.wait_command(),
-        )
-        .await
-        {
-            Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
-                if not_propagated_hash == hash {
-                    panic!("validate_notpropagate_block the block has been propagated.")
-                } else {
-                    return true;
-                }
+        match protocol_controller.wait_command(timeout_ms.into()).await {
+            Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
+                return !(not_propagated_hash == hash);
             }
-            Ok(Some(_)) => {}
-            Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-            Err(_) => return false,
+            Some(_) => continue,
+            None => return false,
         }
     }
 }
@@ -46,22 +34,12 @@ pub async fn validate_notpropagate_block_in_list(
     timeout_ms: u64,
 ) -> bool {
     loop {
-        match timeout(
-            Duration::from_millis(timeout_ms),
-            protocol_controller.wait_command(),
-        )
-        .await
-        {
-            Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
-                if not_propagated_hashs.contains(&hash) {
-                    panic!("validate_notpropagate_block the block has been propagated.")
-                } else {
-                    return true;
-                }
+        match protocol_controller.wait_command(timeout_ms.into()).await {
+            Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
+                return !not_propagated_hashs.contains(&hash);
             }
-            Ok(Some(_)) => {}
-            Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-            Err(_) => return false,
+            Some(_) => continue,
+            None => return false,
         }
     }
 }
@@ -72,23 +50,14 @@ pub async fn validate_propagate_block_in_list(
     timeout_ms: u64,
 ) -> Hash {
     loop {
-        match timeout(
-            Duration::from_millis(timeout_ms),
-            protocol_controller.wait_command(),
-        )
-        .await
-        {
-            Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
+        match protocol_controller.wait_command(timeout_ms.into()).await {
+            Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
                 trace!("receive hash:{}", hash);
                 assert!(valid_hashs.contains(&hash), "not the valid hash propagated");
                 return hash;
             }
-            Ok(Some(_)) => {}
-            Ok(msg) => panic!(
-                "an error occurs while waiting for ProtocolCommand event {:?}",
-                msg
-            ),
-            Err(_) => panic!("timeout block not propagated {:?}", valid_hashs),
+            Some(_) => continue,
+            None => panic!("Block not propagated."),
         }
     }
 }
@@ -98,24 +67,15 @@ pub async fn validate_ask_for_block(
     valid_hash: Hash,
     timeout_ms: u64,
 ) -> Hash {
-    match timeout(
-        Duration::from_millis(timeout_ms),
-        protocol_controller.wait_command(),
-    )
-    .await
-    {
-        Ok(Some(ProtocolCommand::WishlistDelta { new, .. })) => {
+    match protocol_controller.wait_command(timeout_ms.into()).await {
+        Some(ProtocolCommand::WishlistDelta { new, .. }) => {
             trace!("asking for hashes:{:?}", new);
             assert!(new.contains(&valid_hash), "not the valid hash asked for");
             assert_eq!(new.len(), 1);
             valid_hash
         }
-        Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-        Ok(msg) => panic!(
-            "an error occurs while waiting for ProtocolCommand event {:?}",
-            msg
-        ),
-        Err(_) => panic!("timeout block not asked for"),
+        Some(cmd) => panic!("unexpected  protocol command {:?}", cmd),
+        None => panic!("Block not asked for before timeout."),
     }
 }
 
@@ -124,23 +84,14 @@ pub async fn validate_does_not_ask_for_block(
     hash: &Hash,
     timeout_ms: u64,
 ) {
-    match timeout(
-        Duration::from_millis(timeout_ms),
-        protocol_controller.wait_command(),
-    )
-    .await
-    {
-        Ok(Some(ProtocolCommand::WishlistDelta { new, .. })) => {
+    match protocol_controller.wait_command(timeout_ms.into()).await {
+        Some(ProtocolCommand::WishlistDelta { new, .. }) => {
             if new.contains(hash) {
                 panic!("unexpected ask for block {:?}", hash);
             }
         }
-        Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-        Ok(msg) => panic!(
-            "an error occurs while waiting for ProtocolCommand event {:?}",
-            msg
-        ),
-        Err(_) => {}
+        Some(cmd) => panic!("unexpected command {:?}", cmd),
+        None => {}
     }
 }
 
@@ -149,36 +100,13 @@ pub async fn validate_propagate_block(
     valid_hash: Hash,
     timeout_ms: u64,
 ) {
-    match timeout(
-        Duration::from_millis(timeout_ms),
-        protocol_controller.wait_command(),
-    )
-    .await
-    {
-        Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
-            //skip created block
-            if valid_hash != hash {
-                match timeout(
-                    Duration::from_millis(timeout_ms),
-                    protocol_controller.wait_command(),
-                )
-                .await
-                {
-                    Ok(Some(ProtocolCommand::PropagateBlockHeader { hash, .. })) => {
-                        assert_eq!(valid_hash, hash, "not the valid hash propagated")
-                    }
-                    Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-                    Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-                    Err(_) => panic!("timeout block not propagated"),
-                }
-            }
-            //assert_eq!(valid_hash, hash, "not the valid hash propagated")
+    match protocol_controller.wait_command(timeout_ms.into()).await {
+        Some(ProtocolCommand::PropagateBlockHeader { hash, .. }) => {
+            assert_eq!(valid_hash, hash, "not the valid hash propagated")
         }
-        //        event @ Ok(Some(_)) => panic!("unexpected event sent by Protocol: {:?}", event),
-        Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-        Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-        Err(_) => panic!("timeout block not propagated"),
-    };
+        Some(cmd) => panic!("unexpected command {:?}", cmd),
+        None => panic!("Block not propagated before timeout."),
+    }
 }
 
 pub fn start_storage(serialization_context: &SerializationContext) -> StorageAccess {
@@ -201,19 +129,13 @@ pub async fn validate_send_block(
     valid_hash: Hash,
     timeout_ms: u64,
 ) {
-    match timeout(
-        Duration::from_millis(timeout_ms),
-        protocol_controller.wait_command(),
-    )
-    .await
-    {
-        Ok(Some(ProtocolCommand::SendBlock { hash, .. })) => {
-            assert_eq!(valid_hash, hash, "not the valid hash propagated");
+    match protocol_controller.wait_command(timeout_ms.into()).await {
+        Some(ProtocolCommand::SendBlock { hash, .. }) => {
+            assert_eq!(valid_hash, hash, "not the valid hash propagated")
         }
-        Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
-        Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
-        Err(_) => panic!("timeout block not propagated"),
-    };
+        Some(cmd) => panic!("unexpected command {:?}", cmd),
+        None => panic!("Block not propagated before timeout."),
+    }
 }
 
 pub async fn create_and_test_block(

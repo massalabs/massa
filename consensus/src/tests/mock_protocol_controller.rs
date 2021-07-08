@@ -3,7 +3,8 @@ use communication::protocol::{
 };
 use crypto::hash::Hash;
 use models::{Block, BlockHeader, SerializationContext};
-use tokio::sync::mpsc;
+use time::UTime;
+use tokio::{sync::mpsc, time::sleep};
 
 const CHANNEL_SIZE: usize = 16;
 
@@ -31,8 +32,18 @@ impl MockProtocolController {
         )
     }
 
-    pub async fn wait_command(&mut self) -> Option<ProtocolCommand> {
-        Some(self.protocol_command_rx.recv().await?)
+    /// Returns Some(cmd), or None if the timer hits.
+    pub async fn wait_command(&mut self, timeout: UTime) -> Option<ProtocolCommand> {
+        let timer = sleep(timeout.into());
+        tokio::pin!(timer);
+        let cmd_opt = tokio::select! {
+            cmd_opt = self.protocol_command_rx.recv() => cmd_opt,
+            _ = &mut timer => return None,
+        };
+        match cmd_opt {
+            Some(cmd) => Some(cmd),
+            None => panic!("Unexpected closure of protocol command channel."),
+        }
     }
 
     pub async fn receive_block(&mut self, block: Block) {
@@ -73,7 +84,7 @@ impl MockProtocolController {
         loop {
             tokio::select!(
                 res = &mut future => return res,
-                cmd = self.wait_command() => match cmd {
+                cmd = self.wait_command(0.into()) => match cmd {
                     Some(_) => {},
                     None => return future.await,  // if the network controlled dies, wait for the future to finish
                 }
