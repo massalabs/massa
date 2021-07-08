@@ -21,14 +21,16 @@ pub struct BlockStorage {
 
 impl BlockStorage {
     pub fn clear(&self) -> Result<(), StorageError> {
-        self.db.open_tree("hash_to_block")?.clear()?;
-        self.db.open_tree("slot_to_hash")?.clear()?;
-
-        //update storage len()
-        self.nb_stored_blocks
-            .write()
-            .map(|mut nb_stored_blocks| *nb_stored_blocks = 0)
-            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+        {
+            //acquire W lock on nb_stored_blocks
+            let mut nb_stored_blocks = self
+                .nb_stored_blocks
+                .write()
+                .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+            self.db.open_tree("hash_to_block")?.clear()?;
+            self.db.open_tree("slot_to_hash")?.clear()?;
+            *nb_stored_blocks = 0;
+        } //release W Lock
         Ok(())
     }
 
@@ -48,13 +50,14 @@ impl BlockStorage {
         nb_stored_blocks_mutex
             .write()
             .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
-            .and_then(|nb_blocks_in_db| {
-                BlockStorage::remove_exceed_blocks(
+            .and_then(|mut nb_blocks_in_db| {
+                *nb_blocks_in_db = BlockStorage::remove_exceed_blocks(
                     *nb_blocks_in_db,
                     cfg.max_stored_blocks,
                     &hash_to_block,
                     &slot_to_hash,
-                )
+                )?;
+                Ok(())
             })?;
 
         Ok(BlockStorage {
@@ -90,7 +93,7 @@ impl BlockStorage {
             *nb_stored_blocks += 1;
 
             //manage max block. If nb block > max block, remove the oldest block.
-            BlockStorage::remove_exceed_blocks(
+            *nb_stored_blocks = BlockStorage::remove_exceed_blocks(
                 *nb_stored_blocks,
                 self.max_stored_blocks,
                 &hash_to_block,
@@ -102,11 +105,12 @@ impl BlockStorage {
     }
 
     fn remove_exceed_blocks(
-        mut nb_stored_blocks: usize,
+        in_nb_stored_blocks: usize,
         max_stored_blocks: usize,
         hash_to_block: &Tree,
         slot_to_hash: &Tree,
-    ) -> Result<(), StorageError> {
+    ) -> Result<usize, StorageError> {
+        let mut nb_stored_blocks = in_nb_stored_blocks;
         //manage max block. If nb block > max block, remove the oldest block.
         while nb_stored_blocks > max_stored_blocks {
             slot_to_hash.pop_min().and_then(|res| {
@@ -115,7 +119,7 @@ impl BlockStorage {
             })?;
             nb_stored_blocks -= 1;
         }
-        Ok(())
+        Ok(nb_stored_blocks)
     }
 
     pub fn len(&self) -> Result<usize, StorageError> {

@@ -21,11 +21,17 @@ async fn test_max_nb_blocks() {
     assert_eq!(0, storage.len().await.unwrap());
     //write 6 block. 5 must be in db after. The (1,0) must be removed.
     add_block(Slot::new(2, 1), &storage).await;
+    assert_eq!(1, storage.len().await.unwrap());
     add_block(Slot::new(1, 1), &storage).await;
+    assert_eq!(2, storage.len().await.unwrap());
     add_block(Slot::new(3, 0), &storage).await;
+    assert_eq!(3, storage.len().await.unwrap());
     add_block(Slot::new(1, 0), &storage).await;
+    assert_eq!(4, storage.len().await.unwrap());
     add_block(Slot::new(3, 1), &storage).await;
+    assert_eq!(5, storage.len().await.unwrap());
     add_block(Slot::new(4, 0), &storage).await;
+    assert_eq!(5, storage.len().await.unwrap());
     let result = storage
         .get_slot_range(Slot::new(0, 0), Slot::new(1, 1))
         .await
