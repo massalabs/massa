@@ -2,7 +2,6 @@ use failure::{bail, Error};
 use log::{debug, error, warn};
 use rand::rngs::OsRng;
 use std::fs;
-use std::mem::drop;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::{thread, time};
@@ -12,75 +11,19 @@ use tokio::sync::{mpsc, watch};
 use crate::config::NetworkConfig;
 use crate::crypto::*;
 
-mod channels;
-use channels::CommunicationChannel;
+mod channel;
 
 #[derive(Debug)]
 pub struct NetworkCommand {
     pub msg: String,
 }
 
-#[derive(Debug)]
-enum ConnectionEvent {
-    ConnectionFailed { address: SocketAddr },
-    ChannelCandidate { channel: CommunicationChannel },
-}
-
-async fn channel_establish_process(
-    network_config: NetworkConfig,
-    secret_key: SecretKey,
-    public_key: PublicKey,
-    mut conn_event_tx: mpsc::Sender<ConnectionEvent>,
-    socket: TcpStream,
-    remote_addr: SocketAddr,
-    shutdown_rx_copy: watch::Receiver<bool>,
-) {
-    match channels::establish_channel(&network_config, &secret_key, &public_key, socket).await {
-        Ok(chan) => {
-            // send channel candidate
-            match conn_event_tx
-                .send(ConnectionEvent::ChannelCandidate { channel: chan })
-                .await
-            {
-                Ok(_) => {}
-                Err(e_send) => {
-                    error!(
-                        "Couldn't send channel creation message: {:?} ; remote: {:?}",
-                        e_send, &remote_addr
-                    );
-                }
-            }
-        }
-        Err(e_establish) => {
-            // send error
-            debug!(
-                "Couldn't establish channel: {:?} ; remote: {:?}",
-                e_establish, &remote_addr
-            );
-            match conn_event_tx
-                .send(ConnectionEvent::ConnectionFailed {
-                    address: remote_addr.clone(),
-                })
-                .await
-            {
-                Ok(_) => {}
-                Err(e_send) => {
-                    error!(
-                        "Couldn't send channel creation error message: {:?} ; remote: {:?}",
-                        e_send, &remote_addr
-                    );
-                }
-            }
-        }
-    }
-    drop(shutdown_rx_copy);
-}
 
 async fn listener_process(
     network_config: NetworkConfig,
     secret_key: SecretKey,
     public_key: PublicKey,
-    conn_event_tx: mpsc::Sender<ConnectionEvent>,
+    mut chan_event_tx: mpsc::Sender<channel::ChannelEvent>,
     mut shutdown_rx: watch::Receiver<bool>,
 ) -> Result<(), Error> {
     // launch TCP listener ; wait and retry on error
@@ -114,24 +57,15 @@ async fn listener_process(
     loop {
         tokio::select! {
             accept_result = tcp_listener.accept() => { match accept_result {
-                Ok((socket, remote_addr)) => {
-                    let network_config_clone = network_config.clone();
-                    let secret_key_clone = secret_key.clone();
-                    let public_key_clone = public_key.clone();
-                    let conn_event_tx_clone = conn_event_tx.clone();
-                    let shutdown_rx_copy = shutdown_rx.clone();
-                    let remote_addr_copy = remote_addr.clone();
-                    tokio::spawn(async move {
-                        channel_establish_process(
-                            network_config_clone,
-                            secret_key_clone,
-                            public_key_clone,
-                            conn_event_tx_clone,
-                            socket,
-                            remote_addr_copy,
-                            shutdown_rx_copy
-                        ).await;
-                    });
+                Ok((socket, _)) => {
+                    channel::launch_detached(
+                        &network_config,
+                        &secret_key,
+                        &public_key,
+                        socket,
+                        &mut chan_event_tx,
+                        &mut shutdown_rx
+                    ).await;
                 },
                 Err(e_listen) => {
                     debug!("Couldn't accept incoming TCP connection: {:?}", e_listen);
@@ -181,21 +115,21 @@ pub async fn run(
 
     // setup connection event receiver
     const CONN_EVENT_MPSC_CAPACITY: usize = 128;
-    let (conn_event_tx, mut conn_event_rx) = mpsc::channel(CONN_EVENT_MPSC_CAPACITY);
+    let (chan_event_tx, mut chan_event_rx) = mpsc::channel(CONN_EVENT_MPSC_CAPACITY);
 
     // setup listener process
     {
         let network_config_clone = network_config.clone();
         let secret_key_clone = secret_key.clone();
         let public_key_clone = public_key.clone();
-        let conn_event_tx_clone = conn_event_tx.clone();
+        let chan_event_tx_clone = chan_event_tx.clone();
         let shutdown_rx_clone = shutdown_rx.clone();
         tokio::spawn(async move {
             listener_process(
                 network_config_clone,
                 secret_key_clone,
                 public_key_clone,
-                conn_event_tx_clone,
+                chan_event_tx_clone,
                 shutdown_rx_clone,
             )
             .await
@@ -211,26 +145,27 @@ pub async fn run(
                     // TODO run message dispatcher function
                 },
                 None => {
-                    // all command senders have been dropped: network is not in use anymore
-                    // Warning: if we add other channels (e.g. broadcast), check that they are dropped as well
                     break;
-                }
+                },
             };},
-            opt_conn_evt = conn_event_rx.recv() => { match opt_conn_evt {
-                Some(ConnectionEvent::ConnectionFailed{address}) => {
-                    // TODO look at "address"
+            opt_chan_evt = chan_event_rx.recv() => { match opt_chan_evt {
+                Some(channel::ChannelEvent::Candidate{channel: mut chan}) => {
+                    match chan.sender.send(channel::Message::ChannelAccepted).await {
+                        Ok(_) => { /* TODO ADD chan TO POOL */ },
+                        Err(e) => {
+                            warn!("Error notifying channel process of acceptation: {:?}", e);
+                        },
+                    };
                 },
-                Some(ConnectionEvent::ChannelCandidate{channel}) => {
-                    // TODO look at "channel"
+                None => {
+                    break;
                 },
-                None => {}
             };},
         };
     }
 
     // shutdown
     debug!("Shutting down network module");
-    drop(shutdown_rx);
     match shutdown_tx.broadcast(true) {
         Ok(_) => {}
         Err(e) => {
@@ -238,7 +173,7 @@ pub async fn run(
         }
     }
     network_command_rx.close();
-    conn_event_rx.close();
+    chan_event_rx.close();
     shutdown_tx.closed().await;
 
     // everything went fine
