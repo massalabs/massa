@@ -7,7 +7,7 @@ image: "rust:latest"
 #   - apt-get install -yqq --no-install-recommends build-essential
 
 stages:
-  - sanity
+#   - sanity
   - test
   - build
 
@@ -35,6 +35,7 @@ test:
   script:
     - cargo install cargo-tarpaulin
     - cargo tarpaulin -v
+  coverage: ([\d\.]+)\% coverage
 
 # Use cargo to build the project
 build:
