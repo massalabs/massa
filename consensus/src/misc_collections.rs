@@ -1,13 +1,13 @@
 use crate::error::ConsensusError;
 use crypto::hash::Hash;
-use models::block::Block;
+use models::{block::Block, slot::Slot};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::iter::FromIterator;
 
 /// Sophisticated queue containing blocks with slotsd in the near future.
 pub struct FutureIncomingBlocks {
     /// The queue as a vecdeque of (slot, header's hash).
-    struct_deque: VecDeque<((u64, u8), Hash)>,
+    struct_deque: VecDeque<(Slot, Hash)>,
     /// The queue as a map linking haeder's hash and the whole block.
     struct_map: HashMap<Hash, Block>,
     /// Maximum number of blocks we allow in the queue.
@@ -48,7 +48,7 @@ impl FutureIncomingBlocks {
             hash_map::Entry::Vacant(vac) => vac,
         };
         // add into queue
-        let slot = (block.header.period_number, block.header.thread_number);
+        let slot = block.header.slot;
         let pos: usize = self
             .struct_deque
             .binary_search(&(slot, hash))
@@ -84,10 +84,7 @@ impl FutureIncomingBlocks {
     ///
     /// # Argument
     /// * until_slot: we want to pop blocks until this slot.
-    pub fn pop_until(
-        &mut self,
-        until_slot: (u64, u8),
-    ) -> Result<Vec<(Hash, Block)>, ConsensusError> {
+    pub fn pop_until(&mut self, until_slot: Slot) -> Result<Vec<(Hash, Block)>, ConsensusError> {
         let mut res: Vec<(Hash, Block)> = Vec::new();
         while let Some(&(slot, hash)) = self.struct_deque.front() {
             if slot > until_slot {
@@ -157,8 +154,8 @@ impl DependencyWaitingBlocks {
         self.blocked_to_dep
             .iter()
             .filter_map(|(hash, (_, block, _))| {
-                if block.header.period_number
-                    <= latest_final_periods[block.header.thread_number as usize]
+                if block.header.slot.period
+                    <= latest_final_periods[block.header.slot.thread as usize]
                 {
                     Some(*hash)
                 } else {
@@ -196,21 +193,14 @@ impl DependencyWaitingBlocks {
             .copied()
             .chain([*hash].iter().copied())
             .collect();
-        let mut to_promote: HashMap<Hash, (u64, u8, u64)> = HashMap::new();
+        let mut to_promote: HashMap<Hash, (Slot, u64)> = HashMap::new();
         while let Some(pull_h) = stack.pop() {
             if to_promote.contains_key(&pull_h) {
                 continue; // already traversed
             }
             if let Some((pull_seq, pull_block, pull_deps)) = self.blocked_to_dep.get(&pull_h) {
                 stack.extend(pull_deps); // traverse dependencies
-                to_promote.insert(
-                    pull_h,
-                    (
-                        pull_block.header.period_number,
-                        pull_block.header.thread_number,
-                        *pull_seq,
-                    ),
-                );
+                to_promote.insert(pull_h, (pull_block.header.slot, *pull_seq));
                 // remove from vecdeque
                 self.vec_blocked
                     .remove(
@@ -223,12 +213,12 @@ impl DependencyWaitingBlocks {
         }
 
         // sort promotion list by slot and original seq number, and insert it at the end of the vecdeque
-        let mut sorted_promotions: Vec<(u64, u8, u64, Hash)> = to_promote
+        let mut sorted_promotions: Vec<(Slot, u64, Hash)> = to_promote
             .into_iter()
-            .map(|(hash, (period, thread, sequence))| (period, thread, sequence, hash))
+            .map(|(hash, (slot, sequence))| (slot, sequence, hash))
             .collect();
         sorted_promotions.sort_unstable();
-        for (_, _, _, add_hash) in sorted_promotions.into_iter() {
+        for (_, _, add_hash) in sorted_promotions.into_iter() {
             self.vec_blocked.push_back((self.counter, add_hash));
             self.blocked_to_dep
                 .get_mut(&add_hash)
@@ -398,7 +388,7 @@ mod tests {
 
     use super::*;
 
-    fn create_standalone_block(period_number: u64, thread_number: u8) -> (Hash, Block) {
+    fn create_standalone_block(slot: Slot) -> (Hash, Block) {
         let signature_engine = SignatureEngine::new();
         let private_key = SignatureEngine::generate_random_private_key();
         let public_key = signature_engine.derive_public_key(&private_key);
@@ -410,9 +400,8 @@ mod tests {
 
         let header = BlockHeader {
             creator: public_key,
-            thread_number,
-            period_number,
-            roll_number: selector.draw((period_number, thread_number)),
+            slot,
+            roll_number: selector.draw(slot),
             parents,
             endorsements: Vec::new(),
             out_ledger_hash: example_hash,
@@ -436,10 +425,10 @@ mod tests {
     #[test]
     fn test_promote() {
         let mut deps = DependencyWaitingBlocks::new(5);
-        let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, _block_b) = create_standalone_block(2, 1);
-        let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, _block_d) = create_standalone_block(4, 1);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 1));
+        let (hash_b, _block_b) = create_standalone_block(Slot::new(2, 1));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 1));
+        let (hash_d, _block_d) = create_standalone_block(Slot::new(4, 1));
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -461,12 +450,12 @@ mod tests {
     #[test]
     fn test_insert() {
         let mut deps = DependencyWaitingBlocks::new(2);
-        let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, _block_b) = create_standalone_block(2, 1);
-        let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, _block_d) = create_standalone_block(4, 1);
-        let (hash_e, block_e) = create_standalone_block(5, 1);
-        let (hash_f, _block_f) = create_standalone_block(6, 1);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 1));
+        let (hash_b, _block_b) = create_standalone_block(Slot::new(2, 1));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 1));
+        let (hash_d, _block_d) = create_standalone_block(Slot::new(4, 1));
+        let (hash_e, block_e) = create_standalone_block(Slot::new(5, 1));
+        let (hash_f, _block_f) = create_standalone_block(Slot::new(6, 1));
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -494,10 +483,10 @@ mod tests {
     #[test]
     fn test_insert_chain_dependencies() {
         let mut deps = DependencyWaitingBlocks::new(2);
-        let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, _block_b) = create_standalone_block(2, 1);
-        let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_e, block_e) = create_standalone_block(5, 1);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 1));
+        let (hash_b, _block_b) = create_standalone_block(Slot::new(2, 1));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 1));
+        let (hash_e, block_e) = create_standalone_block(Slot::new(5, 1));
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -526,10 +515,10 @@ mod tests {
     #[test]
     fn test_valid_block_obtained() {
         let mut deps = DependencyWaitingBlocks::new(5);
-        let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, _block_b) = create_standalone_block(2, 1);
-        let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, _block_d) = create_standalone_block(4, 1);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 1));
+        let (hash_b, _block_b) = create_standalone_block(Slot::new(2, 1));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 1));
+        let (hash_d, _block_d) = create_standalone_block(Slot::new(4, 1));
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -555,11 +544,11 @@ mod tests {
     #[test]
     fn test_cancel() {
         let mut deps = DependencyWaitingBlocks::new(5);
-        let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, _block_b) = create_standalone_block(2, 1);
-        let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, _block_d) = create_standalone_block(4, 1);
-        let (hash_e, block_e) = create_standalone_block(5, 1);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 1));
+        let (hash_b, _block_b) = create_standalone_block(Slot::new(2, 1));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 1));
+        let (hash_d, _block_d) = create_standalone_block(Slot::new(4, 1));
+        let (hash_e, block_e) = create_standalone_block(Slot::new(5, 1));
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -597,10 +586,10 @@ mod tests {
     #[test]
     fn test_insert_future() {
         let mut future = FutureIncomingBlocks::new(3);
-        let (hash_a, block_a) = create_standalone_block(1, 0);
-        let (hash_b, block_b) = create_standalone_block(2, 0);
-        let (hash_c, block_c) = create_standalone_block(3, 0);
-        let (hash_d, block_d) = create_standalone_block(4, 0);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 0));
+        let (hash_b, block_b) = create_standalone_block(Slot::new(2, 0));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 0));
+        let (hash_d, block_d) = create_standalone_block(Slot::new(4, 0));
 
         assert!(future.insert(hash_a, block_a).unwrap().is_none());
         assert!(future.insert(hash_b, block_b).unwrap().is_none());
@@ -616,10 +605,10 @@ mod tests {
     #[test]
     fn test_insert_future_order() {
         let mut future = FutureIncomingBlocks::new(3);
-        let (hash_a, block_a) = create_standalone_block(1, 0);
-        let (hash_b, block_b) = create_standalone_block(2, 0);
-        let (hash_c, block_c) = create_standalone_block(3, 0);
-        let (hash_d, block_d) = create_standalone_block(4, 0);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 0));
+        let (hash_b, block_b) = create_standalone_block(Slot::new(2, 0));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 0));
+        let (hash_d, block_d) = create_standalone_block(Slot::new(4, 0));
 
         assert!(future.insert(hash_d, block_d).unwrap().is_none());
         assert!(future.insert(hash_b, block_b).unwrap().is_none());
@@ -635,17 +624,17 @@ mod tests {
     #[test]
     fn test_pop_until() {
         let mut future = FutureIncomingBlocks::new(5);
-        let (hash_a, block_a) = create_standalone_block(1, 0);
-        let (hash_b, block_b) = create_standalone_block(2, 0);
-        let (hash_c, block_c) = create_standalone_block(3, 0);
-        let (hash_d, block_d) = create_standalone_block(4, 0);
+        let (hash_a, block_a) = create_standalone_block(Slot::new(1, 0));
+        let (hash_b, block_b) = create_standalone_block(Slot::new(2, 0));
+        let (hash_c, block_c) = create_standalone_block(Slot::new(3, 0));
+        let (hash_d, block_d) = create_standalone_block(Slot::new(4, 0));
 
         assert!(future.insert(hash_a, block_a).unwrap().is_none());
         assert!(future.insert(hash_b, block_b).unwrap().is_none());
         assert!(future.insert(hash_c, block_c).unwrap().is_none());
         assert!(future.insert(hash_d, block_d).unwrap().is_none());
 
-        let popped = future.pop_until((3, 0)).unwrap();
+        let popped = future.pop_until(Slot::new(3, 0)).unwrap();
         assert_eq!(
             popped.iter().map(|(h, _)| h).collect::<Vec<&Hash>>(),
             vec![&hash_a, &hash_b, &hash_c]

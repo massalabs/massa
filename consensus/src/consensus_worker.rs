@@ -8,7 +8,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::block::Block;
+use models::{block::Block, slot::Slot};
 use std::collections::HashMap;
 use storage::storage_controller::StorageCommandSender;
 use tokio::{
@@ -25,9 +25,9 @@ pub enum ConsensusCommand {
     GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
     /// Returns through a channel the list of slots with public key of the selected staker.
     GetSelectionDraws(
-        (u64, u8),
-        (u64, u8),
-        oneshot::Sender<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>,
+        Slot,
+        Slot,
+        oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     ),
 }
 
@@ -66,7 +66,7 @@ pub struct ConsensusWorker {
     /// Sophisticated queue of blocks wainting for dependencies.
     dependency_waiting_blocks: DependencyWaitingBlocks,
     /// Current slot.
-    current_slot: (u64, u8),
+    current_slot: Slot,
 }
 
 /// Returned by acknowledge_block
@@ -104,8 +104,8 @@ impl ConsensusWorker {
         let selector = RandomSelector::new(&seed, cfg.thread_count, participants_weights)?;
         let current_slot =
             get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)?
-                .map_or(Ok((0u64, 0u8)), |s| {
-                    get_next_block_slot(cfg.thread_count, s)
+                .map_or(Ok(Slot::new(0u64, 0u8)), |s| {
+                    s.get_next_slot(cfg.thread_count)
                 })?;
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
@@ -167,14 +167,13 @@ impl ConsensusWorker {
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
         massa_trace!("slot_timer", {
-            "thread": self.current_slot.1,
-            "period": self.current_slot.0
+            "slot": self.current_slot,
         });
         let block_creator = self.selector.draw(self.current_slot);
 
         // create a block if enabled and possible
         if !self.cfg.disable_block_creation
-            && self.current_slot.0 > 0
+            && self.current_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
             let (hash, block) = self
@@ -190,7 +189,7 @@ impl ConsensusWorker {
         }
 
         // reset timer for next slot
-        self.current_slot = get_next_block_slot(self.cfg.thread_count, self.current_slot)?;
+        self.current_slot = self.current_slot.get_next_slot(self.cfg.thread_count)?;
         next_slot_timer.set(sleep_until(
             get_block_slot_timestamp(
                 self.cfg.thread_count,
@@ -231,24 +230,23 @@ impl ConsensusWorker {
                     ))
                 }),
             ConsensusCommand::GetSelectionDraws(slot_start, slot_end, response_tx) => {
-                let mut result: Result<Vec<((u64, u8), PublicKey)>, ConsensusError> =
-                    Ok(Vec::new());
+                let mut result: Result<Vec<(Slot, PublicKey)>, ConsensusError> = Ok(Vec::new());
                 let mut cur_slot = slot_start;
                 while cur_slot < slot_end {
                     if let Ok(res) = result.as_mut() {
                         res.push((
                             cur_slot,
-                            if cur_slot.0 == 0 {
+                            if cur_slot.period == 0 {
                                 self.genesis_public_key
                             } else {
                                 self.cfg.nodes[self.selector.draw(cur_slot) as usize].0
                             },
                         ));
                     }
-                    cur_slot = match get_next_block_slot(self.cfg.thread_count, cur_slot) {
+                    cur_slot = match cur_slot.get_next_slot(self.cfg.thread_count) {
                         Ok(next_slot) => next_slot,
-                        Err(err) => {
-                            result = Err(err);
+                        Err(_) => {
+                            result = Err(ConsensusError::SlotOverflowError);
                             break;
                         }
                     }

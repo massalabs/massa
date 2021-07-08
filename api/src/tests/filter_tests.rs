@@ -1,4 +1,5 @@
 use crate::ApiEvent;
+use models::slot::Slot;
 
 use super::tools::*;
 use communication::network::PeerInfo;
@@ -95,16 +96,8 @@ async fn test_cliques() {
     handle.await.unwrap();
     let expected = hash_set
         .iter()
-        .map(|hash| {
-            (
-                hash,
-                (
-                    get_test_block().header.period_number,
-                    get_test_block().header.thread_number,
-                ),
-            )
-        })
-        .collect::<Vec<(&Hash, (u64, u8))>>();
+        .map(|hash| (hash, get_test_block().header.slot))
+        .collect::<Vec<(&Hash, Slot)>>();
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
         &serde_json::to_string(&(2, vec![expected.clone(), expected.clone()])).unwrap(),
@@ -194,13 +187,7 @@ async fn test_current_parents() {
     assert_eq!(res.status(), 200);
 
     handle.await.unwrap();
-    let expected = (
-        get_test_hash(),
-        (
-            get_test_block().header.period_number,
-            get_test_block().header.thread_number,
-        ),
-    );
+    let expected = (get_test_hash(), get_test_block().header.slot);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
         &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
@@ -258,7 +245,7 @@ async fn test_get_graph_interval() {
     let mut expected = get_test_block_graph();
     expected.active_blocks.insert(
         get_test_hash(),
-        get_test_compiled_exported_block(1, 0, None),
+        get_test_compiled_exported_block(Slot::new(1, 0), None),
     );
     let cloned = expected.clone();
 
@@ -292,8 +279,7 @@ async fn test_get_graph_interval() {
     let block = expected.active_blocks.get(&get_test_hash()).unwrap();
     let expected = vec![(
         get_test_hash(),
-        block.block.period_number,
-        block.block.thread_number,
+        block.block.slot,
         "final", // in tests there are no blocks in gi_head, so no just active blocks
         block.block.parents.clone(),
     )];
@@ -536,8 +522,7 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, (u64, u8))>::new()).unwrap())
-            .unwrap();
+        serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap()).unwrap();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 
@@ -569,13 +554,7 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let mut expected = Vec::new();
-    expected.push((
-        get_test_hash(),
-        (
-            get_test_block().header.period_number,
-            get_test_block().header.thread_number,
-        ),
-    ));
+    expected.push((get_test_hash(), get_test_block().header.slot));
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
@@ -871,7 +850,7 @@ async fn test_last_stale() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -883,11 +862,11 @@ async fn test_last_stale() {
     graph.discarded_blocks.map.extend(vec![
         (
             get_test_hash(),
-            (DiscardReason::Invalid, get_header(1, 1, None)),
+            (DiscardReason::Invalid, get_header(Slot::new(1, 1), None)),
         ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0, None)),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
         ),
     ]);
     let cloned = graph.clone();
@@ -916,7 +895,7 @@ async fn test_last_stale() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(&vec![(get_another_test_hash(), 2, 0)]).unwrap(),
+        &serde_json::to_string(&vec![(get_another_test_hash(), Slot::new(2, 0))]).unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
@@ -950,7 +929,7 @@ async fn test_last_invalid() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, u64, u8)>::new()).unwrap())
+            serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap())
                 .unwrap();
         assert_eq!(obtained, expected);
 
@@ -962,11 +941,11 @@ async fn test_last_invalid() {
     graph.discarded_blocks.map.extend(vec![
         (
             get_test_hash(),
-            (DiscardReason::Invalid, get_header(1, 1, None)),
+            (DiscardReason::Invalid, get_header(Slot::new(1, 1), None)),
         ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0, None)),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
         ),
     ]);
     let cloned = graph.clone();
@@ -994,7 +973,7 @@ async fn test_last_invalid() {
     handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected = serde_json::to_value(&vec![(get_test_hash(), 1, 1)]).unwrap();
+    let expected = serde_json::to_value(&vec![(get_test_hash(), Slot::new(1, 1))]).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
@@ -1014,7 +993,7 @@ async fn test_staker_info() {
                 match evt {
                     Some(ApiEvent::GetSelectionDraw(_start, _stop, response_sender_tx)) => {
                         response_sender_tx
-                            .send(Ok(vec![((0, 0), cloned_staker)]))
+                            .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
                             .expect("failed to send slection draw");
                     }
                     Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
@@ -1042,7 +1021,7 @@ async fn test_staker_info() {
         assert_eq!(obtained["staker_discarded_blocks"], empty_vec);
         assert_eq!(
             obtained["staker_next_draws"],
-            serde_json::to_value(vec![(0u64, 0u8)]).unwrap()
+            serde_json::to_value(vec![Slot::new(0u64, 0u8)]).unwrap()
         );
 
         drop(filter);
@@ -1052,19 +1031,22 @@ async fn test_staker_info() {
 
     let staker_s_discarded = vec![(
         get_test_hash(),
-        (DiscardReason::Invalid, get_header(1, 1, Some(staker))),
+        (
+            DiscardReason::Invalid,
+            get_header(Slot::new(1, 1), Some(staker)),
+        ),
     )];
     graph.discarded_blocks.map.extend(vec![
         staker_s_discarded[0].clone(),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0, None)),
+            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
         ),
     ]);
 
     let staker_s_active = vec![(
         get_another_test_hash(),
-        get_test_compiled_exported_block(2, 1, Some(staker)),
+        get_test_compiled_exported_block(Slot::new(2, 1), Some(staker)),
     )];
     graph
         .active_blocks
@@ -1081,7 +1063,7 @@ async fn test_staker_info() {
             match evt {
                 Some(ApiEvent::GetSelectionDraw(_start, _stop, response_sender_tx)) => {
                     response_sender_tx
-                        .send(Ok(vec![((0, 0), cloned_staker)]))
+                        .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
                         .expect("failed to send selection draw");
                 }
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {

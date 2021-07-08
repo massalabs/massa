@@ -5,7 +5,10 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
-use models::block::{Block, BlockHeader};
+use models::{
+    block::{Block, BlockHeader},
+    slot::Slot,
+};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -78,11 +81,7 @@ pub fn get_api_config() -> ApiConfig {
     }
 }
 
-pub fn get_header(
-    period_number: u64,
-    thread_number: u8,
-    creator: Option<PublicKey>,
-) -> BlockHeader {
+pub fn get_header(slot: Slot, creator: Option<PublicKey>) -> BlockHeader {
     let secp = SignatureEngine::new();
     let private_key = SignatureEngine::generate_random_private_key();
     let public_key = secp.derive_public_key(&private_key);
@@ -92,8 +91,7 @@ pub fn get_header(
         } else {
             creator.unwrap()
         },
-        thread_number,
-        period_number,
+        slot,
         roll_number: 0,
         parents: Vec::new(),
         endorsements: Vec::new(),
@@ -145,8 +143,7 @@ pub fn get_test_block() -> Block {
                 operation_merkle_root: get_test_hash(),
                 out_ledger_hash: get_test_hash(),
                 parents: vec![],
-                period_number: 1,
-                thread_number: 0,
+                slot: Slot::new(1, 0),
                 roll_number: 0,
             },
             operations: vec![],
@@ -157,12 +154,11 @@ pub fn get_test_block() -> Block {
 }
 
 pub fn get_test_compiled_exported_block(
-    period: u64,
-    thread: u8,
+    slot: Slot,
     creator: Option<PublicKey>,
 ) -> ExportCompiledBlock {
     ExportCompiledBlock {
-        block: get_header(period, thread, creator),
+        block: get_header(slot, creator),
         children: Vec::new(),
     }
 }

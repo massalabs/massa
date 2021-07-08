@@ -3,6 +3,8 @@ use models::{block::Block, slot::Slot};
 use sled::Transactional;
 use sled::Tree;
 use sled::{transaction::ConflictableTransactionError, Db};
+use std::sync::Arc;
+use std::sync::RwLock;
 use std::{collections::HashMap, ops::Deref};
 
 use crate::{
@@ -13,6 +15,8 @@ use crate::{
 #[derive(Clone)]
 pub struct BlockStorage {
     db: Db,
+    nb_stored_blocks: Arc<RwLock<usize>>,
+    max_stored_blocks: usize,
 }
 
 impl BlockStorage {
@@ -30,7 +34,12 @@ impl BlockStorage {
         let db = sled_config.open()?;
         let _hash_to_block = db.open_tree("hash_to_block")?;
         let _slot_to_hash = db.open_tree("slot_to_hash")?;
-        Ok(BlockStorage { db })
+        let nb_blocks_in_db = db.len();
+        Ok(BlockStorage {
+            db,
+            nb_stored_blocks: Arc::new(RwLock::new(nb_blocks_in_db)),
+            max_stored_blocks: cfg.max_stored_blocks,
+        })
     }
 
     pub fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
@@ -46,6 +55,34 @@ impl BlockStorage {
         hash_to_block: &Tree,
         slot_to_hash: &Tree,
     ) -> Result<(), StorageError> {
+        //manage max block. If nb block > max block, remove the oldest block.
+        self.nb_stored_blocks
+            .read()
+            .map(|nb_stored_blocks| {
+                if *nb_stored_blocks >= self.max_stored_blocks {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
+            .and_then(|max_reach| {
+                if max_reach {
+                    slot_to_hash.pop_min().and_then(|res| {
+                        res.map(|(_, min_hash)| hash_to_block.remove(min_hash))
+                            .transpose()
+                    })?;
+                    Ok(())
+                } else {
+                    self.nb_stored_blocks
+                        .write()
+                        .map(|mut value| {
+                            *value += 1;
+                        })
+                        .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
+                }
+            })?;
+
         (hash_to_block, slot_to_hash).transaction(|(hash_tx, slot_tx)| {
             let block_vec = block.into_bytes().map_err(|err| {
                 ConflictableTransactionError::Abort(InternalError::TransactionError(format!(
@@ -54,10 +91,7 @@ impl BlockStorage {
                 )))
             })?;
             hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
-            slot_tx.insert(
-                &Slot::new(block.header.period_number, block.header.thread_number).to_bytes(),
-                &hash.to_bytes(),
-            )?;
+            slot_tx.insert(&block.header.slot.to_bytes(), &hash.to_bytes())?;
             Ok(())
         })?;
         Ok(())
@@ -93,13 +127,13 @@ impl BlockStorage {
 
     pub fn get_slot_range(
         &self,
-        start: (u64, u8),
-        end: (u64, u8),
+        start: Slot,
+        end: Slot,
     ) -> Result<HashMap<Hash, Block>, StorageError> {
         let hash_to_block = self.db.open_tree("hash_to_block")?;
         let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-        let start = Slot::from_tuple(start).to_bytes();
-        let end = Slot::from_tuple(end).to_bytes();
+        let start = start.to_bytes();
+        let end = end.to_bytes();
         slot_to_hash
             .range(start..end)
             .map(|res| {

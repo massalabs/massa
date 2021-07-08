@@ -16,6 +16,7 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use clap::App;
 use clap::Arg;
+use models::slot::Slot;
 use reqwest::blocking::Response;
 use std::fs::read_to_string;
 use std::net::IpAddr;
@@ -82,14 +83,14 @@ fn main() {
     )
     .new_command(
         "blockinterval",
-        "get the block within the specifed time interval. Parameters: start and end time interval",
+        "get the block within the specifed time interval. Parameters: start and end (excluded) time interval",
         2,
         2, //max nb parameters
         cmd_blockinterval,
     )
     .new_command(
         "graphinterval",
-        "get the block graph within the specifed time interval. Parameters: start and end time interval",
+        "get the block graph within the specifed time interval. Parameters: start and end (excluded) time interval",
         2,
         2, //max nb parameters
         cmd_graph_interval,
@@ -218,8 +219,8 @@ fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_stale", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp = resp.json::<Vec<(data::Hash, u64, u8)>>()?;
-        resp.sort_unstable_by(|a, b| data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2))));
+        let mut resp = resp.json::<Vec<(data::Hash, Slot)>>()?;
+        resp.sort_unstable_by_key(|v| (v.1, v.0));
         let formated = format_node_hash(&mut resp);
         println!("Last stale:{:?}", formated);
     }
@@ -229,8 +230,8 @@ fn cmd_last_stale(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_last_invalid(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_invalid", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp = resp.json::<Vec<(data::Hash, u64, u8)>>()?;
-        resp.sort_unstable_by(|a, b| data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2))));
+        let mut resp = resp.json::<Vec<(data::Hash, Slot)>>()?;
+        resp.sort_unstable_by_key(|v| (v.0, v.1));
         let formated = format_node_hash(&mut resp);
         println!("Last invalid:{:?}", formated);
     }
@@ -263,8 +264,8 @@ fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/current_parents", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp = resp.json::<Vec<(data::Hash, (u64, u8))>>()?;
-        resp.sort_unstable_by(|a, b| data::compare_hash(a, b));
+        let mut resp = resp.json::<Vec<(data::Hash, Slot)>>()?;
+        resp.sort_unstable_by_key(|v| (v.1, v.0));
         println!("Parents:{:?}", resp);
     }
     Ok(())
@@ -273,8 +274,8 @@ fn cmd_current_parents(data: &mut ReplData, _params: &[&str]) -> Result<(), Repl
 fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/last_final", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let mut resp = resp.json::<Vec<(data::Hash, u64, u8)>>()?;
-        resp.sort_unstable_by(|a, b| data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2))));
+        let mut resp = resp.json::<Vec<(data::Hash, Slot)>>()?;
+        resp.sort_unstable_by_key(|v| (v.1, v.0));
         let formated = format_node_hash(&mut resp);
         println!("last finals:{:?}", formated);
     }
@@ -284,13 +285,12 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_cliques(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/cliques", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let (nb_cliques, clique_list) =
-            resp.json::<(usize, Vec<Vec<(data::Hash, (u64, u8))>>)>()?;
+        let (nb_cliques, clique_list) = resp.json::<(usize, Vec<Vec<(data::Hash, Slot)>>)>()?;
         println!("Nb of cliques: {}", nb_cliques);
         println!("Cliques: ");
         clique_list.into_iter().for_each(|mut clique| {
             //use sort_unstable_by to prepare sort by slot
-            clique.sort_unstable_by(|a, b| data::compare_hash(a, b));
+            clique.sort_unstable_by_key(|v| (v.1, v.0));
             println!("{:?}", clique);
         });
     }
@@ -318,8 +318,8 @@ fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
     );
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let mut block = resp.json::<Vec<(data::Hash, (u64, u8))>>()?;
-            block.sort_unstable_by(|a, b| data::compare_hash(a, b));
+            let mut block = resp.json::<Vec<(data::Hash, Slot)>>()?;
+            block.sort_unstable_by_key(|v| (v.1, v.0));
             println!("blocks: {:?}", block);
         } else {
             println!("Not block found.");
@@ -336,20 +336,13 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
     );
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let mut block = resp.json::<Vec<(data::Hash, u64, u8, String, Vec<data::Hash>)>>()?;
-            block.sort_unstable_by(|a, b| {
-                data::compare_hash(&(a.0, (a.1, a.2)), &(b.0, (b.1, b.2)))
+            let mut block = resp.json::<Vec<(data::Hash, Slot, String, Vec<data::Hash>)>>()?;
+            block.sort_unstable_by_key(|v| (v.1, v.0));
+            block.iter().for_each(|(hash, slot, state, parents)| {
+                println!("Block: {} Slot: {} Status:{}", hash, slot, state);
+                println!("Block parents: {:?}", parents);
+                println!("");
             });
-            block
-                .iter()
-                .for_each(|(hash, slot, thread, state, parents)| {
-                    println!(
-                        "Block: {} Period: {} Thread:{} Status:{}",
-                        hash, slot, thread, state
-                    );
-                    println!("Block parents: {:?}", parents);
-                    println!("");
-                });
         } else {
             println!("Empty graph found.");
         }
@@ -374,11 +367,11 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
 ///Construct a list of diplay String from the specified list of Hash
 ///The hash are sorted with their slot (periode) number
 ///
-///The input parameter list is a collection of tuple (Hash, Period, thread)
+///The input parameter list is a collection of tuple (Hash, Slot)
 /// return a list of string the display.
-fn format_node_hash(list: &mut [(data::Hash, u64, u8)]) -> Vec<String> {
+fn format_node_hash(list: &mut [(data::Hash, Slot)]) -> Vec<String> {
     list.sort_unstable_by(|a, b| a.1.cmp(&b.1));
     list.iter()
-        .map(|(hash, slot, thread)| format!("({} Period:{} th:{})", hash, slot, thread))
+        .map(|(hash, slot)| format!("({} Slot:{:?})", hash, slot))
         .collect()
 }

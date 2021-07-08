@@ -14,6 +14,8 @@ pub enum StorageError {
     ModelError(#[from] ModelsError),
     #[error("crypto parse error : {0}")]
     CryptoParseError(#[from] crypto::CryptoError),
+    #[error("Mutex poisoned error:{0}")]
+    MutexPoisonedError(String),
 }
 
 #[derive(Error, Debug)]

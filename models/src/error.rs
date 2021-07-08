@@ -13,4 +13,8 @@ pub enum ModelsError {
     ReaderError(#[from] ReaderError),
     #[error("deserialization error {0}")]
     DeserializationError(#[from] DeserializationError),
+    #[error("slot overflow")]
+    SlotOverflowError,
+    #[error("thread overflow")]
+    ThreadOverflowError,
 }
