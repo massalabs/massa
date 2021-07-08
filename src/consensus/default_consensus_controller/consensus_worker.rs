@@ -1,9 +1,13 @@
-use super::super::{block_database::*, config::ConsensusConfig, consensus_controller::*};
+use super::super::{
+    block_database::*, config::ConsensusConfig, consensus_controller::*, random_selector::*,
+    timeslots::*,
+};
 use crate::protocol::protocol_controller::{
     NodeId, ProtocolController, ProtocolEvent, ProtocolEventType,
 };
 use tokio::stream::StreamExt;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::time::sleep_until;
 
 #[derive(Clone, Debug)]
 pub enum ConsensusCommand {
@@ -36,6 +40,27 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     }
 
     pub async fn run_loop(mut self) {
+        let (mut next_slot_thread, mut next_slot_number) = get_current_latest_block_slot(
+            self.cfg.thread_count,
+            self.cfg.t0_millis,
+            self.cfg.genesis_timestamp_millis,
+        )
+        .map_or((0u8, 0u64), |(cur_thread, cur_slot)| {
+            get_next_block_slot(self.cfg.thread_count, cur_thread, cur_slot)
+        });
+        let mut next_slot_timer = sleep_until(estimate_instant_from_timestamp(
+            get_block_slot_timestamp_millis(
+                self.cfg.thread_count,
+                self.cfg.t0_millis,
+                self.cfg.genesis_timestamp_millis,
+                next_slot_thread,
+                next_slot_number,
+            ),
+        ));
+        let seed = vec![0u8; 32]; // TODO temporary
+        let participants_weights = vec![1u64; self.cfg.nodes.len()];
+        let mut selector = RandomSelector::new(&seed, self.cfg.thread_count, participants_weights);
+
         loop {
             tokio::select! {
                 // listen consensus commands
@@ -43,6 +68,32 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                     Some(cmd) => self.process_consensus_command(cmd).await,
                     None => break  // finished
                 },
+
+                // slot timer
+                _ = &mut next_slot_timer => {
+                    massa_trace!("slot_timer", {
+                        "slot_thread": next_slot_thread,
+                        "slot_number": next_slot_number
+                    });
+
+                    // check if it is our turn to create a block
+                    let block_creator = selector.draw(next_slot_thread, next_slot_number);
+                    if block_creator == self.cfg.current_node_index {
+                        // TODO create new block at slot (next_slot_thread, next_slot_number)
+                    }
+
+                    // reset timer for next slot
+                    (next_slot_thread, next_slot_number) = get_next_block_slot(self.cfg.thread_count, next_slot_thread, next_slot_number);
+                    next_slot_timer = sleep_until(estimate_instant_from_timestamp(
+                        get_block_slot_timestamp_millis(
+                            self.cfg.thread_count,
+                            self.cfg.t0_millis,
+                            self.cfg.genesis_timestamp_millis,
+                            next_slot_thread,
+                            next_slot_number,
+                        ),
+                    ));
+                }
 
                 // listen protocol controller events
                 ProtocolEvent(source_node_id, event) = self.protocol_controller.wait_event() =>

@@ -2,6 +2,10 @@
 level = 4
 
 [consensus]
+    genesis_timestamp_millis = 1607958448000
+    t0_millis = 16000
+    thread_count = 32
+    
 
 [protocol]
     message_timeout = {secs = 5, nanos = 0}
@@ -22,3 +26,4 @@ level = 4
     max_banned_peers = 1000
     max_advertise_length = 100000
     peers_file_dump_interval = {secs = 30, nanos = 0}
+    
