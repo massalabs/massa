@@ -1,6 +1,7 @@
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::SerializeCompact;
+use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc;
 
@@ -10,7 +11,7 @@ use super::{
     mock_establisher,
     tools::{
         bridge_mock_streams, get_boot_graph, get_bootstrap_config, get_keys,
-        get_serialization_context, wait_consensus_command,
+        get_serialization_context, wait_consensus_command, wait_network_command,
     },
 };
 
@@ -91,8 +92,20 @@ async fn test_bootstrap_server() {
     let sent_graph = get_boot_graph();
     response.send(sent_graph.clone()).unwrap();
 
+    // wait for bootstrap to ask network for peers, send it
+    let response = match wait_network_command(&mut network_command_rx, 1000.into(), |cmd| match cmd
+    {
+        NetworkCommand::GetPeers(resp) => Some(resp),
+        _ => None,
+    })
+    .await
+    {
+        Some(resp) => resp,
+        None => panic!("timeout waiting for get boot graph consensus command"),
+    };
+    response.send(HashMap::new()).unwrap();
     // wait for get_state
-    let (maybe_recv_graph, _comp) = get_state_h
+    let (maybe_recv_graph, _comp, peers) = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
 
@@ -111,6 +124,9 @@ async fn test_bootstrap_server() {
             .unwrap(),
         "mismatch between sent and received graphs"
     );
+
+    // check peers
+    assert!(peers.unwrap().is_empty());
 
     // stop bootstrap server
     bootstrap_manager

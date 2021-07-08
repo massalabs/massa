@@ -1,3 +1,4 @@
+use communication::CommunicationError;
 use consensus::ConsensusError;
 use crypto::CryptoError;
 use thiserror::Error;
@@ -27,4 +28,6 @@ pub enum BootstrapError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("missing private key file")]
     MissingKeyError,
+    #[error("communication error {0}")]
+    CommunicationError(#[from] CommunicationError),
 }

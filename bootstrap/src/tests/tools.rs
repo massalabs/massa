@@ -1,6 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
+use communication::network::NetworkCommand;
 use consensus::{BoostrapableGraph, ConsensusCommand};
 use crypto::{
     hash::Hash,
@@ -70,6 +71,27 @@ where
     loop {
         tokio::select! {
             cmd = consensus_command_receiver.recv() => match cmd {
+                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
+                _ => panic!("network event channel died")
+            },
+            _ = &mut timer => return None
+        }
+    }
+}
+
+pub async fn wait_network_command<F, T>(
+    network_command_receiver: &mut Receiver<NetworkCommand>,
+    timeout: UTime,
+    filter_map: F,
+) -> Option<T>
+where
+    F: Fn(NetworkCommand) -> Option<T>,
+{
+    let timer = sleep(timeout.into());
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            cmd = network_command_receiver.recv() => match cmd {
                 Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
                 _ => panic!("network event channel died")
             },

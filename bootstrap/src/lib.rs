@@ -3,7 +3,7 @@ use communication::network::NetworkCommandSender;
 use consensus::{BoostrapableGraph, ConsensusCommandSender};
 use establisher::{ReadHalf, WriteHalf};
 use log::{debug, info, warn};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 
 use logging::massa_trace;
 mod binders;
@@ -31,7 +31,7 @@ async fn get_state_internal(
     bootstrap_addr: SocketAddr,
     serialization_context: SerializationContext,
     establisher: &mut Establisher,
-) -> Result<(BoostrapableGraph, i64), BootstrapError> {
+) -> Result<(BoostrapableGraph, i64, Vec<IpAddr>), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     let mut random_bytes = [0u8; 32];
     StdRng::from_entropy().fill_bytes(&mut random_bytes);
@@ -118,15 +118,44 @@ async fn get_state_internal(
         &sig,
         &cfg.bootstrap_public_key,
     )?;
+
+    // Then handle peer list
+    let msg = reader.next().await?.map_or_else(
+        //todo that await is waiting for ever in tests
+        || Err(BootstrapError::UnexpectedConnectionDrop),
+        |(_, msg)| Ok(msg),
+    )?;
+
+    let (peers, sig) = match msg {
+        BootstrapMessage::PeerList { peers, signature } => (peers, signature),
+        e => return Err(BootstrapError::UnexpectedMessage(e)),
+    };
+
+    let mut signed_data = vec![];
+    signed_data.extend(&first_sig.into_bytes());
+    let mut peer_list = vec![];
+    for ip in peers.iter() {
+        peer_list.extend(ip.to_bytes_compact(&serialization_context)?)
+    }
+    signed_data.extend(peer_list);
+
+    let previous_signature_and_message_hash = Hash::hash(&signed_data);
+    // check their signature
+    signature_engine.verify(
+        &previous_signature_and_message_hash,
+        &sig,
+        &cfg.bootstrap_public_key,
+    )?;
+
     info!("Bootstrap completed successfully 🦀");
-    Ok((graph, compensation_millis))
+    Ok((graph, compensation_millis, peers))
 }
 
 pub async fn get_state(
     mut cfg: BootstrapConfig,
     serialization_context: SerializationContext,
     mut establisher: Establisher,
-) -> Result<(Option<BoostrapableGraph>, i64), BootstrapError> {
+) -> Result<(Option<BoostrapableGraph>, i64, Option<Vec<IpAddr>>), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     if let Some(addr) = cfg.bootstrap_addr.take() {
         loop {
@@ -137,11 +166,13 @@ pub async fn get_state(
                     warn!("error {:?} while bootstraping", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
-                Ok((graph, compensation)) => return Ok((Some(graph), compensation)),
+                Ok((graph, compensation, peers)) => {
+                    return Ok((Some(graph), compensation, Some(peers)))
+                }
             }
         }
     }
-    Ok((None, 0))
+    Ok((None, 0, None))
 }
 
 pub struct BootstrapManager {
@@ -235,7 +266,7 @@ impl BootstrapServer {
     }
 
     async fn manage_bootstrap(
-        &self,
+        &mut self,
         (reader, writer, _remote_addr): (ReadHalf, WriteHalf, SocketAddr),
     ) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.manage_bootstrap", {});
@@ -279,6 +310,28 @@ impl BootstrapServer {
 
                 writer.send(&message).await?;
 
+                // Then send peers
+                let peers: Vec<_> = self
+                    .network_command_sender
+                    .get_peers()
+                    .await?
+                    .into_iter()
+                    .map(|(ip, _)| ip)
+                    .collect();
+                let mut signed_data: Vec<u8> = vec![];
+                signed_data.extend(&signature.into_bytes());
+                let mut peer_list = vec![];
+                for ip in peers.iter() {
+                    peer_list.extend(ip.to_bytes_compact(&self.serialization_context)?)
+                }
+                signed_data.extend(peer_list);
+                let previous_signature_and_message_hash = Hash::hash(&signed_data);
+
+                let signature = signature_engine
+                    .sign(&previous_signature_and_message_hash, &self.private_key)?;
+                let message = BootstrapMessage::PeerList { peers, signature };
+
+                writer.send(&message).await?;
                 Ok(())
             }
             msg => {

@@ -33,7 +33,10 @@ pub enum BootstrapMessage {
         /// Signature of our random bytes + graph
         signature: Signature,
     },
-    PeerList(Vec<IpAddr>),
+    PeerList {
+        peers: Vec<IpAddr>,
+        signature: Signature,
+    },
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -66,10 +69,11 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(&signature.to_bytes());
                 res.extend(&graph.to_bytes_compact(&context)?);
             }
-            BootstrapMessage::PeerList(ip_vec) => {
+            BootstrapMessage::PeerList { peers, signature } => {
                 res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
-                res.extend((ip_vec.len() as u64).to_varint_bytes());
-                for ip in ip_vec.into_iter() {
+                res.extend(&signature.to_bytes());
+                res.extend((peers.len() as u64).to_varint_bytes());
+                for ip in peers.into_iter() {
                     res.extend(ip.to_bytes_compact(&context)?)
                 }
             }
@@ -121,6 +125,7 @@ impl DeserializeCompact for BootstrapMessage {
                 BootstrapMessage::ConsensusState { signature, graph }
             }
             MessageTypeId::PeerList => {
+                let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 // length
                 let (length, delta) = u32::from_varint_bytes_bounded(
                     &buffer[cursor..],
@@ -134,7 +139,7 @@ impl DeserializeCompact for BootstrapMessage {
                     cursor += delta;
                     peers.push(ip);
                 }
-                BootstrapMessage::PeerList(peers)
+                BootstrapMessage::PeerList { peers, signature }
             }
         };
         Ok((res, cursor))

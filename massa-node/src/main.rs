@@ -35,7 +35,7 @@ async fn run(cfg: config::Config) {
         max_bootstrap_message_size: cfg.bootstrap.max_bootstrap_message_size,
     };
 
-    let (boot_graph, clock_compensation) = get_state(
+    let (boot_graph, clock_compensation, peers) = get_state(
         cfg.bootstrap.clone(),
         serialization_context.clone(),
         bootstrap::establisher::Establisher::new(),
