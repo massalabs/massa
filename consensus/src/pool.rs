@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, BinaryHeap, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
 use models::{Operation, SerializationContext, SerializeCompact, Slot};
@@ -128,9 +128,35 @@ impl OperationPool {
         Ok(true)
     }
 
+    // remove an operation
+    fn remove_op(&mut self, op_id: OperationId) {
+        if let Some(wrapped_op) = self.ops.remove(&op_id) {
+            // complexité: const
+            let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
+            self.ops_by_thread_and_interest[wrapped_op.thread as usize].remove(&interest);
+            // complexité: log
+        }
+    }
+
     /// Update current_slot and discard invalid or integrated operation
     pub fn ack_final_block(&mut self, periods: Vec<u64>) -> Result<(), ConsensusError> {
-        todo!()
+        for (thread, period) in periods.iter().enumerate() {
+            if self.current_periods[thread] != *period {
+                // if update is needed
+                let to_remove: Vec<_> = self
+                    .ops
+                    .iter()
+                    .filter(|(_id, op)| {
+                        op.is_valid_at_period(*period, self.cfg.operation_validity_periods)
+                    })
+                    .map(|(id, _op)| id.clone())
+                    .collect();
+                for id in to_remove.iter() {
+                    self.remove_op(*id);
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Get max_count operation for thread block_slot.thread
@@ -161,8 +187,4 @@ impl OperationPool {
             .take(max_count)
             .collect()
     }
-}
-
-fn get_thread(key: PublicKey) -> u8 {
-    todo!()
 }

@@ -493,7 +493,7 @@ impl ConsensusWorker {
             .iter()
             .map(|(_, period)| *period)
             .collect();
-        self.operation_pool.ack_final_block(periods);
+        self.operation_pool.ack_final_block(periods)?;
 
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks = &new_wishlist - &self.wishlist;
