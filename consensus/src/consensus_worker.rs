@@ -48,6 +48,12 @@ pub enum ConsensusCommand {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<LedgerDataExport>,
     },
+    /// Returns through a channel for given address
+    /// hashmap: Operation id -> if it is final
+    GetRecentOperations {
+        address: Address,
+        response_tx: oneshot::Sender<HashMap<OperationId, bool>>,
+    },
     GetOperations {
         operation_ids: HashSet<OperationId>,
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
@@ -553,6 +559,40 @@ impl ConsensusWorker {
                             err
                         ))
                     })
+            }
+            ConsensusCommand::GetRecentOperations {
+                address,
+                response_tx,
+            } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_recent_operations",
+                    { "address": address }
+                );
+
+                let mut res: HashMap<_, _> = self
+                    .pool_command_sender
+                    .get_recent_operations(address)
+                    .await?
+                    .into_iter()
+                    .map(|op| (op, false))
+                    .collect();
+
+                for (op, finality) in self.block_db.get_recent_operations(&address).into_iter() {
+                    res.insert(op, finality);
+                }
+                if let Some(access) = &self.opt_storage_command_sender {
+                    let storage = access.get_recent_operations(&address).await?;
+                    for op in storage.into_iter() {
+                        res.insert(op, true);
+                    }
+                }
+
+                response_tx.send(res).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send GetRecentOPerations response: {:?}",
+                        err
+                    ))
+                })
             }
             ConsensusCommand::GetOperations {
                 operation_ids,

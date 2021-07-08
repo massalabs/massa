@@ -229,6 +229,29 @@ impl ConsensusCommandSender {
             ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
         })
     }
+
+    /// Returns hashmap: Operation id -> if it is final
+    pub async fn get_recent_operations(
+        &self,
+        address: Address,
+    ) -> Result<HashMap<OperationId, bool>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_recent_operations", {
+            "address": address
+        });
+        self.0
+            .send(ConsensusCommand::GetRecentOperations {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+        })
+    }
 }
 
 pub struct ConsensusEventReceiver(pub mpsc::Receiver<ConsensusEvent>);

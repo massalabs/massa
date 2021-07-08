@@ -964,6 +964,23 @@ impl BlockGraph {
         })
     }
 
+    pub fn get_recent_operations(&self, address: &Address) -> HashMap<OperationId, bool> {
+        let mut res = HashMap::new();
+        for (_, block_status) in self.block_statuses.iter() {
+            if let BlockStatus::Active(ActiveBlock {
+                addresses_to_operations,
+                is_final,
+                ..
+            }) = block_status
+            {
+                if let Some(ops) = addresses_to_operations.get(address) {
+                    res.extend(ops.into_iter().map(|op| (op, is_final)))
+                }
+            }
+        }
+        res
+    }
+
     /// Gets whole compiled block corresponding to given hash, if it is active.
     ///
     /// # Argument
@@ -1969,7 +1986,7 @@ impl BlockGraph {
         let mut involved_addresses: HashSet<Address> = HashSet::new();
         involved_addresses.insert(block_creator_address);
         for op in block_to_check.operations.iter() {
-            match op.get_involved_addresses(&block_creator_address) {
+            match op.get_involved_addresses(Some(block_creator_address)) {
                 Ok(addrs) => {
                     involved_addresses.extend(addrs);
                 }
