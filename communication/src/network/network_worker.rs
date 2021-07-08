@@ -923,7 +923,7 @@ impl NetworkWorker {
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlock {
                         node: from_node_id,
-                        block: data.clone(), // todo remove clone when removing trace
+                        block: data,
                     })
                     .await;
             }
@@ -943,7 +943,7 @@ impl NetworkWorker {
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlockHeader {
                         source_node_id,
-                        header: header.clone(), // todo remove clone
+                        header: header,
                     })
                     .await;
             }

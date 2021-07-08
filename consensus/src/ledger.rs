@@ -36,7 +36,7 @@ impl LedgerData {
 impl SerializeCompact for LedgerData {
     fn to_bytes_compact(
         &self,
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.balance.to_varint_bytes());
@@ -47,7 +47,7 @@ impl SerializeCompact for LedgerData {
 impl DeserializeCompact for LedgerData {
     fn from_bytes_compact(
         buffer: &[u8],
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
         let (balance, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -114,7 +114,7 @@ impl LedgerChange {
 impl SerializeCompact for LedgerChange {
     fn to_bytes_compact(
         &self,
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.balance_delta.to_varint_bytes());
@@ -130,7 +130,7 @@ impl SerializeCompact for LedgerChange {
 impl DeserializeCompact for LedgerChange {
     fn from_bytes_compact(
         buffer: &[u8],
-        context: &models::SerializationContext,
+        _context: &models::SerializationContext,
     ) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
         let (balance_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -556,47 +556,53 @@ impl Ledger {
         }
         Ok(res)
     }
+
+    /// Gets ledger at latest final blocks for query_addrs
+    pub fn get_final_ledger_subset(
+        &self,
+        query_addrs: &HashSet<Address>,
+    ) -> Result<LedgerSubset, ConsensusError> {
+        let data = self.ledger_per_thread.transaction(|ledger_per_thread| {
+            let mut data = vec![HashMap::new(); self.cfg.thread_count as usize];
+            for addr in query_addrs {
+                let thread = addr.get_thread(self.cfg.thread_count);
+                if let Some(data_bytes) = ledger_per_thread[thread as usize].get(addr.to_bytes())? {
+                    let (ledger_data, _) =
+                        LedgerData::from_bytes_compact(&data_bytes, &self.context).map_err(
+                            |err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(format!(
+                                        "error deserializing ledger data: {:?}",
+                                        err
+                                    )),
+                                )
+                            },
+                        )?;
+                    data[thread as usize].insert(addr.clone().clone(), ledger_data);
+                } else {
+                    data[thread as usize].insert(addr.clone().clone(), LedgerData { balance: 0 });
+                }
+            }
+            Ok(data)
+        })?;
+        Ok(LedgerSubset { data })
+    }
 }
 
-pub struct CurrentBlockLedger {
+pub struct LedgerSubset {
     pub data: Vec<HashMap<Address, LedgerData>>,
 }
 
-impl CurrentBlockLedger {
+impl LedgerSubset {
     pub fn apply_change(
         &mut self,
         (change_adrress, change): (&Address, &LedgerChange),
         thread_count: u8,
     ) -> Result<(), ConsensusError> {
-        let ledger_data = self.data[change_adrress.get_thread(thread_count) as usize]
+        self.data[change_adrress.get_thread(thread_count) as usize]
             .entry(*change_adrress)
-            .or_insert_with(|| LedgerData { balance: 0 });
-        ledger_data.apply_change(change)
-    }
-
-    pub fn apply_change_to_block_changes(
-        &mut self,
-        block_creator_address: Address,
-        block_changes: &mut [HashMap<Address, LedgerChange>],
-        change: (&Address, &LedgerChange),
-        thread_count: u8,
-    ) -> Result<(), ConsensusError> {
-        //apply block change to the current block ledger.
-        if let Err(err) = self.apply_change(change, thread_count) {
-            // if it fails block is discarded as invalid
-            error!("block graph check_operations error, can't apply reward_change to block current_ledger :{}", err);
-            //TODO discard block
-            return Ok(());
-        }
-
-        //chain reward_change to block_change;
-        let block_change = block_changes[block_creator_address.get_thread(thread_count) as usize]
-            .entry(block_creator_address)
-            .or_insert_with(|| LedgerChange {
-                balance_delta: 0,
-                balance_increment: true,
-            });
-        block_change.chain(change.1)
+            .or_insert_with(|| LedgerData { balance: 0 })
+            .apply_change(change)
     }
 }
 
@@ -680,8 +686,8 @@ impl SerializeCompact for LedgerExport {
 
             res.extend(u32::from(vec_count).to_varint_bytes());
             for (address, data) in thread_ledger.iter() {
-                res.extend(address.to_bytes());
-                res.extend(data.to_bytes_compact(context)?);
+                res.extend(&address.to_bytes());
+                res.extend(&data.to_bytes_compact(context)?);
             }
         }
 

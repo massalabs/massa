@@ -41,7 +41,7 @@ pub enum ConsensusError {
     InvalidBlock,
     #[error("missing block")]
     MissingBlock,
-    #[error("there was an inconsistency between containers")]
+    #[error("there was an inconsistency between containers {0}")]
     ContainerInconsistency(String),
     #[error("fitness overflow")]
     FitnessOverflow,

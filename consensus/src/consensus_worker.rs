@@ -290,7 +290,7 @@ impl ConsensusWorker {
                     {}
                 );
                 response_tx
-                    .send(self.block_db.get_active_block(block_id).cloned())
+                    .send(self.block_db.get_active_block(&block_id).cloned())
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBlock answer:{:?}",
@@ -391,7 +391,7 @@ impl ConsensusWorker {
                 );
                 let mut results = HashMap::new();
                 for block_hash in list {
-                    if let Some(block) = self.block_db.get_active_block(block_hash) {
+                    if let Some(block) = self.block_db.get_active_block(&block_hash) {
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
                         results.insert(block_hash, Some(block.clone()));
                     } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
