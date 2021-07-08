@@ -320,21 +320,44 @@ impl ConsensusWorker {
                     })
             }
             ConsensusCommand::CreatedOperation(operation) => {
-                if let Ok(true) = self
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.created_operation",
+                    { "operation": operation }
+                );
+                match self
                     .operation_pool
                     .new_operation(operation.clone(), &self.context)
                 {
-                    self.protocol_command_sender
-                        .propagate_operation(operation)
-                        .await
-                        .map_err(|err| {
-                            ConsensusError::SendChannelError(format!(
-                                "could not send propagate operation command:{:?}",
-                                err
-                            ))
-                        })
-                } else {
-                    Ok(())
+                    Ok(true) => {
+                        massa_trace!(
+                        "consensus.consensus_worker.process_consensus_command.created_operation.to_propagate",
+                        {"operation": operation}
+                    );
+                        self.protocol_command_sender
+                            .propagate_operation(operation)
+                            .await
+                            .map_err(|err| {
+                                ConsensusError::SendChannelError(format!(
+                                    "could not send propagate operation command:{:?}",
+                                    err
+                                ))
+                            })
+                    }
+                    Ok(false) => {
+                        massa_trace!(
+                            "consensus.consensus_worker.process_consensus_command.created_operation.do_not_propagate",
+                            {"operation": operation}
+                        );
+                        Ok(())
+                    }
+                    Err(e) => {
+                        massa_trace!(
+                        "consensus.consensus_worker.process_consensus_command.created_operation.critical_error",
+                        {"operation": operation}
+                    );
+                        warn!("received crtitically wrong operation from consensus command: operation {:?} - error {:?}", operation, e);
+                        Ok(())
+                    }
                 }
             }
         }
@@ -396,13 +419,36 @@ impl ConsensusWorker {
                     .await?;
             }
             ProtocolEvent::ReceivedOperation(operation) => {
-                if let Ok(true) = self
+                massa_trace!(
+                    "consensus.consensus_worker.process_protocol_event.received_operation",
+                    { "operation": operation }
+                );
+                match self
                     .operation_pool
                     .new_operation(operation.clone(), &self.context)
                 {
-                    self.protocol_command_sender
-                        .propagate_operation(operation)
-                        .await?;
+                    Ok(true) => {
+                        massa_trace!(
+                        "consensus.consensus_worker.process_protocol_event.received_operation.to_propagate",
+                        {"operation": operation}
+                    );
+                        self.protocol_command_sender
+                            .propagate_operation(operation)
+                            .await?;
+                    }
+                    Ok(false) => {
+                        massa_trace!(
+                            "consensus.consensus_worker.process_protocol_event.received_operation.do_not_propagate",
+                            {"operation": operation}
+                        );
+                    }
+                    Err(e) => {
+                        massa_trace!(
+                        "consensus.consensus_worker.process_protocol_event.received_operation.critical_error",
+                        {"operation": operation}
+                    );
+                        warn!("received crtitically wrong operation from consensus command: operation {:?} - error {:?}", operation, e);
+                    }
                 }
             }
         }
