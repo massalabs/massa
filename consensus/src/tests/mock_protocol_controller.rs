@@ -156,7 +156,7 @@ impl ProtocolController for MockProtocolController {
         self.protocol_event_rx
             .recv()
             .await
-            .ok_or(CommunicationError::ReceiveProtocolEventError(format!(
+            .ok_or(CommunicationError::GeneralProtocolError(format!(
                 "failed retrieving protocol controller event in mock protocol controller"
             )))
     }

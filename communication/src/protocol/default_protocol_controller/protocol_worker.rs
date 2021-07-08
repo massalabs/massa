@@ -4,7 +4,7 @@ use super::super::{
     protocol_controller::*,
 };
 use super::node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker};
-use crate::error::CommunicationError;
+use crate::error::{ChannelError, CommunicationError, HandshakeErrorType};
 use crate::network::network_controller::{
     ConnectionClosureReason, ConnectionId, NetworkController, NetworkEvent,
 };
@@ -100,14 +100,14 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                                 .ok_or(CommunicationError::GeneralProtocolError(format!("sending block to missing node:{}", target_node_id)))?;
                             node_command_tx
                                 .send(NodeCommand::SendBlock(block))
-                                .await?;
+                                .await.map_err(|err| ChannelError::from(err))?;
                         }
                         None => {
                             for (target_node_id, (_, node_command_tx, _)) in self.active_nodes.iter() {
                                 if Some(*target_node_id) != exclude_node {
                                     node_command_tx
                                         .send(NodeCommand::SendBlock(block.clone()))
-                                        .await?;
+                                        .await.map_err(|err| ChannelError::from(err))?;
                                 }
                             }
                         }
@@ -165,10 +165,12 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 // launch async handshake_fn(connectionId, socket)
                 // add its handle to handshake_futures
                 if !self.running_handshakes.insert(connection_id) {
-                    return Err(CommunicationError::HandshakeIdAlreadyExistError(format!(
-                        "{}",
-                        connection_id
-                    )));
+                    return Err(CommunicationError::HandshakeError(
+                        HandshakeErrorType::HandshakeIdAlreadyExistError(format!(
+                            "{}",
+                            connection_id
+                        )),
+                    ));
                 }
 
                 debug!("starting handshake with connection_id={:?}", connection_id);
@@ -201,7 +203,10 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 // find all active_node with this ConnectionId and send a NodeMessage::Close
                 for (c_id, node_tx, _) in self.active_nodes.values() {
                     if *c_id == connection_id {
-                        node_tx.send(NodeCommand::Close).await?;
+                        node_tx
+                            .send(NodeCommand::Close)
+                            .await
+                            .map_err(|err| ChannelError::from(err))?;
                     }
                 }
             }
@@ -276,7 +281,7 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                         let node_event_tx_clone = self
                             .node_event_tx_opt
                             .as_ref()
-                            .ok_or(CommunicationError::NodeEventSenderError)?
+                            .ok_or(ChannelError::NodeEventSenderError)?
                             .clone();
                         let cfg_copy = self.cfg.clone();
                         let node_fn_handle = tokio::spawn(async move {
@@ -336,23 +341,23 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                     .await?;
             }
             // received block (TODO test only)
-            Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => {
-                self.controller_event_tx
-                    .send(ProtocolEvent(
-                        from_node_id,
-                        ProtocolEventType::ReceivedBlock(data),
-                    ))
-                    .await?
-            }
+            Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => self
+                .controller_event_tx
+                .send(ProtocolEvent(
+                    from_node_id,
+                    ProtocolEventType::ReceivedBlock(data),
+                ))
+                .await
+                .map_err(|err| ChannelError::from(err))?,
             // received transaction (TODO test only)
-            Some(NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data))) => {
-                self.controller_event_tx
-                    .send(ProtocolEvent(
-                        from_node_id,
-                        ProtocolEventType::ReceivedTransaction(data),
-                    ))
-                    .await?
-            }
+            Some(NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data))) => self
+                .controller_event_tx
+                .send(ProtocolEvent(
+                    from_node_id,
+                    ProtocolEventType::ReceivedTransaction(data),
+                ))
+                .await
+                .map_err(|err| ChannelError::from(err))?,
             // connection closed
             Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
                 let (connection_id, _, handle) = self
@@ -381,9 +386,10 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                     .send(NodeCommand::SendPeerList(
                         self.network_controller.get_advertisable_peer_list().await?,
                     ))
-                    .await?;
+                    .await
+                    .map_err(|err| ChannelError::from(err))?;
             }
-            None => return Err(CommunicationError::NodeEventReceiverError),
+            None => return Err(ChannelError::NodeEventReceiverError.into()),
         }
         Ok(())
     }

@@ -11,4 +11,4 @@ mod error;
 pub mod network;
 pub mod protocol;
 
-pub use error::CommunicationError;
+pub use error::{CommunicationError, HandshakeErrorType};

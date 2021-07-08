@@ -3,7 +3,8 @@ use super::{
     messages::Message,
     protocol_controller::NodeId,
 };
-use crate::{network::network_controller::NetworkController, CommunicationError};
+use crate::error::{CommunicationError, HandshakeErrorType};
+use crate::network::network_controller::NetworkController;
 use crypto::{
     signature::PrivateKey,
     {hash::Hash, signature::SignatureEngine},
@@ -74,21 +75,35 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
         )
         .await
         {
-            Err(_) => return Err(CommunicationError::HandshakeTimeoutError),
+            Err(_) => {
+                return Err(CommunicationError::HandshakeError(
+                    HandshakeErrorType::HandshakeTimeoutError,
+                ))
+            }
             Ok(Err(e)) => return Err(e),
-            Ok(Ok((_, None))) => return Err(CommunicationError::HandshakeInterruptionError),
+            Ok(Ok((_, None))) => {
+                return Err(CommunicationError::HandshakeError(
+                    HandshakeErrorType::HandshakeInterruptionError,
+                ))
+            }
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeInitiation {
                     public_key: pk,
                     random_bytes: rb,
                 } => (NodeId(pk), rb),
-                _ => return Err(CommunicationError::HandshakeWrongMessageError),
+                _ => {
+                    return Err(CommunicationError::HandshakeError(
+                        HandshakeErrorType::HandshakeWrongMessageError,
+                    ))
+                }
             },
         };
 
         // check if remote node ID is the same as ours
         if other_node_id == self.self_node_id {
-            return Err(CommunicationError::HandshakeKeyError);
+            return Err(CommunicationError::HandshakeError(
+                HandshakeErrorType::HandshakeKeyError,
+            ));
         }
 
         // sign their random bytes
@@ -112,18 +127,32 @@ impl<NetworkControllerT: NetworkController> HandshakeWorker<NetworkControllerT> 
         )
         .await
         {
-            Err(_) => return Err(CommunicationError::HandshakeTimeoutError),
+            Err(_) => {
+                return Err(CommunicationError::HandshakeError(
+                    HandshakeErrorType::HandshakeTimeoutError,
+                ))
+            }
             Ok(Err(e)) => return Err(e),
-            Ok(Ok((_, None))) => return Err(CommunicationError::HandshakeInterruptionError),
+            Ok(Ok((_, None))) => {
+                return Err(CommunicationError::HandshakeError(
+                    HandshakeErrorType::HandshakeInterruptionError,
+                ))
+            }
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeReply { signature: sig } => sig,
-                _ => return Err(CommunicationError::HandshakeWrongMessageError),
+                _ => {
+                    return Err(CommunicationError::HandshakeError(
+                        HandshakeErrorType::HandshakeWrongMessageError,
+                    ))
+                }
             },
         };
 
         // check their signature
         if !signature_engine.verify(&self_random_hash, &other_signature, &other_node_id.0)? {
-            return Err(CommunicationError::HandshakeInvalidSignatureError);
+            return Err(CommunicationError::HandshakeError(
+                HandshakeErrorType::HandshakeInvalidSignatureError,
+            ));
         }
 
         Ok((other_node_id, self.reader, self.writer))

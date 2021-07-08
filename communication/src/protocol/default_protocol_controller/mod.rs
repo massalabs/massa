@@ -3,7 +3,7 @@ mod protocol_worker;
 use super::config::ProtocolConfig;
 pub use super::protocol_controller::ProtocolEvent;
 use super::protocol_controller::{NodeId, ProtocolController};
-use crate::error::CommunicationError;
+use crate::error::{ChannelError, CommunicationError};
 use crate::network::network_controller::NetworkController;
 use async_trait::async_trait;
 use crypto::signature::SignatureEngine;
@@ -83,12 +83,12 @@ impl<NetworkControllerT: NetworkController> ProtocolController
     /// indicating that no further values can be sent on the channel
     /// panics if the protocol controller event can't be retrieved
     async fn wait_event(&mut self) -> Result<ProtocolEvent, CommunicationError> {
-        self.protocol_event_rx
-            .recv()
-            .await
-            .ok_or(CommunicationError::ReceiveProtocolEventError(
+        self.protocol_event_rx.recv().await.ok_or(
+            ChannelError::ReceiveProtocolEventError(
                 "DefaultProtocolController wait_event channel dropped".to_string(),
-            ))
+            )
+            .into(),
+        )
     }
 
     /// Stop the protocol controller
@@ -118,6 +118,6 @@ impl<NetworkControllerT: NetworkController> ProtocolController
                 restrict_to_node,
             })
             .await
-            .map_err(|err| err.into())
+            .map_err(|err| ChannelError::from(err).into())
     }
 }
