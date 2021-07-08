@@ -11,11 +11,13 @@ pub struct Address(Hash); // Public key hash
 
 impl Address {
     fn new(key: PublicKey) -> Address {
-        todo!()
+        Address(Hash::hash(&key.to_bytes()[..]))
     }
 
+    /// Assumes that thread count is a power of two
     fn get_thread(&self, thread_count: u8) -> u8 {
-        todo!()
+        let hash_bytes = self.0.to_bytes();
+        hash_bytes[0] >> (8 - thread_count.trailing_zeros())
     }
 }
 

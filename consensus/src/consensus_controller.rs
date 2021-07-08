@@ -51,6 +51,11 @@ pub async fn start_consensus_controller(
             "thread_count shoud be strictly more than 0"
         )));
     }
+    if !cfg.thread_count.is_power_of_two() {
+        return Err(ConsensusError::ConfigError(format!(
+            "thread_count shoud be a power of two"
+        )));
+    }
     if cfg.t0 == 0.into() {
         return Err(ConsensusError::ConfigError(format!(
             "t0 shoud be strictly more than 0"
