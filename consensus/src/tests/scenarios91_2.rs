@@ -616,11 +616,15 @@ async fn test_block_creation() {
         )
         .await
         {
-            Ok(Some(ProtocolCommand::PropagateBlock { hash: _, block })) => {
+            Ok(Some(ProtocolCommand::PropagateBlockHeader {
+                signature: _,
+                header,
+                hash,
+            })) => {
                 assert_eq!(draw, 0);
-                assert_eq!(i + 1, block.header.period_number as usize);
+                assert_eq!(i + 1, header.period_number as usize);
             }
-            // Ok(Some(_)) => panic!("unexpected command"),
+            Ok(Some(cmd)) => panic!("unexpected command {:?}", cmd),
             Ok(None) => panic!("an error occurs while waiting for ProtocolCommand event"),
             Err(_) => assert_eq!(draw, 1),
         };

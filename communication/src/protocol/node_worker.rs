@@ -5,7 +5,9 @@ use super::{
     messages::Message,
 };
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
-use models::block::Block;
+use crypto::hash::Hash;
+use crypto::signature::Signature;
+use models::block::{Block, BlockHeader};
 use std::net::IpAddr;
 use tokio::{sync::mpsc, time::timeout};
 
@@ -16,6 +18,13 @@ pub enum NodeCommand {
     SendPeerList(Vec<IpAddr>),
     /// Send that block to node.
     SendBlock(Block),
+    /// Send the header of a block to a node.
+    SendBlockHeader {
+        signature: Signature,
+        header: BlockHeader,
+    },
+    /// Ask for a block from that node.
+    AskForBlock(Hash),
     /// Send that transation to node.
     SendTransaction(String),
     /// Close the node worker.
@@ -31,6 +40,13 @@ pub enum NodeEventType {
     ReceivedPeerList(Vec<IpAddr>),
     /// Node we are conneced to sent block
     ReceivedBlock(Block),
+    /// Node we are conneced to sent block header
+    ReceivedBlockHeader {
+        signature: Signature,
+        header: BlockHeader,
+    },
+    /// Node we are conneced to asks for a block.
+    ReceivedAskForBlock(Hash),
     /// Node we are conneced to sent transaction
     ReceivedTransaction(String),
     /// Connection with node was shut down for given reason
@@ -131,6 +147,12 @@ impl NodeWorker {
                             Message::Block(block) => self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))
                                 ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block event".into()))?,
+                            Message::BlockHeader{ signature, header} => self.node_event_tx.send(
+                                    NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader{ signature, header})
+                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block header event".into()))?,
+                            Message::AskForBlock(hash) => self.node_event_tx.send(
+                                    NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlock(hash))
+                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block header event".into()))?,
                             Message::Transaction(tr) =>  self.node_event_tx.send(
                                     NodeEvent(self.node_id, NodeEventType::ReceivedTransaction(tr))
                                 ).await.map_err(|_| CommunicationError::ChannelError("failed to send received transaction event".into()))?,
@@ -161,9 +183,19 @@ impl NodeWorker {
                             |_| CommunicationError::ChannelError("send peer list node command send failed".into())
                         )?;
                     }
+                    Some(NodeCommand::SendBlockHeader{ signature, header}) => {
+                        writer_command_tx.send(Message::BlockHeader{ signature, header}).await.map_err(
+                            |_| CommunicationError::ChannelError("send peer block header node command send failed".into())
+                        )?;
+                    }
                     Some(NodeCommand::SendBlock(block)) => {
                         writer_command_tx.send(Message::Block(block)).await.map_err(
                             |_| CommunicationError::ChannelError("send peer block node command send failed".into())
+                        )?;
+                    }
+                    Some(NodeCommand::AskForBlock(block)) => {
+                        writer_command_tx.send(Message::AskForBlock(block)).await.map_err(
+                            |_| CommunicationError::ChannelError("ask peer block node command send failed".into())
                         )?;
                     }
                     Some(NodeCommand::SendTransaction(transaction)) => {

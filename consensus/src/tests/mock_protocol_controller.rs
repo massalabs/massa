@@ -2,7 +2,8 @@ use communication::protocol::{
     NodeId, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
 use crypto::hash::Hash;
-use models::block::Block;
+use crypto::signature::Signature;
+use models::block::{Block, BlockHeader};
 use tokio::sync::mpsc;
 
 const CHANNEL_SIZE: usize = 16;
@@ -38,6 +39,22 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
+    pub async fn receive_header(
+        &mut self,
+        source_node_id: NodeId,
+        signature: Signature,
+        header: BlockHeader,
+    ) {
+        self.protocol_event_tx
+            .send(ProtocolEvent::ReceivedBlockHeader {
+                source_node_id,
+                signature,
+                header,
+            })
+            .await
+            .expect("could not send protocol event");
+    }
+
     pub async fn receive_transaction(&mut self, source_node_id: NodeId, transaction: String) {
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedTransaction(
@@ -48,9 +65,9 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_block_ask(&mut self, source_node_id: NodeId, hash: Hash) {
+    pub async fn receive_ask_for_block(&mut self, source_node_id: NodeId, hash: Hash) {
         self.protocol_event_tx
-            .send(ProtocolEvent::AskedBlock(source_node_id, hash))
+            .send(ProtocolEvent::AskedForBlock(source_node_id, hash))
             .await
             .expect("could not send protocol event");
     }

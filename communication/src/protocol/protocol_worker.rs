@@ -8,9 +8,9 @@ use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::network::{
     ConnectionClosureReason, ConnectionId, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
-use crypto::{hash::Hash, signature::PrivateKey};
+use crypto::{hash::Hash, signature::PrivateKey, signature::Signature};
 use futures::{stream::FuturesUnordered, StreamExt};
-use models::block::Block;
+use models::block::{Block, BlockHeader};
 use std::collections::{hash_map, HashMap, HashSet};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -21,15 +21,33 @@ pub enum ProtocolEvent {
     ReceivedTransaction(NodeId, String),
     /// A block was received
     ReceivedBlock(NodeId, Block),
+    /// A block header was received
+    ReceivedBlockHeader {
+        source_node_id: NodeId,
+        signature: Signature,
+        header: BlockHeader,
+    },
     /// Someone ask for block with given header hash.
-    AskedBlock(NodeId, Hash),
+    AskedForBlock(NodeId, Hash),
 }
 
 /// Commands that protocol worker can process
 #[derive(Debug)]
 pub enum ProtocolCommand {
-    /// Propagate given block
-    PropagateBlock { hash: Hash, block: Block },
+    /// Propagate header of a given block.
+    PropagateBlockHeader {
+        hash: Hash,
+        signature: Signature,
+        header: BlockHeader,
+    },
+    /// Propagate hash of a given block header
+    AskForBlock { hash: Hash, node: NodeId },
+    // Send a block to a peer.
+    SendBlock {
+        hash: Hash,
+        block: Block,
+        node: NodeId,
+    },
 }
 
 #[derive(Debug)]
@@ -56,13 +74,19 @@ pub struct ProtocolWorker {
     running_handshakes: HashSet<ConnectionId>,
     /// Running handshakes futures.
     handshake_futures: FuturesUnordered<JoinHandle<(ConnectionId, HandshakeReturnType)>>,
-    /// Ids of active nodes mapped to Connection id, node command sender and handle on the associated node worker.
+    /// Ids of active nodes mapped to Connection id,
+    /// node command sender,
+    /// handle on the associated node worker,
+    /// and the set of blocks the node is known to possess.
+    /// Note: should we prune the set of known blocks during lifetime of a node connection?
+    /// Currently it would only be dropped alongside the rest when the node becomes inactive.
     active_nodes: HashMap<
         NodeId,
         (
             ConnectionId,
             mpsc::Sender<NodeCommand>,
             JoinHandle<Result<(), CommunicationError>>,
+            HashSet<Hash>,
         ),
     >,
     /// Channel for sending node events.
@@ -153,7 +177,7 @@ impl ProtocolWorker {
             // drop sender
             drop(self.node_event_tx);
             // gather active node handles
-            for (_, (_, _, handle)) in self.active_nodes.drain() {
+            for (_, (_, _, handle, _)) in self.active_nodes.drain() {
                 node_handle_set.push(handle);
             }
             // drain incoming node events
@@ -175,16 +199,53 @@ impl ProtocolWorker {
 
     async fn process_command(&mut self, cmd: ProtocolCommand) -> Result<(), CommunicationError> {
         match cmd {
-            ProtocolCommand::PropagateBlock { hash, block } => {
-                massa_trace!("block_propagation", { "block": hash });
-                // TODO in the future, send only to the ones that don't already have it (see issue #94)
-                for (_, (_, node_command_tx, _)) in self.active_nodes.iter() {
+            ProtocolCommand::PropagateBlockHeader {
+                signature,
+                hash,
+                header,
+            } => {
+                massa_trace!("block_header_propagation", { "block_header": header });
+                for (_, (_, node_command_tx, _, known_blocks)) in self.active_nodes.iter() {
+                    if !known_blocks.contains(&hash) {
+                        node_command_tx
+                            .send(NodeCommand::SendBlockHeader {
+                                signature,
+                                header: header.clone(),
+                            })
+                            .await
+                            .map_err(|_| {
+                                CommunicationError::ChannelError(
+                                    "block header propagate node command send failed".into(),
+                                )
+                            })?;
+                    }
+                }
+            }
+            ProtocolCommand::AskForBlock { hash, node } => {
+                massa_trace!("ask_for_block", { "block": hash });
+                if let Some((_, node_command_tx, _, _)) = self.active_nodes.get(&node) {
                     node_command_tx
-                        .send(NodeCommand::SendBlock(block.clone()))
+                        .send(NodeCommand::AskForBlock(hash))
                         .await
                         .map_err(|_| {
                             CommunicationError::ChannelError(
-                                "block propagate node command send failed".into(),
+                                "ask for block node command send failed".into(),
+                            )
+                        })?;
+                }
+            }
+            ProtocolCommand::SendBlock { hash, block, node } => {
+                massa_trace!("send_block", { "block": block });
+                if let Some((_, node_command_tx, _, known_blocks)) =
+                    self.active_nodes.get_mut(&node)
+                {
+                    known_blocks.insert(hash);
+                    node_command_tx
+                        .send(NodeCommand::SendBlock(block))
+                        .await
+                        .map_err(|_| {
+                            CommunicationError::ChannelError(
+                                "send block node command send failed".into(),
                             )
                         })?;
                 }
@@ -241,7 +302,7 @@ impl ProtocolWorker {
                 // remove the connectionId entry in running_handshakes
                 self.running_handshakes.remove(&connection_id);
                 // find all active_node with this ConnectionId and send a NodeMessage::Close
-                for (c_id, node_tx, _) in self.active_nodes.values() {
+                for (c_id, node_tx, _, _) in self.active_nodes.values() {
                     if *c_id == connection_id {
                         node_tx.send(NodeCommand::Close).await.map_err(|_| {
                             CommunicationError::ChannelError(
@@ -340,7 +401,12 @@ impl ProtocolWorker {
                             .run_loop()
                             .await
                         });
-                        entry.insert((new_connection_id, node_command_tx, node_fn_handle));
+                        entry.insert((
+                            new_connection_id,
+                            node_command_tx,
+                            node_fn_handle,
+                            HashSet::new(),
+                        ));
                     }
                 }
             }
@@ -377,7 +443,7 @@ impl ProtocolWorker {
                     "node_id": from_node_id,
                     "ips": lst
                 });
-                let (connection_id, _, _) = self
+                let (connection_id, _, _, _) = self
                     .active_nodes
                     .get(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;
@@ -395,6 +461,36 @@ impl ProtocolWorker {
                 .map_err(|_| {
                     CommunicationError::ChannelError("receive block event send failed".into())
                 })?,
+            NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlock(data)) => self
+                .controller_event_tx
+                .send(ProtocolEvent::AskedForBlock(from_node_id, data))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "receive asked for block event send failed".into(),
+                    )
+                })?,
+            NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader { signature, header }) => {
+                let (_, _, _, known_blocks) = self
+                    .active_nodes
+                    .get_mut(&source_node_id)
+                    .ok_or(CommunicationError::MissingNodeError)?;
+                known_blocks.insert(
+                    header
+                        .compute_hash()
+                        .map_err(|err| CommunicationError::HeaderHashError(err))?,
+                );
+                self.controller_event_tx
+                    .send(ProtocolEvent::ReceivedBlockHeader {
+                        source_node_id,
+                        signature,
+                        header,
+                    })
+                    .await
+                    .map_err(|_| {
+                        CommunicationError::ChannelError("receive block event send failed".into())
+                    })?
+            }
             NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data)) => self
                 .controller_event_tx
                 .send(ProtocolEvent::ReceivedTransaction(from_node_id, data))
@@ -404,7 +500,7 @@ impl ProtocolWorker {
                 })?,
             // connection closed
             NodeEvent(from_node_id, NodeEventType::Closed(reason)) => {
-                let (connection_id, _, handle) = self
+                let (connection_id, _, handle, _) = self
                     .active_nodes
                     .remove(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;
@@ -422,7 +518,7 @@ impl ProtocolWorker {
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) => {
                 debug!("node_id={:?} asked us for peer list", from_node_id);
                 massa_trace!("node_asked_peer_list", { "node_id": from_node_id });
-                let (_, node_command_tx, _) = self
+                let (_, node_command_tx, _, _) = self
                     .active_nodes
                     .get(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;
