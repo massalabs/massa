@@ -13,11 +13,9 @@ struct FinalRollThreadData {
 }
 ```
 
-* `last_final_block_cycle: Vec<u64>` indices: [thread] -> cycle index (u64)
 * `final_roll_data: Vec< VecDeque<FinalRollThreadData> >` indices: [thread][cycle] -> FinalRollThreadData
 
 Those values are either bootstrapped, or set to their genesis values:
-* last_final_block_cycle = all zeros
 * final_roll_data:
   * set the N=0 to the genesis roll distribution. Bitvec set to the 1st bit of the genesis block hashes as if they were the only final blocks here.
   * set the N=-1,-2,-3,-4 elements to genesis roll distribution. Bitvecs generated through an RNG seeded with the sha256 of a hardcoded seed in config.
@@ -43,7 +41,7 @@ Add a field:
 
 This is part of the RandomSelector API.
 
-To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of FinalRollThreadData.rng_seed for threads from 0 to thread_count-1)`, then draw an index among the cumsum of the `final_roll_data.roll_count` for cycle `N-3` among all threads. There should be an error if `last_final_block_cycle + 3 <= N` for any thread.
+To get the draws for cycle N, seed the RNG with the `Sha256(concatenation of FinalRollThreadData.rng_seed for threads from 0 to thread_count-1)`, then draw an index among the cumsum of the `final_roll_data.roll_count` for cycle `N-3` among all threads. There should be an error if `final_roll_data[thread][0].cycle + 3 <= N` for any thread.
 
 ### Cache
 
@@ -76,7 +74,7 @@ This works by going backwards from BlockId (including BlockId) in the same threa
 * get the list of `roll_involved_addresses` buying/selling rolls in the block
 * set `B.roll_updates = get_roll_data_at_parent(B.parents[Tau], roll_involved_addresses)`
 * if the block is the first of a new cycle N for thread Tau:
-  * credit `roll_price * final_roll_data[Tau][N-4].cycle_sales[addr]` for every addr in `final_roll_data[Tau][N-4].cycle_sales.keys()`
+  * credit `roll_price * final_roll_data[Tau][4].cycle_sales[addr]` for every addr in `final_roll_data[Tau][4].cycle_sales.keys()`
   * set all the compensated purchase/sale counts to 0 in `B.roll_update` (because they were counted for the previous cycle)
 * parse the operations of the block in order:
   * if there is a ROLL_BUY[nb_rolls] operation from address A:
@@ -97,12 +95,11 @@ This works by going backwards from BlockId (including BlockId) in the same threa
 
 ## When a block B in thread Tau and cycle N becomes final
 
-* if N > last_final_block_cycle[Tau]:
-  * update last_final_block_cycle[Tau]
-  * pop front for final_roll_data[thread] until the 1st element represents cycle N-4
-  * push back a new last element in final_roll_data that represents cycle N:
+* if N > final_roll_data[thread][0].cycle:
+  * push front a new element in final_roll_data that represents cycle N:
     * inherit FinalRollThreadData.roll_count from cycle N-1
     * empty FinalRollThreadData.cycle_purchases, FinalRollThreadData.cycle_sales, FinalRollThreadData.rng_seed
+  * pop back for final_roll_data[thread] to keep it the right size
 * if there were misses between B and its parent, for each of them in order:
   * push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in final_roll_data[thread].rng_seed
 * push the 1st bit of BlockId in final_roll_data[thread].rng_seed
