@@ -45,4 +45,6 @@ pub struct NetworkConfig {
     pub message_timeout: UTime,
     /// Every ask_peer_list_interval in millis we ask every one for its advertisable peers list.
     pub ask_peer_list_interval: UTime,
+    //max number of hash in the message AskForBlocks
+    pub max_ask_blocks_per_message: u32,
 }

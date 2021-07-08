@@ -35,7 +35,7 @@ pub enum Message {
     /// Block header
     BlockHeader(BlockHeader),
     /// Message asking the peer for a block.
-    AskForBlock(Hash),
+    AskForBlocks(Vec<Hash>),
     /// Message asking the peer for its advertisable peers list.
     AskPeerList,
     /// Reply to a AskPeerList message
@@ -54,7 +54,7 @@ enum MessageTypeId {
     HandshakeReply = 1,
     Block = 2,
     BlockHeader = 3,
-    AskForBlock = 4,
+    AskForBlocks = 4,
     AskPeerList = 5,
     PeerList = 6,
     BlockNotFound = 7,
@@ -84,9 +84,17 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
                 res.extend(&header.to_bytes_compact(&context)?);
             }
-            Message::AskForBlock(hash) => {
-                res.extend(u32::from(MessageTypeId::AskForBlock).to_varint_bytes());
-                res.extend(&hash.to_bytes());
+            Message::AskForBlocks(list) => {
+                res.extend(u32::from(MessageTypeId::AskForBlocks).to_varint_bytes());
+                let list_len: u32 = list.len().try_into().map_err(|_| {
+                    ModelsError::SerializeError(
+                        "could not encode AskForBlocks list length as u32".into(),
+                    )
+                })?;
+                res.extend(list_len.to_varint_bytes());
+                for hash in list.into_iter() {
+                    res.extend(&hash.to_bytes());
+                }
             }
             Message::AskPeerList => {
                 res.extend(u32::from(MessageTypeId::AskPeerList).to_varint_bytes());
@@ -151,10 +159,20 @@ impl DeserializeCompact for Message {
                 cursor += delta;
                 Message::BlockHeader(header)
             }
-            MessageTypeId::AskForBlock => {
-                let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += HASH_SIZE_BYTES;
-                Message::AskForBlock(hash)
+            MessageTypeId::AskForBlocks => {
+                let (length, delta) = u32::from_varint_bytes_bounded(
+                    &buffer[cursor..],
+                    context.max_ask_blocks_per_message,
+                )?;
+                cursor += delta;
+                // hash list
+                let mut list: Vec<Hash> = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                    cursor += HASH_SIZE_BYTES;
+                    list.push(hash);
+                }
+                Message::AskForBlocks(list)
             }
             MessageTypeId::AskPeerList => Message::AskPeerList,
             MessageTypeId::PeerList => {

@@ -30,6 +30,7 @@ async fn run(cfg: config::Config) {
         max_bootstrap_cliques: cfg.bootstrap.max_bootstrap_cliques,
         max_bootstrap_deps: cfg.bootstrap.max_bootstrap_deps,
         max_bootstrap_children: cfg.bootstrap.max_bootstrap_children,
+        max_ask_blocks_per_message: cfg.network.max_ask_blocks_per_message,
     };
 
     let (boot_graph, clock_compensation) = get_state(

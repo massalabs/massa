@@ -17,7 +17,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         MockNetworkController::new();
 
     let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlock { .. } => Some(cmd),
+        cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
         _ => None,
     };
 
@@ -81,16 +81,16 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         .expect("Failed to ask for block.");
 
     // 6. Check that protocol asks the node for the full block.
-    let (ask_to_node_id, asked_for_hash) = match network_controller
+    match network_controller
         .wait_command(1000.into(), ask_for_block_cmd_filter)
         .await
         .expect("Protocol didn't send network command.")
     {
-        NetworkCommand::AskForBlock { node, hash } => (node, hash),
+        NetworkCommand::AskForBlocks { list } => {
+            assert!(list.get(&creator_node.id).unwrap().contains(&expected_hash));
+        }
         _ => panic!("Unexpected network command."),
     };
-    assert_eq!(expected_hash, asked_for_hash);
-    assert_eq!(ask_to_node_id, creator_node.id);
 
     // 7. Make sure protocol did not ask for the block again.
     let got_more_commands = network_controller
@@ -159,7 +159,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     // 3. Simulate two nodes asking for a block.
     for n in 0..2 {
         network_controller
-            .send_ask_for_block(nodes[n].id, expected_hash)
+            .send_ask_for_block(nodes[n].id, vec![expected_hash].into_iter().collect())
             .await;
 
         // Check protocol sends get block event to consensus.
@@ -294,7 +294,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         };
 
     network_controller
-        .send_ask_for_block(node_b.id, ref_hash)
+        .send_ask_for_block(node_b.id, vec![ref_hash].into_iter().collect())
         .await;
 
     match tools::wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| match evt {
@@ -468,7 +468,7 @@ async fn test_protocol_block_not_found() {
 
     // 3. Ask block to protocol.
     network_controller
-        .send_ask_for_block(creator_node.id, expected_hash)
+        .send_ask_for_block(creator_node.id, vec![expected_hash].into_iter().collect())
         .await;
 
     // Check protocol sends ask block to consensus.

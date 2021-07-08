@@ -392,9 +392,11 @@ async fn test_block_not_found() {
         active_in_connections: 0,
     }]);
 
-    let (mut network_conf, serialization_context) =
+    let (mut network_conf, mut serialization_context) =
         super::tools::create_network_config(bind_port, &temp_peers_file.path());
     network_conf.target_out_connections = 10;
+    network_conf.max_ask_blocks_per_message = 3;
+    serialization_context.max_ask_blocks_per_message = 3;
 
     // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
@@ -426,19 +428,22 @@ async fn test_block_not_found() {
     // Send ask for block message from connected peer
     let wanted_hash = Hash::hash("default_val".as_bytes());
     conn1_w
-        .send(&Message::AskForBlock(wanted_hash))
+        .send(&Message::AskForBlocks(vec![wanted_hash]))
         .await
         .unwrap();
 
     // assert it is sent to protocol
-    if let Some((hash, node)) =
+    if let Some((list, node)) =
         tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::AskedForBlock { hash, node } => Some((hash, node)),
+            NetworkEvent::AskedForBlocks { list, node } => {
+                println!(" list {:?}", list);
+                Some((list, node))
+            }
             _ => None,
         })
         .await
     {
-        assert_eq!(hash, wanted_hash);
+        assert!(list.contains(&wanted_hash));
         assert_eq!(node, conn1_id);
     } else {
         panic!("Timeout while waiting for asked for block event");
@@ -467,12 +472,40 @@ async fn test_block_not_found() {
         }
     }
 
+    //test with max_ask_blocks_per_message > 3
+    let wanted_hash1 = Hash::hash("default_val1".as_bytes());
+    let wanted_hash2 = Hash::hash("default_val2".as_bytes());
+    let wanted_hash3 = Hash::hash("default_val3".as_bytes());
+    let wanted_hash4 = Hash::hash("default_val4".as_bytes());
+    conn1_w
+        .send(&Message::AskForBlocks(vec![
+            wanted_hash1,
+            wanted_hash2,
+            wanted_hash3,
+            wanted_hash4,
+        ]))
+        .await
+        .unwrap();
+
+    // assert it is sent to protocol
+    if let Some(_) =
+        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
+            NetworkEvent::AskedForBlocks { list, node } => {
+                println!(" list {:?}", list);
+                Some((list, node))
+            }
+            _ => None,
+        })
+        .await
+    {
+        panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
+    }
+
     let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
     network_manager
         .stop(network_event_receiver)
         .await
         .expect("error while closing");
-
     tools::incoming_message_drain_stop(conn1_drain).await;
 
     temp_peers_file.close().unwrap();

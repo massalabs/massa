@@ -361,6 +361,8 @@ impl ProtocolWorker {
             .checked_add(self.cfg.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)?;
 
+        let mut ask_block_list: HashMap<NodeId, HashSet<Hash>> = HashMap::new();
+
         // list blocks to re-ask and from whom
         for hash in self.block_wishlist.iter() {
             let mut needs_ask = true;
@@ -464,19 +466,27 @@ impl ProtocolWorker {
                     .unwrap()
                     .asked_blocks
                     .insert(*hash, now); // will not panic, already checked
-                self.network_command_sender
-                    .ask_for_block(node_id, *hash)
-                    .await
-                    .map_err(|_| {
-                        CommunicationError::ChannelError(
-                            "ask for block node command send failed".into(),
-                        )
-                    })?;
+
+                let hash_list = ask_block_list.entry(node_id).or_insert(HashSet::new());
+                hash_list.insert(*hash);
+
                 let timeout_at = now
                     .checked_add(self.cfg.ask_block_timeout.into())
                     .ok_or(TimeError::TimeOverflowError)?;
                 next_tick = std::cmp::min(next_tick, timeout_at);
             }
+        }
+
+        //send AskBlockEvents
+        if !ask_block_list.is_empty() {
+            self.network_command_sender
+                .ask_for_block(ask_block_list)
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "ask for block node command send failed".into(),
+                    )
+                })?;
         }
 
         // reset timer
@@ -566,22 +576,24 @@ impl ProtocolWorker {
                     )
                 }
             }
-            NetworkEvent::AskedForBlock {
+            NetworkEvent::AskedForBlocks {
                 node: from_node_id,
-                hash: data,
+                list,
             } => {
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-                    node_info.insert_wanted_blocks(data, self.cfg.max_node_wanted_blocks_size);
-                    trace!("before sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
-                    self.controller_event_tx
-                        .send(ProtocolEvent::GetBlock(data))
-                        .await
-                        .map_err(|_| {
-                            CommunicationError::ChannelError(
-                                "receive asked for block event send failed".into(),
-                            )
-                        })?;
-                    trace!("after sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
+                    for hash in list {
+                        node_info.insert_wanted_blocks(hash, self.cfg.max_node_wanted_blocks_size);
+                        trace!("before sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
+                        self.controller_event_tx
+                            .send(ProtocolEvent::GetBlock(hash))
+                            .await
+                            .map_err(|_| {
+                                CommunicationError::ChannelError(
+                                    "receive asked for block event send failed".into(),
+                                )
+                            })?;
+                        trace!("after sending  ProtocolEvent::GetBlock from controller_event_tx in protocol_worker on_network_event");
+                    }
                 }
             }
             NetworkEvent::ReceivedBlockHeader {

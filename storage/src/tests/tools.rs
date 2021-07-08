@@ -43,6 +43,7 @@ pub fn get_test_config() -> (StorageConfig, SerializationContext) {
             max_bootstrap_cliques: 100,
             max_bootstrap_deps: 100,
             max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
         },
     )
 }

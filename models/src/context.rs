@@ -10,4 +10,5 @@ pub struct SerializationContext {
     pub max_bootstrap_cliques: u32,
     pub max_bootstrap_deps: u32,
     pub max_bootstrap_children: u32,
+    pub max_ask_blocks_per_message: u32,
 }
