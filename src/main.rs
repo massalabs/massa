@@ -1,11 +1,13 @@
 #![feature(ip)]
 
 mod config;
+mod consensus;
 mod crypto;
 mod network;
 mod protocol;
+mod structures;
 
-use crate::protocol::controller::{ProtocolController, ProtocolEvent};
+use crate::protocol::controller::{ProtocolController, ProtocolEvent, ProtocolEventType};
 use log::error;
 use std::error::Error;
 use tokio::fs::read_to_string;
@@ -19,9 +21,10 @@ async fn run(cfg: config::Config) -> BoxResult<()> {
     // loop over messages
     loop {
         tokio::select! {
-            evt = protocol.wait_event() => match evt {
-                ProtocolEvent::ReceivedTransaction(data) => log::info!("reveice transcation with date:{}", data),
-                ProtocolEvent::ReceivedBlock(data) => log::info!("reveice a block with date:{}", data),
+            ProtocolEvent(source_node_id, evt) = protocol.wait_event() => match evt {
+                ProtocolEventType::ReceivedTransaction(data) => log::info!("reveice transcation with data:{}", data),
+                ProtocolEventType::ReceivedBlock(block) => log::info!("reveice a block {:?} from node {:?}", block, source_node_id),
+                ProtocolEventType::AskedBlock(hash) => log::info!("Node {:?} asked for block {:?}", source_node_id, hash),
              }
         }
     }

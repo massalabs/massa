@@ -21,6 +21,9 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{timeout, Duration};
 
+use crate::crypto::hash::Hash;
+use crate::structures::block::Block;
+
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -39,18 +42,28 @@ impl std::fmt::Debug for NodeId {
 }
 
 #[derive(Clone, Debug)]
-enum ProtocolCommand {}
+enum ProtocolCommand {
+    PropagateBlock {
+        restrict_to_node: Option<NodeId>,
+        exclude_node: Option<NodeId>,
+        block: Block,
+    },
+}
 
 #[derive(Clone, Debug)]
-pub enum ProtocolEvent {
+pub enum ProtocolEventType {
     ReceivedTransaction(String),
-    ReceivedBlock(String),
+    ReceivedBlock(Block),
+    AskedBlock(Hash),
 }
+
+#[derive(Clone, Debug)]
+pub struct ProtocolEvent(pub NodeId, pub ProtocolEventType);
 
 #[derive(Clone, Debug)]
 enum NodeCommand {
     SendPeerList(Vec<IpAddr>),
-    SendBlock(String),
+    SendBlock(Block),
     SendTransaction(String),
     Close,
 }
@@ -59,7 +72,7 @@ enum NodeCommand {
 enum NodeEventType {
     AskedPeerList,
     ReceivedPeerList(Vec<IpAddr>),
-    ReceivedBlock(String),       //put some date for the example
+    ReceivedBlock(Block),        //put some date for the example
     ReceivedTransaction(String), //put some date for the example
     Closed(ConnectionClosureReason),
 }
@@ -185,6 +198,15 @@ impl ProtocolController {
             })
             .to_string()
         );
+    }
+
+    fn propagate_block(
+        &mut self,
+        block: Block,
+        excluding: Option<Vec<NodeId>>,
+        includin: Option<Vec<NodeId>>,
+    ) {
+        unimplemented!()
     }
 }
 
@@ -398,14 +420,12 @@ async fn protocol_controller_fn(
                 }
                 // received block (TODO test only)
                 Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => controller_event_tx
-                    .send(ProtocolEvent::ReceivedBlock(data))
-                    .await
-                    .expect("controller event tx failed"),
+                    .send(ProtocolEvent(from_node_id, ProtocolEventType::ReceivedBlock(data)))
+                    .await.expect("controller event tx failed"),
                 // received transaction (TODO test only)
                 Some(NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data))) => controller_event_tx
-                    .send(ProtocolEvent::ReceivedTransaction(data))
-                    .await
-                    .expect("controller event tx failed"),
+                    .send(ProtocolEvent(from_node_id, ProtocolEventType::ReceivedTransaction(data)))
+                    .await.expect("controller event tx failed"),
                 // connection closed
                 Some(NodeEvent(from_node_id, NodeEventType::Closed(reason))) => {
                     let (connection_id, _, handle) = active_nodes.remove(&from_node_id).expect("event from misising node");

@@ -1,4 +1,5 @@
 use crate::crypto::signature::{PublicKey, Signature};
+use crate::structures::block::Block;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
@@ -11,7 +12,7 @@ pub enum Message {
     HandshakeReply {
         signature: Signature,
     },
-    Block(String),
+    Block(Block),
     Transaction(String),
     AskPeerList,
     PeerList(Vec<IpAddr>),

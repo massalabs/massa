@@ -31,7 +31,7 @@ impl std::fmt::Display for HashError {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
 
 impl std::fmt::Display for Hash {

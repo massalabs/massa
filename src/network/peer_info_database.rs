@@ -579,7 +579,7 @@ mod tests {
     use super::*;
 
     fn example_network_config() -> NetworkConfig {
-        use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+        use std::net::{Ipv4Addr, SocketAddr};
 
         NetworkConfig {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
