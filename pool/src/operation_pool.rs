@@ -3,7 +3,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use models::{Address, Operation, OperationId, SerializationContext, SerializeCompact, Slot};
 use num::rational::Ratio;
 
-use crate::{PoolConfig, PoolError};
+use crate::{PoolCommand, PoolConfig, PoolError};
 
 struct WrappedOperation {
     op: Operation,
@@ -197,6 +197,10 @@ impl OperationPool {
             })
             .take(batch_size)
             .collect()
+    }
+
+    pub fn get_operation(&self, id: OperationId) -> Result<Option<Operation>, PoolError> {
+        todo!()
     }
 }
 
