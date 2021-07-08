@@ -40,11 +40,11 @@ pub enum PeerFeedbackEvent {
     PeerList {
         ips: HashSet<IpAddr>,
     },
-    ConnectionClosed {
+    PeerClosed {
         ip: IpAddr,
         reason: PeerClosureReason,
     },
-    PeerConnected {
+    PeerAlive {
         ip: IpAddr,
     },
 }
@@ -80,6 +80,34 @@ impl NetworkController {
             .recv()
             .await
             .ok_or("error reading events".into())
+    }
+
+    pub async fn feedback_peer_list(
+        &mut self, ips: HashSet<IpAddr>
+    ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
+        self.peer_feedback_tx.send(PeerFeedbackEvent::PeerList {
+            ips,
+        }).await?;
+        Ok(())
+    }
+
+    pub async fn feedback_peer_closed(
+        &mut self, ip: IpAddr, reason: PeerClosureReason
+    ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
+        self.peer_feedback_tx.send(PeerFeedbackEvent::PeerClosed {
+            ip,
+            reason,
+        }).await?;
+        Ok(())
+    }
+
+    pub async fn feedback_peer_alive(
+        &mut self, ip: IpAddr
+    ) -> Result<(), mpsc::error::SendError<PeerFeedbackEvent>> {
+        self.peer_feedback_tx.send(PeerFeedbackEvent::PeerAlive {
+            ip,
+        }).await?;
+        Ok(())
     }
 }
 
@@ -132,7 +160,7 @@ async fn controller_fn(
                         });
                     }
                 },
-                Some(PeerFeedbackEvent::ConnectionClosed{ip, reason}) => {
+                Some(PeerFeedbackEvent::PeerClosed{ip, reason}) => {
                     let mut peer = peer_db.peers.get_mut(&ip).expect("disconnected from an unkonwn peer");
                     match reason {
                         PeerClosureReason::Normal => {
@@ -149,13 +177,13 @@ async fn controller_fn(
                         }
                     }
                 },
-                Some(PeerFeedbackEvent::PeerConnected { ip } ) => {
+                Some(PeerFeedbackEvent::PeerAlive { ip } ) => {
                     let mut peer = peer_db.peers.get_mut(&ip).expect("conection OK from an unkonwn peer");
                     peer.status = match peer.status {
                         PeerStatus::InHandshaking => PeerStatus::InConnected,
                         PeerStatus::OutHandshaking => PeerStatus::OutConnected,
                         _ => unreachable!("connection OK from peer that was not in the process of connecting")
-                    }
+                    };
                     peer.last_connection = Some(Utc::now());
                 }
                 None => unreachable!("peer feedback channel disappeared"),

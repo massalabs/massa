@@ -4,6 +4,7 @@ mod network;
 use log::{error, info};
 use std::error::Error;
 use tokio::fs::read_to_string;
+use tokio::time::{delay_for, Duration};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -17,7 +18,12 @@ async fn run(cfg: config::Config) -> BoxResult<()> {
             evt = net.wait_event() => match evt {
                 Ok(msg) => match msg {
                     network::controller::NetworkControllerEvent::CandidateConnection {ip, socket, is_outgoing} => {
-                        info!("new peer: {}", ip)
+                        info!("new peer: {}", ip);
+                        delay_for(Duration::from_secs(2)).await;
+                        net.feedback_peer_alive(ip).await;
+                        delay_for(Duration::from_secs(20)).await;
+                        net.feedback_peer_closed(ip, network::controller::PeerClosureReason::Normal).await;
+                        info!("peer closed: {}", ip);
                     }
                 },
                 Err(e) => return Err(e)
