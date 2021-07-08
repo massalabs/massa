@@ -1,0 +1,39 @@
+= Contributing to Massa Network
+
+Massa Network is released under the XXXXXXX license. If you would like to contribute something, or want to hack on the code this document should help you get started.
+
+== Code of Conduct
+
+This project adheres to the Contributor Covenant link:CODE_OF_CONDUCT.adoc[code of conduct].
+By participating, you are expected to uphold this code. Please report unacceptable behavior to info@massa.net.
+
+
+== Using GitHub Issues
+
+We use GitLab issues to track bugs and enhancements.
+If you have a general usage question please ask on XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+If you are reporting a bug, please help to speed up problem diagnosis by providing as much information as possible.
+Ideally, that would include a small sample project that reproduces the problem.
+
+
+== Reporting Security Vulnerabilities
+
+If you think you have found a security vulnerability in Massa Network please *DO NOT* disclose it publicly until we've had a chance to fix it.
+Please don't report security vulnerabilities using GitHub issues, instead head over to info@massa.net and learn how to disclose them responsibly.
+
+== Sign the Contributor License Agreement
+
+
+Before we accept a non-trivial patch or pull request we will need you to https://cla.pivotal.io/sign/spring[sign the Contributor License Agreement].
+Signing the contributor's agreement does not grant anyone commit rights to the main repository, but it does mean that we can accept your contributions, and you will get an author credit if we do.
+Active contributors might be asked to join the core team, and given the ability to merge pull requests.
+
+
+== Code Conventions and Housekeeping
+
+fdgfdgfdgd
+
+== Working with the Code
+
+fdgfdgfdgd
