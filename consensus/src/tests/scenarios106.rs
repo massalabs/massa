@@ -675,13 +675,13 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         500,
     )
     .await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 300).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s2, 1000).await;
 
     protocol_controller.receive_block(t1s3).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s3, 1000).await;
 
     protocol_controller.receive_block(t0s1).await;
-    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 500).await;
+    tools::validate_propagate_block(&mut protocol_controller, hasht0s1, 1000).await;
     tools::validate_wishlist(
         &mut protocol_controller,
         HashSet::new(),
@@ -690,10 +690,10 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     )
     .await;
     protocol_controller.receive_block(t0s3).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht0s3, 1000).await;
 
     protocol_controller.receive_block(t1s2).await;
-    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s2, 500).await;
+    tools::validate_notpropagate_block(&mut protocol_controller, hasht1s2, 1000).await;
 
     protocol_controller.receive_block(t1s1).await;
     tools::validate_propagate_block_in_list(
@@ -820,17 +820,17 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     //block t0s1 and t1s1 are propagated
     let hash_list = vec![hasht0s1, hasht1s1];
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 500).await;
-    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 200).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+    tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
 
     //block  t0s3, t1s3 are not propagated
     let hash_list = vec![hasht0s3, hasht1s3];
     assert!(
-        !tools::validate_notpropagate_block_in_list(&mut protocol_controller, &hash_list, 200)
+        !tools::validate_notpropagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
             .await
     );
     assert!(
-        !tools::validate_notpropagate_block_in_list(&mut protocol_controller, &hash_list, 200)
+        !tools::validate_notpropagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
             .await
     );
 
