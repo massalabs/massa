@@ -54,7 +54,48 @@ impl ActiveBlock {
     }
 }
 
-impl SerializeCompact for ActiveBlock {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportActiveBlock {
+    block: Block,
+    parents: Vec<(Hash, u64)>, // one (hash, period) per thread ( if not genesis )
+    children: Vec<Vec<(Hash, u64)>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
+    dependencies: Vec<Hash>,         // dependencies required for validity check
+    is_final: bool,
+}
+
+impl From<ActiveBlock> for ExportActiveBlock {
+    fn from(block: ActiveBlock) -> Self {
+        ExportActiveBlock {
+            block: block.block,
+            parents: block.parents,
+            children: block
+                .children
+                .into_iter()
+                .map(|map| map.into_iter().collect())
+                .collect(),
+            dependencies: block.dependencies.into_iter().collect(),
+            is_final: block.is_final,
+        }
+    }
+}
+
+impl<'a> From<ExportActiveBlock> for ActiveBlock {
+    fn from(block: ExportActiveBlock) -> Self {
+        ActiveBlock {
+            block: block.block,
+            parents: block.parents,
+            children: block
+                .children
+                .into_iter()
+                .map(|map| map.into_iter().collect())
+                .collect(),
+            dependencies: block.dependencies.into_iter().collect(),
+            is_final: block.is_final,
+        }
+    }
+}
+
+impl SerializeCompact for ExportActiveBlock {
     fn to_bytes_compact(
         &self,
         context: &SerializationContext,
@@ -96,7 +137,7 @@ impl SerializeCompact for ActiveBlock {
                 ))
             })?;
             res.extend(u32::from(map_count).to_varint_bytes());
-            for (hash, period) in map.iter() {
+            for (hash, period) in map {
                 res.extend(&hash.to_bytes());
                 res.extend(period.to_varint_bytes());
             }
@@ -114,7 +155,7 @@ impl SerializeCompact for ActiveBlock {
     }
 }
 
-impl DeserializeCompact for ActiveBlock {
+impl DeserializeCompact for ExportActiveBlock {
     fn from_bytes_compact(
         buffer: &[u8],
         context: &SerializationContext,
@@ -155,17 +196,17 @@ impl DeserializeCompact for ActiveBlock {
         //childrens
         let (children_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
-        let mut children: Vec<HashMap<Hash, u64>> = Vec::with_capacity(children_count as usize);
+        let mut children: Vec<Vec<(Hash, u64)>> = Vec::with_capacity(children_count as usize);
         for _ in 0..(children_count as usize) {
             let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
-            let mut map: HashMap<Hash, u64> = HashMap::with_capacity(map_count as usize);
+            let mut map: Vec<(Hash, u64)> = Vec::with_capacity(map_count as usize);
             for _ in 0..(map_count as usize) {
                 let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
-                map.insert(hash, period);
+                map.push((hash, period));
             }
             children.push(map);
         }
@@ -173,15 +214,15 @@ impl DeserializeCompact for ActiveBlock {
         //dependencies
         let (dependencies_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
-        let mut dependencies: HashSet<Hash> = HashSet::with_capacity(dependencies_count as usize);
+        let mut dependencies: Vec<Hash> = Vec::with_capacity(dependencies_count as usize);
         for _ in 0..(dependencies_count as usize) {
             let dep = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
-            dependencies.insert(dep);
+            dependencies.push(dep);
         }
 
         Ok((
-            ActiveBlock {
+            ExportActiveBlock {
                 is_final,
                 block,
                 parents,
@@ -306,15 +347,15 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BoostrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: HashMap<Hash, ActiveBlock>,
+    pub active_blocks: Vec<(Hash, ExportActiveBlock)>,
     /// Best parents hashe in each thread.
     pub best_parents: Vec<Hash>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(Hash, u64)>,
     /// Head of the incompatibility graph.
-    pub gi_head: HashMap<Hash, HashSet<Hash>>,
+    pub gi_head: Vec<(Hash, Vec<Hash>)>,
     /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<HashSet<Hash>>,
+    pub max_cliques: Vec<Vec<Hash>>,
 }
 
 impl<'a> From<&'a BlockGraph> for BoostrapableGraph {
@@ -330,11 +371,24 @@ impl<'a> From<&'a BlockGraph> for BoostrapableGraph {
         }
 
         BoostrapableGraph {
-            active_blocks,
+            active_blocks: active_blocks
+                .into_iter()
+                .map(|(hash, block)| (hash, block.into()))
+                .collect(),
             best_parents: block_graph.best_parents.clone(),
             latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
-            gi_head: block_graph.gi_head.clone(),
-            max_cliques: block_graph.max_cliques.clone(),
+            gi_head: block_graph
+                .gi_head
+                .clone()
+                .into_iter()
+                .map(|(hash, incomp)| (hash, incomp.into_iter().collect()))
+                .collect(),
+            max_cliques: block_graph
+                .max_cliques
+                .clone()
+                .into_iter()
+                .map(|clique| clique.into_iter().collect())
+                .collect(),
         }
     }
 }
@@ -384,7 +438,7 @@ impl SerializeCompact for BoostrapableGraph {
                 ))
             })?;
             res.extend(u32::from(set_count).to_varint_bytes());
-            for hash in set.iter() {
+            for hash in set {
                 res.extend(&hash.to_bytes());
             }
         }
@@ -405,7 +459,7 @@ impl SerializeCompact for BoostrapableGraph {
                 ))
             })?;
             res.extend(u32::from(set_count).to_varint_bytes());
-            for hash in set.iter() {
+            for hash in set {
                 res.extend(&hash.to_bytes());
             }
         }
@@ -424,14 +478,15 @@ impl DeserializeCompact for BoostrapableGraph {
         //active_blocks
         let (active_blocks_count, delta) = u32::from_varint_bytes(buffer)?;
         cursor += delta;
-        let mut active_blocks: HashMap<Hash, ActiveBlock> =
-            HashMap::with_capacity(active_blocks_count as usize);
+        let mut active_blocks: Vec<(Hash, ExportActiveBlock)> =
+            Vec::with_capacity(active_blocks_count as usize);
         for _ in 0..(active_blocks_count as usize) {
             let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
-            let (block, delta) = ActiveBlock::from_bytes_compact(&buffer[cursor..], &context)?;
+            let (block, delta) =
+                ExportActiveBlock::from_bytes_compact(&buffer[cursor..], &context)?;
             cursor += delta;
-            active_blocks.insert(hash, block);
+            active_blocks.push((hash, block));
         }
 
         //best_parents
@@ -456,34 +511,33 @@ impl DeserializeCompact for BoostrapableGraph {
         //gi_head
         let (gi_head_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
-        let mut gi_head: HashMap<Hash, HashSet<Hash>> =
-            HashMap::with_capacity(gi_head_count as usize);
+        let mut gi_head: Vec<(Hash, Vec<Hash>)> = Vec::with_capacity(gi_head_count as usize);
         for _ in 0..(gi_head_count as usize) {
             let gihash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += HASH_SIZE_BYTES;
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
-            let mut set: HashSet<Hash> = HashSet::with_capacity(set_count as usize);
+            let mut set: Vec<Hash> = Vec::with_capacity(set_count as usize);
             for _ in 0..(set_count as usize) {
                 let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
-                set.insert(hash);
+                set.push(hash);
             }
-            gi_head.insert(gihash, set);
+            gi_head.push((gihash, set));
         }
 
         //max_cliques: Vec<HashSet<Hash>>
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
-        let mut max_cliques: Vec<HashSet<Hash>> = Vec::with_capacity(max_cliques_count as usize);
+        let mut max_cliques: Vec<Vec<Hash>> = Vec::with_capacity(max_cliques_count as usize);
         for _ in 0..(max_cliques_count as usize) {
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
-            let mut set: HashSet<Hash> = HashSet::with_capacity(set_count as usize);
+            let mut set: Vec<Hash> = Vec::with_capacity(set_count as usize);
             for _ in 0..(set_count as usize) {
                 let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
-                set.insert(hash);
+                set.push(hash);
             }
             max_cliques.push(set);
         }
@@ -601,12 +655,20 @@ impl BlockGraph {
                 block_statuses: boot_graph
                     .active_blocks
                     .iter()
-                    .map(|(hash, block)| (*hash, BlockStatus::Active(block.clone())))
+                    .map(|(hash, block)| (*hash, BlockStatus::Active(block.clone().into())))
                     .collect(),
                 latest_final_blocks_periods: boot_graph.latest_final_blocks_periods,
                 best_parents: boot_graph.best_parents,
-                gi_head: boot_graph.gi_head,
-                max_cliques: boot_graph.max_cliques,
+                gi_head: boot_graph
+                    .gi_head
+                    .into_iter()
+                    .map(|(h, v)| (h, v.into_iter().collect()))
+                    .collect(),
+                max_cliques: boot_graph
+                    .max_cliques
+                    .into_iter()
+                    .map(|v| v.into_iter().collect())
+                    .collect(),
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
             })
@@ -2159,7 +2221,7 @@ mod tests {
     use super::*;
     use time::UTime;
 
-    pub fn get_active_test_block() -> ActiveBlock {
+    pub fn get_export_active_test_block() -> ExportActiveBlock {
         let block = Block {
             header: BlockHeader {
                 content: BlockHeaderContent{
@@ -2179,7 +2241,7 @@ mod tests {
             operations: vec![]
         };
 
-        ActiveBlock {
+        ExportActiveBlock {
             parents: vec![
                 (Hash::hash("parent11".as_bytes()), 23),
                 (Hash::hash("parent12".as_bytes()), 24),
@@ -2213,7 +2275,7 @@ mod tests {
             max_message_size: 3 * 1024 * 1024,
         };
 
-        let active_block = get_active_test_block();
+        let active_block = get_export_active_test_block();
 
         let bytes = active_block
             .block
@@ -2249,27 +2311,21 @@ mod tests {
                     vec![
                         Hash::hash("set11".as_bytes()),
                         Hash::hash("set12".as_bytes()),
-                    ]
-                    .into_iter()
-                    .collect(),
+                    ],
                 ),
                 (
                     Hash::hash("gi_head12".as_bytes()),
                     vec![
                         Hash::hash("set21".as_bytes()),
                         Hash::hash("set22".as_bytes()),
-                    ]
-                    .into_iter()
-                    .collect(),
+                    ],
                 ),
                 (
                     Hash::hash("gi_head13".as_bytes()),
                     vec![
                         Hash::hash("set31".as_bytes()),
                         Hash::hash("set32".as_bytes()),
-                    ]
-                    .into_iter()
-                    .collect(),
+                    ],
                 ),
             ]
             .into_iter()
@@ -2290,14 +2346,8 @@ mod tests {
 
         assert_eq!(bytes.len(), cursor);
         assert_eq!(
-            graph.active_blocks[&Hash::hash("active11".as_bytes())]
-                .block
-                .header
-                .signature,
-            new_graph.active_blocks[&Hash::hash("active11".as_bytes())]
-                .block
-                .header
-                .signature
+            graph.active_blocks[0].1.block.header.signature,
+            new_graph.active_blocks[0].1.block.header.signature
         );
         assert_eq!(graph.best_parents[0], new_graph.best_parents[0]);
         assert_eq!(graph.best_parents[1], new_graph.best_parents[1]);

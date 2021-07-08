@@ -94,7 +94,6 @@ mod tests {
     use super::*;
     use crypto::hash::Hash;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
-    use std::collections::HashMap;
 
     #[test]
     fn test_message_serialize_compact() {
@@ -126,7 +125,7 @@ mod tests {
 
         let base_graph = BoostrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
-            active_blocks: HashMap::new(),
+            active_blocks: Vec::new(),
             /// Best parents hashe in each thread.
             best_parents: vec![
                 Hash::hash("parent11".as_bytes()),
