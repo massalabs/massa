@@ -1,12 +1,19 @@
 use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
 use crate::network::NetworkCommand;
-use crate::protocol::{ProtocolConfig, ProtocolEvent, ProtocolEventReceiver};
+use crate::protocol::{
+    ProtocolConfig, ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent,
+    ProtocolPoolEventReceiver,
+};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey, SignatureEngine},
 };
-use models::{Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext, Slot};
+use models::{
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, SerializationContext,
+    SerializeCompact, Slot,
+};
+use models::{Operation, OperationContent, OperationType};
 use std::collections::HashMap;
 use time::UTime;
 use tokio::time::sleep;
@@ -69,6 +76,32 @@ pub fn create_block(
     }
 }
 
+/// Creates an operation for use in protocol tests,
+/// without paying attention to consensus related things.
+pub fn create_operation(context: &SerializationContext) -> Operation {
+    let sig_engine = SignatureEngine::new();
+    let sender_priv = SignatureEngine::generate_random_private_key();
+    let sender_pub = sig_engine.derive_public_key(&sender_priv);
+
+    let recv_priv = SignatureEngine::generate_random_private_key();
+    let recv_pub = sig_engine.derive_public_key(&recv_priv);
+
+    let op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        amount: 0,
+    };
+    let content = OperationContent {
+        fee: 0,
+        op,
+        sender_public_key: sender_pub,
+        expire_period: 0,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact(context).unwrap());
+    let signature = sig_engine.sign(&hash, &sender_priv).unwrap();
+
+    Operation { content, signature }
+}
+
 // create a ProtocolConfig with typical values
 pub fn create_protocol_config() -> (ProtocolConfig, SerializationContext) {
     (
@@ -103,6 +136,27 @@ pub async fn wait_protocol_event<F>(
 ) -> Option<ProtocolEvent>
 where
     F: Fn(ProtocolEvent) -> Option<ProtocolEvent>,
+{
+    let timer = sleep(timeout.into());
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            evt_opt = protocol_event_receiver.wait_event() => match evt_opt {
+                Ok(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
+                _ => return None
+            },
+            _ = &mut timer => return None
+        }
+    }
+}
+
+pub async fn wait_protocol_pool_event<F>(
+    protocol_event_receiver: &mut ProtocolPoolEventReceiver,
+    timeout: UTime,
+    filter_map: F,
+) -> Option<ProtocolPoolEvent>
+where
+    F: Fn(ProtocolPoolEvent) -> Option<ProtocolPoolEvent>,
 {
     let timer = sleep(timeout.into());
     tokio::pin!(timer);
