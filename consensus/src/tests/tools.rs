@@ -468,13 +468,15 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
         let pub_key = crypto::derive_public_key(key);
         let address = Address::from_public_key(&pub_key).unwrap();
         let update = RollUpdate {
-            roll_increment: true,
-            roll_delta: 1,
+            roll_purchases: 1,
+            roll_sales: 0,
         };
         let mut updates = RollUpdates::new();
         updates.apply(&address, &update).unwrap();
         let thread = address.get_thread(2);
-        roll_counts[thread as usize].apply(&updates).unwrap();
+        roll_counts[thread as usize]
+            .apply_subset(&updates, None)
+            .unwrap();
     }
     generate_roll_counts_file(&roll_counts)
 }
