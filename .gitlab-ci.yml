@@ -1,0 +1,28 @@
+
+stages:
+  - build
+
+# Use rustfmt to check formatting
+sanity:
+  stage: build
+  image: "demilletech/rust"
+  script:
+    - cargo update
+    - cargo fmt -- --check
+
+# Use cargo to build the project
+build:
+  stage: build
+  image: "rustlang/rust:nightly"
+  script:
+    - cargo update
+    - cargo build
+
+# Use tarpaulin to test the project
+test:
+  stage: build
+  image: "xd009642/tarpaulin:develop-nightly"
+  script:
+    - cargo update
+    - cargo tarpaulin --verbose --run-types Tests Doctests
+  coverage: /\d+.\d+% coverage/

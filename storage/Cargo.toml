@@ -1,0 +1,25 @@
+[package]
+name = "storage"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.6", features = ["full"] }
+log = { version = "0.4" }
+logging = { path = "../logging" }
+serde_json = { version = "1.0" }
+sled = "0.34.6"
+models = { path = "../models" }
+crypto = { path = "../crypto" }
+time = { path = "../time" }
+
+[dev-dependencies]
+stderrlog = { version = "0.5" }
+pretty_assertions = "0.7"
+tempfile = "3.2"
+serial_test = "0.5.1"
