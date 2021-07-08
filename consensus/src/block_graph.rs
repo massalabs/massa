@@ -169,7 +169,7 @@ pub struct BlockGraph {
     best_parents: Vec<Hash>,
     gi_head: HashMap<Hash, HashSet<Hash>>,
     max_cliques: Vec<HashSet<Hash>>,
-    to_propagate: HashMap<Hash, BlockHeader>,
+    to_propagate: HashMap<Hash, Block>,
 }
 
 #[derive(Debug)]
@@ -674,8 +674,7 @@ impl BlockGraph {
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
         if let Some(BlockStatus::Active(active)) = self.block_statuses.get(&hash) {
-            self.to_propagate
-                .insert(hash.clone(), active.block.header.clone());
+            self.to_propagate.insert(hash.clone(), active.block.clone());
             for (itm_hash, itm_status) in self.block_statuses.iter_mut() {
                 if let BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -1765,7 +1764,7 @@ impl BlockGraph {
 
     // Get the headers to be propagated.
     // Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_headers_to_propagate(&mut self) -> HashMap<Hash, BlockHeader> {
+    pub fn get_blocks_to_propagate(&mut self) -> HashMap<Hash, Block> {
         mem::replace(&mut self.to_propagate, Default::default())
     }
 }

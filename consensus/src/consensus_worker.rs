@@ -287,12 +287,12 @@ impl ConsensusWorker {
             ProtocolEvent::GetBlock(block_hash) => {
                 if let Some(block) = self.block_db.get_active_block(block_hash) {
                     self.protocol_command_sender
-                        .send_block(block_hash, block.clone())
+                        .found_block(block_hash, block.clone())
                         .await?;
                 } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
                     if let Some(block) = storage_command_sender.get_block(block_hash).await? {
                         self.protocol_command_sender
-                            .send_block(block_hash, block)
+                            .found_block(block_hash, block)
                             .await?;
                     } else {
                         // not found in given storage
@@ -319,9 +319,9 @@ impl ConsensusWorker {
         }
 
         // Propagate newly active blocks.
-        for (hash, header) in self.block_db.get_headers_to_propagate().into_iter() {
+        for (hash, block) in self.block_db.get_blocks_to_propagate().into_iter() {
             self.protocol_command_sender
-                .propagate_block_header(hash, header)
+                .integrated_block(hash, block)
                 .await?;
         }
 

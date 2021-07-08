@@ -10,6 +10,7 @@ use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot}
 use time::UTime;
 use tokio::time::sleep;
 
+#[derive(Debug, Clone)]
 pub struct NodeInfo {
     pub private_key: PrivateKey,
     pub id: NodeId,

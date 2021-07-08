@@ -18,7 +18,7 @@ pub async fn validate_notpropagate_block(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
@@ -36,7 +36,7 @@ pub async fn validate_notpropagate_block_in_list(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
@@ -53,7 +53,7 @@ pub async fn validate_propagate_block_in_list(
 ) -> Hash {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
@@ -117,7 +117,7 @@ pub async fn validate_propagate_block(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::PropagateBlockHeader { hash, .. } => return Some(hash),
+            ProtocolCommand::IntegratedBlock { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;
@@ -149,7 +149,7 @@ pub async fn validate_send_block(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::SendBlock { hash, .. } => return Some(hash),
+            ProtocolCommand::FoundBlock { hash, .. } => return Some(hash),
             _ => None,
         })
         .await;

@@ -28,13 +28,13 @@ pub enum ProtocolEvent {
 /// Commands that protocol worker can process
 #[derive(Debug)]
 pub enum ProtocolCommand {
-    /// Propagate header of a given block.
-    PropagateBlockHeader {
+    /// Notify block integration of a given block.
+    IntegratedBlock {
         hash: Hash,
-        header: BlockHeader,
+        block: Block,
     },
     /// Send a block to peers who asked for it.
-    SendBlock {
+    FoundBlock {
         hash: Hash,
         block: Block,
     },
@@ -161,24 +161,40 @@ impl ProtocolWorker {
         timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), CommunicationError> {
         match cmd {
-            ProtocolCommand::PropagateBlockHeader { hash, header } => {
-                massa_trace!("block_header_propagation", { "block_header": header });
-                for (node_id, node_info) in self.active_nodes.iter() {
-                    let cond = node_info.known_blocks.get(&hash);
-                    // if we don't know if that node knowns that hash or if we know it doesn't
-                    if cond.is_none() || (cond.is_some() && !cond.unwrap().0) {
+            ProtocolCommand::IntegratedBlock { hash, block } => {
+                massa_trace!("integrated_block", { "block_header": block.header });
+                for (node_id, node_info) in self.active_nodes.iter_mut() {
+                    // if we know that a node wants a block we send the full block
+                    if node_info.wanted_blocks.remove(&hash) {
+                        node_info.known_blocks.insert(hash, (true, Instant::now()));
                         self.network_command_sender
-                            .send_block_header(*node_id, header.clone())
+                            .send_block(*node_id, block.clone())
                             .await
                             .map_err(|_| {
                                 CommunicationError::ChannelError(
-                                    "send block header network command send failed".into(),
+                                    "send block node command send failed".into(),
                                 )
                             })?;
+                    } else {
+                        // node that aren't asking for that block
+                        let cond = node_info.known_blocks.get(&hash);
+                        // if we don't know if that node knowns that hash or if we know it doesn't
+                        if !cond.map_or_else(|| false, |v| v.0) {
+                            self.network_command_sender
+                                .send_block_header(*node_id, block.header.clone())
+                                .await
+                                .map_err(|_| {
+                                    CommunicationError::ChannelError(
+                                        "send block header network command send failed".into(),
+                                    )
+                                })?;
+                        } else {
+                            // todo broadcast hash (see #202)
+                        }
                     }
                 }
             }
-            ProtocolCommand::SendBlock { hash, block } => {
+            ProtocolCommand::FoundBlock { hash, block } => {
                 massa_trace!("send_block", { "block": block });
                 // Send the block once to all nodes who asked for it.
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
