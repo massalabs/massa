@@ -83,8 +83,10 @@ where
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(1024);
         let (writer_event_tx, writer_event_rx) = oneshot::channel::<bool>(); // true = OK, false = ERROR
         let mut fused_writer_event_rx = writer_event_rx.fuse();
-
-        let mut socket_writer = self.socket_writer_opt.unwrap();
+        let mut socket_writer = self
+            .socket_writer_opt
+            .take()
+            .expect("socket_writer disappeared");
         let write_timeout = self.cfg.message_timeout;
         let node_writer_handle = tokio::spawn(async move {
             let mut clean_exit = true;
@@ -105,9 +107,7 @@ where
         });
 
         let mut ask_peer_list_interval = tokio::time::interval(self.cfg.ask_peer_list_interval);
-
         let mut exit_reason = ConnectionClosureReason::Normal;
-
         loop {
             tokio::select! {
                 // incoming socket data
