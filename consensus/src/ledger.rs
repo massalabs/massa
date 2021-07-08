@@ -8,8 +8,8 @@ use std::{
 
 use crate::{ConsensusConfig, ConsensusError};
 use models::{
-    array_from_slice, Address, DeserializeCompact, SerializationContext, SerializeCompact,
-    SerializeVarInt,
+    array_from_slice, u8_from_slice, Address, DeserializeCompact, SerializationContext,
+    SerializeCompact, SerializeVarInt,
 };
 use models::{DeserializeVarInt, Operation};
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,7 @@ pub struct Ledger {
 
 #[derive(Debug)]
 pub struct LedgerData {
-    balance: u64,
+    pub balance: u64,
 }
 
 impl SerializeCompact for LedgerData {
@@ -49,10 +49,27 @@ impl DeserializeCompact for LedgerData {
     }
 }
 
+impl LedgerData {
+    fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
+        if change.balance_increment {
+            self.balance = self.balance + change.balance_delta;
+        } else {
+            if change.balance_delta > self.balance {
+                self.balance = self.balance - change.balance_delta;
+            } else {
+                return Err(ConsensusError::InvalidLedgerChange(
+                    "negative balance".to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerChange {
-    balance_delta: u64,
-    balance_increment: bool, // wether to increment or decrement balance of delta
+    pub balance_delta: u64,
+    pub balance_increment: bool, // wether to increment or decrement balance of delta
 }
 
 impl LedgerChange {
@@ -69,20 +86,46 @@ impl LedgerChange {
     }
 }
 
-impl LedgerData {
-    fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
-        if change.balance_increment {
-            self.balance = self.balance + change.balance_delta;
+impl SerializeCompact for LedgerChange {
+    fn to_bytes_compact(
+        &self,
+        context: &models::SerializationContext,
+    ) -> Result<Vec<u8>, models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+        res.extend(self.balance_delta.to_varint_bytes());
+        if self.balance_increment {
+            res.push(1);
         } else {
-            if change.balance_delta > self.balance {
-                self.balance = self.balance - change.balance_delta;
-            } else {
-                return Err(ConsensusError::InvalidLedgerChange(
-                    "negative balance".to_string(),
-                ));
-            }
+            res.push(0);
         }
-        Ok(())
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for LedgerChange {
+    fn from_bytes_compact(
+        buffer: &[u8],
+        context: &models::SerializationContext,
+    ) -> Result<(Self, usize), models::ModelsError> {
+        let mut cursor = 0usize;
+        let (balance_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        let balance_increment_u8 = u8_from_slice(&buffer)?;
+        cursor += 1;
+        let balance_increment = if balance_increment_u8 == 0 {
+            false
+        } else {
+            true
+        };
+
+        Ok((
+            LedgerChange {
+                balance_delta,
+                balance_increment,
+            },
+            cursor,
+        ))
     }
 }
 
