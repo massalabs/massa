@@ -117,7 +117,7 @@ async fn test_operations_check() {
         .candidate_data
         .get_data(&address_1, cfg.thread_count)
         .clone();
-    assert_eq!(res.get_balance(), 1);
+    assert_eq!(res.balance, 1);
 
     // receive block b with invalid operation (not enough coins)
     let operation_2 = create_transaction(private_key_2, public_key_2, address_1, 10, 8, 1);
@@ -150,7 +150,7 @@ async fn test_operations_check() {
         .candidate_data
         .get_data(&address_2, cfg.thread_count)
         .clone();
-    assert_eq!(res.get_balance(), 5);
+    assert_eq!(res.balance, 5);
 
     // receive block with reused operation
     let (_, block_1c, _) = create_block_with_operations(

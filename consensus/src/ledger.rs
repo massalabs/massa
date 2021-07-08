@@ -25,16 +25,6 @@ pub struct LedgerData {
     pub balance: u64,
 }
 
-impl LedgerData {
-    pub fn new_test(balance: u64) -> LedgerData {
-        LedgerData { balance }
-    }
-
-    pub fn get_balance(&self) -> u64 {
-        self.balance
-    }
-}
-
 impl SerializeCompact for LedgerData {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
