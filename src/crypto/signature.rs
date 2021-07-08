@@ -1,9 +1,5 @@
-use bs58;
-use flexbuffers;
-
 use bitcoin_hashes::sha256;
-use secp256k1;
-use secp256k1::rand::rngs::OsRng;
+use bs58;
 use secp256k1::{Message, Secp256k1};
 
 #[derive(Debug)]
@@ -694,6 +690,8 @@ impl SignatureEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use flexbuffers;
+    use secp256k1::rand::rngs::OsRng;
     use serde::{Deserialize, Serialize};
 
     #[test]

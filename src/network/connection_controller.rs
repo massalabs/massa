@@ -24,30 +24,30 @@ pub enum ConnectionClosureReason {
 }
 
 #[derive(Debug)]
-pub enum UpstreamCommand {
+pub enum ConnectionCommand {
     MergeAdvertisedPeerList(Vec<IpAddr>),
     GetAdvertisablePeerList(oneshot::Sender<Vec<IpAddr>>),
     ConnectionClosed((ConnectionId, ConnectionClosureReason)),
     ConnectionAlive(ConnectionId),
 }
 
-pub struct ConnectionController {
-    upstream_command_tx: mpsc::Sender<UpstreamCommand>,
-    event_rx: mpsc::Receiver<ConnectionControllerEvent>,
-    controller_fn_handle: JoinHandle<()>,
-}
-
 #[derive(Debug)]
-pub enum ConnectionControllerEvent {
+pub enum ConnectionEvent {
     NewConnection((ConnectionId, TcpStream)),
     ConnectionBanned(ConnectionId),
+}
+
+pub struct ConnectionController {
+    connection_command_tx: mpsc::Sender<ConnectionCommand>,
+    connection_event_rx: mpsc::Receiver<ConnectionEvent>,
+    controller_fn_handle: JoinHandle<()>,
 }
 
 impl ConnectionController {
     pub async fn new(cfg: &NetworkConfig) -> BoxResult<Self> {
         // check that local IP is routable
-        if let Some(our_ip) = cfg.routable_ip {
-            if !our_ip.is_global() {
+        if let Some(self_ip) = cfg.routable_ip {
+            if !self_ip.is_global() {
                 panic!("config routable_ip IP is not routable");
             }
         }
@@ -59,87 +59,80 @@ impl ConnectionController {
         let peer_info_db = PeerInfoDatabase::new(&cfg).await?;
 
         // launch controller
-        let (upstream_command_tx, upstream_command_rx) = mpsc::channel::<UpstreamCommand>(1024);
-        let (event_tx, event_rx) = mpsc::channel::<ConnectionControllerEvent>(1024);
+        let (connection_command_tx, connection_command_rx) =
+            mpsc::channel::<ConnectionCommand>(1024);
+        let (connection_event_tx, connection_event_rx) = mpsc::channel::<ConnectionEvent>(1024);
         let cfg_copy = cfg.clone();
         let controller_fn_handle = tokio::spawn(async move {
-            controller_fn(
+            connection_controller_fn(
                 cfg_copy,
                 listener,
                 peer_info_db,
-                upstream_command_rx,
-                event_tx,
+                connection_command_rx,
+                connection_event_tx,
             )
             .await;
         });
 
         Ok(ConnectionController {
-            upstream_command_tx,
-            event_rx,
+            connection_command_tx,
+            connection_event_rx,
             controller_fn_handle,
         })
     }
 
-    pub async fn stop(self) {
-        drop(self.upstream_command_tx);
+    pub async fn stop(mut self) {
+        drop(self.connection_command_tx);
+        while let Some(_) = self.connection_event_rx.next().await {}
         self.controller_fn_handle
             .await
             .expect("failed joining network controller");
     }
 
-    pub async fn wait_event(&mut self) -> ConnectionControllerEvent {
-        self.event_rx
+    pub async fn wait_event(&mut self) -> ConnectionEvent {
+        self.connection_event_rx
             .recv()
             .await
             .expect("failed retrieving network controller event")
     }
 
-    pub fn get_upstream_interface(&self) -> ConnectionControllerUpstreamInterface {
-        ConnectionControllerUpstreamInterface(self.upstream_command_tx.clone())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ConnectionControllerUpstreamInterface(mpsc::Sender<UpstreamCommand>);
-
-impl ConnectionControllerUpstreamInterface {
     pub async fn merge_advertised_peer_list(&mut self, ips: Vec<IpAddr>) {
-        self.0
-            .send(UpstreamCommand::MergeAdvertisedPeerList(ips))
+        self.connection_command_tx
+            .send(ConnectionCommand::MergeAdvertisedPeerList(ips))
             .await
             .expect("network controller disappeared");
     }
 
     pub async fn get_advertisable_peer_list(&mut self) -> Vec<IpAddr> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<IpAddr>>();
-        self.0
-            .send(UpstreamCommand::GetAdvertisablePeerList(response_tx))
+        self.connection_command_tx
+            .send(ConnectionCommand::GetAdvertisablePeerList(response_tx))
             .await
             .expect("network controller disappeared");
         response_rx.await.expect("network controller disappeared")
     }
 
     pub async fn connection_closed(&mut self, id: ConnectionId, reason: ConnectionClosureReason) {
-        self.0
-            .send(UpstreamCommand::ConnectionClosed((id, reason)))
+        self.connection_command_tx
+            .send(ConnectionCommand::ConnectionClosed((id, reason)))
             .await
             .expect("network controller disappeared");
     }
 
     pub async fn connection_alive(&mut self, id: ConnectionId) {
-        self.0
-            .send(UpstreamCommand::ConnectionAlive(id))
+        self.connection_command_tx
+            .send(ConnectionCommand::ConnectionAlive(id))
             .await
             .expect("network controller disappeared");
     }
 }
 
-async fn controller_fn(
+async fn connection_controller_fn(
     cfg: NetworkConfig,
     listener: TcpListener,
     mut peer_info_db: PeerInfoDatabase,
-    mut upstream_command_rx: mpsc::Receiver<UpstreamCommand>,
-    event_tx: mpsc::Sender<ConnectionControllerEvent>,
+    mut connection_command_rx: mpsc::Receiver<ConnectionCommand>,
+    event_tx: mpsc::Sender<ConnectionEvent>,
 ) {
     let mut out_connecting_futures = FuturesUnordered::new();
     let mut cur_connection_id = ConnectionId::default();
@@ -160,16 +153,16 @@ async fn controller_fn(
 
         tokio::select! {
             // peer feedback event
-            res = upstream_command_rx.next() => match res {
-                Some(UpstreamCommand::MergeAdvertisedPeerList(ips)) => {
+            res = connection_command_rx.next() => match res {
+                Some(ConnectionCommand::MergeAdvertisedPeerList(ips)) => {
                     peer_info_db.merge_candidate_peers(&ips);
                 },
-                Some(UpstreamCommand::GetAdvertisablePeerList(response_tx)) => {
+                Some(ConnectionCommand::GetAdvertisablePeerList(response_tx)) => {
                     response_tx.send(
                         peer_info_db.get_advertisable_peer_ips()
                     ).expect("upstream disappeared");
                 },
-                Some(UpstreamCommand::ConnectionClosed((id, reason))) => {
+                Some(ConnectionCommand::ConnectionClosed((id, reason))) => {
                     let (ip, is_outgoing) = active_connections.remove(&id).expect("missing connection closed");
                     match reason {
                         ConnectionClosureReason::Normal => {},
@@ -187,7 +180,7 @@ async fn controller_fn(
                             });
                             for target_id in target_ids {
                                 event_tx
-                                    .send(ConnectionControllerEvent::ConnectionBanned(*target_id))
+                                    .send(ConnectionEvent::ConnectionBanned(*target_id))
                                     .await.expect("could not send connection banned notification upstream");
                             }
                         }
@@ -198,7 +191,7 @@ async fn controller_fn(
                         peer_info_db.in_connection_closed(&ip);
                     }
                 },
-                Some(UpstreamCommand::ConnectionAlive(id) ) => {
+                Some(ConnectionCommand::ConnectionAlive(id) ) => {
                     let (ip, _) = active_connections.get(&id).expect("missing connection alive");
                     peer_info_db.peer_alive(&ip);
                 }
@@ -212,7 +205,7 @@ async fn controller_fn(
                     cur_connection_id.0 += 1;
                     active_connections.insert(connection_id, (ip_addr, true));
                     event_tx
-                        .send(ConnectionControllerEvent::NewConnection((connection_id, socket)))
+                        .send(ConnectionEvent::NewConnection((connection_id, socket)))
                         .await.expect("could not send new out connection notification");
                 },
                 Err(_) => {
@@ -227,7 +220,7 @@ async fn controller_fn(
                     cur_connection_id.0 += 1;
                     active_connections.insert(connection_id, (remote_addr.ip(), false));
                     event_tx
-                        .send(ConnectionControllerEvent::NewConnection((connection_id, socket)))
+                        .send(ConnectionEvent::NewConnection((connection_id, socket)))
                         .await.expect("could not send new in connection notification");
                 },
                 Err(_) => {},
