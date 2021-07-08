@@ -1,0 +1,30 @@
+[package]
+name = "communication"
+version = "0.1.0"
+authors = ["Massa Labs <contact@massa.network>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "0.3", features = ["full"] }
+tokio-util = { version = "0.5", features = ["codec"] }
+futures = { version = "0.3" }
+log = { version = "0.4" }
+serde = { version = "1.0", features = ["derive"] }
+toml = { version = "0.5" }
+chrono = { version = "0.4", features = ["serde"] }
+serde_json = { version = "1.0" }
+flexbuffers = { version = "0.2" }
+async-trait = "0.1.42"
+itertools = "0.9.0"
+rand = { version = "0.7.3"}
+
+logging = { path = "../logging" }
+crypto = { path = "../crypto" }
+models = { path = "../models" }
+
+
+[dev-dependencies]
+pretty_assertions = "0.6"
+tempfile = "3.1"
