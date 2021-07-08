@@ -721,7 +721,7 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_stats",
                     {}
                 );
-                let res = self.get_stats();
+                let res = self.get_stats()?;
                 response_tx.send(res).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send get_stats response: {:?}",
@@ -732,7 +732,10 @@ impl ConsensusWorker {
         }
     }
 
-    fn get_stats(&self) -> ConsensusStats {
+    fn get_stats(&mut self) -> Result<ConsensusStats, ConsensusError> {
+        // prune stats
+        self.prune_stats()?;
+
         let timespan = self.cfg.stats_timespan;
         let final_block_count = self.final_block_stats.len() as u64;
         let final_operation_count = self
@@ -741,13 +744,13 @@ impl ConsensusWorker {
             .fold(0u64, |acc, (_, tx_n)| acc + tx_n);
         let stale_block_count = self.stale_block_stats.len() as u64;
         let clique_count = self.block_db.get_clique_count() as u64;
-        ConsensusStats {
+        Ok(ConsensusStats {
             timespan,
             final_block_count,
             final_operation_count,
             stale_block_count,
             clique_count,
-        }
+        })
     }
 
     async fn get_roll_state(

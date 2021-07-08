@@ -9,50 +9,42 @@
 [consensus]
     genesis_timestamp = 1619426358000 # to update while testing
     t0 = 16000
-    thread_count = 2
-    selection_rng_seed = 42
+    thread_count = 32
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
-    nodes = [
-        ['4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb','LGXe9RrR1QNSsSn8bAEgrsYM8WwX67oHLjGj6e19bCW9ZKo6p'],
-        ['6ZoZ46HVJMKVTU92a1QRQqWpERL5tTAJ4RjazPBRzFXLmMDu8g','PZZzhDKrdGiuQMGEazTGP5b164qofYXh9Yp4SQ4uZChxAQqtK'],
-        ['54VEbD2R2HkUz2G5NGHyxhaFDhrQFG62UqFLWsUywnHtDsM8qh','2eLQSjhrep9Grw7yDifXnDKgCc1WTXBCtdeREzuJd9jiSZuZmr'],
-        ['5KdMBTJAU9JpJggACMx5gd8x8tSQFZEwfpxrzFV2Znz6M7FyAN','5nLsiHcZHCLSWnquQtrninDQRMJdXYKgt3fEyqBQ6ju6a2K6t']
-    ]
-    current_node_index = 0 # To update
     max_discarded_blocks = 500
     future_block_processing_max_periods = 100
-    max_future_processing_blocks = 320
-    max_dependency_blocks = 1048
+    max_future_processing_blocks = 400
+    max_dependency_blocks = 2048
     delta_f0 = 64
-    max_operations_per_block = 500
-    max_block_size = 100000
+    max_operations_per_block = 1048576
+    max_block_size = 1048576
     operation_validity_periods = 3
     ledger_path = "./ledger"
-    ledger_cache_capacity = 10000000
+    ledger_cache_capacity = 10485760
     ledger_flush_interval = 10000
     ledger_reset_at_startup = true
     block_reward = 1
     initial_ledger_path = "config/initial_ledger.json"
-    operation_batch_size = 10
+    operation_batch_size = 1024
     #POS
     initial_rolls_path = "config/initial_rolls.json"
     initial_draw_seed = "massa_genesis_seed"
-    periods_per_cycle = 100
+    periods_per_cycle = 128
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
-    pos_draw_cached_cycles = 5
+    pos_draw_cached_cycles = 10
     staking_keys = ["2sJguNf3EjMYmeH6mdwmM2yVGshJguZD3evezUJhpn3u62soLi"]
-    roll_price = 2
+    roll_price = 1
     #stats
-    stats_timespan = 60000
+    stats_timespan = 30000
 
 [protocol]
     message_timeout = 5000
     ask_block_timeout = 10000
-    max_node_known_blocks_size = 200
-    max_node_wanted_blocks_size = 200
+    max_node_known_blocks_size = 1024
+    max_node_wanted_blocks_size = 1024
     max_simultaneous_ask_blocks_per_node = 2048
-    max_send_wait = 250
+    max_send_wait = 500
 
 [network]
     bind = "0.0.0.0:31234"
@@ -69,16 +61,16 @@
     max_banned_peers = 1000
     max_advertise_length = 100000
     peers_file_dump_interval = 10000
-    max_message_size = 100000000
+    max_message_size = 10485760000
     message_timeout = 2000
     ask_peer_list_interval = 10000
     private_key_file="config/node_privkey.key"
     max_ask_blocks_per_message = 128
     max_operations_per_message = 1024
-    max_send_wait = 250
+    max_send_wait = 500
 
 [storage]
-    max_stored_blocks= 1000
+    max_stored_blocks= 1000000
     path = "block_store"
     cache_capacity = 10000
     #flush_every_ms = 
@@ -90,12 +82,12 @@
     bind = "0.0.0.0:31235" # if you want to bootstrap people
     connect_timeout = 1000
     retry_delay = 5000
-    max_bootstrap_blocks = 1000
+    max_bootstrap_blocks = 1000000
     max_bootstrap_cliques = 1000
     max_bootstrap_deps = 1000
     max_bootstrap_children = 1000
     max_ping = 500
-    max_bootstrap_message_size = 100000000
+    max_bootstrap_message_size = 10485760000
     read_timeout = 100000
     write_timeout = 10000
     max_bootstrap_pos_entries = 100000000

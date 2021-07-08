@@ -15,14 +15,10 @@ pub struct ConsensusConfig {
     pub thread_count: u8,
     /// Time between the periods in the same slot.
     pub t0: UTime,
-    /// Initial seed of the random selector.
-    pub selection_rng_seed: u64,
     /// Private_key to sign genesis blocks.
     pub genesis_key: PrivateKey,
     /// Staking private keys
     pub staking_keys: Vec<PrivateKey>,
-    /// Index of our node in the previous list.
-    pub current_node_index: u32,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
     /// If a block  is future_block_processing_max_periods periods in the future, it is just discarded.
