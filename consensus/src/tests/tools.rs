@@ -386,6 +386,7 @@ pub fn default_consensus_config(
             ledger_reset_at_startup: true,
             block_reward: 1,
             initial_ledger_path: initial_ledger_path.to_path_buf(),
+            operation_batch_size: 100,
         },
         SerializationContext {
             max_block_size,

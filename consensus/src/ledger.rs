@@ -605,6 +605,44 @@ impl LedgerSubset {
             .or_insert_with(|| LedgerData { balance: 0 })
             .apply_change(change)
     }
+
+    /// apply batch of changes only if all changes
+    /// in that batch passed
+    pub fn try_apply_changes(
+        &mut self,
+        changes: Vec<HashMap<Address, LedgerChange>>,
+    ) -> Result<(), ConsensusError> {
+        let thread_count = changes.len() as u8;
+        let mut ledger = self.clone();
+        for thread in 0..thread_count {
+            for change in changes[thread as usize].iter() {
+                ledger.apply_change(change, thread_count)?;
+            }
+        }
+        // every change was sucessfully applied on the copy
+        // we can really apply them
+        *self = ledger;
+        Ok(())
+    }
+
+    /// merge main and new ledger subset
+    /// if an address is in both ledgers
+    /// only its value in the main ledger is kept.
+    pub fn merge(&mut self, other: LedgerSubset) {
+        let thread_count = self.data.len();
+        for thread in 0..thread_count {
+            for (new_addr, new_change) in other.data[thread].iter() {
+                match self.data[thread].entry(*new_addr) {
+                    hash_map::Entry::Occupied(_) => {
+                        // do nothing, keep old value
+                    }
+                    hash_map::Entry::Vacant(vac) => {
+                        vac.insert(*new_change);
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

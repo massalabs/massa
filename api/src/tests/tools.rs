@@ -59,6 +59,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         ledger_reset_at_startup: true,
         block_reward: 10,
         initial_ledger_path: tempdir2.path().to_path_buf(),
+        operation_batch_size: 100,
     }
 }
 

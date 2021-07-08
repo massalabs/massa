@@ -97,13 +97,13 @@ async fn test_pool() {
             let max_count = 3;
             let (response_tx, response_rx) = oneshot::channel();
             pool_command_sender
-                .get_operation_batch(target_slot, HashSet::new(), max_count, response_tx)
+                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000, response_tx)
                 .await
                 .unwrap();
             let res = response_rx.await.unwrap();
             assert!(res
                 .iter()
-                .map(|(id, op)| (id, op.to_bytes_compact(&context).unwrap()))
+                .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, _, r)| r.contains(&target_slot.period))
@@ -129,13 +129,13 @@ async fn test_pool() {
             let max_count = 4;
             let (response_tx, response_rx) = oneshot::channel();
             pool_command_sender
-                .get_operation_batch(target_slot, HashSet::new(), max_count, response_tx)
+                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000, response_tx)
                 .await
                 .unwrap();
             let res = response_rx.await.unwrap();
             assert!(res
                 .iter()
-                .map(|(id, op)| (id, op.to_bytes_compact(&context).unwrap()))
+                .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, _, r)| r.contains(&target_slot.period))
@@ -172,6 +172,7 @@ async fn test_pool() {
                 Slot::new(expire_period - 1, thread),
                 HashSet::new(),
                 10,
+                10000,
                 response_tx,
             )
             .await
