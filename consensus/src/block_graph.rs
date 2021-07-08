@@ -64,19 +64,11 @@ impl ActiveBlock {
         1
     }
 
-    fn get_operation(
-        &self,
-        op_id: OperationId,
-        context: &SerializationContext,
-    ) -> Result<Option<Operation>, ConsensusError> {
-        if self.operation_set.contains_key(&op_id) {
-            for op in self.block.operations.iter() {
-                if op.get_operation_id(context)? == op_id {
-                    return Ok(Some(op.clone()));
-                }
-            }
-        }
-        Ok(None)
+    fn get_operation(&self, op_id: OperationId) -> Option<Operation> {
+        self.operation_set
+            .get(&op_id)
+            .and_then(|index| self.block.operations.get(*index))
+            .cloned()
     }
 }
 
@@ -961,32 +953,31 @@ impl BlockGraph {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
 
-    pub fn get_operation(
-        &self,
-        op_id: OperationId,
-    ) -> Result<Option<(Operation, HashMap<BlockId, bool>)>, ConsensusError> {
-        let active_blocks = self.block_statuses.iter().filter(|(_, block)| match block {
-            BlockStatus::Active(_) => true,
-            _ => false,
-        });
-        let mut res = HashMap::new();
-        let mut op = None;
-        for (id, block) in active_blocks {
-            if let BlockStatus::Active(active_block) = block {
-                if active_block.operation_set.contains_key(&op_id) {
-                    // op should never be none
-                    // as we checked it's here before
-                    // maybe add a consistency check
-                    op = active_block.get_operation(op_id, &self.serialization_context)?;
-                    res.insert(*id, active_block.is_final);
-                }
-            }
-        }
-        if let Some(operation) = op {
-            Ok(Some((operation, res)))
-        } else {
-            Ok(None)
-        }
+    pub fn get_operation(&self, op_id: OperationId) -> Option<(Operation, HashMap<BlockId, bool>)> {
+        let (opt, block_map) = self
+            .block_statuses
+            .iter()
+            //first select active block
+            .filter_map(|(block_id, block)| match block {
+                BlockStatus::Active(active_block) => Some((block_id, active_block)),
+                _ => None,
+            })
+            //second filter the one that contains the search op_id.
+            .filter(|(_, active_block)| active_block.operation_set.contains_key(&op_id))
+            .fold(
+                (None, HashMap::new()),
+                |(res, mut map), (block_id, active_block)| {
+                    //get operation one time.
+                    let op = if res.is_none() {
+                        active_block.get_operation(op_id)
+                    } else {
+                        res
+                    };
+                    map.insert(*block_id, active_block.is_final);
+                    (op, map)
+                },
+            );
+        opt.map(|op| (op, block_map))
     }
 
     // signal new slot

@@ -592,29 +592,19 @@ impl ConsensusWorker {
         &mut self,
         id: OperationId,
     ) -> Result<Option<(Operation, bool, HashMap<BlockId, bool>)>, ConsensusError> {
-        // consensus
-        let consensus_res = self.block_db.get_operation(id)?;
-
-        // pool
         let pool_res = self.pool_command_sender.get_operation(id).await?;
-
-        let is_in_pool = pool_res.is_some();
-
-        let pool = pool_res.map(|op| (op, true, HashMap::new()));
-
-        if let Some((op, map)) = consensus_res {
-            Ok(Some((op, is_in_pool, map)))
-        } else {
-            if let Some(access) = &self.opt_storage_command_sender {
-                if let Some((block_id, _, op)) = access.get_operation(id).await? {
-                    let mut map = HashMap::new();
-                    map.insert(block_id, true);
-                    Ok(Some((op, is_in_pool, map)))
+        let consensus_res = self.block_db.get_operation(id);
+        match (pool_res, consensus_res, &self.opt_storage_command_sender) {
+            (pool_dta, None, None) => return Ok(pool_dta.map(|op| (op, true, HashMap::new()))),
+            (pool_dta, Some((op, blocks)), _) => return Ok(Some((op, pool_dta.is_some(), blocks))),
+            (pool_dta, None, Some(storage_cmd)) => {
+                if let Some((block_id, idx, op)) = storage_cmd.get_operation(id).await? {
+                    let mut blocks = HashMap::with_capacity(1);
+                    blocks.insert(block_id, true);
+                    return Ok(Some((op, pool_dta.is_some(), blocks)));
                 } else {
-                    Ok(pool)
+                    return Ok(pool_dta.map(|op| (op, true, HashMap::new())));
                 }
-            } else {
-                Ok(pool)
             }
         }
     }
