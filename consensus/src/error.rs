@@ -1,8 +1,6 @@
 use communication::CommunicationError;
-use crypto::hash::Hash;
-use models::{Block, ModelsError};
+use models::ModelsError;
 use rand::distributions::WeightedError;
-use std::collections::HashSet;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -51,34 +49,4 @@ pub enum ConsensusError {
     ReceiveChannelError(String),
     #[error("Storage error : {0}")]
     StorageError(#[from] storage::StorageError),
-}
-
-#[derive(Error, Debug)]
-pub enum BlockAcknowledgeError {
-    #[error("crypto error {0}")]
-    CryptoError(#[from] crypto::CryptoError),
-    #[error("time error {0}")]
-    TimeError(#[from] time::TimeError),
-    #[error("consensus error {0}")]
-    ConsensusError(#[from] ConsensusError),
-    #[error("block was previously discarded")]
-    AlreadyDiscarded,
-    #[error("block was previously acknowledged")]
-    AlreadyAcknowledged,
-    #[error("block has invalid fields")]
-    InvalidFields,
-    #[error("block is too old")]
-    TooOld,
-    #[error("block is in the future")]
-    InTheFuture(Block),
-    #[error("block is too much in the future")]
-    TooMuchInTheFuture,
-    #[error("it wasn't the block creator's turn to create a block in this slot")]
-    DrawMismatch,
-    #[error("block's parents are invalid or badly chosen {0}")]
-    InvalidParents(String),
-    #[error("block verification requires for dependencies")]
-    MissingDependencies(Block, HashSet<Hash>),
-    #[error("Container Inconsistency")]
-    ContainerInconsistency,
 }
