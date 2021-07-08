@@ -1857,8 +1857,10 @@ dependencies = [
 name = "storage"
 version = "0.1.0"
 dependencies = [
+ "crypto",
  "log",
  "logging",
+ "models",
  "serde",
  "serde_json",
  "sled",

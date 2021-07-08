@@ -14,3 +14,5 @@ log = { version = "0.4" }
 logging = { path = "../logging" }
 serde_json = { version = "1.0" }
 sled = "0.34.6"
+models = { path = "../models" }
+crypto = { path = "../crypto" }

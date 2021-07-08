@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
+use crypto::hash::Hash;
+use models::block::Block;
 use sled::{Db, Tree};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use crate::{config::StorageConfig, error::StorageError};
 
@@ -24,9 +28,29 @@ impl BlockStorage {
             db,
         })
     }
+
+    fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
+        todo!()
+    }
+
+    fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
+        todo!()
+    }
+
+    fn get_slot_range(
+        &self,
+        start: (u64, u8),
+        end: (u64, u8),
+    ) -> Result<HashMap<Hash, Block>, StorageError> {
+        todo!()
+    }
 }
 #[derive(Debug)]
-pub enum StorageCommand {}
+pub enum StorageCommand {
+    AddBlock(Hash, Block, oneshot::Sender<()>),
+    GetBlock(Hash, oneshot::Sender<Option<Block>>),
+    GetSlotRange((u64, u8), (u64, u8), oneshot::Sender<HashMap<Hash, Block>>),
+}
 
 #[derive(Debug, Clone)]
 pub enum StorageEvent {}
@@ -60,7 +84,9 @@ impl StorageWorker {
         loop {
             tokio::select! {
                 Some(cmd) = self.controller_command_rx.recv() => match cmd {
-                    _=> {},
+                    StorageCommand::AddBlock(hash, block, reponse_tx) => {},
+                    StorageCommand::GetBlock(hash, reponse_tx) => {},
+                    StorageCommand::GetSlotRange(start, end, reponse_tx) => {},
                 },
 
                 cmd = self.controller_manager_rx.recv() => match cmd {
