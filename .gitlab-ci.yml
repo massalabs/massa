@@ -30,14 +30,14 @@ clippy:
     - cargo clippy -- -D warnings
 
 # Use cargo to test the project
-test:cargo:
+test:
   stage: test
   script:
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo test --all --verbose
 
 # Use cargo to build the project
-build:cargo:
+build:
   stage: build
   script:
     - cargo build
