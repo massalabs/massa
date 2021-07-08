@@ -558,7 +558,9 @@ async fn get_current_parents(
 
 /// Returns last final blocks as a Vec<(Hash, Slot)>.
 ///
-async fn get_last_final(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<(Hash, Slot)>, ApiError> {
+async fn get_last_final(
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<Vec<serde_json::Value>, ApiError> {
     let graph = retrieve_graph_export(&event_tx).await?;
     let finals = graph
         .latest_final_blocks_periods
@@ -566,7 +568,7 @@ async fn get_last_final(event_tx: mpsc::Sender<ApiEvent>) -> Result<Vec<(Hash, S
         .enumerate()
         .map(|(i, (hash, period))| (hash.clone(), Slot::new(*period, i as u8)))
         .collect::<Vec<(Hash, Slot)>>();
-    Ok(finals)
+    Ok(hash_slot_vec_to_json(finals))
 }
 
 async fn get_block_from_graph(
