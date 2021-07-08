@@ -3,6 +3,7 @@ use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
+use itertools::Itertools;
 use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId, SerializationContext};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -144,6 +145,8 @@ mod nodeinfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     cfg: ProtocolConfig,
+    /// Operation validity periods
+    operation_validity_periods: u64,
     // Serialization context
     serialization_context: SerializationContext,
     /// Associated nework command sender.
@@ -169,6 +172,7 @@ impl ProtocolWorker {
     ///
     /// # Arguments
     /// * cfg: protocol configuration.
+    /// * operation_validity_periods: operation validity periods
     /// * self_node_id: our private key.
     /// * network_controller associated network controller.
     /// * controller_event_tx: Channel to send protocol events.
@@ -176,6 +180,7 @@ impl ProtocolWorker {
     /// * controller_manager_rx: Channel receiving management commands.
     pub fn new(
         cfg: ProtocolConfig,
+        operation_validity_periods: u64,
         serialization_context: SerializationContext,
         network_command_sender: NetworkCommandSender,
         network_event_receiver: NetworkEventReceiver,
@@ -187,6 +192,7 @@ impl ProtocolWorker {
         ProtocolWorker {
             serialization_context,
             cfg,
+            operation_validity_periods,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
@@ -710,9 +716,24 @@ impl ProtocolWorker {
             }
         };
 
-        // check operations (signatures, threads, ops hash)
-        let mut op_ids: Vec<u8> = Vec::new();
+        // check operations (period, reuse, signatures, thread)
+        let mut op_ids: Vec<OperationId> = Vec::with_capacity(block.operations.len());
+        let mut seen_ops: HashSet<OperationId> = HashSet::with_capacity(block.operations.len());
         for op in block.operations.iter() {
+            // check validity period
+            if !(op
+                .content
+                .expire_period
+                .saturating_sub(self.operation_validity_periods)
+                ..=op.content.expire_period)
+                .contains(&block.header.content.slot.period)
+            {
+                massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_period",
+                    { "node": source_node_id,"block_id":block_id, "block": block, "op": op });
+                return Ok(None);
+            }
+
+            // check address and thread
             match Address::from_public_key(&op.content.sender_public_key) {
                 Ok(addr) => {
                     if addr.get_thread(self.serialization_context.parent_count)
@@ -729,8 +750,18 @@ impl ProtocolWorker {
                     return Ok(None);
                 }
             }
+
+            // check integrity (signature) and reuse
             match op.verify_integrity(&self.serialization_context) {
-                Ok(op_id) => op_ids.extend(&op_id.into_bytes()),
+                Ok(op_id) => {
+                    if !seen_ops.insert(op_id) {
+                        // reused
+                        massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_reused",
+                            { "node": source_node_id,"block_id":block_id, "block": block, "op": op });
+                        return Ok(None);
+                    }
+                    op_ids.push(op_id);
+                }
                 Err(err) => {
                     massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_integrity",
                         { "node": source_node_id,"block_id":block_id, "block": block, "op": op, "err": format!("{:?}", err)});
@@ -738,10 +769,19 @@ impl ProtocolWorker {
                 }
             }
         }
-        if block.header.content.operation_merkle_root != Hash::hash(&op_ids) {
-            massa_trace!("protocol.protocol_worker.note_block_from_node.err_header_op_hash",
-                { "node": source_node_id,"block_id":block_id, "block": block });
-            return Ok(None);
+        drop(seen_ops);
+
+        // check root hash
+        {
+            let concat_bytes = op_ids
+                .iter()
+                .map(|op_id| op_id.to_bytes().to_vec())
+                .concat();
+            if block.header.content.operation_merkle_root != Hash::hash(&concat_bytes) {
+                massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_root_hash",
+                    { "node": source_node_id,"block_id":block_id, "block": block });
+                return Ok(None);
+            }
         }
 
         // add to known blocks
@@ -753,6 +793,8 @@ impl ProtocolWorker {
                 self.cfg.max_node_known_blocks_size,
             );
             massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
+
+            // TODO maybe return op_ids so that they don't have to be computed again in block_graph
             return Ok(Some(block_id));
         }
         Ok(None)

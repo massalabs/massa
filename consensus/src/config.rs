@@ -45,6 +45,8 @@ pub struct ConsensusConfig {
     pub ledger_flush_interval: Option<UTime>,
     pub ledger_reset_at_startup: bool,
 
+    pub block_reward: u64,
+
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
     #[serde(skip, default = "Default::default")]

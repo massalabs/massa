@@ -56,6 +56,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         ledger_cache_capacity: 1000000,
         ledger_flush_interval: Some(200.into()),
         ledger_reset_at_startup: true,
+        block_reward: 10,
     }
 }
 

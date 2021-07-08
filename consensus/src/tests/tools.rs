@@ -363,6 +363,7 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             ledger_cache_capacity: 1000000,
             ledger_flush_interval: Some(200.into()),
             ledger_reset_at_startup: true,
+            block_reward: 1,
         },
         SerializationContext {
             max_block_size,

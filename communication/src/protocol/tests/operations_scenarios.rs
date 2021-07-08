@@ -17,6 +17,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     let (_, protocol_event_receiver, mut protocol_pool_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config.clone(),
+            5u64,
             serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
@@ -71,6 +72,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
     let (_, protocol_event_receiver, mut protocol_pool_event_receiver, protocol_manager) =
         start_protocol_controller(
             protocol_config.clone(),
+            5u64,
             serialization_context.clone(),
             network_command_sender,
             network_event_receiver,
@@ -129,6 +131,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,

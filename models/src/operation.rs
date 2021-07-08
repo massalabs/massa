@@ -203,6 +203,13 @@ impl Operation {
             &self.signature,
             &self.content.sender_public_key,
         )?;
+        self.get_operation_id(context)
+    }
+
+    pub fn get_operation_id(
+        &self,
+        context: &SerializationContext,
+    ) -> Result<OperationId, ModelsError> {
         Ok(OperationId(Hash::hash(&self.to_bytes_compact(context)?)))
     }
 }

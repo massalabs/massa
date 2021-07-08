@@ -62,6 +62,25 @@ pub struct Block {
     pub operations: Vec<Operation>,
 }
 
+impl Block {
+    pub fn contains_operation(
+        &self,
+        op: &Operation,
+        context: &SerializationContext,
+    ) -> Result<bool, ModelsError> {
+        let op_id = op.get_operation_id(context)?;
+        Ok(self
+            .operations
+            .iter()
+            .find(|o| {
+                o.get_operation_id(context)
+                    .map(|id| id == op_id)
+                    .unwrap_or(false)
+            })
+            .is_some())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeaderContent {
     pub creator: PublicKey,

@@ -25,7 +25,9 @@ impl FromStr for Address {
 
 impl Address {
     pub fn get_thread(&self, thread_count: u8) -> u8 {
-        self.to_bytes()[0] >> (8 - thread_count.trailing_zeros())
+        (self.to_bytes()[0])
+            .checked_shr(8 - thread_count.trailing_zeros())
+            .unwrap_or(0)
     }
 
     pub fn from_public_key(public_key: &PublicKey) -> Result<Self, ModelsError> {

@@ -31,6 +31,7 @@
     ledger_cache_capacity = 10000000
     ledger_flush_interval = 10000
     ledger_reset_at_startup = true
+    block_reward = 1
 
 
 [protocol]

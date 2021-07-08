@@ -21,6 +21,7 @@ async fn test_without_a_priori() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -100,6 +101,7 @@ async fn test_someone_knows_it() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -187,6 +189,7 @@ async fn test_dont_want_it_anymore() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -268,6 +271,7 @@ async fn test_no_one_has_it() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
@@ -353,6 +357,7 @@ async fn test_multiple_blocks_without_a_priori() {
         protocol_manager,
     ) = start_protocol_controller(
         protocol_config.clone(),
+        5u64,
         serialization_context.clone(),
         network_command_sender,
         network_event_receiver,
