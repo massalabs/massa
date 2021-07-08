@@ -24,7 +24,7 @@ use std::{convert::TryInto, usize};
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
     Header(BlockHeader),
-    Block(Block, HashMap<OperationId, usize>),
+    Block(Block, HashMap<OperationId, (usize, u64)>), // (index, validity end period)
 }
 
 impl HeaderOrBlock {
@@ -46,7 +46,7 @@ pub struct ActiveBlock {
     pub descendants: HashSet<BlockId>,
     pub is_final: bool,
     pub block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
-    pub operation_set: HashMap<OperationId, usize>,
+    pub operation_set: HashMap<OperationId, (usize, u64)>, // index in the block, end of validity period
     pub addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
 }
 
@@ -106,7 +106,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             .iter()
             .enumerate()
             .map(|(idx, op)| match op.get_operation_id() {
-                Ok(id) => Ok((id, idx)),
+                Ok(id) => Ok((id, (idx, op.content.expire_period))),
                 Err(e) => Err(e),
             })
             .collect::<Result<_, _>>()?;
@@ -744,6 +744,7 @@ pub struct BlockGraph {
     max_cliques: Vec<HashSet<BlockId>>,
     to_propagate: HashMap<BlockId, Block>,
     attack_attempts: Vec<BlockId>,
+    new_final_ops: HashMap<OperationId, (u64, u8)>, // (validity end period, thread)
     ledger: Ledger,
 }
 
@@ -895,6 +896,7 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
+                new_final_ops: Default::default(),
             };
             // compute block descendants
             let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
@@ -940,6 +942,7 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
+                new_final_ops: Default::default(),
             })
         }
     }
@@ -1015,7 +1018,7 @@ impl BlockGraph {
                     .filter_map(|op_id| {
                         operation_set
                             .get(op_id)
-                            .map(|idx| (op_id, idx, &block.operations[*idx]))
+                            .map(|(idx, _)| (op_id, idx, &block.operations[*idx]))
                     })
                     .for_each(|(op_id, idx, op)| {
                         let search_new = OperationSearchResult {
@@ -1109,7 +1112,7 @@ impl BlockGraph {
         &mut self,
         block_id: BlockId,
         block: Block,
-        operation_set: HashMap<OperationId, usize>,
+        operation_set: HashMap<OperationId, (usize, u64)>,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
@@ -1839,7 +1842,7 @@ impl BlockGraph {
         &self,
         block_id: &BlockId,
         block: &Block,
-        operation_set: &HashMap<OperationId, usize>,
+        operation_set: &HashMap<OperationId, (usize, u64)>,
         selector: &mut RandomSelector,
         current_slot: Option<Slot>,
     ) -> Result<BlockCheckOutcome, ConsensusError> {
@@ -1906,7 +1909,7 @@ impl BlockGraph {
     fn check_operations(
         &self,
         block_to_check: &Block,
-        operation_set: &HashMap<OperationId, usize>,
+        operation_set: &HashMap<OperationId, (usize, u64)>,
     ) -> Result<BlockOperationsCheckOutcome, ConsensusError> {
         // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
         let mut dependencies: HashSet<BlockId> = HashSet::new();
@@ -2305,7 +2308,7 @@ impl BlockGraph {
         incomp: HashSet<BlockId>,
         inherited_incomp_count: usize,
         block_ledger_change: Vec<HashMap<Address, LedgerChange>>,
-        operation_set: HashMap<OperationId, usize>,
+        operation_set: HashMap<OperationId, (usize, u64)>,
         addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
     ) -> Result<(), ConsensusError> {
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
@@ -2654,6 +2657,7 @@ impl BlockGraph {
             if let Some(BlockStatus::Active(ActiveBlock {
                 block: final_block,
                 is_final,
+                operation_set,
                 ..
             })) = self.block_statuses.get_mut(&final_block_hash)
             {
@@ -2673,6 +2677,11 @@ impl BlockGraph {
                         final_block.header.content.slot.period,
                     );
                 }
+                self.new_final_ops.extend(
+                    operation_set.iter().map(|(id, (_, exp))| {
+                        (*id, (*exp, final_block.header.content.slot.thread))
+                    }),
+                );
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", hash, final_block_hash)));
             }
@@ -3246,6 +3255,12 @@ impl BlockGraph {
     // Must be called by the consensus worker within `block_db_changed`.
     pub fn get_attack_attempts(&mut self) -> Vec<BlockId> {
         mem::take(&mut self.attack_attempts)
+    }
+
+    // Get the ids of operations that became final.
+    // Must be called by the consensus worker within `block_db_changed`.
+    pub fn get_new_final_ops(&mut self) -> HashMap<OperationId, (u64, u8)> {
+        mem::take(&mut self.new_final_ops)
     }
 }
 

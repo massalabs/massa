@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    u64,
+};
 
 use crate::operation_pool::OperationPool;
 
@@ -31,6 +34,7 @@ pub enum PoolCommand {
         address: Address,
         response_tx: oneshot::Sender<HashSet<OperationId>>,
     },
+    FinalOperations(HashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
 }
 
 /// Events that are emitted by pool.
@@ -163,6 +167,7 @@ impl PoolWorker {
                         .get_operations_involving_address(&address)?,
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops),
         }
         Ok(())
     }

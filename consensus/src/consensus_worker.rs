@@ -354,7 +354,7 @@ impl ConsensusWorker {
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
-        let mut operation_set: HashMap<OperationId, usize> = HashMap::new();
+        let mut operation_set: HashMap<OperationId, (usize, u64)> = HashMap::new(); // (index, validity end period)
         let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
         while !finished {
             // get a batch of operations
@@ -406,7 +406,7 @@ impl ConsensusWorker {
                 }
 
                 // add operation
-                operation_set.insert(op_id, operation_set.len());
+                operation_set.insert(op_id, (operation_set.len(), op.content.expire_period));
                 operations.push(op);
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
@@ -765,6 +765,14 @@ impl ConsensusWorker {
             massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
                 "hash": hash
             });
+        }
+
+        // Send new final ops to pool
+        let new_final_ops = self.block_db.get_new_final_ops();
+        if !new_final_ops.is_empty() {
+            self.pool_command_sender
+                .final_operations(new_final_ops)
+                .await?;
         }
 
         let new_wishlist = self.block_db.get_block_wishlist()?;

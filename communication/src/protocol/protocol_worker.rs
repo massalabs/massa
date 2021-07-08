@@ -21,7 +21,7 @@ pub enum ProtocolEvent {
     ReceivedBlock {
         block_id: BlockId,
         block: Block,
-        operation_set: HashMap<OperationId, usize>,
+        operation_set: HashMap<OperationId, (usize, u64)>, // (index, validity end period)
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
@@ -719,7 +719,7 @@ impl ProtocolWorker {
         &mut self,
         block: &Block,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, HashMap<OperationId, usize>)>, CommunicationError> {
+    ) -> Result<Option<(BlockId, HashMap<OperationId, (usize, u64)>)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
@@ -733,7 +733,7 @@ impl ProtocolWorker {
 
         // check operations (period, reuse, signatures, thread)
         let mut op_ids: Vec<OperationId> = Vec::with_capacity(block.operations.len());
-        let mut seen_ops: HashMap<OperationId, usize> =
+        let mut seen_ops: HashMap<OperationId, (usize, u64)> =
             HashMap::with_capacity(block.operations.len());
         let serialization_context = models::with_serialization_context(|context| context.clone());
         for (idx, op) in block.operations.iter().enumerate() {
@@ -768,7 +768,10 @@ impl ProtocolWorker {
             // check integrity (signature) and reuse
             match op.verify_integrity() {
                 Ok(op_id) => {
-                    if seen_ops.insert(op_id, idx).is_some() {
+                    if seen_ops
+                        .insert(op_id, (idx, op.content.expire_period))
+                        .is_some()
+                    {
                         // reused
                         massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_reused",
                             { "node": source_node_id,"block_id":block_id, "block": block, "op": op });
