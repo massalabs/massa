@@ -91,7 +91,11 @@ impl ProofOfStake {
     }
 
     pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&FinalRollThreadData> {
-        todo!()
-        // that returns None if that cycle is not stored
+        for data in self.final_roll_data[thread as usize].iter() {
+            if data.cycle == cycle {
+                return Some(data);
+            }
+        }
+        None
     }
 }
