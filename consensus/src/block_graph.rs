@@ -5,7 +5,171 @@ use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
 use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+
+#[derive(Debug)]
+enum ConsensusBlock {
+    AwaitingAck(AwaitingAckBlock),
+    Active(ExportCompiledBlock),
+    Discarded(BlockHeader, u64),
+}
+
+#[derive(Debug)]
+enum AwaitingAckBlock {
+    HeaderOnly(BlockHeader, QueueInfo),
+    FullBlock(Block, QueueInfo),
+}
+
+#[derive(Clone, Debug)]
+struct QueueInfo {
+    slot: Slot,
+    position: u64,
+    dep_to_blocked: HashSet<Hash>,
+    blocked_to_dep: HashSet<Hash>,
+}
+
+impl QueueInfo {
+    fn new(position: u64, slot: Slot, missing_dependencies: HashSet<Hash>) -> Self {
+        QueueInfo {
+            slot,
+            position,
+            dep_to_blocked: Default::default(),
+            blocked_to_dep: missing_dependencies,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct Blocks {
+    counter: u64,
+    blocks: HashMap<Hash, ConsensusBlock>,
+    max_discarded_blocks: usize,
+}
+
+impl Blocks {
+    pub fn new(max_discarded_blocks: usize) -> Self {
+        Blocks {
+            counter: 0,
+            blocks: Default::default(),
+            max_discarded_blocks,
+        }
+    }
+
+    pub fn contains_active(&self, hash: &Hash) -> bool {
+        match self.blocks.get(hash) {
+            Some(ConsensusBlock::Active(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn contains_discarded(&self, hash: &Hash) -> bool {
+        match self.blocks.get(hash) {
+            Some(ConsensusBlock::Discarded(_, _)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn contains_header_only(&self, hash: &Hash) -> bool {
+        let awaiting = match self.blocks.get(hash) {
+            Some(ConsensusBlock::AwaitingAck(awaiting)) => awaiting,
+            _ => return false,
+        };
+        match awaiting {
+            AwaitingAckBlock::HeaderOnly(_, _) => true,
+            AwaitingAckBlock::FullBlock(_, _) => false,
+        }
+    }
+
+    pub fn insert_header_only(
+        &mut self,
+        hash: Hash,
+        header: BlockHeader,
+        current_slot: Slot,
+        missing_dependencies: HashSet<Hash>,
+    ) {
+        let position = self.counter;
+        self.counter += 1;
+
+        let queue_info = QueueInfo::new(position, current_slot, missing_dependencies);
+        let block = AwaitingAckBlock::HeaderOnly(header, queue_info);
+        assert!(self
+            .blocks
+            .insert(hash, ConsensusBlock::AwaitingAck(block))
+            .is_none());
+    }
+
+    pub fn insert_created_full(&mut self, hash: Hash, block: Block, current_slot: Slot) {
+        let position = self.counter;
+        self.counter += 1;
+
+        let queue_info = QueueInfo::new(position, current_slot, HashSet::with_capacity(0));
+        let block = AwaitingAckBlock::FullBlock(block, queue_info);
+        assert!(self
+            .blocks
+            .insert(hash, ConsensusBlock::AwaitingAck(block))
+            .is_none());
+    }
+
+    pub fn upgrade_to_full(&mut self, hash: Hash, block: Block) {
+        match self.blocks.entry(hash) {
+            Entry::Vacant(entry) => {
+                // TODO: handle block we didn't see a header for.
+            }
+            Entry::Occupied(mut entry) => {
+                let queue_info = match entry.get() {
+                    ConsensusBlock::AwaitingAck(AwaitingAckBlock::HeaderOnly(
+                        header,
+                        queue_info,
+                    )) => queue_info.clone(),
+                    _ => {
+                        // TODO: handle unexpected.
+                        return;
+                    }
+                };
+                // TODO: update dependencies of block waiting on this one.
+                entry.insert(ConsensusBlock::AwaitingAck(AwaitingAckBlock::FullBlock(
+                    block, queue_info,
+                )));
+            }
+        }
+    }
+
+    /// Inserts a discarded block.
+    ///
+    /// # Argument
+    /// * hash : hash of the considered block
+    /// * header: header of the block to discard
+    /// * reason: why we want it discarded.
+    fn insert_discarded(&mut self, hash: Hash, header: BlockHeader, reason: DiscardReason) {
+        if self.max_discarded_blocks == 0 {
+            return;
+        }
+
+        let position = self.counter;
+        self.counter += 1;
+        self.blocks
+            .insert(hash, ConsensusBlock::Discarded(header, position));
+    }
+
+    fn prune(&mut self) {
+        let mut discarded = BTreeMap::new();
+
+        for (hash, block) in self.blocks.iter() {
+            match block {
+                ConsensusBlock::Discarded(_, position) => {
+                    discarded.insert(position.clone(), hash.clone());
+                }
+                _ => {}
+            }
+        }
+
+        while discarded.len() > self.max_discarded_blocks {
+            let (_, hash) = discarded.pop_last().expect("Empty discarded.");
+            self.blocks.remove(&hash);
+        }
+    }
+}
 
 /// The block version that can be exported.
 /// Note that the detailed list of operation is not exported
@@ -220,6 +384,8 @@ pub struct BlockGraph {
     cfg: ConsensusConfig,
     /// Serialization context
     serialization_context: SerializationContext,
+    /// All the blocks currently in consensus.
+    blocks: Blocks,
     /// Genesis blocks.
     genesis_blocks: Vec<Hash>,
     /// Map of active blocks.
@@ -306,6 +472,7 @@ impl BlockGraph {
         Ok(BlockGraph {
             cfg,
             serialization_context,
+            blocks: Blocks::new(max_discarded_blocks),
             genesis_blocks: block_hashes.clone(),
             active_blocks,
             discarded_blocks: DiscardedBlocks::new(max_discarded_blocks),
@@ -314,6 +481,12 @@ impl BlockGraph {
             gi_head: HashMap::new(), // genesis blocks are final and not included in gi_head
             max_cliques: vec![HashSet::new()],
         })
+    }
+
+    pub fn run_ack_checkpoint(&mut self, slot: &Slot) {}
+
+    pub fn run_pruning_checkpoint(&mut self, slot: &Slot) {
+        self.blocks.prune();
     }
 
     /// Gets lastest final blocks (hash, period) for each thread.
@@ -382,11 +555,7 @@ impl BlockGraph {
     /// # Arguments
     /// * val : dummy value used to generate dummy hash
     /// * slot : generated block is in slot slot.
-    pub fn create_block(
-        &mut self,
-        val: String,
-        slot: Slot,
-    ) -> Result<(Hash, Block), ConsensusError> {
+    pub fn create_block(&mut self, val: String, slot: Slot) -> Result<(), ConsensusError> {
         let mut signature_engine = SignatureEngine::new();
         let (public_key, private_key) = self
             .cfg
@@ -410,13 +579,26 @@ impl BlockGraph {
             &self.serialization_context,
         )?;
 
-        Ok((
-            hash,
-            Block {
-                header,
-                operations: Vec::new(),
-            },
-        ))
+        let block = Block {
+            header,
+            operations: Vec::new(),
+        };
+
+        self.blocks.insert_created_full(hash, block, slot);
+
+        Ok(())
+    }
+
+    fn find_missing_dependencies(&self, hash: &Hash, header: &BlockHeader) -> HashSet<(Hash, u8)> {
+        let mut missing_dependencies = HashSet::new();
+        for parent_thread in 0u8..self.cfg.thread_count {
+            let parent_hash = header.content.parents[parent_thread as usize];
+            if !self.blocks.contains_active(&parent_hash) {
+                // a parent is missing
+                missing_dependencies.insert((parent_hash, parent_thread));
+            }
+        }
+        missing_dependencies
     }
 
     /// Checks a block header
@@ -427,25 +609,28 @@ impl BlockGraph {
     /// * header : header to check
     /// * selector: selector to draw staker for slot
     /// * current_slot: current slot
-    pub fn check_header(
+    pub fn note_header(
         &mut self,
         hash: &Hash,
         header: &BlockHeader,
         selector: &mut RandomSelector,
         current_slot: Slot,
     ) -> Result<HashSet<Hash>, BlockAcknowledgeError> {
-        // check if we already know about this block
-        if let Some((_, (reason, header))) = self.discarded_blocks.get(&hash) {
-            let (reason, header) = (*reason, header.clone());
-            // get the reason it was first discarded for
-            self.discarded_blocks.insert(hash.clone(), header, reason)?; // promote to the front of the discard pile
-            return Err(BlockAcknowledgeError::AlreadyDiscarded); // already discarded
-        }
-        if self.active_blocks.contains_key(&hash) {
-            return Err(BlockAcknowledgeError::AlreadyAcknowledged); // already an active block
-        }
+        // 1. Check if it is a genesis block
         if self.genesis_blocks.contains(&hash) {
-            return Err(BlockAcknowledgeError::AlreadyAcknowledged); // it's a genesis block
+            return Err(BlockAcknowledgeError::AlreadyAcknowledged);
+        }
+
+        // 2. check if we already know about this block
+        if self.blocks.contains_active(&hash) {
+            return Err(BlockAcknowledgeError::AlreadyAcknowledged);
+        }
+        if self.blocks.contains_discarded(&hash) {
+            return Err(BlockAcknowledgeError::AlreadyDiscarded);
+        }
+        if self.blocks.contains_header_only(&hash) {
+            // TODO: appropriate error.
+            return Err(BlockAcknowledgeError::AlreadyAcknowledged);
         }
 
         // basic structural checks
@@ -453,8 +638,8 @@ impl BlockGraph {
             || header.content.slot.period == 0
             || header.content.slot.thread >= self.cfg.thread_count
         {
-            self.discarded_blocks
-                .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
+            self.blocks
+                .insert_discarded(hash.clone(), header.clone(), DiscardReason::Invalid);
             return Err(BlockAcknowledgeError::InvalidFields);
         }
 
@@ -462,8 +647,8 @@ impl BlockGraph {
         if header.content.slot.period
             <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
-            self.discarded_blocks
-                .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
+            self.blocks
+                .insert_discarded(hash.clone(), header.clone(), DiscardReason::Invalid);
             return Err(BlockAcknowledgeError::TooOld);
         }
 
@@ -484,8 +669,8 @@ impl BlockGraph {
         //       to avoid doing too many draws to check blocks in the distant future
         if header.content.creator != self.cfg.nodes[selector.draw(header.content.slot) as usize].0 {
             // it was not the creator's turn to create a block for this slot
-            self.discarded_blocks
-                .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
+            self.blocks
+                .insert_discarded(hash.clone(), header.clone(), DiscardReason::Invalid);
             return Err(BlockAcknowledgeError::DrawMismatch);
         }
 
@@ -500,39 +685,34 @@ impl BlockGraph {
         // TODO denounce ? see issue #101
 
         // ensure parents presence and validity
-        let mut missing_dependencies = HashSet::new();
-        for parent_thread in 0u8..self.cfg.thread_count {
-            let parent_hash = header.content.parents[parent_thread as usize];
-            if self.discarded_blocks.contains(&parent_hash) {
-                self.discarded_blocks.insert(
-                    hash.clone(),
-                    header.clone(),
-                    DiscardReason::Invalid,
-                )?;
+        let missing_dependencies = self.find_missing_dependencies(&hash, &header);
+        for (parent_hash, parent_thread) in missing_dependencies.iter() {
+            if self.blocks.contains_discarded(&parent_hash) {
+                self.blocks
+                    .insert_discarded(hash.clone(), header.clone(), DiscardReason::Invalid);
                 return Err(BlockAcknowledgeError::InvalidParents(
                     "discarded parent".to_string(),
                 )); // a parent is discarded
             }
+
+            // check that the parent is from an earlier slot in the right thread
             if let Some(parent) = self.active_blocks.get(&parent_hash) {
-                // check that the parent is from an earlier slot in the right thread
-                if parent.block.header.content.slot.thread != parent_thread
+                if parent.block.header.content.slot.thread != *parent_thread
                     || (parent.block.header.content.slot.period, parent_thread)
-                        >= (header.content.slot.period, header.content.slot.thread)
+                        >= (header.content.slot.period, &header.content.slot.thread)
                 {
                     // a parent is in the wrong thread or has a slot not strictly before the block
-                    self.discarded_blocks.insert(
+                    self.blocks.insert_discarded(
                         hash.clone(),
                         header.clone(),
                         DiscardReason::Invalid,
-                    )?;
+                    );
                     return Err(BlockAcknowledgeError::InvalidParents(
                         "discarded parent".to_string(),
                     )); // a parent is discarded
                 }
-            } else {
-                // a parent is missing
-                missing_dependencies.insert(parent_hash);
             }
+
             // check that the parents are mutually compatible
             {
                 let parent_hashes: HashSet<Hash> = header.content.parents.iter().cloned().collect();
@@ -540,11 +720,11 @@ impl BlockGraph {
                     if let Some(incomp) = self.gi_head.get(&parent_h) {
                         if !incomp.is_disjoint(&parent_hashes) {
                             // found mutually incompatible parents
-                            self.discarded_blocks.insert(
+                            self.blocks.insert_discarded(
                                 hash.clone(),
                                 header.clone(),
                                 DiscardReason::Invalid,
-                            )?;
+                            );
                             return Err(BlockAcknowledgeError::InvalidParents(
                                 "mutually incompatible parents".to_string(),
                             ));
@@ -553,6 +733,7 @@ impl BlockGraph {
                 }
             }
         }
+
         // check that the parents are mutually compatible
         {
             let parent_hashes: HashSet<Hash> = header.content.parents.iter().cloned().collect();
@@ -560,11 +741,11 @@ impl BlockGraph {
                 if let Some(incomp) = self.gi_head.get(&parent_h) {
                     if !incomp.is_disjoint(&parent_hashes) {
                         // found mutually incompatible parents
-                        self.discarded_blocks.insert(
+                        self.blocks.insert_discarded(
                             hash.clone(),
                             header.clone(),
                             DiscardReason::Invalid,
-                        )?;
+                        );
                         return Err(BlockAcknowledgeError::InvalidParents(
                             "mutually incompatible parents".to_string(),
                         ));
@@ -572,17 +753,23 @@ impl BlockGraph {
                 }
             }
         }
+
+        let mut missing_dependencies: HashSet<Hash> = missing_dependencies
+            .into_iter()
+            .map(|(hash, _)| hash)
+            .collect();
+
         // check the topological consistency of the parents
         if missing_dependencies.is_empty() {
             match self.check_block_parents_topological_order(&header.content.parents) {
                 Ok(true) => {}
                 Ok(false) => {
                     // inconsistent parent topology
-                    self.discarded_blocks.insert(
+                    self.blocks.insert_discarded(
                         hash.clone(),
                         header.clone(),
                         DiscardReason::Invalid,
-                    )?;
+                    );
                     return Err(BlockAcknowledgeError::InvalidParents(
                         "Inconsistent parent topology".to_string(),
                     ));
@@ -591,7 +778,30 @@ impl BlockGraph {
             }
         }
 
+        if !missing_dependencies.is_disjoint(&self.genesis_blocks.iter().copied().collect()) {
+            // some of the missing dependencies are genesis: consider it as badly chosen parents
+            return Err(BlockAcknowledgeError::InvalidParents(
+                "depends on a discarded genesis block".to_string(),
+            ));
+        }
+
+        self.blocks.insert_header_only(
+            hash.clone(),
+            header.clone(),
+            current_slot,
+            missing_dependencies.clone(),
+        );
         Ok(missing_dependencies)
+    }
+
+    pub fn note_block(
+        &mut self,
+        hash: Hash,
+        block: Block,
+        _slot: Slot,
+    ) -> Result<(), BlockAcknowledgeError> {
+        self.blocks.upgrade_to_full(hash, block);
+        Ok(())
     }
 
     /// Acknowledges a block.
@@ -614,28 +824,6 @@ impl BlockGraph {
             "thread": block.header.content.slot.thread,
             "period": block.header.content.slot.period
         });
-
-        // check if block is in the future: queue it
-        // note: do it after testing signature + draw to prevent queue flooding/DoS
-        if block.header.content.slot > current_slot {
-            return Err(BlockAcknowledgeError::InTheFuture(block));
-        }
-
-        let missing_dependencies =
-            self.check_header(&hash, &block.header, selector, current_slot)?;
-        if !missing_dependencies.is_empty() {
-            // there are missing dependencies
-            if !missing_dependencies.is_disjoint(&self.genesis_blocks.iter().copied().collect()) {
-                // some of the missing dependencies are genesis: consider it as badly chosen parents
-                return Err(BlockAcknowledgeError::InvalidParents(
-                    "depends on a discarded genesis block".to_string(),
-                ));
-            }
-            return Err(BlockAcknowledgeError::MissingDependencies(
-                block,
-                missing_dependencies,
-            ));
-        }
 
         //TODO check that the block is compatible with all its parents (see issue #102)
         // note: this can only fail due to operations

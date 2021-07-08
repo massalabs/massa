@@ -137,26 +137,54 @@ impl ConsensusWorker {
             .estimate_instant()?,
         );
         tokio::pin!(next_slot_timer);
+
+        enum ConsensusWorkerEvent {
+            Slot,
+            Command(ConsensusCommand),
+            FromProtocol(ProtocolEvent),
+            Management(ConsensusManagementCommand),
+        }
+
         loop {
-            tokio::select! {
+            let event = tokio::select! {
                 // slot timer
-                _ = &mut next_slot_timer => self.slot_tick(&mut next_slot_timer).await?,
+                _ = &mut next_slot_timer => ConsensusWorkerEvent::Slot,
 
                 // listen consensus commands
-                Some(cmd) = self.controller_command_rx.recv() => self.process_consensus_command(cmd).await?,
+                Some(cmd) = self.controller_command_rx.recv() => ConsensusWorkerEvent::Command(cmd),
 
                 // receive protocol controller events
                 evt = self.protocol_event_receiver.wait_event() => match evt {
-                    Ok(event) => self.process_protocol_event(event).await?,
+                    Ok(event) => ConsensusWorkerEvent::FromProtocol(event),
                     Err(err) => return Err(ConsensusError::CommunicationError(err))
                 },
 
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => match cmd {
                     None => break,
-                    Some(_) => {}
+                    Some(cmd) => ConsensusWorkerEvent::Management(cmd)
+                },
+            };
+
+            // 1. Handle new event
+            let current_slot = match event {
+                ConsensusWorkerEvent::Slot => self.slot_tick(&mut next_slot_timer).await?,
+                ConsensusWorkerEvent::Command(cmd) => {
+                    self.process_consensus_command(cmd).await?;
+                    self.current_slot
                 }
-            }
+                ConsensusWorkerEvent::FromProtocol(event) => {
+                    self.process_protocol_event(event).await?;
+                    self.current_slot
+                }
+                ConsensusWorkerEvent::Management(cmd) => self.current_slot,
+            };
+
+            // 2. Run an ack checkpoint.
+            self.block_db.run_ack_checkpoint(&current_slot);
+
+            // 3. Run a pruning checkpoint.
+            self.block_db.run_pruning_checkpoint(&current_slot);
         }
         // end loop
         Ok(self.protocol_event_receiver)
@@ -165,7 +193,7 @@ impl ConsensusWorker {
     async fn slot_tick(
         &mut self,
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), ConsensusError> {
+    ) -> Result<Slot, ConsensusError> {
         massa_trace!("slot_timer", {
             "slot": self.current_slot,
         });
@@ -176,10 +204,8 @@ impl ConsensusWorker {
             && self.current_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
-            let (hash, block) = self
-                .block_db
+            self.block_db
                 .create_block("block".to_string(), self.current_slot)?;
-            self.rec_acknowledge_block(hash, block).await?;
         }
 
         // process queued blocks
@@ -189,6 +215,7 @@ impl ConsensusWorker {
         }
 
         // reset timer for next slot
+        let current_slot = self.current_slot;
         self.current_slot = self.current_slot.get_next_slot(self.cfg.thread_count)?;
         next_slot_timer.set(sleep_until(
             get_block_slot_timestamp(
@@ -200,7 +227,7 @@ impl ConsensusWorker {
             .estimate_instant()?,
         ));
 
-        Ok(())
+        Ok(current_slot)
     }
 
     /// Manages given consensus command.
@@ -451,10 +478,10 @@ impl ConsensusWorker {
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<(), ConsensusError> {
         match event {
             ProtocolEvent::ReceivedBlock { hash, block } => {
-                self.rec_acknowledge_block(hash, block).await?;
+                self.block_db.note_block(hash, block, self.current_slot);
             }
             ProtocolEvent::ReceivedBlockHeader { hash, header } => {
-                let header_check = self.block_db.check_header(
+                let header_check = self.block_db.note_header(
                     &hash,
                     &header,
                     &mut self.selector,
