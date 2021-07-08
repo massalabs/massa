@@ -223,8 +223,8 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("blockinterval"))
-        .and(warp::query::<TimeInterval>()) //start, end
         .and(warp::path::end())
+        .and(warp::query::<TimeInterval>()) //start, end
         .and_then(move |TimeInterval { start, end }| {
             get_block_interval(
                 evt_tx.clone(),
@@ -258,8 +258,8 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("graph_interval"))
-        .and(warp::query::<TimeInterval>()) //start, end //end
         .and(warp::path::end())
+        .and(warp::query::<TimeInterval>()) //start, end //end
         .and_then(move |TimeInterval { start, end }| {
             get_graph_interval(
                 evt_tx.clone(),
