@@ -504,7 +504,7 @@ impl ProofOfStake {
     /// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final
     pub fn note_final_blocks(
         &mut self,
-        blocks: &HashMap<BlockId, ActiveBlock>,
+        blocks: HashMap<BlockId, &ActiveBlock>,
     ) -> Result<(), ConsensusError> {
         // Update internal states after a set of blocks become final.
 

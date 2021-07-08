@@ -749,7 +749,7 @@ pub struct BlockGraph {
     max_cliques: Vec<HashSet<BlockId>>,
     to_propagate: HashMap<BlockId, Block>,
     attack_attempts: Vec<BlockId>,
-    new_final_ops: HashMap<OperationId, (u64, u8)>, // (validity end period, thread)
+    new_final_blocks: HashSet<BlockId>,
     ledger: Ledger,
 }
 
@@ -905,7 +905,7 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
-                new_final_ops: Default::default(),
+                new_final_blocks: Default::default(),
             };
             // compute block descendants
             let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
@@ -951,7 +951,7 @@ impl BlockGraph {
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
-                new_final_ops: Default::default(),
+                new_final_blocks: Default::default(),
             })
         }
     }
@@ -2921,7 +2921,6 @@ impl BlockGraph {
             if let Some(BlockStatus::Active(ActiveBlock {
                 block: final_block,
                 is_final,
-                operation_set,
                 ..
             })) = self.block_statuses.get_mut(&final_block_hash)
             {
@@ -2941,11 +2940,8 @@ impl BlockGraph {
                         final_block.header.content.slot.period,
                     );
                 }
-                self.new_final_ops.extend(
-                    operation_set.iter().map(|(id, (_, exp))| {
-                        (*id, (*exp, final_block.header.content.slot.thread))
-                    }),
-                );
+                // update new final blocks list
+                self.new_final_blocks.insert(final_block_hash);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", hash, final_block_hash)));
             }
@@ -3520,10 +3516,10 @@ impl BlockGraph {
         mem::take(&mut self.attack_attempts)
     }
 
-    // Get the ids of operations that became final.
+    // Get the ids of blocks that became final.
     // Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_new_final_ops(&mut self) -> HashMap<OperationId, (u64, u8)> {
-        mem::take(&mut self.new_final_ops)
+    pub fn get_new_final_blocks(&mut self) -> HashSet<BlockId> {
+        mem::take(&mut self.new_final_blocks)
     }
 }
 

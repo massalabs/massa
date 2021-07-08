@@ -770,11 +770,6 @@ impl ConsensusWorker {
 
     async fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
-        // prune block db and send discarded final blocks to storage if present
-        let discarded_final_blocks = self.block_db.prune()?;
-        if let Some(storage_cmd) = &self.opt_storage_command_sender {
-            storage_cmd.add_block_batch(discarded_final_blocks).await?;
-        }
 
         // Propagate newly active blocks.
         for (hash, block) in self.block_db.get_blocks_to_propagate().into_iter() {
@@ -794,14 +789,32 @@ impl ConsensusWorker {
             });
         }
 
-        // Send new final ops to pool
-        let new_final_ops = self.block_db.get_new_final_ops();
+        // Process new final blocks
+        let new_final_block_ids = self.block_db.get_new_final_blocks();
+        let mut new_final_ops: HashMap<OperationId, (u64, u8)> = HashMap::new();
+        let mut new_final_blocks = HashMap::with_capacity(new_final_block_ids.len());
+        for b_id in new_final_block_ids.into_iter() {
+            if let Some(a_block) = self.block_db.get_active_block(&b_id) {
+                // List new final ops
+                new_final_ops.extend(
+                    a_block.operation_set.iter().map(|(id, (_, exp))| {
+                        (*id, (*exp, a_block.block.header.content.slot.thread))
+                    }),
+                );
+                // List final block
+                new_final_blocks.insert(b_id, a_block);
+            }
+        }
+        // Notify pool of new final ops
         if !new_final_ops.is_empty() {
             self.pool_command_sender
                 .final_operations(new_final_ops)
                 .await?;
         }
+        // Notify PoS of final blocks
+        self.pos.note_final_blocks(new_final_blocks)?;
 
+        // notify protocol of block wishlist
         let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks = &new_wishlist - &self.wishlist;
         let remove_blocks = &self.wishlist - &new_wishlist;
@@ -825,6 +838,12 @@ impl ConsensusWorker {
             self.pool_command_sender
                 .update_latest_final_periods(self.latest_final_periods.clone())
                 .await?;
+        }
+
+        // prune block db and send discarded final blocks to storage if present
+        let discarded_final_blocks = self.block_db.prune()?;
+        if let Some(storage_cmd) = &self.opt_storage_command_sender {
+            storage_cmd.add_block_batch(discarded_final_blocks).await?;
         }
 
         Ok(())
