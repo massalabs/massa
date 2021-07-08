@@ -2,6 +2,7 @@
 level = 4
 
 [protocol]
+    message_timeout_seconds = 5.0
     [protocol.network]
     bind = "0.0.0.0:50000"
     routable_ip = "200.200.200.200"

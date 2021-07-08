@@ -635,9 +635,7 @@ impl SignatureEngine {
     /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let private_key: PrivateKey = SignatureEngine::generate_random_private_key(&mut rng);
     /// ```
-    pub fn generate_random_private_key<R: secp256k1::rand::Rng + ?Sized>(
-        rng: &mut R,
-    ) -> PrivateKey {
+    pub fn generate_random_private_key<R: rand::Rng + ?Sized>(rng: &mut R) -> PrivateKey {
         PrivateKey(secp256k1::key::SecretKey::new(rng))
     }
 
