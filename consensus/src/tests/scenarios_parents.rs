@@ -16,12 +16,13 @@ async fn test_parent_in_the_future() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -59,7 +60,7 @@ async fn test_parent_in_the_future() {
         &cfg,
         Slot::new(4, 0),
         genesis_hashes.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
 
     let _ = tools::create_and_test_block(
@@ -69,6 +70,7 @@ async fn test_parent_in_the_future() {
         vec![hasht0s1],
         false,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -89,12 +91,13 @@ async fn test_parents() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -135,6 +138,7 @@ async fn test_parents() {
         genesis_hashes.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -145,6 +149,7 @@ async fn test_parents() {
         genesis_hashes.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -155,6 +160,7 @@ async fn test_parents() {
         vec![hasht1s1, genesis_hashes[0].clone()],
         false,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -175,12 +181,13 @@ async fn test_parents_in_incompatible_cliques() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -220,6 +227,7 @@ async fn test_parents_in_incompatible_cliques() {
         genesis_hashes.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -230,6 +238,7 @@ async fn test_parents_in_incompatible_cliques() {
         genesis_hashes.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -242,6 +251,7 @@ async fn test_parents_in_incompatible_cliques() {
         vec![hasht0s1, genesis_hashes[1]],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -253,6 +263,7 @@ async fn test_parents_in_incompatible_cliques() {
         vec![hasht0s1, hasht0s2],
         false,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 

@@ -11,6 +11,7 @@ use super::{
     pos::ProofOfStake,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
+use crypto::signature::PrivateKey;
 use logging::debug;
 use models::{Address, Block, BlockId, OperationId, OperationSearchResult, Slot};
 use pool::PoolCommandSender;
@@ -292,6 +293,46 @@ impl ConsensusCommandSender {
         massa_trace!("consensus.consensus_controller.get_stats", {});
         self.0
             .send(ConsensusCommand::GetStats(response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(format!("send error consensus command"))
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
+        })
+    }
+
+    pub async fn register_staking_private_keys(
+        &self,
+        keys: Vec<PrivateKey>,
+    ) -> Result<(), ConsensusError> {
+        massa_trace!(
+            "consensus.consensus_controller.register_staking_private_keys",
+            {}
+        );
+        self.0
+            .send(ConsensusCommand::RegisterStakingPrivateKeys(keys))
+            .await
+            .map_err(|_| ConsensusError::SendChannelError(format!("send error consensus command")))
+    }
+
+    pub async fn remove_staking_addresses(
+        &self,
+        addresses: HashSet<Address>,
+    ) -> Result<(), ConsensusError> {
+        massa_trace!("consensus.consensus_controller.remove_staking_addresses", {
+        });
+        self.0
+            .send(ConsensusCommand::RemoveStakingAddresses(addresses))
+            .await
+            .map_err(|_| ConsensusError::SendChannelError(format!("send error consensus command")))
+    }
+
+    pub async fn get_staking_addresses(&self) -> Result<HashSet<Address>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_staking_addresses", {});
+        self.0
+            .send(ConsensusCommand::GetStakingAddressses(response_tx))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))

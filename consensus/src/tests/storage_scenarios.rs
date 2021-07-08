@@ -26,12 +26,13 @@ async fn test_storage() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 10;
@@ -80,6 +81,7 @@ async fn test_storage() {
         genesis_hashes.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
     //create a valid block on the other thread.
@@ -90,6 +92,7 @@ async fn test_storage() {
         genesis_hashes.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -101,6 +104,7 @@ async fn test_storage() {
         genesis_hashes.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -117,6 +121,7 @@ async fn test_storage() {
             vec![parentt0sn_hash, parentt1sn_hash],
             true,
             false,
+            staking_keys[0].clone(),
         )
         .await;
         parentt0sn_hash = block_hash_0;
@@ -128,6 +133,7 @@ async fn test_storage() {
             vec![parentt0sn_hash, parentt1sn_hash],
             true,
             false,
+            staking_keys[0].clone(),
         )
         .await;
         parentt1sn_hash = block_hash;

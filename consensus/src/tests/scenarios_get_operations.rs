@@ -57,12 +57,13 @@ async fn test_storage() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
 
     cfg.t0 = 1000.into();
@@ -94,7 +95,7 @@ async fn test_storage() {
     };
 
     let (boot_graph, b1, b2) = get_bootgraph(
-        crypto::derive_public_key(&cfg.staking_keys[0]),
+        crypto::derive_public_key(&staking_keys[0]),
         vec![op2.clone(), op3.clone()],
         boot_ledger,
     );
@@ -106,7 +107,7 @@ async fn test_storage() {
     let block = Block {
         header: BlockHeader {
             content: BlockHeaderContent{
-                creator: crypto::derive_public_key(&cfg.staking_keys[0]),
+                creator: crypto::derive_public_key(&staking_keys[0]),
                 operation_merkle_root: Hash::hash(&vec![op4.clone()].iter().map(|op|{
                     op
                         .get_operation_id()
@@ -299,12 +300,14 @@ async fn test_consensus_and_storage() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
 
     cfg.t0 = 1000.into();

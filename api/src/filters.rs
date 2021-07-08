@@ -158,6 +158,7 @@ use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, AddressState, BlockGraphExport,
     ConsensusConfig, ConsensusError, DiscardReason,
 };
+use crypto::signature::PrivateKey;
 use logging::massa_trace;
 use models::Address;
 use models::ModelsError;
@@ -209,6 +210,9 @@ pub enum ApiEvent {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
+    RegisterStakingPrivateKeys(Vec<PrivateKey>),
+    RemoveStakingAddresses(HashSet<Address>),
+    GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
 }
 
 pub enum ApiManagementCommand {}
@@ -222,6 +226,11 @@ struct TimeInterval {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct OperationIds {
     pub operation_ids: HashSet<OperationId>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PrivateKeys {
+    pub keys: Vec<PrivateKey>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -473,6 +482,24 @@ pub fn get_filter(
         .and_then(move || stop_node(evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
+    let register_staking_private_keys = warp::post()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("register_staking_keys"))
+        .and(warp::path::end())
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
+        .and_then(move |PrivateKeys { keys }| register_staking_private_keys(evt_tx.clone(), keys));
+
+    let evt_tx = event_tx.clone();
+    let remove_staking_addresses = warp::delete()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("remove_staking_addresses"))
+        .and(warp::path::end())
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
+        .and_then(move |Addresses { addrs }| remove_staking_addresses(evt_tx.clone(), addrs));
+
+    let evt_tx = event_tx.clone();
     let send_operations = warp::path("api")
         .and(warp::path("v1"))
         .and(warp::path("send_operations"))
@@ -488,6 +515,14 @@ pub fn get_filter(
         .and(warp::path("get_stats"))
         .and(warp::path::end())
         .and_then(move || get_stats(evt_tx.clone()));
+
+    let evt_tx = event_tx.clone();
+    let staking_addresses = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("staking_addresses"))
+        .and(warp::path::end())
+        .and_then(move || get_staking_addresses(evt_tx.clone()));
 
     block
         .or(blockinterval)
@@ -512,6 +547,9 @@ pub fn get_filter(
         .or(operations)
         .or(next_draws)
         .or(get_stats)
+        .or(staking_addresses)
+        .or(register_staking_private_keys)
+        .or(remove_staking_addresses)
         .boxed()
 }
 
@@ -567,6 +605,43 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
     }
 }
 
+async fn register_staking_private_keys(
+    evt_tx: mpsc::Sender<ApiEvent>,
+    keys: Vec<PrivateKey>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.register_staking_private_keys", {});
+
+    match evt_tx
+        .send(ApiEvent::RegisterStakingPrivateKeys(keys))
+        .await
+    {
+        Ok(_) => Ok(warp::reply().into_response()),
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error registering _staking_private_keys : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+    }
+}
+
+async fn remove_staking_addresses(
+    evt_tx: mpsc::Sender<ApiEvent>,
+    addrs: HashSet<Address>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.remove_staking_addresses", {});
+    match evt_tx.send(ApiEvent::RemoveStakingAddresses(addrs)).await {
+        Ok(_) => Ok(warp::reply().into_response()),
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error removing _staking_addresses : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+    }
+}
 /// This function sends the new transaction outside the Api and
 /// return the result as a warp reply.
 ///
@@ -1989,4 +2064,42 @@ async fn get_stats(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply,
         Ok(stats) => stats,
     };
     Ok(warp::reply::json(&json!(stats)).into_response())
+}
+
+async fn retrieve_staking_addresses(
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<HashSet<Address>, ApiError> {
+    massa_trace!("api.filters.retrieve_staking_addresses", {});
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetStakingAddressses(response_tx))
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get_staking_addresses: {0}",
+                e
+            ))
+        })?;
+    response_rx
+        .await
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve stats: {0}", e)))
+}
+
+async fn get_staking_addresses(
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_staking_addresses", {});
+    let addresses = match retrieve_staking_addresses(&event_tx).await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving staking_addresses: {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(addresses) => addresses,
+    };
+    Ok(warp::reply::json(&json!(addresses)).into_response())
 }

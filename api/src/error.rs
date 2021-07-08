@@ -1,4 +1,5 @@
 use consensus::ConsensusError;
+use crypto::CryptoError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -13,4 +14,6 @@ pub enum ApiError {
     ServerError(#[from] warp::Error),
     #[error("consensus error : {0}")]
     ConsensusError(#[from] ConsensusError),
+    #[error("crypto error : {0}")]
+    CryptoError(#[from] CryptoError),
 }

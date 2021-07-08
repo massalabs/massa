@@ -3743,7 +3743,7 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
-    use crypto::signature::PublicKey;
+    use crypto::signature::{PrivateKey, PublicKey};
     use serial_test::serial;
     use std::{path::Path, usize};
 
@@ -4269,12 +4269,26 @@ mod tests {
         ledger_file_named
     }
 
+    pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFile {
+        use std::io::prelude::*;
+        let file_named = NamedTempFile::new().expect("cannot create temp file");
+        serde_json::to_writer_pretty(file_named.as_file(), &staking_keys)
+            .expect("unable to write ledger file");
+        file_named
+            .as_file()
+            .seek(std::io::SeekFrom::Start(0))
+            .expect("could not seek file");
+        file_named
+    }
+
     fn example_consensus_config(initial_ledger_path: &Path) -> ConsensusConfig {
         let genesis_key = crypto::generate_random_private_key();
         let mut staking_keys = Vec::new();
         for _ in 0..2 {
             staking_keys.push(crypto::generate_random_private_key());
         }
+        let staking_file = generate_staking_keys_file(&staking_keys);
+
         let thread_count: u8 = 2;
         let max_block_size = 1024 * 1024;
         let max_operations_per_block = 1024;
@@ -4303,7 +4317,6 @@ mod tests {
             thread_count,
             t0: 32.into(),
             genesis_key,
-            staking_keys,
             max_discarded_blocks: 10,
             future_block_processing_max_periods: 3,
             max_future_processing_blocks: 10,
@@ -4328,6 +4341,7 @@ mod tests {
             pos_draw_cached_cycles: 2,
             roll_price: 10,
             stats_timespan: 60000.into(),
+            staking_keys_path: staking_file.path().to_path_buf(),
         }
     }
 }

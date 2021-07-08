@@ -18,7 +18,7 @@ pub struct ConsensusConfig {
     /// Private_key to sign genesis blocks.
     pub genesis_key: PrivateKey,
     /// Staking private keys
-    pub staking_keys: Vec<PrivateKey>,
+    pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
     /// If a block  is future_block_processing_max_periods periods in the future, it is just discarded.

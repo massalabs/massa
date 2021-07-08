@@ -24,12 +24,13 @@ async fn test_update_current_slot_cmd_notification() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 2000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
@@ -91,12 +92,13 @@ async fn test_update_latest_final_block_cmd_notification() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
@@ -168,12 +170,13 @@ async fn test_new_final_ops() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
@@ -236,6 +239,7 @@ async fn test_new_final_ops() {
         vec![p0, p1],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -246,6 +250,7 @@ async fn test_new_final_ops() {
         vec![p0, p1],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -256,6 +261,7 @@ async fn test_new_final_ops() {
         vec![p0, p1],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
     // UpdateLatestFinalPeriods pool command filter

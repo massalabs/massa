@@ -15,12 +15,13 @@ async fn test_thread_incompatibility() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
@@ -60,6 +61,7 @@ async fn test_thread_incompatibility() {
         parents.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -70,6 +72,7 @@ async fn test_thread_incompatibility() {
         parents.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -80,6 +83,7 @@ async fn test_thread_incompatibility() {
         parents.clone(),
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -119,6 +123,7 @@ async fn test_thread_incompatibility() {
             parents.clone(),
             true,
             false,
+            staking_keys[0].clone(),
         )
         .await;
         current_period += 1;
@@ -143,7 +148,7 @@ async fn test_thread_incompatibility() {
             &cfg,
             Slot::new(current_period, 0),
             parents.clone(),
-            cfg.staking_keys[0].clone(),
+            staking_keys[0].clone(),
         );
         current_period += 1;
         parents[0] = hash.clone();
@@ -169,6 +174,7 @@ async fn test_thread_incompatibility() {
         parents.clone(),
         false,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -189,12 +195,13 @@ async fn test_grandpa_incompatibility() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
@@ -234,6 +241,7 @@ async fn test_grandpa_incompatibility() {
         vec![genesis[0], genesis[1]],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -244,6 +252,7 @@ async fn test_grandpa_incompatibility() {
         vec![genesis[0], genesis[1]],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -254,6 +263,7 @@ async fn test_grandpa_incompatibility() {
         vec![hash_1, genesis[1]],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -264,6 +274,7 @@ async fn test_grandpa_incompatibility() {
         vec![genesis[0], hash_2],
         true,
         false,
+        staking_keys[0].clone(),
     )
     .await;
 
@@ -306,6 +317,7 @@ async fn test_grandpa_incompatibility() {
             status.best_parents,
             true,
             false,
+            staking_keys[0].clone(),
         )
         .await;
 

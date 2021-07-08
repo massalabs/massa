@@ -17,12 +17,13 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -61,7 +62,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         Hash::hash("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
     protocol_controller.receive_block(block).await;
 
@@ -84,12 +85,13 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
         .collect();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
         1,
         ledger_file.path(),
         roll_counts_file.path(),
-        staking_keys.clone(),
+        staking_file.path(),
     );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
@@ -128,7 +130,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         Hash::hash("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        cfg.staking_keys[0].clone(),
+        staking_keys[0].clone(),
     );
     protocol_controller.receive_header(block.header).await;
 
