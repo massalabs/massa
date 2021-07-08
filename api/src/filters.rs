@@ -426,10 +426,10 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
-    let recent_operations = warp::get()
+    let operations_involving_address = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
-        .and(warp::path("recent_operations"))
+        .and(warp::path("operations_involving_address"))
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
         .and_then(move |address| get_operations_involving_address(evt_tx.clone(), address));
@@ -479,7 +479,7 @@ pub fn get_filter(
         .or(node_config)
         .or(pool_config)
         .or(get_consensus_cfg)
-        .or(recent_operations)
+        .or(operations_involving_address)
         .or(operations)
         .boxed()
 }
