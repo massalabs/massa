@@ -594,10 +594,10 @@ impl BlockGraph {
 
         // note: here we know that the block is valid
 
-        let discarded = self.update_consensus_with_new_block(hash, block)?;
+        let res = self.update_consensus_with_new_block(hash, block)?;
 
         massa_trace!("acknowledged", { "block": hash });
-        Ok(discarded)
+        Ok(res)
     }
 
     /// Gets a block and all its desencants
