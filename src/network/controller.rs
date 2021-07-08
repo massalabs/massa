@@ -161,14 +161,7 @@ async fn controller_fn(
             // peer feedback event
             res = peer_feedback_rx.next() => match res {
                 Some(PeerFeedbackEvent::PeerList{ips}) => {
-                    for ip in ips {
-                        peer_db.peers.entry(ip).or_insert(PeerInfo {
-                            ip: ip,
-                            status:  PeerStatus::Idle,
-                            last_connection: None,
-                            last_failure: None
-                        });
-                    }
+                    peer_db.merge_candidate_peers(&ips);
                 },
                 Some(PeerFeedbackEvent::PeerClosed{ip, reason}) => {
                     let mut peer = peer_db.peers.get_mut(&ip).expect("disconnected from an unkonwn peer");
@@ -190,8 +183,8 @@ async fn controller_fn(
                 Some(PeerFeedbackEvent::PeerAlive { ip } ) => {
                     let mut peer = peer_db.peers.get_mut(&ip).expect("conection OK from an unkonwn peer");
                     peer.status = match peer.status {
-                        PeerStatus::InHandshaking => PeerStatus::InConnected,
-                        PeerStatus::OutHandshaking => PeerStatus::OutConnected,
+                        PeerStatus::InHandshaking => PeerStatus::InAlive,
+                        PeerStatus::OutHandshaking => PeerStatus::OutAlive,
                         _ => unreachable!("connection OK from peer that was not in the process of connecting")
                     };
                     peer.last_connection = Some(Utc::now());
@@ -228,7 +221,7 @@ async fn controller_fn(
             res = listener_socket_rx.next() => match res {
                 Some((ip_addr, socket)) => {
                     if peer_db.count_peers_with_status(PeerStatus::InHandshaking) >= cfg.max_simultaneous_incoming_connection_attempts { continue }
-                    if peer_db.count_peers_with_status(PeerStatus::InConnected) >= cfg.max_incoming_connections { continue }
+                    if peer_db.count_peers_with_status(PeerStatus::InAlive) >= cfg.max_incoming_connections { continue }
                     let peer = peer_db.peers.entry(ip_addr).or_insert(PeerInfo {
                         ip: ip_addr,
                         status: PeerStatus::Idle,
