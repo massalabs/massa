@@ -7,7 +7,7 @@ use crate::network::ConnectionClosureReason;
 use crate::network::NetworkEvent;
 use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
-use crypto::signature::SignatureEngine;
+use crypto::signature;
 use models::BlockId;
 use std::collections::HashMap;
 use std::{
@@ -37,9 +37,8 @@ async fn test_node_worker_shutdown() {
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
-    let sig_engine = SignatureEngine::new();
-    let private_key = SignatureEngine::generate_random_private_key();
-    let public_key = sig_engine.derive_public_key(&private_key);
+    let private_key = signature::generate_random_private_key();
+    let public_key = signature::derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -751,8 +750,6 @@ async fn test_operation_messages() {
     network_conf.max_ask_blocks_per_message = 3;
     serialization_context.max_ask_blocks_per_message = 3;
 
-    let signature_engine = SignatureEngine::new();
-
     // create establisher
     let (establisher, mut mock_interface) = mock_establisher::new();
 
@@ -784,7 +781,7 @@ async fn test_operation_messages() {
     // Send tansaction message from connected peer
     let (transaction, _) = get_transaction(50, 10, &serialization_context);
     let ref_id = transaction
-        .verify_integrity(&serialization_context, &signature_engine)
+        .verify_integrity(&serialization_context)
         .unwrap();
     conn1_w
         .send(&Message::Operations(vec![transaction.clone()]))
@@ -801,7 +798,7 @@ async fn test_operation_messages() {
     {
         assert_eq!(operations.len(), 1);
         let res_id = operations[0]
-            .verify_integrity(&serialization_context, &signature_engine)
+            .verify_integrity(&serialization_context)
             .unwrap();
         assert_eq!(ref_id, res_id);
         assert_eq!(node, conn1_id);
@@ -811,7 +808,7 @@ async fn test_operation_messages() {
 
     let (transaction2, _) = get_transaction(10, 50, &serialization_context);
     let ref_id2 = transaction2
-        .verify_integrity(&serialization_context, &signature_engine)
+        .verify_integrity(&serialization_context)
         .unwrap();
     // reply with another transaction
     network_command_sender
@@ -831,7 +828,7 @@ async fn test_operation_messages() {
                 match evt {
                 Message::Operations(op) => {
                     assert_eq!(op.len(), 1);
-                    let res_id = op[0].verify_integrity(&serialization_context, &signature_engine).unwrap();
+                    let res_id = op[0].verify_integrity(&serialization_context).unwrap();
                     assert_eq!(ref_id2, res_id);
                     break;}
                 _ => {}
