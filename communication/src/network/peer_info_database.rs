@@ -2,6 +2,8 @@ use super::config::NetworkConfig;
 use crate::error::{ChannelError, CommunicationError, NetworkConnectionErrorType};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use time::UTime;
@@ -18,11 +20,11 @@ pub struct PeerInfo {
     pub last_failure: Option<UTime>,
     pub advertised: bool,
 
-    #[serde(skip, default = "usize::default")]
+    #[serde(default = "usize::default")]
     pub active_out_connection_attempts: usize,
-    #[serde(skip, default = "usize::default")]
+    #[serde(default = "usize::default")]
     pub active_out_connections: usize,
-    #[serde(skip, default = "usize::default")]
+    #[serde(default = "usize::default")]
     pub active_in_connections: usize,
 }
 
@@ -54,11 +56,22 @@ async fn dump_peers(
     peers: &HashMap<IpAddr, PeerInfo>,
     file_path: &std::path::PathBuf,
 ) -> Result<(), CommunicationError> {
-    let peer_vec: Vec<PeerInfo> = peers
+    let peer_vec: Vec<Value> = peers
         .values()
         .filter(|v| v.banned || v.advertised || v.bootstrap)
-        .cloned()
+        //        .cloned()
+        .map(|peer| {
+            json!({
+                "ip": peer.ip,
+                "banned": peer.banned,
+                "bootstrap": peer.bootstrap,
+                "last_alive": peer.last_alive,
+                "last_failure": peer.last_failure,
+                "advertised": peer.advertised,
+            })
+        })
         .collect();
+
     tokio::fs::write(file_path, serde_json::to_string_pretty(&peer_vec)?).await?;
     Ok(())
 }

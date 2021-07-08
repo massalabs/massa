@@ -5,22 +5,19 @@ use consensus::{get_block_slot_timestamp, DiscardReason};
 use crypto::{hash::Hash, signature::PublicKey};
 use models::block::BlockHeader;
 use serde_json::json;
-use std::{cmp::min, collections::HashSet, net::IpAddr};
+use std::{
+    cmp::min,
+    collections::{HashMap, HashSet},
+    net::IpAddr,
+};
 use time::UTime;
 use tokio::sync::{mpsc, oneshot};
-use warp::{filters::BoxedFilter, reject, Filter, Rejection, Reply};
+use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
 
 pub mod config;
 pub mod error;
 
 pub use error::*;
-
-#[derive(Debug)]
-struct InternalError {
-    message: String,
-}
-
-impl reject::Reject for InternalError {}
 
 pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 'static>(
     consensus_controller_interface: ConsensusControllerInterfaceT,
@@ -249,10 +246,14 @@ pub async fn spawn_server<ConsensusControllerInterfaceT: ConsensusControllerInte
 
 async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
     match evt_tx.send(ApiEvent::AskStop).await {
-        Ok(_) => Ok(warp::reply()),
-        Err(err) => Err(warp::reject::custom(InternalError {
-            message: format!("could not send stop messasge: {:?}", err),
-        })),
+        Ok(_) => Ok(warp::reply().into_response()),
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error stopping node : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
     }
 }
 
@@ -261,11 +262,15 @@ async fn get_block<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl Reply, Rejection> {
     match interface.get_active_block(hash).await {
-        Err(err) => Err(warp::reject::custom(InternalError {
-            message: err.to_string(),
-        })),
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error retrieving active blocks : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
         Ok(None) => Err(warp::reject::not_found()),
-        Ok(Some(block)) => Ok(warp::reply::json(&block)),
+        Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
     }
 }
 
@@ -276,32 +281,64 @@ async fn our_ip(cfg: NetworkConfig) -> Result<impl warp::Reply, warp::Rejection>
 async fn current_parents<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let parents = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?
-        .best_parents;
-    Ok(warp::reply::json(&parents))
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
+
+    let parents = graph.best_parents;
+    let mut best = Vec::new();
+    for hash in parents {
+        match graph.active_blocks.get_key_value(&hash) {
+            Some((_, block)) => {
+                best.push((hash, (block.block.period_number, block.block.thread_number)))
+            }
+            None => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message":
+                            format!("inconsistency error between best_parents and active_blocks")
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        }
+    }
+
+    Ok(warp::reply::json(&best).into_response())
 }
 
 async fn last_final<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let finals = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?;
-    let finals = finals
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
+    let finals = graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
         .map(|(i, (hash, period))| (hash, *period, i as u8))
         .collect::<Vec<(&Hash, u64, u8)>>();
-    Ok(warp::reply::json(&finals))
+    Ok(warp::reply::json(&finals).into_response())
 }
 
 /// return all block hash found in the time interval
@@ -312,29 +349,44 @@ async fn block_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
     start: UTime,
     end: UTime,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let mut res = HashSet::new();
-    let graph = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?;
+    let mut res = Vec::new();
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
     for (hash, exported_block) in graph.active_blocks {
         let header = exported_block.block;
-        let time = get_block_slot_timestamp(
+        let time = match get_block_slot_timestamp(
             cfg.thread_count,
             cfg.t0,
             cfg.genesis_timestamp,
             (header.period_number, header.thread_number),
-        )
-        .map_err(|err| InternalError {
-            message: format!("timestamp error: {:#?}", err),
-        })?;
+        ) {
+            Ok(time) => time,
+            Err(err) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error getting time : {:?}", err)
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        };
         if start <= time && time <= end {
-            res.insert(hash);
+            res.push((hash, (header.period_number, header.thread_number)));
         }
     }
-    Ok(warp::reply::json(&res))
+
+    Ok(warp::reply::json(&res).into_response())
 }
 
 /// return all block info needed to reconstruct the graph found in the time interval
@@ -346,57 +398,169 @@ async fn graph_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
     start: UTime,
     end: UTime,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let mut res = HashSet::new();
-    let graph = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?;
+    let mut res = HashMap::new();
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
     for (hash, exported_block) in graph.active_blocks {
         let header = exported_block.block;
-        let time = get_block_slot_timestamp(
+        let time = match get_block_slot_timestamp(
             cfg.thread_count,
             cfg.t0,
             cfg.genesis_timestamp,
             (header.period_number, header.thread_number),
-        )
-        .map_err(|err| InternalError {
-            message: format!("timestamp error: {:#?}", err),
-        })?;
+        ) {
+            Ok(time) => time,
+            Err(err) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error getting time : {:?}", err)
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        };
+
         if start <= time && time <= end {
-            res.insert((
+            res.insert(
                 hash,
-                header.period_number,
-                header.thread_number,
-                "valid",
-                header.parents,
-            ));
+                (
+                    header.period_number,
+                    header.thread_number,
+                    "active",
+                    header.parents,
+                ),
+            );
         }
     }
-    Ok(warp::reply::json(&res))
-}
+    let mut final_blocks = HashMap::new();
+    for (hash, (period, thread, _, parents)) in res.iter() {
+        if !graph.gi_head.contains_key(&hash) {
+            final_blocks.insert(hash.clone(), (*period, *thread, "final", parents.clone()));
+        }
+    }
 
-// async fn last_stale<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
-//     interface: ConsensusControllerInterfaceT,
-// ) -> Result<impl warp::Reply, warp::Rejection> {
-//     unimplemented!()
-// }
+    for (key, value) in final_blocks {
+        res.insert(key, value);
+    }
+
+    for (hash, (reason, header)) in graph.discarded_blocks.map {
+        let time = match get_block_slot_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            (header.period_number, header.thread_number),
+        ) {
+            Ok(time) => time,
+            Err(err) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error getting time : {:?}", err)
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        };
+        if start <= time && time <= end {
+            let status;
+            match reason {
+                DiscardReason::Invalid => {
+                    continue;
+                }
+                DiscardReason::Stale => status = "stale",
+                DiscardReason::Final => status = "final",
+            }
+            res.insert(
+                hash,
+                (
+                    header.period_number,
+                    header.thread_number,
+                    status,
+                    header.parents,
+                ),
+            );
+        }
+    }
+    let res = res
+        .iter()
+        .map(|(hash, (period, thread, status, parents))| {
+            (hash.clone(), *period, *thread, *status, parents.clone())
+        })
+        .collect::<Vec<(Hash, u64, u8, &str, Vec<Hash>)>>();
+    Ok(warp::reply::json(&res).into_response())
+}
 
 /// return number of cliques and current cliques hashset set
 async fn cliques<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?;
-    Ok(warp::reply::json(&(
-        graph.max_cliques.len(),
-        graph.max_cliques,
-    )))
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
+
+    let mut hashes = HashSet::new();
+    for clique in graph.max_cliques.iter() {
+        hashes.extend(clique)
+    }
+
+    let mut hashes_map = HashMap::new();
+    for hash in hashes.iter() {
+        if let Some((_, block)) = graph.active_blocks.get_key_value(hash) {
+            hashes_map.insert(hash, (block.block.period_number, block.block.thread_number));
+        } else {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("inconsticency error between cliques and active_blocks")
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response());
+        }
+    }
+
+    let mut res = Vec::new();
+    for clique in graph.max_cliques.iter() {
+        let mut set = HashSet::new();
+        for hash in clique.iter() {
+            match hashes_map.get_key_value(hash) {
+                Some((k, v)) => {
+                    set.insert((k.clone(), v.clone()));
+                }
+                None => {
+                    return Ok(warp::reply::with_status(
+                        warp::reply::json(&json!({
+                            "message":"inconsistency error between clique and active blocks"
+                        })),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    )
+                    .into_response())
+                }
+            }
+        }
+        res.push(set)
+    }
+
+    Ok(warp::reply::json(&(graph.max_cliques.len(), res)).into_response())
 }
 
 /// return network information: own IP address, connected peers (address, IP), connection status, connections usage, average upload and download bandwidth used for headers, operations, syncing
@@ -404,23 +568,42 @@ async fn network_info<ConsensusControllerInterfaceT: ConsensusControllerInterfac
     interface: ConsensusControllerInterfaceT,
     cfg: NetworkConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let peers = interface.get_peers().await.map_err(|err| InternalError {
-        message: format!("error get peers: {:#?}", err),
-    })?;
+    let peers = match interface.get_peers().await {
+        Ok(peers) => peers,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving peers : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
     let our_ip = cfg.routable_ip;
     Ok(warp::reply::json(&json!({
         "our_ip": our_ip,
         "peers": peers,
-    })))
+    }))
+    .into_response())
 }
 
 async fn peers<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let peers = interface.get_peers().await.map_err(|err| InternalError {
-        message: format!("get peers error: {:#?}", err),
-    })?;
-    Ok(warp::reply::json(&peers))
+    let peers = match interface.get_peers().await {
+        Ok(peers) => peers,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving peers : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+    Ok(warp::reply::json(&peers).into_response())
 }
 
 /// returns a summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes
@@ -429,23 +612,49 @@ async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     consensus_cfg: ConsensusConfig,
     network_cfg: NetworkConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let cur_time = UTime::now().map_err(|err| InternalError {
-        message: format!("error getting current time: {:#?}", err),
-    })?;
+    let cur_time = match UTime::now() {
+        Ok(time) => time,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting current time : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
 
-    let latest_slot_opt = consensus::get_latest_block_slot_at_timestamp(
+    let latest_slot_opt = match consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    )
-    .map_err(|err| InternalError {
-        message: format!("get_latest_block_slot_at_timestamp error: {:#?}", err),
-    })?;
+    ) {
+        Ok(slot) => slot,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting latest slot : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
 
-    let peers = interface.get_peers().await.map_err(|err| InternalError {
-        message: format!("get peers error: {:#?}", err),
-    })?;
+    let peers = match interface.get_peers().await {
+        Ok(peers) => peers,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving peers : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
 
     let connected_peers: HashSet<IpAddr> = peers
         .iter()
@@ -455,14 +664,20 @@ async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
         .map(|(ip, _peer_info)| *ip)
         .collect();
 
-    let graph = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("get_block_graph_status error: {:#?}", err),
-        })?;
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
 
-    let finals = graph
+    let finals = match graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
@@ -480,9 +695,18 @@ async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
             ))
         })
         .collect::<Result<Vec<(&Hash, u64, u8, UTime)>, consensus::ConsensusError>>()
-        .map_err(|err| InternalError {
-            message: format!("error gathering final blocks: {:#?}", err),
-        })?;
+    {
+        Ok(finals) => finals,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting final blocks : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
 
     Ok(warp::reply::json(&json!({
         "time": cur_time,
@@ -491,19 +715,26 @@ async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
         "last_final": finals,
         "nb_cliques": graph.max_cliques.len(),
         "nb_peers": connected_peers.len(),
-    })))
+    }))
+    .into_response())
 }
 
 async fn last_stale<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     api_config: ApiConfig,
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?;
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
 
     let discarded = graph.discarded_blocks.clone();
     let mut discarded = discarded
@@ -517,20 +748,25 @@ async fn last_stale<ConsensusControllerInterfaceT: ConsensusControllerInterface>
         discarded = discarded.drain(0..min).collect();
     }
 
-    Ok(warp::reply::json(&json!(discarded)))
+    Ok(warp::reply::json(&json!(discarded)).into_response())
 }
 
 async fn last_invalid<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     api_config: ApiConfig,
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?;
-
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
     let discarded = graph.discarded_blocks.clone();
 
     let mut discarded = discarded
@@ -544,7 +780,7 @@ async fn last_invalid<ConsensusControllerInterfaceT: ConsensusControllerInterfac
         discarded = discarded.drain(0..min).collect();
     }
 
-    Ok(warp::reply::json(&json!(discarded)))
+    Ok(warp::reply::json(&json!(discarded)).into_response())
 }
 
 async fn staker_info<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
@@ -553,12 +789,18 @@ async fn staker_info<ConsensusControllerInterfaceT: ConsensusControllerInterface
     consensus_cfg: ConsensusConfig,
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let graph = interface
-        .get_block_graph_status()
-        .await
-        .map_err(|err| InternalError {
-            message: format!("error get block gaph: {:#?}", err),
-        })?;
+    let graph = match interface.get_block_graph_status().await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving graph : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(graph) => graph,
+    };
 
     let blocks = graph
         .active_blocks
@@ -574,19 +816,36 @@ async fn staker_info<ConsensusControllerInterfaceT: ConsensusControllerInterface
         .filter(|(_hash, (_reason, header))| header.creator == creator)
         .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
         .collect::<Vec<(&Hash, DiscardReason, BlockHeader)>>();
-    let cur_time = UTime::now().map_err(|err| InternalError {
-        message: format!("error getting current time: {:#?}", err),
-    })?;
+    let cur_time = match UTime::now() {
+        Ok(time) => time,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting current time : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
 
-    let start_slot = consensus::get_latest_block_slot_at_timestamp(
+    let start_slot = match consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    )
-    .map_err(|err| InternalError {
-        message: format!("get_latest_block_slot_at_timestamp error: {:#?}", err),
-    })?
+    ) {
+        Ok(slot) => slot,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting slot at timestamp : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    }
     .unwrap_or((0, 0));
     let end_slot = (
         start_slot
@@ -595,12 +854,19 @@ async fn staker_info<ConsensusControllerInterfaceT: ConsensusControllerInterface
         start_slot.1,
     );
 
-    let next_slots_by_creator: Vec<(u64, u8)> = interface
-        .get_selection_draws(start_slot, end_slot)
-        .await
-        .map_err(|err| InternalError {
-            message: format!("get_creator interface error: {:#?}", err),
-        })?
+    let next_slots_by_creator: Vec<(u64, u8)> =
+        match interface.get_selection_draws(start_slot, end_slot).await {
+            Ok(slot) => slot,
+            Err(err) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&json!({
+                        "message": format!("error selecting draw : {:?}", err)
+                    })),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response())
+            }
+        }
         .into_iter()
         .filter_map(|(slt, sel)| {
             if sel == creator {
@@ -614,7 +880,8 @@ async fn staker_info<ConsensusControllerInterfaceT: ConsensusControllerInterface
         "staker_active_blocks": blocks,
         "staker_discarded_blocks": discarded,
         "staker_next_draws": next_slots_by_creator,
-    })))
+    }))
+    .into_response())
 }
 
 #[cfg(test)]
