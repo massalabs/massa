@@ -1,14 +1,15 @@
+use crate::error::{BlockAcknowledgeError, ConsensusError};
+
 use super::{
     block_graph::*,
     config::ConsensusConfig,
-    error::{BlockAcknowledgeError, ConsensusError},
     misc_collections::{DependencyWaitingBlocks, FutureIncomingBlocks},
     random_selector::*,
     timeslots::*,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::{Block, Slot};
+use models::{Block, BlockHeader, Slot};
 use std::collections::HashMap;
 use storage::StorageCommandSender;
 use tokio::{
@@ -67,6 +68,8 @@ pub struct ConsensusWorker {
     dependency_waiting_blocks: DependencyWaitingBlocks,
     /// Current slot.
     current_slot: Slot,
+    /// Content waiting headers
+    waiting_header: WaitingHeader,
 }
 
 /// Returned by acknowledge_block
@@ -77,6 +80,8 @@ struct AcknowledgeBlockReturn {
     /// Final blocks that we may send to storage
     pub finals: HashMap<crypto::hash::Hash, Block>,
 }
+
+struct WaitingHeader(pub HashMap<Hash, BlockHeader>);
 
 impl ConsensusWorker {
     /// Creates a new consensus controller.
@@ -121,6 +126,7 @@ impl ConsensusWorker {
             future_incoming_blocks: FutureIncomingBlocks::new(cfg.max_future_processing_blocks),
             dependency_waiting_blocks: DependencyWaitingBlocks::new(cfg.max_dependency_blocks),
             current_slot,
+            waiting_header: WaitingHeader(HashMap::new()),
         })
     }
 
@@ -187,6 +193,8 @@ impl ConsensusWorker {
         for (hash, _header, block) in popped_blocks.into_iter() {
             if let Some(b) = block {
                 self.rec_acknowledge_block(hash, b).await?;
+            } else {
+                // todo ask for block content and process it
             }
         }
 
@@ -330,16 +338,24 @@ impl ConsensusWorker {
                     let res = self
                         .dependency_waiting_blocks
                         .valid_block_obtained(&hash)?
-                        .1
+                        .2
                         .into_iter()
                         .map(|h| {
-                            Ok((
-                                h,
-                                self.dependency_waiting_blocks
-                                    .get(&h)
-                                    .ok_or(ConsensusError::ContainerInconsistency)?
-                                    .clone(),
-                            ))
+                            let (header, block) = self.dependency_waiting_blocks.get(&h);
+                            if let Some(header) = header {
+                                if let Some(b) = block {
+                                    Ok((h, b.clone()))
+                                } else {
+                                    self.waiting_header.0.insert(h, header);
+                                    Err(ConsensusError::WaitingForBlockContent)
+                                }
+                            } else {
+                                Err(ConsensusError::ContainerInconsistency)
+                            }
+                        })
+                        .filter(|e| match e {
+                            Err(ConsensusError::WaitingForBlockContent) => false,
+                            _ => true,
                         })
                         .collect::<Result<HashMap<Hash, Block>, ConsensusError>>()?;
                     Ok(AcknowledgeBlockReturn {
@@ -366,8 +382,12 @@ impl ConsensusWorker {
                 Ok(Default::default())
             }
             Err(BlockAcknowledgeError::MissingDependencies(block, dependencies)) => {
-                self.dependency_waiting_blocks
-                    .insert(hash, block, dependencies)?;
+                self.dependency_waiting_blocks.insert(
+                    hash,
+                    block.header.clone(),
+                    Some(block),
+                    dependencies,
+                )?;
                 // TODO ask for dependencies that have not been asked yet
                 //      but only if the dependency is not already in timeslot waiting line
                 // (see issue #105)
