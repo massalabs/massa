@@ -502,7 +502,8 @@ async fn get_consensus_config(
         "thread_count": consensus_cfg.thread_count,
         "genesis_timestamp": consensus_cfg.genesis_timestamp,
         "delta_f0": consensus_cfg.delta_f0,
-        "max_block_size": consensus_cfg.max_block_size
+        "max_block_size": consensus_cfg.max_block_size,
+        "operation_validity_periods": consensus_cfg.operation_validity_periods
     })))
 }
 
@@ -644,7 +645,7 @@ async fn get_operation(
         Ok(Some((op, pool, blocks))) => Ok(warp::reply::json(&json!({
             "operation": op,
             "in_pool": pool,
-            "in_blocks": blocks,
+            "in_blocks": blocks.into_iter().map(|(id, f)|(id,f)).collect::<Vec<(BlockId, bool)>>(),
         }))
         .into_response()),
     }

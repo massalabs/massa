@@ -15,6 +15,8 @@ use consensus::LedgerDataExport;
 use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::Address;
+use models::BlockId;
+use models::OperationType;
 use models::{Block, BlockHeader, Operation, Slot};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -24,6 +26,74 @@ use std::time::Duration;
 use time::UTime;
 
 pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true); //never set to zero.
+
+#[derive(Debug, Clone)]
+pub struct WrapperOperationType<'a>(&'a OperationType);
+
+impl<'a> From<&'a OperationType> for WrapperOperationType<'a> {
+    fn from(op: &'a OperationType) -> Self {
+        WrapperOperationType(&op)
+    }
+}
+
+impl<'a> std::fmt::Display for WrapperOperationType<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self.0 {
+            OperationType::Transaction {
+                recipient_address,
+                amount,
+            } => write!(
+                f,
+                "Transaction: recipient:{} amount:{}",
+                recipient_address, amount
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WrapperOperation(Operation);
+
+impl From<Operation> for WrapperOperation {
+    fn from(op: Operation) -> Self {
+        WrapperOperation(op)
+    }
+}
+
+impl std::fmt::Display for WrapperOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let op_type = WrapperOperationType::from(&self.0.content.op);
+        let addr = Address::from_public_key(&self.0.content.sender_public_key)
+            .map_err(|_| std::fmt::Error)?;
+        write!(
+            f,
+            "Operation: sender:{} fee:{} expire_period:{} {}",
+            addr, self.0.content.fee, self.0.content.expire_period, op_type
+        )
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct GetOperationContent {
+    pub operation: WrapperOperation,
+    pub in_pool: bool,
+    pub in_blocks: Vec<(BlockId, bool)>,
+}
+
+impl std::fmt::Display for GetOperationContent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "{} in pool:{}", self.operation, self.in_pool)?;
+        writeln!(
+            f,
+            "block list:{}",
+            self.in_blocks
+                .iter()
+                .map(|(id, f)| format!("({}, final:{})", id, f))
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
+    }
+}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ErrorMessage {
@@ -37,6 +107,7 @@ pub struct ConsensusConfig {
     pub genesis_timestamp: UTime,
     pub delta_f0: u64,
     pub max_block_size: u32,
+    pub operation_validity_periods: u64,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]

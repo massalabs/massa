@@ -218,6 +218,10 @@ impl Operation {
             .content
             .expire_period
             .saturating_sub(operation_validity_period);
+        println!(
+            "operation get_validity_range:{:?}",
+            start..=self.content.expire_period
+        );
         start..=self.content.expire_period
     }
 }

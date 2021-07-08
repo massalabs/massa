@@ -17,10 +17,7 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use clap::App;
 use clap::Arg;
-use crypto::{
-    hash::Hash,
-    signature::{derive_public_key, PrivateKey},
-};
+use crypto::{hash::Hash, signature::derive_public_key};
 use log::trace;
 use models::Address;
 use models::Operation;
@@ -149,12 +146,12 @@ fn main() {
         cmd_last_invalid,
     )
     .new_command(
-        "create_transaction",
-        "create a new transaction with specified parameters. parameters: <private_key> <recipient address> <amount> <fee> <expire_period>",
-        5,
-        5,
+        "get_operation",
+        "return the operation with the specified id. parameters: <operation id>",
+        1,
+        1,
         true,
-        cmd_create_transaction,
+        cmd_get_operation,
     )
     .new_command_noargs("stop_node", "Stop node gracefully", true, cmd_stop_node)
     .new_command(
@@ -255,6 +252,21 @@ fn main() {
     }
 }
 
+fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/operation/{}", data.node_ip, params[0]);
+    if let Some(resp) = request_data(data, &url)? {
+        //println!("resp {:?}", resp.text());
+        if resp.status() == StatusCode::OK {
+            let op = resp.json::<data::GetOperationContent>()?;
+            println!("{}", op);
+        } else {
+            println!("operation not found.");
+        }
+    }
+
+    Ok(())
+}
+
 fn wallet_new_privkey(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &mut data.wallet {
         let priv_key = crypto::generate_random_private_key();
@@ -308,7 +320,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
         }
         let context = resp.json::<models::SerializationContext>()?;
         //get pool config
-        let url = format!("http://{}/api/v1/pool_config", data.node_ip);
+        /*        let url = format!("http://{}/api/v1/pool_config", data.node_ip);
         let resp = reqwest::blocking::get(&url)?;
         if resp.status() != StatusCode::OK {
             return Err(ReplError::GeneralError(format!(
@@ -316,7 +328,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
                 resp.status()
             )));
         }
-        let pool_cfg = resp.json::<pool::PoolConfig>()?;
+        let pool_cfg = resp.json::<pool::PoolConfig>()?;*/
         //get consensus config
         let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
         let resp = reqwest::blocking::get(&url)?;
@@ -368,7 +380,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             "Error no current time slot generated".to_string(),
         ))?;
 
-        let expire_period = slot.period + pool_cfg.max_operation_future_validity_start_periods;
+        let expire_period = slot.period + consensus_cfg.operation_validity_periods + 1;
         let operation_type = OperationType::Transaction {
             recipient_address,
             amount,
@@ -413,76 +425,6 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             }
         }
     }
-
-    Ok(())
-}
-
-//create_transaction <private_key> <recipient address> <amount> <fee> <expire_period>
-fn cmd_create_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    //get node serialisation context
-    let url = format!("http://{}/api/v1/node_config", data.node_ip);
-    let resp = reqwest::blocking::get(&url)?;
-    if resp.status() != StatusCode::OK {
-        return Err(ReplError::GeneralError(format!(
-            "Error during node connection. Server answer code :{}",
-            resp.status()
-        )));
-    }
-
-    let context = resp.json::<models::SerializationContext>()?;
-    //create a dummy transaction
-    let private_key = PrivateKey::from_bs58_check(params[0].trim())
-        .map_err(|_| ReplError::UnreconnizedKeyError)?;
-
-    let public_key = derive_public_key(&private_key);
-    let recipient_address = Address::from_bs58_check(params[1])
-        .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-    let amount: u64 = FromStr::from_str(&params[2]).map_err(|err| {
-        ReplError::GeneralError(format!("incorrect specified amount not an int :{}", err))
-    })?;
-    let fee: u64 = FromStr::from_str(&params[3]).map_err(|err| {
-        ReplError::GeneralError(format!("incorrect specified fee not an int :{}", err))
-    })?;
-    let expire_period: u64 = FromStr::from_str(&params[4]).map_err(|err| {
-        ReplError::GeneralError(format!(
-            "incorrect specified expire period not an int :{}",
-            err
-        ))
-    })?;
-    let operation_type = OperationType::Transaction {
-        recipient_address,
-        amount,
-    };
-    let operation_content = OperationContent {
-        fee,
-        expire_period,
-        sender_public_key: public_key,
-        op: operation_type,
-    };
-
-    let hash = Hash::hash(&operation_content.to_bytes_compact(&context).unwrap());
-    let signature = crypto::sign(&hash, &private_key).unwrap();
-
-    let operation = Operation {
-        content: operation_content,
-        signature,
-    };
-    let resp = reqwest::blocking::Client::new()
-        .post(&format!("http://{}/api/v1/operations", data.node_ip))
-        .json(&vec![operation])
-        .send()?;
-    if resp.status() != StatusCode::OK {
-        let status = resp.status();
-        let message = resp
-            .json::<data::ErrorMessage>()
-            .map(|message| message.message)
-            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
-            .unwrap();
-        println!("The serveur answer status:{} an error:{}", status, message);
-    } else {
-        println!("Transaction created");
-    }
-    trace!("after sending request to client in cmd_create_transaction in massa-client main");
 
     Ok(())
 }
@@ -676,7 +618,7 @@ fn cmd_cliques(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_get_block(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/block/{}", data.node_ip, params[0]);
     if let Some(resp) = request_data(data, &url)? {
-        if resp.content_length().unwrap() > 0 {
+        if resp.status() == StatusCode::OK {
             let block = resp
                 .json::<Block>()
                 .map(|block| data::WrapperBlock::from(block))?;
@@ -764,7 +706,7 @@ fn format_url_with_to_from(
 ///Return the request reponse or and Error.
 fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplError> {
     let resp = reqwest::blocking::get(url)?;
-    if resp.status() != StatusCode::OK {
+    if resp.status() != StatusCode::OK && resp.status() != StatusCode::NOT_FOUND {
         //println!("resp.text(self):{:?}", resp.text());
         let status = resp.status();
         let message = resp
