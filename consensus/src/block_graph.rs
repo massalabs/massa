@@ -1400,7 +1400,9 @@ impl BlockGraph {
     ) -> Result<(), ConsensusError> {
         // order processing by (slot, hash)
         while let Some((_slot, hash)) = to_ack.pop_first() {
-            to_ack.extend(self.process(hash, pos, current_slot)?)
+			let res = self.process(hash, pos, current_slot);
+			println!("Processed: {:?}", res);
+            to_ack.extend(res?)
         }
         Ok(())
     }
@@ -2101,17 +2103,25 @@ impl BlockGraph {
                 incompatibilities,
                 inherited_incompatibilities_count,
             } => {
+				println!("Proceed");
                 // block_changes can be ignored as it is empty, (maybe add an error if not)
                 parents = parents_hash_period;
                 deps = dependencies;
                 incomp = incompatibilities;
                 inherited_incomp_count = inherited_incompatibilities_count;
             }
-            HeaderCheckOutcome::Discard(reason) => return Ok(BlockCheckOutcome::Discard(reason)),
+            HeaderCheckOutcome::Discard(reason) => {
+				println!("Discard: {:?}", reason);
+				return Ok(BlockCheckOutcome::Discard(reason));
+			},
             HeaderCheckOutcome::WaitForDependencies(deps) => {
+				println!("Wait Deps");
                 return Ok(BlockCheckOutcome::WaitForDependencies(deps))
             }
-            HeaderCheckOutcome::WaitForSlot => return Ok(BlockCheckOutcome::WaitForSlot),
+            HeaderCheckOutcome::WaitForSlot => {
+				println!("Wait Slot");
+				return Ok(BlockCheckOutcome::WaitForSlot);
+			},
         }
 
         // check operations

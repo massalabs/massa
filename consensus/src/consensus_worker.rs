@@ -232,20 +232,24 @@ impl ConsensusWorker {
 
         loop {
             massa_trace!("consensus.consensus_worker.run_loop.select", {});
+			println!("Start select");
             tokio::select! {
                 // slot timer
                 _ = &mut next_slot_timer => {
+					println!("Slot tick");
                     massa_trace!("consensus.consensus_worker.run_loop.select.slot_tick", {});
                     self.slot_tick(&mut next_slot_timer).await?
                 },
 
                 // listen consensus commands
                 Some(cmd) = self.controller_command_rx.recv() => {
+					println!("Consensus command");
                     massa_trace!("consensus.consensus_worker.run_loop.consensus_command", {});
                     self.process_consensus_command(cmd).await?},
 
                 // receive protocol controller events
                 evt = self.protocol_event_receiver.wait_event() =>{
+					println!("Protocol event");
                     massa_trace!("consensus.consensus_worker.run_loop.select.protocol_event", {});
                     match evt {
                         Ok(event) => self.process_protocol_event(event).await?,
@@ -255,6 +259,7 @@ impl ConsensusWorker {
 
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
+					println!("Management command");
                     massa_trace!("consensus.consensus_worker.run_loop.select.manager", {});
                     match cmd {
                     None => break,
@@ -262,6 +267,7 @@ impl ConsensusWorker {
                 }}
             }
         }
+		println!("End of loop");
         // end loop
         Ok(self.protocol_event_receiver)
     }
@@ -303,7 +309,9 @@ impl ConsensusWorker {
                 Err(err) => return Err(err),
             };
             if let Some((addr, pub_k, priv_k)) = creator_info {
+				println!("Creating block");
                 self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+				println!("Done Creating block");
             }
         }
 
@@ -408,6 +416,7 @@ impl ConsensusWorker {
         let mut operation_set: HashMap<OperationId, (usize, u64)> = HashMap::new(); // (index, validity end period)
         let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
         while !finished {
+			println!("Not finished.");
             // get a batch of operations
             let operation_batch = self
                 .pool_command_sender
@@ -418,6 +427,7 @@ impl ConsensusWorker {
                     remaining_block_space,
                 )
                 .await?;
+				println!("Got operations batch.");
             finished = operation_batch.len() < self.cfg.operation_batch_size;
 
             for (op_id, op, op_size) in operation_batch.into_iter() {
@@ -936,6 +946,7 @@ impl ConsensusWorker {
                 block,
                 operation_set,
             } => {
+				println!("Received Block");
                 massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
                 self.block_db.incoming_block(
                     block_id,
@@ -1002,15 +1013,12 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
         // Propagate newly active blocks.
-        println!("One");
         for (hash, block) in self.block_db.get_blocks_to_propagate().into_iter() {
-            println!("Two");
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "hash": hash, "block": block });
             self.protocol_command_sender
                 .integrated_block(hash, block)
                 .await?;
         }
-        println!("Three");
 
         // Notify protocol of attack attempts.
         for hash in self.block_db.get_attack_attempts().into_iter() {

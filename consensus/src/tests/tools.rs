@@ -25,6 +25,7 @@ use std::{
 use storage::{StorageAccess, StorageConfig};
 use tempfile::NamedTempFile;
 use time::UTime;
+use tokio::task::yield_now;
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::hash(s.as_bytes()))
@@ -267,7 +268,6 @@ pub async fn create_and_test_block(
     }
 
     protocol_controller.receive_block(block).await;
-    println!("Block received.");
     if valid {
         // Assert that the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, 2000).await;

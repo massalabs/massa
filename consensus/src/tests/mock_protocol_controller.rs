@@ -47,6 +47,7 @@ impl MockProtocolController {
     // Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
         let block_id = block.header.compute_block_id().unwrap();
+		println!("Sending block");
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
                 block_id,
@@ -55,6 +56,16 @@ impl MockProtocolController {
             })
             .await
             .expect("could not send protocol event");
+			loop {
+				tokio::task::yield_now().await;
+				// println!("Yielded");
+				if self.protocol_event_tx.capacity() == CHANNEL_SIZE {
+					break;
+				}
+			}
+			 
+			
+		println!("Sent block");
     }
 
     pub async fn receive_header(&mut self, header: BlockHeader) {
