@@ -138,7 +138,7 @@ async fn controller_fn(
     });
 
     loop {
-        peer_db.cleanup(cfg.max_known_nodes); // removes dead connections
+        peer_db.cleanup(cfg.max_idle_peers, cfg.max_banned_peers); // removes dead connections
         peer_db.save();
 
         {
@@ -238,6 +238,10 @@ async fn controller_fn(
                     match peer.status {
                         PeerStatus::OutConnecting => {}, // override out-connection attempts (but not handshake)
                         PeerStatus::Idle => {},
+                        PeerStatus::Banned => {
+                            peer.last_failure = Some(Utc::now());  // save latest connection attempt of banned peer
+                            continue;
+                        },
                         _ => continue, // avoid double-connection and banned
                     }
                     peer.status = PeerStatus::InHandshaking;
@@ -264,7 +268,7 @@ async fn controller_fn(
     while let Some(_) = connectors.next().await {}
 
     // stop peer db
-    peer_db.cleanup(cfg.max_known_nodes); // removes dead connections
+    peer_db.cleanup(cfg.max_idle_peers, cfg.max_banned_peers); // removes dead connections
     peer_db.stop().await;
 }
 

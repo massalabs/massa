@@ -36,7 +36,6 @@ pub struct PeerInfo {
 
 pub struct PeerDatabase {
     pub peers: HashMap<IpAddr, PeerInfo>,
-    peers_filename: String,
     saver_join_handle: JoinHandle<()>,
     saver_watch_tx: watch::Sender<Option<HashMap<IpAddr, PeerInfo>>>,
 }
@@ -118,7 +117,6 @@ impl PeerDatabase {
         // return struct
         Ok(PeerDatabase {
             peers,
-            peers_filename,
             saver_join_handle,
             saver_watch_tx,
         })
@@ -143,13 +141,43 @@ impl PeerDatabase {
         self.peers.values().filter(|&v| v.status == status).count()
     }
 
-    pub fn cleanup(&mut self, max_known_nodes: usize) {
-        // bookkeeping: drop old nodes etc...
-        /* TODO bookeeping
-            removes too old etc... if too many, drop randomly
+    pub fn cleanup(&mut self, max_idle_peers: usize, max_banned_peers: usize) {
+        // remove excess idle peers
+        if self.count_peers_with_status(PeerStatus::Idle) > max_idle_peers {
+            let mut keep_ips: Vec<IpAddr> = self
+                .peers
+                .values()
+                .filter(|&p| p.status == PeerStatus::Idle)
+                .map(|&p| p.ip)
+                .collect();
+            keep_ips.sort_unstable_by_key(|&k| {
+                let p = self.peers.get(&k).unwrap(); // should never fail
+                (std::cmp::Reverse(p.last_connection), p.last_failure)
+            });
+            keep_ips.truncate(max_idle_peers);
+            self.peers.retain(|&k, &mut v| match v.status {
+                PeerStatus::Idle => keep_ips.contains(&k),
+                _ => true,
+            })
+        }
 
-            also remove too old banned nodes
-        */
+        // remove excess banned peers
+        if self.count_peers_with_status(PeerStatus::Banned) > max_banned_peers {
+            let mut keep_ips: Vec<IpAddr> = self
+                .peers
+                .values()
+                .filter(|&p| p.status == PeerStatus::Banned)
+                .map(|&p| p.ip)
+                .collect();
+            keep_ips.sort_unstable_by_key(|&k| {
+                std::cmp::Reverse(self.peers.get(&k).unwrap().last_failure); // should never fail
+            });
+            keep_ips.truncate(max_banned_peers);
+            self.peers.retain(|&k, &mut v| match v.status {
+                PeerStatus::Banned => keep_ips.contains(&k),
+                _ => true,
+            })
+        }
     }
 
     pub fn get_connector_candidate_ips(
