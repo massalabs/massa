@@ -592,26 +592,27 @@ async fn test_block_creation() {
             .unwrap(),
         )
         .await;
-        loop {
-            match protocol_controller
-                .wait_command(cfg.t0.checked_div_u64(2).unwrap())
-                .await
-            {
-                Some(ProtocolCommand::PropagateBlockHeader {
-                    header,
-                    hash: _hash,
-                }) => {
-                    assert_eq!(draw, 0);
-                    assert_eq!(i + 1, header.content.slot.period as usize);
-                    break;
-                }
-                Some(_) => {}
-                None => {
-                    assert_eq!(draw, 1);
-                    break;
-                }
+
+        let cmd = protocol_controller
+            .wait_command(cfg.t0.checked_div_u64(2).unwrap(), |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateBlockHeader { .. } => Some(cmd),
+                _ => None,
+            })
+            .await;
+
+        match cmd {
+            Some(ProtocolCommand::PropagateBlockHeader {
+                header,
+                hash: _hash,
+            }) => {
+                assert_eq!(draw, 0);
+                assert_eq!(i + 1, header.content.slot.period as usize);
             }
-        }
+            Some(_) => {}
+            None => {
+                assert_eq!(draw, 1);
+            }
+        };
     }
 
     // stop controller while ignoring all commands
