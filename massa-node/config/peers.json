@@ -1,1 +1,10 @@
-[]
+[
+    {
+        "advertised": true,
+        "banned": false,
+        "bootstrap": false,
+        "ip": "200.200.200.200",
+        "last_alive": 1617375403310,
+        "last_failure": 1617377610695
+    }
+]
