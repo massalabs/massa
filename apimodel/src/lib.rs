@@ -65,11 +65,85 @@ impl From<&'_ Slot> for WrappedSlot {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct WrappedBlockHeader(BlockHeader);
+
+impl From<BlockHeader> for WrappedBlockHeader {
+    fn from(header: BlockHeader) -> Self {
+        WrappedBlockHeader(header)
+    }
+}
+impl From<&'_ BlockHeader> for WrappedBlockHeader {
+    fn from(header: &BlockHeader) -> Self {
+        WrappedBlockHeader(header.clone())
+    }
+}
+
+impl std::fmt::Display for WrappedBlockHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let pk = self.0.content.creator.to_string();
+        let pk = if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
+            &pk[..4]
+        } else {
+            &pk
+        };
+        writeln!(
+            f,
+            "creator: {} period:{} thread:{} ledger:{} merkle_root:{} parents:{:?}",
+            pk,
+            self.0.content.slot.period,
+            self.0.content.slot.thread,
+            self.0.content.out_ledger_hash,
+            self.0.content.operation_merkle_root,
+            self.0.content.parents,
+        )
+        //        writeln!(f, "  parents:{:?}", self.parents)?;
+        //        writeln!(f, "  endorsements:{:?}", self.endorsements)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StakerInfo {
     pub staker_active_blocks: Vec<(Hash, BlockHeader)>,
     pub staker_discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,
     pub staker_next_draws: Vec<Slot>,
+}
+
+impl std::fmt::Display for StakerInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "  active blocks:")?;
+        let mut blocks: Vec<&(Hash, BlockHeader)> = self.staker_active_blocks.iter().collect();
+        blocks.sort_unstable_by_key(|v| (v.1.content.slot, v.0));
+        for (hash, block) in &blocks {
+            write!(
+                f,
+                "    block: hash:{} header: {}",
+                hash,
+                WrappedBlockHeader::from(block)
+            )?;
+        }
+        writeln!(f, "  discarded blocks:")?;
+        let mut blocks: Vec<&(Hash, DiscardReason, BlockHeader)> =
+            self.staker_discarded_blocks.iter().collect();
+        blocks.sort_unstable_by_key(|v| (v.2.content.slot, v.0));
+        for (hash, reason, block) in &blocks {
+            write!(
+                f,
+                "    block: hash:{} reason:{:?} header: {}",
+                hash,
+                reason,
+                WrappedBlockHeader::from(block)
+            )?;
+        }
+        writeln!(
+            f,
+            "  staker_next_draws{:?}:",
+            self.staker_next_draws
+                .iter()
+                .map(|slot| format!("(slot:{})", slot))
+                .collect::<Vec<String>>()
+        )
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
