@@ -18,7 +18,10 @@ use clap::App;
 use clap::Arg;
 use crypto::hash::Hash;
 use log::trace;
+use models::Address;
+use models::Operation;
 use models::{Block, Slot};
+use models::{OperationContent, OperationType};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 
@@ -118,6 +121,11 @@ fn main() {
         "(hash, thread, slot, reason) for last invalid blocks",
         cmd_last_invalid,
     )
+    .new_command_noargs(
+        "create_transaction",
+        "create a new transaction with specified parameters. parameters: To be defined",
+        cmd_create_transaction,
+    )
     .new_command_noargs("stop_node", "Stop node gracefully", cmd_stop_node)
     .new_command(
         "staker_info",
@@ -173,6 +181,52 @@ fn main() {
             repl.run_cmd(cmd, &args);
         }
     }
+}
+
+fn cmd_create_transaction(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+    trace!("before sending request to client in cmd_create_transaction in massa-client main");
+    //create a dummy transaction
+    let public_key = crypto::signature::PublicKey::from_bs58_check(
+        "4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb",
+    )
+    .unwrap();
+
+    let recipient_address: Address = Address::from_public_key(&public_key).unwrap();
+    let operation_type = OperationType::Transaction {
+        recipient_address,
+        amount: 0,
+    };
+    let operation_content = OperationContent {
+        fee: 0,
+        expire_period: 0,
+        sender_public_key: public_key,
+        op: operation_type,
+    };
+
+    let operation = Operation {
+        content: operation_content,
+        signature: crypto::signature::Signature::from_bs58_check(
+                "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+            ).unwrap(),
+    };
+    let resp = reqwest::blocking::Client::new()
+        .post(&format!("http://{}/api/v1/operations", data.node_ip))
+        .json(&vec![operation])
+        .send()?;
+    if resp.status() != StatusCode::OK {
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
+            .unwrap();
+        println!("The serveur answer status:{} an error:{}", status, message);
+    } else {
+        println!("Transaction created");
+    }
+    trace!("after sending request to client in cmd_create_transaction in massa-client main");
+
+    Ok(())
 }
 
 fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
@@ -427,12 +481,13 @@ fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplErro
     let resp = reqwest::blocking::get(url)?;
     if resp.status() != StatusCode::OK {
         //println!("resp.text(self):{:?}", resp.text());
+        let status = resp.status();
         let message = resp
             .json::<data::ErrorMessage>()
             .map(|message| message.message)
             .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
             .unwrap();
-        println!("The serveur answer an error:{}", message);
+        println!("The serveur answer status:{} an error:{}", status, message);
         Ok(None)
     } else {
         if data.cli {

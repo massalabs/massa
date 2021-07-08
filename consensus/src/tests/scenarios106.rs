@@ -1,6 +1,10 @@
 //RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
-use super::{mock_protocol_controller::MockProtocolController, tools};
+use super::{
+    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_protocol_controller::MockProtocolController,
+    tools,
+};
 use crate::{start_consensus_controller, timeslots};
 use models::{BlockId, Slot};
 use std::collections::HashSet;
@@ -18,9 +22,12 @@ async fn test_unsorted_block() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -29,6 +36,7 @@ async fn test_unsorted_block() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -153,9 +161,12 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     cfg.future_block_processing_max_periods = 3;
     cfg.max_future_processing_blocks = 5;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -164,6 +175,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -256,9 +268,12 @@ async fn test_too_many_blocks_in_the_future() {
     cfg.delta_f0 = 1000;
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_sub(2000.into()); // slot 1 is in the past
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -267,6 +282,7 @@ async fn test_too_many_blocks_in_the_future() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -366,9 +382,12 @@ async fn test_dep_in_back_order() {
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 10;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -377,6 +396,7 @@ async fn test_dep_in_back_order() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -545,9 +565,12 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 2;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -556,6 +579,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -684,9 +708,12 @@ async fn test_add_block_that_depends_on_invalid_block() {
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 7;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -695,6 +722,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,

@@ -1,12 +1,15 @@
 use super::{
     config::{ProtocolConfig, CHANNEL_SIZE},
-    protocol_worker::{ProtocolCommand, ProtocolEvent, ProtocolManagementCommand, ProtocolWorker},
+    protocol_worker::{
+        ProtocolCommand, ProtocolEvent, ProtocolManagementCommand, ProtocolPoolEvent,
+        ProtocolWorker,
+    },
 };
 use crate::{
     error::CommunicationError,
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
-use models::{Block, BlockId, Operation, SerializationContext};
+use models::{Block, BlockId, Operation, OperationId, SerializationContext};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -28,6 +31,7 @@ pub async fn start_protocol_controller(
     (
         ProtocolCommandSender,
         ProtocolEventReceiver,
+        ProtocolPoolEventReceiver,
         ProtocolManager,
     ),
     CommunicationError,
@@ -36,6 +40,7 @@ pub async fn start_protocol_controller(
 
     // launch worker
     let (event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
+    let (pool_event_tx, pool_event_rx) = mpsc::channel::<ProtocolPoolEvent>(CHANNEL_SIZE);
     let (command_tx, command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
@@ -45,6 +50,7 @@ pub async fn start_protocol_controller(
             network_command_sender,
             network_event_receiver,
             event_tx,
+            pool_event_tx,
             command_rx,
             manager_rx,
         )
@@ -65,6 +71,7 @@ pub async fn start_protocol_controller(
     Ok((
         ProtocolCommandSender(command_tx),
         ProtocolEventReceiver(event_rx),
+        ProtocolPoolEventReceiver(pool_event_rx),
         ProtocolManager {
             join_handle,
             manager_tx,
@@ -152,6 +159,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operation(
         &mut self,
+        operation_id: OperationId,
         operation: Operation,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.propagate_operation", {
@@ -159,7 +167,10 @@ impl ProtocolCommandSender {
         });
         let res = self
             .0
-            .send(ProtocolCommand::PropagateOperation(operation))
+            .send(ProtocolCommand::PropagateOperation {
+                operation_id,
+                operation,
+            })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("propagate_operation command send error".into())
@@ -195,6 +206,33 @@ impl ProtocolEventReceiver {
         remaining_events
     }
 }
+pub struct ProtocolPoolEventReceiver(pub mpsc::Receiver<ProtocolPoolEvent>);
+
+impl ProtocolPoolEventReceiver {
+    /// Receives the next ProtocolPoolEvent
+    /// None is returned when all Sender halves have dropped,
+    /// indicating that no further values can be sent on the channel
+    pub async fn wait_event(&mut self) -> Result<ProtocolPoolEvent, CommunicationError> {
+        massa_trace!("protocol.pool_event_receiver.wait_event", {});
+        let res = self.0.recv().await.ok_or(CommunicationError::ChannelError(
+            "DefaultProtocolController wait_pool_event channel recv failed".into(),
+        ));
+        res
+    }
+
+    /// drains remaining events and returns them in a VecDeque
+    /// note: events are sorted from oldest to newest
+    pub async fn drain(mut self) -> VecDeque<ProtocolPoolEvent> {
+        let mut remaining_events: VecDeque<ProtocolPoolEvent> = VecDeque::new();
+        while let Some(evt) = self.0.recv().await {
+            debug!(
+                "after receiving event from ProtocolPoolEventReceiver.0 in protocol_controller drain"
+            );
+            remaining_events.push_back(evt);
+        }
+        remaining_events
+    }
+}
 
 pub struct ProtocolManager {
     join_handle: JoinHandle<Result<NetworkEventReceiver, CommunicationError>>,
@@ -206,9 +244,11 @@ impl ProtocolManager {
     pub async fn stop(
         self,
         protocol_event_receiver: ProtocolEventReceiver,
+        protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     ) -> Result<NetworkEventReceiver, CommunicationError> {
         drop(self.manager_tx);
         let _remaining_events = protocol_event_receiver.drain().await;
+        let _remaining_events = protocol_pool_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
         Ok(network_event_receiver)
     }

@@ -1,4 +1,8 @@
-use super::{mock_protocol_controller::MockProtocolController, tools};
+use super::{
+    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_protocol_controller::MockProtocolController,
+    tools,
+};
 use crate::start_consensus_controller;
 use models::Slot;
 
@@ -9,9 +13,12 @@ async fn test_pruning_of_discarded_blocks() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -20,6 +27,7 @@ async fn test_pruning_of_discarded_blocks() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -70,9 +78,12 @@ async fn test_pruning_of_awaiting_slot_blocks() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -81,6 +92,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -131,9 +143,12 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -142,6 +157,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,

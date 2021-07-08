@@ -256,6 +256,7 @@ dependencies = [
  "logging",
  "models",
  "num",
+ "pool",
  "pretty_assertions",
  "rand 0.8.2",
  "rand_xoshiro",
@@ -867,6 +868,7 @@ version = "0.1.0"
 dependencies = [
  "log",
  "pretty_assertions",
+ "serde_json",
  "stderrlog",
 ]
 
@@ -904,6 +906,7 @@ dependencies = [
  "log",
  "logging",
  "models",
+ "pool",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -1301,6 +1304,25 @@ name = "pkg-config"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
+
+[[package]]
+name = "pool"
+version = "0.1.0"
+dependencies = [
+ "communication",
+ "crypto",
+ "log",
+ "logging",
+ "models",
+ "num",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "stderrlog",
+ "thiserror",
+ "time 0.1.0",
+ "tokio",
+]
 
 [[package]]
 name = "ppv-lite86"
@@ -2276,9 +2298,9 @@ dependencies = [
 
 [[package]]
 name = "warp"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dafd0aac2818a94a34df0df1100a7356c493d8ede4393875fd0b5c51bb6bc80"
+checksum = "332d47745e9a0c38636dbd454729b147d16bd1ed08ae67b3ab281c4506771054"
 dependencies = [
  "bytes",
  "futures",
@@ -2301,7 +2323,6 @@ dependencies = [
  "tokio-util",
  "tower-service",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]

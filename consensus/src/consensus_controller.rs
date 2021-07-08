@@ -10,6 +10,7 @@ use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
 use models::{Block, BlockId, SerializationContext, Slot};
+use pool::PoolCommandSender;
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::{
@@ -28,6 +29,7 @@ pub async fn start_consensus_controller(
     serialization_context: SerializationContext,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
+    pool_command_sender: PoolCommandSender,
     opt_storage_command_sender: Option<StorageAccess>,
     boot_graph: Option<BootsrapableGraph>,
     clock_compensation: i64,
@@ -73,6 +75,7 @@ pub async fn start_consensus_controller(
             cfg_copy,
             protocol_command_sender,
             protocol_event_receiver,
+            pool_command_sender,
             opt_storage_command_sender,
             block_db,
             command_rx,

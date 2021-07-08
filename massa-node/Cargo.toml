@@ -21,6 +21,7 @@ api = { path = "../api" }
 storage = { path = "../storage" }
 models = { path = "../models" }
 bootstrap = { path = "../bootstrap" }
+pool = { path = "../pool" }
 serde_json = { version = "1.0" }
 
 [dev-dependencies]

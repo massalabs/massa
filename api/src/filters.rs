@@ -145,10 +145,8 @@
 //!     .await;
 //! ```
 
-use crate::ApiError;
-use logging::massa_trace;
-
 use super::config::ApiConfig;
+use crate::ApiError;
 use communication::{
     network::{NetworkConfig, PeerInfo},
     protocol::ProtocolConfig,
@@ -159,6 +157,12 @@ use consensus::{
     ConsensusConfig, ConsensusError, DiscardReason,
 };
 use crypto::signature::PublicKey;
+use crypto::signature::SignatureEngine;
+use logging::massa_trace;
+use models::ModelsError;
+use models::Operation;
+use models::OperationId;
+use models::SerializationContext;
 use models::{Block, BlockHeader, BlockId, Slot};
 use serde::Deserialize;
 use serde_json::json;
@@ -188,6 +192,7 @@ pub enum ApiEvent {
         end: Slot,
         response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
     },
+    AddOperations(Vec<(OperationId, Operation)>),
 }
 
 pub enum ApiManagementCommand {}
@@ -209,6 +214,7 @@ pub fn get_filter(
     event_tx: mpsc::Sender<ApiEvent>,
     opt_storage_command_sender: Option<StorageAccess>,
     clock_compensation: i64,
+    context: SerializationContext,
 ) -> BoxedFilter<(impl Reply,)> {
     massa_trace!("api.filters.get_filter", {});
     let evt_tx = event_tx.clone();
@@ -370,6 +376,18 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || stop_node(evt_tx.clone()));
 
+    let evt_tx = event_tx.clone();
+    let op_context = context.clone();
+    let send_operations = warp::path("api")
+        .and(warp::path("v1"))
+        .and(warp::path("operations"))
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |operations| {
+            send_operations(operations, evt_tx.clone(), op_context.clone())
+        });
+
     block
         .or(blockinterval)
         .or(current_parents)
@@ -384,6 +402,7 @@ pub fn get_filter(
         .or(last_invalid)
         .or(staker_info)
         .or(stop_node)
+        .or(send_operations)
         .boxed()
 }
 
@@ -406,6 +425,53 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
     }
 }
 
+/// This function sends the new transaction outside the Api and
+/// return the result as a warp reply.
+///
+/// The transaction is verified before been propagated.
+/// # Argument
+/// * event_tx : Sender used to send the event out
+async fn send_operations(
+    operations: Vec<Operation>,
+    evt_tx: mpsc::Sender<ApiEvent>,
+    context: SerializationContext,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.send_operations ", { "operation": operations });
+    //verify the operation
+    let signature_engine = SignatureEngine::new();
+    let res: Result<Vec<(OperationId, Operation)>, ModelsError> = operations
+        .into_iter()
+        .map(|operation| {
+            operation
+                .verify_integrity(&context, &signature_engine)
+                .map(|operation_id| (operation_id, operation))
+        })
+        .collect();
+    //if one operation fails all operations fail.
+    let op_list = match res {
+        Ok(op_list) => op_list,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error during operation verification : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    match evt_tx.send(ApiEvent::AddOperations(op_list)).await {
+        Ok(_) => Ok(warp::reply().into_response()),
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error during sending operation : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+    }
+}
 /// Returns block with given hash as a reply
 ///
 async fn get_block(

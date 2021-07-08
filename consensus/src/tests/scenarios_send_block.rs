@@ -1,6 +1,10 @@
 //RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
-use super::{mock_protocol_controller::MockProtocolController, tools};
+use super::{
+    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_protocol_controller::MockProtocolController,
+    tools,
+};
 use crate::start_consensus_controller;
 use models::Slot;
 
@@ -11,9 +15,12 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -22,6 +29,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,
@@ -80,9 +88,12 @@ async fn test_consensus_block_not_found() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol
+    // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(serialization_context.clone());
+    let (pool_controller, pool_command_sender) =
+        MockPoolController::new(serialization_context.clone());
+    let _pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -91,6 +102,7 @@ async fn test_consensus_block_not_found() {
             serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            pool_command_sender,
             None,
             None,
             0,

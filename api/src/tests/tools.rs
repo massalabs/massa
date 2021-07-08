@@ -127,6 +127,19 @@ pub fn get_header(
 pub fn mock_filter(
     storage_cmd: Option<StorageAccess>,
 ) -> (BoxedFilter<(impl Reply,)>, Receiver<ApiEvent>) {
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_ask_blocks_per_message: 10,
+        max_bootstrap_message_size: 100000000,
+    };
     let (evt_tx, evt_rx) = mpsc::channel(1);
     (
         get_filter(
@@ -137,6 +150,7 @@ pub fn mock_filter(
             evt_tx,
             storage_cmd,
             0,
+            serialization_context,
         ),
         evt_rx,
     )

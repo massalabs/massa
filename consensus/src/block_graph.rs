@@ -2478,6 +2478,17 @@ impl BlockGraph {
         Ok(wishlist)
     }
 
+    //return the current final block period if it has changed since last call.
+    pub fn get_changed_latest_final_blocks_periods(&self) -> Option<Vec<u64>> {
+        //TODO manage change of the final block.
+        Some(
+            self.latest_final_blocks_periods
+                .iter()
+                .map(|(_, period)| *period)
+                .collect(),
+        )
+    }
+
     // Get the headers to be propagated.
     // Must be called by the consensus worker within `block_db_changed`.
     pub fn get_blocks_to_propagate(&mut self) -> HashMap<BlockId, Block> {

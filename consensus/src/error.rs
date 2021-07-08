@@ -49,4 +49,6 @@ pub enum ConsensusError {
     ReceiveChannelError(String),
     #[error("Storage error : {0}")]
     StorageError(#[from] storage::StorageError),
+    #[error("pool error : {0}")]
+    PoolError(#[from] pool::PoolError),
 }
