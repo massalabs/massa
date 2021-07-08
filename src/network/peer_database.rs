@@ -69,10 +69,10 @@ async fn load_peers(file_name: &String) -> BoxResult<HashMap<IpAddr, PeerInfo>> 
     Ok(result)
 }
 
-async fn dump_peers(peers: &Vec<String>, file_name: &String) -> BoxResult<()> {
+async fn dump_peers(peers: &HashMap<IpAddr, PeerInfo>, file_name: &String) -> BoxResult<()> {
     // TODO SAVE EVERYTHING !
     //TODO if status is not Banned, set it to idle
-    write(file_name, peers.join("\n").as_bytes()).await?;
+
     Ok(())
 }
 
@@ -105,7 +105,7 @@ impl PeerDatabase {
     pub fn save(&self) {
         if self
             .saver_watch_tx
-            .broadcast(Some(self.peers.keys().map(|ip| ip.to_string()).collect()))
+            .broadcast(Some(self.peers.clone()))
             .is_err()
         {
             unreachable!("saver task disappeared");
