@@ -714,13 +714,8 @@ async fn test_peers() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
-        &serde_json::to_string(
-            &peers
-                .iter()
-                .map(|(_ip, p)| p.clone())
-                .collect::<Vec<PeerInfo>>(),
-        )
-        .unwrap(),
+        &serde_json::to_string(&peers.iter().map(|(_ip, p)| p).collect::<Vec<&PeerInfo>>())
+            .unwrap(),
     )
     .unwrap();
     assert_eq!(obtained, expected);
