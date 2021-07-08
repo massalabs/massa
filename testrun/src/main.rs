@@ -26,7 +26,13 @@ async fn run(cfg: config::Config) -> () {
     // spawn API
     let cnss_interface = cnss.get_interface();
     let api_handle = tokio::spawn(async move {
-        api::serve(cnss_interface, cfg.consensus.clone(), cfg.network.clone()).await;
+        api::serve(
+            cnss_interface,
+            cfg.api.clone(),
+            cfg.consensus.clone(),
+            cfg.network.clone(),
+        )
+        .await;
     });
 
     // loop over messages

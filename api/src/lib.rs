@@ -1,14 +1,18 @@
 use communication::network::config::NetworkConfig;
-use consensus::get_block_slot_timestamp;
+use config::ApiConfig;
 use consensus::{config::ConsensusConfig, consensus_controller::ConsensusControllerInterface};
+use consensus::{get_block_slot_timestamp, DiscardReason};
 use crypto::hash::Hash;
 use serde_json::json;
 use std::{
+    cmp::min,
     collections::{HashMap, HashSet},
     net::IpAddr,
 };
 use time::UTime;
 use warp::{filters::BoxedFilter, reject, Filter, Rejection, Reply};
+
+pub mod config;
 
 #[derive(Debug)]
 struct InternalError {
@@ -19,6 +23,7 @@ impl reject::Reject for InternalError {}
 
 pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 'static>(
     consensus_controller_interface: ConsensusControllerInterfaceT,
+    api_config: ApiConfig,
     consensus_config: ConsensusConfig,
     network_config: NetworkConfig,
 ) -> BoxedFilter<(impl Reply,)> {
@@ -117,6 +122,24 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
             )
         });
 
+    let interface = consensus_controller_interface.clone();
+    let api_cfg = api_config.clone();
+    let last_stale = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("last_stale"))
+        //.and(warp::path::end())
+        .and_then(move || last_stale(api_cfg.clone(), interface.clone()));
+
+    let interface = consensus_controller_interface.clone();
+    let api_cfg = api_config.clone();
+    let last_invalid = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("last_invalid"))
+        //.and(warp::path::end())
+        .and_then(move || last_invalid(api_cfg.clone(), interface.clone()));
+
     block
         .or(blockinterval)
         .or(current_parents)
@@ -127,16 +150,20 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .or(our_ip)
         .or(network_info)
         .or(state)
+        .or(last_stale)
+        .or(last_invalid)
         .boxed()
 }
 
 pub async fn serve<ConsensusControllerInterfaceT: ConsensusControllerInterface + 'static>(
     consensus_controller_interface: ConsensusControllerInterfaceT,
+    api_config: ApiConfig,
     consensus_config: ConsensusConfig,
     network_config: NetworkConfig,
 ) {
     warp::serve(get_filter(
         consensus_controller_interface,
+        api_config,
         consensus_config,
         network_config,
     ))
@@ -361,6 +388,55 @@ async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
         "nb_cliques": graph.max_cliques.len(),
         "nb_peers": connected_peers.len(),
     })))
+}
+
+async fn last_stale<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
+    api_config: ApiConfig,
+    interface: ConsensusControllerInterfaceT,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let graph = interface
+        .get_block_graph_status()
+        .await
+        .map_err(|_| warp::reject::reject())?;
+
+    let discarded = graph.discarded_blocks.clone();
+    let mut discarded = discarded
+        .map
+        .iter()
+        .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
+        .map(|(hash, (_reason, header))| (hash, header.period_number, header.thread_number))
+        .collect::<Vec<(&Hash, u64, u8)>>();
+    if discarded.len() > 0 {
+        let min = min(discarded.len(), api_config.max_return_invalid_blocks);
+        discarded = discarded.drain(0..min).collect();
+    }
+
+    Ok(warp::reply::json(&json!(discarded)))
+}
+
+async fn last_invalid<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
+    api_config: ApiConfig,
+    interface: ConsensusControllerInterfaceT,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let graph = interface
+        .get_block_graph_status()
+        .await
+        .map_err(|_| warp::reject::reject())?;
+
+    let discarded = graph.discarded_blocks.clone();
+
+    let mut discarded = discarded
+        .map
+        .iter()
+        .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Invalid)
+        .map(|(hash, (_reason, header))| (hash, header.period_number, header.thread_number))
+        .collect::<Vec<(&Hash, u64, u8)>>();
+    if discarded.len() > 0 {
+        let min = min(discarded.len(), api_config.max_return_invalid_blocks);
+        discarded = discarded.drain(0..min).collect();
+    }
+
+    Ok(warp::reply::json(&json!(discarded)))
 }
 
 #[cfg(test)]

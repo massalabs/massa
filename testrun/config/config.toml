@@ -1,6 +1,9 @@
 [logging]
 level = 4
 
+[api]
+    max_return_invalid_blocks = 10
+
 [consensus]
     genesis_timestamp = 1607958448000
     t0 = 16000
