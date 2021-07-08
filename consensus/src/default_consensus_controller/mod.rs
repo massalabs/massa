@@ -18,24 +18,38 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 
+/// Manages consensus.
 #[derive(Debug)]
 pub struct DefaultConsensusController<ProtocolControllerT: ProtocolController> {
+    /// Consensus configuration.
     cfg: ConsensusConfig,
+    /// Handle on the worker's task
     consensus_controller_handle: JoinHandle<()>,
+    /// Channel to send out consensus commands.
     consensus_command_tx: Sender<ConsensusCommand>,
+    /// Channel to receive consensus events.
     consensus_event_rx: Receiver<ConsensusEvent>,
+    /// Phantom data marker - unused.
     _protocol_controller_t: std::marker::PhantomData<ProtocolControllerT>,
 }
 
+/// Interface to communicate with the controller.
 #[derive(Debug, Clone)]
 pub struct DefaultConsensusControllerInterface {
+    /// Consensus configuration.
     cfg: ConsensusConfig,
+    /// Channel to send out consensus commands.
     consensus_command_tx: Sender<ConsensusCommand>,
 }
 
 impl<ProtocolControllerT: ProtocolController + 'static>
     DefaultConsensusController<ProtocolControllerT>
 {
+    /// Creates a new consensus controller.
+    ///
+    /// # Arguments
+    /// * cfg: consensus configuration
+    /// * protocol_controller: associated protocol controller.
     pub async fn new(
         cfg: &ConsensusConfig,
         protocol_controller: ProtocolControllerT,
@@ -88,7 +102,7 @@ impl<ProtocolControllerT: ProtocolController + 'static>
         })
     }
 
-    /// Stop the consensus controller
+    /// Stops the consensus controller properly.
     pub async fn stop(mut self) -> Result<(), ConsensusError> {
         debug!("stopping consensus controller");
         massa_trace!("consensus_stop_begin", {});
@@ -101,6 +115,7 @@ impl<ProtocolControllerT: ProtocolController + 'static>
     }
 }
 
+/// Manages consensus.
 #[async_trait]
 impl<ProtocolControllerT: ProtocolController> ConsensusController
     for DefaultConsensusController<ProtocolControllerT>
@@ -108,6 +123,7 @@ impl<ProtocolControllerT: ProtocolController> ConsensusController
     type ProtocolControllerT = ProtocolControllerT;
     type ConsensusControllerInterfaceT = DefaultConsensusControllerInterface;
 
+    /// Awaits for next consensus event.
     async fn wait_event(&mut self) -> Result<ConsensusEvent, ConsensusError> {
         self.consensus_event_rx
             .recv()
@@ -115,6 +131,7 @@ impl<ProtocolControllerT: ProtocolController> ConsensusController
             .ok_or(ConsensusError::ControllerEventError)
     }
 
+    /// Creates a new ConsensusControllerInterface, cloning required fields.
     fn get_interface(&self) -> Self::ConsensusControllerInterfaceT {
         DefaultConsensusControllerInterface {
             cfg: self.cfg.clone(),
@@ -125,6 +142,7 @@ impl<ProtocolControllerT: ProtocolController> ConsensusController
 
 #[async_trait]
 impl ConsensusControllerInterface for DefaultConsensusControllerInterface {
+    /// Gets all the aviable information on the block graph returning a Blockgraphexport.
     async fn get_block_graph_status(&self) -> Result<BlockGraphExport, ConsensusError> {
         let (response_tx, mut response_rx) = mpsc::channel::<BlockGraphExport>(1);
         self.consensus_command_tx
@@ -141,6 +159,10 @@ impl ConsensusControllerInterface for DefaultConsensusControllerInterface {
             )))
     }
 
+    /// Gets the whole block corresponding to given hash.
+    ///
+    /// # Arguments
+    /// * hash: hash corresponding to the block we want.
     async fn get_active_block(
         &self,
         hash: crypto::hash::Hash,
@@ -160,6 +182,7 @@ impl ConsensusControllerInterface for DefaultConsensusControllerInterface {
             )))
     }
 
+    /// Gets all known peers information.
     async fn get_peers(&self) -> Result<HashMap<std::net::IpAddr, PeerInfo>, ConsensusError> {
         let (response_tx, mut response_rx) = mpsc::channel::<HashMap<IpAddr, PeerInfo>>(1);
         self.consensus_command_tx
@@ -173,6 +196,12 @@ impl ConsensusControllerInterface for DefaultConsensusControllerInterface {
             .await
             .ok_or(ConsensusError::ReceiveChannelError("receive error".into()))
     }
+
+    /// Gets (slot, public_key) were the staker with public_key was selected for slot, between start_slot and end_slot.
+    ///
+    /// # Arguments
+    /// * start_slot: begining of the considered interval.
+    /// * end_slot: end of the considered interval.
     async fn get_selection_draws(
         &self,
         start_slot: (u64, u8),

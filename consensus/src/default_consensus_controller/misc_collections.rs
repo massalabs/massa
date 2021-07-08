@@ -4,13 +4,21 @@ use models::block::Block;
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::iter::FromIterator;
 
+/// Sophisticated queue containing blocks with slotsd in the near future.
 pub struct FutureIncomingBlocks {
+    /// The queue as a vecdeque of (slot, header's hash).
     struct_deque: VecDeque<((u64, u8), Hash)>,
+    /// The queue as a map linking haeder's hash and the whole block.
     struct_map: HashMap<Hash, Block>,
+    /// Maximum number of blocks we allow in the queue.
     max_size: usize,
 }
 
 impl FutureIncomingBlocks {
+    /// Creates a new queue.
+    ///
+    /// # Argument
+    /// * max_size: Maximum number of blocks we allow in the queue .
     pub fn new(max_size: usize) -> Self {
         FutureIncomingBlocks {
             struct_deque: VecDeque::with_capacity(max_size.saturating_add(1)),
@@ -19,9 +27,14 @@ impl FutureIncomingBlocks {
         }
     }
 
-    /// insert the block in the structure
-    /// returns a discarded block if max_size has been reached -> used to update deps
-    /// NB: the block we are trying to insert can be discarded
+    /// Inserts the block in the structure.
+    /// Returns a discarded block if max_size has been reached -> used to update dependencies
+    ///
+    /// Note: the block we are trying to insert can be discarded
+    ///
+    /// # Arguments
+    /// * hash: block's header hash
+    /// * block: block to insert
     pub fn insert(
         &mut self,
         hash: Hash,
@@ -64,6 +77,13 @@ impl FutureIncomingBlocks {
         }
     }
 
+    /// Pops blocks out of the structure
+    /// if their slot is older than given slot.
+    ///
+    /// Note: given slot is included.
+    ///
+    /// # Argument
+    /// * until_slot: we want to pop blocks until this slot.
     pub fn pop_until(
         &mut self,
         until_slot: (u64, u8),
@@ -87,20 +107,36 @@ impl FutureIncomingBlocks {
         Ok(res)
     }
 
+    /// Checks if given hash is in the structure.
+    ///
+    /// # Argument
+    /// * hash: we want to know if this hash is in the structure.
     pub fn contains(&self, hash: &Hash) -> bool {
         return self.struct_map.contains_key(hash);
     }
 }
 
+/// The perfect mix between a queue and a dependencies double chained graph, for dependency waiting blocks.
 pub struct DependencyWaitingBlocks {
+    /// Maps a dependency's hash to the set of hashes of the blocks that are blocked, wainting for this dependency.
     dep_to_blocked: HashMap<Hash, HashSet<Hash>>, // dep, hashes_blocked
+    /// Maps a header's hash to a number in the queue, the whole block and the set of dependencies that block is waiting for.
     blocked_to_dep: HashMap<Hash, (u64, Block, HashSet<Hash>)>, // hash_blocked, (block_blocked, deps)
+    /// VecDeque of (number in the queue, hash).
+    /// Note that the number in the queue is not the index in vecdeque
+    /// due to update method.
     vec_blocked: VecDeque<(u64, Hash)>,
+    /// Maximum number of blocked blocks we allow in the structure.
     max_size: usize,
+    /// Current next number in the queue.
     counter: u64,
 }
 
 impl DependencyWaitingBlocks {
+    /// Creates a new DependencyWaitingBlocks.
+    ///
+    /// # Argument
+    /// * max_size: Maximum number of blocked blocks we allow in the structure.
     pub fn new(max_size: usize) -> Self {
         DependencyWaitingBlocks {
             dep_to_blocked: HashMap::new(),
@@ -111,6 +147,11 @@ impl DependencyWaitingBlocks {
         }
     }
 
+    /// Gets blocks that are older than implicitly given slots.
+    ///
+    /// # Argument
+    /// * latest_final_periods: Vec of the lastest periods in each thread.
+    ///   (i, period) in latest_final_periods.enumerate are the slots we consider.
     pub fn get_old(&mut self, latest_final_periods: Vec<u64>) -> HashSet<Hash> {
         // todo could be optimized (see issue #110)
         self.blocked_to_dep
@@ -127,6 +168,10 @@ impl DependencyWaitingBlocks {
             .collect()
     }
 
+    /// Checks if block corresponding to given hash still has at least one dependency it is waiting for.
+    ///
+    /// # Arguments
+    /// * hash: hash of the block we consider.
     pub fn has_missing_deps(&self, hash: &Hash) -> bool {
         if let Some((_, _, deps)) = self.blocked_to_dep.get(hash) {
             return !deps.is_empty();
@@ -134,6 +179,12 @@ impl DependencyWaitingBlocks {
         return false;
     }
 
+    /// Recursively put at the front of the queue blocks that given hash is waiting for.
+    /// At the end of the day, given hash is at the front of the queue, then its parents,
+    /// then its grand parents, and so on, and at the end alle the others, in the same order they were before.
+    ///
+    /// # Argument
+    /// * hash: hash of the considered block.
     pub fn promote(&mut self, hash: &Hash) -> Result<(), ConsensusError> {
         // list promotable dep tree, remove them from vecdeque
         let mut stack: Vec<Hash> = self
@@ -189,7 +240,12 @@ impl DependencyWaitingBlocks {
         Ok(())
     }
 
-    // insert, return deleted blocks
+    /// Inserts block and dependencies in the structure, returns deleted blocks.
+    ///
+    /// # Arguments
+    /// * hash: hash of the considered block
+    /// * block: blocked block.
+    /// * dependencies: dependencies that given block is waiting for
     pub fn insert(
         &mut self,
         hash: Hash,
@@ -234,13 +290,20 @@ impl DependencyWaitingBlocks {
         Ok(removed)
     }
 
-    // get reference to block
+    /// Get reference to block.
+    ///
+    /// # Argument
+    /// * hash : hash of the block we want to retrive.
     pub fn get(&self, hash: &Hash) -> Option<&Block> {
         self.blocked_to_dep.get(hash).map(|(_, block, _)| block)
     }
 
-    /// a valid block was obtained.
-    /// returns block if removed and a list blocks that should be retried
+    /// A valid block was obtained.
+    /// It is removed from the structure.
+    /// Returns block if removed and a list blocks that should be retried.
+    ///
+    /// # Arguments
+    /// * obtained_h: hash of considered block.
     pub fn valid_block_obtained(
         &mut self,
         obtained_h: &Hash,
@@ -282,8 +345,11 @@ impl DependencyWaitingBlocks {
         Ok((ret_block, retry_blocks))
     }
 
-    // cancel a block and all its depencendy tree
-    // returns the list of discarded blocks
+    /// Cancels a set of blocks and all its depencendy tree.
+    /// Returns the list of discarded blocks.
+    ///
+    /// # Arguments
+    /// * cancel: set of blocks to cancel.
     pub fn cancel(
         &mut self,
         cancel: HashSet<Hash>,

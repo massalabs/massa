@@ -13,36 +13,57 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::timeout;
 
+/// Commands that node worker can manage.
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
+    /// Send given peer list to node.
     SendPeerList(Vec<IpAddr>),
+    /// Send that block to node.
     SendBlock(Block),
+    /// Send that transation to node.
     SendTransaction(String),
+    /// Close the node worker.
     Close,
 }
 
+/// Event types that node worker can emit
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
+    /// Node we are conneced to asked for advertized peers
     AskedPeerList,
+    /// Node we are conneced to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
+    /// Node we are conneced to sent block
     ReceivedBlock(Block),
+    /// Node we are conneced to sent transaction
     ReceivedTransaction(String),
+    /// Connection with node was shut down for given reason
     Closed(ConnectionClosureReason),
 }
 
+/// Events node worker can emit.
+/// Events are a tuple linking a node id to an event type
 #[derive(Clone, Debug)]
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
+/// Manages connections
+/// One worker per node.
 pub struct NodeWorker<ReaderT: 'static, WriterT: 'static>
 where
     ReaderT: AsyncRead + Send + Sync + Unpin,
     WriterT: AsyncWrite + Send + Sync + Unpin,
 {
+    /// Protocol configuration.
     cfg: ProtocolConfig,
+    /// Node id associated to that worker.
     node_id: NodeId,
+    /// Reader for incomming data.
     socket_reader: ReadBinder<ReaderT>,
+    /// Optional writer to send data.
     socket_writer_opt: Option<WriteBinder<WriterT>>,
+    /// Channel to receive node commands.
     node_command_rx: Receiver<NodeCommand>,
+    /// Channel to send node events.
     node_event_tx: Sender<NodeEvent>,
 }
 
@@ -51,6 +72,15 @@ where
     ReaderT: AsyncRead + Send + Sync + Unpin,
     WriterT: AsyncWrite + Send + Sync + Unpin,
 {
+    /// Creates a new node worker
+    ///
+    /// # Arguments
+    /// * cfg: Protocol configuration.
+    /// * node_id: Node id associated to that worker.
+    /// * socket_reader: Reader for incomming data.
+    /// * socket_writer: Writer for sending data.
+    /// * node_command_rx: Channel to receive node commands.
+    /// * node_event_tx: Channel to send node events.
     pub fn new(
         cfg: ProtocolConfig,
         node_id: NodeId,
@@ -70,14 +100,6 @@ where
     }
 
     /// node event loop. Consumes self.
-    /// Can panic if :
-    /// - node_event_tx died
-    /// - writer disappeared
-    /// - the protocol controller has not close everything before shuting down
-    /// - writer_evt_rx died
-    /// - writer_evt_tx already closed
-    /// - node_writer_handle already closed
-    /// - node_event_tx already closed
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(1024);
         let (writer_event_tx, mut writer_event_rx) = mpsc::channel::<bool>(1);
