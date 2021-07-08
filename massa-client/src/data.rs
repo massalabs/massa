@@ -341,6 +341,19 @@ impl std::fmt::Display for State {
 }
 
 #[derive(Clone, Deserialize)]
+pub struct NextDraws(Vec<(Address, Slot)>);
+
+impl std::fmt::Display for NextDraws {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "next draws :")?;
+        for (addr, slot) in self.0.iter() {
+            writeln!(f, "draw: address: {} slot: {}", addr, slot)?
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Deserialize)]
 pub struct StakerInfo {
     staker_active_blocks: Vec<(Hash, BlockHeader)>,
     staker_discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,

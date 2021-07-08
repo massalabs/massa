@@ -997,7 +997,7 @@ impl BlockGraph {
     }
 
     ///for algo see pos.md
-    fn get_roll_data_at_parent(
+    pub fn get_roll_data_at_parent(
         &self,
         block_id: BlockId,
         addrs: HashSet<Address>,

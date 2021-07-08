@@ -12,8 +12,8 @@ use crypto::{
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
-    OperationSearchResult, SerializeCompact, Slot,
+    Address, AddressRollState, AddressesRollState, Block, BlockHeader, BlockHeaderContent, BlockId,
+    Operation, OperationId, OperationSearchResult, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
 use std::convert::TryFrom;
@@ -59,6 +59,10 @@ pub enum ConsensusCommand {
     GetOperations {
         operation_ids: HashSet<OperationId>,
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+    },
+    GetRollState {
+        addresses: HashSet<Address>,
+        response_tx: oneshot::Sender<AddressesRollState>,
     },
 }
 
@@ -646,7 +650,74 @@ impl ConsensusWorker {
                     ))
                 })
             }
+            ConsensusCommand::GetRollState {
+                addresses,
+                response_tx,
+            } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_roll_state",
+                    { "addresses": addresses }
+                );
+                let res = self.get_roll_state(&addresses).await?;
+                response_tx.send(res).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get_roll_state response: {:?}",
+                        err
+                    ))
+                })
+            }
         }
+    }
+
+    async fn get_roll_state(
+        &self,
+        addresses: &HashSet<Address>,
+    ) -> Result<AddressesRollState, ConsensusError> {
+        let thread_count = self.cfg.thread_count;
+        let mut addresses_by_thread = vec![HashSet::new(); thread_count as usize];
+        for addr in addresses.iter() {
+            addresses_by_thread[addr.get_thread(thread_count) as usize].insert(*addr);
+        }
+
+        let mut states = HashMap::new();
+
+        for thread in 0..thread_count {
+            let lookback_data = match self.pos.get_lookback_roll_count(
+                self.next_slot.get_cycle(self.cfg.periods_per_cycle),
+                thread,
+            ) {
+                Ok(rolls) => Some(rolls),
+                Err(ConsensusError::PosCycleUnavailable(_)) => None,
+                Err(e) => return Err(e),
+            };
+            let final_data = self
+                .pos
+                .get_final_roll_data(self.pos.get_last_final_block_cycle(thread), thread)
+                .ok_or(ConsensusError::PosCycleUnavailable(
+                    "final cycle unavaible".to_string(),
+                ))?;
+            let candidate_data = self.block_db.get_roll_data_at_parent(
+                self.block_db.get_best_parents()[thread as usize],
+                addresses_by_thread[thread as usize].clone(),
+                &self.pos,
+            )?;
+
+            for addr in addresses_by_thread[thread as usize].iter() {
+                states.insert(
+                    *addr,
+                    AddressRollState {
+                        final_rolls: *final_data.roll_count.0.get(addr).unwrap_or(&0),
+                        active_rolls: if let Some(data) = lookback_data {
+                            Some(*data.0.get(addr).unwrap_or(&0))
+                        } else {
+                            None
+                        },
+                        candidate_rolls: *candidate_data.0.get(addr).unwrap_or(&0),
+                    },
+                );
+            }
+        }
+        Ok(AddressesRollState { states })
     }
 
     async fn get_operations(

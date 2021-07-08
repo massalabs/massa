@@ -26,9 +26,9 @@ use consensus::LedgerDataExport;
 use crypto::{hash::Hash, signature::derive_public_key};
 use log::trace;
 use models::Address;
+use models::AddressRollState;
 use models::Operation;
 use models::OperationId;
-use models::SerializeCompact;
 use models::{Block, Slot};
 use models::{OperationContent, OperationType};
 use reqwest::blocking::Response;
@@ -174,6 +174,14 @@ fn main() {
         cmd_staker_info,
     )
     .new_command(
+        "next_draws",
+        "next draws for given addresses (list of addresses separated by ,  (no space))-> vec (address, slot for which address is selected)",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_next_draws,
+    )
+    .new_command(
         "operations_involving_address",
         "list operations involving the provided address. Note that old operations are forgotten.",
         1,
@@ -189,6 +197,14 @@ fn main() {
         true,
         cmd_addresses_info,
     )
+    .new_command(
+        "addresses_roll_state",
+        "returns the final and candidate roll state for a list of addresses. Parameters: list of addresses separated by ,  (no space).",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_address_roll_state,
+    )
     //non active wellet command
     .new_command_noargs("wallet_info", "Shows wallet info", false, wallet_info)
     .new_command_noargs("wallet_new_privkey", "Generates a new private key and adds it to the wallet. Returns the associated address.", false, wallet_new_privkey)
@@ -199,6 +215,22 @@ fn main() {
         4, //max nb parameters
         false,
         send_transaction,
+    )
+    .new_command(
+        "buy_rolls",
+        "buy roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>",
+        3,
+        3, //max nb parameters
+        false,
+        send_buy_roll,
+    )
+    .new_command(
+        "sell_rolls",
+        "sell roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>",
+        3,
+        3, //max nb parameters
+        false,
+        send_sell_roll,
     )
 
 
@@ -265,8 +297,7 @@ fn main() {
             let args: Vec<&str> = cmd_args
                 .values_of("")
                 .map(|list| list.collect())
-                .or(Some(vec![]))
-                .unwrap();
+                .unwrap_or(vec![]);
             repl.data.cli = true;
             repl.run_cmd(cmd, &args);
         }
@@ -280,6 +311,85 @@ fn main() {
 //The node answer is converted to display for REPL using display trait
 //Or the return json is printed in cli mode.
 //The request_data method manage Node request/answer and cli printing.
+
+fn cmd_address_roll_state(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let addr_list = params[0]
+        .split(',')
+        .map(|str| Address::from_bs58_check(str.trim()))
+        .collect::<Result<HashSet<Address>, _>>();
+
+    let addrs = match addr_list {
+        Ok(addrs) => addrs,
+        Err(err) => {
+            println!("Error during addresses parsing: {}", err);
+            return Ok(());
+        }
+    };
+
+    let url = format!(
+        "http://{}/api/v1/addresses_roll_state?{}",
+        data.node_ip,
+        serde_qs::to_string(&Addresses { addrs })?
+    );
+
+    if let Some(resp) = request_data(data, &url)? {
+        //println!("resp {:?}", resp.text());
+        if resp.status() == StatusCode::OK {
+            let rolls = resp.json::<Vec<(Address, AddressRollState)>>()?;
+            for (addr, roll_state) in rolls.into_iter() {
+                println!("Roll for addresses:");
+                println!(
+                    "({}: final rolls: {}, active_rolls: {}, candidate_rolls: {}):",
+                    addr,
+                    roll_state.final_rolls,
+                    if let Some(nb) = roll_state.active_rolls {
+                        nb.to_string()
+                    } else {
+                        "none".to_string()
+                    },
+                    roll_state.candidate_rolls,
+                );
+            }
+        } else {
+            println!("not ok status code: {:?}", resp);
+        }
+    }
+    Ok(())
+}
+
+fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    if let Some(wallet) = &data.wallet {
+        let from_address = Address::from_bs58_check(params[0].trim())
+            .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+        let roll_count: u64 = FromStr::from_str(&params[2]).map_err(|err| {
+            ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
+        })?;
+        let fee: u64 = FromStr::from_str(&params[3])
+            .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
+        let operation_type = OperationType::RollBuy { roll_count };
+
+        let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
+        send_operation(operation, data)?;
+    }
+    Ok(())
+}
+
+fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    if let Some(wallet) = &data.wallet {
+        let from_address = Address::from_bs58_check(params[0].trim())
+            .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+        let roll_count: u64 = FromStr::from_str(&params[2]).map_err(|err| {
+            ReplError::GeneralError(format!("Incorrect transaction amount: {}", err))
+        })?;
+        let fee: u64 = FromStr::from_str(&params[3])
+            .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
+        let operation_type = OperationType::RollSell { roll_count };
+
+        let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
+        send_operation(operation, data)?;
+    }
+    Ok(())
+}
 
 fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     //convert specified ops to OperationId
@@ -399,53 +509,8 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 
 fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &data.wallet {
-        //get node serialisation context
-        let url = format!("http://{}/api/v1/node_config", data.node_ip);
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server response code: {}",
-                resp.status()
-            )));
-        }
-        let context = resp.json::<models::SerializationContext>()?;
-
-        // Set the context for the client process.
-        models::init_serialization_context(context);
-
-        //get pool config
-        /*        let url = format!("http://{}/api/v1/pool_config", data.node_ip);
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server answer code :{}",
-                resp.status()
-            )));
-        }
-        let pool_cfg = resp.json::<pool::PoolConfig>()?;*/
-        //get consensus config
-        let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server response code: {}",
-                resp.status()
-            )));
-        }
-        let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
-
-        //get from address private key
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let private_key =
-            wallet
-                .find_associated_private_key(from_address)
-                .ok_or(ReplError::GeneralError(format!(
-                    "No private key found in the wallet for the specified FROM address: {}",
-                    params[0].trim()
-                )))?;
-        let public_key = derive_public_key(&private_key);
-
         let recipient_address = Address::from_bs58_check(params[1])
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let amount: u64 = FromStr::from_str(&params[2]).map_err(|err| {
@@ -453,68 +518,14 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
         })?;
         let fee: u64 = FromStr::from_str(&params[3])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
-
-        let slot = consensus::get_current_latest_block_slot(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            0,
-        )
-        .map_err(|err| {
-            ReplError::GeneralError(format!(
-                "Error during current time slot computation: {}",
-                err
-            ))
-        })?
-        .unwrap_or(Slot::new(0, 0));
-
-        let mut expire_period = slot.period + consensus_cfg.operation_validity_periods;
-        if slot.thread >= from_address.get_thread(consensus_cfg.thread_count) {
-            expire_period += 1;
-        }
         let operation_type = OperationType::Transaction {
             recipient_address,
             amount,
         };
-        let operation_content = OperationContent {
-            fee,
-            expire_period,
-            sender_public_key: public_key,
-            op: operation_type,
-        };
 
-        let hash = Hash::hash(&operation_content.to_bytes_compact().unwrap());
-        let signature = crypto::sign(&hash, &private_key).unwrap();
+        let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
 
-        let operation = Operation {
-            content: operation_content,
-            signature,
-        };
-        let resp = reqwest::blocking::Client::new()
-            .post(&format!("http://{}/api/v1/send_operations", data.node_ip))
-            .json(&vec![operation])
-            .send()?;
-        if resp.status() != StatusCode::OK {
-            let status = resp.status();
-            let message = resp
-                .json::<data::ErrorMessage>()
-                .map(|message| message.message)
-                .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
-                .unwrap();
-            println!("Server response error. Status: {} - {}", status, message);
-        } else {
-            if data.cli {
-                println!("{}", resp.text().unwrap());
-            } else {
-                let opid_list = resp.json::<Vec<OperationId>>()?;
-                if opid_list.len() == 0 {
-                    return Err(ReplError::GeneralError(
-                        "Could not obtain the transaction ID".to_string(),
-                    ));
-                }
-                println!("Operation created: {}", opid_list[0]);
-            }
-        }
+        send_operation(operation, data)?;
     }
 
     Ok(())
@@ -527,15 +538,6 @@ fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
         println!("Bad parameter:{}, not a boolean (true, false)", params[0]);
     };
     Ok(())
-}
-
-fn query_addresses<'a>(data: &'a ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
-    let url = format!(
-        "http://{}/api/v1/addresses_data?{}",
-        data.node_ip,
-        serde_qs::to_string(&Addresses { addrs })?
-    );
-    reqwest::blocking::get(&url).map_err(|err| err.into())
 }
 
 fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
@@ -586,6 +588,16 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<data::StakerInfo>()?;
         println!("staker_info:");
+        println!("{}", resp);
+    }
+    Ok(())
+}
+
+fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/next_draws/{}", data.node_ip, params[0]);
+    if let Some(resp) = request_data(data, &url)? {
+        let resp = resp.json::<data::NextDraws>()?;
+        println!("next_draws:");
         println!("{}", resp);
     }
     Ok(())
@@ -796,6 +808,47 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
         }
     }
     Ok(())
+}
+
+//utility functions
+
+fn send_operation(operation: Operation, data: &ReplData) -> Result<(), ReplError> {
+    let resp = reqwest::blocking::Client::new()
+        .post(&format!("http://{}/api/v1/send_operations", data.node_ip))
+        .json(&vec![operation])
+        .send()?;
+    if resp.status() != StatusCode::OK {
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
+            .unwrap();
+        println!("Server response error. Status: {} - {}", status, message);
+    } else {
+        if data.cli {
+            println!("{}", resp.text().unwrap());
+        } else {
+            let opid_list = resp.json::<Vec<OperationId>>()?;
+            if opid_list.len() == 0 {
+                return Err(ReplError::GeneralError(
+                    "Could not obtain the transaction ID".to_string(),
+                ));
+            }
+            println!("Operation created: {}", opid_list[0]);
+        }
+    }
+
+    Ok(())
+}
+
+fn query_addresses<'a>(data: &'a ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
+    let url = format!(
+        "http://{}/api/v1/addresses_data?{}",
+        data.node_ip,
+        serde_qs::to_string(&Addresses { addrs })?
+    );
+    reqwest::blocking::get(&url).map_err(|err| err.into())
 }
 
 fn format_url_with_to_from(
