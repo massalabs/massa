@@ -56,6 +56,8 @@ pub fn get_consensus_config() -> ConsensusConfig {
 pub fn get_protocol_config() -> ProtocolConfig {
     ProtocolConfig {
         ask_block_timeout: 10.into(),
+        max_node_known_blocks_size: 100,
+        max_node_wanted_blocks_size: 100,
     }
 }
 
