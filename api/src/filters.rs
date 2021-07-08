@@ -422,12 +422,13 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
-    let address_data = warp::get()
-        .and(warp::path("api"))
+    let address_data = warp::path("api")
         .and(warp::path("v1"))
-        .and(warp::path("address_data"))
+        .and(warp::path("addresses_data"))
         .and(warp::path::end())
-        .and(warp::query::<Addresses>())
+        //        .and(warp::query::<Addresses>())
+        .and(warp::post())
+        .and(warp::body::json())
         .and_then(move |Addresses { addrs }| get_address_data(addrs, evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
