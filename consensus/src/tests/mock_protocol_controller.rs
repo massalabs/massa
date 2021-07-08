@@ -46,7 +46,7 @@ impl MockProtocolController {
                 _ = &mut timer => return None
             }
             //add a delay to avoid other task that we wait for to starve
-            // sleep(std::time::Duration::from_millis(20)).await;
+            sleep(std::time::Duration::from_millis(20)).await;
         }
     }
 
