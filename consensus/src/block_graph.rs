@@ -2,7 +2,7 @@
 use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::{
     error::ConsensusError,
-    ledger::{LedgerChange, LedgerData},
+    ledger::{Ledger, LedgerChange, LedgerData},
 };
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use crypto::signature::derive_public_key;
@@ -624,6 +624,7 @@ pub struct BlockGraph {
     max_cliques: Vec<HashSet<BlockId>>,
     to_propagate: HashMap<BlockId, Block>,
     attack_attempts: Vec<BlockId>,
+    ledger: Ledger,
 }
 
 #[derive(Debug)]
@@ -707,6 +708,7 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
+            let ledger = Ledger::new(cfg.clone(), serialization_context.clone())?;
             let mut res_graph = BlockGraph {
                 cfg,
                 serialization_context,
@@ -731,6 +733,7 @@ impl BlockGraph {
                     .collect(),
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
+                ledger,
             };
             // compute block descendants
             let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
@@ -763,6 +766,7 @@ impl BlockGraph {
             }
             Ok(res_graph)
         } else {
+            let ledger = Ledger::new(cfg.clone(), serialization_context.clone())?;
             Ok(BlockGraph {
                 cfg,
                 serialization_context,
@@ -775,6 +779,7 @@ impl BlockGraph {
                 max_cliques: vec![HashSet::new()],
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
+                ledger,
             })
         }
     }

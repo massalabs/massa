@@ -14,7 +14,7 @@ use models::{
 use models::{DeserializeVarInt, Operation};
 use serde::{Deserialize, Serialize};
 
-struct Ledger {
+pub struct Ledger {
     ledger_per_thread: Vec<Tree>, // containing (Address, LedgerData)
     latest_final_periods: Tree,   // containing (thread_number: u8, latest_final_period: u64)
     cfg: ConsensusConfig,
@@ -107,7 +107,10 @@ impl OerationLedgerInterface for Operation {
 
 impl Ledger {
     /// if no latest_final_periods in file, they are initialized at 0u64
-    fn new(cfg: ConsensusConfig, context: SerializationContext) -> Result<Ledger, ConsensusError> {
+    pub fn new(
+        cfg: ConsensusConfig,
+        context: SerializationContext,
+    ) -> Result<Ledger, ConsensusError> {
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
             .cache_capacity(cfg.ledger_cache_capacity)
