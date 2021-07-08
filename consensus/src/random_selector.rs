@@ -43,15 +43,14 @@ impl RandomSelector {
         })
     }
 
-    pub fn draw(&mut self, thread_index: u8, iteration: u64) -> u32 {
-        while iteration >= (self.cache[thread_index as usize].len() as u64) {
-            self.cache[thread_index as usize].push(
+    pub fn draw(&mut self, slot: (u64, u8)) -> u32 {
+        while slot.0 >= (self.cache[slot.1 as usize].len() as u64) {
+            self.cache[slot.1 as usize].push(
                 self.distribution
-                    .sample(&mut self.thread_generators[thread_index as usize])
-                    as u32,
+                    .sample(&mut self.thread_generators[slot.1 as usize]) as u32,
             );
         }
-        self.cache[thread_index as usize][iteration as usize]
+        self.cache[slot.1 as usize][slot.0 as usize]
     }
 }
 
@@ -71,8 +70,8 @@ mod tests {
         let mut selector2 = get_3thread_4participant_random_selector();
 
         for index in 0..1000 {
-            let rnd1 = selector1.draw(1, 1210 + index);
-            let rnd2 = selector2.draw(1, 1210 + index);
+            let rnd1 = selector1.draw((1210 + index, 1));
+            let rnd2 = selector2.draw((1210 + index, 1));
             assert_eq!(rnd1, rnd2, "determinism problem")
         }
     }
@@ -84,8 +83,8 @@ mod tests {
         let mut overlaps = 0;
         let trials: u64 = 1000;
         for index in 0..trials {
-            let rnd1 = selector.draw(0, 1210 + index);
-            let rnd2 = selector.draw(1, 1210 + index);
+            let rnd1 = selector.draw((1210 + index, 0));
+            let rnd2 = selector.draw((1210 + index, 1));
             if rnd1 == rnd2 {
                 overlaps += 1;
             }
@@ -101,9 +100,9 @@ mod tests {
         let mut selector = get_3thread_4participant_random_selector();
         let mut overlaps = 0;
         let trials: u64 = 1000;
-        let mut prev = selector.draw(2, 1210);
+        let mut prev = selector.draw((1210, 2));
         for index in 1..trials {
-            let new = selector.draw(2, 1210 + index);
+            let new = selector.draw((1210 + index, 2));
             if new == prev {
                 overlaps += 1;
             }
@@ -119,9 +118,9 @@ mod tests {
     fn test_same_draw() {
         let mut selector = get_3thread_4participant_random_selector();
         let trials: u64 = 1000;
-        let prev = selector.draw(2, 1210);
+        let prev = selector.draw((1210, 2));
         for _ in 1..trials {
-            let new = selector.draw(2, 1210);
+            let new = selector.draw((1210, 2));
             assert_eq!(
                 prev, new,
                 "consecutive draws of the same iteration are not be the same"

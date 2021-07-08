@@ -6,7 +6,7 @@ use super::protocol_controller::{NodeId, ProtocolController};
 use crate::error::{ChannelError, CommunicationError};
 use crate::network::network_controller::NetworkController;
 use async_trait::async_trait;
-use crypto::signature::SignatureEngine;
+use crypto::{hash::Hash, signature::SignatureEngine};
 use futures::StreamExt;
 use models::block::Block;
 pub use node_worker::{NodeCommand, NodeEvent};
@@ -106,16 +106,14 @@ impl<NetworkControllerT: NetworkController> ProtocolController
 
     async fn propagate_block(
         &mut self,
+        hash: Hash,
         block: &Block,
-        exclude_node: Option<NodeId>,
-        restrict_to_node: Option<NodeId>,
     ) -> Result<(), CommunicationError> {
-        massa_trace!("block_propagation_order", {"block": &block, "excluding": &exclude_node, "including": &restrict_to_node});
+        massa_trace!("block_propagation_order", { "block": hash });
         self.protocol_command_tx
             .send(ProtocolCommand::PropagateBlock {
+                hash,
                 block: block.clone(),
-                exclude_node,
-                restrict_to_node,
             })
             .await
             .map_err(|err| ChannelError::from(err).into())

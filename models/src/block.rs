@@ -15,7 +15,7 @@ pub struct Block {
 pub struct BlockHeader {
     pub creator: PublicKey,
     pub thread_number: u8,
-    pub slot_number: u64,
+    pub period_number: u64,
     pub roll_number: u32,
     pub parents: Vec<Hash>,
     pub endorsements: Vec<Option<Signature>>,

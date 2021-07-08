@@ -8,7 +8,7 @@ use crate::error::{ChannelError, CommunicationError, HandshakeErrorType};
 use crate::network::network_controller::{
     ConnectionClosureReason, ConnectionId, NetworkController, NetworkEvent,
 };
-use crypto::signature::PrivateKey;
+use crypto::{hash::Hash, signature::PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::block::Block;
 use std::collections::{hash_map, HashMap, HashSet};
@@ -18,11 +18,7 @@ use tokio::task::JoinHandle;
 
 #[derive(Clone, Debug)]
 pub enum ProtocolCommand {
-    PropagateBlock {
-        restrict_to_node: Option<NodeId>,
-        exclude_node: Option<NodeId>,
-        block: Block,
-    },
+    PropagateBlock { hash: Hash, block: Block },
 }
 
 pub struct ProtocolWorker<NetworkControllerT: 'static + NetworkController> {
@@ -87,33 +83,17 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 // listen to incoming commands
                 res = self.controller_command_rx.next() => match res {
                     Some(ProtocolCommand::PropagateBlock {
+                        hash,
                         block,
-                        exclude_node,
-                        restrict_to_node,
                     }) => {
-                        massa_trace!("block_propagation", {"block": &block, "excluding": &exclude_node, "including": &restrict_to_node});
-                        match restrict_to_node {
-                        Some(target_node_id) => {
-                            let (_, node_command_tx, _) = self
-                                .active_nodes
-                                .get(&target_node_id)
-                                .ok_or(CommunicationError::GeneralProtocolError(format!("sending block to missing node:{}", target_node_id)))?;
+                        massa_trace!("block_propagation", {"block": hash});
+                        // TODO in the future, send only to the ones that don't already have it (see issue #94)
+                        for (_, (_, node_command_tx, _)) in self.active_nodes.iter() {
                             node_command_tx
-                                .send(NodeCommand::SendBlock(block))
+                                .send(NodeCommand::SendBlock(block.clone()))
                                 .await.map_err(|err| ChannelError::from(err))?;
                         }
-                        None => {
-                            for (target_node_id, (_, node_command_tx, _)) in self.active_nodes.iter() {
-                                if Some(*target_node_id) != exclude_node {
-                                    node_command_tx
-                                        .send(NodeCommand::SendBlock(block.clone()))
-                                        .await.map_err(|err| ChannelError::from(err))?;
-                                }
-                            }
-                        }
                     }
-                    }
-                    // Some(_) => {}  // TODO
                     None => break  // finished
                 },
 
@@ -340,7 +320,6 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                     .merge_advertised_peer_list(lst)
                     .await?;
             }
-            // received block (TODO test only)
             Some(NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data))) => self
                 .controller_event_tx
                 .send(ProtocolEvent(
@@ -349,7 +328,6 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 ))
                 .await
                 .map_err(|err| ChannelError::from(err))?,
-            // received transaction (TODO test only)
             Some(NodeEvent(from_node_id, NodeEventType::ReceivedTransaction(data))) => self
                 .controller_event_tx
                 .send(ProtocolEvent(

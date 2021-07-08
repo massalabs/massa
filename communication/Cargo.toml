@@ -16,8 +16,8 @@ toml = { version = "0.5" }
 serde_json = { version = "1.0" }
 flexbuffers = { version = "0.2" }
 async-trait = "0.1.42"
-itertools = "0.9.0"
-rand = { version = "0.7.3"}
+itertools = "0.10"
+rand = { version = "0.8"}
 thiserror = "1.0"
 
 logging = { path = "../logging" }
@@ -29,4 +29,4 @@ time = { path = "../time" }
 [dev-dependencies]
 stderrlog = { version = "0.5" }
 pretty_assertions = "0.6"
-tempfile = "3.1"
+tempfile = "3.2"

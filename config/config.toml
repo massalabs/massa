@@ -13,6 +13,10 @@ level = 4
         ['54VEbD2R2HkUz2G5NGHyxhaFDhrQFG62UqFLWsUywnHtDsM8qh','2eLQSjhrep9Grw7yDifXnDKgCc1WTXBCtdeREzuJd9jiSZuZmr']
     ]
     current_node_index = 0
+    max_discarded_blocks = 1000
+    future_block_processing_max_periods = 3
+    max_future_processing_blocks = 100
+    delta_f0 = 576
     
 
 [protocol]

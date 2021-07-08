@@ -1419,21 +1419,11 @@ mod tests {
                 bootstrap: (ip[1] % 2) == 0,
                 last_alive: match i % 4 {
                     0 => None,
-                    _ => Some(
-                        UTime::now()
-                            .unwrap()
-                            .checked_sub(rng.gen_range(0, 1000000).into())
-                            .unwrap(),
-                    ),
+                    _ => Some(UTime::now().unwrap().checked_sub(50000.into()).unwrap()),
                 },
                 last_failure: match i % 5 {
                     0 => None,
-                    _ => Some(
-                        UTime::now()
-                            .unwrap()
-                            .checked_sub(rng.gen_range(0, 1000000).into())
-                            .unwrap(),
-                    ),
+                    _ => Some(UTime::now().unwrap().checked_sub(60000.into()).unwrap()),
                 },
                 advertised: (ip[2] % 2) == 0,
                 active_out_connection_attempts: 0,

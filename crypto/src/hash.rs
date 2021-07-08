@@ -2,7 +2,7 @@ use crate::error::CryptoError;
 use bitcoin_hashes;
 pub const HASH_SIZE_BYTES: usize = 32;
 
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
 
 impl std::fmt::Display for Hash {

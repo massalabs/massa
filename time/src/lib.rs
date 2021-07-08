@@ -1,12 +1,19 @@
 mod error;
 pub use error::TimeError;
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::Instant;
 
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UTime(u64);
+
+impl fmt::Display for UTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_millis())
+    }
+}
 
 impl From<u64> for UTime {
     fn from(value: u64) -> Self {
@@ -80,25 +87,38 @@ impl UTime {
             .and_then(|value| Ok(UTime(value)))
     }
 
-    pub fn checked_div(self, t: UTime) -> Result<Self, TimeError> {
+    pub fn checked_div_time(self, t: UTime) -> Result<u64, TimeError> {
         self.0
             .checked_div(t.0)
+            .ok_or(TimeError::CheckedOperationError(format!("division error")))
+    }
+
+    pub fn checked_div_u64(self, n: u64) -> Result<UTime, TimeError> {
+        self.0
+            .checked_div(n)
             .ok_or(TimeError::CheckedOperationError(format!("division error")))
             .and_then(|value| Ok(UTime(value)))
     }
 
-    pub fn checked_mul(self, t: UTime) -> Result<Self, TimeError> {
+    pub fn checked_mul(self, n: u64) -> Result<Self, TimeError> {
         self.0
-            .checked_mul(t.0)
+            .checked_mul(n)
             .ok_or(TimeError::CheckedOperationError(format!(
                 "multiplication error"
             )))
             .and_then(|value| Ok(UTime(value)))
     }
 
-    pub fn checked_rem(self, t: UTime) -> Result<Self, TimeError> {
+    pub fn checked_rem_time(self, t: UTime) -> Result<Self, TimeError> {
         self.0
             .checked_rem(t.0)
+            .ok_or(TimeError::CheckedOperationError(format!("remainder error")))
+            .and_then(|value| Ok(UTime(value)))
+    }
+
+    pub fn checked_rem_u64(self, n: u64) -> Result<Self, TimeError> {
+        self.0
+            .checked_rem(n)
             .ok_or(TimeError::CheckedOperationError(format!("remainder error")))
             .and_then(|value| Ok(UTime(value)))
     }
