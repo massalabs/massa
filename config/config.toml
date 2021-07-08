@@ -10,5 +10,6 @@ target_outgoing_connections = 20
 max_incoming_connections = 100
 max_simultaneous_outgoing_connection_attempts = 5
 max_simultaneous_incoming_connection_attempts = 10
-max_known_nodes = 1000
+max_idle_peers = 1000
+max_banned_peers = 1000
 peer_file_dump_interval_seconds = 30.0
