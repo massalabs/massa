@@ -9,21 +9,15 @@ use tokio::sync::mpsc;
 use crate::{
     config::{StorageConfig, CHANNEL_SIZE},
     error::StorageError,
-    storage_worker::StorageEvent,
 };
 
 pub fn start_storage_controller(
     cfg: StorageConfig,
-) -> Result<(StorageCommandSender, StorageEventReceiver, StorageManager), StorageError> {
+) -> Result<(StorageCommandSender, StorageManager), StorageError> {
     debug!("starting storage controller");
     massa_trace!("start", {});
-    let (_event_tx, event_rx) = mpsc::channel::<StorageEvent>(CHANNEL_SIZE);
     let db = BlockStorage::open(&cfg)?;
-    Ok((
-        StorageCommandSender(db.clone()),
-        StorageEventReceiver(event_rx),
-        StorageManager(db),
-    ))
+    Ok((StorageCommandSender(db.clone()), StorageManager(db)))
 }
 
 #[derive(Clone)]
@@ -50,33 +44,10 @@ impl StorageCommandSender {
     }
 }
 
-pub struct StorageEventReceiver(pub mpsc::Receiver<StorageEvent>);
-
-impl StorageEventReceiver {
-    pub async fn wait_event(&mut self) -> Result<StorageEvent, StorageError> {
-        self.0
-            .recv()
-            .await
-            .ok_or(StorageError::ControllerEventError)
-    }
-
-    pub async fn drain(mut self) -> VecDeque<StorageEvent> {
-        let mut remaining_events: VecDeque<StorageEvent> = VecDeque::new();
-        while let Some(evt) = self.0.recv().await {
-            remaining_events.push_back(evt);
-        }
-        remaining_events
-    }
-}
-
 pub struct StorageManager(pub BlockStorage);
 
 impl StorageManager {
-    pub async fn stop(
-        self,
-        storage_event_receiver: StorageEventReceiver,
-    ) -> Result<(), StorageError> {
-        let _remaining_events = storage_event_receiver.drain().await;
+    pub async fn stop(self) -> Result<(), StorageError> {
         Ok(())
     }
 }

@@ -83,6 +83,3 @@ impl BlockStorage {
             .collect::<Result<HashMap<Hash, Block>, StorageError>>()
     }
 }
-
-#[derive(Debug, Clone)]
-pub enum StorageEvent {}
