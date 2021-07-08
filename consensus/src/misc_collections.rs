@@ -1,6 +1,6 @@
 use crate::error::ConsensusError;
 use crypto::hash::Hash;
-use models::{block::Block, slot::Slot};
+use models::{Block, Slot};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::iter::FromIterator;
 
@@ -48,7 +48,7 @@ impl FutureIncomingBlocks {
             hash_map::Entry::Vacant(vac) => vac,
         };
         // add into queue
-        let slot = block.header.slot;
+        let slot = block.header.content.slot;
         let pos: usize = self
             .struct_deque
             .binary_search(&(slot, hash))
@@ -154,8 +154,8 @@ impl DependencyWaitingBlocks {
         self.blocked_to_dep
             .iter()
             .filter_map(|(hash, (_, block, _))| {
-                if block.header.slot.period
-                    <= latest_final_periods[block.header.slot.thread as usize]
+                if block.header.content.slot.period
+                    <= latest_final_periods[block.header.content.slot.thread as usize]
                 {
                     Some(*hash)
                 } else {
@@ -200,7 +200,7 @@ impl DependencyWaitingBlocks {
             }
             if let Some((pull_seq, pull_block, pull_deps)) = self.blocked_to_dep.get(&pull_h) {
                 stack.extend(pull_deps); // traverse dependencies
-                to_promote.insert(pull_h, (pull_block.header.slot, *pull_seq));
+                to_promote.insert(pull_h, (pull_block.header.content.slot, *pull_seq));
                 // remove from vecdeque
                 self.vec_blocked
                     .remove(
@@ -382,42 +382,47 @@ impl DependencyWaitingBlocks {
 #[cfg(test)]
 mod tests {
     use crypto::signature::SignatureEngine;
-    use models::block::BlockHeader;
+    use models::{BlockHeader, BlockHeaderContent, SerializationContext};
 
     use crate::random_selector::RandomSelector;
 
     use super::*;
 
     fn create_standalone_block(slot: Slot) -> (Hash, Block) {
-        let signature_engine = SignatureEngine::new();
+        let mut signature_engine = SignatureEngine::new();
         let private_key = SignatureEngine::generate_random_private_key();
         let public_key = signature_engine.derive_public_key(&private_key);
-        let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
+        let mut _selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
         let example_hash = Hash::hash("42".as_bytes());
         let parents = Vec::new();
 
-        let header = BlockHeader {
-            creator: public_key,
-            slot,
-            roll_number: selector.draw(slot),
-            parents,
-            endorsements: Vec::new(),
-            out_ledger_hash: example_hash,
-            operation_merkle_root: example_hash,
-        };
-
-        let hash = header.compute_hash().expect("could not computte hash"); // in a test
+        let (hash, header) = BlockHeader::new_signed(
+            &mut signature_engine,
+            &private_key,
+            BlockHeaderContent {
+                creator: public_key,
+                slot,
+                parents: parents.clone(),
+                out_ledger_hash: example_hash,
+                operation_merkle_root: example_hash,
+            },
+            &SerializationContext {
+                max_block_size: 1024 * 1024,
+                max_block_operations: 1024,
+                parent_count: parents.len() as u8,
+                max_peer_list_length: 128,
+                max_message_size: 3 * 1024 * 1024,
+            },
+        )
+        .unwrap();
 
         (
             hash,
             Block {
                 header,
                 operations: Vec::new(),
-                signature: signature_engine
-                    .sign(&hash, &private_key)
-                    .expect("could not sign"), // in a test
             },
         )
     }

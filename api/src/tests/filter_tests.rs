@@ -1,12 +1,11 @@
 use crate::ApiEvent;
-use models::slot::Slot;
 use storage::{start_storage_controller, StorageConfig};
 
 use super::tools::*;
 use communication::network::PeerInfo;
 use consensus::{DiscardReason, ExportCompiledBlock};
 use crypto::hash::Hash;
-use models::block::{Block, BlockHeader};
+use models::{Block, BlockHeader, SerializationContext, Slot};
 use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
@@ -97,7 +96,7 @@ async fn test_cliques() {
     handle.await.unwrap();
     let expected = hash_set
         .iter()
-        .map(|hash| (hash, get_test_block().header.slot))
+        .map(|hash| (hash, get_test_block().header.content.slot))
         .collect::<Vec<(&Hash, Slot)>>();
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
@@ -188,7 +187,7 @@ async fn test_current_parents() {
     assert_eq!(res.status(), 200);
 
     handle.await.unwrap();
-    let expected = (get_test_hash(), get_test_block().header.slot);
+    let expected = (get_test_hash(), get_test_block().header.content.slot);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = serde_json::from_str(
         &serde_json::to_string(&vec![expected.clone(), expected.clone()]).unwrap(),
@@ -201,6 +200,14 @@ async fn test_current_parents() {
 
 #[tokio::test]
 async fn test_get_graph_interval() {
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
+
     let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
@@ -221,6 +228,8 @@ async fn test_get_graph_interval() {
         .path(&"/api/v1/graph_interval")
         .matches(&filter)
         .await;
+
+    handle.await.unwrap();
 
     assert!(matches);
     let (filter, mut rx_api) = mock_filter(None);
@@ -260,7 +269,7 @@ async fn test_get_graph_interval() {
     let mut expected = get_test_block_graph();
     expected.active_blocks.insert(
         get_test_hash(),
-        get_test_compiled_exported_block(Slot::new(1, 0), None),
+        get_test_compiled_exported_block(&serialization_context, Slot::new(1, 0), None),
     );
     let cloned = expected.clone();
 
@@ -294,9 +303,9 @@ async fn test_get_graph_interval() {
     let block = expected.active_blocks.get(&get_test_hash()).unwrap();
     let expected = vec![(
         get_test_hash(),
-        block.block.slot,
+        block.block.content.slot,
         "active", // in tests there are no blocks in gi_head, so no just active blocks
-        block.block.parents.clone(),
+        block.block.content.parents.clone(),
     )];
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
@@ -308,7 +317,8 @@ async fn test_get_graph_interval() {
     let mut cfg = get_consensus_config();
     cfg.t0 = 2000.into();
 
-    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
+    let (storage_command_tx, (block_a, block_b, block_c)) =
+        get_test_storage(cfg, serialization_context.clone()).await;
 
     let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
 
@@ -329,14 +339,22 @@ async fn test_get_graph_interval() {
     let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
     expected.push((
-        block_b.header.compute_hash().unwrap(),
-        block_b.header.slot,
+        block_b
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_b.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
     expected.push((
-        block_c.header.compute_hash().unwrap(),
-        block_c.header.slot,
+        block_c
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_c.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
@@ -368,20 +386,32 @@ async fn test_get_graph_interval() {
     let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
     expected.push((
-        block_a.header.compute_hash().unwrap(),
-        block_a.header.slot,
+        block_a
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_a.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
     expected.push((
-        block_b.header.compute_hash().unwrap(),
-        block_b.header.slot,
+        block_b
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_b.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
     expected.push((
-        block_c.header.compute_hash().unwrap(),
-        block_c.header.slot,
+        block_c
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_c.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
@@ -412,20 +442,32 @@ async fn test_get_graph_interval() {
     let obtained: Vec<(Hash, Slot, String, Vec<Hash>)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
     expected.push((
-        block_a.header.compute_hash().unwrap(),
-        block_a.header.slot,
+        block_a
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_a.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
     expected.push((
-        block_b.header.compute_hash().unwrap(),
-        block_b.header.slot,
+        block_b
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_b.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
     expected.push((
-        block_c.header.compute_hash().unwrap(),
-        block_c.header.slot,
+        block_c
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_c.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
@@ -457,8 +499,12 @@ async fn test_get_graph_interval() {
     let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
 
     expected.push((
-        block_b.header.compute_hash().unwrap(),
-        block_b.header.slot,
+        block_b
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_b.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
@@ -486,8 +532,12 @@ async fn test_get_graph_interval() {
     let mut expected = Vec::<(Hash, Slot, String, Vec<Hash>)>::new();
 
     expected.push((
-        block_c.header.compute_hash().unwrap(),
-        block_c.header.slot,
+        block_c
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_c.header.content.slot,
         "final".to_string(),
         Vec::new(),
     ));
@@ -700,6 +750,14 @@ async fn test_peers() {
 
 #[tokio::test]
 async fn test_get_block_interval() {
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
+
     let mut graph = get_test_block_graph();
     graph.best_parents = vec![get_test_hash(), get_test_hash()];
 
@@ -735,7 +793,7 @@ async fn test_get_block_interval() {
         .await;
     assert!(matches);
 
-    let (filter, mut rx_api) = mock_filter(None);
+    let (filter, _rx_api) = mock_filter(None);
 
     // block not found
     let start: UTime = 0.into();
@@ -753,7 +811,7 @@ async fn test_get_block_interval() {
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&Vec::<(Hash, Slot)>::new()).unwrap()).unwrap();
     assert_eq!(obtained, expected);
-    //handle.await.unwrap();
+    handle.await.unwrap();
 
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -782,19 +840,21 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let mut expected = Vec::new();
-    expected.push((get_test_hash(), get_test_block().header.slot));
+    expected.push((get_test_hash(), get_test_block().header.content.slot));
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
+    handle.await.unwrap();
 
     // test link with storage
 
     let mut cfg = get_consensus_config();
     cfg.t0 = 2000.into();
 
-    let (storage_command_tx, (block_a, block_b, block_c)) = get_test_storage(cfg).await;
+    let (storage_command_tx, (block_a, block_b, block_c)) =
+        get_test_storage(cfg, serialization_context.clone()).await;
 
     let (filter, rx_api) = mock_filter(Some(storage_command_tx.clone()));
 
@@ -835,7 +895,14 @@ async fn test_get_block_interval() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let mut expected = Vec::<(Hash, Slot)>::new();
-    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
+    expected.push((
+        block_b
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_b.header.content.slot,
+    ));
     let expected: serde_json::Value =
         serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
@@ -859,9 +926,30 @@ async fn test_get_block_interval() {
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(Hash, Slot)>::new();
-    expected.push((block_a.header.compute_hash().unwrap(), block_a.header.slot));
-    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
-    expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+    expected.push((
+        block_a
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_a.header.content.slot,
+    ));
+    expected.push((
+        block_b
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_b.header.content.slot,
+    ));
+    expected.push((
+        block_c
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_c.header.content.slot,
+    ));
     for item in obtained.iter() {
         assert!(expected.contains(&item))
     }
@@ -888,7 +976,14 @@ async fn test_get_block_interval() {
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(Hash, Slot)>::new();
-    expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+    expected.push((
+        block_c
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_c.header.content.slot,
+    ));
 
     for item in obtained.iter() {
         assert!(expected.contains(&item))
@@ -916,8 +1011,22 @@ async fn test_get_block_interval() {
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let obtained: Vec<(Hash, Slot)> = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(Hash, Slot)>::new();
-    expected.push((block_b.header.compute_hash().unwrap(), block_b.header.slot));
-    expected.push((block_c.header.compute_hash().unwrap(), block_c.header.slot));
+    expected.push((
+        block_b
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_b.header.content.slot,
+    ));
+    expected.push((
+        block_c
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block_c.header.content.slot,
+    ));
 
     for item in obtained.iter() {
         assert!(expected.contains(&item))
@@ -930,6 +1039,14 @@ async fn test_get_block_interval() {
 
 #[tokio::test]
 async fn test_get_block() {
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
+
     let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
@@ -999,7 +1116,8 @@ async fn test_get_block() {
         cache_capacity: 256,  //little to force flush cache
         flush_interval: None, //defaut
     };
-    let (storage_command_tx, _storage_manager) = start_storage_controller(storage_config).unwrap();
+    let (storage_command_tx, _storage_manager) =
+        start_storage_controller(storage_config, serialization_context.clone()).unwrap();
     let (filter, mut rx_api) = mock_filter(None);
 
     let handle = tokio::spawn(async move {
@@ -1232,6 +1350,14 @@ async fn test_state() {
 
 #[tokio::test]
 async fn test_last_stale() {
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
+
     //test with empty stale block
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1268,11 +1394,17 @@ async fn test_last_stale() {
     graph.discarded_blocks.map.extend(vec![
         (
             get_test_hash(),
-            (DiscardReason::Invalid, get_header(Slot::new(1, 1), None)),
+            (
+                DiscardReason::Invalid,
+                get_header(&serialization_context, Slot::new(1, 1), None).1,
+            ),
         ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
+            (
+                DiscardReason::Stale,
+                get_header(&serialization_context, Slot::new(2, 0), None).1,
+            ),
         ),
     ]);
     let cloned = graph.clone();
@@ -1311,6 +1443,14 @@ async fn test_last_stale() {
 
 #[tokio::test]
 async fn test_last_invalid() {
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
+
     //test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1347,11 +1487,17 @@ async fn test_last_invalid() {
     graph.discarded_blocks.map.extend(vec![
         (
             get_test_hash(),
-            (DiscardReason::Invalid, get_header(Slot::new(1, 1), None)),
+            (
+                DiscardReason::Invalid,
+                get_header(&serialization_context, Slot::new(1, 1), None).1,
+            ),
         ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
+            (
+                DiscardReason::Stale,
+                get_header(&serialization_context, Slot::new(2, 0), None).1,
+            ),
         ),
     ]);
     let cloned = graph.clone();
@@ -1387,6 +1533,14 @@ async fn test_last_invalid() {
 
 #[tokio::test]
 async fn test_staker_info() {
+    let serialization_context = SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_block_operations: 1024,
+        parent_count: 2,
+        max_peer_list_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+    };
+
     let staker = get_dummy_staker();
     let cloned_staker = staker.clone();
     //test with empty final block
@@ -1439,20 +1593,23 @@ async fn test_staker_info() {
         get_test_hash(),
         (
             DiscardReason::Invalid,
-            get_header(Slot::new(1, 1), Some(staker)),
+            get_header(&serialization_context, Slot::new(1, 1), Some(staker)).1,
         ),
     )];
     graph.discarded_blocks.map.extend(vec![
         staker_s_discarded[0].clone(),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(Slot::new(2, 0), None)),
+            (
+                DiscardReason::Stale,
+                get_header(&serialization_context, Slot::new(2, 0), None).1,
+            ),
         ),
     ]);
 
     let staker_s_active = vec![(
         get_another_test_hash(),
-        get_test_compiled_exported_block(Slot::new(2, 1), Some(staker)),
+        get_test_compiled_exported_block(&serialization_context, Slot::new(2, 1), Some(staker)),
     )];
     graph
         .active_blocks

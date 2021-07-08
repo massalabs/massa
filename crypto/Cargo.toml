@@ -11,7 +11,6 @@ bitcoin_hashes = "0.9"
 secp256k1 = { version = "0.20", features = ["rand-std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-flexbuffers = { version = "0.2" }
 bs58 = { version = "0.4", features = ["check"] }
 rand = { version = "0.8"}
 thiserror = "1.0"

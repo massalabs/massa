@@ -1,5 +1,5 @@
 use crate::{network::ConnectionId, protocol::ProtocolEvent};
-use models::error::ModelsError;
+use models::ModelsError;
 use std::net::IpAddr;
 use thiserror::Error;
 
@@ -31,8 +31,6 @@ pub enum CommunicationError {
     SerdeError(#[from] serde_json::Error),
     #[error("crypto error {0}")]
     CryptoError(#[from] crypto::CryptoError),
-    #[error("Flexbuffer error {0}")]
-    FlexbufferError(#[from] FlexbufferError),
     #[error("handhsake error:{0:?}")]
     HandshakeError(HandshakeErrorType),
     #[error("the protocol controller should have close everything before shuting down")]
@@ -43,16 +41,6 @@ pub enum CommunicationError {
     MissingPeersError,
     #[error("Could not hash block header: {0}")]
     HeaderHashError(#[from] ModelsError),
-}
-
-#[derive(Error, Debug)]
-pub enum FlexbufferError {
-    #[error("Flexbuffer serialisation error {0}")]
-    FlexbufferSerializationError(#[from] flexbuffers::SerializationError),
-    #[error("Flexbuffer reader error {0}")]
-    FlexbufferReaderError(#[from] flexbuffers::ReaderError),
-    #[error("Flexbuffer deserialisation error {0}")]
-    FlexbufferDeserializationError(#[from] flexbuffers::DeserializationError),
 }
 
 #[derive(Debug)]

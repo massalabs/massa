@@ -1,5 +1,5 @@
 use crypto::hash::Hash;
-use models::slot::Slot;
+use models::Slot;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 use rand_xoshiro::rand_core::SeedableRng;

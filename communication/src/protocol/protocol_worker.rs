@@ -8,9 +8,9 @@ use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::network::{
     ConnectionClosureReason, ConnectionId, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
-use crypto::{hash::Hash, signature::PrivateKey, signature::Signature, signature::SignatureEngine};
+use crypto::{hash::Hash, signature::PrivateKey, signature::SignatureEngine};
 use futures::{stream::FuturesUnordered, StreamExt};
-use models::block::{Block, BlockHeader};
+use models::{Block, BlockHeader, SerializationContext};
 use std::collections::{hash_map, HashMap, HashSet};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -33,7 +33,6 @@ pub enum ProtocolCommand {
     /// Propagate header of a given block.
     PropagateBlockHeader {
         hash: Hash,
-        signature: Signature,
         header: BlockHeader,
     },
     /// Propagate hash of a given block header
@@ -86,6 +85,8 @@ impl NodeInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     cfg: ProtocolConfig,
+    // Serialization context
+    serialization_context: SerializationContext,
     /// Our node id.
     self_node_id: NodeId,
     /// Our private key.
@@ -124,6 +125,7 @@ impl ProtocolWorker {
     /// * controller_manager_rx: Channel receiving management commands.
     pub fn new(
         cfg: ProtocolConfig,
+        serialization_context: SerializationContext,
         self_node_id: NodeId,
         private_key: PrivateKey,
         network_command_sender: NetworkCommandSender,
@@ -135,6 +137,7 @@ impl ProtocolWorker {
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         ProtocolWorker {
             cfg,
+            serialization_context,
             self_node_id,
             private_key,
             network_command_sender,
@@ -216,20 +219,13 @@ impl ProtocolWorker {
 
     async fn process_command(&mut self, cmd: ProtocolCommand) -> Result<(), CommunicationError> {
         match cmd {
-            ProtocolCommand::PropagateBlockHeader {
-                signature,
-                hash,
-                header,
-            } => {
+            ProtocolCommand::PropagateBlockHeader { hash, header } => {
                 massa_trace!("block_header_propagation", { "block_header": header });
                 for node_info in self.active_nodes.values() {
                     if !node_info.known_blocks.contains(&hash) {
                         node_info
                             .node_command_tx
-                            .send(NodeCommand::SendBlockHeader {
-                                signature,
-                                header: header.clone(),
-                            })
+                            .send(NodeCommand::SendBlockHeader(header.clone()))
                             .await
                             .map_err(|_| {
                                 CommunicationError::ChannelError(
@@ -301,6 +297,7 @@ impl ProtocolWorker {
                 debug!("starting handshake with connection_id={:?}", connection_id);
                 massa_trace!("handshake_start", { "connection_id": connection_id });
 
+                let serialization_context = self.serialization_context.clone();
                 let self_node_id = self.self_node_id;
                 let private_key = self.private_key;
                 let message_timeout = self.cfg.message_timeout;
@@ -309,6 +306,7 @@ impl ProtocolWorker {
                     (
                         connection_id_copy,
                         HandshakeWorker::new(
+                            serialization_context,
                             reader,
                             writer,
                             self_node_id,
@@ -462,18 +460,15 @@ impl ProtocolWorker {
     fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
-        signature: &Signature,
         source_node_id: &NodeId,
     ) -> Result<Hash, CommunicationError> {
         let hash = header
-            .compute_hash()
+            .content
+            .compute_hash(&self.serialization_context)
             .map_err(|err| CommunicationError::HeaderHashError(err))?;
 
         // check signature
-        if !SignatureEngine::new().verify(&hash, &signature, &header.creator)? {
-            // the signature is wrong.
-            // TODO in the future, ban sender node
-            // TODO re-ask ? (see issue #107)
+        if let Err(_err) = header.verify_signature(&hash, &SignatureEngine::new()) {
             return Err(CommunicationError::WrongSignature);
         }
 
@@ -512,8 +507,7 @@ impl ProtocolWorker {
                     .await?;
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block)) => {
-                let hash =
-                    self.note_header_from_node(&block.header, &block.signature, &from_node_id)?;
+                let hash = self.note_header_from_node(&block.header, &from_node_id)?;
                 self.controller_event_tx
                     .send(ProtocolEvent::ReceivedBlock { hash, block })
                     .await
@@ -536,8 +530,8 @@ impl ProtocolWorker {
                         )
                     })?
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlockHeader { signature, header }) => {
-                let hash = self.note_header_from_node(&header, &signature, &from_node_id)?;
+            NodeEvent(from_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
+                let hash = self.note_header_from_node(&header, &from_node_id)?;
                 self.controller_event_tx
                     .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
                     .await
@@ -545,13 +539,6 @@ impl ProtocolWorker {
                         CommunicationError::ChannelError("receive block event send failed".into())
                     })?
             }
-            NodeEvent(_from_node_id, NodeEventType::ReceivedTransaction(data)) => self
-                .controller_event_tx
-                .send(ProtocolEvent::ReceivedTransaction(data))
-                .await
-                .map_err(|_| {
-                    CommunicationError::ChannelError("receive transaction event send failed".into())
-                })?,
             // connection closed
             NodeEvent(from_node_id, NodeEventType::Closed(reason)) => {
                 let node_info = self

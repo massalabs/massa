@@ -2,24 +2,27 @@ use communication::protocol::{
     NodeId, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
 use crypto::hash::Hash;
-use crypto::signature::Signature;
-use models::block::{Block, BlockHeader};
+use models::{Block, BlockHeader, SerializationContext};
 use tokio::sync::mpsc;
 
 const CHANNEL_SIZE: usize = 16;
 
 pub struct MockProtocolController {
+    serialization_context: SerializationContext,
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,
     protocol_event_tx: mpsc::Sender<ProtocolEvent>,
 }
 
 impl MockProtocolController {
-    pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
+    pub fn new(
+        serialization_context: SerializationContext,
+    ) -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
         let (protocol_command_tx, protocol_command_rx) =
             mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
         (
             MockProtocolController {
+                serialization_context,
                 protocol_event_tx,
                 protocol_command_rx,
             },
@@ -33,7 +36,11 @@ impl MockProtocolController {
     }
 
     pub async fn receive_block(&mut self, block: Block) {
-        let hash = block.header.compute_hash().expect("Failed to compute hash");
+        let hash = block
+            .header
+            .content
+            .compute_hash(&self.serialization_context)
+            .expect("Failed to compute hash");
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock { hash, block })
             .await
@@ -41,16 +48,12 @@ impl MockProtocolController {
     }
 
     pub async fn receive_header(&mut self, header: BlockHeader) {
-        let hash = header.compute_hash().expect("Failed to compute hash");
+        let hash = header
+            .content
+            .compute_hash(&self.serialization_context)
+            .expect("Failed to compute hash");
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlockHeader { hash, header })
-            .await
-            .expect("could not send protocol event");
-    }
-
-    pub async fn receive_transaction(&mut self, transaction: String) {
-        self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedTransaction(transaction))
             .await
             .expect("could not send protocol event");
     }

@@ -140,7 +140,7 @@ fn cleanup_peers(
                 }
                 true
             })
-            .take(cfg.max_advertise_length)
+            .take(cfg.max_advertise_length as usize)
             .map(|&ip| PeerInfo {
                 ip,
                 banned: false,
@@ -359,12 +359,12 @@ impl PeerInfoDatabase {
         sorted_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_alive), p.last_failure));
         let mut sorted_ips: Vec<IpAddr> = sorted_peers
             .into_iter()
-            .take(self.cfg.max_advertise_length)
+            .take(self.cfg.max_advertise_length as usize)
             .map(|p| p.ip)
             .collect();
         if let Some(our_ip) = self.cfg.routable_ip {
             sorted_ips.insert(0, our_ip);
-            sorted_ips.truncate(self.cfg.max_advertise_length);
+            sorted_ips.truncate(self.cfg.max_advertise_length as usize);
         }
         sorted_ips
     }
@@ -1447,6 +1447,7 @@ mod tests {
             max_banned_peers: 3,
             max_advertise_length: 5,
             peers_file_dump_interval: UTime::from(10_000),
+            max_message_size: 3 * 10241024,
         }
     }
 

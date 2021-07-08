@@ -3,8 +3,6 @@
 
 extern crate logging;
 mod config;
-use storage::start_storage_controller;
-
 use api::{start_api_controller, ApiEvent};
 use communication::{
     network::{start_network_controller, Establisher},
@@ -12,12 +10,23 @@ use communication::{
 };
 use consensus::start_consensus_controller;
 use log::{error, info};
+use models::SerializationContext;
+use storage::start_storage_controller;
 use tokio::{
     fs::read_to_string,
     signal::unix::{signal, SignalKind},
 };
 
 async fn run(cfg: config::Config) {
+    // generate serialization context
+    let serialization_context = SerializationContext {
+        max_block_operations: cfg.consensus.max_operations_per_block,
+        parent_count: cfg.consensus.thread_count,
+        max_block_size: cfg.consensus.max_block_size,
+        max_peer_list_length: cfg.network.max_advertise_length,
+        max_message_size: cfg.network.max_message_size,
+    };
+
     // launch network controller
     let (mut network_command_sender, network_event_receiver, network_manager) =
         start_network_controller(cfg.network.clone(), Establisher::new())
@@ -25,12 +34,14 @@ async fn run(cfg: config::Config) {
             .expect("could not start network controller");
 
     let (storage_command_sender, storage_manager) =
-        start_storage_controller(cfg.storage.clone()).expect("could not start storage controller");
+        start_storage_controller(cfg.storage.clone(), serialization_context.clone())
+            .expect("could not start storage controller");
 
     // launch protocol controller
     let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
         start_protocol_controller(
             cfg.protocol.clone(),
+            serialization_context.clone(),
             network_command_sender.clone(),
             network_event_receiver,
         )
@@ -41,6 +52,7 @@ async fn run(cfg: config::Config) {
     let (consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.consensus.clone(),
+            serialization_context.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             Some(storage_command_sender.clone()),

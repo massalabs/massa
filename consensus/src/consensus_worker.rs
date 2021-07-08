@@ -8,7 +8,7 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::{block::Block, slot::Slot};
+use models::{Block, Slot};
 use std::collections::HashMap;
 use storage::StorageCommandSender;
 use tokio::{
@@ -288,7 +288,6 @@ impl ConsensusWorker {
 
         info!("Add block hash:{}", hash);
         let header = block.header.clone();
-        let signature = block.signature.clone();
         let res =
             self.block_db
                 .acknowledge_block(hash, block, &mut self.selector, self.current_slot);
@@ -322,7 +321,7 @@ impl ConsensusWorker {
                 if self.block_db.get_active_block(hash).is_some() {
                     // propagate block
                     self.protocol_command_sender
-                        .propagate_block_header(hash, signature, header)
+                        .propagate_block_header(hash, header)
                         .await?;
 
                     // unlock dependencies

@@ -34,8 +34,9 @@ pub struct NetworkConfig {
     /// Limit on the number of banned peers we remember.
     pub max_banned_peers: usize,
     /// Limit on the number of peers we advertize to others.
-    pub max_advertise_length: usize,
-    /// Peer database is dumped every peers_file_dump_interval.
-    /// In millis.
+    pub max_advertise_length: u32,
+    /// Peer database is dumped every peers_file_dump_interval in millis
     pub peers_file_dump_interval: UTime,
+    /// Maximum message length in bytes
+    pub max_message_size: u32,
 }

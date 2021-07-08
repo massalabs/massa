@@ -8,8 +8,8 @@ use crate::{
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
 use crypto::hash::Hash;
-use crypto::signature::{Signature, SignatureEngine};
-use models::block::{Block, BlockHeader};
+use crypto::signature::SignatureEngine;
+use models::{Block, BlockHeader, SerializationContext};
 use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -24,6 +24,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 /// * network_event_receiver: the NetworkEventReceiver we interact with
 pub async fn start_protocol_controller(
     cfg: ProtocolConfig,
+    serialization_context: SerializationContext,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
 ) -> Result<
@@ -51,6 +52,7 @@ pub async fn start_protocol_controller(
     let join_handle = tokio::spawn(async move {
         ProtocolWorker::new(
             cfg,
+            serialization_context,
             self_node_id,
             private_key,
             network_command_sender,
@@ -84,16 +86,11 @@ impl ProtocolCommandSender {
     pub async fn propagate_block_header(
         &mut self,
         hash: Hash,
-        signature: Signature,
         header: BlockHeader,
     ) -> Result<(), CommunicationError> {
         massa_trace!("block_header_propagation_order", { "block": hash });
         self.0
-            .send(ProtocolCommand::PropagateBlockHeader {
-                signature,
-                hash,
-                header,
-            })
+            .send(ProtocolCommand::PropagateBlockHeader { hash, header })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("propagate_block_header command send error".into())

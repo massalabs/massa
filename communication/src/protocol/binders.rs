@@ -1,14 +1,18 @@
 //! Flexbuffer layer between raw data and our objects.
 use super::messages::Message;
-use crate::error::{CommunicationError, FlexbufferError};
+use crate::error::CommunicationError;
 use crate::network::{ReadHalf, WriteHalf};
-use futures::{SinkExt, StreamExt};
-use serde::{Deserialize, Serialize};
-use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
+use models::{
+    DeserializeCompact, DeserializeMinBEInt, SerializationContext, SerializeCompact,
+    SerializeMinBEInt,
+};
+use std::convert::TryInto;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
-    framed_writer: FramedWrite<WriteHalf, LengthDelimitedCodec>,
+    serialization_context: SerializationContext,
+    write_half: WriteHalf,
     message_index: u64,
 }
 
@@ -16,10 +20,13 @@ impl WriteBinder {
     /// Creates a new WriteBinder.
     ///
     /// # Argument
-    /// * writer: inner part of the underlying FramedWrite.
-    pub fn new(writer: WriteHalf) -> Self {
+    /// * write_half: writer half.
+    /// * serialization_context: SerializationContext instance
+    /// * max_message_size: max message size in bytes
+    pub fn new(write_half: WriteHalf, serialization_context: SerializationContext) -> Self {
         WriteBinder {
-            framed_writer: FramedWrite::new(writer, LengthDelimitedCodec::new()),
+            serialization_context,
+            write_half,
             message_index: 0,
         }
     }
@@ -29,12 +36,21 @@ impl WriteBinder {
     /// # Argument
     /// * msg: date to transmit.
     pub async fn send(&mut self, msg: &Message) -> Result<u64, CommunicationError> {
-        let mut serializer = flexbuffers::FlexbufferSerializer::new();
-        msg.serialize(&mut serializer)
-            .map_err(|err| FlexbufferError::from(err))?;
-        self.framed_writer
-            .send(serializer.take_buffer().into())
+        // serialize
+        let bytes_vec = msg.to_bytes_compact(&self.serialization_context)?;
+        let msg_size: u32 = bytes_vec
+            .len()
+            .try_into()
+            .map_err(|_| CommunicationError::GeneralProtocolError("messsage too long".into()))?;
+
+        // send length
+        self.write_half
+            .write_all(&msg_size.to_be_bytes_min(self.serialization_context.max_message_size)?[..])
             .await?;
+
+        // send message
+        self.write_half.write_all(&bytes_vec[..]).await?;
+
         let res_index = self.message_index;
         self.message_index += 1;
         Ok(res_index)
@@ -43,7 +59,8 @@ impl WriteBinder {
 
 /// Used to receive and deserialize date.
 pub struct ReadBinder {
-    framed_reader: FramedRead<ReadHalf, LengthDelimitedCodec>,
+    serialization_context: SerializationContext,
+    read_half: ReadHalf,
     message_index: u64,
 }
 
@@ -51,24 +68,39 @@ impl ReadBinder {
     /// Creates a new ReadBinder.
     ///
     /// # Argument
-    /// * reader: inner part of the underlying FramedRead.
-    pub fn new(reader: ReadHalf) -> Self {
+    /// * read_half: reader half.
+    /// * serialization_context: SerializationContext instance
+    /// * max_message_size: max message size in bytes
+    pub fn new(read_half: ReadHalf, serialization_context: SerializationContext) -> Self {
         ReadBinder {
-            framed_reader: FramedRead::new(reader, LengthDelimitedCodec::new()),
+            serialization_context,
+            read_half,
             message_index: 0,
         }
     }
 
     /// Awaits the next incomming message and deserialize it.
     pub async fn next(&mut self) -> Result<Option<(u64, Message)>, CommunicationError> {
-        let buf: Vec<u8> = match self.framed_reader.next().await {
-            Some(b) => b?.into_iter().collect(),
-            None => return Ok(None),
-        };
-        let res_msg = Message::deserialize(
-            flexbuffers::Reader::get_root(&buf).map_err(|err| FlexbufferError::from(err))?,
-        )
-        .map_err(|err| FlexbufferError::from(err))?;
+        // read message length
+        let msg_len_len = u32::be_bytes_min_length(self.serialization_context.max_message_size);
+        let mut msg_len_buf = vec![0u8; msg_len_len];
+        if let Err(err) = self.read_half.read_exact(&mut msg_len_buf).await {
+            if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                return Ok(None);
+            } else {
+                return Err(err.into());
+            }
+        }
+        let (msg_len, _) =
+            u32::from_be_bytes_min(&msg_len_buf, self.serialization_context.max_message_size)?;
+
+        // read message
+        let mut msg_buffer = vec![0u8; msg_len as usize];
+        self.read_half.read_exact(&mut msg_buffer).await?;
+        let (res_msg, _res_msg_len) =
+            Message::from_bytes_compact(&msg_buffer, &self.serialization_context)?;
+        // note: it is possible that _res_msg_len < msg_len if some extras have not been read
+
         let res_index = self.message_index;
         self.message_index += 1;
         Ok(Some((res_index, res_msg)))

@@ -17,8 +17,7 @@ use crate::repl::ReplData;
 use clap::App;
 use clap::Arg;
 use crypto::hash::Hash;
-use models::block::Block;
-use models::slot::Slot;
+use models::{Block, Slot};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 

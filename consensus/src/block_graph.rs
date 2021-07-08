@@ -3,9 +3,7 @@ use super::{config::ConsensusConfig, random_selector::RandomSelector};
 use crate::error::{BlockAcknowledgeError, ConsensusError};
 use crypto::hash::Hash;
 use crypto::signature::SignatureEngine;
-use models::block::Block;
-use models::block::BlockHeader;
-use models::slot::Slot;
+use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -102,6 +100,7 @@ impl CompiledBlock {
     #[inline]
     /// Computes the fitness of that block.
     fn fitness(&self) -> u64 {
+        /*
         self.block
             .header
             .endorsements
@@ -110,6 +109,8 @@ impl CompiledBlock {
                 Some(_) => acc + 1,
                 None => acc,
             })
+        */
+        1
     }
 }
 
@@ -217,6 +218,8 @@ impl DiscardedBlocks {
 pub struct BlockGraph {
     /// Consensus Configuration
     cfg: ConsensusConfig,
+    /// Serialization context
+    serialization_context: SerializationContext,
     /// Genesis blocks.
     genesis_blocks: Vec<Hash>,
     /// Map of active blocks.
@@ -240,28 +243,28 @@ pub struct BlockGraph {
 /// * thread_number: thread in wich we want a genesis block
 fn create_genesis_block(
     cfg: &ConsensusConfig,
+    serialization_context: &SerializationContext,
     thread_number: u8,
 ) -> Result<(Hash, Block), ConsensusError> {
-    let signature_engine = SignatureEngine::new();
+    let mut signature_engine = SignatureEngine::new();
     let private_key = cfg.genesis_key;
     let public_key = signature_engine.derive_public_key(&private_key);
-    let header = BlockHeader {
-        creator: public_key,
-        slot: Slot::new(0, thread_number),
-        roll_number: 0,
-        parents: Vec::new(),
-        endorsements: Vec::new(),
-        out_ledger_hash: Hash::hash("Hello world !".as_bytes()),
-        operation_merkle_root: Hash::hash("Hello world !".as_bytes()),
-    };
-    let header_hash = header.compute_hash()?;
-
-    let signature = signature_engine.sign(&header_hash, &private_key)?;
+    let (header_hash, header) = BlockHeader::new_signed(
+        &mut signature_engine,
+        &private_key,
+        BlockHeaderContent {
+            creator: public_key,
+            slot: Slot::new(0, thread_number),
+            parents: Vec::new(),
+            out_ledger_hash: Hash::hash("Hello world !".as_bytes()),
+            operation_merkle_root: Hash::hash("Hello world !".as_bytes()),
+        },
+        &serialization_context,
+    )?;
     Ok((
         header_hash,
         Block {
             header,
-            signature,
             operations: Vec::new(),
         },
     ))
@@ -280,12 +283,16 @@ impl BlockGraph {
     ///
     /// # Argument
     /// * cfg : consensus configuration.
-    pub fn new(cfg: ConsensusConfig) -> Result<Self, ConsensusError> {
+    pub fn new(
+        cfg: ConsensusConfig,
+        serialization_context: SerializationContext,
+    ) -> Result<Self, ConsensusError> {
         let mut active_blocks = HashMap::new();
         let mut block_hashes: Vec<Hash> = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
-            let (genesis_block_hash, genesis_block) = create_genesis_block(&cfg, thread)
-                .map_err(|_err| ConsensusError::GenesisCreationError)?;
+            let (genesis_block_hash, genesis_block) =
+                create_genesis_block(&cfg, &serialization_context, thread)
+                    .map_err(|_err| ConsensusError::GenesisCreationError)?;
             block_hashes.push(genesis_block_hash);
             active_blocks.insert(
                 genesis_block_hash,
@@ -298,6 +305,7 @@ impl BlockGraph {
         let max_discarded_blocks = cfg.max_discarded_blocks;
         Ok(BlockGraph {
             cfg,
+            serialization_context,
             genesis_blocks: block_hashes.clone(),
             active_blocks,
             discarded_blocks: DiscardedBlocks::new(max_discarded_blocks),
@@ -334,11 +342,11 @@ impl BlockGraph {
         for parent_i in 0..self.cfg.thread_count {
             let parent_h = parent_hashes[parent_i as usize];
             if let Some(parent) = self.active_blocks.get(&parent_h) {
-                if parent.block.header.slot.period < gp_max_slots[parent_i as usize] {
+                if parent.block.header.content.slot.period < gp_max_slots[parent_i as usize] {
                     return Ok(false);
                 }
-                gp_max_slots[parent_i as usize] = parent.block.header.slot.period;
-                if parent.block.header.slot.period == 0 {
+                gp_max_slots[parent_i as usize] = parent.block.header.content.slot.period;
+                if parent.block.header.content.slot.period == 0 {
                     // genesis
                     continue;
                 }
@@ -346,13 +354,13 @@ impl BlockGraph {
                     if gp_i == parent_i {
                         continue;
                     }
-                    let gp_h = parent.block.header.parents[gp_i as usize];
+                    let gp_h = parent.block.header.content.parents[gp_i as usize];
                     if let Some(gp) = self.active_blocks.get(&gp_h) {
-                        if gp.block.header.slot.period > gp_max_slots[gp_i as usize] {
+                        if gp.block.header.content.slot.period > gp_max_slots[gp_i as usize] {
                             if gp_i < parent_i {
                                 return Ok(false);
                             }
-                            gp_max_slots[gp_i as usize] = gp.block.header.slot.period;
+                            gp_max_slots[gp_i as usize] = gp.block.header.content.slot.period;
                         }
                     } else {
                         missing.insert(gp_h);
@@ -379,7 +387,7 @@ impl BlockGraph {
         val: String,
         slot: Slot,
     ) -> Result<(Hash, Block), ConsensusError> {
-        let signature_engine = SignatureEngine::new();
+        let mut signature_engine = SignatureEngine::new();
         let (public_key, private_key) = self
             .cfg
             .nodes
@@ -389,23 +397,24 @@ impl BlockGraph {
 
         let example_hash = Hash::hash(&val.as_bytes());
 
-        let header = BlockHeader {
-            creator: public_key,
-            slot: slot,
-            roll_number: self.cfg.current_node_index,
-            parents: self.best_parents.clone(),
-            endorsements: Vec::new(),
-            out_ledger_hash: example_hash,
-            operation_merkle_root: example_hash,
-        };
+        let (hash, header) = BlockHeader::new_signed(
+            &mut signature_engine,
+            &private_key,
+            BlockHeaderContent {
+                creator: public_key,
+                slot: slot,
+                parents: self.best_parents.clone(),
+                out_ledger_hash: example_hash,
+                operation_merkle_root: example_hash,
+            },
+            &self.serialization_context,
+        )?;
 
-        let hash = header.compute_hash()?;
         Ok((
             hash,
             Block {
                 header,
                 operations: Vec::new(),
-                signature: signature_engine.sign(&hash, &private_key)?,
             },
         ))
     }
@@ -440,9 +449,9 @@ impl BlockGraph {
         }
 
         // basic structural checks
-        if header.parents.len() != (self.cfg.thread_count as usize)
-            || header.slot.period == 0
-            || header.slot.thread >= self.cfg.thread_count
+        if header.content.parents.len() != (self.cfg.thread_count as usize)
+            || header.content.slot.period == 0
+            || header.content.slot.thread >= self.cfg.thread_count
         {
             self.discarded_blocks
                 .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
@@ -450,14 +459,16 @@ impl BlockGraph {
         }
 
         // check that is newer than the latest final block in that thread
-        if header.slot.period <= self.latest_final_blocks_periods[header.slot.thread as usize].1 {
+        if header.content.slot.period
+            <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
+        {
             self.discarded_blocks
                 .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
             return Err(BlockAcknowledgeError::TooOld);
         }
 
         // check if block slot is too much in the future
-        if header.slot
+        if header.content.slot
             > Slot::new(
                 current_slot
                     .period
@@ -471,7 +482,7 @@ impl BlockGraph {
         // check if it was the creator's turn to create this block
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
-        if header.roll_number != selector.draw(header.slot) {
+        if header.content.creator != self.cfg.nodes[selector.draw(header.content.slot) as usize].0 {
             // it was not the creator's turn to create a block for this slot
             self.discarded_blocks
                 .insert(hash.clone(), header.clone(), DiscardReason::Invalid)?;
@@ -480,7 +491,7 @@ impl BlockGraph {
 
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
-        if header.slot > current_slot {
+        if header.content.slot > current_slot {
             // todo
             // return Err(BlockAcknowledgeError::InTheFuture(block));
         }
@@ -491,7 +502,7 @@ impl BlockGraph {
         // ensure parents presence and validity
         let mut missing_dependencies = HashSet::new();
         for parent_thread in 0u8..self.cfg.thread_count {
-            let parent_hash = header.parents[parent_thread as usize];
+            let parent_hash = header.content.parents[parent_thread as usize];
             if self.discarded_blocks.contains(&parent_hash) {
                 self.discarded_blocks.insert(
                     hash.clone(),
@@ -504,9 +515,9 @@ impl BlockGraph {
             }
             if let Some(parent) = self.active_blocks.get(&parent_hash) {
                 // check that the parent is from an earlier slot in the right thread
-                if parent.block.header.slot.thread != parent_thread
-                    || (parent.block.header.slot.period, parent_thread)
-                        >= (header.slot.period, header.slot.thread)
+                if parent.block.header.content.slot.thread != parent_thread
+                    || (parent.block.header.content.slot.period, parent_thread)
+                        >= (header.content.slot.period, header.content.slot.thread)
                 {
                     // a parent is in the wrong thread or has a slot not strictly before the block
                     self.discarded_blocks.insert(
@@ -520,8 +531,8 @@ impl BlockGraph {
                 }
                 if let Some(parent) = self.active_blocks.get(&parent_hash) {
                     // check that the parent is from an earlier slot in the right thread
-                    if parent.block.header.slot.thread != parent_thread
-                        || parent.block.header.slot >= header.slot
+                    if parent.block.header.content.slot.thread != parent_thread
+                        || parent.block.header.content.slot >= header.content.slot
                     {
                         // a parent is in the wrong thread or has a slot not strictly before the block
                         self.discarded_blocks.insert(
@@ -540,7 +551,7 @@ impl BlockGraph {
             }
             // check that the parents are mutually compatible
             {
-                let parent_hashes: HashSet<Hash> = header.parents.iter().cloned().collect();
+                let parent_hashes: HashSet<Hash> = header.content.parents.iter().cloned().collect();
                 for parent_h in parent_hashes.iter() {
                     if let Some(incomp) = self.gi_head.get(&parent_h) {
                         if !incomp.is_disjoint(&parent_hashes) {
@@ -560,7 +571,7 @@ impl BlockGraph {
         }
         // check that the parents are mutually compatible
         {
-            let parent_hashes: HashSet<Hash> = header.parents.iter().cloned().collect();
+            let parent_hashes: HashSet<Hash> = header.content.parents.iter().cloned().collect();
             for parent_h in parent_hashes.iter() {
                 if let Some(incomp) = self.gi_head.get(&parent_h) {
                     if !incomp.is_disjoint(&parent_hashes) {
@@ -579,7 +590,7 @@ impl BlockGraph {
         }
         // check the topological consistency of the parents
         if missing_dependencies.is_empty() {
-            match self.check_block_parents_topological_order(&header.parents) {
+            match self.check_block_parents_topological_order(&header.content.parents) {
                 Ok(true) => {}
                 Ok(false) => {
                     // inconsistent parent topology
@@ -616,13 +627,13 @@ impl BlockGraph {
     ) -> Result<UpdateConsensusReturn, BlockAcknowledgeError> {
         massa_trace!("start_ack_new_block", {
             "block": hash,
-            "thread": block.header.slot.thread,
-            "period": block.header.slot.period
+            "thread": block.header.content.slot.thread,
+            "period": block.header.content.slot.period
         });
 
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
-        if Slot::new(block.header.slot.period, block.header.slot.thread) > current_slot {
+        if block.header.content.slot > current_slot {
             return Err(BlockAcknowledgeError::InTheFuture(block));
         }
 
@@ -734,9 +745,9 @@ impl BlockGraph {
         block: Block,
     ) -> Result<UpdateConsensusReturn, ConsensusError> {
         // basic checks
-        if block.header.parents.len() != self.cfg.thread_count as usize
-            || block.header.slot.period == 0
-            || block.header.slot.thread >= self.cfg.thread_count
+        if block.header.content.parents.len() != self.cfg.thread_count as usize
+            || block.header.content.slot.period == 0
+            || block.header.content.slot.thread >= self.cfg.thread_count
         {
             return Err(ConsensusError::InvalidBlock);
         }
@@ -745,7 +756,7 @@ impl BlockGraph {
         let mut incomp: HashSet<Hash> = HashSet::new();
 
         // include all parent's incompatibilites
-        for parent_h in block.header.parents.iter() {
+        for parent_h in block.header.content.parents.iter() {
             if let Some(parent_incomp) = self.gi_head.get(parent_h) {
                 incomp.extend(parent_incomp);
             }
@@ -755,9 +766,9 @@ impl BlockGraph {
 
         // thread incompatibility test
         self.active_blocks
-            .get(&block.header.parents[block.header.slot.thread as usize])
+            .get(&block.header.content.parents[block.header.content.slot.thread as usize])
             .ok_or(ConsensusError::MissingBlock)?
-            .children[block.header.slot.thread as usize]
+            .children[block.header.content.slot.thread as usize]
             .iter()
             .filter(|&sibling_h| *sibling_h != hash)
             .try_for_each(|&sibling_h| {
@@ -768,17 +779,18 @@ impl BlockGraph {
         // grandpa incompatibility test
         let parent_period_in_own_thread = self
             .active_blocks
-            .get(&block.header.parents[block.header.slot.thread as usize])
+            .get(&block.header.content.parents[block.header.content.slot.thread as usize])
             .ok_or(ConsensusError::MissingBlock)?
             .block
             .header
+            .content
             .slot
             .period;
 
-        for tau in (0u8..self.cfg.thread_count).filter(|&t| t != block.header.slot.thread) {
+        for tau in (0u8..self.cfg.thread_count).filter(|&t| t != block.header.content.slot.thread) {
             // for each parent in a different thread tau
             // traverse parent's descendance in tau
-            let mut to_explore = vec![(0usize, block.header.parents[tau as usize])];
+            let mut to_explore = vec![(0usize, block.header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
                 let cur_b = self
                     .active_blocks
@@ -797,10 +809,14 @@ impl BlockGraph {
                 // note: cur_b cannot be genesis at gen > 1
                 if self
                     .active_blocks
-                    .get(&cur_b.block.header.parents[block.header.slot.thread as usize])
+                    .get(
+                        &cur_b.block.header.content.parents
+                            [block.header.content.slot.thread as usize],
+                    )
                     .ok_or(ConsensusError::MissingBlock)?
                     .block
                     .header
+                    .content
                     .slot
                     .period
                     < parent_period_in_own_thread
@@ -833,11 +849,11 @@ impl BlockGraph {
                 children: vec![HashSet::new(); self.cfg.thread_count as usize],
             },
         );
-        for parent_h in block.header.parents.iter() {
+        for parent_h in block.header.content.parents.iter() {
             self.active_blocks
                 .get_mut(parent_h)
                 .ok_or(ConsensusError::MissingBlock)?
-                .children[block.header.slot.thread as usize]
+                .children[block.header.content.slot.thread as usize]
                 .insert(hash);
         }
         // add incompatibilities to gi_head
@@ -897,10 +913,10 @@ impl BlockGraph {
                     .active_blocks
                     .get(block_h)
                     .ok_or(ConsensusError::MissingBlock)?;
-                if block_c.children[block_c.block.header.slot.thread as usize]
+                if block_c.children[block_c.block.header.content.slot.thread as usize]
                     .is_disjoint(blockclique)
                 {
-                    self.best_parents[block_c.block.header.slot.thread as usize] = *block_h;
+                    self.best_parents[block_c.block.header.content.slot.thread as usize] = *block_h;
                     parents_updated += 1;
                     if parents_updated == self.cfg.thread_count {
                         break;
@@ -1020,11 +1036,14 @@ impl BlockGraph {
                 .active_blocks
                 .get(final_block_h)
                 .ok_or(ConsensusError::MissingBlock)?;
-            if final_block.block.header.slot.period
-                > self.latest_final_blocks_periods[final_block.block.header.slot.thread as usize].1
+            if final_block.block.header.content.slot.period
+                > self.latest_final_blocks_periods
+                    [final_block.block.header.content.slot.thread as usize]
+                    .1
             {
-                self.latest_final_blocks_periods[final_block.block.header.slot.thread as usize] =
-                    (*final_block_h, final_block.block.header.slot.period);
+                self.latest_final_blocks_periods
+                    [final_block.block.header.content.slot.thread as usize] =
+                    (*final_block_h, final_block.block.header.content.slot.period);
             }
         }
 
@@ -1102,6 +1121,7 @@ impl BlockGraph {
                         .ok_or(ConsensusError::ContainerInconsistency)?
                         .block
                         .header
+                        .content
                         .parents
                         .iter()
                         .copied(),
@@ -1121,9 +1141,9 @@ impl BlockGraph {
                     .ok_or(ConsensusError::ContainerInconsistency)?
                     .block
                     .header;
-                earliest_retained_periods[header.slot.thread as usize] = std::cmp::min(
-                    earliest_retained_periods[header.slot.thread as usize],
-                    header.slot.period,
+                earliest_retained_periods[header.content.slot.thread as usize] = std::cmp::min(
+                    earliest_retained_periods[header.content.slot.thread as usize],
+                    header.content.slot.period,
                 );
             }
 
@@ -1131,16 +1151,17 @@ impl BlockGraph {
             for thread in 0..self.cfg.thread_count {
                 let mut cursor = self.latest_final_blocks_periods[thread as usize].0;
                 while let Some(c_block) = self.active_blocks.get(&cursor) {
-                    if c_block.block.header.slot.period < earliest_retained_periods[thread as usize]
+                    if c_block.block.header.content.slot.period
+                        < earliest_retained_periods[thread as usize]
                     {
                         break;
                     }
                     retain_active.insert(cursor);
-                    if c_block.block.header.parents.len() < self.cfg.thread_count as usize {
+                    if c_block.block.header.content.parents.len() < self.cfg.thread_count as usize {
                         // genesis
                         break;
                     }
-                    cursor = c_block.block.header.parents[thread as usize];
+                    cursor = c_block.block.header.content.parents[thread as usize];
                 }
             }
         }
@@ -1154,9 +1175,9 @@ impl BlockGraph {
             .map(|(k, v)| (k, v.block))
             .collect();
         for (hash, block) in removed.iter() {
-            for parent_hash in block.header.parents.iter() {
+            for parent_hash in block.header.content.parents.iter() {
                 if let Some(parent) = self.active_blocks.get_mut(parent_hash) {
-                    parent.children[block.header.slot.thread as usize].remove(hash);
+                    parent.children[block.header.content.slot.thread as usize].remove(hash);
                 }
             }
         }
@@ -1184,14 +1205,14 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
-    use crypto::signature::{PrivateKey, PublicKey, SignatureEngine};
+    use crypto::signature::SignatureEngine;
     use time::UTime;
 
     use super::BlockGraph;
     use super::*;
-    use crate::{config::ConsensusConfig, error::*, random_selector::RandomSelector};
+    use crate::{config::ConsensusConfig, random_selector::RandomSelector};
 
-    fn example_consensus_config() -> ConsensusConfig {
+    fn example_consensus_config() -> (ConsensusConfig, SerializationContext) {
         let secp = SignatureEngine::new();
         let genesis_key = SignatureEngine::generate_random_private_key();
         let mut nodes = Vec::new();
@@ -1200,93 +1221,106 @@ mod tests {
             let public_key = secp.derive_public_key(&private_key);
             nodes.push((public_key, private_key));
         }
-        ConsensusConfig {
-            genesis_timestamp: UTime::now().unwrap(),
-            thread_count: 2,
-            t0: 32.into(),
-            selection_rng_seed: 42,
-            genesis_key,
-            nodes,
-            current_node_index: 0,
-            max_discarded_blocks: 10,
-            future_block_processing_max_periods: 3,
-            max_future_processing_blocks: 10,
-            max_dependency_blocks: 10,
-            delta_f0: 5,
-            disable_block_creation: true,
-        }
+        let thread_count: u8 = 2;
+        let max_block_size = 1024 * 1024;
+        let max_operations_per_block = 1024;
+        (
+            ConsensusConfig {
+                genesis_timestamp: UTime::now().unwrap(),
+                thread_count,
+                t0: 32.into(),
+                selection_rng_seed: 42,
+                genesis_key,
+                nodes,
+                current_node_index: 0,
+                max_discarded_blocks: 10,
+                future_block_processing_max_periods: 3,
+                max_future_processing_blocks: 10,
+                max_dependency_blocks: 10,
+                delta_f0: 5,
+                disable_block_creation: true,
+                max_block_size,
+                max_operations_per_block,
+            },
+            SerializationContext {
+                max_block_size,
+                max_block_operations: max_operations_per_block,
+                parent_count: thread_count,
+                max_peer_list_length: 128,
+                max_message_size: 3 * 1024 * 1024,
+            },
+        )
     }
 
     fn create_standalone_block(
+        cfg: &ConsensusConfig,
         graph: &mut BlockGraph,
         val: String,
         slot: Slot,
-        public_key: PublicKey,
-        private_key: PrivateKey,
         parents: Vec<Hash>,
         selector: &mut RandomSelector,
-    ) -> Block {
-        let signature_engine = SignatureEngine::new();
+    ) -> (Hash, Block) {
+        let mut signature_engine = SignatureEngine::new();
         let example_hash = Hash::hash(&val.as_bytes());
         let mut parents = parents.clone();
         if parents.len() == 0 {
             parents = graph.best_parents.clone();
         }
+        let (_, serialization_context) = example_consensus_config();
 
-        let header = BlockHeader {
-            creator: public_key,
-            slot,
-            roll_number: selector.draw(slot),
-            parents,
-            endorsements: Vec::new(),
-            out_ledger_hash: example_hash,
-            operation_merkle_root: example_hash,
-        };
+        let (public_key, private_key) = cfg.nodes[selector.draw(slot) as usize];
 
-        let hash = header.compute_hash().expect("could not computte hash"); // in a test
+        let (hash, header) = BlockHeader::new_signed(
+            &mut signature_engine,
+            &private_key,
+            BlockHeaderContent {
+                creator: public_key,
+                slot,
+                parents,
+                out_ledger_hash: example_hash,
+                operation_merkle_root: example_hash,
+            },
+            &serialization_context,
+        )
+        .unwrap();
 
-        Block {
-            header,
-            operations: Vec::new(),
-            signature: signature_engine
-                .sign(&hash, &private_key)
-                .expect("could not sign"), // in a test
-        }
+        (
+            hash,
+            Block {
+                header,
+                operations: Vec::new(),
+            },
+        )
     }
 
     #[test]
     fn test_parent_in_the_future() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
-        let block_2 = create_standalone_block(
+        let (hash_2, block_2) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(2, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             Vec::new(),
             &mut selector,
         );
 
-        let hash_2 = block_2.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_2, block_2, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             Vec::new(),
             &mut selector,
         );
-
-        let hash_1 = block_1.header.compute_hash().unwrap();
 
         match block_graph.acknowledge_block(hash_1, block_1, &mut selector, Slot::new(1000, 0)) {
             Ok(_) => panic!("Corrupted block has been acknowledged"),
@@ -1297,37 +1331,33 @@ mod tests {
 
     #[test]
     fn test_parents_in_incompatible_cliques() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
         let genesis = block_graph.best_parents.clone();
 
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             genesis.clone(),
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_1, block_1, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
-        let block_2 = create_standalone_block(
+        let (hash_2, block_2) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(2, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             genesis.clone(),
             &mut selector,
         );
-        let hash_2 = block_2.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_2, block_2, &mut selector, Slot::new(1000, 0))
             .unwrap();
@@ -1336,32 +1366,28 @@ mod tests {
 
         // block_3 is in clique 1
         let parents = vec![hash_1, genesis[1]];
-        let block_3 = create_standalone_block(
+        let (hash_3, block_3) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 1),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             parents,
             &mut selector,
         );
-        let hash_3 = block_3.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_3, block_3, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
         // parent in thread 0 is in clique 2 and parent in thread 1 is in clique 1
         let incompatible_parents = vec![hash_2, hash_3];
-        let block_4 = create_standalone_block(
+        let (hash_4, block_4) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(2, 1),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             incompatible_parents,
             &mut selector,
         );
-        let hash_4 = block_4.header.compute_hash().unwrap();
 
         match block_graph.acknowledge_block(hash_4, block_4, &mut selector, Slot::new(1000, 0)) {
             Ok(_) => panic!("Corrupted block has been acknowledged"),
@@ -1373,25 +1399,23 @@ mod tests {
     /// Generate 2n blocks in 2 treads using best_parents
     /// all added to block_graph
     fn generate_blocks(
+        cfg: &ConsensusConfig,
         mut block_graph: &mut BlockGraph,
         mut selector: &mut RandomSelector,
         n: u64,
         start_slots: (u64, u64),
     ) {
-        let creator = block_graph.cfg.nodes[0].clone();
         for i in 0..n {
             // in thread 0
             let parents = block_graph.best_parents.clone();
-            let block = create_standalone_block(
+            let (hash, block) = create_standalone_block(
+                &cfg,
                 &mut block_graph,
                 "42".into(),
                 Slot::new(start_slots.0 + i, 0),
-                creator.0,
-                creator.1,
                 parents,
                 &mut selector,
             );
-            let hash = block.header.compute_hash().unwrap();
             block_graph
                 .acknowledge_block(
                     hash,
@@ -1404,16 +1428,14 @@ mod tests {
             // in thread 1
 
             let parents = block_graph.best_parents.clone();
-            let block = create_standalone_block(
+            let (hash, block) = create_standalone_block(
+                &cfg,
                 &mut block_graph,
                 "42".into(),
                 Slot::new(start_slots.1 + i, 1),
-                creator.0,
-                creator.1,
                 parents,
                 &mut selector,
             );
-            let hash = block.header.compute_hash().unwrap();
 
             block_graph
                 .acknowledge_block(
@@ -1427,6 +1449,7 @@ mod tests {
     }
 
     fn extend_thread(
+        cfg: &ConsensusConfig,
         block_graph: &mut BlockGraph,
         selector: &mut RandomSelector,
         n: u64,
@@ -1435,18 +1458,15 @@ mod tests {
     ) {
         let mut current_parents = parents.clone();
         let mut current_period = slot.period;
-        let creator = block_graph.cfg.nodes[0].clone();
         for _ in 0..n {
-            let block = create_standalone_block(
+            let (hash, block) = create_standalone_block(
+                &cfg,
                 block_graph,
                 "42".into(),
                 Slot::new(current_period, slot.thread),
-                creator.0,
-                creator.1,
                 current_parents.clone(),
                 selector,
             );
-            let hash = block.header.compute_hash().unwrap();
             block_graph
                 .acknowledge_block(
                     hash,
@@ -1462,55 +1482,49 @@ mod tests {
 
     #[test]
     fn test_thread_incompatibility() {
-        let mut cfg = example_consensus_config();
+        let (mut cfg, serialization_context) = example_consensus_config();
         // ensure eliminated blocks remain in discard list
         cfg.max_discarded_blocks = 40;
 
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
         // generating two incompatible cliques
         let genesis = block_graph.best_parents.clone();
 
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             genesis.clone(),
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_1, block_1, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
-        let block_2 = create_standalone_block(
+        let (hash_2, block_2) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 1),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             genesis.clone(),
             &mut selector,
         );
-        let hash_2 = block_2.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_2, block_2, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
-        let block_3 = create_standalone_block(
+        let (hash_3, block_3) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(2, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             genesis.clone(),
             &mut selector,
         );
-        let hash_3 = block_3.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_3, block_3, &mut selector, Slot::new(1000, 0))
             .unwrap();
@@ -1538,6 +1552,7 @@ mod tests {
         }
 
         extend_thread(
+            &cfg,
             &mut block_graph,
             &mut selector,
             3,
@@ -1552,6 +1567,7 @@ mod tests {
 
         let parents = vec![block_graph.best_parents[0].clone(), hash_2];
         extend_thread(
+            &cfg,
             &mut block_graph,
             &mut selector,
             30,
@@ -1563,16 +1579,14 @@ mod tests {
 
         // clique should have been deleted by now
         let parents = vec![hash_3, hash_2];
-        let block_4 = create_standalone_block(
+        let (hash_4, block_4) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(40, 0),
-            cfg.nodes[0].0,
-            cfg.nodes[0].1,
             parents,
             &mut selector,
         );
-        let hash_4 = block_4.header.compute_hash().unwrap();
 
         match block_graph.acknowledge_block(hash_4, block_4, &mut selector, Slot::new(1000, 0)) {
             Ok(_) => panic!("Corrupted block has been acknowledged"),
@@ -1585,29 +1599,26 @@ mod tests {
 
     #[test]
     fn test_parents() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
         let genesis = block_graph.best_parents.clone();
-        let creator = cfg.nodes[0];
 
         // generate two normal blocks in each thread
-        generate_blocks(&mut block_graph, &mut selector, 2, (1, 1));
+        generate_blocks(&cfg, &mut block_graph, &mut selector, 2, (1, 1));
 
         let parents = block_graph.best_parents.clone();
 
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(3, 0),
-            creator.0,
-            creator.1,
             vec![parents[0], genesis[1]],
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
 
         match block_graph.acknowledge_block(hash_1, block_1, &mut selector, Slot::new(1000, 0)) {
             Ok(_) => panic!("Corrupted block has been acknowledged"),
@@ -1618,16 +1629,14 @@ mod tests {
         }
 
         // block 2
-        let block_2 = create_standalone_block(
+        let (hash_2, block_2) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(3, 1),
-            creator.0,
-            creator.1,
             vec![genesis[0], genesis[0]],
             &mut selector,
         );
-        let hash_2 = block_2.header.compute_hash().unwrap();
 
         match block_graph.acknowledge_block(hash_2, block_2, &mut selector, Slot::new(1000, 0)) {
             Ok(_) => panic!("Corrupted block has been acknowledged"),
@@ -1640,65 +1649,56 @@ mod tests {
 
     #[test]
     fn test_grandpa_incompatibility() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
         let genesis = block_graph.best_parents.clone();
-        let creator = cfg.nodes[0];
 
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 0),
-            creator.0,
-            creator.1,
             vec![genesis[0], genesis[1]],
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_1, block_1, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
-        let block_2 = create_standalone_block(
+        let (hash_2, block_2) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 1),
-            creator.0,
-            creator.1,
             vec![genesis[0], genesis[1]],
             &mut selector,
         );
-        let hash_2 = block_2.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_2, block_2, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
-        let block_3 = create_standalone_block(
+        let (hash_3, block_3) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(2, 0),
-            creator.0,
-            creator.1,
             vec![hash_1, genesis[1]],
             &mut selector,
         );
-        let hash_3 = block_3.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_3, block_3, &mut selector, Slot::new(1000, 0))
             .unwrap();
 
-        let block_4 = create_standalone_block(
+        let (hash_4, block_4) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(2, 1),
-            creator.0,
-            creator.1,
             vec![genesis[0], hash_2],
             &mut selector,
         );
-        let hash_4 = block_4.header.compute_hash().unwrap();
         block_graph
             .acknowledge_block(hash_4, block_4, &mut selector, Slot::new(1000, 0))
             .unwrap();
@@ -1727,16 +1727,14 @@ mod tests {
         let mut latest_extra_blocks: VecDeque<Hash> = VecDeque::new();
         for extend_i in 0..33 {
             let parents = block_graph.best_parents.clone();
-            let block_ext = create_standalone_block(
+            let (hash_ext, block_ext) = create_standalone_block(
+                &cfg,
                 &mut block_graph,
                 "42".into(),
                 Slot::new(3 + extend_i, 0),
-                creator.0,
-                creator.1,
                 parents,
                 &mut selector,
             );
-            let hash_ext = block_ext.header.compute_hash().unwrap();
             block_graph
                 .acknowledge_block(hash_ext, block_ext, &mut selector, Slot::new(1000, 0))
                 .unwrap();
@@ -1755,8 +1753,8 @@ mod tests {
 
     #[test]
     fn test_clique_calculation() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg, serialization_context).unwrap();
         let hashes: Vec<Hash> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
@@ -1801,27 +1799,24 @@ mod tests {
 
     #[test]
     fn test_old_stale() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
         let genesis = block_graph.best_parents.clone();
-        let creator = cfg.nodes[0];
 
         // generate two normal blocks in each thread
-        generate_blocks(&mut block_graph, &mut selector, 40, (1, 1));
+        generate_blocks(&cfg, &mut block_graph, &mut selector, 40, (1, 1));
 
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(1, 0),
-            creator.0,
-            creator.1,
             genesis,
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
 
         match block_graph.acknowledge_block(hash_1, block_1, &mut selector, Slot::new(1000, 0)) {
             Ok(_) => panic!("Corrupted block has been acknowledged"),
@@ -1832,40 +1827,35 @@ mod tests {
 
     #[test]
     fn test_queueing() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
         let genesis = block_graph.best_parents.clone();
-        let creator = cfg.nodes[0];
 
         // generate two normal blocks in each thread
-        generate_blocks(&mut block_graph, &mut selector, 2, (1, 1));
+        generate_blocks(&cfg, &mut block_graph, &mut selector, 2, (1, 1));
 
         // create a block that will be a missing dependency
-        let block_miss = create_standalone_block(
+        let (hash_miss, _block_miss) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(3, 0),
-            creator.0,
-            creator.1,
             genesis.clone(),
             &mut selector,
         );
-        let hash_miss = block_miss.header.compute_hash().unwrap();
 
         // create a block that depends on the missing dep
-        let block_dep = create_standalone_block(
+        let (hash_dep, block_dep) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(4, 0),
-            creator.0,
-            creator.1,
             vec![hash_miss, genesis[1]],
             &mut selector,
         );
-        let hash_dep = block_dep.header.compute_hash().unwrap();
 
         // make sure the dependency problem is detected
         match block_graph.acknowledge_block(hash_dep, block_dep, &mut selector, Slot::new(1000, 0))
@@ -1882,27 +1872,23 @@ mod tests {
 
     #[test]
     fn test_doubles() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
-        let creator = cfg.nodes[0];
-
         // generate two normal blocks in each thread
-        generate_blocks(&mut block_graph, &mut selector, 40, (1, 1));
+        generate_blocks(&cfg, &mut block_graph, &mut selector, 40, (1, 1));
 
         let parents = block_graph.best_parents.clone();
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(42, 0),
-            creator.0,
-            creator.1,
             parents,
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
 
         block_graph
             .acknowledge_block(hash_1, block_1.clone(), &mut selector, Slot::new(1000, 0))
@@ -1935,43 +1921,37 @@ mod tests {
 
     #[test]
     fn test_double_staking() {
-        let cfg = example_consensus_config();
-        let mut block_graph = BlockGraph::new(cfg.clone()).unwrap();
+        let (cfg, serialization_context) = example_consensus_config();
+        let mut block_graph = BlockGraph::new(cfg.clone(), serialization_context.clone()).unwrap();
         let mut selector = RandomSelector::new(&[0u8; 32].to_vec(), 2, [1u64, 2u64].to_vec())
             .expect("could not initialize selector");
 
-        let creator = cfg.nodes[0];
-
         // generate two normal blocks in each thread
-        generate_blocks(&mut block_graph, &mut selector, 40, (1, 1));
+        generate_blocks(&cfg, &mut block_graph, &mut selector, 40, (1, 1));
 
         let parents = block_graph.best_parents.clone();
-        let block_1 = create_standalone_block(
+        let (hash_1, block_1) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "42".into(),
             Slot::new(42, 0),
-            creator.0,
-            creator.1,
             parents.clone(),
             &mut selector,
         );
-        let hash_1 = block_1.header.compute_hash().unwrap();
 
         block_graph
             .acknowledge_block(hash_1, block_1.clone(), &mut selector, Slot::new(1000, 0))
             .unwrap();
 
         // same creator, same slot, different block
-        let block_2 = create_standalone_block(
+        let (hash_2, block_2) = create_standalone_block(
+            &cfg,
             &mut block_graph,
             "so long and thanks for all the fish".into(),
             Slot::new(42, 0),
-            creator.0,
-            creator.1,
             parents.clone(),
             &mut selector,
         );
-        let hash_2 = block_2.header.compute_hash().unwrap();
 
         block_graph
             .acknowledge_block(hash_2, block_2.clone(), &mut selector, Slot::new(1000, 0))

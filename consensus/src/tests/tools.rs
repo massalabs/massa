@@ -5,10 +5,7 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, SignatureEngine},
 };
-use models::{
-    block::{Block, BlockHeader},
-    slot::Slot,
-};
+use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot};
 use std::{collections::HashSet, time::Duration};
 use time::UTime;
 
@@ -116,7 +113,7 @@ pub async fn validate_asks_for_block_in_list(
 
 pub async fn validate_does_not_ask_for_block_in_list(
     protocol_controller: &mut MockProtocolController,
-    valid_hashs: &Vec<Hash>,
+    _valid_hashs: &Vec<Hash>,
     timeout_ms: u64,
 ) {
     match timeout(
@@ -208,13 +205,14 @@ pub fn create_node_ids(nb_nodes: usize) -> Vec<(PrivateKey, NodeId)> {
 pub async fn create_and_test_block(
     protocol_controller: &mut MockProtocolController,
     cfg: &ConsensusConfig,
-    source_node_id: NodeId,
+    serialization_context: &SerializationContext,
+    _source_node_id: NodeId,
     slot: Slot,
     best_parents: Vec<Hash>,
     valid: bool,
     trace: bool,
 ) -> Hash {
-    let (block_hash, block, _) = create_block(&cfg, slot, best_parents);
+    let (block_hash, block, _) = create_block(&cfg, &serialization_context, slot, best_parents);
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -231,11 +229,16 @@ pub async fn create_and_test_block(
 }
 
 pub async fn propagate_block(
+    serialization_context: &SerializationContext,
     protocol_controller: &mut MockProtocolController,
     block: Block,
     valid: bool,
 ) -> Hash {
-    let block_hash = block.header.compute_hash().unwrap();
+    let block_hash = block
+        .header
+        .content
+        .compute_hash(&serialization_context)
+        .unwrap();
     protocol_controller.receive_block(block).await;
     if valid {
         //see if the block is propagated.
@@ -250,11 +253,13 @@ pub async fn propagate_block(
 // returns hash and resulting discarded blocks
 pub fn create_block(
     cfg: &ConsensusConfig,
+    serialization_context: &SerializationContext,
     slot: Slot,
     best_parents: Vec<Hash>,
 ) -> (Hash, Block, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
+        serialization_context,
         Hash::hash("default_val".as_bytes()),
         slot,
         best_parents,
@@ -263,11 +268,12 @@ pub fn create_block(
 // returns hash and resulting discarded blocks
 pub fn create_block_with_merkle_root(
     cfg: &ConsensusConfig,
+    serialization_context: &SerializationContext,
     operation_merkle_root: Hash,
     slot: Slot,
     best_parents: Vec<Hash>,
 ) -> (Hash, Block, PrivateKey) {
-    let signature_engine = SignatureEngine::new();
+    let mut signature_engine = SignatureEngine::new();
     let (public_key, private_key) = cfg
         .nodes
         .get(0)
@@ -276,48 +282,64 @@ pub fn create_block_with_merkle_root(
 
     let example_hash = Hash::hash("default_val".as_bytes());
 
-    let header = BlockHeader {
-        creator: public_key,
-        slot,
-        roll_number: cfg.current_node_index,
-        parents: best_parents,
-        endorsements: Vec::new(),
-        out_ledger_hash: example_hash,
-        operation_merkle_root,
-    };
-
-    let hash = header.compute_hash().unwrap();
+    let (hash, header) = BlockHeader::new_signed(
+        &mut signature_engine,
+        &private_key,
+        BlockHeaderContent {
+            creator: public_key,
+            slot,
+            parents: best_parents,
+            out_ledger_hash: example_hash,
+            operation_merkle_root,
+        },
+        &serialization_context,
+    )
+    .unwrap();
 
     let block = Block {
         header,
         operations: Vec::new(),
-        signature: signature_engine.sign(&hash, &private_key).unwrap(),
     };
 
     (hash, block, private_key)
 }
 
-pub fn default_consensus_config(nodes: &[(PrivateKey, NodeId)]) -> ConsensusConfig {
+pub fn default_consensus_config(
+    nodes: &[(PrivateKey, NodeId)],
+) -> (ConsensusConfig, SerializationContext) {
     let genesis_key = SignatureEngine::generate_random_private_key();
-
-    ConsensusConfig {
-        genesis_timestamp: UTime::now().unwrap(),
-        thread_count: 2,
-        t0: 32000.into(),
-        selection_rng_seed: 42,
-        genesis_key,
-        nodes: nodes
-            .iter()
-            .map(|(pk, nodeid)| (nodeid.0, pk.clone()))
-            .collect(),
-        current_node_index: 0,
-        max_discarded_blocks: 10,
-        future_block_processing_max_periods: 3,
-        max_future_processing_blocks: 10,
-        max_dependency_blocks: 10,
-        delta_f0: 32,
-        disable_block_creation: true,
-    }
+    let thread_count: u8 = 2;
+    let max_block_size: u32 = 3 * 1024 * 1024;
+    let max_operations_per_block: u32 = 1024;
+    (
+        ConsensusConfig {
+            genesis_timestamp: UTime::now().unwrap(),
+            thread_count: thread_count,
+            t0: 32000.into(),
+            selection_rng_seed: 42,
+            genesis_key,
+            nodes: nodes
+                .iter()
+                .map(|(pk, nodeid)| (nodeid.0, pk.clone()))
+                .collect(),
+            current_node_index: 0,
+            max_discarded_blocks: 10,
+            future_block_processing_max_periods: 3,
+            max_future_processing_blocks: 10,
+            max_dependency_blocks: 10,
+            delta_f0: 32,
+            disable_block_creation: true,
+            max_block_size,
+            max_operations_per_block,
+        },
+        SerializationContext {
+            max_block_size,
+            max_block_operations: max_operations_per_block,
+            parent_count: thread_count,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+        },
+    )
 }
 
 pub fn get_cliques(graph: &BlockGraphExport, hash: Hash) -> HashSet<usize> {

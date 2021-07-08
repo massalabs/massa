@@ -9,8 +9,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
-use models::block::Block;
-use models::slot::Slot;
+use models::{Block, SerializationContext, Slot};
 use std::collections::VecDeque;
 use storage::StorageCommandSender;
 use tokio::{
@@ -26,6 +25,7 @@ use tokio::{
 /// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
+    serialization_context: SerializationContext,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     opt_storage_command_sender: Option<StorageCommandSender>,
@@ -58,7 +58,7 @@ pub async fn start_consensus_controller(
     }
 
     // start worker
-    let block_db = BlockGraph::new(cfg.clone())?;
+    let block_db = BlockGraph::new(cfg.clone(), serialization_context.clone())?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);

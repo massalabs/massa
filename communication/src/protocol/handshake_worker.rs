@@ -13,6 +13,7 @@ use crypto::{
     signature::{PrivateKey, SignatureEngine},
 };
 use futures::future::try_join;
+use models::SerializationContext;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use time::UTime;
 use tokio::time::timeout;
@@ -44,6 +45,7 @@ impl HandshakeWorker {
     /// * private_key : our private key.
     /// * timeout_duration: after timeout_duration millis, the handshake attempt is dropped.
     pub fn new(
+        serialization_context: SerializationContext,
         socket_reader: ReadHalf,
         socket_writer: WriteHalf,
         self_node_id: NodeId,
@@ -51,8 +53,8 @@ impl HandshakeWorker {
         timeout_duration: UTime,
     ) -> HandshakeWorker {
         HandshakeWorker {
-            reader: ReadBinder::new(socket_reader),
-            writer: WriteBinder::new(socket_writer),
+            reader: ReadBinder::new(socket_reader, serialization_context.clone()),
+            writer: WriteBinder::new(socket_writer, serialization_context),
             self_node_id,
             private_key,
             timeout_duration,
@@ -159,11 +161,13 @@ impl HandshakeWorker {
         };
 
         // check their signature
-        if !signature_engine.verify(&self_random_hash, &other_signature, &other_node_id.0)? {
-            return Err(CommunicationError::HandshakeError(
-                HandshakeErrorType::HandshakeInvalidSignatureError,
-            ));
-        }
+        signature_engine
+            .verify(&self_random_hash, &other_signature, &other_node_id.0)
+            .map_err(|_err| {
+                CommunicationError::HandshakeError(
+                    HandshakeErrorType::HandshakeInvalidSignatureError,
+                )
+            })?;
 
         Ok((other_node_id, self.reader, self.writer))
     }

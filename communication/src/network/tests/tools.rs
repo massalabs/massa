@@ -52,6 +52,7 @@ pub fn create_network_config(
         max_banned_peers: 100,
         max_advertise_length: 10,
         peers_file_dump_interval: UTime::from(30000),
+        max_message_size: 3 * 1024 * 1024,
     }
 }
 

@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_add() {
-    let cfg = get_test_config();
-    let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
+    let (cfg, serialization_context) = get_test_config();
+    let (command_sender, _manager) = start_storage_controller(cfg, serialization_context).unwrap();
     command_sender.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_hash();
@@ -18,8 +18,8 @@ async fn test_add() {
 
 #[tokio::test]
 async fn test_add_multiple() {
-    let cfg = get_test_config();
-    let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
+    let (cfg, serialization_context) = get_test_config();
+    let (command_sender, _manager) = start_storage_controller(cfg, serialization_context).unwrap();
     command_sender.clear().await.unwrap(); // make sur that the db is empty
     let hash = get_test_hash();
     let block = get_test_block();
@@ -32,9 +32,10 @@ async fn test_add_multiple() {
 
 #[tokio::test]
 async fn test_get() {
-    let cfg = get_test_config();
-    let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
-    command_sender.clear().await.unwrap(); // make sur that the db is empty
+    let (cfg, serialization_context) = get_test_config();
+    let (command_sender, _manager) =
+        start_storage_controller(cfg, serialization_context.clone()).unwrap();
+    command_sender.clear().await.unwrap(); // make sure that the db is empty
     assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_hash();
     let block = get_test_block();
@@ -42,8 +43,16 @@ async fn test_get() {
     let retrived = command_sender.get_block(hash).await.unwrap().unwrap();
 
     assert_eq!(
-        retrived.header.compute_hash().unwrap(),
-        block.header.compute_hash().unwrap()
+        retrived
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap(),
+        block
+            .header
+            .content
+            .compute_hash(&serialization_context)
+            .unwrap()
     );
 
     assert!(command_sender
@@ -56,8 +65,8 @@ async fn test_get() {
 
 #[tokio::test]
 async fn test_contains() {
-    let cfg = get_test_config();
-    let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
+    let (cfg, serialization_context) = get_test_config();
+    let (command_sender, _manager) = start_storage_controller(cfg, serialization_context).unwrap();
     command_sender.clear().await.unwrap(); // make sur that the db is empty
     assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_hash();

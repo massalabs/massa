@@ -1,14 +1,15 @@
 use crate::{config::StorageConfig, error::StorageError, storage_worker::BlockStorage};
 use crypto::hash::Hash;
 use logging::debug;
-use models::{block::Block, slot::Slot};
+use models::{Block, SerializationContext, Slot};
 use std::collections::HashMap;
 
 pub fn start_storage_controller(
     cfg: StorageConfig,
+    serialization_context: SerializationContext,
 ) -> Result<(StorageCommandSender, StorageManager), StorageError> {
     debug!("starting storage controller");
-    let db = BlockStorage::open(cfg)?;
+    let db = BlockStorage::open(cfg, serialization_context)?;
     Ok((StorageCommandSender(db.clone()), StorageManager(db)))
 }
 
