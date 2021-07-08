@@ -1221,7 +1221,9 @@ pub fn check_signature(
     hash: Hash,
     signature: Signature,
 ) -> Result<bool, ConsensusError> {
-    todo!()
+    SignatureEngine::new()
+        .verify(&hash, &signature, &header.creator)
+        .map_err(|e| ConsensusError::from(e))
 }
 
 #[cfg(test)]
