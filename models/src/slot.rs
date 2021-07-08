@@ -12,8 +12,9 @@ impl Slot {
     }
 
     pub fn into_bytes(&self) -> Vec<u8> {
-        let mut s = flexbuffers::FlexbufferSerializer::new();
-        self.serialize(&mut s).unwrap();
-        s.take_buffer()
+        let mut vec = Vec::with_capacity(9);
+        vec.extend_from_slice(&self.period.to_be_bytes());
+        vec[8] = self.thread;
+        vec
     }
 }
