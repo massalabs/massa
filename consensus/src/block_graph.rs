@@ -182,6 +182,7 @@ enum CheckOutcome {
     Discard(DiscardReason),
     WaitForSlot,
     WaitForDependencies(HashSet<Hash>),
+    Ignore,
 }
 
 /// Creates genesis block in given thread.
@@ -514,6 +515,10 @@ impl BlockGraph {
                         );
                         return Ok(BTreeSet::new());
                     }
+                    CheckOutcome::Ignore => {
+                        // drop it silently
+                        return Ok(BTreeSet::new());
+                    }
                     CheckOutcome::WaitForSlot => {
                         // make it wait for slot
                         self.block_statuses.insert(
@@ -573,6 +578,10 @@ impl BlockGraph {
                                 unsatisfied_dependencies: dependencies,
                             },
                         );
+                        return Ok(BTreeSet::new());
+                    }
+                    CheckOutcome::Ignore => {
+                        // drop it silently
                         return Ok(BTreeSet::new());
                     }
                     CheckOutcome::WaitForSlot => {
@@ -735,7 +744,7 @@ impl BlockGraph {
         if header.content.slot.period
             <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
-            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+            return Ok(CheckOutcome::Ignore);
         }
 
         // check if block slot is too much in the future
@@ -745,7 +754,7 @@ impl BlockGraph {
                     .period
                     .saturating_add(self.cfg.future_block_processing_max_periods)
             {
-                return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                return Ok(CheckOutcome::Ignore);
             }
         }
 
@@ -773,9 +782,9 @@ impl BlockGraph {
         for parent_thread in 0u8..self.cfg.thread_count {
             let parent_hash = header.content.parents[parent_thread as usize];
             match self.block_statuses.get(&parent_hash) {
-                Some(BlockStatus::Discarded { .. }) => {
+                Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
-                    return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                    return Ok(CheckOutcome::Discard(*reason));
                 }
                 Some(BlockStatus::Active(parent)) => {
                     // parent is active
@@ -802,7 +811,7 @@ impl BlockGraph {
                     // parent is missing or queued
                     if self.genesis_hashes.contains(&parent_hash) {
                         // forbid depending on discarded genesis block
-                        return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                        return Ok(CheckOutcome::Ignore);
                     }
                     missing_deps.insert(parent_hash);
                 }
@@ -838,8 +847,8 @@ impl BlockGraph {
                     deps.insert(gp_h);
                     match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
-                        Some(BlockStatus::Discarded { .. }) => {
-                            return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                        Some(BlockStatus::Discarded { reason, .. }) => {
+                            return Ok(CheckOutcome::Discard(*reason));
                         }
                         // this grandpa is active
                         Some(BlockStatus::Active(gp)) => {
@@ -854,7 +863,7 @@ impl BlockGraph {
                         _ => {
                             if self.genesis_hashes.contains(&gp_h) {
                                 // forbid depending on discarded genesis block
-                                return Ok(CheckOutcome::Discard(DiscardReason::Invalid));
+                                return Ok(CheckOutcome::Ignore);
                             }
                             missing_deps.insert(gp_h);
                         }
@@ -1570,7 +1579,7 @@ impl BlockGraph {
                         }
                         None
                     })
-                    .reduce(std::cmp::min);
+                    .min();
                 if let Some((_slot, hash)) = remove_elt {
                     to_keep.remove(&hash);
                     to_discard.insert(hash, None);

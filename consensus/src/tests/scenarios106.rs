@@ -214,12 +214,13 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     protocol_controller.receive_block(block3).await;
     assert!(!tools::validate_notpropagate_block(&mut protocol_controller, hash3, 2500).await);
 
-    // Check that the block has been discarded for being too much in the future.
+    // Check that the block has been silently dropped and not discarded for being too much in the future.
     let block_graph = consensus_command_sender
         .get_block_graph_status()
         .await
         .unwrap();
-    assert!(block_graph.discarded_blocks.map.contains_key(&hash3));
+    assert!(!block_graph.active_blocks.contains_key(&hash3));
+    assert!(!block_graph.discarded_blocks.map.contains_key(&hash3));
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
