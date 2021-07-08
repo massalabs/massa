@@ -196,9 +196,10 @@ pub enum ApiEvent {
         response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
     },
     AddOperations(HashMap<OperationId, Operation>),
-    GetLedgerData {
+    GetAddressesInfo {
         addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<Result<LedgerDataExport, ConsensusError>>,
+        response_tx:
+            oneshot::Sender<Result<(LedgerDataExport, AddressesRollState), ConsensusError>>,
     },
     GetRecentOperations {
         address: Address,
@@ -208,10 +209,6 @@ pub enum ApiEvent {
         operation_ids: HashSet<OperationId>,
         /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
-    },
-    GetRollState {
-        addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<AddressesRollState>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
 }
@@ -803,7 +800,7 @@ async fn retrieve_roll_state(
     });
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
-        .send(ApiEvent::GetRollState {
+        .send(ApiEvent::GetAddressesInfo {
             addresses,
             response_tx,
         })
@@ -814,9 +811,15 @@ async fn retrieve_roll_state(
                 e
             ))
         })?;
-    response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!("Could not retrieve retrieve_roll_state : {0}", e))
-    })
+    Ok(response_rx
+        .await
+        .map_err(|e| {
+            ApiError::ReceiveChannelError(format!(
+                "Could not retrieve retrieve_roll_state : {0}",
+                e
+            ))
+        })??
+        .1)
 }
 
 async fn retrieve_peers(
@@ -1550,7 +1553,7 @@ async fn get_address_data(
     massa_trace!("api.filters.get_address_data", { "addresses": addresses });
     let (response_tx, response_rx) = oneshot::channel();
     if let Err(err) = event_tx
-        .send(ApiEvent::GetLedgerData {
+        .send(ApiEvent::GetAddressesInfo {
             addresses,
             response_tx,
         })
@@ -1566,7 +1569,7 @@ async fn get_address_data(
     }
 
     let ledger_data_export = match response_rx.await {
-        Ok(Ok(ledger_export)) => ledger_export,
+        Ok(Ok((ledger_export, ..))) => ledger_export,
         Ok(Err(err)) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({

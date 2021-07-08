@@ -132,9 +132,10 @@ async fn test_roll() {
     parents[0] = id_1;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {
@@ -145,9 +146,10 @@ async fn test_roll() {
     );
 
     let balance = consensus_command_sender
-        .get_ledger_data(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
         .unwrap()
+        .0
         .candidate_data
         .data[0]
         .get(&address_2)
@@ -171,9 +173,10 @@ async fn test_roll() {
     parents[0] = id_2;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {
@@ -184,9 +187,10 @@ async fn test_roll() {
     );
 
     let balance = consensus_command_sender
-        .get_ledger_data(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
         .unwrap()
+        .0
         .candidate_data
         .data[0]
         .get(&address_2)
@@ -267,9 +271,10 @@ async fn test_roll() {
     parents[0] = id_6;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {
@@ -292,9 +297,10 @@ async fn test_roll() {
     parents[1] = id_6t1;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
 
     let (id_7, block7, _) = create_block_with_operations(
         &cfg,
@@ -309,9 +315,10 @@ async fn test_roll() {
     parents[0] = id_7;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {
@@ -342,9 +349,10 @@ async fn test_roll() {
     parents[0] = id_8;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {
@@ -355,9 +363,10 @@ async fn test_roll() {
     );
 
     let balance = consensus_command_sender
-        .get_ledger_data(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
         .unwrap()
+        .0
         .candidate_data
         .data[0]
         .get(&address_2)
@@ -378,9 +387,10 @@ async fn test_roll() {
     parents[0] = id_9;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {
@@ -391,9 +401,10 @@ async fn test_roll() {
     );
 
     let balance = consensus_command_sender
-        .get_ledger_data(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
         .unwrap()
+        .0
         .candidate_data
         .data[0]
         .get(&address_2)
@@ -416,9 +427,10 @@ async fn test_roll() {
     parents[0] = id_10;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {
@@ -429,9 +441,10 @@ async fn test_roll() {
     );
 
     let balance = consensus_command_sender
-        .get_ledger_data(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
         .unwrap()
+        .0
         .candidate_data
         .data[0]
         .get(&address_2)
@@ -452,9 +465,10 @@ async fn test_roll() {
     parents[0] = id_11;
 
     let rolls = consensus_command_sender
-        .get_roll_state(addresses.clone())
+        .get_addresses_info(addresses.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .1;
     assert_eq!(
         rolls.states.get(&address_2).unwrap().clone(),
         AddressRollState {

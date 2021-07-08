@@ -7,6 +7,7 @@ use consensus::ExportBlockStatus;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use consensus::{LedgerChange, LedgerDataExport};
 use crypto::hash::Hash;
+use models::AddressesRollState;
 use models::SerializeCompact;
 use models::{Address, Block, BlockHeader, BlockId, Slot};
 use models::{
@@ -204,9 +205,14 @@ async fn test_get_addresses_data() {
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
-                Some(ApiEvent::GetLedgerData { response_tx, .. }) => {
+                Some(ApiEvent::GetAddressesInfo { response_tx, .. }) => {
                     response_tx
-                        .send(Ok(LedgerDataExport::new(parent_count))) //LedgerDataExport
+                        .send(Ok((
+                            LedgerDataExport::new(parent_count),
+                            AddressesRollState {
+                                states: HashMap::new(),
+                            },
+                        ))) //LedgerDataExport
                         .expect("failed to send block");
                 }
 
@@ -279,9 +285,14 @@ async fn test_get_addresses_data() {
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
             match evt {
-                Some(ApiEvent::GetLedgerData { response_tx, .. }) => {
+                Some(ApiEvent::GetAddressesInfo { response_tx, .. }) => {
                     response_tx
-                        .send(Ok(handle_ledger)) //LedgerDataExport
+                        .send(Ok((
+                            handle_ledger,
+                            AddressesRollState {
+                                states: HashMap::new(),
+                            },
+                        ))) //LedgerDataExport
                         .expect("failed to send block");
                 }
 

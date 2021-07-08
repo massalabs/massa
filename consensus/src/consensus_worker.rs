@@ -54,9 +54,9 @@ pub enum ConsensusCommand {
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootsrapableGraph)>),
     /// Returns through a channel current blockgraph without block operations.
-    GetLedgerData {
+    GetAddressesInfo {
         addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<LedgerDataExport>,
+        response_tx: oneshot::Sender<(LedgerDataExport, AddressesRollState)>,
     },
     /// Returns through a channel for given address
     /// hashmap: Operation id -> if it is final
@@ -67,10 +67,6 @@ pub enum ConsensusCommand {
     GetOperations {
         operation_ids: HashSet<OperationId>,
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
-    },
-    GetRollState {
-        addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<AddressesRollState>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
 }
@@ -633,19 +629,22 @@ impl ConsensusWorker {
                     ))
                 })
             }
-            ConsensusCommand::GetLedgerData {
+            ConsensusCommand::GetAddressesInfo {
                 addresses,
                 response_tx,
             } => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_ledger_data",
+                    "consensus.consensus_worker.process_consensus_command.get_addresses_info",
                     { "addresses": addresses }
                 );
                 response_tx
-                    .send(self.block_db.get_ledger_data_export(&addresses)?)
+                    .send((
+                        self.block_db.get_ledger_data_export(&addresses)?,
+                        self.get_roll_state(&addresses).await?,
+                    ))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
-                            "could not send GetLedgerData response: {:?}",
+                            "could not send GetAddressesInfo response: {:?}",
                             err
                         ))
                     })
@@ -704,22 +703,6 @@ impl ConsensusWorker {
                 response_tx.send(res).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send get operations response: {:?}",
-                        err
-                    ))
-                })
-            }
-            ConsensusCommand::GetRollState {
-                addresses,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_roll_state",
-                    { "addresses": addresses }
-                );
-                let res = self.get_roll_state(&addresses).await?;
-                response_tx.send(res).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get_roll_state response: {:?}",
                         err
                     ))
                 })

@@ -242,29 +242,6 @@ impl ConsensusCommandSender {
         })
     }
 
-    /// Gets the candidate and final ledger data of a list of addresses
-    pub async fn get_ledger_data(
-        &self,
-        addresses: HashSet<Address>,
-    ) -> Result<LedgerDataExport, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<LedgerDataExport>();
-        massa_trace!("consensus.consensus_controller.get_ledger_data", {
-            "addresses": addresses
-        });
-        self.0
-            .send(ConsensusCommand::GetLedgerData {
-                addresses,
-                response_tx,
-            })
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(format!("consensus command response read error"))
-        })
-    }
-
     /// Returns hashmap: Operation id -> if it is final
     pub async fn get_operations_involving_address(
         &self,
@@ -289,16 +266,16 @@ impl ConsensusCommandSender {
         })
     }
 
-    pub async fn get_roll_state(
+    pub async fn get_addresses_info(
         &self,
         addresses: HashSet<Address>,
-    ) -> Result<AddressesRollState, ConsensusError> {
+    ) -> Result<(LedgerDataExport, AddressesRollState), ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.get_roll_state", {
+        massa_trace!("consensus.consensus_controller.get_addresses_info", {
             "addresses": addresses
         });
         self.0
-            .send(ConsensusCommand::GetRollState {
+            .send(ConsensusCommand::GetAddressesInfo {
                 addresses,
                 response_tx,
             })
