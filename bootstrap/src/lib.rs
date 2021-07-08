@@ -105,7 +105,7 @@ pub async fn start_bootstrap_server(
     establisher: Establisher,
     private_key: PrivateKey,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
-    if let Some(port) = cfg.listen_port {
+    if let Some(port) = cfg.bind {
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
