@@ -20,7 +20,7 @@
     max_block_size = 1048576
     operation_validity_periods = 3
     ledger_path = "./ledger"
-    ledger_cache_capacity = 10485760
+    ledger_cache_capacity = 1048576
     ledger_flush_interval = 10000
     ledger_reset_at_startup = true
     block_reward = 1
@@ -61,7 +61,7 @@
     max_banned_peers = 1000
     max_advertise_length = 100000
     peers_file_dump_interval = 10000
-    max_message_size = 10485760000
+    max_message_size = 1048576000
     message_timeout = 2000
     ask_peer_list_interval = 10000
     private_key_file="config/node_privkey.key"
@@ -87,7 +87,7 @@
     max_bootstrap_deps = 1000
     max_bootstrap_children = 1000
     max_ping = 500
-    max_bootstrap_message_size = 10485760000
+    max_bootstrap_message_size = 1048576000
     read_timeout = 100000
     write_timeout = 10000
     max_bootstrap_pos_entries = 100000000
