@@ -7,6 +7,7 @@ use super::{
 };
 use crate::{
     ledger::{Ledger, LedgerChange, LedgerData},
+    pos::RollCounts,
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
@@ -18,7 +19,16 @@ use time::UTime;
 #[serial]
 async fn test_ledger_init() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None);
     assert!(ledger.is_ok());
 }
@@ -27,7 +37,16 @@ async fn test_ledger_init() {
 #[serial]
 async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     for latest_final in ledger
@@ -42,7 +61,16 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 #[serial]
 async fn test_ledger_final_balance_increment_new_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -68,7 +96,16 @@ async fn test_ledger_final_balance_increment_new_address() {
 #[serial]
 async fn test_ledger_apply_change_wrong_thread() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -97,7 +134,16 @@ async fn test_ledger_apply_change_wrong_thread() {
 #[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -128,7 +174,16 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -169,7 +224,16 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -216,7 +280,16 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -235,7 +308,16 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -255,7 +337,16 @@ async fn test_ledger_final_balance_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_duplicate_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -279,7 +370,16 @@ async fn test_ledger_final_balance_duplicate_address() {
 #[serial]
 async fn test_ledger_final_balance_multiple_addresses() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let mut addresses = vec![];
@@ -308,7 +408,16 @@ async fn test_ledger_final_balance_multiple_addresses() {
 #[serial]
 async fn test_ledger_clear() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -344,7 +453,16 @@ async fn test_ledger_clear() {
 #[serial]
 async fn test_ledger_read_whole() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
     let private_key = crypto::generate_random_private_key();
@@ -438,7 +556,16 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     ledger.insert(address_2, LedgerData { balance: 3000 });
 
     let ledger_file = generate_ledger_file(&ledger);
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()

@@ -6,6 +6,7 @@ use super::{
     tools,
 };
 use crate::{
+    pos::RollCounts,
     start_consensus_controller,
     tests::tools::{create_transaction, generate_ledger_file, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
@@ -20,7 +21,16 @@ use time::UTime;
 #[serial]
 async fn test_update_current_slot_cmd_notification() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 2000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
 
@@ -77,7 +87,16 @@ async fn test_update_current_slot_cmd_notification() {
 #[serial]
 async fn test_update_latest_final_block_cmd_notification() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
     cfg.delta_f0 = 2;
@@ -144,7 +163,16 @@ async fn test_update_latest_final_block_cmd_notification() {
 #[serial]
 async fn test_new_final_ops() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;

@@ -4,6 +4,7 @@ use models::{Address, Slot};
 
 use crate::{
     ledger::LedgerData,
+    pos::RollCounts,
     start_consensus_controller,
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
@@ -59,7 +60,16 @@ async fn test_operations_check() {
     ledger.insert(address_1, LedgerData { balance: 5 });
 
     let ledger_file = generate_ledger_file(&ledger);
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;

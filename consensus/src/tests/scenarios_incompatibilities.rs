@@ -3,7 +3,7 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
+use crate::{pos::RollCounts, start_consensus_controller, tests::tools::generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
 use std::collections::{HashMap, VecDeque};
@@ -12,7 +12,16 @@ use std::collections::{HashMap, VecDeque};
 #[serial]
 async fn test_thread_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
@@ -176,7 +185,16 @@ async fn test_thread_incompatibility() {
 #[serial]
 async fn test_grandpa_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
     cfg.t0 = 200.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;

@@ -9,6 +9,7 @@ use serial_test::serial;
 use time::UTime;
 
 use crate::{
+    pos::RollCounts,
     start_consensus_controller,
     tests::tools::{create_transaction, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
@@ -53,7 +54,16 @@ async fn test_storage() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
 
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
@@ -279,7 +289,16 @@ async fn test_consensus_and_storage() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let mut cfg = tools::default_consensus_config(1, ledger_file.path());
+    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..2)
+        .map(|_| crypto::generate_random_private_key())
+        .collect();
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let mut cfg = tools::default_consensus_config(
+        1,
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_keys.clone(),
+    );
 
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;

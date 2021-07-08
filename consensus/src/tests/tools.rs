@@ -2,6 +2,7 @@ use super::mock_protocol_controller::MockProtocolController;
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
     ledger::{LedgerData, OperationLedgerInterface},
+    pos::{RollCounts, RollUpdate, RollUpdates},
     ConsensusConfig,
 };
 use communication::protocol::ProtocolCommand;
@@ -445,17 +446,60 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
     ledger_file_named
 }
 
-pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> ConsensusConfig {
+/// generate a named temporary JSON initial rolls file
+pub fn generate_roll_counts_file(roll_counts_vec: &Vec<RollCounts>) -> NamedTempFile {
+    use std::io::prelude::*;
+    let roll_counts_file_named = NamedTempFile::new().expect("cannot create temp file");
+    serde_json::to_writer_pretty(roll_counts_file_named.as_file(), &roll_counts_vec)
+        .expect("unable to write ledger file");
+    roll_counts_file_named
+        .as_file()
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("could not seek file");
+    roll_counts_file_named
+}
+
+/// generate a default named temporary JSON initial rolls file,
+/// asuming two threads.
+pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempFile {
+    let mut roll_counts: Vec<RollCounts> = vec![RollCounts::new(); 2];
+    for key in stakers.iter() {
+        let pub_key = crypto::derive_public_key(key);
+        let address = Address::from_public_key(&pub_key).unwrap();
+        let update = RollUpdate {
+            roll_increment: true,
+            roll_delta: 1,
+        };
+        let mut updates = RollUpdates::new();
+        updates.apply(&address, &update).unwrap();
+        let thread = address.get_thread(2);
+        roll_counts[thread as usize].apply(&updates).unwrap();
+    }
+    generate_roll_counts_file(&roll_counts)
+}
+
+pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
+    for key in nodes.iter() {
+        let pub_key = crypto::derive_public_key(key);
+        let address = Address::from_public_key(&pub_key).unwrap();
+        if address == *draw {
+            return key.clone();
+        }
+    }
+    panic!("Matching key for draw not found.");
+}
+
+pub fn default_consensus_config(
+    nb_nodes: usize,
+    initial_ledger_path: &Path,
+    roll_counts_path: &Path,
+    staking_keys: Vec<PrivateKey>,
+) -> ConsensusConfig {
     let genesis_key = crypto::generate_random_private_key();
     let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
     let max_operations_per_block: u32 = 1024;
-    let staking_keys = (0..nb_nodes)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
-
-    let tempdir3 = tempfile::tempdir().expect("cannot create temp dir");
 
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
@@ -500,7 +544,7 @@ pub fn default_consensus_config(nb_nodes: usize, initial_ledger_path: &Path) -> 
         block_reward: 1,
         initial_ledger_path: initial_ledger_path.to_path_buf(),
         operation_batch_size: 100,
-        initial_rolls_path: tempdir3.path().to_path_buf(),
+        initial_rolls_path: roll_counts_path.to_path_buf(),
         initial_draw_seed: "genesis".into(),
         periods_per_cycle: 100,
         pos_lookback_cycles: 2,
