@@ -332,7 +332,10 @@ async fn test_get_block_interval() {
     let end: UTime = 0.into();
     let res = warp::test::request()
         .method("GET")
-        .path(&format!("/api/v1/graph_interval/{}/{}", start, end))
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);
@@ -345,7 +348,10 @@ async fn test_get_block_interval() {
     let end: UTime = 2500.into();
     let res = warp::test::request()
         .method("GET")
-        .path(&format!("/api/v1/graph_interval/{}/{}", start, end))
+        .path(&format!(
+            "/api/v1/graph_interval?start={}&end={}",
+            start, end
+        ))
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);
@@ -502,7 +508,10 @@ async fn test_get_graph_interval() {
     let end: UTime = 0.into();
     let res = warp::test::request()
         .method("GET")
-        .path(&format!("/api/v1/blockinterval/{}/{}", start, end))
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);
@@ -516,7 +525,10 @@ async fn test_get_graph_interval() {
     let end: UTime = 2500.into();
     let res = warp::test::request()
         .method("GET")
-        .path(&format!("/api/v1/blockinterval/{}/{}", start, end))
+        .path(&format!(
+            "/api/v1/blockinterval?start={}&end={}",
+            start, end
+        ))
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);

@@ -8,6 +8,7 @@ use consensus::{config::ConsensusConfig, consensus_controller::ConsensusControll
 use consensus::{get_block_slot_timestamp, DiscardReason};
 use crypto::{hash::Hash, signature::PublicKey};
 use models::block::BlockHeader;
+use serde::Deserialize;
 use serde_json::json;
 use std::cmp::min;
 use std::collections::{HashMap, HashSet};
@@ -20,6 +21,12 @@ pub mod config;
 pub mod error;
 
 pub use error::*;
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+struct TimeInterval {
+    start: UTime,
+    end: UTime,
+}
 
 /// This function sets up all the routes that can be used
 /// and combines them into one filter
@@ -51,10 +58,11 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("blockinterval"))
-        .and(warp::path::param::<UTime>()) //start
-        .and(warp::path::param::<UTime>()) //end
+        .and(warp::query::<TimeInterval>()) //start, end
         .and(warp::path::end())
-        .and_then(move |start, end| block_interval(interface.clone(), cfg.clone(), start, end));
+        .and_then(move |TimeInterval { start, end }| {
+            block_interval(interface.clone(), cfg.clone(), start, end)
+        });
 
     let interface = consensus_controller_interface.clone();
     let current_parents = warp::get()
@@ -78,10 +86,11 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("graph_interval"))
-        .and(warp::path::param::<UTime>()) //start
-        .and(warp::path::param::<UTime>()) //end
+        .and(warp::query::<TimeInterval>()) //start, end //end
         .and(warp::path::end())
-        .and_then(move |start, end| graph_interval(interface.clone(), cfg.clone(), start, end));
+        .and_then(move |TimeInterval { start, end }| {
+            graph_interval(interface.clone(), cfg.clone(), start, end)
+        });
 
     let interface = consensus_controller_interface.clone();
     let cliques = warp::get()
