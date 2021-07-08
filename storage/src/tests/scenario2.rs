@@ -6,14 +6,16 @@ use super::tools::*;
 
 #[tokio::test]
 async fn test_add() {
-    let cfg = get_test_config("target/test/add".into());
+    let cfg = get_test_config();
     let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
-    command_sender.reset().await.unwrap(); // make sur that the db is empty
+    command_sender.clear().await.unwrap(); // make sur that the db is empty
+    assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_hash();
     let block = get_test_block();
     command_sender.add_block(hash, block).await.unwrap();
     assert!(command_sender.contains(hash).await.unwrap());
-    command_sender.reset().await.unwrap();
+    assert_eq!(1, command_sender.len().await.unwrap());
+    command_sender.clear().await.unwrap();
 }
 
 #[tokio::test]
@@ -32,9 +34,10 @@ async fn test_add_multiple() {
 
 #[tokio::test]
 async fn test_get() {
-    let cfg = get_test_config("target/test/get".into());
+    let cfg = get_test_config();
     let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
-    command_sender.reset().await.unwrap(); // make sur that the db is empty
+    command_sender.clear().await.unwrap(); // make sur that the db is empty
+    assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_hash();
     let block = get_test_block();
     command_sender.add_block(hash, block.clone()).await.unwrap();
@@ -50,14 +53,15 @@ async fn test_get() {
         .await
         .unwrap()
         .is_none());
-    command_sender.reset().await.unwrap();
+    command_sender.clear().await.unwrap();
 }
 
 #[tokio::test]
 async fn test_contains() {
-    let cfg = get_test_config("target/test/contains".into());
+    let cfg = get_test_config();
     let (command_sender, _manager) = start_storage_controller(cfg).unwrap();
-    command_sender.reset().await.unwrap(); // make sur that the db is empty
+    command_sender.clear().await.unwrap(); // make sur that the db is empty
+    assert_eq!(0, command_sender.len().await.unwrap());
     let hash = get_test_hash();
     let block = get_test_block();
     command_sender.add_block(hash, block.clone()).await.unwrap();

@@ -1,150 +1,205 @@
-use crypto::hash::Hash;
-use models::{block::Block, slot::Slot};
-use sled::Transactional;
-use sled::Tree;
-use sled::{transaction::ConflictableTransactionError, Db};
-use std::sync::Arc;
-use std::sync::RwLock;
-use std::{collections::HashMap, ops::Deref};
-
 use crate::{
     config::StorageConfig,
     error::{InternalError, StorageError},
 };
+use crypto::hash::Hash;
+use models::{block::Block, slot::Slot};
+use sled;
+use sled::Transactional;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock, RwLockWriteGuard},
+};
 
 #[derive(Clone)]
 pub struct BlockStorage {
-    db: Db,
-    nb_stored_blocks: Arc<RwLock<usize>>,
-    max_stored_blocks: usize,
+    cfg: StorageConfig,
+    db: sled::Db,
+    block_count: Arc<RwLock<usize>>,
+    hash_to_block: sled::Tree,
+    slot_to_hash: sled::Tree,
 }
 
 impl BlockStorage {
-    pub fn reset(&self) -> Result<(), StorageError> {
-        self.db.open_tree("hash_to_block")?.clear()?;
-        self.db.open_tree("slot_to_hash")?.clear()?;
+    pub fn clear(&self) -> Result<(), StorageError> {
+        {
+            //acquire W lock on block_count
+            let mut block_count_w = self
+                .block_count
+                .write()
+                .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+            self.hash_to_block.clear()?;
+            self.slot_to_hash.clear()?;
+            *block_count_w = 0;
+        } //release W Lock
         Ok(())
     }
 
-    pub fn open(cfg: &StorageConfig) -> Result<BlockStorage, StorageError> {
+    pub fn open(cfg: StorageConfig) -> Result<BlockStorage, StorageError> {
         let sled_config = sled::Config::default()
             .path(&cfg.path)
             .cache_capacity(cfg.cache_capacity)
-            .flush_every_ms(cfg.flush_every_ms);
+            .flush_every_ms(cfg.flush_interval.map(|v| v.to_millis()));
         let db = sled_config.open()?;
-        let _hash_to_block = db.open_tree("hash_to_block")?;
-        let _slot_to_hash = db.open_tree("slot_to_hash")?;
-        let nb_blocks_in_db = db.len();
-        Ok(BlockStorage {
+        let hash_to_block = db.open_tree("hash_to_block")?;
+        let slot_to_hash = db.open_tree("slot_to_hash")?;
+        let block_count = Arc::new(RwLock::new(db.len()));
+
+        let res = BlockStorage {
+            cfg,
             db,
-            nb_stored_blocks: Arc::new(RwLock::new(nb_blocks_in_db)),
-            max_stored_blocks: cfg.max_stored_blocks,
-        })
+            block_count: block_count.clone(),
+            hash_to_block,
+            slot_to_hash,
+        };
+
+        //ensure max block count. while nb block > max block, remove the oldest blocks.
+        {
+            let mut block_count_w = block_count
+                .write()
+                .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+            res.remove_excess_blocks(&mut block_count_w)?;
+        }
+
+        return Ok(res);
     }
 
     pub fn add_block(&self, hash: Hash, block: Block) -> Result<(), StorageError> {
-        let hash_to_block = self.db.open_tree("hash_to_block")?;
-        let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-        self.add_block_internal(hash, block, &hash_to_block, &slot_to_hash)
+        {
+            //acquire W lock on block_count
+            let mut block_count_w = self
+                .block_count
+                .write()
+                .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+
+            //add the new block
+            self.add_block_internal(hash, block, &mut block_count_w)?;
+        }; // drop W lock on block_count
+
+        Ok(())
+    }
+
+    pub fn add_block_batch(&self, blocks: HashMap<Hash, Block>) -> Result<(), StorageError> {
+        {
+            //acquire W lock on block_count
+            let mut block_count_w = self
+                .block_count
+                .write()
+                .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+
+            //add the new blocks
+            for (hash, block) in blocks.into_iter() {
+                self.add_block_internal(hash, block, &mut block_count_w)?;
+            }
+        }; // drop W lock on block_count
+
+        Ok(())
     }
 
     fn add_block_internal(
         &self,
         hash: Hash,
         block: Block,
-        hash_to_block: &Tree,
-        slot_to_hash: &Tree,
+        block_count_w: &mut RwLockWriteGuard<usize>,
     ) -> Result<(), StorageError> {
-        //manage max block. If nb block > max block, remove the oldest block.
-        self.nb_stored_blocks
-            .read()
-            .map(|nb_stored_blocks| {
-                if *nb_stored_blocks >= self.max_stored_blocks {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
-            .and_then(|max_reach| {
-                if max_reach {
-                    slot_to_hash.pop_min().and_then(|res| {
-                        res.map(|(_, min_hash)| hash_to_block.remove(min_hash))
-                            .transpose()
-                    })?;
-                    Ok(())
-                } else {
-                    self.nb_stored_blocks
-                        .write()
-                        .map(|mut value| {
-                            *value += 1;
-                        })
-                        .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
-                }
+        //add the new block
+        (&self.hash_to_block, &self.slot_to_hash).transaction(|(hash_tx, slot_tx)| {
+            let serialized_block = block.into_bytes().map_err(|err| {
+                sled::transaction::ConflictableTransactionError::Abort(
+                    InternalError::TransactionError(format!("error serializing block: {:?}", err)),
+                )
             })?;
-
-        (hash_to_block, slot_to_hash).transaction(|(hash_tx, slot_tx)| {
-            let block_vec = block.into_bytes().map_err(|err| {
-                ConflictableTransactionError::Abort(InternalError::TransactionError(format!(
-                    "error serializing block: {:?}",
-                    err
-                )))
-            })?;
-            hash_tx.insert(&hash.to_bytes(), block_vec.as_slice())?;
-            slot_tx.insert(&block.header.slot.to_bytes(), &hash.to_bytes())?;
+            hash_tx.insert(&hash.to_bytes(), serialized_block.as_slice())?;
+            slot_tx.insert(&block.header.slot.to_bytes_key(), &hash.to_bytes())?;
             Ok(())
         })?;
+        **block_count_w += 1;
+
+        //manage max block. If nb block > max block, remove the oldest block.
+        self.remove_excess_blocks(&mut *block_count_w)?;
+
         Ok(())
     }
 
-    pub fn add_multiple_blocks(&self, blocks: HashMap<Hash, Block>) -> Result<(), StorageError> {
-        let hash_to_block = self.db.open_tree("hash_to_block")?;
-        let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-        for (hash, block) in blocks {
-            self.add_block_internal(hash, block, &hash_to_block, &slot_to_hash)?
+    /// while there are too many blocks, remove the one with the oldest slot
+    fn remove_excess_blocks(
+        &self,
+        block_count_w: &mut RwLockWriteGuard<usize>,
+    ) -> Result<(), StorageError> {
+        while **block_count_w > self.cfg.max_stored_blocks {
+            let (_block, hash) =
+                self.slot_to_hash
+                    .pop_min()?
+                    .ok_or(StorageError::DatabaseInconsistency(
+                        "block_count > 0 but slot_to_hash.pop_min returned None".into(),
+                    ))?;
+            self.hash_to_block.remove(hash)?;
+            **block_count_w -= 1;
         }
         Ok(())
     }
 
+    pub fn len(&self) -> Result<usize, StorageError> {
+        self.block_count
+            .read()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))
+            .map(|nb_stored_blocks| *nb_stored_blocks)
+    }
+
     pub fn contains(&self, hash: Hash) -> Result<bool, StorageError> {
-        let hash_to_block = self.db.open_tree("hash_to_block")?;
-        hash_to_block
+        let _block_count_r = self
+            .block_count
+            .read()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+        self.hash_to_block
             .contains_key(hash.to_bytes())
             .map_err(|e| StorageError::from(e))
     }
-    pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
-        let hash_to_block = self.db.open_tree("hash_to_block")?;
-        BlockStorage::get_block_internal(hash, &hash_to_block)
-    }
 
-    fn get_block_internal(hash: Hash, hash_to_block: &Tree) -> Result<Option<Block>, StorageError> {
-        hash_to_block
-            .get(hash.to_bytes())?
-            .map(|sblock| Block::from_bytes(sblock.deref().into()))
-            .transpose()
-            .map_err(|e| StorageError::from(e))
+    pub fn get_block(&self, hash: Hash) -> Result<Option<Block>, StorageError> {
+        let hash_key = hash.to_bytes();
+
+        let _block_count_r = self
+            .block_count
+            .read()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+
+        if let Some(s_block) = self.hash_to_block.get(hash_key)? {
+            Ok(Some(Block::from_bytes(&s_block)?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn get_slot_range(
         &self,
-        start: Slot,
-        end: Slot,
+        start: Option<Slot>,
+        end: Option<Slot>,
     ) -> Result<HashMap<Hash, Block>, StorageError> {
-        let hash_to_block = self.db.open_tree("hash_to_block")?;
-        let slot_to_hash = self.db.open_tree("slot_to_hash")?;
-        let start = start.to_bytes();
-        let end = end.to_bytes();
-        slot_to_hash
-            .range(start..end)
-            .map(|res| {
-                res.map_err(|e| StorageError::from(e))
-                    .and_then(|(_, shash)| {
-                        let hash = Hash::from_bytes(shash.deref().into())?;
-                        let block = BlockStorage::get_block_internal(hash, &hash_to_block)?;
-                        Ok(block.map(|b| (hash, b)))
-                    })
-            })
-            .filter_map(|val| val.transpose())
-            .collect::<Result<HashMap<Hash, Block>, StorageError>>()
+        let start_key = start.map(|v| v.to_bytes_key());
+        let end_key = end.map(|v| v.to_bytes_key());
+
+        let _block_count_r = self
+            .block_count
+            .read()
+            .map_err(|err| StorageError::MutexPoisonedError(err.to_string()))?;
+
+        match (start_key, end_key) {
+            (None, None) => self.slot_to_hash.iter(),
+            (Some(b1), None) => self.slot_to_hash.range(b1..),
+            (None, Some(b2)) => self.slot_to_hash.range(..b2),
+            (Some(b1), Some(b2)) => self.slot_to_hash.range(b1..b2),
+        }
+        .map(|item| {
+            let (_, s_hash) = item?;
+            let hash = Hash::from_bytes(&s_hash)?;
+            let block = self
+                .get_block(hash)?
+                .ok_or(StorageError::DatabaseInconsistency(
+                    "block hash referenced by slot_to_hash is absent from hash_to_block".into(),
+                ))?;
+            Ok((hash, block))
+        })
+        .collect::<Result<HashMap<Hash, Block>, StorageError>>()
     }
 }
