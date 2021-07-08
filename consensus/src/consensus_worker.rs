@@ -33,15 +33,11 @@ pub enum ConsensusCommand {
 
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
-pub enum ConsensusEvent {
-    dummyevent,
-}
+pub enum ConsensusEvent {}
 
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
-pub enum ConsensusManagementCommand {
-    dummycommand,
-}
+pub enum ConsensusManagementCommand {}
 
 /// Manages consensus.
 pub struct ConsensusWorker {
@@ -71,6 +67,8 @@ pub struct ConsensusWorker {
     next_slot: Slot,
     /// blocks we want
     wishlist: HashSet<BlockId>,
+    /// clock compensation
+    clock_compensation: i64,
 }
 
 impl ConsensusWorker {
@@ -123,6 +121,7 @@ impl ConsensusWorker {
             previous_slot,
             next_slot,
             wishlist: HashSet::new(),
+            clock_compensation,
         })
     }
 
