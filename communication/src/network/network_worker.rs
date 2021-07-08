@@ -26,9 +26,15 @@ use tokio::task::JoinHandle;
 #[derive(Debug)]
 pub enum NetworkCommand {
     /// Ask for a block from a node.
-    AskForBlock(NodeId, Hash),
+    AskForBlock {
+        node: NodeId,
+        hash: Hash,
+    },
     /// Send that block to node.
-    SendBlock(NodeId, Block),
+    SendBlock {
+        node: NodeId,
+        block: Block,
+    },
     /// Send a header to a node.
     SendBlockHeader {
         node: NodeId,
@@ -36,7 +42,10 @@ pub enum NetworkCommand {
     },
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
     Ban(NodeId),
-    BlockNotFound(NodeId, Hash),
+    BlockNotFound {
+        node: NodeId,
+        hash: Hash,
+    },
 }
 
 #[derive(Debug)]
@@ -44,16 +53,25 @@ pub enum NetworkEvent {
     NewConnection(NodeId),
     ConnectionClosed(NodeId),
     /// A block was received
-    ReceivedBlock(NodeId, Block),
+    ReceivedBlock {
+        node: NodeId,
+        block: Block,
+    },
     /// A block header was received
     ReceivedBlockHeader {
         source_node_id: NodeId,
         header: BlockHeader,
     },
     /// Someone ask for block with given header hash.
-    AskedForBlock(NodeId, Hash),
+    AskedForBlock {
+        node: NodeId,
+        hash: Hash,
+    },
     /// That node does not have this block
-    BlockNotFound(NodeId, Hash),
+    BlockNotFound {
+        node: NodeId,
+        hash: Hash,
+    },
 }
 
 #[derive(Debug)]
@@ -506,7 +524,7 @@ impl NetworkWorker {
                         })?;
                 }
             }
-            NetworkCommand::AskForBlock(node, hash) => {
+            NetworkCommand::AskForBlock { node, hash } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
                     node_command_tx
                         .send(NodeCommand::AskForBlock(hash))
@@ -518,7 +536,7 @@ impl NetworkWorker {
                         })?;
                 }
             }
-            NetworkCommand::SendBlock(node, block) => {
+            NetworkCommand::SendBlock { node, block } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
                     node_command_tx
                         .send(NodeCommand::SendBlock(block))
@@ -539,10 +557,10 @@ impl NetworkWorker {
                         )
                     })?;
             }
-            NetworkCommand::BlockNotFound(node, block) => {
+            NetworkCommand::BlockNotFound { node, hash } => {
                 if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
                     node_command_tx
-                        .send(NodeCommand::BlockNotFound(block))
+                        .send(NodeCommand::BlockNotFound(hash))
                         .await
                         .map_err(|_| {
                             CommunicationError::ChannelError(
@@ -674,14 +692,20 @@ impl NetworkWorker {
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => self
                 .controller_event_tx
-                .send(NetworkEvent::ReceivedBlock(from_node_id, data))
+                .send(NetworkEvent::ReceivedBlock {
+                    node: from_node_id,
+                    block: data,
+                })
                 .await
                 .map_err(|_| {
                     CommunicationError::ChannelError("receive block event send failed".into())
                 })?,
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlock(data)) => self
                 .controller_event_tx
-                .send(NetworkEvent::AskedForBlock(from_node_id, data))
+                .send(NetworkEvent::AskedForBlock {
+                    node: from_node_id,
+                    hash: data,
+                })
                 .await
                 .map_err(|_| {
                     CommunicationError::ChannelError(
@@ -738,6 +762,14 @@ impl NetworkWorker {
                         )
                     })?
             }
+
+            NodeEvent(node, NodeEventType::BlockNotFound(hash)) => self
+                .controller_event_tx
+                .send(NetworkEvent::BlockNotFound { node, hash })
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError("receive block event send failed".into())
+                })?,
         }
         Ok(())
     }

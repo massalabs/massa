@@ -18,13 +18,16 @@ pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
     GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
     /// Returns through a channel full block with specified hash.
-    GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
+    GetActiveBlock {
+        hash: Hash,
+        response_tx: oneshot::Sender<Option<Block>>,
+    },
     /// Returns through a channel the list of slots with public key of the selected staker.
-    GetSelectionDraws(
-        Slot,
-        Slot,
-        oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
-    ),
+    GetSelectionDraws {
+        start: Slot,
+        end: Slot,
+        response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
+    },
 }
 
 /// Events that are emitted by consensus.
@@ -209,7 +212,7 @@ impl ConsensusWorker {
                     ))
                 }),
             //return full block with specified hash
-            ConsensusCommand::GetActiveBlock(hash, response_tx) => response_tx
+            ConsensusCommand::GetActiveBlock { hash, response_tx } => response_tx
                 .send(self.block_db.get_active_block(hash).cloned())
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
@@ -217,11 +220,15 @@ impl ConsensusWorker {
                         err
                     ))
                 }),
-            ConsensusCommand::GetSelectionDraws(slot_start, slot_end, response_tx) => {
+            ConsensusCommand::GetSelectionDraws {
+                start,
+                end,
+                response_tx,
+            } => {
                 let mut res = Vec::new();
-                let mut cur_slot = slot_start;
+                let mut cur_slot = start;
                 let result = loop {
-                    if cur_slot >= slot_end {
+                    if cur_slot >= end {
                         break Ok(res);
                     }
 

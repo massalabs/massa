@@ -176,13 +176,16 @@ pub enum ApiEvent {
     /// API received stop signal and wants to fordward it
     AskStop,
     GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
-    GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
+    GetActiveBlock {
+        hash: Hash,
+        response_tx: oneshot::Sender<Option<Block>>,
+    },
     GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
-    GetSelectionDraw(
-        Slot,
-        Slot,
-        oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
-    ),
+    GetSelectionDraw {
+        start: Slot,
+        end: Slot,
+        response_tx: oneshot::Sender<Result<Vec<(Slot, PublicKey)>, ConsensusError>>,
+    },
 }
 
 pub enum ApiManagementCommand {}
@@ -468,7 +471,7 @@ async fn retrieve_block(
 ) -> Result<Option<Block>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
-        .send(ApiEvent::GetActiveBlock(hash, response_tx))
+        .send(ApiEvent::GetActiveBlock { hash, response_tx })
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!("Could not send api event get block : {0}", e))
@@ -500,7 +503,11 @@ async fn retrieve_selection_draw(
 ) -> Result<Vec<(Slot, PublicKey)>, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
-        .send(ApiEvent::GetSelectionDraw(start, end, response_tx))
+        .send(ApiEvent::GetSelectionDraw {
+            start,
+            end,
+            response_tx,
+        })
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!(

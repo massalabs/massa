@@ -90,8 +90,8 @@ async fn run(cfg: config::Config) {
                     info!("API asked node stop");
                     break;
                 },
-                Ok(ApiEvent::GetActiveBlock(hash, response_sender_tx)) => {
-                    response_sender_tx.send(
+                Ok(ApiEvent::GetActiveBlock{hash, response_tx}) => {
+                    response_tx.send(
                         consensus_command_sender
                         .get_active_block(hash)
                             .await
@@ -114,8 +114,8 @@ async fn run(cfg: config::Config) {
                             .expect("could not retrive peers")
                         ).expect("could not send peers");
                     },
-                Ok(ApiEvent::GetSelectionDraw(start, end, response_sender_tx)) => {
-                    response_sender_tx.send(
+                Ok(ApiEvent::GetSelectionDraw { start, end, response_tx}) => {
+                    response_tx.send(
                         consensus_command_sender
                             .get_selection_draws(start, end )
                             .await
