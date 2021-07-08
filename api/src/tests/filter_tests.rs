@@ -1781,7 +1781,10 @@ async fn test_staker_info() {
                 match evt {
                     Some(ApiEvent::GetSelectionDraw { response_tx, .. }) => {
                         response_tx
-                            .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
+                            .send(Ok(vec![(
+                                Slot::new(0, 0),
+                                Address::from_public_key(&cloned_staker),
+                            )]))
                             .expect("failed to send slection draw");
                     }
                     Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
@@ -1851,7 +1854,10 @@ async fn test_staker_info() {
             match evt {
                 Some(ApiEvent::GetSelectionDraw { response_tx, .. }) => {
                     response_tx
-                        .send(Ok(vec![(Slot::new(0, 0), cloned_staker)]))
+                        .send(Ok(vec![(
+                            Slot::new(0, 0),
+                            Address::from_public_key(&cloned_staker),
+                        )]))
                         .expect("failed to send selection draw");
                 }
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {

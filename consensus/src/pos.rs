@@ -1,10 +1,9 @@
 use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
-use models::{Address, Block, BlockId, Operation, Slot};
-use std::collections::{BTreeMap, HashMap, VecDeque};
-
 use crypto::hash::Hash;
+use models::{Address, Block, BlockId, Operation, Slot};
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 pub trait OperationPosInterface {
     /// returns [thread][roll_involved_addr](compensated_bought_rolls, compensated_sold_rolls)
@@ -51,7 +50,7 @@ impl OperationPosInterface for Block {
     }
 }
 
-struct FinalRollThreadData {
+pub struct FinalRollThreadData {
     /// Cycle number
     cycle: u64,
     /// Slot of the latest final block
@@ -67,7 +66,7 @@ struct FinalRollThreadData {
     rng_seed: BitVec,
 }
 
-struct ProofOfStake {
+pub struct ProofOfStake {
     /// Config
     cfg: ConsensusConfig,
     /// Index by thread and cycle number
@@ -81,13 +80,13 @@ struct ProofOfStake {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ExportProofOfStake {
+pub struct ExportProofOfStake {
     /// Index by thread and cycle number
     final_roll_data: Vec<Vec<ExportFinalRollThreadData>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct ExportFinalRollThreadData {
+pub struct ExportFinalRollThreadData {
     /// Cycle number
     cycle: u64,
     last_final_slot: Slot,

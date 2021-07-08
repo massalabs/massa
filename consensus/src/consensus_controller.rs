@@ -5,6 +5,7 @@ use super::{
         ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusWorker,
     },
     error::ConsensusError,
+    pos::ProofOfStake,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
@@ -65,6 +66,8 @@ pub async fn start_consensus_controller(
 
     // start worker
     let block_db = BlockGraph::new(cfg.clone(), boot_graph).await?;
+    let pos = ProofOfStake::new(cfg.clone()).await?;
+    //TODO pos bootstrapping (like block_db)
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
@@ -77,11 +80,13 @@ pub async fn start_consensus_controller(
             pool_command_sender,
             opt_storage_command_sender,
             block_db,
+            pos,
             command_rx,
             event_tx,
             manager_rx,
             clock_compensation,
-        )?
+        )
+        .await?
         .run_loop()
         .await;
         match res {
@@ -157,10 +162,10 @@ impl ConsensusCommandSender {
         &self,
         start: Slot,
         end: Slot,
-    ) -> Result<Vec<(Slot, PublicKey)>, ConsensusError> {
+    ) -> Result<Vec<(Slot, Address)>, ConsensusError> {
         massa_trace!("consensus.consensus_controller.get_selection_draws", {});
         let (response_tx, response_rx) =
-            oneshot::channel::<Result<Vec<(Slot, PublicKey)>, ConsensusError>>();
+            oneshot::channel::<Result<Vec<(Slot, Address)>, ConsensusError>>();
         self.0
             .send(ConsensusCommand::GetSelectionDraws {
                 start,
