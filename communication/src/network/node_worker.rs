@@ -8,7 +8,11 @@ use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use crypto::hash::Hash;
 use models::{Block, BlockHeader};
 use std::net::IpAddr;
-use tokio::{sync::mpsc, time::timeout};
+use tokio::{
+    sync::mpsc,
+    sync::mpsc::error::SendTimeoutError,
+    time::{timeout, Duration},
+};
 
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
@@ -96,6 +100,28 @@ impl NodeWorker {
         }
     }
 
+    async fn send_node_event(&self, event: NodeEvent) {
+        let result = self
+            .node_event_tx
+            .send_timeout(
+                event,
+                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
+            )
+            .await;
+        match result {
+            Ok(()) => {}
+            Err(SendTimeoutError::Closed(event)) => {
+                debug!(
+                    "Failed to send NodeEvent due to channel closure: {:?}.",
+                    event
+                );
+            }
+            Err(SendTimeoutError::Timeout(event)) => {
+                debug!("Failed to send NodeEvent due to timeout: {:?}.", event);
+            }
+        }
+    }
+
     /// node event loop. Consumes self.
     pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(CHANNEL_SIZE);
@@ -147,44 +173,32 @@ impl NodeWorker {
                         match msg {
                             Message::Block(block) => {
                                 trace!("before sending NodeEventType::ReceivedBlock from node_event_tx in node_worker run_loop");
-                                self.node_event_tx.send(
-                                    NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))
-                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block event".into()))?;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
                                 trace!("after sending NodeEventType::ReceivedBlock from node_event_tx in node_worker run_loop");
                             },
                             Message::BlockHeader(header) => {
                                 trace!("before sending NodeEventType::ReceivedBlockHeader from node_event_tx in node_worker run_loop");
-                                self.node_event_tx.send(
-                                        NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))
-                                    ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block header event".into()))?;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
                                 trace!("before sending NodeEventType::ReceivedBlockHeader from node_event_tx in node_worker run_loop");
                             },
                             Message::AskForBlocks(list) => {
                                 trace!("before sending NodeEventType::ReceivedAskForBlock from node_event_tx in node_worker run_loop");
-                                self.node_event_tx.send(
-                                        NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list))
-                                    ).await.map_err(|_| CommunicationError::ChannelError("failed to send received block header event".into()))?;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list))).await;
                                 trace!("after sending NodeEventType::ReceivedAskForBlock from node_event_tx in node_worker run_loop");
                             }
                             Message::PeerList(pl) =>  {
                                 trace!("before sending NodeEventType::ReceivedPeerList from node_event_tx in node_worker run_loop");
-                                self.node_event_tx.send(
-                                        NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))
-                                    ).await.map_err(|_| CommunicationError::ChannelError("failed to send received peers list event".into()))?;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))).await;
                                 trace!("after sending NodeEventType::ReceivedPeerList from node_event_tx in node_worker run_loop");
                             }
                             Message::AskPeerList => {
                                 trace!("before sending NodeEventType::AskedPeerList from node_event_tx in node_worker run_loop");
-                                self.node_event_tx.send(
-                                        NodeEvent(self.node_id, NodeEventType::AskedPeerList)
-                                    ).await.map_err(|_| CommunicationError::ChannelError("failed to send asked block event".into()))?;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::AskedPeerList)).await;
                                 trace!("after sending NodeEventType::AskedPeerList from node_event_tx in node_worker run_loop");
                             }
                             Message::BlockNotFound(hash) => {
                                 trace!("before sending NodeEventType::BlockNotFound from node_event_tx in node_worker run_loop");
-                                self.node_event_tx.send(
-                                    NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))
-                                ).await.map_err(|_| CommunicationError::ChannelError("failed to send block not found event".into()))?;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
                                 trace!("after sending NodeEventType::BlockNotFound from node_event_tx in node_worker run_loop");
                             }
                             _ => {  // wrong message
@@ -290,12 +304,8 @@ impl NodeWorker {
 
         // notify protocol controller of closure
         trace!("before sending NodeEventType::Closed from node_event_tx in node_worker run_loop");
-        self.node_event_tx
-            .send(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason)))
-            .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("node closing event send failed".into())
-            })?;
+        self.send_node_event(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason)))
+            .await;
         trace!("after sending NodeEventType::Closed from node_event_tx in node_worker run_loop");
         Ok(())
     }
