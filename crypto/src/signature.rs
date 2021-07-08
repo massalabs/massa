@@ -263,9 +263,9 @@ impl PublicKey {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
+    /// let public_key = signature_engine.derive_public_key(&private_key);
     ///
     /// let serialized: String = public_key.to_bs58_check();
     /// ```
@@ -280,9 +280,9 @@ impl PublicKey {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
+    /// let public_key = signature_engine.derive_public_key(&private_key);
     ///
     /// let serialize = public_key.to_bytes();
     /// ```
@@ -297,9 +297,9 @@ impl PublicKey {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
+    /// let public_key = signature_engine.derive_public_key(&private_key);
     ///
     /// let serialize = public_key.to_bytes();
     /// ```
@@ -314,9 +314,9 @@ impl PublicKey {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
+    /// let public_key = signature_engine.derive_public_key(&private_key);
     ///
     /// let serialized: String = public_key.to_bs58_check();
     /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
@@ -345,9 +345,9 @@ impl PublicKey {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
+    /// let public_key = signature_engine.derive_public_key(&private_key);
     ///
     /// let serialized = public_key.into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
@@ -374,9 +374,9 @@ impl ::serde::Serialize for PublicKey {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
+    /// let public_key = signature_engine.derive_public_key(&private_key);
     ///
     /// let serialized: String = serde_json::to_string(&public_key).unwrap();
     /// ```
@@ -403,9 +403,9 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key = secp.derive_public_key(&private_key);
+    /// let public_key = signature_engine.derive_public_key(&private_key);
     ///
     /// let serialized = serde_json::to_string(&public_key).unwrap();
     /// let deserialized: PublicKey = serde_json::from_str(&serialized).unwrap();
@@ -495,10 +495,10 @@ impl Signature {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// ```
@@ -513,10 +513,10 @@ impl Signature {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// ```
@@ -531,10 +531,10 @@ impl Signature {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.into_bytes();
     /// ```
@@ -551,8 +551,8 @@ impl Signature {
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let secp = SignatureEngine::new();
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature_engine = SignatureEngine::new();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
@@ -581,10 +581,10 @@ impl Signature {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
@@ -611,10 +611,10 @@ impl ::serde::Serialize for Signature {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = serde_json::to_string(&signature).unwrap();
     /// ```
@@ -641,10 +641,10 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     ///
     /// let serialized = serde_json::to_string(&signature).unwrap();
     /// let deserialized: Signature = serde_json::from_str(&serialized).unwrap();
@@ -716,7 +716,7 @@ impl SignatureEngine {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp: SignatureEngine = SignatureEngine::new();
+    /// let signature_engine: SignatureEngine = SignatureEngine::new();
     /// ```
     pub fn new() -> SignatureEngine {
         SignatureEngine(Secp256k1::new())
@@ -745,9 +745,9 @@ impl SignatureEngine {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key: PublicKey = secp.derive_public_key(&private_key);
+    /// let public_key: PublicKey = signature_engine.derive_public_key(&private_key);
     /// ```
     pub fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
         PublicKey(secp256k1::key::PublicKey::from_secret_key(
@@ -764,11 +764,11 @@ impl SignatureEngine {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key: PublicKey = secp.derive_public_key(&private_key);
+    /// let public_key: PublicKey = signature_engine.derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
     /// ```
     pub fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, CryptoError> {
         let message = Message::from_slice(&hash.to_bytes())?;
@@ -783,12 +783,12 @@ impl SignatureEngine {
     /// # use crypto::signature::{PublicKey, PrivateKey, SignatureEngine, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let secp = SignatureEngine::new();
+    /// let signature_engine = SignatureEngine::new();
     /// let private_key = SignatureEngine::generate_random_private_key();
-    /// let public_key: PublicKey = secp.derive_public_key(&private_key);
+    /// let public_key: PublicKey = signature_engine.derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = secp.sign(&data, &private_key).unwrap();
-    /// let verification: bool = secp.verify(&data, &signature, &public_key).is_ok();
+    /// let signature = signature_engine.sign(&data, &private_key).unwrap();
+    /// let verification: bool = signature_engine.verify(&data, &signature, &public_key).is_ok();
     /// ```
     pub fn verify(
         &self,
@@ -808,13 +808,15 @@ mod tests {
 
     #[test]
     fn test_example() {
-        let secp = SignatureEngine::new();
+        let signature_engine = SignatureEngine::new();
         let private_key = SignatureEngine::generate_random_private_key();
-        let public_key = secp.derive_public_key(&private_key);
+        let public_key = signature_engine.derive_public_key(&private_key);
         let message = "Hello World!".as_bytes();
         let hash = Hash::hash(&message);
-        let signature = secp.sign(&hash, &private_key).unwrap();
-        assert!(secp.verify(&hash, &signature, &public_key).is_ok())
+        let signature = signature_engine.sign(&hash, &private_key).unwrap();
+        assert!(signature_engine
+            .verify(&hash, &signature, &public_key)
+            .is_ok())
     }
 
     #[test]
@@ -829,9 +831,9 @@ mod tests {
 
     #[test]
     fn test_serde_public_key() {
-        let secp = SignatureEngine::new();
+        let signature_engine = SignatureEngine::new();
         let private_key = SignatureEngine::generate_random_private_key();
-        let public_key = secp.derive_public_key(&private_key);
+        let public_key = signature_engine.derive_public_key(&private_key);
         let serialized =
             serde_json::to_string(&public_key).expect("Could not serialize public key");
         let deserialized =
@@ -841,11 +843,11 @@ mod tests {
 
     #[test]
     fn test_serde_signature() {
-        let secp = SignatureEngine::new();
+        let signature_engine = SignatureEngine::new();
         let private_key = SignatureEngine::generate_random_private_key();
         let message = "Hello World!".as_bytes();
         let hash = Hash::hash(&message);
-        let signature = secp.sign(&hash, &private_key).unwrap();
+        let signature = signature_engine.sign(&hash, &private_key).unwrap();
         let serialized =
             serde_json::to_string(&signature).expect("could not serialize signature key");
         let deserialized =

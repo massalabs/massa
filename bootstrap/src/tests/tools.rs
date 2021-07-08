@@ -35,9 +35,9 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
 }
 
 pub fn get_keys() -> (PrivateKey, PublicKey) {
-    let secp = SignatureEngine::new();
+    let signature_engine = SignatureEngine::new();
     let private_key = SignatureEngine::generate_random_private_key();
-    let public_key = secp.derive_public_key(&private_key);
+    let public_key = signature_engine.derive_public_key(&private_key);
     (private_key, public_key)
 }
 
