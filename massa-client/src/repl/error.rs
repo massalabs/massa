@@ -12,8 +12,6 @@ pub enum ReplError {
     CommandNotFoundError(String),
     #[error("Node connection error err:{0}")]
     NodeConnectionError(#[from] reqwest::Error),
-    #[error("Hash parse error : {0}")]
-    HashParseError(String),
     #[error("Bad input parameter : {0}")]
     BadCommandParameter(String),
 }

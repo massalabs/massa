@@ -21,7 +21,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use time::UTime;
 
-pub const HASH_SIZE_BYTES: usize = 32;
 pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true); //never set to zero.
 
 #[derive(Clone, Debug, Deserialize)]

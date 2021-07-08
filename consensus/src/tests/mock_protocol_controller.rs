@@ -58,13 +58,6 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_transaction(&mut self, transaction: String) {
-        self.protocol_event_tx
-            .send(ProtocolEvent::ReceivedTransaction(transaction))
-            .await
-            .expect("could not send protocol event");
-    }
-
     pub async fn receive_get_active_block(&mut self, hash: Hash) {
         self.protocol_event_tx
             .send(ProtocolEvent::GetBlock(hash))

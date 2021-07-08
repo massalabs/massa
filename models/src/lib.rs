@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 mod block;
 mod context;
 mod error;

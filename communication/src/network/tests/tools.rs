@@ -3,12 +3,9 @@ use super::mock_establisher::MockEstablisherInterface;
 use crate::common::NodeId;
 use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
-use crate::network::{
-    NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo,
-};
+use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
 use crypto::signature::SignatureEngine;
 use models::SerializationContext;
-use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -16,12 +13,7 @@ use std::{
 };
 use tempfile::NamedTempFile;
 use time::UTime;
-use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
-    sync::oneshot,
-    task::JoinHandle,
-    time::timeout,
-};
+use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -75,39 +67,9 @@ pub fn create_network_config(
     )
 }
 
-// ensures that the reader and writer can communicate
-pub async fn expect_reader_writer_communication<ReaderT, WriterT>(
-    reader: &mut ReaderT,
-    writer: &mut WriterT,
-    timeout_ms: u64,
-) where
-    ReaderT: AsyncRead + Send + Sync + Unpin + std::fmt::Debug,
-    WriterT: AsyncWrite + Send + Sync + Unpin + std::fmt::Debug,
-{
-    let mut random_bytes_send = vec![0u8; 32];
-    StdRng::from_entropy().fill_bytes(&mut random_bytes_send);
-    let mut random_bytes_recv = vec![0u8; 32];
-    timeout(Duration::from_millis(timeout_ms), async move {
-        writer
-            .write_all(&random_bytes_send)
-            .await
-            .expect("failed to send data on writer");
-        reader
-            .read_exact(&mut random_bytes_recv)
-            .await
-            .expect("failed to read data on reader");
-        if random_bytes_send != random_bytes_recv {
-            panic!("unexpected bytes received");
-        }
-    })
-    .await
-    .expect("communication test timed out");
-}
-
 // establish a full alive connection to the controller
 // note: panics if any other NetworkEvent is received before NewConnection
 pub async fn full_connection_to_controller(
-    network_command_sender: &mut NetworkCommandSender,
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
     mock_addr: SocketAddr,
@@ -130,7 +92,7 @@ pub async fn full_connection_to_controller(
     let private_key = SignatureEngine::generate_random_private_key();
     let public_key = sig_engine.derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let (controller_node_id, read_binder, write_binder) = HandshakeWorker::new(
+    let (_, read_binder, write_binder) = HandshakeWorker::new(
         serialization_context,
         mock_read_half,
         mock_write_half,
@@ -164,7 +126,6 @@ pub async fn full_connection_to_controller(
 
 // try to establish a connection to the controller and expect rejection
 pub async fn rejected_connection_to_controller(
-    network_command_sender: &mut NetworkCommandSender,
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
     mock_addr: SocketAddr,

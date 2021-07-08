@@ -38,20 +38,18 @@ async fn test_multiple_connections_to_controller() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (mut network_command_sender, mut network_event_receiver, network_manager) =
-        start_network_controller(
-            network_conf.clone(),
-            serialization_context.clone(),
-            establisher,
-        )
-        .await
-        .expect("could not start network controller");
+    let (_, mut network_event_receiver, network_manager) = start_network_controller(
+        network_conf.clone(),
+        serialization_context.clone(),
+        establisher,
+    )
+    .await
+    .expect("could not start network controller");
 
     // note: the peers list is empty so the controller will not attempt outgoing connections
 
     // 1) connect peer1 to controller
     let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_to_controller(
-        &mut network_command_sender,
         &mut network_event_receiver,
         &mut mock_interface,
         mock1_addr,
@@ -65,7 +63,6 @@ async fn test_multiple_connections_to_controller() {
 
     // 2) connect peer2 to controller
     let (conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
-        &mut network_command_sender,
         &mut network_event_receiver,
         &mut mock_interface,
         mock2_addr,
@@ -83,7 +80,6 @@ async fn test_multiple_connections_to_controller() {
 
     // 3) try to establish an extra connection from peer1 to controller
     tools::rejected_connection_to_controller(
-        &mut network_command_sender,
         &mut network_event_receiver,
         &mut mock_interface,
         mock1_addr,
@@ -97,7 +93,6 @@ async fn test_multiple_connections_to_controller() {
 
     // 4) try to establish an third connection to controller
     tools::rejected_connection_to_controller(
-        &mut network_command_sender,
         &mut network_event_receiver,
         &mut mock_interface,
         mock3_addr,
@@ -190,7 +185,6 @@ async fn test_peer_ban() {
 
     // connect to peeer to controller
     let (conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
-        &mut network_command_sender,
         &mut network_event_receiver,
         &mut mock_interface,
         mock_addr,
@@ -211,7 +205,6 @@ async fn test_peer_ban() {
 
     // attempt a new connection from peer to controller: should be rejected
     tools::rejected_connection_to_controller(
-        &mut network_command_sender,
         &mut network_event_receiver,
         &mut mock_interface,
         mock_addr,
@@ -278,19 +271,17 @@ async fn test_advertised_and_wakeup_interval() {
     let (establisher, mut mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (mut network_command_sender, mut network_event_receiver, network_manager) =
-        start_network_controller(
-            network_conf.clone(),
-            serialization_context.clone(),
-            establisher,
-        )
-        .await
-        .expect("could not start network controller");
+    let (_, mut network_event_receiver, network_manager) = start_network_controller(
+        network_conf.clone(),
+        serialization_context.clone(),
+        establisher,
+    )
+    .await
+    .expect("could not start network controller");
 
     // 1) open and close a connection and wait the reconnection.
     let conn2_id = {
         let (conn2_id, conn2_r, mut conn2_w) = tools::full_connection_to_controller(
-            &mut network_command_sender,
             &mut network_event_receiver,
             &mut mock_interface,
             mock_addr,

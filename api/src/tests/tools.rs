@@ -12,7 +12,6 @@ use models::{Block, BlockHeader, BlockHeaderContent, SerializationContext, Slot}
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    time::Duration,
     vec,
 };
 use storage::{start_storage, StorageAccess, StorageConfig};
