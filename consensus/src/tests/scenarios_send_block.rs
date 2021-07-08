@@ -2,7 +2,6 @@
 
 use super::{mock_protocol_controller::MockProtocolController, tools};
 use crate::start_consensus_controller;
-use communication::protocol::ProtocolCommand;
 use models::Slot;
 
 #[tokio::test]
@@ -62,8 +61,8 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
         .receive_get_active_blocks(vec![hasht0s1])
         .await;
 
-    // Consensus should send the block.
-    tools::validate_send_block(&mut protocol_controller, hasht0s1, 100).await;
+    // Consensus should respond with results including the block.
+    tools::validate_block_found(&mut protocol_controller, &hasht0s1, 100).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
@@ -120,16 +119,8 @@ async fn test_consensus_block_not_found() {
         .await;
 
     // Consensus should not have the block.
-    match protocol_controller
-        .wait_command(1000.into(), |cmd| match cmd {
-            ProtocolCommand::BlockNotFound(hash) => return Some(hash),
-            _ => None,
-        })
-        .await
-    {
-        Some(hash) => assert_eq!(hasht0s1, hash, "not the hash we expected"),
-        None => panic!("Block not found not sent before timeout."),
-    }
+    tools::validate_block_not_found(&mut protocol_controller, &hasht0s1, 100).await;
+
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
     tokio::pin!(stop_fut);

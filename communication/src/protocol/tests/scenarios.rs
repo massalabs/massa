@@ -5,7 +5,7 @@ use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolEvent;
 use crypto::signature::SignatureEngine;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[tokio::test]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
@@ -183,10 +183,12 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     }
 
     // 4. Simulate consensus sending block.
+    let mut results = HashMap::new();
+    results.insert(expected_hash.clone(), Some(block));
     protocol_command_sender
-        .found_block(expected_hash.clone(), block)
+        .send_get_blocks_results(results)
         .await
-        .expect("Failed to send block.");
+        .expect("Failed to send get block results");
 
     // 5. Check that protocol sends the nodes the full block.
     let mut expecting_block = HashSet::new();
@@ -490,8 +492,10 @@ async fn test_protocol_block_not_found() {
     assert_eq!(expected_hash, hash);
 
     // consensus didn't found block
+    let mut results = HashMap::new();
+    results.insert(expected_hash, None);
     protocol_command_sender
-        .block_not_found(expected_hash)
+        .send_get_blocks_results(results)
         .await
         .unwrap();
 

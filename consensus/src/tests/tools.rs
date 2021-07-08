@@ -181,20 +181,55 @@ pub fn start_storage(serialization_context: &SerializationContext) -> StorageAcc
     storage_command_tx
 }
 
-pub async fn validate_send_block(
+pub async fn validate_block_found(
     protocol_controller: &mut MockProtocolController,
-    valid_hash: Hash,
+    valid_hash: &Hash,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::FoundBlock { hash, .. } => return Some(hash),
+            ProtocolCommand::GetBlocksResults(results) => return Some(results),
             _ => None,
         })
         .await;
     match param {
-        Some(hash) => assert_eq!(valid_hash, hash, "not the valid hash propagated"),
-        None => panic!("Block not sent before timeout."),
+        Some(results) => {
+            let found = results
+                .get(valid_hash)
+                .expect("Hash not found in results")
+                .is_some();
+            assert!(
+                found,
+                "Get blocks results does not contain the expected results."
+            );
+        }
+        None => panic!("Get blocks results not sent before timeout."),
+    }
+}
+
+pub async fn validate_block_not_found(
+    protocol_controller: &mut MockProtocolController,
+    valid_hash: &Hash,
+    timeout_ms: u64,
+) {
+    let param = protocol_controller
+        .wait_command(timeout_ms.into(), |cmd| match cmd {
+            ProtocolCommand::GetBlocksResults(results) => return Some(results),
+            _ => None,
+        })
+        .await;
+    match param {
+        Some(results) => {
+            let not_found = results
+                .get(valid_hash)
+                .expect("Hash not found in results")
+                .is_none();
+            assert!(
+                not_found,
+                "Get blocks results does not contain the expected results."
+            );
+        }
+        None => panic!("Get blocks results not sent before timeout."),
     }
 }
 

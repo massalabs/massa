@@ -3,7 +3,7 @@ use crate::network::NetworkCommand;
 use crate::protocol::{start_protocol_controller, ProtocolEvent};
 use crypto::signature::SignatureEngine;
 use models::Slot;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[tokio::test]
 async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
@@ -345,10 +345,12 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     tools::assert_banned_node(nodes[1].id, &mut network_controller).await;
 
     // 4. Simulate consensus sending block.
+    let mut results = HashMap::new();
+    results.insert(expected_hash.clone(), Some(block));
     protocol_command_sender
-        .found_block(expected_hash.clone(), block)
+        .send_get_blocks_results(results)
         .await
-        .expect("Failed to send block.");
+        .expect("Failed to send get block results");
 
     // 5. Check that protocol sends the non-banned node the full block.
     let mut expecting_block = HashSet::new();
