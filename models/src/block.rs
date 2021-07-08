@@ -12,10 +12,15 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn into_bytes(&self) -> Vec<u8> {
+    pub fn into_bytes(&self) -> Result<Vec<u8>, ModelsError> {
         let mut s = flexbuffers::FlexbufferSerializer::new();
-        self.serialize(&mut s).unwrap();
-        s.take_buffer()
+        self.serialize(&mut s)?;
+        Ok(s.take_buffer())
+    }
+
+    pub fn from_bytes(data: Vec<u8>) -> Result<Block, ModelsError> {
+        let r = flexbuffers::Reader::get_root(&data)?;
+        Block::deserialize(r).map_err(|e| ModelsError::from(e))
     }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
