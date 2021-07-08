@@ -29,7 +29,7 @@ pub async fn start_consensus_controller(
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     opt_storage_command_sender: Option<StorageAccess>,
-    boot_graph: Option<BoostrapableGraph>,
+    boot_graph: Option<BootsrapableGraph>,
     clock_compensation: i64,
 ) -> Result<
     (
@@ -170,8 +170,8 @@ impl ConsensusCommandSender {
         res
     }
 
-    pub async fn get_bootstrap_graph(&self) -> Result<BoostrapableGraph, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<BoostrapableGraph>();
+    pub async fn get_bootstrap_graph(&self) -> Result<BootsrapableGraph, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<BootsrapableGraph>();
         massa_trace!("consensus.consensus_controller.get_bootstrap_graph", {});
         self.0
             .send(ConsensusCommand::GetBootGraph(response_tx))

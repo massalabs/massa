@@ -35,7 +35,7 @@ async fn run(cfg: config::Config) {
         max_bootstrap_message_size: cfg.bootstrap.max_bootstrap_message_size,
     };
 
-    let (boot_graph, clock_compensation) = get_state(
+    let (boot_graph, clock_compensation, initial_peers) = get_state(
         cfg.bootstrap.clone(),
         serialization_context.clone(),
         bootstrap::establisher::Establisher::new(),
@@ -44,12 +44,13 @@ async fn run(cfg: config::Config) {
     .unwrap();
 
     // launch network controller
-    let (mut network_command_sender, network_event_receiver, network_manager, private_key) =
+    let (network_command_sender, network_event_receiver, network_manager, private_key) =
         start_network_controller(
             cfg.network.clone(),
             serialization_context.clone(),
             Establisher::new(),
             clock_compensation,
+            initial_peers,
         )
         .await
         .expect("could not start network controller");
@@ -97,10 +98,12 @@ async fn run(cfg: config::Config) {
 
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
+        network_command_sender.clone(),
         cfg.bootstrap,
         serialization_context.clone(),
         bootstrap::Establisher::new(),
         private_key,
+        clock_compensation,
     )
     .await
     .unwrap();

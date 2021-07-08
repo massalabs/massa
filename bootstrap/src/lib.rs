@@ -1,7 +1,8 @@
 use binders::{ReadBinder, WriteBinder};
-use consensus::{BoostrapableGraph, ConsensusCommandSender};
+use communication::network::{BootstrapPeers, NetworkCommandSender};
+use consensus::{BootsrapableGraph, ConsensusCommandSender};
 use establisher::{ReadHalf, WriteHalf};
-use log::{debug, info, warn};
+use log::{debug, warn};
 use std::net::SocketAddr;
 
 use logging::massa_trace;
@@ -30,10 +31,9 @@ async fn get_state_internal(
     bootstrap_addr: SocketAddr,
     serialization_context: SerializationContext,
     establisher: &mut Establisher,
-) -> Result<(BoostrapableGraph, i64), BootstrapError> {
+) -> Result<(BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
-    let mut random_bytes = [0u8; 32];
-    StdRng::from_entropy().fill_bytes(&mut random_bytes);
+
     // create listener
     let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
     let (socket_reader, socket_writer) = connector.connect(bootstrap_addr).await?;
@@ -41,35 +41,55 @@ async fn get_state_internal(
     let mut writer = WriteBinder::new(socket_writer, serialization_context.clone());
     let signature_engine = SignatureEngine::new();
 
+    let mut random_bytes = [0u8; 32];
+    StdRng::from_entropy().fill_bytes(&mut random_bytes);
     let send_time_uncompensated = UTime::now(0)?;
-    writer
-        .send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes })
-        .await?;
+    match tokio::time::timeout(
+        cfg.write_timeout.into(),
+        writer.send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes }),
+    )
+    .await
+    {
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap peer read timed out",
+            )
+            .into())
+        }
+        Ok(Err(e)) => return Err(e.into()),
+        Ok(Ok(_)) => {}
+    }
 
     // First, clock sync.
-    let msg = reader.next().await?.map_or_else(
-        || Err(BootstrapError::UnexpectedConnectionDrop),
-        |(_, msg)| Ok(msg),
-    )?;
-    let (server_time, first_sig) = match msg {
-        BootstrapMessage::BootstrapTime {
-            server_time,
-            signature,
-        } => (server_time, signature),
-        e => return Err(BootstrapError::UnexpectedMessage(e)),
-    };
+    let (server_time, sig) =
+        match tokio::time::timeout(cfg.read_timeout.into(), reader.next()).await {
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap clock sync read timed out",
+                )
+                .into())
+            }
+            Ok(Err(e)) => return Err(e),
+            Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
+            Ok(Ok(Some((
+                _,
+                BootstrapMessage::BootstrapTime {
+                    server_time,
+                    signature,
+                },
+            )))) => (server_time, signature),
+            Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
+        };
 
     let recv_time_uncompensated = UTime::now(0)?;
 
     // Check signature.
     let mut signed_data = random_bytes.to_vec();
     signed_data.extend(server_time.to_bytes_compact(&serialization_context)?);
-    let random_and_server_time = Hash::hash(&signed_data);
-    signature_engine.verify(
-        &random_and_server_time,
-        &first_sig,
-        &cfg.bootstrap_public_key,
-    )?;
+    let signed_data_hash = Hash::hash(&signed_data);
+    signature_engine.verify(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
 
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
@@ -95,37 +115,61 @@ async fn get_state_internal(
         "Server clock compensation set to: {:?}",
         compensation_millis
     );
+    let sig_prev = sig;
 
-    // Second, handle state message.
-    let msg = reader.next().await?.map_or_else(
-        || Err(BootstrapError::UnexpectedConnectionDrop),
-        |(_, msg)| Ok(msg),
-    )?;
-    let (graph, sig) = match msg {
-        BootstrapMessage::ConsensusState { graph, signature } => (graph, signature),
-        e => return Err(BootstrapError::UnexpectedMessage(e)),
+    // Second, get peers
+    let (peers, sig) = match tokio::time::timeout(cfg.read_timeout.into(), reader.next()).await {
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap peer read timed out",
+            )
+            .into())
+        }
+        Ok(Err(e)) => return Err(e),
+        Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
+        Ok(Ok(Some((_, BootstrapMessage::BootstrapPeers { peers, signature })))) => {
+            (peers, signature)
+        }
+        Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
+    // Check signature.
+    let mut signed_data = sig_prev.to_bytes().to_vec();
+    signed_data.extend(peers.to_bytes_compact(&serialization_context)?);
+    let signed_data_hash = Hash::hash(&signed_data);
+    signature_engine.verify(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
+    let sig_prev = sig;
 
-    let mut signed_data = vec![];
-    signed_data.extend(&first_sig.into_bytes());
+    // Third, handle state message.
+    let (graph, sig) = match tokio::time::timeout(cfg.read_timeout.into(), reader.next()).await {
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap state read timed out",
+            )
+            .into())
+        }
+        Ok(Err(e)) => return Err(e),
+        Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
+        Ok(Ok(Some((_, BootstrapMessage::ConsensusState { graph, signature })))) => {
+            (graph, signature)
+        }
+        Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
+    };
+    // check signature
+    let mut signed_data = sig_prev.to_bytes().to_vec();
     signed_data.extend(graph.to_bytes_compact(&serialization_context)?);
+    let signed_data_hash = Hash::hash(&signed_data);
+    signature_engine.verify(&signed_data_hash, &sig, &cfg.bootstrap_public_key)?;
 
-    let previous_signature_and_message_hash = Hash::hash(&signed_data);
-    // check their signature
-    signature_engine.verify(
-        &previous_signature_and_message_hash,
-        &sig,
-        &cfg.bootstrap_public_key,
-    )?;
-    info!("Bootstrap completed successfully 🦀");
-    Ok((graph, compensation_millis))
+    Ok((graph, compensation_millis, peers))
 }
 
 pub async fn get_state(
     mut cfg: BootstrapConfig,
     serialization_context: SerializationContext,
     mut establisher: Establisher,
-) -> Result<(Option<BoostrapableGraph>, i64), BootstrapError> {
+) -> Result<(Option<BootsrapableGraph>, i64, Option<BootstrapPeers>), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     if let Some(addr) = cfg.bootstrap_addr.take() {
         loop {
@@ -136,11 +180,13 @@ pub async fn get_state(
                     warn!("error {:?} while bootstraping", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
-                Ok((graph, compensation)) => return Ok((Some(graph), compensation)),
+                Ok((graph, compensation, peers)) => {
+                    return Ok((Some(graph), compensation, Some(peers)))
+                }
             }
         }
     }
-    Ok((None, 0))
+    Ok((None, 0, None))
 }
 
 pub struct BootstrapManager {
@@ -161,22 +207,28 @@ impl BootstrapManager {
 
 pub async fn start_bootstrap_server(
     consensus_command_sender: ConsensusCommandSender,
+    network_command_sender: NetworkCommandSender,
     cfg: BootstrapConfig,
     serialization_context: SerializationContext,
     establisher: Establisher,
     private_key: PrivateKey,
+    compensation_millis: i64,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
-    if let Some(port) = cfg.bind {
+    if let Some(bind) = cfg.bind {
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
                 consensus_command_sender,
+                network_command_sender,
                 serialization_context,
                 establisher,
                 manager_rx,
-                port,
+                bind,
                 private_key,
+                read_timeout: cfg.read_timeout,
+                write_timeout: cfg.write_timeout,
+                compensation_millis,
             }
             .run()
             .await
@@ -192,24 +244,27 @@ pub async fn start_bootstrap_server(
 
 struct BootstrapServer {
     consensus_command_sender: ConsensusCommandSender,
+    network_command_sender: NetworkCommandSender,
     serialization_context: SerializationContext,
     establisher: Establisher,
     manager_rx: mpsc::Receiver<()>,
-    port: SocketAddr,
+    bind: SocketAddr,
     private_key: PrivateKey,
+    read_timeout: UTime,
+    write_timeout: UTime,
+    compensation_millis: i64,
 }
 
 impl BootstrapServer {
     pub async fn run(mut self) -> Result<(), BootstrapError> {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
-        let mut listener = self.establisher.get_listener(self.port).await?;
+        let mut listener = self.establisher.get_listener(self.bind).await?;
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
                 res = listener.accept() => {
-
-            massa_trace!("bootstrap.lib.run.select.accept", {});
+                    massa_trace!("bootstrap.lib.run.select.accept", {});
                     match res {
                         Ok(res)=> {
                             if let Err(e) = self.manage_bootstrap(res).await {
@@ -237,51 +292,109 @@ impl BootstrapServer {
         massa_trace!("bootstrap.lib.manage_bootstrap", {});
         let mut reader = ReadBinder::new(reader, self.serialization_context.clone());
         let mut writer = WriteBinder::new(writer, self.serialization_context.clone());
+        let signature_engine = SignatureEngine::new();
 
-        let msg = reader.next().await?.map_or_else(
-            || Err(BootstrapError::UnexpectedConnectionDrop),
-            |(_, msg)| Ok(msg),
-        )?;
-        match msg {
-            BootstrapMessage::BootstrapInitiation { random_bytes } => {
-                massa_trace!("bootstrap.lib.manage_bootstrap.initiation", {});
-                let signature_engine = SignatureEngine::new();
-
-                // First, sync clocks.
-                let server_time = UTime::now(0)?;
-                let mut signed_data = random_bytes.to_vec();
-                signed_data.extend(server_time.to_bytes_compact(&self.serialization_context)?);
-                let random_and_server_time = Hash::hash(&signed_data);
-                let signature =
-                    signature_engine.sign(&random_and_server_time, &self.private_key)?;
-                let message = BootstrapMessage::BootstrapTime {
-                    server_time,
-                    signature: signature.clone(),
-                };
-
-                writer.send(&message).await?;
-
-                // Second, send state.
-                let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
-                let mut signed_data = vec![];
-                signed_data.extend(&signature.into_bytes());
-                signed_data.extend(graph.to_bytes_compact(&self.serialization_context)?);
-
-                let previous_signature_and_message_hash = Hash::hash(&signed_data);
-
-                let signature = signature_engine
-                    .sign(&previous_signature_and_message_hash, &self.private_key)?;
-                let message = BootstrapMessage::ConsensusState { graph, signature };
-
-                writer.send(&message).await?;
-
-                Ok(())
+        // Initiation
+        let random_bytes = match tokio::time::timeout(self.read_timeout.into(), reader.next()).await
+        {
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap init read timed out",
+                )
+                .into())
             }
-            msg => {
-                warn!("Unexpected bootstrap message");
-                Err(BootstrapError::UnexpectedMessage(msg))
+            Ok(Err(e)) => return Err(e),
+            Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
+            Ok(Ok(Some((_, BootstrapMessage::BootstrapInitiation { random_bytes })))) => {
+                random_bytes
             }
+            Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
+        };
+
+        // First, sync clocks.
+        let server_time = UTime::now(self.compensation_millis)?;
+        let mut signed_data = random_bytes.to_vec();
+        signed_data.extend(server_time.to_bytes_compact(&self.serialization_context)?);
+        let signed_data_hash = Hash::hash(&signed_data);
+        let signature = signature_engine.sign(&signed_data_hash, &self.private_key)?;
+        match tokio::time::timeout(
+            self.write_timeout.into(),
+            writer.send(&messages::BootstrapMessage::BootstrapTime {
+                server_time,
+                signature: signature.clone(),
+            }),
+        )
+        .await
+        {
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap clock send timed out",
+                )
+                .into())
+            }
+            Ok(Err(e)) => return Err(e.into()),
+            Ok(Ok(_)) => {}
         }
+        let last_sig = signature;
+
+        // Second, send peers
+        let peers = self.network_command_sender.get_bootstrap_peers().await?;
+        let mut signed_data = vec![];
+        signed_data.extend(&last_sig.into_bytes());
+        signed_data.extend(peers.to_bytes_compact(&self.serialization_context)?);
+        let signed_data_hash = Hash::hash(&signed_data);
+        let signature = signature_engine.sign(&signed_data_hash, &self.private_key)?;
+        match tokio::time::timeout(
+            self.write_timeout.into(),
+            writer.send(&messages::BootstrapMessage::BootstrapPeers {
+                peers,
+                signature: signature.clone(),
+            }),
+        )
+        .await
+        {
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap clock send timed out",
+                )
+                .into())
+            }
+            Ok(Err(e)) => return Err(e.into()),
+            Ok(Ok(_)) => {}
+        }
+        let last_sig = signature;
+
+        // Third, send state.
+        let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
+        let mut signed_data = vec![];
+        signed_data.extend(&last_sig.into_bytes());
+        signed_data.extend(graph.to_bytes_compact(&self.serialization_context)?);
+        let signed_data_hash = Hash::hash(&signed_data);
+        let signature = signature_engine.sign(&signed_data_hash, &self.private_key)?;
+        match tokio::time::timeout(
+            self.write_timeout.into(),
+            writer.send(&messages::BootstrapMessage::ConsensusState {
+                graph,
+                signature: signature.clone(),
+            }),
+        )
+        .await
+        {
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "bootstrap graph send timed out",
+                )
+                .into())
+            }
+            Ok(Err(e)) => return Err(e.into()),
+            Ok(Ok(_)) => {}
+        }
+
+        Ok(())
     }
 }
 
