@@ -4,8 +4,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ReplError {
-    //    #[error("Error during command execution")]
-    //    ExecCommanError,
+    #[error("error:{0}")]
+    GeneralError(String),
     #[error("Error during command parsing")]
     ParseCommandError,
     #[error("Error command:{0} not found")]
@@ -14,4 +14,8 @@ pub enum ReplError {
     NodeConnectionError(#[from] reqwest::Error),
     #[error("Bad input parameter : {0}")]
     BadCommandParameter(String),
+    #[error("Error unreconnized key")]
+    UnreconnizedKeyError,
+    #[error("Error can't create address from specifed hash cause:: {0}")]
+    AddressCreationError(String),
 }

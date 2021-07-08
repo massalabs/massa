@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// a context for model serialization/deserialization
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializationContext {
     pub max_block_operations: u32,
     pub parent_count: u8,

@@ -27,6 +27,11 @@
     max_operations_per_block = 500
     max_block_size = 100000
     operation_validity_periods = 3
+    ledger_path = "./ledger"
+    ledger_cache_capacity = 10000000
+    ledger_flush_interval = 10000
+    ledger_reset_at_startup = true
+
 
 [protocol]
     message_timeout = 5000
