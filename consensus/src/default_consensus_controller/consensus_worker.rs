@@ -4,10 +4,11 @@ use super::super::{
 };
 use super::misc_collections::{DependencyWaitingBlocks, FutureIncomingBlocks};
 use crate::error::{BlockAcknowledgeError, ConsensusError};
+use communication::network::PeerInfo;
 use communication::protocol::protocol_controller::{
     NodeId, ProtocolController, ProtocolEvent, ProtocolEventType,
 };
-use crypto::hash::Hash;
+use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
 use models::block::Block;
 use std::{collections::HashMap, net::IpAddr};
 
@@ -22,11 +23,17 @@ pub enum ConsensusCommand {
     GetBlockGraphStatus(Sender<BlockGraphExport>),
     //return full block with specified hash
     GetActiveBlock(Hash, Sender<Option<Block>>),
-    GetPeers(Sender<HashMap<IpAddr, String>>),
+    GetPeers(Sender<HashMap<IpAddr, PeerInfo>>),
+    GetSelectionDraws(
+        (u64, u8),
+        (u64, u8),
+        Sender<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>,
+    ),
 }
 
 pub struct ConsensusWorker<ProtocolControllerT: ProtocolController + 'static> {
     cfg: ConsensusConfig,
+    genesis_public_key: PublicKey,
     protocol_controller: ProtocolControllerT,
     block_db: BlockGraph,
     controller_command_rx: Receiver<ConsensusCommand>,
@@ -55,6 +62,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                 })?;
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
+            genesis_public_key: SignatureEngine::new().derive_public_key(&cfg.genesis_key),
             protocol_controller,
             block_db,
             controller_command_rx,
@@ -156,8 +164,44 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                         err
                     ))
                 }),
-            ConsensusCommand::GetPeers(response_tx) => {
-                Ok(self.protocol_controller.get_peers(response_tx).await?)
+            ConsensusCommand::GetPeers(response_tx) => response_tx
+                .send(self.protocol_controller.get_peers().await?)
+                .await
+                .map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send GetPeers answer: {:?}",
+                        err
+                    ))
+                }),
+            ConsensusCommand::GetSelectionDraws(slot_start, slot_end, response_tx) => {
+                let mut result: Result<Vec<((u64, u8), PublicKey)>, ConsensusError> =
+                    Ok(Vec::new());
+                let mut cur_slot = slot_start;
+                while cur_slot < slot_end {
+                    if let Ok(res) = result.as_mut() {
+                        res.push((
+                            cur_slot,
+                            if cur_slot.0 == 0 {
+                                self.genesis_public_key
+                            } else {
+                                self.cfg.nodes[self.selector.draw(cur_slot) as usize].0
+                            },
+                        ));
+                    }
+                    cur_slot = match get_next_block_slot(self.cfg.thread_count, cur_slot) {
+                        Ok(next_slot) => next_slot,
+                        Err(err) => {
+                            result = Err(err);
+                            break;
+                        }
+                    }
+                }
+                response_tx.send(result).await.map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send GetSelectionDraws response: {:?}",
+                        err
+                    ))
+                })
             }
         }
     }

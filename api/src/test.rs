@@ -1,15 +1,16 @@
 use crate::{config::ApiConfig, get_filter};
 use async_trait::async_trait;
 use communication::network::config::NetworkConfig;
-use consensus::ConsensusError;
+use communication::network::PeerInfo;
 use consensus::{
     config::ConsensusConfig, consensus_controller::ConsensusControllerInterface,
     ExportDiscardedBlocks,
 };
 use consensus::{BlockGraphExport, DiscardReason};
+use consensus::{ConsensusError, ExportCompiledBlock};
 use crypto::{
     hash::Hash,
-    signature::{PrivateKey, SignatureEngine},
+    signature::{PrivateKey, PublicKey, SignatureEngine},
 };
 use models::block::{Block, BlockHeader};
 use serde_json::json;
@@ -21,14 +22,16 @@ use warp::{filters::BoxedFilter, Reply};
 #[derive(Debug, Clone)]
 pub struct MockConsensusControllerInterface {
     pub graph: BlockGraphExport,
-    pub peers: std::collections::HashMap<IpAddr, String>,
+    pub peers: std::collections::HashMap<IpAddr, PeerInfo>,
     pub dummy_signature: crypto::signature::Signature,
+    pub dummy_creator: PublicKey,
 }
 
 impl MockConsensusControllerInterface {
     pub fn new() -> MockConsensusControllerInterface {
         let signature_engine = crypto::signature::SignatureEngine::new();
         let private_key = crypto::signature::SignatureEngine::generate_random_private_key();
+        let public_key = signature_engine.derive_public_key(&private_key);
         let hash = Hash::hash("default_val".as_bytes());
         let dummy_signature = signature_engine
             .sign(&hash, &private_key)
@@ -53,6 +56,7 @@ impl MockConsensusControllerInterface {
             },
             peers: HashMap::new(),
             dummy_signature,
+            dummy_creator: public_key,
         }
     }
 
@@ -83,8 +87,18 @@ impl ConsensusControllerInterface for MockConsensusControllerInterface {
         }))
     }
 
-    async fn get_peers(&self) -> Result<std::collections::HashMap<IpAddr, String>, ConsensusError> {
+    async fn get_peers(
+        &self,
+    ) -> Result<std::collections::HashMap<IpAddr, PeerInfo>, ConsensusError> {
         Ok(self.peers.clone())
+    }
+
+    async fn get_selection_draws(
+        &self,
+        start_slot: (u64, u8),
+        end_slot: (u64, u8),
+    ) -> Result<Vec<((u64, u8), PublicKey)>, ConsensusError> {
+        Ok(vec![((0, 0), self.dummy_creator)])
     }
 }
 
@@ -131,6 +145,7 @@ fn get_network_config() -> NetworkConfig {
 fn get_api_config() -> ApiConfig {
     ApiConfig {
         max_return_invalid_blocks: 5,
+        selection_return_periods: 2,
     }
 }
 pub fn mock_filter(interface: MockConsensusControllerInterface) -> BoxedFilter<(impl Reply,)> {
@@ -142,12 +157,16 @@ pub fn mock_filter(interface: MockConsensusControllerInterface) -> BoxedFilter<(
     )
 }
 
-fn get_header(period_number: u64, thread_number: u8) -> BlockHeader {
+fn get_header(period_number: u64, thread_number: u8, creator: Option<PublicKey>) -> BlockHeader {
     let secp = SignatureEngine::new();
     let private_key = SignatureEngine::generate_random_private_key();
     let public_key = secp.derive_public_key(&private_key);
     BlockHeader {
-        creator: public_key,
+        creator: if creator.is_none() {
+            public_key
+        } else {
+            creator.unwrap()
+        },
         thread_number,
         period_number,
         roll_number: 0,
@@ -395,10 +414,20 @@ async fn test_peers() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                index.to_string(),
+                PeerInfo {
+                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                    banned: false,
+                    bootstrap: false,
+                    last_alive: None,
+                    last_failure: None,
+                    advertised: true,
+                    active_out_connection_attempts: 1,
+                    active_out_connections: 1,
+                    active_in_connections: 1,
+                },
             )
         })
-        .collect::<HashMap<IpAddr, String>>();
+        .collect::<HashMap<IpAddr, PeerInfo>>();
     mock_interface.peers = peers.clone();
     let filter = mock_filter(mock_interface);
     // invalid url parameter
@@ -490,6 +519,17 @@ fn get_test_block() -> Block {
         }
 }
 
+fn get_test_compiled_exported_block(
+    period: u64,
+    thread: u8,
+    creator: Option<PublicKey>,
+) -> ExportCompiledBlock {
+    ExportCompiledBlock {
+        block: get_header(2, 0, creator),
+        children: Vec::new(),
+    }
+}
+
 #[tokio::test]
 async fn test_get_block() {
     let mut mock_interface = MockConsensusControllerInterface::new();
@@ -559,10 +599,20 @@ async fn test_network_info() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                index.to_string(),
+                PeerInfo {
+                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                    banned: false,
+                    bootstrap: false,
+                    last_alive: None,
+                    last_failure: None,
+                    advertised: true,
+                    active_out_connection_attempts: 1,
+                    active_out_connections: 1,
+                    active_in_connections: 1,
+                },
             )
         })
-        .collect::<HashMap<IpAddr, String>>();
+        .collect::<HashMap<IpAddr, PeerInfo>>();
     mock_interface.peers = peers.clone();
     let filter = mock_filter(mock_interface);
 
@@ -589,30 +639,21 @@ async fn test_state() {
         let filter = mock_filter(mock_interface);
         let consensus_cfg = get_consensus_config();
 
-        let time = UTime::now().unwrap();
-        let time = consensus::get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            time,
-        )
-        .unwrap()
-        .unwrap();
         let res = warp::test::request()
             .method("GET")
             .path("/api/v1/state")
             .reply(&filter)
             .await;
         assert_eq!(res.status(), 200);
-        let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-        let expected: serde_json::Value = json!({
-            "last_final": Vec::<Hash>::new(),
-            "nb_cliques": 0,
-            "nb_peers": 0,
-            "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            "time": time,
-        });
-        assert_eq!(obtained, expected);
+
+        if let Ok(serde_json::Value::Object(obtained_map)) = serde_json::from_slice(res.body()) {
+            assert_eq!(obtained_map["last_final"], json! {[]});
+            assert_eq!(obtained_map["nb_cliques"], json! {0});
+            assert_eq!(obtained_map["nb_peers"], json! {0});
+            assert_eq!(obtained_map["our_ip"], json! {"127.0.0.1"});
+        } else {
+            panic!("wrong root object type");
+        }
     }
 
     //add default peers
@@ -622,10 +663,20 @@ async fn test_state() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                "connected".to_string(),
+                PeerInfo {
+                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                    banned: false,
+                    bootstrap: false,
+                    last_alive: None,
+                    last_failure: None,
+                    advertised: true,
+                    active_out_connection_attempts: 1,
+                    active_out_connections: 1,
+                    active_in_connections: 1,
+                },
             )
         })
-        .collect::<HashMap<IpAddr, String>>();
+        .collect::<HashMap<IpAddr, PeerInfo>>();
     mock_interface.peers = peers.clone();
     let filter = mock_filter(mock_interface);
 
@@ -645,15 +696,14 @@ async fn test_state() {
         .reply(&filter)
         .await;
     assert_eq!(res.status(), 200);
-    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value = json!({
-        "last_final": Vec::<Hash>::new(),
-        "nb_cliques": 0,
-        "nb_peers": peers.len(),
-        "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-        "time": time,
-    });
-    assert_eq!(obtained, expected);
+    if let Ok(serde_json::Value::Object(obtained_map)) = serde_json::from_slice(res.body()) {
+        assert_eq!(obtained_map["last_final"], json! {[]});
+        assert_eq!(obtained_map["nb_cliques"], json! {0});
+        assert_eq!(obtained_map["nb_peers"], json! {peers.len()});
+        assert_eq!(obtained_map["our_ip"], json! {"127.0.0.1"});
+    } else {
+        panic!("wrong root object type");
+    }
 }
 
 #[tokio::test]
@@ -678,10 +728,13 @@ async fn test_last_stale() {
     //add default stale blocks
     let mut mock_interface = MockConsensusControllerInterface::new();
     mock_interface.graph.discarded_blocks.map.extend(vec![
-        (get_test_hash(), (DiscardReason::Invalid, get_header(1, 1))),
+        (
+            get_test_hash(),
+            (DiscardReason::Invalid, get_header(1, 1, None)),
+        ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0)),
+            (DiscardReason::Stale, get_header(2, 0, None)),
         ),
     ]);
     let filter = mock_filter(mock_interface);
@@ -722,10 +775,13 @@ async fn test_last_invalid() {
     //add default stale blocks
     let mut mock_interface = MockConsensusControllerInterface::new();
     mock_interface.graph.discarded_blocks.map.extend(vec![
-        (get_test_hash(), (DiscardReason::Invalid, get_header(1, 1))),
+        (
+            get_test_hash(),
+            (DiscardReason::Invalid, get_header(1, 1, None)),
+        ),
         (
             get_another_test_hash(),
-            (DiscardReason::Stale, get_header(2, 0)),
+            (DiscardReason::Stale, get_header(2, 0, None)),
         ),
     ]);
     let filter = mock_filter(mock_interface);
@@ -737,8 +793,86 @@ async fn test_last_invalid() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&vec![(get_test_hash(), 1, 1)]).unwrap())
-            .unwrap();
+    let expected = serde_json::to_value(&vec![(get_test_hash(), 1, 1)]).unwrap();
     assert_eq!(obtained, expected);
+}
+
+#[tokio::test]
+async fn test_staker_info() {
+    //test with empty final block
+    {
+        let mock_interface = MockConsensusControllerInterface::new();
+        let staker = mock_interface.dummy_creator;
+        let filter = mock_filter(mock_interface);
+        let res = warp::test::request()
+            .method("GET")
+            .path(&format!("/api/v1/staker_info/{}/1000/2", staker))
+            .reply(&filter)
+            .await;
+        assert_eq!(res.status(), 200);
+        let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+        let empty_vec = serde_json::to_value(&Vec::<Block>::new()).unwrap();
+        assert_eq!(obtained["staker_active_blocks"], empty_vec);
+        assert_eq!(obtained["staker_discarded_blocks"], empty_vec);
+        assert_eq!(
+            obtained["staker_next_draws"],
+            serde_json::to_value(vec![(0u64, 0u8)]).unwrap()
+        );
+    }
+    //add default stale blocks
+    let mut mock_interface = MockConsensusControllerInterface::new();
+    let staker = mock_interface.dummy_creator;
+
+    let staker_s_discarded = vec![(
+        get_test_hash(),
+        (DiscardReason::Invalid, get_header(1, 1, Some(staker))),
+    )];
+    mock_interface.graph.discarded_blocks.map.extend(vec![
+        staker_s_discarded[0].clone(),
+        (
+            get_another_test_hash(),
+            (DiscardReason::Stale, get_header(2, 0, None)),
+        ),
+    ]);
+
+    let staker_s_active = vec![(
+        get_another_test_hash(),
+        get_test_compiled_exported_block(2, 1, Some(staker)),
+    )];
+    mock_interface
+        .graph
+        .active_blocks
+        .insert(staker_s_active[0].0.clone(), staker_s_active[0].1.clone());
+
+    let filter = mock_filter(mock_interface);
+    //valide url with final block.
+    let res = warp::test::request()
+        .method("GET")
+        .path(&format!("/api/v1/staker_info/{}/1000/2", staker))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200);
+    let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let expected_active: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(
+            &staker_s_active
+                .iter()
+                .map(|(hash, compiled_block)| (hash, compiled_block.block.clone()))
+                .collect::<Vec<(&Hash, BlockHeader)>>(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let expected_discarded: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(
+            &staker_s_discarded
+                .iter()
+                .map(|(hash, (reason, header))| (hash, reason, header))
+                .collect::<Vec<(&Hash, &DiscardReason, &BlockHeader)>>(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(obtained["staker_active_blocks"], expected_active);
+    assert_eq!(obtained["staker_discarded_blocks"], expected_discarded);
 }

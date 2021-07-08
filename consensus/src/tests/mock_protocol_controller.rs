@@ -7,6 +7,7 @@ use communication::protocol::protocol_controller::{
 };
 use communication::{
     network::establisher::{Connector, Establisher, Listener},
+    network::PeerInfo,
     CommunicationError,
 };
 use crypto::hash::Hash;
@@ -14,6 +15,7 @@ use models::block::Block;
 use time::UTime;
 use tokio::io::DuplexStream;
 use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::oneshot;
 
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
@@ -116,18 +118,15 @@ impl NetworkController for BlankNetworkController {
         unreachable!();
     }
 
-    async fn get_peers(
-        &mut self,
-        response_tx: Sender<HashMap<IpAddr, String>>,
-    ) -> Result<(), CommunicationError> {
+    async fn get_peers(&mut self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
         unreachable!();
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum MockProtocolCommand {
     PropagateBlock { hash: Hash, block: Block },
-    GetPeers(Sender<HashMap<IpAddr, String>>),
+    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
 }
 
 pub fn new() -> (MockProtocolController, MockProtocolControllerInterface) {
@@ -186,15 +185,17 @@ impl ProtocolController for MockProtocolController {
         Ok(())
     }
 
-    async fn get_peers(
-        &self,
-        response_tx: Sender<std::collections::HashMap<std::net::IpAddr, String>>,
-    ) -> Result<(), CommunicationError> {
+    async fn get_peers(&self) -> Result<HashMap<std::net::IpAddr, PeerInfo>, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel::<HashMap<IpAddr, PeerInfo>>();
         self.protocol_command_tx
             .send(MockProtocolCommand::GetPeers(response_tx))
             .await
-            .expect("could not send mock protocol command");
-        Ok(())
+            .map_err(|err| {
+                CommunicationError::MockError(format!("send error consensus command: {:?}", err))
+            })?;
+        Ok(response_rx.await.map_err(|err| {
+            CommunicationError::MockError(format!("could not receive response: {:?}", err))
+        })?)
     }
 }
 

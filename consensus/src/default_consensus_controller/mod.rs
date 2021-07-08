@@ -3,8 +3,10 @@ mod misc_collections;
 use std::{collections::HashMap, net::IpAddr};
 
 use crate::error::ConsensusError;
+use communication::network::PeerInfo;
 
 pub use consensus_worker::ConsensusCommand;
+use crypto::signature::PublicKey;
 use models::block::Block;
 
 use super::{block_graph::*, config::ConsensusConfig, consensus_controller::*};
@@ -158,21 +160,39 @@ impl ConsensusControllerInterface for DefaultConsensusControllerInterface {
             )))
     }
 
-    async fn get_peers(
-        &self,
-    ) -> Result<std::collections::HashMap<std::net::IpAddr, String>, ConsensusError> {
-        let (response_tx, mut response_rx) = mpsc::channel::<HashMap<IpAddr, String>>(1);
+    async fn get_peers(&self) -> Result<HashMap<std::net::IpAddr, PeerInfo>, ConsensusError> {
+        let (response_tx, mut response_rx) = mpsc::channel::<HashMap<IpAddr, PeerInfo>>(1);
         self.consensus_command_tx
             .send(ConsensusCommand::GetPeers(response_tx))
             .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(format!("send error consensus command"))
+            .map_err(|err| {
+                ConsensusError::SendChannelError(format!("send error consensus command: {:?}", err))
             })?;
         response_rx
             .recv()
             .await
-            .ok_or(ConsensusError::ReceiveChannelError(format!(
-                "receive error"
-            )))
+            .ok_or(ConsensusError::ReceiveChannelError("receive error".into()))
+    }
+    async fn get_selection_draws(
+        &self,
+        start_slot: (u64, u8),
+        end_slot: (u64, u8),
+    ) -> Result<Vec<((u64, u8), PublicKey)>, ConsensusError> {
+        let (response_tx, mut response_rx) =
+            mpsc::channel::<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>(1);
+        self.consensus_command_tx
+            .send(ConsensusCommand::GetSelectionDraws(
+                start_slot,
+                end_slot,
+                response_tx,
+            ))
+            .await
+            .map_err(|err| {
+                ConsensusError::SendChannelError(format!("send error consensus command: {:?}", err))
+            })?;
+        response_rx
+            .recv()
+            .await
+            .ok_or(ConsensusError::ReceiveChannelError("receive error".into()))?
     }
 }

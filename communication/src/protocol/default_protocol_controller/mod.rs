@@ -5,14 +5,17 @@ pub use super::protocol_controller::ProtocolEvent;
 use super::protocol_controller::{NodeId, ProtocolController};
 use crate::error::{ChannelError, CommunicationError};
 use crate::network::network_controller::NetworkController;
+use crate::network::PeerInfo;
 use async_trait::async_trait;
 use crypto::{hash::Hash, signature::SignatureEngine};
 use models::block::Block;
 pub use node_worker::{NodeCommand, NodeEvent};
 pub use protocol_worker::ProtocolCommand;
 use protocol_worker::ProtocolWorker;
-use tokio::sync::mpsc;
+use std::collections::HashMap;
+use std::net::IpAddr;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
 #[derive(Debug)]
@@ -118,13 +121,12 @@ impl<NetworkControllerT: NetworkController> ProtocolController
             .map_err(|err| ChannelError::from(err).into())
     }
 
-    async fn get_peers(
-        &self,
-        response_tx: Sender<std::collections::HashMap<std::net::IpAddr, String>>,
-    ) -> Result<(), CommunicationError> {
+    async fn get_peers(&self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel::<HashMap<IpAddr, PeerInfo>>();
         self.protocol_command_tx
             .send(ProtocolCommand::GetPeers(response_tx))
             .await
-            .map_err(|err| ChannelError::from(err).into())
+            .map_err(|err| ChannelError::from(err))?;
+        Ok(response_rx.await.map_err(|err| ChannelError::from(err))?)
     }
 }

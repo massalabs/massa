@@ -371,9 +371,9 @@ mod tests {
     fn test_promote() {
         let mut deps = DependencyWaitingBlocks::new(5);
         let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_b, _block_b) = create_standalone_block(2, 1);
         let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, block_d) = create_standalone_block(4, 1);
+        let (hash_d, _block_d) = create_standalone_block(4, 1);
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -396,11 +396,11 @@ mod tests {
     fn test_insert() {
         let mut deps = DependencyWaitingBlocks::new(2);
         let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_b, _block_b) = create_standalone_block(2, 1);
         let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, block_d) = create_standalone_block(4, 1);
+        let (hash_d, _block_d) = create_standalone_block(4, 1);
         let (hash_e, block_e) = create_standalone_block(5, 1);
-        let (hash_f, block_f) = create_standalone_block(6, 1);
+        let (hash_f, _block_f) = create_standalone_block(6, 1);
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -429,7 +429,7 @@ mod tests {
     fn test_insert_chain_dependencies() {
         let mut deps = DependencyWaitingBlocks::new(2);
         let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_b, _block_b) = create_standalone_block(2, 1);
         let (hash_c, block_c) = create_standalone_block(3, 1);
         let (hash_e, block_e) = create_standalone_block(5, 1);
 
@@ -461,9 +461,9 @@ mod tests {
     fn test_valid_block_obtained() {
         let mut deps = DependencyWaitingBlocks::new(5);
         let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_b, _block_b) = create_standalone_block(2, 1);
         let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, block_d) = create_standalone_block(4, 1);
+        let (hash_d, _block_d) = create_standalone_block(4, 1);
 
         let mut deps_a = HashSet::new();
         deps_a.insert(hash_b);
@@ -490,9 +490,9 @@ mod tests {
     fn test_cancel() {
         let mut deps = DependencyWaitingBlocks::new(5);
         let (hash_a, block_a) = create_standalone_block(1, 1);
-        let (hash_b, block_b) = create_standalone_block(2, 1);
+        let (hash_b, _block_b) = create_standalone_block(2, 1);
         let (hash_c, block_c) = create_standalone_block(3, 1);
-        let (hash_d, block_d) = create_standalone_block(4, 1);
+        let (hash_d, _block_d) = create_standalone_block(4, 1);
         let (hash_e, block_e) = create_standalone_block(5, 1);
 
         let mut deps_a = HashSet::new();
