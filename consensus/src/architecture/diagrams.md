@@ -34,7 +34,7 @@ state BlockCheck{
 }
 
 state ConsensusUpdate  {
-[*] --> CBlock: BlockChecked
+[*] --> CBlock: Block Ready
     CBlock --> CBlock: Compute GP, Thread, etc incompatibilities
     CBlock --> [*]: Discarded
     CBlock --> Active: Integration
