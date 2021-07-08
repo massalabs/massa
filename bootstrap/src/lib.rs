@@ -1,7 +1,7 @@
 use binders::{ReadBinder, WriteBinder};
 use consensus::{BoostrapableGraph, ConsensusCommandSender};
 use establisher::{ReadHalf, WriteHalf};
-use log::{debug, warn};
+use log::{debug, info, warn};
 use std::net::SocketAddr;
 
 mod binders;
@@ -77,7 +77,10 @@ pub async fn get_state(
                     warn!("error {:?} while bootstraping", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
-                Ok(graph) => break Ok(Some(graph)),
+                Ok(graph) => {
+                    info!("Successful bootstrap");
+                    break Ok(Some(graph));
+                }
             }
         }
     }
@@ -119,6 +122,7 @@ pub async fn start_bootstrap_server(
             .run()
             .await
         });
+        info!("started bootstrap server");
         Ok(Some(BootstrapManager {
             join_handle,
             manager_tx,
@@ -161,7 +165,7 @@ impl BootstrapServer {
 
     async fn manage_bootstrap(
         &self,
-        (reader, writer, _remote_addr): (ReadHalf, WriteHalf, SocketAddr),
+        (reader, writer, remote_addr): (ReadHalf, WriteHalf, SocketAddr),
     ) -> Result<(), BootstrapError> {
         let mut reader = ReadBinder::new(reader, self.serialization_context.clone());
         let mut writer = WriteBinder::new(writer, self.serialization_context.clone());
@@ -170,6 +174,7 @@ impl BootstrapServer {
             || Err(BootstrapError::UnexpectedConnectionDrop),
             |(_, msg)| Ok(msg),
         )?;
+        info!("bootstraping peer {:?}", remote_addr);
         match msg {
             BootstrapMessage::BootstrapInitiation { random_bytes } => {
                 let graph = self.consensus_command_sender.get_bootstrap_graph().await?;
