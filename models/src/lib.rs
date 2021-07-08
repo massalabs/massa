@@ -8,7 +8,7 @@ mod slot;
 pub use block::{Block, BlockHeader, BlockHeaderContent};
 pub use context::SerializationContext;
 pub use error::ModelsError;
-pub use operation::{Operation, TransactionContent};
+pub use operation::{Operation, OperationContent};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,

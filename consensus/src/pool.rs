@@ -34,31 +34,26 @@ impl OperationPool {
     /// An error is returned when a critically wrrong operation was received
     pub fn new_operation(
         &mut self,
-        new: Operation,
+        operation: Operation,
         context: &SerializationContext,
     ) -> Result<bool, ConsensusError> {
-        let operation = new.clone();
         let signature_engine = SignatureEngine::new();
-        match new {
-            Operation::Transaction { content, signature } => {
-                let hash = content.compute_hash(context)?;
-                // period validity check
-                let start = content.expire_period - self.cfg.operation_validity_periods;
-                let thread = get_thread(content.sender_public_key);
-                if self.current_slot < Slot::new(start, thread)
-                    || Slot::new(content.expire_period, thread) < self.current_slot
-                {
-                    return Ok(false);
-                }
-                signature_engine.verify(&hash, &signature, &content.sender_public_key)?;
-                if let None = self.map.insert(hash, operation) {
-                    self.vec[thread as usize].push((content.fee, hash));
-                    Ok(true)
-                } else {
-                    // already present
-                    Ok(false)
-                }
-            }
+        let hash = operation.operation.compute_hash(context)?;
+        // period validity check
+        let start = operation.expire_period - self.cfg.operation_validity_periods;
+        let thread = get_thread(operation.sender_public_key);
+        if self.current_slot < Slot::new(start, thread)
+            || Slot::new(operation.expire_period, thread) < self.current_slot
+        {
+            return Ok(false);
+        }
+        signature_engine.verify(&hash, &operation.signature, &operation.sender_public_key)?;
+        if let None = self.map.insert(hash, operation.clone()) {
+            self.vec[thread as usize].push((operation.fee, hash));
+            Ok(true)
+        } else {
+            // already present
+            Ok(false)
         }
         // todo!() // see #270
     }
