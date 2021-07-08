@@ -97,7 +97,7 @@ impl<NetworkControllerT: NetworkController> ProtocolController
     }
 
     /// Stop the protocol controller
-    /// panices id the protocol controller is not reachable
+    /// panices if the protocol controller is not reachable
     async fn stop(mut self) {
         debug!("stopping protocol controller");
         massa_trace!("begin", {});
@@ -112,10 +112,17 @@ impl<NetworkControllerT: NetworkController> ProtocolController
 
     async fn propagate_block(
         &mut self,
-        block: Block,
+        block: &Block,
         exclude_node: Option<NodeId>,
         restrict_to_node: Option<NodeId>,
     ) {
-        unimplemented!()
+        self.protocol_command_tx
+            .send(ProtocolCommand::PropagateBlock {
+                block: block.clone(),
+                exclude_node,
+                restrict_to_node,
+            })
+            .await
+            .expect("protcol_command channel disappeared");
     }
 }

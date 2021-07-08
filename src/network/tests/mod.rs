@@ -1,3 +1,3 @@
 mod mock_establisher;
-mod scenarii;
+mod scenarios;
 mod tools;

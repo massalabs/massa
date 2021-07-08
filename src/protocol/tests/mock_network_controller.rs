@@ -13,34 +13,34 @@ pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
 
 #[derive(Debug)]
-pub struct MockListener;
+pub struct BlankListener;
 
 #[async_trait]
-impl Listener<ReadHalf, WriteHalf> for MockListener {
+impl Listener<ReadHalf, WriteHalf> for BlankListener {
     async fn accept(&mut self) -> std::io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
         unreachable!();
     }
 }
 
 #[derive(Debug)]
-pub struct MockConnector;
+pub struct BlankConnector;
 
 #[async_trait]
-impl Connector<ReadHalf, WriteHalf> for MockConnector {
+impl Connector<ReadHalf, WriteHalf> for BlankConnector {
     async fn connect(&mut self, _addr: SocketAddr) -> std::io::Result<(ReadHalf, WriteHalf)> {
         unreachable!();
     }
 }
 
 #[derive(Debug)]
-pub struct MockEstablisher;
+pub struct BlankEstablisher;
 
 #[async_trait]
-impl Establisher for MockEstablisher {
+impl Establisher for BlankEstablisher {
     type ReaderT = ReadHalf;
     type WriterT = WriteHalf;
-    type ListenerT = MockListener;
-    type ConnectorT = MockConnector;
+    type ListenerT = BlankListener;
+    type ConnectorT = BlankConnector;
 
     async fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<Self::ListenerT> {
         unreachable!();
@@ -98,7 +98,7 @@ pub struct MockNetworkController {
 
 #[async_trait]
 impl NetworkController for MockNetworkController {
-    type EstablisherT = MockEstablisher;
+    type EstablisherT = BlankEstablisher;
     type ReaderT = ReadHalf;
     type WriterT = WriteHalf;
 

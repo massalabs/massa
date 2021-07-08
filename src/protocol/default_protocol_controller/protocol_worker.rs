@@ -87,7 +87,33 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
             tokio::select! {
                 // listen to incoming commands
                 res = self.controller_command_rx.next() => match res {
-                    Some(_) => {}  // TODO
+                    Some(ProtocolCommand::PropagateBlock {
+                        block,
+                        exclude_node,
+                        restrict_to_node,
+                    }) => match restrict_to_node {
+                        Some(target_node_id) => {
+                            let (_, node_command_tx, _) = self
+                                .active_nodes
+                                .get(&target_node_id)
+                                .expect("sending block to missing node");
+                            node_command_tx
+                                .send(NodeCommand::SendBlock(block))
+                                .await
+                                .expect("could not send block");
+                        }
+                        None => {
+                            for (target_node_id, (_, node_command_tx, _)) in self.active_nodes.iter() {
+                                if Some(*target_node_id) != exclude_node {
+                                    node_command_tx
+                                        .send(NodeCommand::SendBlock(block.clone()))
+                                        .await
+                                        .expect("could not send block");
+                                }
+                            }
+                        }
+                    }
+                    // Some(_) => {}  // TODO
                     None => break  // finished
                 },
 

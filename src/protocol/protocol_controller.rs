@@ -39,7 +39,7 @@ where
     async fn stop(mut self);
     async fn propagate_block(
         &mut self,
-        block: Block,
+        block: &Block,
         exclude_node: Option<NodeId>,
         restrict_to_node: Option<NodeId>,
     );
