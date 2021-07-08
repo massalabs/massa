@@ -13,6 +13,7 @@ impl Slot {
     pub fn from_tuple((period, thread): (u64, u8)) -> Slot {
         Slot { period, thread }
     }
+<<<<<<< HEAD
     pub fn into_bytes(&self) -> [u8; 9] {
         let mut bytes = [0; 9];
         bytes[..8].copy_from_slice(&self.period.to_be_bytes());
@@ -24,5 +25,12 @@ impl Slot {
         vec.extend_from_slice(&self.thread.to_be_bytes());
         //vec.insert(8, self.thread);
         vec */
+=======
+    pub fn to_bytes(&self) -> [u8; 9] {
+        let mut res = [0u8; 9];
+        res[..8].clone_from_slice(&self.period.to_be_bytes());
+        res[8] = self.thread;
+        res
+>>>>>>> 4183eda9654961e4f2f69797364b7b9de51dad01
     }
 }
