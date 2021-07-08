@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 use time::UTime;
 use tokio::io::{AsyncRead, AsyncWrite};
 
+/// The establisher establishes connections.
 #[async_trait]
 pub trait Establisher
 where
@@ -18,6 +19,7 @@ where
     async fn get_connector(&mut self, timeout_duration: UTime) -> io::Result<Self::ConnectorT>;
 }
 
+/// Listens for connections.
 #[async_trait]
 pub trait Listener<ReaderT, WriterT>
 where
@@ -28,6 +30,7 @@ where
     async fn accept(&mut self) -> io::Result<(ReaderT, WriterT, SocketAddr)>;
 }
 
+/// Manages connection timeouts.
 #[async_trait]
 pub trait Connector<ReaderT, WriterT>
 where

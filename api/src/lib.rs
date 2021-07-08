@@ -1,3 +1,7 @@
+/// The goal of this API is to retrieve information
+/// on the current state of our node and interact with it.
+/// In version 0.1, we can get some informations
+/// and stop the node through the API.
 use communication::network::config::NetworkConfig;
 use config::ApiConfig;
 use consensus::{config::ConsensusConfig, consensus_controller::ConsensusControllerInterface};
@@ -5,11 +9,9 @@ use consensus::{get_block_slot_timestamp, DiscardReason};
 use crypto::{hash::Hash, signature::PublicKey};
 use models::block::BlockHeader;
 use serde_json::json;
-use std::{
-    cmp::min,
-    collections::{HashMap, HashSet},
-    net::IpAddr,
-};
+use std::cmp::min;
+use std::collections::{HashMap, HashSet};
+use std::net::IpAddr;
 use time::UTime;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
@@ -19,6 +21,14 @@ pub mod error;
 
 pub use error::*;
 
+/// This function sets up all the routes that can be used
+/// and combines them into one filter
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
+/// * api_config, consensus_config, network_config : configuration that are needed here
+///     (for more details see config.rs file in each crate)
+/// * evt_tx : channel used to comminicate ApiEvents
 pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 'static>(
     consensus_controller_interface: ConsensusControllerInterfaceT,
     api_config: ApiConfig,
@@ -183,18 +193,27 @@ pub fn get_filter<ConsensusControllerInterfaceT: ConsensusControllerInterface + 
         .boxed()
 }
 
+/// Structure used to communicate with the api
+/// for example, we want to be able to stop the
+/// node from outside or inside the api
 pub struct ApiHandle {
+    /// channel used to gracefully shutdown the api
     stop_tx: oneshot::Sender<()>,
+    /// used to join on the API
     join_handle: tokio::task::JoinHandle<()>,
+    /// used to transmit ApiEvents outside
     evt_rx: mpsc::Receiver<ApiEvent>,
 }
 
+/// Events that are transmitted outside the API
 #[derive(Debug, Copy, Clone)]
 pub enum ApiEvent {
+    /// API received stop signal and wants to fordward it
     AskStop,
 }
 
 impl ApiHandle {
+    /// Shut down the Apit properly
     pub async fn stop(self) -> Result<(), ApiError> {
         self.stop_tx
             .send(())
@@ -205,6 +224,7 @@ impl ApiHandle {
         Ok(())
     }
 
+    /// Listen for ApiEvents
     pub async fn wait_event(&mut self) -> Result<ApiEvent, ApiError> {
         self.evt_rx
             .recv()
@@ -215,6 +235,14 @@ impl ApiHandle {
     }
 }
 
+/// Spawn API server.
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
+/// * api_config, consensus_config, network_config : configuration that are needed here
+///     (for more details see config.rs file in each crate)
+///
+/// Returns the ApiHandle to keep a communication channel with the Api
 pub async fn spawn_server<ConsensusControllerInterfaceT: ConsensusControllerInterface + 'static>(
     consensus_controller_interface: ConsensusControllerInterfaceT,
     api_config: ApiConfig,
@@ -244,6 +272,11 @@ pub async fn spawn_server<ConsensusControllerInterfaceT: ConsensusControllerInte
     })
 }
 
+/// This function sends AskStop outside the Api and
+/// return the result as a warp reply.
+///
+/// # Argument
+/// * event_tx : Sender used to send the event out
 async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
     match evt_tx.send(ApiEvent::AskStop).await {
         Ok(_) => Ok(warp::reply().into_response()),
@@ -257,6 +290,11 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
     }
 }
 
+/// Returns block with given hash as a reply
+///
+/// # Arguments
+/// * hash: the hash of the block we want
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn get_block<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     hash: Hash,
     interface: ConsensusControllerInterfaceT,
@@ -274,10 +312,23 @@ async fn get_block<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     }
 }
 
+/// Returns our ip adress
+///
+/// # Argument
+/// * cfg: Network configuration
+///
+/// Note: as our ip adress is in the config,
+/// this function is more about getting every bit of
+/// information we want exactly in the same way
 async fn our_ip(cfg: NetworkConfig) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(warp::reply::json(&cfg.routable_ip))
 }
 
+/// Returns best parents as a Vec<Hash, (u64, u8)> wrapped in a reply.
+/// The (u64, u8) tuple represents the parent's slot.
+///
+/// # Argument
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn current_parents<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -317,6 +368,11 @@ async fn current_parents<ConsensusControllerInterfaceT: ConsensusControllerInter
     Ok(warp::reply::json(&best).into_response())
 }
 
+/// Returns last final blocks as a Vec<Hash, (u64, u8)> wrapped in a reply.
+/// The (u64, u8) tuple represents the block's slot.
+///
+/// # Argument
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn last_final<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -341,8 +397,16 @@ async fn last_final<ConsensusControllerInterfaceT: ConsensusControllerInterface>
     Ok(warp::reply::json(&finals).into_response())
 }
 
-/// return all block hash found in the time interval
-/// both start time and end time are included
+/// Returns all blocks in a time interval as a Vec<Hash, (u64, u8)> wrapped in a reply.
+/// The (u64, u8) tuple represents the block's slot.
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
+/// * cfg: consensus configuration
+/// * start: beginning of the considered interval
+/// * end: ending of the considered interval
+///
+/// Note: both start time and end time are included
 async fn block_interval<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
     cfg: ConsensusConfig,
@@ -389,9 +453,18 @@ async fn block_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
     Ok(warp::reply::json(&res).into_response())
 }
 
-/// return all block info needed to reconstruct the graph found in the time interval
-/// -> list of (hash, thread, slot, status, parents hash)
-/// both start time and end time are included
+/// Returns all block info needed to reconstruct the graph found in the time interval.
+/// The result is a vec of (hash, period, thread, status, parents hash) wrapped in a reply.
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
+/// * cfg: consensus configuration
+/// * start: beginning of the considered interval
+/// * end: ending of the considered interval
+///
+/// Note:
+/// * both start time and end time are included
+/// * status is in ["active", "final", "stale"]
 async fn graph_interval<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
     cfg: ConsensusConfig,
@@ -501,7 +574,11 @@ async fn graph_interval<ConsensusControllerInterfaceT: ConsensusControllerInterf
     Ok(warp::reply::json(&res).into_response())
 }
 
-/// return number of cliques and current cliques hashset set
+/// Returns number of cliques and current cliques as Vec<HashSet<(hash, (period, thread))>>
+/// The result is a tuple (number_of_cliques, current_cliques) wrapped in a reply.
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn cliques<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -563,7 +640,15 @@ async fn cliques<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     Ok(warp::reply::json(&(graph.max_cliques.len(), res)).into_response())
 }
 
-/// return network information: own IP address, connected peers (address, IP), connection status, connections usage, average upload and download bandwidth used for headers, operations, syncing
+/// Returns network information:
+/// * own IP address
+/// * connected peers :
+///      - ip address
+///      - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
+/// * cfg: network configuration
 async fn network_info<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
     cfg: NetworkConfig,
@@ -588,6 +673,12 @@ async fn network_info<ConsensusControllerInterfaceT: ConsensusControllerInterfac
     .into_response())
 }
 
+/// Returns connected peers :
+/// - ip address
+/// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn peers<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -606,7 +697,17 @@ async fn peers<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     Ok(warp::reply::json(&peers).into_response())
 }
 
-/// returns a summary of the current state: time, last final block (hash, thread, slot, timestamp), nb cliques, nb connected nodes
+/// Returns a summary of the current state:
+/// * time in UTime
+/// * lastest slot (optional)
+/// * last final block as Vec<(&Hash, u64, u8, UTime)>
+/// * number of cliques
+/// * number of connected peers
+///
+/// # Arguments
+/// * consensus_controller_interface: the only communication channel we have with the node
+/// * network_cfg:  network configuration
+/// * consensus_cfg: consensus configuration
 async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     interface: ConsensusControllerInterfaceT,
     consensus_cfg: ConsensusConfig,
@@ -719,6 +820,12 @@ async fn state<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     .into_response())
 }
 
+/// Returns a number of last stale blocks as a Vec<Hash, u64, u8> wrapped in a reply.
+/// The (u64, u8) tuple represents the block's slot.
+///
+/// # Arguments
+/// * api_config: api configuration
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn last_stale<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     api_config: ApiConfig,
     interface: ConsensusControllerInterfaceT,
@@ -751,6 +858,12 @@ async fn last_stale<ConsensusControllerInterfaceT: ConsensusControllerInterface>
     Ok(warp::reply::json(&json!(discarded)).into_response())
 }
 
+/// Returns a number of last invalid blocks as a Vec<Hash, u64, u8> wrapped in a reply.
+/// The (u64, u8) tuple represents the block's slot.
+///
+/// # Arguments
+/// * api_config: api configuration
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn last_invalid<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     api_config: ApiConfig,
     interface: ConsensusControllerInterfaceT,
@@ -783,6 +896,16 @@ async fn last_invalid<ConsensusControllerInterfaceT: ConsensusControllerInterfac
     Ok(warp::reply::json(&json!(discarded)).into_response())
 }
 
+/// Returns
+/// * a number of discarded blocks by the staker as a Vec<(&Hash, DiscardReason, BlockHeader)>
+/// * a number of active blocks by the staker as a Vec<(&Hash, BlockHeader)>
+/// * next slots that are for the staker as a Vec<(u64, u8)>
+///
+/// # Arguments
+/// * creator: PublicKey of the staker we are interested in
+/// * api_config: api configuration
+/// * consensus_cfg: consensus configuration
+/// * consensus_controller_interface: the only communication channel we have with the node
 async fn staker_info<ConsensusControllerInterfaceT: ConsensusControllerInterface>(
     creator: PublicKey,
     api_cfg: ApiConfig,

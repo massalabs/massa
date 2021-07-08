@@ -17,13 +17,16 @@ use tokio::{
     time::sleep_until,
 };
 
+/// Commands that can be proccessed by consensus.
 #[derive(Debug, Clone)]
 pub enum ConsensusCommand {
-    //return current blockgraph without block operations.
+    /// Returns through a channel current blockgraph without block operations.
     GetBlockGraphStatus(Sender<BlockGraphExport>),
-    //return full block with specified hash
+    /// Returns through a channel full block with specified hash.
     GetActiveBlock(Hash, Sender<Option<Block>>),
+    /// Returns through a channel known peers list.
     GetPeers(Sender<HashMap<IpAddr, PeerInfo>>),
+    /// Returns through a channel the list of slots with public key of the selected staker.
     GetSelectionDraws(
         (u64, u8),
         (u64, u8),
@@ -31,20 +34,40 @@ pub enum ConsensusCommand {
     ),
 }
 
+/// Manages consensus.
 pub struct ConsensusWorker<ProtocolControllerT: ProtocolController + 'static> {
+    /// Consensus Configuration
     cfg: ConsensusConfig,
+    /// Genesis blocks werecreated with that public key.
     genesis_public_key: PublicKey,
+    /// Associated protocol controller.
     protocol_controller: ProtocolControllerT,
+    /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
+    /// Channel receiving consensus commands.
     controller_command_rx: Receiver<ConsensusCommand>,
+    /// Channel sending out consensus events.
     controller_event_tx: Sender<ConsensusEvent>,
+    /// Selector used to select roll numbers.
     selector: RandomSelector,
+    /// Sophisticated queue of blocks with slots in the near future.
     future_incoming_blocks: FutureIncomingBlocks,
+    /// Sophisticated queue of blocks wainting for dependencies.
     dependency_waiting_blocks: DependencyWaitingBlocks,
+    /// Current slot.
     current_slot: (u64, u8),
 }
 
 impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<ProtocolControllerT> {
+    /// Creates a new consensus controller.
+    /// Initiates the random selector.
+    ///
+    /// # Arguments
+    /// * cfg: consensus configuration.
+    /// * protocol_controller: associated protocol controller
+    /// * block_db: Database containing all information about blocks, the blockgraph and cliques.
+    /// * controller_command_rx: Channel receiving consensus commands.
+    /// * controller_event_tx: Channel sending out consensus events.
     pub fn new(
         cfg: ConsensusConfig,
         protocol_controller: ProtocolControllerT,
@@ -74,6 +97,8 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         })
     }
 
+    /// Consensus work is managed here.
+    /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<(), ConsensusError> {
         let next_slot_timer = sleep_until(
             get_block_slot_timestamp(
@@ -140,6 +165,10 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         Ok(())
     }
 
+    /// Manages given consensus command.
+    ///
+    /// # Argument
+    /// * cmd: consens command to process
     async fn process_consensus_command(
         &mut self,
         cmd: ConsensusCommand,
@@ -206,7 +235,12 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         }
     }
 
-    // returns a new hashmap of blocks to re-acknowledge
+    /// Checks if block is valid and coherent and add it to the underlying block database.
+    // Returns a new hashmap of blocks to re-acknowledge.
+    ///
+    /// # Arguments
+    /// * hash: block's header hash
+    /// * block: block to acknowledge
     async fn acknowledge_block(
         &mut self,
         hash: Hash,
@@ -352,7 +386,11 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         }
     }
 
-    // recusrively acknowledge blocks while some are available
+    /// Recursively acknowledges blocks while some are available.
+    ///
+    /// # Arguments
+    /// * hash: block's header hash
+    /// * block: block to acknowledge
     async fn rec_acknowledge_block(
         &mut self,
         hash: Hash,
@@ -369,6 +407,11 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         Ok(())
     }
 
+    /// Manages received protocolevents.
+    ///
+    /// # Arguments
+    /// * source_node_id : node from wich the event came from id.
+    /// * event: event type to process.
     async fn process_protocol_event(
         &mut self,
         source_node_id: NodeId,
