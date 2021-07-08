@@ -109,14 +109,10 @@ pub struct NetworkWorker {
     /// Receiving channel for node events.
     node_event_rx: mpsc::Receiver<NodeEvent>,
     /// Ids of active nodes mapped to Connection id, node command sender and handle on the associated node worker.
-    active_nodes: HashMap<
-        NodeId,
-        (
-            ConnectionId,
-            mpsc::Sender<NodeCommand>,
-            JoinHandle<Result<(), CommunicationError>>,
-        ),
-    >,
+    active_nodes: HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>)>,
+    /// Node worker handles
+    node_worker_handles:
+        FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, CommunicationError>)>>,
     /// Map of connection to ip, is_outgoing.
     active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
 }
@@ -161,6 +157,7 @@ impl NetworkWorker {
             node_event_tx,
             node_event_rx,
             active_nodes: HashMap::new(),
+            node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
         }
     }
@@ -246,14 +243,47 @@ impl NetworkWorker {
                     ).await?
                 },
 
+                // node closed
+                Some(evt) = self.node_worker_handles.next() => {
+                    let (node_id, res) = evt?;  // ? => when a node worker panics
+                    let reason = match res {
+                        Ok(r) => {
+                            massa_trace!("network.network_worker.run_loop.node_worker_handles.normal", {
+                                "node_id": node_id,
+                                "reason": r,
+                            });
+                            r
+                        },
+                        Err(err) => {
+                            massa_trace!("network.network_worker.run_loop.node_worker_handles.err", {
+                                "node_id": node_id,
+                                "err": format!("{:?}", err)
+                            });
+                            ConnectionClosureReason::Normal
+                        }
+                    };
+
+                    // Note: if the send is dropped, and we later receive a command related to an unknown node,
+                    // we will retry a send for this event for that unknonw node,
+                    // ensuring protocol eventually notes the closure.
+                    let _ = self
+                        .send_network_event(NetworkEvent::ConnectionClosed(node_id))
+                        .await;
+                    if let Some((connection_id, _)) = self
+                        .active_nodes
+                        .remove(&node_id) {
+                        info!("protocol channel closed node_id={:?}", node_id);
+                        self.connection_closed(connection_id, reason).await?;
+                    }
+                },
+
                 // peer feedback event
                 Some(cmd) =
                     self.controller_command_rx.recv() => {
                         self.manage_network_command(
                             cmd,
                         ).await?
-                    }
-                ,
+                    },
 
                 // out-connector event
                 Some((ip_addr, res)) = out_connecting_futures.next() => {
@@ -281,32 +311,38 @@ impl NetworkWorker {
         self.peer_info_db.stop().await?;
 
         // Cleanup of connected nodes.
-        {
-            let mut node_handle_set = FuturesUnordered::new();
-            // drop sender
-            drop(self.node_event_tx);
-            // gather active node handles
-            for (_, (_, node_tx, handle)) in self.active_nodes.drain() {
-                //close opened connection.
-                trace!("before sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
-                node_tx
-                    .send(NodeCommand::Close(ConnectionClosureReason::Normal))
-                    .await
-                    .map_err(|_| {
-                        CommunicationError::ChannelError("node close command send failed".into())
-                    })?;
-                trace!("after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
-                node_handle_set.push(handle);
-            }
-            // drain incoming node events
-            while let Some(_) = self.node_event_rx.recv().await {}
-            // wait for node join handles
-            while let Some(res) = node_handle_set.next().await {
-                trace!("after receiving  res from node_handle_set in network_worker run_loop");
-                match res {
-                    Ok(Ok(_)) => (),
-                    Ok(Err(err)) => return Err(err),
-                    Err(err) => return Err(CommunicationError::TokioTaskJoinError(err)),
+        // drop sender
+        drop(self.node_event_tx);
+        for (_, (_, node_tx)) in self.active_nodes.drain() {
+            //close opened connection.
+            trace!("before sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
+            node_tx
+                .send(NodeCommand::Close(ConnectionClosureReason::Normal))
+                .await
+                .map_err(|_| {
+                    CommunicationError::ChannelError("node close command send failed".into())
+                })?;
+            trace!("after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
+        }
+        // drain incoming node events
+        while let Some(_) = self.node_event_rx.recv().await {}
+        // wait for node join handles
+        while let Some(res) = self.node_worker_handles.next().await {
+            match res {
+                Ok((node_id, Ok(reason))) => {
+                    massa_trace!("network.network_worker.cleanup.wait_node.ok", {
+                        "node_id": node_id,
+                        "reason": reason,
+                    });
+                }
+                Ok((node_id, Err(err))) => {
+                    massa_trace!("network.network_worker.cleanup.wait_node.err", {
+                        "node_id": node_id,
+                        "err": format!("{:?}", err)
+                    });
+                }
+                Err(err) => {
+                    warn!("a node worker panicked: {:?}", err);
                 }
             }
         }
@@ -396,7 +432,7 @@ impl NetworkWorker {
                         let cfg_copy = self.cfg.clone();
                         let node_serialization_context = self.serialization_context.clone();
                         let node_fn_handle = tokio::spawn(async move {
-                            NodeWorker::new(
+                            let res = NodeWorker::new(
                                 cfg_copy,
                                 new_node_id,
                                 socket_reader,
@@ -405,9 +441,11 @@ impl NetworkWorker {
                                 node_event_tx_clone,
                             )
                             .run_loop(node_serialization_context)
-                            .await
+                            .await;
+                            (new_node_id, res)
                         });
-                        entry.insert((new_connection_id, node_command_tx.clone(), node_fn_handle));
+                        entry.insert((new_connection_id, node_command_tx.clone()));
+                        self.node_worker_handles.push(node_fn_handle);
 
                         let res = self
                             .send_network_event(NetworkEvent::NewConnection(new_node_id))
@@ -548,7 +586,7 @@ impl NetworkWorker {
                 );
                 // get all connection IDs to ban
                 let mut ban_connection_ids: HashSet<ConnectionId> = HashSet::new();
-                if let Some((orig_conn_id, _, _)) = self.active_nodes.get(&node) {
+                if let Some((orig_conn_id, _)) = self.active_nodes.get(&node) {
                     if let Some((orig_ip, _)) = self.active_connections.get(orig_conn_id) {
                         self.peer_info_db.peer_banned(orig_ip)?;
                         for (target_conn_id, (target_ip, _)) in self.active_connections.iter() {
@@ -562,7 +600,7 @@ impl NetworkWorker {
                     // remove the connectionId entry in running_handshakes
                     self.running_handshakes.remove(&ban_conn_id);
                 }
-                for (conn_id, node_command_tx, _) in self.active_nodes.values() {
+                for (conn_id, node_command_tx) in self.active_nodes.values() {
                     if ban_connection_ids.contains(conn_id) {
                         let res = node_command_tx
                             .send(NodeCommand::Close(ConnectionClosureReason::Banned))
@@ -579,7 +617,7 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::SendBlockHeader { node, header } => {
-                if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
                     massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"hash": header.content.compute_hash(&self.serialization_context)?, "header": header, "node": node});
                     let res = node_command_tx
                         .send(NodeCommand::SendBlockHeader(header))
@@ -606,7 +644,7 @@ impl NetworkWorker {
                     { "hashlist": list }
                 );
                 for (node, hash_list) in list.into_iter() {
-                    if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                    if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
                         let res = node_command_tx
                             .send(NodeCommand::AskForBlocks(hash_list))
                             .await;
@@ -622,7 +660,7 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::SendBlock { node, block } => {
-                if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
                     massa_trace!(
                         "network_worker.manage_network_command send NodeCommand::SendBlock",
                         {"hash": block.header.content.compute_hash(&self.serialization_context)?, "block": block, "node": node}
@@ -662,7 +700,7 @@ impl NetworkWorker {
                     "network_worker.manage_network_command receive NetworkCommand::BlockNotFound",
                     { "hash": hash, "node": node }
                 );
-                if let Some((_, node_command_tx, _)) = self.active_nodes.get_mut(&node) {
+                if let Some((_, node_command_tx)) = self.active_nodes.get_mut(&node) {
                     let res = node_command_tx.send(NodeCommand::BlockNotFound(hash)).await;
                     if res.is_err() {
                         warn!(
@@ -833,32 +871,12 @@ impl NetworkWorker {
                     })
                     .await;
             }
-            // connection closed
-            NodeEvent(from_node_id, NodeEventType::Closed(reason)) => {
-                // Note: if the send is dropped, and we later receive a command related to an unknown node,
-                // we will retry a send for this event for that unknonw node,
-                // ensuring protocol eventually notes the closure.
-                let _ = self
-                    .send_network_event(NetworkEvent::ConnectionClosed(from_node_id))
-                    .await;
-                let (connection_id, _, handle) = self
-                    .active_nodes
-                    .remove(&from_node_id)
-                    .ok_or(CommunicationError::MissingNodeError)?;
-                info!("protocol channel closed peer_id={:?}", from_node_id);
-                massa_trace!("node_closed", {
-                    "node_id": from_node_id,
-                    "reason": reason
-                });
-                self.connection_closed(connection_id, reason).await?;
-                handle.await??;
-            }
             // asked peer list
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) => {
                 debug!("node_id={:?} asked us for peer list", from_node_id);
                 massa_trace!("node_asked_peer_list", { "node_id": from_node_id });
                 let peer_list = self.peer_info_db.get_advertisable_peer_ips();
-                let (_, node_command_tx, _) = self
+                let (_, node_command_tx) = self
                     .active_nodes
                     .get(&from_node_id)
                     .ok_or(CommunicationError::MissingNodeError)?;

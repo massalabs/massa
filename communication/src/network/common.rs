@@ -16,7 +16,7 @@ impl std::fmt::Debug for ConnectionId {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ConnectionClosureReason {
     /// Connection was closed properly
     Normal,

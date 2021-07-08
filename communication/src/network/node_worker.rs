@@ -44,8 +44,6 @@ pub enum NodeEventType {
     ReceivedBlockHeader(BlockHeader),
     /// Node we are conneced to asks for a block.
     ReceivedAskForBlocks(Vec<Hash>),
-    /// Connection with node was shut down for given reason
-    Closed(ConnectionClosureReason),
     /// Didn't found given block,
     BlockNotFound(Hash),
 }
@@ -127,9 +125,8 @@ impl NodeWorker {
     pub async fn run_loop(
         mut self,
         serialization_context: SerializationContext,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<ConnectionClosureReason, CommunicationError> {
         let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(CHANNEL_SIZE);
-        let (writer_event_tx, mut writer_event_rx) = mpsc::channel::<bool>(1);
         let mut socket_writer =
             self.socket_writer_opt
                 .take()
@@ -137,29 +134,33 @@ impl NodeWorker {
                     "NodeWorker call run_loop more than once".to_string(),
                 ))?;
         let write_timeout = self.cfg.message_timeout;
+        let node_id_copy = self.node_id;
         let node_writer_handle = tokio::spawn(async move {
-            let mut clean_exit = true;
             loop {
                 match writer_command_rx.recv().await {
                     Some(msg) => {
-                        massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv. Some", {
-                            "msg": msg
-                        });
-
                         match timeout(write_timeout.to_duration(), socket_writer.send(&msg)).await {
-                            Err(err) => {
-                                warn!("node_worker.run_loop.loop.writer_command_rx.recv. timeout Error:{}", err);
-                                clean_exit = false;
-                                break;
+                            Err(_err) => {
+                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
+                                    "node": node_id_copy, "msg": msg
+                                });
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::TimedOut,
+                                    "node data writing timed out",
+                                )
+                                .into());
                             }
                             Ok(Err(err)) => {
-                                warn!("node_worker.run_loop.loop.writer_command_rx.recv. send msg error:{}", err);
-                                clean_exit = false;
-                                break;
+                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.error", {
+                                    "node": node_id_copy, "err":  format!("{:?}", err), "msg": msg
+                                });
+                                return Err(err);
                             }
-                            Ok(Ok(id)) => massa_trace!("node_worker.run_loop. message send OK", {
-                                "msg_id": id, "msg": msg
-                            }),
+                            Ok(Ok(id)) => {
+                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.ok", {
+                                    "node": node_id_copy, "msg_id": id, "msg": msg
+                                })
+                            }
                         }
                     }
                     None => {
@@ -168,16 +169,15 @@ impl NodeWorker {
                     }
                 };
             }
-            writer_event_tx
-                .send(clean_exit)
-                .await
-                .expect("writer_evt_tx died"); //in a spawned task
+            Ok(())
         });
+        tokio::pin!(node_writer_handle);
+        let mut writer_joined = false;
 
         let mut ask_peer_list_interval =
             tokio::time::interval(self.cfg.ask_peer_list_interval.to_duration());
         let mut exit_reason = ConnectionClosureReason::Normal;
-        loop {
+        'select_loop: loop {
             tokio::select! {
                 // incoming socket data
                 res = self.socket_reader.next() => match res {
@@ -241,56 +241,71 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendPeerList(ip_vec)) => {
                             massa_trace!("node_worker.run_loop. send Message::PeerList", {"peerlist": ip_vec, "node": self.node_id});
-                            writer_command_tx.send(Message::PeerList(ip_vec)).await.map_err(
-                                |_| CommunicationError::ChannelError("send peer list node command send failed".into())
-                            )?;
+                            if writer_command_tx.send(Message::PeerList(ip_vec)).await.is_err() {
+                                break;
+                            }
                         },
                         Some(NodeCommand::SendBlockHeader(header)) => {
                             massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.content.compute_hash(&serialization_context)?, "header": header, "node": self.node_id});
-                            writer_command_tx.send(Message::BlockHeader(header)).await.map_err(
-                                |_| CommunicationError::ChannelError("send peer block header node command send failed".into())
-                            )?;
+                            if writer_command_tx.send(Message::BlockHeader(header)).await.is_err() {
+                                break;
+                            }
                         },
                         Some(NodeCommand::SendBlock(block)) => {
                             massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.content.compute_hash(&serialization_context)?, "block": block, "node": self.node_id});
-                            writer_command_tx.send(Message::Block(block)).await.map_err(
-                                |_| CommunicationError::ChannelError("send peer block node command send failed".into())
-                            )?;
+                            if writer_command_tx.send(Message::Block(block)).await.is_err() {
+                                break;
+                            }
                             trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");
                         },
                         Some(NodeCommand::AskForBlocks(list)) => {
                             //cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
                             for to_send_list in list.chunks(self.cfg.max_ask_blocks_per_message as usize) {
-                                writer_command_tx.send(Message::AskForBlocks(to_send_list.iter().copied().collect())).await.map_err(
-                                    |_| CommunicationError::ChannelError("ask peer block node command send failed".into())
-                                )?;
+                                if writer_command_tx.send(Message::AskForBlocks(to_send_list.iter().copied().collect())).await.is_err() {
+                                    break 'select_loop;
+                                }
                             }
                         },
                         Some(NodeCommand::BlockNotFound(hash)) =>  {
                             massa_trace!("node_worker.run_loop. send Message::BlockNotFound", {"hash": hash, "node": self.node_id});
-                            writer_command_tx.send(Message::BlockNotFound(hash)).await.map_err(
-                                |_| CommunicationError::ChannelError("send peer block not found node command send failed".into())
-                            )?;
+                            if writer_command_tx.send(Message::BlockNotFound(hash)).await.is_err() {
+                                break;
+                            }
                         },
                         None => {
-                            return Err(CommunicationError::UnexpectedProtocolControllerClosureError);
+                            // Note: this should never happen,
+                            // since it implies the network worker dropped its node command sender
+                            // before having shut-down the node and joined on its handle.
+                            return Err(CommunicationError::UnexpectedNodeCommandChannelClosure);
                         },
                     };
-                }
+                },
 
-                // writer event
-                evt = writer_event_rx.recv() => {
-                    match evt {
-                        Some(s) => {
-                            if !s {
+                res = &mut node_writer_handle => {
+                    writer_joined = true;
+                    match res {
+                        Err(err) => {
+                            massa_trace!("node_worker.run_loop.node_writer_handle.panic", {"node": self.node_id, "err": format!("{:?}", err)});
+                            warn!("writer exited unexpectedly for node {:?}", self.node_id);
+                            if exit_reason != ConnectionClosureReason::Banned {
                                 exit_reason = ConnectionClosureReason::Failed;
                             }
                             break;
                         },
-                        None => break
-                    };
-                }
+                        Ok(Err(err)) => {
+                            massa_trace!("node_worker.run_loop.node_writer_handle.error", {"node": self.node_id, "err": format!("{:?}", err)});
+                            if exit_reason != ConnectionClosureReason::Banned {
+                                exit_reason = ConnectionClosureReason::Failed;
+                            }
+                            break;
+                        },
+                        Ok(Ok(())) => {
+                            massa_trace!("node_worker.run_loop.node_writer_handle.clean_exit", {"node": self.node_id});
+                            break;
+                        }
+                    }
+                },
 
                 _ = ask_peer_list_interval.tick() => {
                     debug!("timer-based asking node_id={:?} for peer list", self.node_id);
@@ -304,22 +319,32 @@ impl NodeWorker {
             }
         }
 
-        // close writer
-        drop(writer_command_tx);
-        while let Some(_) = writer_event_rx.recv().await {}
-        node_writer_handle.await?;
+        // Note: since we close the channel here,
+        // if the network worker tries to send additional commands,
+        // those sends will fail with an error.
+        self.node_command_rx.close();
 
-        // Notify network controller of closure, while ignoring incoming commands to prevent deadlock.
-        loop {
-            tokio::select! {
-                _ = self
-                    .node_event_tx
-                    .send(NodeEvent(self.node_id, NodeEventType::Closed(exit_reason))) => {
-                    break;
-                },
-                _ = self.node_command_rx.recv() => {},
+        // 1. Close writer command channel.
+        drop(writer_command_tx);
+
+        // 2. Join on the writer handle.
+        if !writer_joined {
+            match node_writer_handle.await {
+                Err(err) => {
+                    massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.panic", {"node": self.node_id, "err": format!("{:?}", err)});
+                    warn!("writer exited unexpectedly for node {:?}", self.node_id);
+                    exit_reason = ConnectionClosureReason::Failed;
+                }
+                Ok(Err(err)) => {
+                    massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.error", {"node": self.node_id, "err": format!("{:?}", err)});
+                    exit_reason = ConnectionClosureReason::Failed;
+                }
+                Ok(Ok(())) => {
+                    massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.clean_exit", {"node": self.node_id});
+                }
             }
         }
-        Ok(())
+
+        Ok(exit_reason)
     }
 }
