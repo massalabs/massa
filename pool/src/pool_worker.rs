@@ -143,10 +143,12 @@ impl PoolWorker {
                 response_tx,
                 size_left,
             } => response_tx
-                .send(
-                    self.operation_pool
-                        .get_operation_batch(target_slot, exclude, max_count)?,
-                )
+                .send(self.operation_pool.get_operation_batch(
+                    target_slot,
+                    exclude,
+                    max_count,
+                    size_left,
+                )?)
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())

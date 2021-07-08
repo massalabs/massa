@@ -179,6 +179,7 @@ impl OperationPool {
         block_slot: Slot,
         exclude: HashSet<OperationId>,
         max_count: usize,
+        size_left: u64,
     ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
         self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
@@ -188,7 +189,7 @@ impl OperationPool {
                 }
                 if let Some(w_op) = self.ops.get(id) {
                     if !(w_op.op.content.expire_period.saturating_sub(self.operation_validity_periods)..=w_op.op.content.expire_period)
-                        .contains(&block_slot.period) {
+                        .contains(&block_slot.period) || w_op.byte_count > size_left {
                         return None;
                     }
                     Some(Ok((id.clone(), w_op.op.clone(), w_op.byte_count)))
@@ -317,11 +318,11 @@ mod tests {
                 let target_slot = Slot::new(period, thread);
                 let max_count = 3;
                 let res = pool
-                    .get_operation_batch(target_slot, HashSet::new(), max_count)
+                    .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
                     .unwrap();
                 assert!(res
                     .iter()
-                    .map(|(id, op)| (id, op.to_bytes_compact(&context).unwrap()))
+                    .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
                     .eq(thread_tx_lists[target_slot.thread as usize]
                         .iter()
                         .filter(|(_, _, r)| r.contains(&target_slot.period))
@@ -343,11 +344,11 @@ mod tests {
                 let target_slot = Slot::new(period, thread);
                 let max_count = 4;
                 let res = pool
-                    .get_operation_batch(target_slot, HashSet::new(), max_count)
+                    .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
                     .unwrap();
                 assert!(res
                     .iter()
-                    .map(|(id, op)| (id, op.to_bytes_compact(&context).unwrap()))
+                    .map(|(id, op, _)| (id, op.to_bytes_compact(&context).unwrap()))
                     .eq(thread_tx_lists[target_slot.thread as usize]
                         .iter()
                         .filter(|(_, _, r)| r.contains(&target_slot.period))
@@ -368,7 +369,12 @@ mod tests {
             let newly_added = pool.add_operations(ops, &context).unwrap();
             assert_eq!(newly_added, HashSet::new());
             let res = pool
-                .get_operation_batch(Slot::new(expire_period - 1, thread), HashSet::new(), 10)
+                .get_operation_batch(
+                    Slot::new(expire_period - 1, thread),
+                    HashSet::new(),
+                    10,
+                    10000,
+                )
                 .unwrap();
             assert!(res.is_empty());
         }
