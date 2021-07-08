@@ -343,20 +343,15 @@ impl ConsensusWorker {
                     let res = self
                         .dependency_waiting_blocks
                         .valid_block_obtained(&hash)?
-                        .2
+                        .1
                         .into_iter()
-                        .map(|h| {
-                            let (header, block) = self.dependency_waiting_blocks.get(&h);
-                            if let Some(header) = header {
-                                if let Some(b) = block {
-                                    Ok((h, b.clone()))
-                                } else {
-                                    self.waiting_header.0.insert(h, header);
-                                    Err(ConsensusError::WaitingForBlockContent)
-                                }
-                            } else {
-                                Err(ConsensusError::ContainerInconsistency)
+                        .map(|h| match self.dependency_waiting_blocks.get(&h) {
+                            Some(QueuedBlock::FullBLock(block)) => Ok((h, block.clone())),
+                            Some(QueuedBlock::HeaderOnly(header)) => {
+                                self.waiting_header.0.insert(h, header.clone());
+                                Err(ConsensusError::WaitingForBlockContent)
                             }
+                            None => Err(ConsensusError::ContainerInconsistency),
                         })
                         .filter(|e| match e {
                             Err(ConsensusError::WaitingForBlockContent) => false,
@@ -389,8 +384,7 @@ impl ConsensusWorker {
             Err(BlockAcknowledgeError::MissingDependencies(block, dependencies)) => {
                 self.dependency_waiting_blocks.insert(
                     hash,
-                    block.header.clone(),
-                    Some(block),
+                    QueuedBlock::FullBLock(block),
                     dependencies,
                 )?;
                 // TODO ask for dependencies that have not been asked yet
