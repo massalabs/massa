@@ -580,11 +580,7 @@ impl ConsensusWorker {
         let pool_res = self.pool_command_sender.get_operation(id).await?;
 
         let is_in_pool = pool_res.is_some();
-        let pool = if let Some(op) = pool_res {
-            Ok(Some((op, true, HashMap::new())))
-        } else {
-            Ok(None)
-        };
+        let pool = pool_res.map(|op| (op, true, HashMap::new()));
 
         if let Some((op, map)) = consensus_res {
             Ok(Some((op, is_in_pool, map)))
@@ -595,10 +591,10 @@ impl ConsensusWorker {
                     map.insert(block_id, true);
                     Ok(Some((op, is_in_pool, map)))
                 } else {
-                    pool
+                    Ok(pool)
                 }
             } else {
-                pool
+                Ok(pool)
             }
         }
     }

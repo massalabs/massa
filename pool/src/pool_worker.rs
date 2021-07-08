@@ -155,7 +155,7 @@ impl PoolWorker {
                 )?)
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
             PoolCommand::GetOperation { id, response_tx } => response_tx
-                .send(self.operation_pool.get_operation(id)?)
+                .send(self.operation_pool.get_operation(id))
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())
