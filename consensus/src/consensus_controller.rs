@@ -1,3 +1,5 @@
+use crate::pos::ExportProofOfStake;
+
 use super::{
     block_graph::*,
     config::{ConsensusConfig, CHANNEL_SIZE},
@@ -30,6 +32,7 @@ pub async fn start_consensus_controller(
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,
     opt_storage_command_sender: Option<StorageAccess>,
+    boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootsrapableGraph>,
     clock_compensation: i64,
 ) -> Result<
@@ -65,11 +68,7 @@ pub async fn start_consensus_controller(
 
     // start worker
     let block_db = BlockGraph::new(cfg.clone(), boot_graph).await?;
-
-    //TODO pos bootstrapping (like block_db)
-    // otherwise, initialize a new PoS:
-    let pos = ProofOfStake::new(cfg.clone(), block_db.get_genesis_block_ids()).await?;
-
+    let pos = ProofOfStake::new(cfg.clone(), block_db.get_genesis_block_ids(), boot_pos).await?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
@@ -182,11 +181,14 @@ impl ConsensusCommandSender {
         res
     }
 
-    pub async fn get_bootstrap_graph(&self) -> Result<BootsrapableGraph, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<BootsrapableGraph>();
-        massa_trace!("consensus.consensus_controller.get_bootstrap_graph", {});
+    pub async fn get_bootstrap_state(
+        &self,
+    ) -> Result<(ExportProofOfStake, BootsrapableGraph), ConsensusError> {
+        let (response_tx, response_rx) =
+            oneshot::channel::<(ExportProofOfStake, BootsrapableGraph)>();
+        massa_trace!("consensus.consensus_controller.get_bootstrap_state", {});
         self.0
-            .send(ConsensusCommand::GetBootGraph(response_tx))
+            .send(ConsensusCommand::GetBootstrapState(response_tx))
             .await
             .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
         response_rx.await.map_err(|_| {

@@ -2,11 +2,9 @@ use crate::{
     config::StorageConfig,
     error::{InternalError, StorageError},
 };
-use models::DeserializeMinBEInt;
 use models::{
-    array_from_slice, with_serialization_context, Address, Block, BlockId, DeserializeCompact,
-    OperationId, OperationSearchResult, SerializeCompact, SerializeMinBEInt, Slot,
-    BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
+    array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
+    OperationSearchResult, SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
 };
 use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{

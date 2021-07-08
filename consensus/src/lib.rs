@@ -13,10 +13,11 @@ mod error;
 mod ledger;
 mod pos;
 mod timeslots;
+
 pub use block_graph::BootsrapableGraph;
 pub use block_graph::{
-    BlockGraphExport, DiscardReason, ExportCompiledBlock, ExportDiscardedBlocks, LedgerDataExport,
-    Status,
+    BlockGraphExport, DiscardReason, ExportActiveBlock, ExportCompiledBlock, ExportDiscardedBlocks,
+    LedgerDataExport, Status,
 };
 pub use config::ConsensusConfig;
 pub use consensus_controller::{
@@ -25,8 +26,13 @@ pub use consensus_controller::{
 pub use consensus_worker::{ConsensusCommand, ConsensusEvent};
 pub use error::ConsensusError;
 pub use ledger::{LedgerChange, LedgerData, LedgerExport};
+pub use pos::{
+    ExportProofOfStake, ExportThreadCycleState, RollCounts, RollUpdate, RollUpdateInterface,
+    RollUpdates,
+};
 pub use timeslots::{
     get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp,
 };
+
 #[cfg(test)]
 mod tests;

@@ -103,6 +103,7 @@ dependencies = [
 name = "bootstrap"
 version = "0.1.0"
 dependencies = [
+ "bitvec",
  "communication",
  "consensus",
  "crypto",

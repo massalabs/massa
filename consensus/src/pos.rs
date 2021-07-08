@@ -1,7 +1,11 @@
 use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
-use models::{Address, BlockId, Operation, Slot};
+use models::{
+    array_from_slice, u8_from_slice, with_serialization_context, Address, BlockId,
+    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact,
+    SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
+};
 use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -20,6 +24,51 @@ pub struct RollUpdate {
     pub roll_increment: bool, // true = majority buy, false = majority sell
     pub roll_delta: u64,      // absolute change in roll count
                               // Here is space for registering any denunciations/resets
+}
+
+impl SerializeCompact for RollUpdate {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        // roll increment
+        let roll_increment: u8 = if self.roll_increment { 1u8 } else { 0u8 };
+        res.push(roll_increment);
+
+        // roll delta
+        res.extend(self.roll_delta.to_varint_bytes());
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for RollUpdate {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let mut cursor = 0usize;
+
+        // roll increment
+        let roll_increment = match u8_from_slice(&buffer[cursor..])? {
+            0u8 => false,
+            1u8 => true,
+            _ => {
+                return Err(ModelsError::SerializeError(
+                    "invalid roll_increment during deserialization of RollUpdate".into(),
+                ));
+            }
+        };
+        cursor += 1;
+
+        // roll delta
+        let (roll_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        Ok((
+            RollUpdate {
+                roll_increment,
+                roll_delta,
+            },
+            cursor,
+        ))
+    }
 }
 
 impl RollUpdateInterface for RollUpdate {
@@ -171,8 +220,8 @@ impl OperationRollInterface for Operation {
     fn get_roll_updates(&self) -> Result<RollUpdates, ConsensusError> {
         let mut res = RollUpdates::new();
         match self.content.op {
-            models::OperationType::Transaction { .. } => {}
-            models::OperationType::RollBuy { roll_count } => {
+            OperationType::Transaction { .. } => {}
+            OperationType::RollBuy { roll_count } => {
                 res.apply(
                     &Address::from_public_key(&self.content.sender_public_key)?,
                     &RollUpdate {
@@ -181,7 +230,7 @@ impl OperationRollInterface for Operation {
                     },
                 )?;
             }
-            models::OperationType::RollSell { roll_count } => {
+            OperationType::RollSell { roll_count } => {
                 res.apply(
                     &Address::from_public_key(&self.content.sender_public_key)?,
                     &RollUpdate {
@@ -205,7 +254,7 @@ pub struct ThreadCycleState {
     /// Compensated roll updates
     pub cycle_updates: RollUpdates,
     /// Used to seed the random selector at each cycle
-    rng_seed: BitVec,
+    rng_seed: BitVec<Lsb0, u8>,
 }
 
 pub struct ProofOfStake {
@@ -224,58 +273,272 @@ pub struct ProofOfStake {
     initial_seeds: Vec<Vec<u8>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportProofOfStake {
     /// Index by thread and cycle number
-    cycle_states: Vec<VecDeque<ExportThreadCycleState>>,
+    pub cycle_states: Vec<VecDeque<ExportThreadCycleState>>,
+}
+
+impl SerializeCompact for ExportProofOfStake {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+        for thread_lst in self.cycle_states.iter() {
+            let cycle_count: u32 = thread_lst.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!(
+                    "too many cycles when serializing ExportProofOfStake: {:?}",
+                    err
+                ))
+            })?;
+            res.extend(cycle_count.to_varint_bytes());
+            for itm in thread_lst.iter() {
+                res.extend(itm.to_bytes_compact()?);
+            }
+        }
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for ExportProofOfStake {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let (thread_count, max_cycles) = with_serialization_context(|context| {
+            (context.parent_count, context.max_bootstrap_pos_cycles)
+        });
+        let mut cursor = 0usize;
+
+        let mut cycle_states = Vec::with_capacity(thread_count as usize);
+        for thread in 0..thread_count {
+            let (n_cycles, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            if n_cycles == 0 || n_cycles > max_cycles {
+                return Err(ModelsError::SerializeError(
+                    "number of cycles invalid when deserializing ExportProofOfStake".into(),
+                ));
+            }
+            cycle_states.push(VecDeque::with_capacity(n_cycles as usize));
+            for _ in 0..n_cycles {
+                let (thread_cycle_state, delta) =
+                    ExportThreadCycleState::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                cycle_states[thread as usize].push_back(thread_cycle_state);
+            }
+        }
+        Ok((ExportProofOfStake { cycle_states }, cursor))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExportThreadCycleState {
     /// Cycle number
-    cycle: u64,
+    pub cycle: u64,
     /// Last final slot (can be a miss)
-    last_final_slot: Slot,
+    pub last_final_slot: Slot,
     /// number of rolls an address has
-    roll_count: Vec<(Address, u64)>,
-    /// Compensated roll updates
-    cycle_updates: Vec<(Address, RollUpdate)>,
+    pub roll_count: Vec<(Address, u64)>,
+    /// Compensated roll updatess
+    pub cycle_updates: Vec<(Address, RollUpdate)>,
     /// Used to seed random selector at each cycle
-    rng_seed: BitVec,
+    pub rng_seed: BitVec<Lsb0, u8>,
+}
+
+impl SerializeCompact for ExportThreadCycleState {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        // cycle
+        res.extend(self.cycle.to_varint_bytes());
+
+        // last final slot
+        res.extend(self.last_final_slot.to_bytes_compact()?);
+
+        // roll count
+        let n_entries: u32 = self.roll_count.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many entries when serializing ExportThreadCycleState roll_count: {:?}",
+                err
+            ))
+        })?;
+        res.extend(n_entries.to_varint_bytes());
+        for (addr, n_rolls) in self.roll_count.iter() {
+            res.extend(addr.to_bytes());
+            res.extend(n_rolls.to_varint_bytes());
+        }
+
+        // cycle updates
+        let n_entries: u32 = self.cycle_updates.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many entries when serializing ExportThreadCycleState cycle_updates: {:?}",
+                err
+            ))
+        })?;
+        res.extend(n_entries.to_varint_bytes());
+        for (addr, updates) in self.cycle_updates.iter() {
+            res.extend(addr.to_bytes());
+            res.extend(updates.to_bytes_compact()?);
+        }
+
+        // rng seed
+        let n_entries: u32 = self.rng_seed.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many entries when serializing ExportThreadCycleState rng_seed: {:?}",
+                err
+            ))
+        })?;
+        res.extend(n_entries.to_varint_bytes());
+        res.extend(self.rng_seed.clone().into_vec());
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for ExportThreadCycleState {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let max_entries = with_serialization_context(|context| (context.max_bootstrap_pos_entries));
+        let mut cursor = 0usize;
+
+        // cycle
+        let (cycle, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        // last final slot
+        let (last_final_slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
+        cursor += delta;
+
+        // roll count
+        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        if n_entries > max_entries {
+            return Err(ModelsError::SerializeError(
+                "invalid number entries when deserializing ExportThreadCycleStat roll_count".into(),
+            ));
+        }
+        let mut roll_count = Vec::with_capacity(n_entries as usize);
+        for _ in 0..n_entries {
+            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += ADDRESS_SIZE_BYTES;
+            let (rolls, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            roll_count.push((addr, rolls));
+        }
+
+        // cycle updates
+        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        if n_entries > max_entries {
+            return Err(ModelsError::SerializeError(
+                "invalid number entries when deserializing ExportThreadCycleStat cycle_updates"
+                    .into(),
+            ));
+        }
+        let mut cycle_updates = Vec::with_capacity(n_entries as usize);
+        for _ in 0..n_entries {
+            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += ADDRESS_SIZE_BYTES;
+            let (update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+            cycle_updates.push((addr, update));
+        }
+
+        // rng seed
+        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        if n_entries > max_entries {
+            return Err(ModelsError::SerializeError(
+                "invalid number entries when deserializing ExportThreadCycleStat rng_seed".into(),
+            ));
+        }
+        let mut rng_seed: BitVec<Lsb0, u8> = BitVec::try_from_vec(buffer[cursor..].to_vec())
+            .map_err(|_| ModelsError::SerializeError("error in bitvec conversion during deserialization of ExportThreadCycleStat rng_seed".into()))?;
+        rng_seed.truncate(n_entries as usize);
+        if rng_seed.len() != n_entries as usize {
+            return Err(ModelsError::SerializeError(
+                "incorrect resulting size when deserializing ExportThreadCycleStat rng_seed".into(),
+            ));
+        }
+        cursor += rng_seed.elements();
+
+        // return struct
+        Ok((
+            ExportThreadCycleState {
+                cycle,
+                last_final_slot,
+                roll_count,
+                cycle_updates,
+                rng_seed,
+            },
+            cursor,
+        ))
+    }
 }
 
 impl ProofOfStake {
     pub async fn new(
         cfg: ConsensusConfig,
         genesis_block_ids: &Vec<BlockId>,
+        boot_pos: Option<ExportProofOfStake>,
     ) -> Result<ProofOfStake, ConsensusError> {
-        let mut cycle_states = Vec::with_capacity(cfg.thread_count as usize);
-        let initial_roll_count = ProofOfStake::get_initial_rolls(&cfg).await?;
-        for (thread, thread_rolls) in initial_roll_count.iter().enumerate() {
-            // init thread history with one cycle
-            let mut rng_seed = BitVec::new();
-            rng_seed.push(genesis_block_ids[thread].get_first_bit());
-            let mut history = VecDeque::with_capacity(
-                (cfg.pos_lock_cycles + cfg.pos_lock_cycles + 2 + 1) as usize,
-            );
-            let thread_cycle_state = ThreadCycleState {
-                cycle: 0,
-                last_final_slot: Slot::new(0, thread as u8),
-                roll_count: thread_rolls.clone(),
-                cycle_updates: RollUpdates::new(),
-                rng_seed,
+        let initial_seeds = ProofOfStake::generate_initial_seeds(&cfg);
+        let draw_cache = HashMap::with_capacity(cfg.pos_draw_cached_cycles);
+        let draw_cache_counter: usize = 0;
+
+        let (cycle_states, initial_rolls) = if let Some(export) = boot_pos {
+            // loading from bootstrap
+
+            // load cycles
+            let cycle_states: Vec<VecDeque<ThreadCycleState>> = export
+                .cycle_states
+                .into_iter()
+                .map(|vec| {
+                    vec.into_iter()
+                        .map(|frtd| ThreadCycleState::from_export(frtd))
+                        .collect::<VecDeque<ThreadCycleState>>()
+                })
+                .collect();
+
+            // if initial rolls are still needed for some threads, load them
+            let initial_rolls = if cycle_states
+                .iter()
+                .any(|v| v[0].cycle < cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1)
+            {
+                Some(ProofOfStake::get_initial_rolls(&cfg).await?)
+            } else {
+                None
             };
-            history.push_front(thread_cycle_state);
-            cycle_states.push(history);
-        }
+
+            (cycle_states, initial_rolls)
+        } else {
+            // iinitializing from scratch
+
+            let mut cycle_states = Vec::with_capacity(cfg.thread_count as usize);
+            let initial_rolls = ProofOfStake::get_initial_rolls(&cfg).await?;
+            for (thread, thread_rolls) in initial_rolls.iter().enumerate() {
+                // init thread history with one cycle
+                let mut rng_seed = BitVec::<Lsb0, u8>::new();
+                rng_seed.push(genesis_block_ids[thread].get_first_bit());
+                let mut history = VecDeque::with_capacity(
+                    (cfg.pos_lock_cycles + cfg.pos_lock_cycles + 2 + 1) as usize,
+                );
+                let thread_cycle_state = ThreadCycleState {
+                    cycle: 0,
+                    last_final_slot: Slot::new(0, thread as u8),
+                    roll_count: thread_rolls.clone(),
+                    cycle_updates: RollUpdates::new(),
+                    rng_seed,
+                };
+                history.push_front(thread_cycle_state);
+                cycle_states.push(history);
+            }
+
+            (cycle_states, Some(initial_rolls))
+        };
+
         // generate object
         Ok(ProofOfStake {
             cycle_states,
-            initial_rolls: Some(initial_roll_count),
-            initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
-            draw_cache: HashMap::with_capacity(cfg.pos_draw_cached_cycles),
+            initial_rolls: initial_rolls,
+            initial_seeds,
+            draw_cache,
             cfg,
-            draw_cache_counter: 0,
+            draw_cache_counter,
         })
     }
 
@@ -311,41 +574,6 @@ impl ProofOfStake {
                 })
                 .collect(),
         }
-    }
-
-    pub async fn from_export(
-        cfg: ConsensusConfig,
-        export: ExportProofOfStake,
-    ) -> Result<ProofOfStake, ConsensusError> {
-        let cycle_states: Vec<VecDeque<ThreadCycleState>> = export
-            .cycle_states
-            .into_iter()
-            .map(|vec| {
-                vec.into_iter()
-                    .map(|frtd| ThreadCycleState::from_export(frtd))
-                    .collect::<VecDeque<ThreadCycleState>>()
-            })
-            .collect();
-
-        // if initial rolls are still needed for some threads, load them
-        let initial_rolls = if cycle_states
-            .iter()
-            .any(|v| v[0].cycle < cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1)
-        {
-            Some(ProofOfStake::get_initial_rolls(&cfg).await?)
-        } else {
-            None
-        };
-
-        // generate object
-        Ok(ProofOfStake {
-            cycle_states,
-            initial_rolls,
-            initial_seeds: ProofOfStake::generate_initial_seeds(&cfg),
-            draw_cache: HashMap::with_capacity(cfg.pos_draw_cached_cycles),
-            cfg,
-            draw_cache_counter: 0,
-        })
     }
 
     fn get_cycle_draws(&mut self, cycle: u64) -> Result<&HashMap<Slot, Address>, ConsensusError> {
@@ -542,7 +770,7 @@ impl ProofOfStake {
                         last_final_slot: slot.clone(),
                         cycle_updates: RollUpdates::new(),
                         roll_count,
-                        rng_seed: BitVec::new(),
+                        rng_seed: BitVec::<Lsb0, u8>::new(),
                     });
                     // If cycle_states becomes longer than pos_lookback_cycles+pos_lock_cycles+1, truncate it by removing the back elements
                     self.cycle_states[thread as usize].truncate(
