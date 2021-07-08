@@ -312,8 +312,10 @@ impl ProtocolWorker {
                 };
 
                 // update candidate node
-                if best_candidate.is_none() || Some((candidate, *node_id)) < best_candidate {
-                    best_candidate = Some((candidate, *node_id));
+                if best_candidate.is_none()
+                    || Some((candidate, node_info.connection_instant, *node_id)) < best_candidate
+                {
+                    best_candidate = Some((candidate, node_info.connection_instant, *node_id));
                 }
             }
 
@@ -323,7 +325,7 @@ impl ProtocolWorker {
             }
 
             // ask the best node, if there is one and update timeout
-            if let Some((_, node_id)) = best_candidate.take() {
+            if let Some((_, _, node_id)) = best_candidate.take() {
                 self.active_nodes
                     .get_mut(&node_id)
                     .unwrap()
