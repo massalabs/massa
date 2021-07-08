@@ -8,7 +8,7 @@ use crate::{
     network::network_controller::NetworkController,
 };
 use futures::future::try_join;
-use rand::{rngs::StdRng, FromEntropy, RngCore};
+use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::io;
 use tokio::time::{timeout, Duration};
 

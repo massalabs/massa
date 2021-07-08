@@ -661,13 +661,27 @@ impl SignatureEngine {
         SignatureEngine(Secp256k1::new())
     }
 
+    /// Generate a new Random Number Generator compatible with the signature engine, seeded with entropy.
+    ///
+    /// # Example
+    /// ```
+    /// let rng = SignatureEngine::create_rng();
+    /// ```
+    #[allow(deprecated)]
+    pub fn create_rng() -> secp256k1::rand::StdRng {
+        use secp256k1::rand::FromEntropy;
+        secp256k1::rand::StdRng::from_entropy()
+    }
+
     /// Generate a random private key from a RNG.
     /// # Example
     /// ```
     /// let mut rng = secp256k1::rand::rngs::OsRng::new().expect("OsRng");
     /// let private_key: PrivateKey = SignatureEngine::generate_random_private_key(&mut rng);
     /// ```
-    pub fn generate_random_private_key<R: rand::Rng + ?Sized>(rng: &mut R) -> PrivateKey {
+    pub fn generate_random_private_key<R: secp256k1::rand::Rng + ?Sized>(
+        rng: &mut R,
+    ) -> PrivateKey {
         PrivateKey(secp256k1::key::SecretKey::new(rng))
     }
 
