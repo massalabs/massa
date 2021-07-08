@@ -1967,7 +1967,15 @@ impl BlockGraph {
 
         let mut retain_active: HashSet<Hash> = HashSet::new();
 
-        // retain all non-final active blocks and their dependencies
+        let latest_final_blocks: Vec<Hash> = self
+            .latest_final_blocks_periods
+            .iter()
+            .map(|(hash, _)| hash.clone())
+            .collect();
+
+        // retain all non-final active blocks,
+        // the current "best parents",
+        // and the dependencies for both.
         for (hash, block_status) in self.block_statuses.iter() {
             if let BlockStatus::Active(ActiveBlock {
                 is_final,
@@ -1975,12 +1983,18 @@ impl BlockGraph {
                 ..
             }) = block_status
             {
-                if !*is_final {
+                if !*is_final
+                    || self.best_parents.contains(hash)
+                    || latest_final_blocks.contains(hash)
+                {
                     retain_active.extend(dependencies);
                     retain_active.insert(*hash);
                 }
             }
         }
+
+        // retain best parents
+        retain_active.extend(&self.best_parents);
 
         // retain last final blocks
         retain_active.extend(
@@ -1989,11 +2003,8 @@ impl BlockGraph {
                 .map(|(h, _)| h.clone()),
         );
 
-        // retain best parents
-        retain_active.extend(&self.best_parents);
-
         // grow with parents & fill thread holes twice
-        for _ in 0..1 {
+        for _ in 0..2 {
             // retain the parents of the selected blocks
             let retain_clone = retain_active.clone();
 
