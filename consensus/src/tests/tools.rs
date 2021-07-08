@@ -364,7 +364,7 @@ pub fn default_consensus_config(nb_nodes: usize) -> (ConsensusConfig, Serializat
             disable_block_creation: true,
             max_block_size,
             max_operations_per_block,
-            validity_period: 50,
+            operation_validity_periods: 50,
         },
         SerializationContext {
             max_block_size,

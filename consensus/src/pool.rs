@@ -43,7 +43,7 @@ impl Pool {
             Operation::Transaction { content, signature } => {
                 let hash = content.compute_hash(context)?;
                 // period validity check
-                let start = content.expire_period - self.cfg.validity_period;
+                let start = content.expire_period - self.cfg.operation_validity_periods;
                 let thread = get_thread(content.sender_public_key);
                 if self.current_slot < Slot::new(start, thread)
                     || Slot::new(content.expire_period, thread) < self.current_slot
