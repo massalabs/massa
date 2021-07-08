@@ -81,7 +81,7 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
         loop {
             tokio::select! {
                 // listen to incoming commands
-                res = self.controller_command_rx.next() => match res {
+                res = self.controller_command_rx.recv() => match res {
                     Some(ProtocolCommand::PropagateBlock {
                         hash,
                         block,
@@ -107,7 +107,7 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
                 },
 
                 // event received from a node
-                evt = self.node_event_rx.next() => self.on_node_event(evt).await?,
+                evt = self.node_event_rx.recv() => self.on_node_event(evt).await?,
             } //end select!
         } //end loop
 
@@ -121,7 +121,7 @@ impl<NetworkControllerT: 'static + NetworkController> ProtocolWorker<NetworkCont
             for (_, (_, _, handle)) in self.active_nodes.drain() {
                 node_handle_set.push(handle);
             }
-            while let Some(_) = self.node_event_rx.next().await {}
+            while let Some(_) = self.node_event_rx.recv().await {}
             while let Some(_) = node_handle_set.next().await {}
         }
 

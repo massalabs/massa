@@ -4,7 +4,7 @@ use super::establisher::Establisher;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
-use tokio::prelude::*;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 #[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ConnectionId(pub u64);

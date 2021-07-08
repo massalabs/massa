@@ -12,20 +12,16 @@ use models::block::Block;
 use std::collections::HashMap;
 
 use tokio::{
-    stream::StreamExt,
-    sync::{
-        mpsc::{Receiver, Sender},
-        oneshot,
-    },
+    sync::mpsc::{Receiver, Sender},
     time::sleep_until,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ConsensusCommand {
     //return current blockgraph without block operations.
-    GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
+    GetBlockGraphStatus(Sender<BlockGraphExport>),
     //return full block with specified hash
-    GetActiveBlock(Hash, oneshot::Sender<Option<Block>>),
+    GetActiveBlock(Hash, Sender<Option<Block>>),
 }
 
 pub struct ConsensusWorker<ProtocolControllerT: ProtocolController + 'static> {
@@ -70,7 +66,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
     }
 
     pub async fn run_loop(mut self) -> Result<(), ConsensusError> {
-        let mut next_slot_timer = sleep_until(
+        let next_slot_timer = sleep_until(
             get_block_slot_timestamp(
                 self.cfg.thread_count,
                 self.cfg.t0,
@@ -79,10 +75,11 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
             )?
             .estimate_instant()?,
         );
+        tokio::pin!(next_slot_timer);
         loop {
             tokio::select! {
                 // listen consensus commands
-                res = self.controller_command_rx.next() => match res {
+                res = self.controller_command_rx.recv() => match res {
                     Some(cmd) => self.process_consensus_command(cmd).await?,
                     None => break  // finished
                 },
@@ -109,7 +106,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
 
                     // reset timer for next slot
                     self.current_slot = get_next_block_slot(self.cfg.thread_count, self.current_slot)?;
-                    next_slot_timer = sleep_until(
+                    next_slot_timer.set(sleep_until(
                         get_block_slot_timestamp(
                             self.cfg.thread_count,
                             self.cfg.t0,
@@ -117,7 +114,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
                             self.current_slot
                         )?
                         .estimate_instant()?,
-                    );
+                    ));
                 }
 
                 // listen protocol controller events
@@ -141,6 +138,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
         match cmd {
             ConsensusCommand::GetBlockGraphStatus(response_tx) => response_tx
                 .send(BlockGraphExport::from(&self.block_db))
+                .await
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send GetBlockGraphStatus answer:{:?}",
@@ -150,6 +148,7 @@ impl<ProtocolControllerT: ProtocolController + 'static> ConsensusWorker<Protocol
             //return full block with specified hash
             ConsensusCommand::GetActiveBlock(hash, response_tx) => response_tx
                 .send(self.block_db.get_active_block(hash).cloned())
+                .await
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send GetBlock answer:{:?}",

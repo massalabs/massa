@@ -23,6 +23,12 @@ async fn run(cfg: config::Config) -> () {
         .await
         .expect("Could not create consensus controller");
 
+    // spawn API
+    let cnss_interface = cnss.get_interface();
+    let api_handle = tokio::spawn(async move {
+        api::serve(cnss_interface).await;
+    });
+
     // loop over messages
     loop {
         tokio::select! {

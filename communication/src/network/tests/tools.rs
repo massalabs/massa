@@ -8,7 +8,7 @@ use std::path::Path;
 use std::time::Duration;
 use tempfile::NamedTempFile;
 use time::UTime;
-use tokio::prelude::*;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::timeout;
 
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));

@@ -1,12 +1,11 @@
 use crate::error::{CommunicationError, FlexbufferError};
 
 use super::messages::Message;
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 
 use std::marker::Unpin;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::stream::StreamExt;
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 pub struct WriteBinder<T: AsyncWrite + Unpin> {

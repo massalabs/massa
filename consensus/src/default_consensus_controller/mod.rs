@@ -13,14 +13,20 @@ use logging::debug;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
-use tokio::{stream::StreamExt, sync::oneshot};
 
 #[derive(Debug)]
 pub struct DefaultConsensusController<ProtocolControllerT: ProtocolController> {
+    cfg: ConsensusConfig,
     consensus_controller_handle: JoinHandle<()>,
     consensus_command_tx: Sender<ConsensusCommand>,
     consensus_event_rx: Receiver<ConsensusEvent>,
     _protocol_controller_t: std::marker::PhantomData<ProtocolControllerT>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DefaultConsensusControllerInterface {
+    cfg: ConsensusConfig,
+    consensus_command_tx: Sender<ConsensusCommand>,
 }
 
 impl<ProtocolControllerT: ProtocolController + 'static>
@@ -70,6 +76,7 @@ impl<ProtocolControllerT: ProtocolController + 'static>
         });
 
         Ok(DefaultConsensusController::<ProtocolControllerT> {
+            cfg: cfg.clone(),
             consensus_controller_handle,
             consensus_command_tx,
             consensus_event_rx,
@@ -77,29 +84,12 @@ impl<ProtocolControllerT: ProtocolController + 'static>
         })
     }
 
-    pub async fn send_consensus_command(
-        &self,
-        command: ConsensusCommand,
-    ) -> Result<(), ConsensusError> {
-        Ok(self
-            .consensus_command_tx
-            .send(command)
-            .await
-            .map_err(|err| {
-                ConsensusError::SendChannelError(format!(
-                    "could not send GetBlockGraphStatus answer:{:?}",
-                    err
-                ))
-            })?)
-    }
-
     /// Stop the consensus controller
     /// panices if the consensus controller is not reachable
     async fn stop(mut self) -> Result<(), ConsensusError> {
         debug!("stopping consensus controller");
         massa_trace!("begin", {});
-        drop(self.consensus_command_tx);
-        while let Some(_) = self.consensus_event_rx.next().await {}
+        while let Some(_) = self.consensus_event_rx.recv().await {}
         self.consensus_controller_handle.await?;
         debug!("consensus controller stopped");
         massa_trace!("end", {});
@@ -112,6 +102,7 @@ impl<ProtocolControllerT: ProtocolController> ConsensusController
     for DefaultConsensusController<ProtocolControllerT>
 {
     type ProtocolControllerT = ProtocolControllerT;
+    type ConsensusControllerInterfaceT = DefaultConsensusControllerInterface;
 
     async fn wait_event(&mut self) -> Result<ConsensusEvent, ConsensusError> {
         self.consensus_event_rx
@@ -120,32 +111,52 @@ impl<ProtocolControllerT: ProtocolController> ConsensusController
             .ok_or(ConsensusError::ControllerEventError)
     }
 
+    fn get_interface(&self) -> Self::ConsensusControllerInterfaceT {
+        DefaultConsensusControllerInterface {
+            cfg: self.cfg.clone(),
+            consensus_command_tx: self.consensus_command_tx.clone(),
+        }
+    }
+}
+
+#[async_trait]
+impl ConsensusControllerInterface for DefaultConsensusControllerInterface {
     async fn get_block_graph_status(&self) -> Result<BlockGraphExport, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<BlockGraphExport>();
+        let (response_tx, mut response_rx) = mpsc::channel::<BlockGraphExport>(1);
         self.consensus_command_tx
             .send(ConsensusCommand::GetBlockGraphStatus(response_tx))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))
             })?;
-        Ok(response_rx
+        response_rx
+            .recv()
             .await
-            .map_err(|_| ConsensusError::ReceiveChannelError(format!("receive error")))?)
+            .ok_or(ConsensusError::ReceiveChannelError(format!(
+                "receive error"
+            )))
     }
 
     async fn get_active_block(
         &self,
         hash: crypto::hash::Hash,
     ) -> Result<Option<Block>, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<Option<Block>>();
+        let (response_tx, mut response_rx) = mpsc::channel::<Option<Block>>(1);
         self.consensus_command_tx
             .send(ConsensusCommand::GetActiveBlock(hash, response_tx))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(format!("send error consensus command"))
             })?;
-        Ok(response_rx
+        response_rx
+            .recv()
             .await
-            .map_err(|_| ConsensusError::ReceiveChannelError(format!("receive error")))?)
+            .ok_or(ConsensusError::ReceiveChannelError(format!(
+                "receive error"
+            )))
+    }
+
+    fn get_config(&self) -> &ConsensusConfig {
+        &self.cfg
     }
 }

@@ -25,13 +25,14 @@ pub fn get_block_slot_timestamp(
         .or(Err(ConsensusError::TimeOverflowError))?)
 }
 
-// return the thread and block slot index of the latest block slot (inclusive), if any happened yet
-pub fn get_current_latest_block_slot(
+// return the thread and block slot index of the latest block slot at a given timstamp (inclusive), if any happened
+pub fn get_latest_block_slot_at_timestamp(
     thread_count: u8,
     t0: UTime,
     genesis_timestamp: UTime,
+    timestamp: UTime,
 ) -> Result<Option<(u64, u8)>, ConsensusError> {
-    if let Ok(time_since_genesis) = UTime::now()?.checked_sub(genesis_timestamp) {
+    if let Ok(time_since_genesis) = timestamp.checked_sub(genesis_timestamp) {
         let thread: u8 = time_since_genesis
             .checked_rem_time(t0)?
             .checked_div_time(t0.checked_div_u64(thread_count as u64)?)?
@@ -39,6 +40,15 @@ pub fn get_current_latest_block_slot(
         return Ok(Some((time_since_genesis.checked_div_time(t0)?, thread)));
     }
     Ok(None)
+}
+
+// return the thread and block slot index of the latest block slot (inclusive), if any happened yet
+pub fn get_current_latest_block_slot(
+    thread_count: u8,
+    t0: UTime,
+    genesis_timestamp: UTime,
+) -> Result<Option<(u64, u8)>, ConsensusError> {
+    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, UTime::now()?)
 }
 
 // return the (period, thread) of the next block slot

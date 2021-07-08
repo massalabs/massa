@@ -11,7 +11,7 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
-use tokio::prelude::*;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{mpsc, oneshot};
 
 #[derive(Debug)]
@@ -84,7 +84,7 @@ impl<EstablisherT: Establisher> NetworkWorker<EstablisherT> {
                 _ = wakeup_interval.tick() => {},
 
                 // peer feedback event
-                res = self.network_command_rx.next() => match res {
+                res = self.network_command_rx.recv() => match res {
                     Some(cmd) => manage_network_command::<EstablisherT>(
                         cmd,
                         &mut self.peer_info_db,
@@ -206,7 +206,7 @@ async fn manage_network_command<EstablisherT: Establisher>(
 }
 
 async fn manage_out_connections<ReaderT, WriterT>(
-    res: io::Result<(ReaderT, WriterT)>,
+    res: tokio::io::Result<(ReaderT, WriterT)>,
     ip_addr: IpAddr,
     peer_info_db: &mut PeerInfoDatabase,
     cur_connection_id: &mut ConnectionId,

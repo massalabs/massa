@@ -1,6 +1,6 @@
 //RUST_BACKTRACE=1 cargo test test_block_validity -- --nocapture
 
-use super::super::consensus_controller::ConsensusController;
+use super::super::consensus_controller::{ConsensusController, ConsensusControllerInterface};
 use super::super::default_consensus_controller::DefaultConsensusController;
 use super::mock_protocol_controller::{self};
 use super::tools;
@@ -24,7 +24,9 @@ async fn test_block_validity() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -271,7 +273,8 @@ async fn test_ti() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -304,7 +307,7 @@ async fn test_ti() {
     .await;
 
     //one click with 2 block compatible
-    let block_graph = cnss.get_block_graph_status().await.unwrap();
+    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let block1_clic = tools::get_cliques(&block_graph, valid_hasht0s1);
     let block2_clic = tools::get_cliques(&block_graph, valid_hasht1s1);
     assert_eq!(1, block1_clic.len());
@@ -326,7 +329,7 @@ async fn test_ti() {
     tools::validate_propagate_block(&mut protocol_controler_interface, fork_block_hash, 1000).await;
     //two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
     //test the first clique hasn't changed.
-    let block_graph = cnss.get_block_graph_status().await.unwrap();
+    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let block1_clic = tools::get_cliques(&block_graph, valid_hasht0s1);
     let block2_clic = tools::get_cliques(&block_graph, valid_hasht1s1);
     assert_eq!(1, block1_clic.len());
@@ -353,7 +356,7 @@ async fn test_ti() {
         )
         .await;
         //validate the added block isn't in the forked block click.
-        let block_graph = cnss.get_block_graph_status().await.unwrap();
+        let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
         let block_clic = tools::get_cliques(&block_graph, block_hash);
         let fork_clic = tools::get_cliques(&block_graph, fork_block_hash);
         assert!(fork_clic.intersection(&block_clic).next().is_none());
@@ -376,7 +379,7 @@ async fn test_ti() {
         .await
     );
     //verify that the clique has been pruned.
-    let block_graph = cnss.get_block_graph_status().await.unwrap();
+    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let fork_clic = tools::get_cliques(&block_graph, fork_block_hash);
     assert_eq!(0, fork_clic.len());
 }
@@ -404,7 +407,8 @@ async fn test_gpi() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
@@ -438,7 +442,7 @@ async fn test_gpi() {
     .await;
 
     //one click with 2 block compatible
-    let block_graph = cnss.get_block_graph_status().await.unwrap();
+    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let block1_clic = tools::get_cliques(&block_graph, valid_hasht0s1);
     let block2_clic = tools::get_cliques(&block_graph, valid_hasht1s1);
     assert_eq!(1, block1_clic.len());
@@ -472,7 +476,7 @@ async fn test_gpi() {
     .await;
 
     // * after processing the block in t1s2, the block of t0s2 is incompatible with block of t1s2 (link in gi)
-    let block_graph = cnss.get_block_graph_status().await.unwrap();
+    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let blockt1s2_clic = tools::get_cliques(&block_graph, valid_hasht1s2);
     let blockt0s2_clic = tools::get_cliques(&block_graph, valid_hasht0s2);
     assert!(blockt1s2_clic
@@ -522,7 +526,7 @@ async fn test_gpi() {
     // * after processing the 33 blocks, one clique is removed (too late),
     //   the block of minimum hash becomes final, the one of maximum hash becomes stale
     //verify that the clique has been pruned.
-    let block_graph = cnss.get_block_graph_status().await.unwrap();
+    let block_graph = cnss_cmd.get_block_graph_status().await.unwrap();
     let fork_clic = tools::get_cliques(&block_graph, valid_hasht1s2);
     assert_eq!(0, fork_clic.len());
     assert!(block_graph.discarded_blocks.set.contains(&valid_hasht1s2));
@@ -554,7 +558,8 @@ async fn test_old_stale() {
     let cnss = DefaultConsensusController::new(&cfg, protocol_controller)
         .await
         .expect("Could not create consensus controller");
-    let genesis_hashes = cnss
+    let cnss_cmd = cnss.get_interface();
+    let genesis_hashes = cnss_cmd
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
