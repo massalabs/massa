@@ -1,7 +1,7 @@
 use binders::{ReadBinder, WriteBinder};
 use consensus::{BoostrapableGraph, ConsensusCommandSender};
 use establisher::{ReadHalf, WriteHalf};
-use log::{debug, info, trace, warn};
+use log::{debug, info, warn};
 use std::net::SocketAddr;
 
 use logging::massa_trace;

@@ -64,6 +64,9 @@ pub struct ReadBinder {
     serialization_context: SerializationContext,
     read_half: ReadHalf,
     message_index: u64,
+    buf: Vec<u8>,
+    cursor: usize,
+    msg_size: Option<u32>,
 }
 
 impl ReadBinder {
@@ -78,35 +81,75 @@ impl ReadBinder {
             serialization_context,
             read_half,
             message_index: 0,
+            buf: Vec::new(),
+            cursor: 0,
+            msg_size: None,
         }
     }
 
-    /// Awaits the next incomming message and deserializes it.
+    /// Awaits the next incomming message and deserializes it. Async cancel-safe.
     pub async fn next(&mut self) -> Result<Option<(u64, Message)>, CommunicationError> {
-        //        massa_trace!("binder.next start", {});
-        // read message length
-        let msg_len_len = u32::be_bytes_min_length(self.serialization_context.max_message_size);
-        let mut msg_len_buf = vec![0u8; msg_len_len];
-        if let Err(err) = self.read_half.read_exact(&mut msg_len_buf).await {
-            if err.kind() == std::io::ErrorKind::UnexpectedEof {
-                return Ok(None);
-            } else {
-                return Err(err.into());
+        // read message size
+        if self.msg_size.is_none() {
+            let size_field_len =
+                u32::be_bytes_min_length(self.serialization_context.max_message_size);
+            if self.buf.len() != size_field_len {
+                self.buf = vec![0u8; size_field_len];
             }
+            // read size
+            while self.cursor < size_field_len {
+                match self.read_half.read(&mut self.buf[self.cursor..]).await {
+                    Ok(nr) => {
+                        if nr == 0 {
+                            return Ok(None);
+                        }
+                        self.cursor += nr;
+                    }
+                    Err(err) => {
+                        if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                            return Ok(None);
+                        } else {
+                            return Err(err.into());
+                        }
+                    }
+                }
+            }
+            let res_size =
+                u32::from_be_bytes_min(&self.buf, self.serialization_context.max_message_size)?.0;
+            self.msg_size = Some(res_size);
+            if self.buf.len() != (res_size as usize) {
+                self.buf = vec![0u8; res_size as usize];
+            }
+            self.cursor = 0;
         }
-        let (msg_len, _) =
-            u32::from_be_bytes_min(&msg_len_buf, self.serialization_context.max_message_size)?;
 
         // read message
-        let mut msg_buffer = vec![0u8; msg_len as usize];
-        self.read_half.read_exact(&mut msg_buffer).await?;
+        while self.cursor < self.msg_size.unwrap() as usize {
+            // does not panic
+            match self.read_half.read(&mut self.buf[self.cursor..]).await {
+                Ok(nr) => {
+                    if nr == 0 {
+                        return Ok(None);
+                    }
+                    self.cursor += nr;
+                }
+                Err(err) => {
+                    if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                        return Ok(None);
+                    } else {
+                        return Err(err.into());
+                    }
+                }
+            }
+        }
         let (res_msg, _res_msg_len) =
-            Message::from_bytes_compact(&msg_buffer, &self.serialization_context)?;
-        // note: it is possible that _res_msg_len < msg_len if some extras have not been read
+            Message::from_bytes_compact(&self.buf, &self.serialization_context)?;
+        self.cursor = 0;
+        self.msg_size = None;
+        self.buf.clear();
 
         let res_index = self.message_index;
         self.message_index += 1;
-        //        massa_trace!("binder.next", { "msg": res_msg });
         Ok(Some((res_index, res_msg)))
     }
 }

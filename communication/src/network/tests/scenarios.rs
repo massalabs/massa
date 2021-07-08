@@ -6,7 +6,6 @@ use crate::network::{start_network_controller, PeerInfo};
 use crate::NodeId;
 use crypto::hash::Hash;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::{
     convert::TryInto,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -315,7 +314,7 @@ async fn test_advertised_and_wakeup_interval() {
     // 2) refuse the first connection attempt coming from controller towards advertised peer
     {
         let (_, _, addr, accept_tx) = tokio::time::timeout(
-            Duration::from_millis(1000),
+            Duration::from_millis(2000),
             mock_interface.wait_connection_attempt_from_controller(),
         )
         .await
