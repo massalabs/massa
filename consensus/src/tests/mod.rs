@@ -1,6 +1,7 @@
 mod mock_pool_controller;
 mod mock_protocol_controller;
 mod mock_storage_controller;
+mod scenario_block_creation;
 mod scenarios106;
 mod scenarios91_1;
 mod scenarios91_2;

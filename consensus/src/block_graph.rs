@@ -67,12 +67,13 @@ impl ActiveBlock {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
-    block: Block,
-    parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
-    children: Vec<Vec<(BlockId, u64)>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    dependencies: Vec<BlockId>,         // dependencies required for validity check
-    is_final: bool,
-    block_ledger_change: Vec<Vec<(Address, LedgerChange)>>,
+    pub block: Block,
+    pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
+    pub children: Vec<Vec<(BlockId, u64)>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
+    pub dependencies: Vec<BlockId>,         // dependencies required for validity check
+    pub is_final: bool,
+    pub block_ledger_change: Vec<Vec<(Address, LedgerChange)>>,
+    pub operation_set: Vec<OperationId>,
 }
 
 impl From<ActiveBlock> for ExportActiveBlock {
@@ -92,6 +93,7 @@ impl From<ActiveBlock> for ExportActiveBlock {
                 .into_iter()
                 .map(|map| map.into_iter().collect())
                 .collect(),
+            operation_set: block.operation_set.into_iter().collect(),
         }
     }
 }
@@ -114,7 +116,7 @@ impl<'a> From<ExportActiveBlock> for ActiveBlock {
                 .into_iter()
                 .map(|map| map.into_iter().collect())
                 .collect(),
-            operation_set: HashSet::with_capacity(0),
+            operation_set: block.operation_set.into_iter().collect(),
         }
     }
 }
@@ -315,6 +317,13 @@ impl DeserializeCompact for ExportActiveBlock {
             block_ledger_change.push(map);
         }
 
+        let operation_set = block
+            .operations
+            .iter()
+            .map(|op| op.get_operation_id(context))
+            .flatten()
+            .collect();
+
         Ok((
             ExportActiveBlock {
                 is_final,
@@ -323,6 +332,7 @@ impl DeserializeCompact for ExportActiveBlock {
                 children,
                 dependencies,
                 block_ledger_change,
+                operation_set,
             },
             cursor,
         ))
@@ -3255,6 +3265,8 @@ mod tests {
                     },
                 )],
             ],
+
+            operation_set: vec![],
         }
     }
 
@@ -3316,6 +3328,7 @@ mod tests {
             dependencies: vec![], // dependencies required for validity check
             is_final: true,
             block_ledger_change: vec![Vec::new(); thread_count as usize],
+            operation_set: vec![],
         };
         let export_genesist1 = ExportActiveBlock {
             block: block_genesist1,
@@ -3324,6 +3337,7 @@ mod tests {
             dependencies: vec![], // dependencies required for validity check
             is_final: true,
             block_ledger_change: vec![Vec::new(); thread_count as usize],
+            operation_set: vec![],
         };
         //update ledget with inital content.
         //   Thread 0  [at the output of block p0t0]:

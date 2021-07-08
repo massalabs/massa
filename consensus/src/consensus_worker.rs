@@ -234,9 +234,14 @@ impl ConsensusWorker {
 
         let block_creator = self.selector.draw(cur_slot);
 
+        // signal tick to pool
+        self.pool_command_sender
+            .update_current_slot(cur_slot)
+            .await?;
+
         // create a block if enabled and possible
         if !self.cfg.disable_block_creation
-            && self.next_slot.period > 0
+            && cur_slot.period > 0
             && block_creator == self.cfg.current_node_index
         {
             self.create_block(cur_slot).await?;
@@ -245,11 +250,6 @@ impl ConsensusWorker {
         // signal tick to block graph
         self.block_db
             .slot_tick(&mut self.selector, Some(cur_slot))?;
-
-        // signal tick to pool
-        self.pool_command_sender
-            .update_current_slot(cur_slot)
-            .await?;
 
         // take care of block db changes
         self.block_db_changed().await?;
@@ -371,12 +371,25 @@ impl ConsensusWorker {
                     continue;
                 }
 
-                // try update thread ledger
+                // get the ledger changes caused by the op in the block's thread
                 let mut thread_changes: Vec<HashMap<Address, LedgerChange>> =
                     vec![HashMap::new(); self.cfg.thread_count as usize];
                 thread_changes[cur_slot.thread as usize] = op
                     .get_changes(&creator_addr, self.cfg.thread_count)?
                     .swap_remove(cur_slot.thread as usize);
+
+                // add missing entries to the ledger
+                let missing_entries = self.block_db.get_ledger_at_parents(
+                    &parents,
+                    &thread_changes[cur_slot.thread as usize]
+                        .keys()
+                        .filter(|addr| !thread_ledger.contains(addr, self.cfg.thread_count))
+                        .copied()
+                        .collect(),
+                )?;
+                thread_ledger.extend(missing_entries);
+
+                // try to apply the changes caused by the op in the block's thread
                 if thread_ledger.try_apply_changes(&thread_changes).is_err() {
                     continue;
                 }

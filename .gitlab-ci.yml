@@ -23,5 +23,3 @@ test:
   script:
     - cargo tarpaulin --verbose --run-types Tests Doctests
   coverage: /\d+.\d+% coverage/
-
-
