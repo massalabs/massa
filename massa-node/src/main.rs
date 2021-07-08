@@ -248,6 +248,17 @@ async fn run(cfg: config::Config) {
                             warn!("could not send get_operations response in api_event_receiver.wait_event");
                         }
                     },
+                Ok(ApiEvent::GetStats(response_tx)) => {
+                    massa_trace!("massa-node.main.run.select.api_event.get_stats", {});
+                    if response_tx.send(
+                        consensus_command_sender
+                        .get_stats()
+                            .await
+                            .expect("get_stats failed in api_event_receiver.wait_event")
+                        ).is_err() {
+                            warn!("could not send get_stats response in api_event_receiver.wait_event");
+                        }
+                    },
                 Err(err) => {
                     error!("api communication error: {:?}", err);
                     break;

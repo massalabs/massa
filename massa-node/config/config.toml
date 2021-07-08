@@ -41,12 +41,10 @@
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 5
-
     staking_keys = ["2sJguNf3EjMYmeH6mdwmM2yVGshJguZD3evezUJhpn3u62soLi"]
     roll_price = 2
-
-
-
+    #stats
+    stats_timespan = 60000
 
 [protocol]
     message_timeout = 5000

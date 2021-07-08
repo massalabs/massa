@@ -17,12 +17,14 @@ use models::{
     Slot,
 };
 use pool::PoolCommandSender;
-use std::convert::TryFrom;
+use serde::{Deserialize, Serialize};
+use std::{collections::VecDeque, convert::TryFrom};
 use std::{
     collections::{HashMap, HashSet},
     usize,
 };
 use storage::StorageAccess;
+use time::UTime;
 use tokio::{
     sync::{mpsc, oneshot},
     time::{sleep_until, Sleep},
@@ -70,6 +72,16 @@ pub enum ConsensusCommand {
         addresses: HashSet<Address>,
         response_tx: oneshot::Sender<AddressesRollState>,
     },
+    GetStats(oneshot::Sender<ConsensusStats>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsensusStats {
+    timespan: UTime,
+    final_block_count: u64,
+    final_operation_count: u64,
+    stale_block_count: u64,
+    clique_count: u64,
 }
 
 /// Events that are emitted by consensus.
@@ -116,6 +128,9 @@ pub struct ConsensusWorker {
     clock_compensation: i64,
     // staking keys
     staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
+    // stats (block -> tx_count)
+    final_block_stats: VecDeque<(UTime, u64)>,
+    stale_block_stats: VecDeque<UTime>,
 }
 
 impl ConsensusWorker {
@@ -188,6 +203,8 @@ impl ConsensusWorker {
             clock_compensation,
             pool_command_sender,
             staking_keys,
+            final_block_stats: VecDeque::new(),
+            stale_block_stats: VecDeque::new(),
         })
     }
 
@@ -699,6 +716,37 @@ impl ConsensusWorker {
                     ))
                 })
             }
+            ConsensusCommand::GetStats(response_tx) => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_stats",
+                    {}
+                );
+                let res = self.get_stats();
+                response_tx.send(res).map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get_stats response: {:?}",
+                        err
+                    ))
+                })
+            }
+        }
+    }
+
+    fn get_stats(&self) -> ConsensusStats {
+        let timespan = self.cfg.stats_timespan;
+        let final_block_count = self.final_block_stats.len() as u64;
+        let final_operation_count = self
+            .final_block_stats
+            .iter()
+            .fold(0u64, |acc, (_, tx_n)| acc + tx_n);
+        let stale_block_count = self.stale_block_stats.len() as u64;
+        let clique_count = self.block_db.get_clique_count() as u64;
+        ConsensusStats {
+            timespan,
+            final_block_count,
+            final_operation_count,
+            stale_block_count,
+            clique_count,
         }
     }
 
@@ -878,6 +926,15 @@ impl ConsensusWorker {
         Ok(())
     }
 
+    // prune statistics
+    fn prune_stats(&mut self) -> Result<(), ConsensusError> {
+        let start_time =
+            UTime::now(self.clock_compensation)?.saturating_sub(self.cfg.stats_timespan);
+        self.final_block_stats.retain(|(t, _)| t >= &start_time);
+        self.stale_block_stats.retain(|t| t >= &start_time);
+        Ok(())
+    }
+
     async fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
@@ -913,6 +970,15 @@ impl ConsensusWorker {
                 );
                 // List final block
                 new_final_blocks.insert(b_id, a_block);
+                // add to stats
+                let timestamp = get_block_slot_timestamp(
+                    self.cfg.thread_count,
+                    self.cfg.t0,
+                    self.cfg.genesis_timestamp,
+                    a_block.block.header.content.slot,
+                )?;
+                self.final_block_stats
+                    .push_back((timestamp, a_block.operation_set.len() as u64));
             }
         }
         // Notify pool of new final ops
@@ -950,11 +1016,26 @@ impl ConsensusWorker {
                 .await?;
         }
 
+        // add stale blocks to stats
+        let new_stale_block_ids_slots = self.block_db.get_new_stale_blocks();
+        for (_b_id, b_slot) in new_stale_block_ids_slots.into_iter() {
+            let timestamp = get_block_slot_timestamp(
+                self.cfg.thread_count,
+                self.cfg.t0,
+                self.cfg.genesis_timestamp,
+                b_slot,
+            )?;
+            self.stale_block_stats.push_back(timestamp);
+        }
+
         // prune block db and send discarded final blocks to storage if present
         let discarded_final_blocks = self.block_db.prune()?;
         if let Some(storage_cmd) = &self.opt_storage_command_sender {
             storage_cmd.add_block_batch(discarded_final_blocks).await?;
         }
+
+        // prune stats
+        self.prune_stats()?;
 
         Ok(())
     }
