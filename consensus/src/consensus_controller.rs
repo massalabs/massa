@@ -10,7 +10,9 @@ use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PublicKey;
 use logging::debug;
 use models::block::Block;
+use models::slot::Slot;
 use std::collections::VecDeque;
+use storage::StorageCommandSender;
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -26,6 +28,7 @@ pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
+    opt_storage_command_sender: Option<StorageCommandSender>,
 ) -> Result<
     (
         ConsensusCommandSender,
@@ -65,6 +68,7 @@ pub async fn start_consensus_controller(
             cfg_copy,
             protocol_command_sender,
             protocol_event_receiver,
+            opt_storage_command_sender,
             block_db,
             command_rx,
             event_tx,
@@ -128,11 +132,11 @@ impl ConsensusCommandSender {
     /// * end_slot: end of the considered interval.
     pub async fn get_selection_draws(
         &self,
-        start_slot: (u64, u8),
-        end_slot: (u64, u8),
-    ) -> Result<Vec<((u64, u8), PublicKey)>, ConsensusError> {
+        start_slot: Slot,
+        end_slot: Slot,
+    ) -> Result<Vec<(Slot, PublicKey)>, ConsensusError> {
         let (response_tx, response_rx) =
-            oneshot::channel::<Result<Vec<((u64, u8), PublicKey)>, ConsensusError>>();
+            oneshot::channel::<Result<Vec<(Slot, PublicKey)>, ConsensusError>>();
         self.0
             .send(ConsensusCommand::GetSelectionDraws(
                 start_slot,

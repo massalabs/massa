@@ -5,13 +5,10 @@ use super::{
     messages::Message,
 };
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
-use crypto::hash::Hash;
-use crypto::signature::Signature;
+use crypto::{hash::Hash, signature::Signature};
 use models::block::{Block, BlockHeader};
 use std::net::IpAddr;
 use tokio::{sync::mpsc, time::timeout};
-
-/// Commands that node worker can manage.
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
     /// Send given peer list to node.

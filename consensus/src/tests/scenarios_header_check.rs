@@ -3,6 +3,7 @@
 use super::{mock_protocol_controller::MockProtocolController, tools};
 use crate::{start_consensus_controller, timeslots};
 use crypto::hash::Hash;
+use models::slot::Slot;
 use std::collections::HashSet;
 use time::UTime;
 
@@ -25,6 +26,7 @@ async fn test_consensus_asks_for_block() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -37,7 +39,8 @@ async fn test_consensus_asks_for_block() {
         .genesis_blocks;
 
     //create test blocks
-    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, 0, 1 + start_slot, genesis_hashes.clone());
+    let (hasht0s1, t0s1, _) =
+        tools::create_block(&cfg, Slot::new(1 + start_slot, 0), genesis_hashes.clone());
 
     //send header for block t0s1
     protocol_controller
@@ -74,6 +77,7 @@ async fn test_consensus_does_not_ask_for_block() {
             cfg.clone(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
+            None,
         )
         .await
         .expect("could not start consensus controller");
@@ -86,7 +90,8 @@ async fn test_consensus_does_not_ask_for_block() {
         .genesis_blocks;
 
     //create test blocks
-    let (hasht0s1, t0s1, _) = tools::create_block(&cfg, 0, 1 + start_slot, genesis_hashes.clone());
+    let (hasht0s1, t0s1, _) =
+        tools::create_block(&cfg, Slot::new(1 + start_slot, 0), genesis_hashes.clone());
     let header = t0s1.header.clone();
     let signature = t0s1.signature.clone();
 
@@ -98,7 +103,7 @@ async fn test_consensus_does_not_ask_for_block() {
     tools::validate_propagate_block_in_list(
         &mut protocol_controller,
         &hash_list,
-        3000 + start_slot * 1000,
+        3000 + start_slot as u64 * 1000,
     )
     .await;
 

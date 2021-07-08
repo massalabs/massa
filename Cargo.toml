@@ -10,4 +10,5 @@ members = [
     "massa-node",
     "massa-client",
     "time",
+    "storage",
 ]
