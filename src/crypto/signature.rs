@@ -129,7 +129,7 @@ impl ::serde::Serialize for PrivateKey {
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// private_key.serialize(&mut s).unwrap();
-    /// let serialized: Vec<u8> = s.view().to_vec();
+    /// let serialized = s.take_buffer();
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
@@ -342,7 +342,7 @@ impl ::serde::Serialize for PublicKey {
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// public_key.serialize(&mut s).unwrap();
-    /// let serialized: Vec<u8> = s.view().to_vec();
+    /// let serialized = s.take_buffer();
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
@@ -564,7 +564,7 @@ impl ::serde::Serialize for Signature {
     ///
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// signature.serialize(&mut s).unwrap();
-    /// let serialized = s.view();
+    /// let serialized = s.take_buffer();
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {

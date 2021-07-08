@@ -123,7 +123,7 @@ impl ::serde::Serialize for Hash {
     /// ```
     /// let mut s = flexbuffers::FlexbufferSerializer::new();
     /// hash.serialize(&mut s).unwrap();
-    /// let serialized: Vec<u8> = s.view().to_vec();
+    /// let serialized = s.take_buffer();
     /// ```
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {

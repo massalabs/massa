@@ -111,6 +111,7 @@ impl<NetworkControllerT: NetworkController> ProtocolController
         exclude_node: Option<NodeId>,
         restrict_to_node: Option<NodeId>,
     ) {
+        massa_trace!("block_propagation_order", {"block": &block, "excluding": &exclude_node, "including": &restrict_to_node});
         self.protocol_command_tx
             .send(ProtocolCommand::PropagateBlock {
                 block: block.clone(),
