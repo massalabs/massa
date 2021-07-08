@@ -63,7 +63,7 @@ Check that your balance increase, for each block created you should get a reward
 
 If you want to get back some or all of your coins, sell rolls the same way you bought them:
 ----
-buy_rolls <address>  <roll count> <fee>
+sell_rolls <address>  <roll count> <fee>
 ----
 
 It should take some time again for your coins to be credited, and they will be frozen for 1 cycle before you can spend them, again check with:
