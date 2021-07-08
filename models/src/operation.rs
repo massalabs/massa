@@ -12,19 +12,34 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
+#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Debug, Serialize, Deserialize)]
+pub struct Address(Hash); // Public key hash
+
+impl Address {
+    pub fn new(key: PublicKey) -> Address {
+        Address(Hash::hash(&key.to_bytes()[..]))
+    }
+
+    /// Assumes that thread count is a power of two
+    pub fn get_thread(&self, thread_count: u8) -> u8 {
+        let hash_bytes = self.0.to_bytes();
+        hash_bytes[0] >> (8 - thread_count.trailing_zeros())
+    }
+}
+
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 enum OperationTypeId {
     Transaction = 0,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Operation {
     pub content: OperationContent,
     pub signature: Signature,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct OperationContent {
     pub fee: u64,
     pub expiration_period: u64,
@@ -32,10 +47,10 @@ pub struct OperationContent {
     pub op: OperationType,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum OperationType {
     Transaction {
-        recipient_address: Hash, // Hash of the recipient's public key
+        recipient_address: Address, // Hash of the recipient's public key
         amount: u64,
     },
 }
@@ -61,7 +76,7 @@ impl SerializeCompact for OperationContent {
                 // type id
                 res.extend(u32::from(OperationTypeId::Transaction).to_varint_bytes());
                 // recipient address
-                res.extend(&recipient_address.to_bytes());
+                res.extend(&recipient_address.0.to_bytes());
 
                 // amount
                 res.extend(amount.to_varint_bytes());
@@ -108,7 +123,7 @@ impl DeserializeCompact for OperationContent {
                 cursor += delta;
 
                 OperationType::Transaction {
-                    recipient_address,
+                    recipient_address: Address(recipient_address),
                     amount,
                 }
             }

@@ -1,25 +1,13 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::{
+    cmp::max,
+    collections::{BTreeSet, HashMap, HashSet},
+};
 
 use crypto::{hash::Hash, signature::PublicKey, signature::SignatureEngine};
-use models::{Operation, SerializationContext, SerializeCompact, Slot};
+use models::{Address, Operation, SerializationContext, SerializeCompact, Slot};
 use num::rational::Ratio;
 
 use crate::{ConsensusConfig, ConsensusError};
-
-#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash, Debug)]
-pub struct Address(Hash); // Public key hash
-
-impl Address {
-    fn new(key: PublicKey) -> Address {
-        Address(Hash::hash(&key.to_bytes()[..]))
-    }
-
-    /// Assumes that thread count is a power of two
-    fn get_thread(&self, thread_count: u8) -> u8 {
-        let hash_bytes = self.0.to_bytes();
-        hash_bytes[0] >> (8 - thread_count.trailing_zeros())
-    }
-}
 
 struct WrappedOperation {
     op: Operation,
@@ -45,7 +33,10 @@ impl WrappedOperation {
     }
 
     fn is_valid_at_period(&self, period: u64, operation_validity_periods: u64) -> bool {
-        let start = self.op.content.expiration_period - operation_validity_periods;
+        let start = max(
+            0,
+            self.op.content.expiration_period as i64 - operation_validity_periods as i64,
+        ) as u64;
         Slot::new(period, self.thread) >= Slot::new(start, self.thread)
             && Slot::new(self.op.content.expiration_period, self.thread)
                 >= Slot::new(period, self.thread)
@@ -188,5 +179,105 @@ impl OperationPool {
             })
             .take(max_count)
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use models::{Operation, OperationContent, OperationType};
+    use time::UTime;
+
+    fn example_consensus_config() -> (ConsensusConfig, SerializationContext) {
+        let secp = SignatureEngine::new();
+        let genesis_key = SignatureEngine::generate_random_private_key();
+        let mut nodes = Vec::new();
+        for _ in 0..2 {
+            let private_key = SignatureEngine::generate_random_private_key();
+            let public_key = secp.derive_public_key(&private_key);
+            nodes.push((public_key, private_key));
+        }
+        let thread_count: u8 = 2;
+        let max_block_size = 1024 * 1024;
+        let max_operations_per_block = 1024;
+        (
+            ConsensusConfig {
+                genesis_timestamp: UTime::now(0).unwrap(),
+                thread_count,
+                t0: 32.into(),
+                selection_rng_seed: 42,
+                genesis_key,
+                nodes,
+                current_node_index: 0,
+                max_discarded_blocks: 10,
+                future_block_processing_max_periods: 3,
+                max_future_processing_blocks: 10,
+                max_dependency_blocks: 10,
+                delta_f0: 5,
+                disable_block_creation: true,
+                max_block_size,
+                max_operations_per_block,
+                operation_validity_periods: 50,
+            },
+            SerializationContext {
+                max_block_size,
+                max_block_operations: max_operations_per_block,
+                parent_count: thread_count,
+                max_peer_list_length: 128,
+                max_message_size: 3 * 1024 * 1024,
+                max_bootstrap_blocks: 100,
+                max_bootstrap_cliques: 100,
+                max_bootstrap_deps: 100,
+                max_bootstrap_children: 100,
+                max_ask_blocks_per_message: 10,
+                max_bootstrap_message_size: 100000000,
+            },
+        )
+    }
+
+    fn get_transaction(
+        expiration_period: u64,
+        fee: u64,
+        context: &SerializationContext,
+    ) -> (Operation, u8) {
+        let secp = SignatureEngine::new();
+        let sender_priv = SignatureEngine::generate_random_private_key();
+        let sender_pub = secp.derive_public_key(&sender_priv);
+
+        let recv_priv = SignatureEngine::generate_random_private_key();
+        let recv_pub = secp.derive_public_key(&recv_priv);
+
+        let op = OperationType::Transaction {
+            recipient_address: Address::new(recv_pub),
+            amount: 0,
+        };
+        let content = OperationContent {
+            fee,
+            expiration_period,
+            creator_public_key: sender_pub,
+            op,
+        };
+        let hash = content.compute_hash(context).unwrap();
+        let signature = secp.sign(&hash, &sender_priv).unwrap();
+
+        (
+            Operation { content, signature },
+            Address::new(sender_pub).get_thread(2),
+        )
+    }
+
+    #[test]
+    fn test_new_operation() {
+        let (cfg, context) = example_consensus_config();
+        let periods = vec![0, 0]; // thread_count =2
+        let mut pool = OperationPool::new(periods, cfg);
+        let (t1, thread) = get_transaction(25, 10, &context);
+        pool.new_operation(t1.clone(), &context).unwrap();
+
+        let res = pool
+            .get_ops(Slot::new(1, thread), HashSet::new(), 50)
+            .unwrap();
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].1, t1);
     }
 }
