@@ -166,11 +166,14 @@ impl Wallet {
 
 impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Wallet private key list:")?;
+        writeln!(f)?;
         for key in &self.keys {
             let public_key = derive_public_key(key);
             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
-            writeln!(f, "key:{} public:{} addr:{}", key, public_key, addr)?;
+            writeln!(f)?;
+            writeln!(f, "Private key: {}", key)?;
+            writeln!(f, "Public key: {}", public_key)?;
+            writeln!(f, "Address: {}", addr)?;
         }
         Ok(())
     }
