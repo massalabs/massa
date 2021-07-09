@@ -664,7 +664,7 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
     trace!("before sending request to client in cmd_register_staking_keys in massa-client main");
     client
         .post(&format!(
-            "http://{}/api/v1/register_staking_keys/{}",
+            "http://{}/api/v1/register_staking_keys?{}",
             data.node_ip,
             serde_qs::to_string(&PrivateKeys { keys })?
         ))
