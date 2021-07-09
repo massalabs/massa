@@ -484,7 +484,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
             .unwrap();
         if data.cli {
             println!(
-                "{{wallet:{}, balance:{}}}",
+                "{{\"wallet\":{}, \"balance\":{}}}",
                 wallet
                     .to_json_string()
                     .map_err(|err| ReplError::GeneralError(format!(
@@ -494,7 +494,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                 balances
             );
         } else {
-            println!("wallet:{}", wallet);
+            println!("wallet.dat:{}", wallet);
             println!("balance:");
             println!("{}", balances);
         }
