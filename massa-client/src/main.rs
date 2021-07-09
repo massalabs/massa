@@ -484,7 +484,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
             .unwrap();
         if data.cli {
             println!(
-                "{{wallet:{}, balance:{}}}",
+                "{{\"wallet\":{}, \"balance\":{}}}",
                 wallet
                     .to_json_string()
                     .map_err(|err| ReplError::GeneralError(format!(
@@ -494,7 +494,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                 balances
             );
         } else {
-            println!("wallet:{}", wallet);
+            println!("wallet.dat:{}", wallet);
             println!("balance:");
             println!("{}", balances);
         }
@@ -664,7 +664,7 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
     trace!("before sending request to client in cmd_register_staking_keys in massa-client main");
     client
         .post(&format!(
-            "http://{}/api/v1/register_staking_keys/{}",
+            "http://{}/api/v1/register_staking_keys?{}",
             data.node_ip,
             serde_qs::to_string(&PrivateKeys { keys })?
         ))
@@ -691,7 +691,7 @@ fn cmd_remove_staking_addresses(data: &mut ReplData, params: &[&str]) -> Result<
     trace!("before sending request to client in cmd_remove_staking_addresses in massa-client main");
     client
         .delete(&format!(
-            "http://{}/api/v1/remove_staking_addresses/{}",
+            "http://{}/api/v1/remove_staking_addresses?{}",
             data.node_ip,
             serde_qs::to_string(&Addresses { addrs })?
         ))
