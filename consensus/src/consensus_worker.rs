@@ -391,6 +391,9 @@ impl ConsensusWorker {
             }
             ancestor_id = ancestor.parents[cur_slot.thread as usize].0;
         }
+        massa_trace!("consensus create_block", {
+            "ancestor ops": exclude_operations
+        });
 
         // get thread ledger and apply block reward
         let mut thread_ledger = LedgerSubset::new(self.cfg.thread_count);
@@ -413,6 +416,7 @@ impl ConsensusWorker {
         let mut operations: Vec<Operation> = Vec::new();
         let mut operation_set: HashMap<OperationId, (usize, u64)> = HashMap::new(); // (index, validity end period)
         let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
+        massa_trace!("consensus create_block before loop", {"remaining_block_space": remaining_block_space,"remaining_operation_count": remaining_operation_count });
         while !finished {
             // get a batch of operations
             let operation_batch = self
@@ -425,13 +429,18 @@ impl ConsensusWorker {
                 )
                 .await?;
             finished = operation_batch.len() < self.cfg.operation_batch_size;
-
+            massa_trace!("consensus create_block operation batch", {
+                "batch": operation_batch
+            });
             for (op_id, op, op_size) in operation_batch.into_iter() {
                 // exclude operation from future batches
                 exclude_operations.insert(op_id);
 
                 // check that the operation fits in size
                 if op_size > remaining_block_space {
+                    massa_trace!("consensus create_block rejected too big op", {
+                        "op_id": op_id
+                    });
                     continue;
                 }
 
@@ -471,6 +480,7 @@ impl ConsensusWorker {
 
                 // check if the block still has some space
                 if remaining_block_space == 0 || remaining_operation_count == 0 {
+                    massa_trace!("consensus create block nor more space left", {});
                     finished = true;
                     break;
                 }
