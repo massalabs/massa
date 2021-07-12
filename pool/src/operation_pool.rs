@@ -183,6 +183,10 @@ impl OperationPool {
                     [thread as usize]
                     .pop_last()
                     .unwrap(); // will not panic because of the while condition. complexity = log or better
+
+                massa_trace!("pool add_operations op - removed excess op", {
+                    "op": removed_id
+                });
                 if let Some(removed_op) = self.ops.remove(&removed_id) {
                     // complexity: const
                     let addrs = removed_op.op.get_ledger_involved_addresses(None)?;
@@ -202,6 +206,7 @@ impl OperationPool {
         &mut self,
         ops: HashMap<OperationId, (u64, u8)>,
     ) -> Result<(), PoolError> {
+        massa_trace!("pool new_final_operations", { "ops": ops.keys().collect::<Vec<_>>() });
         for (id, _) in ops.iter() {
             if let Some(wrapped) = self.ops.remove(id) {
                 self.ops_by_thread_and_interest[wrapped.thread as usize]
@@ -217,11 +222,13 @@ impl OperationPool {
     }
 
     pub fn update_current_slot(&mut self, slot: Slot) -> Result<(), PoolError> {
+        massa_trace!("operation pool update_current_slot", { "slot": slot });
         self.current_slot = Some(slot);
         self.prune()
     }
 
     fn prune(&mut self) -> Result<(), PoolError> {
+        massa_trace!("operation pool prune", {});
         let ids = self
             .ops
             .iter()
@@ -231,6 +238,7 @@ impl OperationPool {
             .map(|(id, _)| *id)
             .collect();
 
+        massa_trace!("operation pool prune", { "ids": ids });
         self.remove_ops(ids)?;
 
         let ids = self
@@ -240,6 +248,7 @@ impl OperationPool {
             .map(|(id, _)| *id)
             .collect::<Vec<_>>();
 
+        massa_trace!("operation pool prune", { "final ids": ids });
         for id in ids.into_iter() {
             self.final_operations.remove(&id);
         }
@@ -248,12 +257,16 @@ impl OperationPool {
     }
 
     pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) -> Result<(), PoolError> {
+        massa_trace!("operation pool update_latest_final_periods", {
+            "periods": periods
+        });
         self.last_final_periods = periods;
         self.prune()
     }
 
     // removes an operation
     fn remove_ops(&mut self, op_ids: Vec<OperationId>) -> Result<(), PoolError> {
+        massa_trace!("operation pool remove_ops", { "op_ids": op_ids });
         for op_id in op_ids.into_iter() {
             if let Some(wrapped_op) = self.ops.remove(&op_id) {
                 // complexity: const
