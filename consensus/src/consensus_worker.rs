@@ -566,6 +566,9 @@ impl ConsensusWorker {
             }
             ancestor_id = ancestor.parents[cur_slot.thread as usize].0;
         }
+        massa_trace!("consensus create_block", {
+            "ancestor ops": exclude_operations
+        });
 
         // init block state accumulator
         let mut state_accu = self
@@ -575,11 +578,9 @@ impl ConsensusWorker {
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
-        let mut operation_set: OperationHashMap<(usize, u64)> = OperationHashMap::default(); // (index, validity end period)
-        let mut finished = remaining_block_space == 0
-            || remaining_operation_count == 0
-            || self.cfg.max_operations_fill_attempts == 0;
-        let mut attempts = 0;
+        let mut operation_set: HashMap<OperationId, (usize, u64)> = HashMap::new(); // (index, validity end period)
+        let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
+        massa_trace!("consensus create_block before loop", {"remaining_block_space": remaining_block_space,"remaining_operation_count": remaining_operation_count });
         while !finished {
             // get a batch of operations
             let operation_batch = self
@@ -591,20 +592,19 @@ impl ConsensusWorker {
                     remaining_block_space,
                 )
                 .await?;
-
-            attempts += 1;
-
-            // Finish once we receive a batch that isn't full,
-            // or if the maximum number of attempts has been reached.
-            finished = operation_batch.len() < self.cfg.operation_batch_size
-                || self.cfg.max_operations_fill_attempts == attempts;
-
+            finished = operation_batch.len() < self.cfg.operation_batch_size;
+            massa_trace!("consensus create_block operation batch", {
+                "batch": operation_batch
+            });
             for (op_id, op, op_size) in operation_batch.into_iter() {
                 // exclude operation from future batches
                 exclude_operations.insert(op_id);
 
                 // check that the operation fits in size
                 if op_size > remaining_block_space {
+                    massa_trace!("consensus create_block rejected too big op", {
+                        "op_id": op_id
+                    });
                     continue;
                 }
 
@@ -627,6 +627,7 @@ impl ConsensusWorker {
 
                 // check if the block still has some space
                 if remaining_block_space == 0 || remaining_operation_count == 0 {
+                    massa_trace!("consensus create block nor more space left", {});
                     finished = true;
                     break;
                 }
