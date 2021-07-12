@@ -7,7 +7,7 @@
     bind = "127.0.0.1:3030"
 
 [consensus]
-    genesis_timestamp = 1625842800000 # to update while testing
+    genesis_timestamp = 1626114840000 # to update while testing
     t0 = 16000
     thread_count = 32
     genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
