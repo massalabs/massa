@@ -2,7 +2,8 @@
 
 use crate::{
     ledger::{LedgerChange, LedgerData, LedgerSubset, OperationLedgerInterface},
-    pos::ExportProofOfStake,
+    pos::{ExportProofOfStake, OperationRollInterface},
+    RollUpdates,
 };
 
 use super::{
@@ -19,7 +20,11 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, convert::TryFrom, path::Path};
+use std::{
+    collections::{hash_map, VecDeque},
+    convert::TryFrom,
+    path::Path,
+};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -410,7 +415,59 @@ impl ConsensusWorker {
             ))?;
             thread_ledger.extend(fee_ledger);
         }
+        let mut roll_involved_addresses: HashSet<Address> = HashSet::new();
+        let (mut roll_counts, mut cycle_roll_updates) = self.block_db.get_roll_data_at_parent(
+            parents[cur_slot.thread as usize],
+            Some(&roll_involved_addresses),
+            &self.pos,
+        )?;
 
+        // if needed credit roll sales after a lock cycle
+
+        let parent_cycle = self
+            .block_db
+            .get_active_block(&parents[cur_slot.thread as usize])
+            .unwrap()
+            .block
+            .header
+            .content
+            .slot
+            .get_cycle(self.cfg.periods_per_cycle);
+
+        if cur_slot.get_cycle(self.cfg.periods_per_cycle) != parent_cycle {
+            // if parent is from a different cycle: reset roll updates
+            // (step 3.1 in consensus/pos.md)
+            cycle_roll_updates = RollUpdates::new();
+        }
+        if cur_slot.get_cycle(self.cfg.periods_per_cycle) != parent_cycle {
+            let thread = cur_slot.thread;
+            let credits = self
+                .pos
+                .get_roll_sell_credit(cur_slot)?
+                .into_iter()
+                .filter_map(|(addr, amount)| {
+                    if addr.get_thread(self.cfg.thread_count) == thread {
+                        Some((
+                            addr,
+                            LedgerChange {
+                                balance_delta: amount,
+                                balance_increment: true,
+                            },
+                        ))
+                    } else {
+                        None
+                    }
+                });
+
+            for (addr, change) in credits {
+                if let Err(err) = thread_ledger.apply_change((&addr, &change)) {
+                    warn!("block graph check_operations error, can't apply cycle sell credit to block current_ledger :{}", err);
+                    continue; // todo i'm not sure about that
+                }
+            }
+        }
+
+        let mut block_roll_updates = RollUpdates::new();
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
@@ -444,12 +501,75 @@ impl ConsensusWorker {
                     continue;
                 }
 
+                // roll changes
+                let op_roll_updates = op.get_roll_updates()?;
+                if let Err(_) = roll_counts.apply_subset(&op_roll_updates, None) {
+                    massa_trace!("could not apply roll update in block", {});
+                    continue;
+                }
+
+                if let Err(_) = block_roll_updates.chain_subset(&op_roll_updates, None) {
+                    massa_trace!("could not chain roll update in block", {});
+                    continue;
+                }
+
                 // get the ledger changes caused by the op in the block's thread
                 let mut thread_changes: Vec<HashMap<Address, LedgerChange>> =
                     vec![HashMap::new(); self.cfg.thread_count as usize];
                 thread_changes[cur_slot.thread as usize] = op
                     .get_ledger_changes(creator_addr, self.cfg.thread_count, self.cfg.roll_price)?
                     .swap_remove(cur_slot.thread as usize);
+
+                match cycle_roll_updates.chain_subset(&op_roll_updates, None) {
+                    Ok(compensations) => {
+                        for (compensation_addr, compensation_count) in compensations.into_iter() {
+                            let balance_delta =
+                                match compensation_count.0.checked_mul(self.cfg.roll_price) {
+                                    Some(v) => v,
+                                    None => {
+                                        continue;
+                                    }
+                                };
+                            let compensation_ledger_change = LedgerChange {
+                                balance_delta,
+                                balance_increment: true,
+                            };
+
+                            // try apply compensations to current_ledger
+                            // (step 6.3.1 in consensus/pos.md)
+                            let compensation_change =
+                                (&compensation_addr, &compensation_ledger_change);
+                            if let Err(_) = thread_ledger.apply_change(compensation_change) {
+                                massa_trace!("block graph check_operations error, can't apply compensation_change to block current_ledger: {}", {});
+                                continue;
+                            }
+
+                            // try apply compensations to block_ledger_changes
+                            // (step 6.3.2 in consensus/pos.md)
+                            match thread_changes
+                                [compensation_addr.get_thread(self.cfg.thread_count) as usize]
+                                .entry(compensation_addr)
+                            {
+                                hash_map::Entry::Occupied(mut occ) => {
+                                    if let Err(_) = occ.get_mut().chain(&compensation_ledger_change)
+                                    {
+                                        massa_trace!(
+                                            "block graph check_operations error, can't chain roll compensation change", {}
+                                        );
+                                        continue;
+                                    }
+                                }
+                                hash_map::Entry::Vacant(vac) => {
+                                    vac.insert(compensation_ledger_change);
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        massa_trace!("could not chain roll update in block", {});
+                        continue;
+                    }
+                }
 
                 // add missing entries to the ledger
                 let missing_entries = self.block_db.get_ledger_at_parents(
