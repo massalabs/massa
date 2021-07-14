@@ -8,19 +8,6 @@ It means your private key is your password allowing to spend coins that were sen
 
 Here is how to create a Massa wallet.
 
-## From the graphical interface
-
-Head to the link:test.massa.net[explorer] in the wallet part.
-
-Click `Generate private key` then `Add`.
-
-This generates a new random private key from your computer randomness which stays on your side, its never transfered on the network.
-
-Now you can add more addresses or see the list of your addresses with their associated thread and balance.
-
-Also, if you want to save this wallet and be able to restore it later, click `Save wallet`, and next time directly do `Load wallet`. 
-
-
 ## From the command line interface
 
 Go to the client folder:
@@ -50,6 +37,17 @@ wallet_info
 ----
 
 
+## From the graphical interface
+
+If you don't plan to stake or use the command line client, you can also create a wallet on the web interface: head to the link:test.massa.net[explorer], in the wallet part.
+
+Click `Generate private key` then `Add`.
+
+This generates a new random private key from your computer randomness which stays on your side, its never transfered on the network.
+
+Now you can add more addresses or see the list of your addresses with their associated thread and balance.
+
+Also, if you want to save this wallet and be able to restore it later, click `Save wallet`, and next time directly do `Load wallet`. 
 
 
 ## Next steps
