@@ -742,10 +742,10 @@ impl SerializeCompact for LedgerExport {
     /// ```rust
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address};
     /// # use consensus::{LedgerExport, LedgerData};
-    /// # let mut ledger = LedgerExport::new(2);
-    /// # ledger.ledger_per_thread = vec![
-    /// #   vec![(Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData{balance: 1022})],
-    /// #   vec![(Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData{balance: 1020})],
+    /// # let mut ledger = LedgerExport::default();
+    /// # ledger.ledger_subset = vec![
+    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData{balance: 1022}),
+    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData{balance: 1020}),
     /// # ];
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
@@ -765,12 +765,10 @@ impl SerializeCompact for LedgerExport {
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
-    /// for thread in 0..2 {
-    ///     for (address, data) in &ledger.ledger_per_thread[thread] {
-    ///        assert!(res.ledger_per_thread[thread].iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
-    ///     }
-    ///     assert_eq!(ledger.ledger_per_thread[thread].len(), res.ledger_per_thread[thread].len());
+    /// for (address, data) in &ledger.ledger_subset {
+    ///    assert!(res.ledger_subset.iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
     /// }
+    /// assert_eq!(ledger.ledger_subset.len(), res.ledger_subset.len());
     /// ```
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
