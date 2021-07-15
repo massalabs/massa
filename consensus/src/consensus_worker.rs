@@ -505,11 +505,19 @@ impl ConsensusWorker {
 
         massa_trace!("create block", { "block": block });
         info!(
-            "Created block {}, by address {}, at slot {} (cycle {})",
+            "Created block {}, by address {}, at slot {} (cycle {})\n{}",
             block_id,
             creator_addr,
             cur_slot,
-            cur_slot.get_cycle(self.cfg.periods_per_cycle)
+            cur_slot.get_cycle(self.cfg.periods_per_cycle),
+            if let Some(slot) = self
+                .pos
+                .get_next_selected_slot(self.next_slot, *creator_addr)
+            {
+                format!("Next slot for address : {}", slot)
+            } else {
+                "Address not yet selected".to_string()
+            }
         );
 
         // add block to db
@@ -761,7 +769,16 @@ impl ConsensusWorker {
                 for key in keys.into_iter() {
                     let public = crypto::derive_public_key(&key);
                     let address = Address::from_public_key(&public)?;
-                    info!("Start staking with address {}", address);
+                    info!(
+                        "Start staking with address {}\n{}",
+                        address,
+                        if let Some(slot) = self.pos.get_next_selected_slot(self.next_slot, address)
+                        {
+                            format!("Next slot for address : {}", slot)
+                        } else {
+                            "Address not yet selected".to_string()
+                        }
+                    );
                     self.staking_keys.insert(address, (public, key));
                 }
                 Ok(())

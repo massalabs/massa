@@ -624,7 +624,7 @@ impl ProofOfStake {
             let mut draw = draw.iter().collect::<Vec<_>>();
             draw.sort();
             for (slot, addr) in draw {
-                if *addr == address {
+                if *addr == address && *slot > previous {
                     return Some(*slot);
                 }
             }
