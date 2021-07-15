@@ -3959,7 +3959,7 @@ mod tests {
         blockp3t0
             .block_ledger_changes
             .apply(
-                &address_b,
+                &address_c,
                 &LedgerChange {
                     balance_delta: 2048,
                     balance_increment: true,
