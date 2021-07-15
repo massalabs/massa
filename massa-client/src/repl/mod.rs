@@ -388,7 +388,7 @@ impl Repl {
 }
 
 fn quit_func(_data: &mut ReplData, _params: &[&str]) -> Result<(), error::ReplError> {
-    println!("Buy...");
+    println!("Bye...");
     Ok(())
 }
 

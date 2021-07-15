@@ -2009,6 +2009,7 @@ dependencies = [
 name = "time"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "pretty_assertions",
  "serde",
  "serial_test",

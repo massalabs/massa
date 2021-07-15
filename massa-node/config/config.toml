@@ -1,5 +1,5 @@
 [logging]
-    level = 1
+    level = 2
 
 [api]
     max_return_invalid_blocks = 10

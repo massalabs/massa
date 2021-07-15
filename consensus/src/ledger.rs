@@ -73,6 +73,11 @@ impl LedgerData {
         }
         Ok(())
     }
+
+    /// returns true if the balance is zero
+    fn is_nil(&self) -> bool {
+        self.balance == 0
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,17 +86,17 @@ pub struct LedgerChange {
     pub balance_increment: bool, // wether to increment or decrement balance of delta
 }
 
-impl LedgerChange {
-    /// New ledger change with given delta and increment
-    pub fn new(balance_delta: u64, balance_increment: bool) -> Self {
+impl Default for LedgerChange {
+    fn default() -> Self {
         LedgerChange {
-            balance_delta,
-            balance_increment,
+            balance_delta: 0,
+            balance_increment: true,
         }
     }
+}
 
-    /// Combines the effects of two ledger changes
-    /// Takes the first one mutably
+impl LedgerChange {
+    /// Applies another ledger change on top of self
     pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
             self.balance_delta = self
@@ -120,6 +125,10 @@ impl LedgerChange {
             self.balance_increment = true;
         }
         Ok(())
+    }
+
+    pub fn is_nil(&self) -> bool {
+        self.balance_delta == 0
     }
 }
 
@@ -161,53 +170,103 @@ impl DeserializeCompact for LedgerChange {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LedgerChanges(pub HashMap<Address, LedgerChange>);
+
+impl LedgerChanges {
+    pub fn get_involved_addresses(&self) -> HashSet<Address> {
+        self.0.keys().copied().collect()
+    }
+
+    /// applies a LedgerChange
+    pub fn apply(&mut self, addr: &Address, change: &LedgerChange) -> Result<(), ConsensusError> {
+        match self.0.entry(*addr) {
+            hash_map::Entry::Occupied(mut occ) => {
+                occ.get_mut().chain(change)?;
+                if occ.get().is_nil() {
+                    occ.remove();
+                }
+            }
+            hash_map::Entry::Vacant(vac) => {
+                let mut res = LedgerChange::default();
+                res.chain(change)?;
+                if !res.is_nil() {
+                    vac.insert(res);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// chain with another LedgerChange
+    pub fn chain(&mut self, other: &LedgerChanges) -> Result<(), ConsensusError> {
+        for (addr, change) in other.0.iter() {
+            self.apply(addr, change)?;
+        }
+        Ok(())
+    }
+
+    /// merge another ledger changes into self, overwriting existing data
+    /// addrs that are in not other are removed from self
+    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: LedgerChanges) {
+        for addr in addrs.iter() {
+            if let Some(new_val) = other.0.remove(addr) {
+                self.0.insert(*addr, new_val);
+            } else {
+                self.0.remove(addr);
+            }
+        }
+    }
+
+    /// clone subset
+    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+        LedgerChanges(
+            self.0
+                .iter()
+                .filter_map(|(a, dta)| {
+                    if addrs.contains(a) {
+                        Some((*a, dta.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        )
+    }
+}
+
 pub trait OperationLedgerInterface {
     fn get_ledger_changes(
         &self,
         fee_target: &Address,
         thread_count: u8,
         roll_price: u64,
-    ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError>;
+    ) -> Result<LedgerChanges, ConsensusError>;
 }
 
 impl OperationLedgerInterface for Operation {
     fn get_ledger_changes(
         &self,
         fee_target: &Address,
-        thread_count: u8,
+        _thread_count: u8,
         roll_price: u64,
-    ) -> Result<Vec<HashMap<Address, LedgerChange>>, ConsensusError> {
-        let mut changes: Vec<HashMap<Address, LedgerChange>> =
-            vec![HashMap::new(); thread_count as usize];
-
-        let mut try_add_changes =
-            |address: &Address, change: LedgerChange| -> Result<(), ConsensusError> {
-                let thread = address.get_thread(thread_count);
-                match changes[thread as usize].entry(*address) {
-                    hash_map::Entry::Occupied(mut occ) => {
-                        occ.get_mut().chain(&change)?;
-                    }
-                    hash_map::Entry::Vacant(vac) => {
-                        vac.insert(change);
-                    }
-                }
-                Ok(())
-            };
+    ) -> Result<LedgerChanges, ConsensusError> {
+        let mut res = LedgerChanges::default();
 
         // sender fee
         let sender_address = Address::from_public_key(&self.content.sender_public_key)?;
-        try_add_changes(
+        res.apply(
             &sender_address,
-            LedgerChange {
+            &LedgerChange {
                 balance_delta: self.content.fee,
                 balance_increment: false,
             },
         )?;
 
         // fee target
-        try_add_changes(
-            fee_target,
-            LedgerChange {
+        res.apply(
+            &fee_target,
+            &LedgerChange {
                 balance_delta: self.content.fee,
                 balance_increment: true,
             },
@@ -219,25 +278,25 @@ impl OperationLedgerInterface for Operation {
                 recipient_address,
                 amount,
             } => {
-                try_add_changes(
+                res.apply(
                     &sender_address,
-                    LedgerChange {
+                    &LedgerChange {
                         balance_delta: amount,
                         balance_increment: false,
                     },
                 )?;
-                try_add_changes(
+                res.apply(
                     &recipient_address,
-                    LedgerChange {
+                    &LedgerChange {
                         balance_delta: amount,
                         balance_increment: true,
                     },
                 )?;
             }
             models::OperationType::RollBuy { roll_count } => {
-                try_add_changes(
+                res.apply(
                     &sender_address,
-                    LedgerChange {
+                    &LedgerChange {
                         balance_delta: roll_count
                             .checked_mul(roll_price)
                             .ok_or(ConsensusError::RollOverflowError)?,
@@ -249,7 +308,7 @@ impl OperationLedgerInterface for Operation {
             models::OperationType::RollSell { .. } => {}
         }
 
-        Ok(changes)
+        Ok(res)
     }
 }
 
@@ -258,7 +317,7 @@ impl Ledger {
     /// if there is a ledger in the given file, it is loaded
     pub fn new(
         cfg: ConsensusConfig,
-        datas: Option<HashMap<Address, LedgerData>>,
+        opt_init_data: Option<LedgerSubset>,
     ) -> Result<Ledger, ConsensusError> {
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
@@ -281,9 +340,9 @@ impl Ledger {
             }
         }
 
-        if let Some(map) = datas {
+        if let Some(init_ledger) = opt_init_data {
             ledger_per_thread.transaction(|ledger| {
-                for (address, data) in map.iter() {
+                for (address, data) in init_ledger.0.iter() {
                     let thread = address.get_thread(cfg.thread_count);
                     ledger[thread as usize].insert(
                         &address.to_bytes(),
@@ -311,10 +370,10 @@ impl Ledger {
     pub fn get_final_data(
         &self,
         addresses: HashSet<&Address>,
-    ) -> Result<HashMap<Address, LedgerData>, ConsensusError> {
+    ) -> Result<LedgerSubset, ConsensusError> {
         self.ledger_per_thread
             .transaction(|ledger_per_thread| {
-                let mut result = HashMap::with_capacity(addresses.len());
+                let mut result = LedgerSubset::default();
                 for address in addresses.iter() {
                     let thread = address.get_thread(self.cfg.thread_count);
                     let ledger = ledger_per_thread.get(thread as usize).ok_or_else(|| {
@@ -341,7 +400,7 @@ impl Ledger {
                     };
 
                     // Should never panic since we are operating on a set of addresses.
-                    assert!(result.insert(**address, data).is_none());
+                    assert!(result.0.insert(**address, data).is_none());
                 }
                 Ok(result)
             })
@@ -351,22 +410,6 @@ impl Ledger {
                     addresses
                 ))
             })
-    }
-
-    /// Check that the right thread for the address was specified.
-    fn check_thread_for_address(
-        &self,
-        thread: u8,
-        address: &Address,
-    ) -> Result<(), ConsensusError> {
-        let address_thread = address.get_thread(self.cfg.thread_count);
-        if address_thread != thread {
-            return Err(ConsensusError::LedgerInconsistency(format!(
-                "Wrong thread for address {:?}",
-                address
-            )));
-        }
-        Ok(())
     }
 
     /// If there is something in the ledger file, it is overwritten
@@ -379,19 +422,19 @@ impl Ledger {
         ledger.clear()?;
 
         // fill ledger per thread
-        for thread in 0..cfg.thread_count {
-            for (address, balance) in export.ledger_per_thread[thread as usize].iter() {
-                if ledger.ledger_per_thread[thread as usize]
-                    .insert(address.into_bytes(), balance.to_bytes_compact()?)?
-                    .is_some()
-                {
-                    return Err(ConsensusError::LedgerInconsistency(format!(
-                        "adress {:?} already in ledger while bootsrapping",
-                        address
-                    )));
-                };
-            }
+        for (address, addr_data) in export.ledger_subset.iter() {
+            let thread = address.get_thread(cfg.thread_count);
+            if ledger.ledger_per_thread[thread as usize]
+                .insert(address.into_bytes(), addr_data.to_bytes_compact()?)?
+                .is_some()
+            {
+                return Err(ConsensusError::LedgerInconsistency(format!(
+                    "adress {:?} already in ledger while bootsrapping",
+                    address
+                )));
+            };
         }
+
         // initilize final periods
         ledger.latest_final_periods.transaction(|tree| {
             for (thread, period) in latest_final_periods.iter().enumerate() {
@@ -422,20 +465,18 @@ impl Ledger {
     pub fn apply_final_changes(
         &self,
         thread: u8,
-        changes: Vec<(Address, LedgerChange)>,
+        changes: &LedgerChanges,
         latest_final_period: u64,
     ) -> Result<(), ConsensusError> {
-        // First, check that the thread is correct for all changes.
-        for (address, _) in changes.iter() {
-            self.check_thread_for_address(thread, address)?;
-        }
-
         let ledger = self.ledger_per_thread.get(thread as usize).ok_or_else(|| {
             ConsensusError::LedgerInconsistency(format!("missing ledger for thread {:?}", thread))
         })?;
 
         (ledger, &self.latest_final_periods).transaction(|(db, latest_final_periods_db)| {
-            for (address, change) in changes.iter() {
+            for (address, change) in changes.0.iter() {
+                if address.get_thread(self.cfg.thread_count) != thread {
+                    continue;
+                }
                 let address_bytes = address.to_bytes();
                 let mut data = if let Some(old_bytes) = &db.get(address_bytes)? {
                     let (old, _) = LedgerData::from_bytes_compact(old_bytes).map_err(|err| {
@@ -459,8 +500,8 @@ impl Ledger {
                         )),
                     )
                 })?;
-                // remove entry if balance is at 0
-                if data.balance == 0 {
+                // remove entry if nil
+                if data.is_nil() {
                     db.remove(&address_bytes)?;
                 } else {
                     db.insert(
@@ -537,22 +578,20 @@ impl Ledger {
 
     /// Used for bootstrap.
     // Note: this cannot be done transactionally.
-    pub fn read_whole(&self) -> Result<Vec<Vec<(Address, LedgerData)>>, ConsensusError> {
-        let mut res = Vec::with_capacity(self.cfg.thread_count as usize);
+    pub fn read_whole(&self) -> Result<LedgerSubset, ConsensusError> {
+        let mut res = LedgerSubset::default();
         for tree in self.ledger_per_thread.iter() {
-            let mut map = HashMap::new();
             for element in tree.iter() {
                 let (addr, data) = element?;
                 let address = Address::from_bytes(addr.as_ref().try_into()?)?;
                 let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
-                if let Some(val) = map.insert(address, ledger_data) {
+                if let Some(val) = res.0.insert(address, ledger_data) {
                     return Err(ConsensusError::LedgerInconsistency(format!(
                         "address {:?} twice in ledger",
                         val
                     )));
                 }
             }
-            res.push(map.into_iter().collect());
         }
         Ok(res)
     }
@@ -562,8 +601,8 @@ impl Ledger {
         &self,
         query_addrs: &HashSet<Address>,
     ) -> Result<LedgerSubset, ConsensusError> {
-        let data = self.ledger_per_thread.transaction(|ledger_per_thread| {
-            let mut data = vec![HashMap::new(); self.cfg.thread_count as usize];
+        let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
+            let mut data = LedgerSubset::default();
             for addr in query_addrs {
                 let thread = addr.get_thread(self.cfg.thread_count);
                 if let Some(data_bytes) = ledger_per_thread[thread as usize].get(addr.to_bytes())? {
@@ -576,104 +615,111 @@ impl Ledger {
                                 )),
                             )
                         })?;
-                    data[thread as usize].insert(*addr, ledger_data);
+                    data.0.insert(*addr, ledger_data);
                 } else {
-                    data[thread as usize].insert(*addr, LedgerData::default());
+                    data.0.insert(*addr, LedgerData::default());
                 }
             }
             Ok(data)
         })?;
-        Ok(LedgerSubset { data })
+        Ok(res)
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LedgerSubset {
-    pub data: Vec<HashMap<Address, LedgerData>>,
-}
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct LedgerSubset(pub HashMap<Address, LedgerData>);
 
 impl LedgerSubset {
-    /// Create an empty ledger subset
-    pub fn new(thread_count: u8) -> Self {
-        LedgerSubset {
-            data: vec![HashMap::new(); thread_count as usize],
-        }
-    }
-
     /// If subset contains given address
-    pub fn contains(&self, address: &Address, thread_count: u8) -> bool {
-        self.data[address.get_thread(thread_count) as usize].contains_key(address)
+    pub fn contains(&self, address: &Address) -> bool {
+        self.0.contains_key(address)
     }
 
     /// Get the data for given address
-    pub fn get_data(&self, address: &Address, thread_count: u8) -> &LedgerData {
-        let thread = address.get_thread(thread_count);
-        self.data[thread as usize]
-            .get(address)
-            .unwrap_or(&LedgerData { balance: 0 })
+    pub fn get_data(&self, address: &Address) -> &LedgerData {
+        self.0.get(address).unwrap_or(&LedgerData { balance: 0 })
+    }
+
+    /// List involved addresses
+    pub fn get_involved_addresses(&self) -> HashSet<Address> {
+        self.0.keys().copied().collect()
     }
 
     /// Applies given change to that ledger subset
+    /// note: a failure may still leave the entry modified
     pub fn apply_change(
         &mut self,
-        (change_address, change): (&Address, &LedgerChange),
+        addr: &Address,
+        change: &LedgerChange,
     ) -> Result<(), ConsensusError> {
-        let thread_count = self.data.len() as u8;
-        self.data[change_address.get_thread(thread_count) as usize]
-            .entry(*change_address)
-            .or_insert_with(LedgerData::default)
-            .apply_change(change)
-    }
-
-    /// apply batch of changes only if all changes
-    /// in that batch passed, leave self untouched on failure
-    pub fn try_apply_changes(
-        &mut self,
-        changes: &[HashMap<Address, LedgerChange>],
-    ) -> Result<(), ConsensusError> {
-        // copy involved addresses
-        let mut new_ledger = LedgerSubset {
-            data: self
-                .data
-                .iter()
-                .enumerate()
-                .map(|(thread, thread_data)| {
-                    thread_data
-                        .iter()
-                        .filter_map(|(addr, addr_data)| {
-                            if changes[thread].contains_key(addr) {
-                                return Some((*addr, addr_data.clone()));
-                            }
-                            None
-                        })
-                        .collect()
-                })
-                .collect(),
-        };
-        // try applying changes to the new ledger
-        for thread_changes in changes.iter() {
-            for thread_change in thread_changes.iter() {
-                new_ledger.apply_change(thread_change)?;
+        match self.0.entry(*addr) {
+            hash_map::Entry::Occupied(mut occ) => {
+                occ.get_mut().apply_change(change)?;
+                if occ.get().is_nil() {
+                    occ.remove();
+                }
+            }
+            hash_map::Entry::Vacant(vac) => {
+                let mut res = LedgerData::default();
+                res.apply_change(change)?;
+                if !res.is_nil() {
+                    vac.insert(res);
+                }
             }
         }
-        // overwrite updated addresses in self
-        self.extend(new_ledger);
         Ok(())
     }
 
-    /// merge another ledger subset into self
-    pub fn extend(&mut self, other: LedgerSubset) {
-        for (self_thread_data, other_thread_data) in
-            self.data.iter_mut().zip(other.data.into_iter())
-        {
-            self_thread_data.extend(other_thread_data)
+    /// apply ledger changes
+    ///  note: a failure may still leave the entry modified
+    pub fn apply_changes(&mut self, changes: &LedgerChanges) -> Result<(), ConsensusError> {
+        for (addr, change) in changes.0.iter() {
+            self.apply_change(addr, change)?;
         }
+        Ok(())
+    }
+
+    /// Applies thread changes change to that ledger subset
+    /// note: a failure may still leave the entry modified
+    pub fn chain(&mut self, changes: &LedgerChanges) -> Result<(), ConsensusError> {
+        for (addr, change) in changes.0.iter() {
+            self.apply_change(addr, change)?;
+        }
+        Ok(())
+    }
+
+    /// merge another ledger subset into self, overwriting existing data
+    /// addrs that are in not other are removed from self
+    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: LedgerSubset) {
+        for addr in addrs.iter() {
+            if let Some(new_val) = other.0.remove(addr) {
+                self.0.insert(*addr, new_val);
+            } else {
+                self.0.remove(addr);
+            }
+        }
+    }
+
+    /// clone subset
+    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+        LedgerSubset(
+            self.0
+                .iter()
+                .filter_map(|(a, dta)| {
+                    if addrs.contains(a) {
+                        Some((*a, dta.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        )
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerExport {
-    pub ledger_per_thread: Vec<Vec<(Address, LedgerData)>>, // containing (Address, LedgerData)
+    pub ledger_subset: Vec<(Address, LedgerData)>,
 }
 
 impl<'a> TryFrom<&'a Ledger> for LedgerExport {
@@ -681,17 +727,13 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
 
     fn try_from(value: &'a Ledger) -> Result<Self, Self::Error> {
         Ok(LedgerExport {
-            ledger_per_thread: value.read_whole()?.to_vec(),
+            ledger_subset: value
+                .read_whole()?
+                .0
+                .iter()
+                .map(|(k, v)| (*k, v.clone()))
+                .collect(),
         })
-    }
-}
-
-impl LedgerExport {
-    /// Empty ledger export used for tests
-    pub fn new(thread_count: u8) -> Self {
-        LedgerExport {
-            ledger_per_thread: vec![Vec::new(); thread_count as usize],
-        }
     }
 }
 
@@ -700,10 +742,10 @@ impl SerializeCompact for LedgerExport {
     /// ```rust
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address};
     /// # use consensus::{LedgerExport, LedgerData};
-    /// # let mut ledger = LedgerExport::new(2);
-    /// # ledger.ledger_per_thread = vec![
-    /// #   vec![(Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData{balance: 1022})],
-    /// #   vec![(Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData{balance: 1020})],
+    /// # let mut ledger = LedgerExport::default();
+    /// # ledger.ledger_subset = vec![
+    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData{balance: 1022}),
+    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData{balance: 1020}),
     /// # ];
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
@@ -723,36 +765,24 @@ impl SerializeCompact for LedgerExport {
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
-    /// for thread in 0..2 {
-    ///     for (address, data) in &ledger.ledger_per_thread[thread] {
-    ///        assert!(res.ledger_per_thread[thread].iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
-    ///     }
-    ///     assert_eq!(ledger.ledger_per_thread[thread].len(), res.ledger_per_thread[thread].len());
+    /// for (address, data) in &ledger.ledger_subset {
+    ///    assert!(res.ledger_subset.iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
     /// }
+    /// assert_eq!(ledger.ledger_subset.len(), res.ledger_subset.len());
     /// ```
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
-        let thread_count: u32 = self.ledger_per_thread.len().try_into().map_err(|err| {
+        let entry_count: u64 = self.ledger_subset.len().try_into().map_err(|err| {
             models::ModelsError::SerializeError(format!(
-                "too many threads in LedgerExport: {:?}",
+                "too many entries in LedgerExport: {:?}",
                 err
             ))
         })?;
-        res.extend(thread_count.to_varint_bytes());
-        for thread_ledger in self.ledger_per_thread.iter() {
-            let vec_count: u32 = thread_ledger.len().try_into().map_err(|err| {
-                models::ModelsError::SerializeError(format!(
-                    "too many threads in LedgerExport: {:?}",
-                    err
-                ))
-            })?;
-
-            res.extend(vec_count.to_varint_bytes());
-            for (address, data) in thread_ledger.iter() {
-                res.extend(&address.to_bytes());
-                res.extend(&data.to_bytes_compact()?);
-            }
+        res.extend(entry_count.to_varint_bytes());
+        for (address, data) in self.ledger_subset.iter() {
+            res.extend(&address.to_bytes());
+            res.extend(&data.to_bytes_compact()?);
         }
 
         Ok(res)
@@ -763,28 +793,22 @@ impl DeserializeCompact for LedgerExport {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
 
-        let (thread_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        //TODO add entry_count checks
         cursor += delta;
 
-        let mut ledger_per_thread = Vec::with_capacity(thread_count as usize);
-        for _ in 0..(thread_count as usize) {
-            let (vec_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        let mut ledger_subset = Vec::with_capacity(entry_count as usize);
+        for _ in 0..entry_count {
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += ADDRESS_SIZE_BYTES;
+
+            let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-            let mut set: Vec<(Address, LedgerData)> = Vec::with_capacity(vec_count as usize);
 
-            for _ in 0..(vec_count as usize) {
-                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += ADDRESS_SIZE_BYTES;
-
-                let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-                set.push((address, data));
-            }
-
-            ledger_per_thread.push(set);
+            ledger_subset.push((address, data));
         }
 
-        Ok((LedgerExport { ledger_per_thread }, cursor))
+        Ok((LedgerExport { ledger_subset }, cursor))
     }
 }
 
