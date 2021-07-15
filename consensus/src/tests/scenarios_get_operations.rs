@@ -11,18 +11,8 @@ use serial_test::serial;
 use time::UTime;
 
 use crate::{
-    start_consensus_controller,
-    tests::{
-        mock_pool_controller::PoolCommandSink,
-        tools::{create_transaction, get_export_active_test_block},
-    },
+    tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
-};
-
-use super::{
-    mock_pool_controller::MockPoolController,
-    mock_protocol_controller::MockProtocolController,
-    tools::{self, generate_ledger_file},
 };
 
 #[tokio::test]
@@ -134,143 +124,133 @@ async fn test_storage() {
 
     let b3 = block.header.compute_block_id().unwrap();
     storage_access.add_block(b3, block).await.unwrap();
-
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(4).unwrap())
         .saturating_add(300.into());
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            Some(storage_access),
-            None,
-            Some(boot_graph),
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
 
-    let (ops, pool) = tokio::join!(
-        consensus_command_sender.get_operations(
-            ops.iter()
-                .map(|op| { op.get_operation_id().unwrap() })
-                .collect()
-        ),
-        pool_controller.wait_command(2000.into(), |cmd| {
-            match cmd {
-                pool::PoolCommand::GetOperations {
-                    operation_ids,
-                    response_tx,
-                } => {
-                    assert_eq!(
-                        operation_ids,
-                        ops.iter()
-                            .map(|op| { op.get_operation_id().unwrap() })
-                            .collect()
-                    );
-                    response_tx
-                        .send(
-                            ops[0..4]
-                                .iter()
-                                .map(|op| (op.get_operation_id().unwrap(), op.clone()))
-                                .collect(),
-                        )
-                        .unwrap();
-                    Some(())
+    tools::consensus_pool_test(
+        cfg.clone(),
+        Some(storage_access),
+        None,
+        Some(boot_graph),
+        async move |mut pool_controller,
+                    protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver| {
+            let (ops, pool) = tokio::join!(
+                consensus_command_sender.get_operations(
+                    ops.iter()
+                        .map(|op| { op.get_operation_id().unwrap() })
+                        .collect()
+                ),
+                pool_controller.wait_command(2000.into(), |cmd| {
+                    match cmd {
+                        pool::PoolCommand::GetOperations {
+                            operation_ids,
+                            response_tx,
+                        } => {
+                            assert_eq!(
+                                operation_ids,
+                                ops.iter()
+                                    .map(|op| { op.get_operation_id().unwrap() })
+                                    .collect()
+                            );
+                            response_tx
+                                .send(
+                                    ops[0..4]
+                                        .iter()
+                                        .map(|op| (op.get_operation_id().unwrap(), op.clone()))
+                                        .collect(),
+                                )
+                                .unwrap();
+                            Some(())
+                        }
+                        _ => None,
+                    }
+                })
+            );
+
+            assert_eq!(pool, Some(()));
+
+            let mut expected = HashMap::new();
+            expected.insert(
+                op1.get_operation_id().unwrap(),
+                OperationSearchResult {
+                    status: OperationSearchResultStatus::Pending,
+                    op: op1,
+                    in_pool: true,
+                    in_blocks: HashMap::new(),
+                },
+            );
+            expected.insert(
+                op2.get_operation_id().unwrap(),
+                OperationSearchResult {
+                    status: OperationSearchResultStatus::Pending,
+                    op: op2,
+                    in_pool: true,
+                    in_blocks: vec![(b1, (0, true))].into_iter().collect(),
+                },
+            );
+            expected.insert(
+                op3.get_operation_id().unwrap(),
+                OperationSearchResult {
+                    status: OperationSearchResultStatus::Pending,
+                    op: op3,
+                    in_pool: true,
+                    in_blocks: vec![(b2, (0, false))].into_iter().collect(),
+                },
+            );
+            expected.insert(
+                op4.get_operation_id().unwrap(),
+                OperationSearchResult {
+                    status: OperationSearchResultStatus::Pending,
+                    op: op4,
+                    in_pool: true,
+                    in_blocks: vec![(b3, (0, true))].into_iter().collect(),
+                },
+            );
+
+            let ops = ops.unwrap();
+            assert_eq!(ops.len(), expected.len());
+
+            for (
+                id,
+                OperationSearchResult {
+                    op,
+                    in_blocks,
+                    in_pool,
+                    ..
+                },
+            ) in ops.iter()
+            {
+                assert!(expected.contains_key(id));
+                let OperationSearchResult {
+                    op: ex_op,
+                    in_pool: ex_pool,
+                    in_blocks: ex_blocks,
+                    ..
+                } = expected.get(id).unwrap();
+                assert_eq!(
+                    op.get_operation_id().unwrap(),
+                    ex_op.get_operation_id().unwrap()
+                );
+                assert_eq!(in_pool, ex_pool);
+                assert_eq!(in_blocks.len(), ex_blocks.len());
+                for (b_id, val) in in_blocks.iter() {
+                    assert!(ex_blocks.contains_key(b_id));
+                    assert_eq!(ex_blocks.get(b_id).unwrap(), val);
                 }
-                _ => None,
             }
-        })
-    );
-
-    assert_eq!(pool, Some(()));
-
-    let mut expected = HashMap::new();
-    expected.insert(
-        op1.get_operation_id().unwrap(),
-        OperationSearchResult {
-            status: OperationSearchResultStatus::Pending,
-            op: op1,
-            in_pool: true,
-            in_blocks: HashMap::new(),
+            (
+                pool_controller,
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
         },
-    );
-    expected.insert(
-        op2.get_operation_id().unwrap(),
-        OperationSearchResult {
-            status: OperationSearchResultStatus::Pending,
-            op: op2,
-            in_pool: true,
-            in_blocks: vec![(b1, (0, true))].into_iter().collect(),
-        },
-    );
-    expected.insert(
-        op3.get_operation_id().unwrap(),
-        OperationSearchResult {
-            status: OperationSearchResultStatus::Pending,
-            op: op3,
-            in_pool: true,
-            in_blocks: vec![(b2, (0, false))].into_iter().collect(),
-        },
-    );
-    expected.insert(
-        op4.get_operation_id().unwrap(),
-        OperationSearchResult {
-            status: OperationSearchResultStatus::Pending,
-            op: op4,
-            in_pool: true,
-            in_blocks: vec![(b3, (0, true))].into_iter().collect(),
-        },
-    );
-
-    let ops = ops.unwrap();
-    assert_eq!(ops.len(), expected.len());
-
-    for (
-        id,
-        OperationSearchResult {
-            op,
-            in_blocks,
-            in_pool,
-            ..
-        },
-    ) in ops.iter()
-    {
-        assert!(expected.contains_key(id));
-        let OperationSearchResult {
-            op: ex_op,
-            in_pool: ex_pool,
-            in_blocks: ex_blocks,
-            ..
-        } = expected.get(id).unwrap();
-        assert_eq!(
-            op.get_operation_id().unwrap(),
-            ex_op.get_operation_id().unwrap()
-        );
-        assert_eq!(in_pool, ex_pool);
-        assert_eq!(in_blocks.len(), ex_blocks.len());
-        for (b_id, val) in in_blocks.iter() {
-            assert!(ex_blocks.contains_key(b_id));
-            assert_eq!(ex_blocks.get(b_id).unwrap(), val);
-        }
-    }
-
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -396,135 +376,134 @@ async fn test_consensus_and_storage() {
         ],
         boot_ledger,
     );
-
-    // mock protocol & pool
-    let (_protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(4).unwrap())
         .saturating_add(300.into());
-    // launch consensus controller
-    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            Some(storage_access),
-            None,
-            Some(boot_graph),
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
 
-    // Ask for ops related to A.
-    let (ops, pool) = tokio::join!(
-        consensus_command_sender.get_operations_involving_address(address_a.clone()),
-        pool_controller.wait_command(2000.into(), |cmd| {
-            match cmd {
-                pool::PoolCommand::GetRecentOperations {
-                    address,
-                    response_tx,
-                } => {
-                    assert_eq!(address, address_a);
-                    response_tx
-                        .send(
-                            vec![op_pool_1.clone(), op_pool_3.clone()]
-                                .into_iter()
-                                .map(|op| {
-                                    (
-                                        op.get_operation_id().unwrap(),
-                                        OperationSearchResult {
-                                            status: OperationSearchResultStatus::Pending,
-                                            op,
-                                            in_pool: true,
-                                            in_blocks: HashMap::new(),
-                                        },
-                                    )
-                                })
-                                .collect(),
-                        )
-                        .unwrap();
-                    Some(())
-                }
-                _ => None,
-            }
-        })
-    );
+    tools::consensus_pool_test(
+        cfg.clone(),
+        Some(storage_access),
+        None,
+        Some(boot_graph),
+        async move |mut pool_controller,
+                    protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver| {
+            // Ask for ops related to A.
+            let (ops, pool) = tokio::join!(
+                consensus_command_sender.get_operations_involving_address(address_a.clone()),
+                pool_controller.wait_command(2000.into(), |cmd| {
+                    match cmd {
+                        pool::PoolCommand::GetRecentOperations {
+                            address,
+                            response_tx,
+                        } => {
+                            assert_eq!(address, address_a);
+                            response_tx
+                                .send(
+                                    vec![op_pool_1.clone(), op_pool_3.clone()]
+                                        .into_iter()
+                                        .map(|op| {
+                                            (
+                                                op.get_operation_id().unwrap(),
+                                                OperationSearchResult {
+                                                    status: OperationSearchResultStatus::Pending,
+                                                    op,
+                                                    in_pool: true,
+                                                    in_blocks: HashMap::new(),
+                                                },
+                                            )
+                                        })
+                                        .collect(),
+                                )
+                                .unwrap();
+                            Some(())
+                        }
+                        _ => None,
+                    }
+                })
+            );
 
-    assert_eq!(pool, Some(()));
+            assert_eq!(pool, Some(()));
 
-    // Check that we received all expected ops related to A.
-    let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
-    let expected: HashSet<OperationId> = vec![
-        op_consensus_1.clone(),
-        op_consensus_2.clone(),
-        op_consensus_3.clone(),
-        op_pool_1.clone(),
-        op_pool_3.clone(),
-        op_storage_1.clone(),
-        op_storage_2.clone(),
-        op_storage_3.clone(),
-    ]
-    .into_iter()
-    .map(|op| op.get_operation_id().unwrap())
-    .collect();
-    assert_eq!(res, expected);
+            // Check that we received all expected ops related to A.
+            let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
+            let expected: HashSet<OperationId> = vec![
+                op_consensus_1.clone(),
+                op_consensus_2.clone(),
+                op_consensus_3.clone(),
+                op_pool_1.clone(),
+                op_pool_3.clone(),
+                op_storage_1.clone(),
+                op_storage_2.clone(),
+                op_storage_3.clone(),
+            ]
+            .into_iter()
+            .map(|op| op.get_operation_id().unwrap())
+            .collect();
+            assert_eq!(res, expected);
 
-    // Ask for ops related to B.
-    let (ops, pool) = tokio::join!(
-        consensus_command_sender.get_operations_involving_address(address_b.clone()),
-        pool_controller.wait_command(2000.into(), |cmd| {
-            match cmd {
-                pool::PoolCommand::GetRecentOperations {
-                    address,
-                    response_tx,
-                } => {
-                    assert_eq!(address, address_b);
-                    response_tx
-                        .send(
-                            vec![op_pool_2.clone(), op_pool_3.clone()]
-                                .into_iter()
-                                .map(|op| {
-                                    (
-                                        op.get_operation_id().unwrap(),
-                                        OperationSearchResult {
-                                            status: OperationSearchResultStatus::Pending,
-                                            op,
-                                            in_pool: true,
-                                            in_blocks: HashMap::new(),
-                                        },
-                                    )
-                                })
-                                .collect(),
-                        )
-                        .unwrap();
-                    Some(())
-                }
-                _ => None,
-            }
-        })
-    );
+            // Ask for ops related to B.
+            let (ops, pool) = tokio::join!(
+                consensus_command_sender.get_operations_involving_address(address_b.clone()),
+                pool_controller.wait_command(2000.into(), |cmd| {
+                    match cmd {
+                        pool::PoolCommand::GetRecentOperations {
+                            address,
+                            response_tx,
+                        } => {
+                            assert_eq!(address, address_b);
+                            response_tx
+                                .send(
+                                    vec![op_pool_2.clone(), op_pool_3.clone()]
+                                        .into_iter()
+                                        .map(|op| {
+                                            (
+                                                op.get_operation_id().unwrap(),
+                                                OperationSearchResult {
+                                                    status: OperationSearchResultStatus::Pending,
+                                                    op,
+                                                    in_pool: true,
+                                                    in_blocks: HashMap::new(),
+                                                },
+                                            )
+                                        })
+                                        .collect(),
+                                )
+                                .unwrap();
+                            Some(())
+                        }
+                        _ => None,
+                    }
+                })
+            );
 
-    assert_eq!(pool, Some(()));
+            assert_eq!(pool, Some(()));
 
-    // Check that we received all expected ops related to B.
-    let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
-    let expected: HashSet<OperationId> = vec![
-        op_consensus_1.clone(),
-        op_consensus_3.clone(),
-        op_pool_2.clone(),
-        op_pool_3.clone(),
-        op_storage_1.clone(),
-        op_storage_3.clone(),
-    ]
-    .into_iter()
-    .map(|op| op.get_operation_id().unwrap())
-    .collect();
-    assert_eq!(res, expected);
+            // Check that we received all expected ops related to B.
+            let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
+            let expected: HashSet<OperationId> = vec![
+                op_consensus_1.clone(),
+                op_consensus_3.clone(),
+                op_pool_2.clone(),
+                op_pool_3.clone(),
+                op_storage_1.clone(),
+                op_storage_3.clone(),
+            ]
+            .into_iter()
+            .map(|op| op.get_operation_id().unwrap())
+            .collect();
+            assert_eq!(res, expected);
+            (
+                pool_controller,
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 fn get_bootgraph(

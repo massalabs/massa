@@ -7,12 +7,7 @@ use serial_test::serial;
 use time::UTime;
 
 use crate::{
-    start_consensus_controller,
-    tests::{
-        mock_pool_controller::{MockPoolController, PoolCommandSink},
-        mock_protocol_controller::MockProtocolController,
-        tools::{self, generate_ledger_file},
-    },
+    tests::tools::{self, generate_ledger_file},
     LedgerData,
 };
 
@@ -72,46 +67,28 @@ async fn test_get_selection_draws_high_end_slot() {
     cfg.block_reward = 0;
     cfg.roll_price = 1000;
     cfg.operation_validity_periods = 100;
-
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
 
-    let draws = consensus_command_sender
-        .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))
-        .await;
-    assert!(draws.is_ok());
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let draws = consensus_command_sender
+                .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))
+                .await;
+            assert!(draws.is_ok());
 
-    // Too high end selection should return an error.
-    let too_high_draws = consensus_command_sender
-        .get_selection_draws(Slot::new(1, 0), Slot::new(200, 0))
-        .await;
-    assert!(too_high_draws.is_err());
-
-    // stop controller while ignoring all commands
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
+            // Too high end selection should return an error.
+            let too_high_draws = consensus_command_sender
+                .get_selection_draws(Slot::new(1, 0), Slot::new(200, 0))
+                .await;
+            assert!(too_high_draws.is_err());
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
+    )
+    .await;
 }
