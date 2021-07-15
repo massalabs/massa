@@ -2,6 +2,7 @@
 
 use crate::ReplData;
 use crate::ReplError;
+use crate::WrappedAddressState;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
@@ -12,6 +13,7 @@ use models::SerializeCompact;
 use models::Slot;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
@@ -164,7 +166,7 @@ impl Wallet {
     }
 }
 
-impl std::fmt::Display for Wallet {
+/*impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f)?;
         for key in &self.keys {
@@ -174,6 +176,33 @@ impl std::fmt::Display for Wallet {
             writeln!(f, "Private key: {}", key)?;
             writeln!(f, "Public key: {}", public_key)?;
             writeln!(f, "Address: {}", addr)?;
+        }
+        Ok(())
+    }
+}*/
+
+/// contains the private keys created in the wallet.
+#[derive(Debug)]
+pub struct WalletInfo<'a> {
+    pub wallet: &'a Wallet,
+    pub balances: HashMap<Address, WrappedAddressState>,
+}
+
+impl<'a> std::fmt::Display for WalletInfo<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for key in &self.wallet.keys {
+            let public_key = derive_public_key(key);
+            let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
+            writeln!(f)?;
+            writeln!(f, "Private key: {}", key)?;
+            writeln!(f, "Public key: {}", public_key)?;
+            writeln!(f, "Address: {}", addr)?;
+            match self.balances.get(&addr) {
+                Some(balance) => {
+                    write!(f, "State: \n{}", balance)?;
+                }
+                None => writeln!(f, "State: missing state")?,
+            }
         }
         Ok(())
     }

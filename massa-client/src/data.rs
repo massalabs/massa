@@ -24,7 +24,7 @@ use models::{
     OperationSearchResultStatus, OperationType, Slot,
 };
 use rust_decimal::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -186,7 +186,7 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
     list.iter().map(|v| from_hash_slot(*v)).collect()
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WrappedAddressState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,
@@ -196,30 +196,40 @@ pub struct WrappedAddressState {
     pub final_ledger_data: LedgerData,
 }
 
+/*
+    final balance: 2000
+    candidate balance: 2000
+    locked balance: 0
+    final rolls: 0
+    candidate rolls: 0
+    active rolls: 0
+*/
 impl<'a> std::fmt::Display for WrappedAddressState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "    final_roll {}", self.final_rolls)?;
-        if let Some(active) = self.active_rolls {
-            writeln!(f, "    active_rolls {}", active)?;
-        } else {
-            writeln!(f, "    No active rolls")?;
-        }
-        writeln!(f, "    candidate_rolls {}", self.candidate_rolls)?;
         writeln!(
             f,
-            "    locked_balance {}",
-            format_amount(self.locked_balance)
+            "    final balance: {}",
+            format_amount(self.final_ledger_data.balance)
         )?;
         writeln!(
             f,
-            "    candidate_ledger_data : balance:{}",
+            "    candidate balance:{}",
             format_amount(self.candidate_ledger_data.balance)
         )?;
         writeln!(
             f,
-            "    final_ledger_data : balance {}",
-            format_amount(self.final_ledger_data.balance)
+            "    locked balance: {}",
+            format_amount(self.locked_balance)
         )?;
+        writeln!(f, "    final rolls: {}", self.final_rolls)?;
+        writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
+
+        if let Some(active) = self.active_rolls {
+            writeln!(f, "    active rolls: {}", active)?;
+        } else {
+            writeln!(f, "    No active roll")?;
+        }
+
         Ok(())
     }
 }
