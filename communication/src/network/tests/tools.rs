@@ -2,13 +2,19 @@
 
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
+use super::{mock_establisher, tools};
 use crate::common::NodeId;
 use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
-use crate::network::{NetworkConfig, NetworkEvent, NetworkEventReceiver, PeerInfo};
+use crate::network::start_network_controller;
+use crate::network::{
+    NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, NetworkManager,
+    PeerInfo,
+};
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use models::{Address, BlockId, Operation, OperationContent, OperationType, SerializeCompact};
 use std::{
+    future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
     time::Duration,
@@ -363,4 +369,53 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         Operation { content, signature },
         Address::from_public_key(&sender_pub).unwrap().get_thread(2),
     )
+}
+
+/// Runs a consensus test, passing a mock pool controller to it.
+pub async fn network_test<F, V>(cfg: NetworkConfig, temp_peers_file: NamedTempFile, test: F)
+where
+    F: FnOnce(
+        NetworkCommandSender,
+        NetworkEventReceiver,
+        NetworkManager,
+        MockEstablisherInterface,
+    ) -> V,
+    V: Future<
+        Output = (
+            NetworkEventReceiver,
+            NetworkManager,
+            MockEstablisherInterface,
+            Vec<(JoinHandle<ReadBinder>, oneshot::Sender<()>)>,
+        ),
+    >,
+{
+    // create establisher
+    let (establisher, mock_interface) = mock_establisher::new();
+
+    // launch network controller
+    let (network_event_sender, network_event_receiver, network_manager, _private_key) =
+        start_network_controller(cfg.clone(), establisher, 0, None)
+            .await
+            .expect("could not start network controller");
+
+    // Call test func.
+    //force _mock_interface return to avoid to be dropped before the end of the test (network_manager.stop).
+    let (network_event_receiver, network_manager, _mock_interface, conn_to_drain_list) = test(
+        network_event_sender,
+        network_event_receiver,
+        network_manager,
+        mock_interface,
+    )
+    .await;
+
+    network_manager
+        .stop(network_event_receiver)
+        .await
+        .expect("error while stopping network");
+
+    for conn_drain in conn_to_drain_list {
+        tools::incoming_message_drain_stop(conn_drain).await;
+    }
+
+    temp_peers_file.close().unwrap();
 }
