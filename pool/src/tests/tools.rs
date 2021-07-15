@@ -4,9 +4,44 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
+use futures::Future;
 use models::{Address, Operation, OperationContent, OperationType, SerializeCompact};
 
-use crate::PoolConfig;
+use crate::{pool_controller, PoolCommandSender, PoolConfig, PoolManager};
+
+use super::mock_protocol_controller::MockProtocolController;
+
+pub async fn pool_test<F, V>(
+    cfg: PoolConfig,
+    thread_count: u8,
+    operation_validity_periods: u64,
+    test: F,
+) where
+    F: FnOnce(MockProtocolController, PoolCommandSender, PoolManager) -> V,
+    V: Future<Output = (MockProtocolController, PoolCommandSender, PoolManager)>,
+{
+    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
+        MockProtocolController::new();
+
+    let (mut pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
+        cfg.clone(),
+        thread_count,
+        operation_validity_periods,
+        protocol_command_sender,
+        protocol_pool_event_receiver,
+    )
+    .await
+    .unwrap();
+
+    let (mut protocol_controller, _pool_command_sender, pool_manager) =
+        test(protocol_controller, pool_command_sender, pool_manager).await;
+
+    let pool_event_receiver = pool_manager.stop().await.unwrap();
+
+    let stop_fut = pool_event_receiver.drain();
+    tokio::pin!(stop_fut);
+    protocol_controller.ignore_commands_while(stop_fut).await;
+}
 
 pub fn example_pool_config() -> (PoolConfig, u8, u64) {
     let mut nodes = Vec::new();
