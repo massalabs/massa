@@ -2,12 +2,7 @@
 
 use std::collections::HashMap;
 
-use super::{
-    mock_pool_controller::{MockPoolController, PoolCommandSink},
-    mock_protocol_controller::MockProtocolController,
-    tools,
-};
-use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
+use crate::tests::tools::{self, generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
 use serial_test::serial;
@@ -42,137 +37,119 @@ async fn test_queueing() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_hashes = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            // * create 30 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
+            //create a valid block for slot 1
+            let mut valid_hasht0 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 0),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    let genesis_hashes = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
+            //create a valid block on the other thread.
+            let mut valid_hasht1 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 1),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    // * create 30 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-    //create a valid block for slot 1
-    let mut valid_hasht0 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 0),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
+            // and loop for the 29 other blocks
+            for i in 0..29 {
+                valid_hasht0 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 2, 0),
+                    vec![valid_hasht0, valid_hasht1],
+                    true,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+
+                //create a valid block on the other thread.
+                valid_hasht1 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 2, 1),
+                    vec![valid_hasht0, valid_hasht1],
+                    true,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+            }
+
+            let (missed_hash, _missed_block, _missed_key) = tools::create_block(
+                &cfg,
+                Slot::new(32, 0),
+                vec![valid_hasht0, valid_hasht1],
+                staking_keys[0].clone(),
+            );
+
+            //create 1 block in thread 0 slot 33 with missed block as parent
+            valid_hasht0 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(33, 0),
+                vec![missed_hash, valid_hasht1],
+                false,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+
+            // and loop again for the 99 other blocks
+            for i in 0..30 {
+                valid_hasht0 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 34, 0),
+                    vec![valid_hasht0, valid_hasht1],
+                    false,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+
+                //create a valid block on the other thread.
+                valid_hasht1 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 34, 1),
+                    vec![valid_hasht0, valid_hasht1],
+                    false,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+            }
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
     )
     .await;
-
-    //create a valid block on the other thread.
-    let mut valid_hasht1 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 1),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // and loop for the 29 other blocks
-    for i in 0..29 {
-        valid_hasht0 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 2, 0),
-            vec![valid_hasht0, valid_hasht1],
-            true,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-
-        //create a valid block on the other thread.
-        valid_hasht1 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 2, 1),
-            vec![valid_hasht0, valid_hasht1],
-            true,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-    }
-
-    let (missed_hash, _missed_block, _missed_key) = tools::create_block(
-        &cfg,
-        Slot::new(32, 0),
-        vec![valid_hasht0, valid_hasht1],
-        staking_keys[0].clone(),
-    );
-
-    //create 1 block in thread 0 slot 33 with missed block as parent
-    valid_hasht0 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(33, 0),
-        vec![missed_hash, valid_hasht1],
-        false,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // and loop again for the 99 other blocks
-    for i in 0..30 {
-        valid_hasht0 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 34, 0),
-            vec![valid_hasht0, valid_hasht1],
-            false,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-
-        //create a valid block on the other thread.
-        valid_hasht1 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 34, 1),
-            vec![valid_hasht0, valid_hasht1],
-            false,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-    }
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -204,112 +181,94 @@ async fn test_doubles() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_hashes = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
+            //create a valid block for slot 1
+            let mut valid_hasht0 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 0),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    let genesis_hashes = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
+            //create a valid block on the other thread.
+            let mut valid_hasht1 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 1),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-    //create a valid block for slot 1
-    let mut valid_hasht0 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 0),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
+            // and loop for the 39 other blocks
+            for i in 0..39 {
+                valid_hasht0 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 2, 0),
+                    vec![valid_hasht0, valid_hasht1],
+                    true,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+
+                //create a valid block on the other thread.
+                valid_hasht1 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 2, 1),
+                    vec![valid_hasht0, valid_hasht1],
+                    true,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+            }
+
+            //create 1 block in thread 0 slot 41 with missed block as parent
+            valid_hasht0 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(41, 0),
+                vec![valid_hasht0, valid_hasht1],
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+
+            if let Some(block) = consensus_command_sender
+                .get_active_block(valid_hasht0)
+                .await
+                .unwrap()
+            {
+                tools::propagate_block(&mut protocol_controller, block, false, 1000).await;
+            };
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
     )
     .await;
-
-    //create a valid block on the other thread.
-    let mut valid_hasht1 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 1),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // and loop for the 39 other blocks
-    for i in 0..39 {
-        valid_hasht0 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 2, 0),
-            vec![valid_hasht0, valid_hasht1],
-            true,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-
-        //create a valid block on the other thread.
-        valid_hasht1 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 2, 1),
-            vec![valid_hasht0, valid_hasht1],
-            true,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-    }
-
-    //create 1 block in thread 0 slot 41 with missed block as parent
-    valid_hasht0 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(41, 0),
-        vec![valid_hasht0, valid_hasht1],
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    if let Some(block) = consensus_command_sender
-        .get_active_block(valid_hasht0)
-        .await
-        .unwrap()
-    {
-        tools::propagate_block(&mut protocol_controller, block, false, 1000).await;
-    };
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -341,121 +300,104 @@ async fn test_double_staking() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_hashes = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
+            //create a valid block for slot 1
+            let mut valid_hasht0 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 0),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    let genesis_hashes = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
+            //create a valid block on the other thread.
+            let mut valid_hasht1 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 1),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-    //create a valid block for slot 1
-    let mut valid_hasht0 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 0),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
+            // and loop for the 39 other blocks
+            for i in 0..39 {
+                valid_hasht0 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 2, 0),
+                    vec![valid_hasht0, valid_hasht1],
+                    true,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+
+                //create a valid block on the other thread.
+                valid_hasht1 = tools::create_and_test_block(
+                    &mut protocol_controller,
+                    &cfg,
+                    Slot::new(i + 2, 1),
+                    vec![valid_hasht0, valid_hasht1],
+                    true,
+                    false,
+                    staking_keys[0].clone(),
+                )
+                .await;
+            }
+
+            // same creator same slot, different block
+            let operation_merkle_root = Hash::hash("42".as_bytes());
+            let (hash_1, block_1, _key) = tools::create_block_with_merkle_root(
+                &cfg,
+                operation_merkle_root,
+                Slot::new(41, 0),
+                vec![valid_hasht0, valid_hasht1],
+                staking_keys[0].clone(),
+            );
+            tools::propagate_block(&mut protocol_controller, block_1, true, 150).await;
+
+            let operation_merkle_root =
+                Hash::hash("so long and thanks for all the fish".as_bytes());
+            let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
+                &cfg,
+                operation_merkle_root,
+                Slot::new(41, 0),
+                vec![valid_hasht0, valid_hasht1],
+                staking_keys[0].clone(),
+            );
+            tools::propagate_block(&mut protocol_controller, block_2, true, 150).await;
+
+            let graph = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .unwrap();
+            let cliques_1 = tools::get_cliques(&graph, hash_1);
+            let cliques_2 = tools::get_cliques(&graph, hash_2);
+            assert!(cliques_1.is_disjoint(&cliques_2));
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
     )
     .await;
-
-    //create a valid block on the other thread.
-    let mut valid_hasht1 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 1),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // and loop for the 39 other blocks
-    for i in 0..39 {
-        valid_hasht0 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 2, 0),
-            vec![valid_hasht0, valid_hasht1],
-            true,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-
-        //create a valid block on the other thread.
-        valid_hasht1 = tools::create_and_test_block(
-            &mut protocol_controller,
-            &cfg,
-            Slot::new(i + 2, 1),
-            vec![valid_hasht0, valid_hasht1],
-            true,
-            false,
-            staking_keys[0].clone(),
-        )
-        .await;
-    }
-
-    // same creator same slot, different block
-    let operation_merkle_root = Hash::hash("42".as_bytes());
-    let (hash_1, block_1, _key) = tools::create_block_with_merkle_root(
-        &cfg,
-        operation_merkle_root,
-        Slot::new(41, 0),
-        vec![valid_hasht0, valid_hasht1],
-        staking_keys[0].clone(),
-    );
-    tools::propagate_block(&mut protocol_controller, block_1, true, 150).await;
-
-    let operation_merkle_root = Hash::hash("so long and thanks for all the fish".as_bytes());
-    let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
-        &cfg,
-        operation_merkle_root,
-        Slot::new(41, 0),
-        vec![valid_hasht0, valid_hasht1],
-        staking_keys[0].clone(),
-    );
-    tools::propagate_block(&mut protocol_controller, block_2, true, 150).await;
-
-    let graph = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .unwrap();
-    let cliques_1 = tools::get_cliques(&graph, hash_1);
-    let cliques_2 = tools::get_cliques(&graph, hash_2);
-    assert!(cliques_1.is_disjoint(&cliques_2));
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -488,113 +430,95 @@ async fn test_test_parents() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_hashes = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            // * create 2 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
+            //create a valid block for slot 1
+            let valid_hasht0s1 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 0),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    let genesis_hashes = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
+            //create a valid block on the other thread.
+            let valid_hasht1s1 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 1),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    // * create 2 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-    //create a valid block for slot 1
-    let valid_hasht0s1 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 0),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
+            //create a valid block for slot 2
+            let valid_hasht0s2 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(2, 0),
+                vec![valid_hasht0s1, valid_hasht1s1],
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+
+            //create a valid block on the other thread.
+            tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(2, 1),
+                vec![valid_hasht0s1, valid_hasht1s1],
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+
+            // * create 1 block in t0s3 with parents (t0s2, t1s0)
+            //create a valid block for slot 2
+            tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(3, 0),
+                vec![valid_hasht0s2, genesis_hashes[1usize]],
+                false,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+
+            // * create 1 block in t1s3 with parents (t0s0, t0s0)
+            tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(3, 1),
+                vec![genesis_hashes[0usize], genesis_hashes[0usize]],
+                false,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
     )
     .await;
-
-    //create a valid block on the other thread.
-    let valid_hasht1s1 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 1),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    //create a valid block for slot 2
-    let valid_hasht0s2 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(2, 0),
-        vec![valid_hasht0s1, valid_hasht1s1],
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    //create a valid block on the other thread.
-    tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(2, 1),
-        vec![valid_hasht0s1, valid_hasht1s1],
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // * create 1 block in t0s3 with parents (t0s2, t1s0)
-    //create a valid block for slot 2
-    tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(3, 0),
-        vec![valid_hasht0s2, genesis_hashes[1usize]],
-        false,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // * create 1 block in t1s3 with parents (t0s0, t0s0)
-    tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(3, 1),
-        vec![genesis_hashes[0usize], genesis_hashes[0usize]],
-        false,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }

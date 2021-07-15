@@ -23,6 +23,7 @@ use crate::data::WrappedHash;
 use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use crate::wallet::Wallet;
+use crate::wallet::WalletInfo;
 use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
@@ -460,43 +461,47 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &data.wallet {
         //get wallet addresses balances
         let ordered_addrs = wallet.get_wallet_address_list();
-        let balances = query_addresses(data, ordered_addrs.iter().cloned().collect())
+        let display_wallet_info = query_addresses(data, ordered_addrs.iter().cloned().collect())
             .and_then(|resp| {
                 if resp.status() != StatusCode::OK {
-                    Ok("balance not available.".to_string())
-                } else if data.cli {
-                    Ok(resp.text().unwrap())
+                    Ok(HashMap::new())
+                } else {
+                    resp.json::<HashMap<Address, WrappedAddressState>>()
+                        .map_err(|err| err.into())
+                }
+            })
+            //            .or_else::<ReplError, _>(|_| Ok("balance not available.".to_string()))
+            .or_else::<ReplError, _>(|_| Ok(HashMap::new()))
+            .and_then(|balances| {
+                if data.cli {
+                    serde_json::to_string_pretty(&balances).map_err(|err| err.into())
                 } else {
                     let mut s = String::new();
-                    let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
                     writeln!(
                         s,
                         "{}",
-                        AddressStates {
-                            map: ledger,
-                            order: ordered_addrs
+                        WalletInfo {
+                            wallet: &wallet,
+                            balances,
                         }
                     )?;
                     Ok(s)
                 }
             })
-            .or_else::<ReplError, _>(|_| Ok("balance not available.".to_string()))
             .unwrap();
         if data.cli {
             println!(
-                "{{\"wallet\":{}, \"balance\":{}}}",
+                "{{\"wallet\":{}, \"balances\":{}}}",
                 wallet
                     .to_json_string()
                     .map_err(|err| ReplError::GeneralError(format!(
                         "Internal error during wallet json conversion: {}",
                         err
                     )))?,
-                balances
+                display_wallet_info
             );
         } else {
-            println!("wallet.dat:{}", wallet);
-            println!("balance:");
-            println!("{}", balances);
+            print!("wallet.dat: {}", display_wallet_info);
         }
     }
 
