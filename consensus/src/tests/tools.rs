@@ -1,12 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::mock_pool_controller::MockPoolController;
+use super::mock_pool_controller::{MockPoolController, PoolCommandSink};
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
     ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
     ConsensusConfig,
+};
+use crate::{
+    start_consensus_controller, BootsrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
+    ExportProofOfStake,
 };
 use communication::protocol::ProtocolCommand;
 use crypto::{
@@ -20,6 +24,7 @@ use models::{
 use pool::PoolCommand;
 use std::{
     collections::{HashMap, HashSet},
+    future::Future,
     path::Path,
 };
 use storage::{StorageAccess, StorageConfig};
@@ -660,6 +665,128 @@ pub fn default_consensus_config(
         stats_timespan: 60000.into(),
         staking_keys_path: staking_keys_path.to_path_buf(),
     }
+}
+
+/// Runs a consensus test, passing a mock pool controller to it.
+pub async fn consensus_pool_test<F, V>(
+    cfg: ConsensusConfig,
+    opt_storage_command_sender: Option<StorageAccess>,
+    boot_pos: Option<ExportProofOfStake>,
+    boot_graph: Option<BootsrapableGraph>,
+    test: F,
+) where
+    F: FnOnce(
+        MockPoolController,
+        MockProtocolController,
+        ConsensusCommandSender,
+        ConsensusEventReceiver,
+    ) -> V,
+    V: Future<
+        Output = (
+            MockPoolController,
+            MockProtocolController,
+            ConsensusCommandSender,
+            ConsensusEventReceiver,
+        ),
+    >,
+{
+    // mock protocol & pool
+    let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
+
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender,
+            protocol_event_receiver,
+            pool_command_sender,
+            opt_storage_command_sender,
+            boot_pos,
+            boot_graph,
+            0,
+        )
+        .await
+        .expect("could not start consensus controller");
+
+    // Call test func.
+    let (
+        pool_controller,
+        mut protocol_controller,
+        _consensus_command_sender,
+        consensus_event_receiver,
+    ) = test(
+        pool_controller,
+        protocol_controller,
+        consensus_command_sender,
+        consensus_event_receiver,
+    )
+    .await;
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
+    pool_sink.stop().await;
+}
+
+/// Runs a consensus test, without passing a mock pool controller to it.
+pub async fn consensus_without_pool_test<F, V>(
+    cfg: ConsensusConfig,
+    opt_storage_command_sender: Option<StorageAccess>,
+    test: F,
+) where
+    F: FnOnce(MockProtocolController, ConsensusCommandSender, ConsensusEventReceiver) -> V,
+    V: Future<
+        Output = (
+            MockProtocolController,
+            ConsensusCommandSender,
+            ConsensusEventReceiver,
+        ),
+    >,
+{
+    // mock protocol & pool
+    let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+    let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
+
+    // launch consensus controller
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender,
+            protocol_event_receiver,
+            pool_command_sender,
+            opt_storage_command_sender,
+            None,
+            None,
+            0,
+        )
+        .await
+        .expect("could not start consensus controller");
+
+    // Call test func.
+    let (mut protocol_controller, _consensus_command_sender, consensus_event_receiver) = test(
+        protocol_controller,
+        consensus_command_sender,
+        consensus_event_receiver,
+    )
+    .await;
+
+    // stop controller while ignoring all commands
+    let stop_fut = consensus_manager.stop(consensus_event_receiver);
+    tokio::pin!(stop_fut);
+    protocol_controller
+        .ignore_commands_while(stop_fut)
+        .await
+        .unwrap();
+    pool_sink.stop().await;
 }
 
 pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
