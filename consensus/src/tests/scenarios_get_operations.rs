@@ -84,7 +84,7 @@ async fn test_storage() {
     ];
 
     let boot_ledger = LedgerExport {
-        ledger_per_thread: vec![vec![(address_a, LedgerData { balance: 100 })], vec![]],
+        ledger_subset: vec![(address_a, LedgerData { balance: 100 })],
     };
 
     let (boot_graph, b1, b2) = get_bootgraph(
@@ -328,12 +328,9 @@ async fn test_consensus_and_storage() {
     let op_storage_3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
 
     let boot_ledger = LedgerExport {
-        ledger_per_thread: vec![
-            vec![
-                (address_a, LedgerData { balance: 1000 }),
-                (address_b, LedgerData { balance: 1000 }),
-            ],
-            vec![],
+        ledger_subset: vec![
+            (address_a, LedgerData { balance: 1000 }),
+            (address_b, LedgerData { balance: 1000 }),
         ],
     };
 

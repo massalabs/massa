@@ -8,7 +8,7 @@ use super::{
     tools,
 };
 use crate::{
-    ledger::{Ledger, LedgerChange, LedgerData},
+    ledger::{Ledger, LedgerChange, LedgerChanges, LedgerData},
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
@@ -79,15 +79,26 @@ async fn test_ledger_final_balance_increment_new_address() {
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
-    let change = LedgerChange::new(1, true);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 1);
@@ -114,18 +125,26 @@ async fn test_ledger_apply_change_wrong_thread() {
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
-    let change = LedgerChange::new(1, true);
-
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     // Note: wrong thread.
-    assert!(ledger
-        .apply_final_changes(thread + 1, vec![(address.clone(), change)], 1)
-        .is_err());
+    assert!(ledger.apply_final_changes(thread + 1, &changes, 1).is_err());
 
     // Balance should still be zero.
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 0);
@@ -152,23 +171,42 @@ async fn test_ledger_final_balance_increment_address_above_max() {
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
-    let change = LedgerChange::new(1, true);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 1);
 
-    let change = LedgerChange::new(u64::MAX, true);
-    assert!(ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
-        .is_err());
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: u64::MAX,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
+    assert!(ledger.apply_final_changes(thread, &changes, 1).is_err());
 }
 
 #[tokio::test]
@@ -193,29 +231,51 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let thread = address.get_thread(cfg.thread_count);
 
     // Increment.
-    let change = LedgerChange::new(1, true);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 1);
 
     // Decrement.
-    let change = LedgerChange::new(1, false);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: false,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 0);
@@ -243,38 +303,68 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     let thread = address.get_thread(cfg.thread_count);
 
     // Increment.
-    let change = LedgerChange::new(1, true);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 1);
 
     // Decrement.
-    let change = LedgerChange::new(1, false);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: false,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 0);
 
     // Try to decrement again.
-    let change = LedgerChange::new(1, false);
-    assert!(ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
-        .is_err());
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: false,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
+    assert!(ledger.apply_final_changes(thread, &changes, 1).is_err());
 }
 
 #[tokio::test]
@@ -299,10 +389,18 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
     let thread = address.get_thread(cfg.thread_count);
 
     // Decrement.
-    let change = LedgerChange::new(1, false);
-    assert!(ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
-        .is_err());
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: false,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
+    assert!(ledger.apply_final_changes(thread, &changes, 1).is_err());
 }
 
 #[tokio::test]
@@ -329,6 +427,7 @@ async fn test_ledger_final_balance_non_existing_address() {
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 0);
@@ -359,12 +458,13 @@ async fn test_ledger_final_balance_duplicate_address() {
         .get_final_data(vec![&address, &address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 0);
 
     // Should have returned a single result.
-    assert_eq!(final_datas.len(), 1);
+    assert_eq!(final_datas.0.len(), 1);
 }
 
 #[tokio::test]
@@ -395,10 +495,11 @@ async fn test_ledger_final_balance_multiple_addresses() {
         .get_final_data(addresses.iter().collect())
         .expect("Couldn't get final balance.");
 
-    assert_eq!(final_datas.len(), addresses.len());
+    assert_eq!(final_datas.0.len(), addresses.len());
 
     for address in addresses {
         let final_data_for_address = final_datas
+            .0
             .get(&address)
             .expect("Couldn't get data for address.");
         assert_eq!(final_data_for_address.balance, 0);
@@ -426,15 +527,26 @@ async fn test_ledger_clear() {
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
-    let change = LedgerChange::new(1, true);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 1);
@@ -445,6 +557,7 @@ async fn test_ledger_clear() {
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 0);
@@ -471,26 +584,35 @@ async fn test_ledger_read_whole() {
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
-    let change = LedgerChange::new(1, true);
+    let changes = LedgerChanges(
+        vec![(
+            address.clone(),
+            LedgerChange {
+                balance_delta: 1,
+                balance_increment: true,
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
     ledger
-        .apply_final_changes(thread, vec![(address.clone(), change)], 1)
+        .apply_final_changes(thread, &changes, 1)
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
         .get_final_data(vec![&address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
+        .0
         .get(&address)
         .expect("Couldn't get data for address.");
     assert_eq!(final_data_for_address.balance, 1);
 
-    let whole = ledger.read_whole().expect("Couldn't read whole ledger.");
-    let thread_ledger = whole
-        .get(thread as usize)
-        .expect("Couldn't get ledger for thread.");
-    let address_data = thread_ledger
+    let whole_ledger = ledger.read_whole().expect("Couldn't read whole ledger.");
+    let address_data = whole_ledger
+        .0
         .iter()
-        .filter(|(addr, _)| addr.clone() == address)
+        .filter(|(addr, _)| **addr == address)
         .collect::<Vec<_>>()
         .pop()
         .expect("Couldn't find ledger data for address.")
@@ -695,20 +817,20 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B3 and B4 have become final.
     {
-        let ledger = consensus_command_sender
+        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger;
-        let ledger_0: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[0].iter().cloned().collect();
-        let ledger_1: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[1].iter().cloned().collect();
-        assert_eq!(ledger_0[&address_1].balance, 991, "wrong address balance");
-        assert_eq!(ledger_1[&address_2].balance, 2985, "wrong address balance");
+            .ledger
+            .ledger_subset
+            .iter()
+            .cloned()
+            .collect();
+        assert_eq!(ledger[&address_1].balance, 991, "wrong address balance");
+        assert_eq!(ledger[&address_2].balance, 2985, "wrong address balance");
         assert!(
-            !ledger_0.contains_key(&address_3),
+            !ledger.contains_key(&address_3),
             "address shouldn't be present"
         );
     }
@@ -737,19 +859,19 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B5 has become final.
     {
-        let ledger = consensus_command_sender
+        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger;
-        let ledger_0: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[0].iter().cloned().collect();
-        let ledger_1: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[1].iter().cloned().collect();
-        assert_eq!(ledger_0[&address_1].balance, 1002, "wrong address balance");
-        assert_eq!(ledger_1[&address_2].balance, 2985, "wrong address balance");
-        assert_eq!(ledger_0[&address_3].balance, 6, "wrong address balance");
+            .ledger
+            .ledger_subset
+            .iter()
+            .cloned()
+            .collect();
+        assert_eq!(ledger[&address_1].balance, 1002, "wrong address balance");
+        assert_eq!(ledger[&address_2].balance, 2985, "wrong address balance");
+        assert_eq!(ledger[&address_3].balance, 6, "wrong address balance");
     }
 
     // Add block B12
@@ -765,19 +887,19 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B6 has become final.
     {
-        let ledger = consensus_command_sender
+        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger;
-        let ledger_0: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[0].iter().cloned().collect();
-        let ledger_1: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[1].iter().cloned().collect();
-        assert_eq!(ledger_0[&address_1].balance, 1002, "wrong address balance");
-        assert_eq!(ledger_1[&address_2].balance, 2995, "wrong address balance");
-        assert_eq!(ledger_0[&address_3].balance, 6, "wrong address balance");
+            .ledger
+            .ledger_subset
+            .iter()
+            .cloned()
+            .collect();
+        assert_eq!(ledger[&address_1].balance, 1002, "wrong address balance");
+        assert_eq!(ledger[&address_2].balance, 2995, "wrong address balance");
+        assert_eq!(ledger[&address_3].balance, 6, "wrong address balance");
     }
 
     // Add block B13
@@ -793,19 +915,19 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B7 and B8 have become final.
     {
-        let ledger = consensus_command_sender
+        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger;
-        let ledger_0: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[0].iter().cloned().collect();
-        let ledger_1: HashMap<Address, LedgerData> =
-            ledger.ledger_per_thread[1].iter().cloned().collect();
-        assert_eq!(ledger_0[&address_1].balance, 992, "wrong address balance");
-        assert_eq!(ledger_1[&address_2].balance, 2974, "wrong address balance");
-        assert_eq!(ledger_0[&address_3].balance, 6, "wrong address balance");
+            .ledger
+            .ledger_subset
+            .iter()
+            .cloned()
+            .collect();
+        assert_eq!(ledger[&address_1].balance, 992, "wrong address balance");
+        assert_eq!(ledger[&address_2].balance, 2974, "wrong address balance");
+        assert_eq!(ledger[&address_3].balance, 6, "wrong address balance");
     }
 
     // stop controller while ignoring all commands
