@@ -17,10 +17,7 @@ use logging::{massa_trace, warn};
 use models::{init_serialization_context, SerializationContext};
 use pool::start_pool_controller;
 use storage::start_storage;
-use tokio::{
-    fs::read_to_string,
-    signal::unix::{signal, SignalKind},
-};
+use tokio::{fs::read_to_string, signal};
 
 async fn run(cfg: config::Config) {
     // Init the global serialization context
@@ -129,7 +126,8 @@ async fn run(cfg: config::Config) {
     .unwrap();
 
     // interrupt signal listener
-    let mut stop_signal = signal(SignalKind::interrupt()).unwrap();
+    let stop_signal = signal::ctrl_c();
+    tokio::pin!(stop_signal);
 
     // loop over messages
     loop {
@@ -292,7 +290,7 @@ async fn run(cfg: config::Config) {
                 }
             }},
 
-            _ = stop_signal.recv() => {
+            _ = &mut stop_signal => {
                 massa_trace!("massa-node.main.run.select.stop", {});
                 info!("interrupt signal received");
                 break;
