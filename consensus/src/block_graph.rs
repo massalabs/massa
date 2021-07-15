@@ -851,6 +851,7 @@ async fn read_genesis_ledger(cfg: &ConsensusConfig) -> Result<Ledger, ConsensusE
     let ledger = serde_json::from_str::<HashMap<Address, LedgerData>>(
         &tokio::fs::read_to_string(&cfg.initial_ledger_path).await?,
     )?;
+    massa_trace!("read_genesis_ledger", { "ledger": ledger });
     Ledger::new(cfg.clone(), Some(ledger))
 }
 
