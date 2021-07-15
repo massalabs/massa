@@ -283,14 +283,12 @@ impl ConsensusWorker {
 
         massa_trace!("consensus.consensus_worker.slot_tick", { "slot": cur_slot });
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
-        if self
-            .previous_slot
-            .unwrap()
-            .get_cycle(self.cfg.periods_per_cycle)
-            != cur_cycle
-        {
-            info!("Starting cycle {}", cur_cycle);
-        }
+
+        self.previous_slot.map(|slot| {
+            if slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
+                info!("Starting cycle {}", cur_cycle);
+            }
+        });
 
         // signal tick to pool
         self.pool_command_sender
