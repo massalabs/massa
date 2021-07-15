@@ -4,7 +4,7 @@ use binders::{ReadBinder, WriteBinder};
 use communication::network::{BootstrapPeers, NetworkCommandSender};
 use consensus::{BootsrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use establisher::{ReadHalf, WriteHalf};
-use log::{debug, warn};
+use log::{debug, info, warn};
 use std::net::SocketAddr;
 
 use logging::massa_trace;
@@ -34,6 +34,7 @@ async fn get_state_internal(
     establisher: &mut Establisher,
 ) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
+    info!("Start bootstrapping from {}", bootstrap_addr);
 
     // connect and handshake
     let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
@@ -168,6 +169,7 @@ async fn get_state_internal(
     signed_data.extend(graph.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
     verify_signature(&signed_data_hash, &sig, &bootstrap_public_key)?;
+    info!("Successuful bootstrap");
 
     Ok((pos, graph, compensation_millis, peers))
 }

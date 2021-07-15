@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 mod error;
+use chrono::{DateTime, NaiveDateTime, Utc};
 pub use error::TimeError;
 use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -284,5 +285,19 @@ impl UTime {
             .checked_rem(n)
             .ok_or_else(|| TimeError::CheckedOperationError("remainder error".to_string()))
             .map(UTime)
+    }
+
+    /// ```
+    /// # use time::*;
+    /// let utime : UTime = UTime::from(0);
+    /// assert_eq!(utime.to_utc_string(), "1970-01-01 00:00:00 UTC")
+    /// ```
+    pub fn to_utc_string(self) -> String {
+        let naive = NaiveDateTime::from_timestamp(
+            (self.to_millis() / 1000) as i64,
+            ((self.to_millis() % 1000) * 1_000_000) as u32,
+        );
+        let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
+        format!("{}", datetime)
     }
 }
