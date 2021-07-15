@@ -1,9 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{
-    ledger::{LedgerChange, LedgerData, LedgerSubset, OperationLedgerInterface},
-    pos::ExportProofOfStake,
-};
+use crate::{ledger::LedgerData, pos::ExportProofOfStake};
 
 use super::{
     block_graph::*, config::ConsensusConfig, error::ConsensusError, pos::ProofOfStake, timeslots::*,
@@ -304,8 +301,8 @@ impl ConsensusWorker {
                 }
                 Err(err) => return Err(err),
             };
-            if let Some((addr, pub_k, priv_k)) = creator_info {
-                self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+            if let Some((_addr, pub_k, priv_k)) = creator_info {
+                self.create_block(cur_slot, &pub_k, &priv_k).await?;
             }
         }
 
@@ -332,7 +329,6 @@ impl ConsensusWorker {
     async fn create_block(
         &mut self,
         cur_slot: Slot,
-        creator_addr: &Address,
         creator_public_key: &PublicKey,
         creator_private_key: &PrivateKey,
     ) -> Result<(), ConsensusError> {
@@ -392,21 +388,10 @@ impl ConsensusWorker {
             ancestor_id = ancestor.parents[cur_slot.thread as usize].0;
         }
 
-        // get thread ledger and apply block reward
-        let mut thread_ledger = LedgerSubset::new(self.cfg.thread_count);
-        if creator_addr.get_thread(self.cfg.thread_count) == cur_slot.thread {
-            let mut fee_ledger = self
-                .block_db
-                .get_ledger_at_parents(parents, &vec![*creator_addr].into_iter().collect())?;
-            fee_ledger.apply_change((
-                creator_addr,
-                &LedgerChange {
-                    balance_delta: self.cfg.block_reward,
-                    balance_increment: true,
-                },
-            ))?;
-            thread_ledger.extend(fee_ledger);
-        }
+        // init block state accumulator
+        let mut state_accu = self
+            .block_db
+            .block_state_accumulator_init(&block.header, &mut self.pos)?;
 
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
@@ -435,32 +420,15 @@ impl ConsensusWorker {
                     continue;
                 }
 
-                // get the ledger changes caused by the op in the block's thread
-                let mut thread_changes: Vec<HashMap<Address, LedgerChange>> =
-                    vec![HashMap::new(); self.cfg.thread_count as usize];
-                thread_changes[cur_slot.thread as usize] = op
-                    .get_ledger_changes(creator_addr, self.cfg.thread_count, self.cfg.roll_price)?
-                    .swap_remove(cur_slot.thread as usize);
-
-                // add missing entries to the ledger
-                let missing_entries = self.block_db.get_ledger_at_parents(
-                    parents,
-                    &thread_changes[cur_slot.thread as usize]
-                        .keys()
-                        .filter(|addr| !thread_ledger.contains(addr, self.cfg.thread_count))
-                        .copied()
-                        .collect(),
-                )?;
-                thread_ledger.extend(missing_entries);
-
-                // try to apply the changes caused by the op in the block's thread
-                if let Err(err) = thread_ledger.try_apply_changes(&thread_changes) {
-                    massa_trace!("create block thread_ledger.try_apply_changes error", {
-                        "error:": err.to_string(),
-                        "ledger:": thread_ledger,
-                    });
+                // try to apply operation to block state
+                // on failure, the block state is not modified
+                if self
+                    .block_db
+                    .block_state_try_apply_op(&mut state_accu, &block.header, &op, &mut self.pos)
+                    .is_err()
+                {
                     continue;
-                }
+                };
 
                 // add operation
                 operation_set.insert(op_id, (operation_set.len(), op.content.expire_period));
@@ -853,12 +821,14 @@ impl ConsensusWorker {
                             .ok_or(ConsensusError::RollOverflowError)?,
                         candidate_ledger_data: ledger_data
                             .candidate_data
-                            .get_data(addr, self.cfg.thread_count)
-                            .clone(),
+                            .0
+                            .get(&addr)
+                            .map_or_else(|| LedgerData::default(), |v| v.clone()),
                         final_ledger_data: ledger_data
                             .final_data
-                            .get_data(addr, self.cfg.thread_count)
-                            .clone(),
+                            .0
+                            .get(&addr)
+                            .map_or_else(|| LedgerData::default(), |v| v.clone()),
                     },
                 );
             }

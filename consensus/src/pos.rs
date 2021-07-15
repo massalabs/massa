@@ -63,14 +63,7 @@ impl DeserializeCompact for RollUpdate {
 }
 
 impl RollUpdate {
-    pub fn new() -> Self {
-        RollUpdate {
-            roll_purchases: 0,
-            roll_sales: 0,
-        }
-    }
-
-    // chain two roll updates, return compensation count
+    // chain two roll updates, compensate and return compensation count
     fn chain(&mut self, change: &Self) -> Result<RollCompensation, ConsensusError> {
         let compensation_other = std::cmp::min(change.roll_purchases, change.roll_sales);
         self.roll_purchases = self
@@ -102,37 +95,32 @@ impl RollUpdate {
 
     // compensate a roll update, return compensation count
     pub fn compensate(&mut self) -> RollCompensation {
-        let compensation_self = std::cmp::min(self.roll_purchases, self.roll_sales);
-        self.roll_purchases -= compensation_self;
-        self.roll_sales -= compensation_self;
-        RollCompensation(compensation_self)
+        let compensation = std::cmp::min(self.roll_purchases, self.roll_sales);
+        self.roll_purchases -= compensation;
+        self.roll_sales -= compensation;
+        RollCompensation(compensation)
     }
 
-    fn is_nil(&self) -> bool {
+    pub fn is_nil(&self) -> bool {
         self.roll_purchases == 0 && self.roll_sales == 0
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RollUpdates(pub HashMap<Address, RollUpdate>);
 
 impl RollUpdates {
-    pub fn new() -> Self {
-        RollUpdates(HashMap::new())
+    pub fn get_involved_addresses(&self) -> HashSet<Address> {
+        self.0.keys().copied().collect()
     }
 
     // chains with another RollUpdates, compensates and returns compensations
-    pub fn chain_subset(
+    pub fn chain(
         &mut self,
         updates: &RollUpdates,
-        addrs_opt: Option<&HashSet<Address>>,
     ) -> Result<HashMap<Address, RollCompensation>, ConsensusError> {
         let mut res = HashMap::new();
-        for (addr, update) in updates
-            .0
-            .iter()
-            .filter(|(a, _v)| addrs_opt.map_or(true, |addrs| addrs.contains(a)))
-        {
+        for (addr, update) in updates.0.iter() {
             res.insert(*addr, self.apply(addr, update)?);
             // remove if nil
             if let hash_map::Entry::Occupied(occ) = self.0.entry(*addr) {
@@ -164,21 +152,29 @@ impl RollUpdates {
         }
     }
 
-    pub fn clone_subset(&self, addrs_opt: Option<&HashSet<Address>>) -> Self {
-        if let Some(addrs) = addrs_opt {
-            Self(
-                addrs
-                    .iter()
-                    .filter_map(|addr| self.0.get(addr).map(|v| (*addr, v.clone())))
-                    .collect(),
-            )
-        } else {
-            self.clone()
+    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+        Self(
+            addrs
+                .iter()
+                .filter_map(|addr| self.0.get(addr).map(|v| (*addr, v.clone())))
+                .collect(),
+        )
+    }
+
+    /// merge another roll updates into self, overwriting existing data
+    /// addrs that are in not other are removed from self
+    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: RollUpdates) {
+        for addr in addrs.iter() {
+            if let Some(new_val) = other.0.remove(addr) {
+                self.0.insert(*addr, new_val);
+            } else {
+                self.0.remove(addr);
+            }
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RollCounts(pub BTreeMap<Address, u64>);
 
 impl RollCounts {
@@ -187,17 +183,8 @@ impl RollCounts {
     }
 
     // applies RollUpdates to self with compensations
-    // if addrs_opt is Some(addrs), the changes are restricted to addrs
-    pub fn apply_subset(
-        &mut self,
-        updates: &RollUpdates,
-        addrs_opt: Option<&HashSet<Address>>,
-    ) -> Result<(), ConsensusError> {
-        for (addr, update) in updates
-            .0
-            .iter()
-            .filter(|(a, _v)| addrs_opt.map_or(true, |addrs| addrs.contains(a)))
-        {
+    pub fn apply_updates(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
+        for (addr, update) in updates.0.iter() {
             match self.0.entry(*addr) {
                 btree_map::Entry::Occupied(mut occ) => {
                     let cur_val = *occ.get();
@@ -218,10 +205,17 @@ impl RollCounts {
                                 )
                             })?;
                     }
+                    if *occ.get() == 0 {
+                        // remove if 0
+                        occ.remove();
+                    }
                 }
                 btree_map::Entry::Vacant(vac) => {
                     if update.roll_purchases >= update.roll_sales {
-                        vac.insert(update.roll_purchases - update.roll_sales);
+                        if update.roll_purchases > update.roll_sales {
+                            // ignore if 0
+                            vac.insert(update.roll_purchases - update.roll_sales);
+                        }
                     } else {
                         return Err(ConsensusError::InvalidRollUpdate(
                             "underflow while decrementing roll count".into(),
@@ -233,20 +227,24 @@ impl RollCounts {
         Ok(())
     }
 
-    pub fn remove_nil(&mut self) {
-        self.0.retain(|_k, v| *v != 0);
+    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+        Self(
+            addrs
+                .iter()
+                .filter_map(|addr| self.0.get(addr).map(|v| (*addr, *v)))
+                .collect(),
+        )
     }
 
-    pub fn clone_subset(&self, addrs_opt: Option<&HashSet<Address>>) -> Self {
-        if let Some(addrs) = addrs_opt {
-            Self(
-                addrs
-                    .iter()
-                    .filter_map(|addr| self.0.get(addr).map(|v| (*addr, *v)))
-                    .collect(),
-            )
-        } else {
-            self.clone()
+    /// merge another roll counts into self, overwriting existing data
+    /// addrs that are in not other are removed from self
+    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: RollCounts) {
+        for addr in addrs.iter() {
+            if let Some(new_val) = other.0.remove(addr) {
+                self.0.insert(*addr, new_val);
+            } else {
+                self.0.remove(addr);
+            }
         }
     }
 }
@@ -257,7 +255,7 @@ pub trait OperationRollInterface {
 
 impl OperationRollInterface for Operation {
     fn get_roll_updates(&self) -> Result<RollUpdates, ConsensusError> {
-        let mut res = RollUpdates::new();
+        let mut res = RollUpdates::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { roll_count } => {
@@ -561,7 +559,7 @@ impl ProofOfStake {
                     cycle: 0,
                     last_final_slot: Slot::new(0, thread as u8),
                     roll_count: thread_rolls.clone(),
-                    cycle_updates: RollUpdates::new(),
+                    cycle_updates: RollUpdates::default(),
                     rng_seed,
                 };
                 history.push_front(thread_cycle_state);
@@ -808,7 +806,7 @@ impl ProofOfStake {
                     self.cycle_states[thread as usize].push_front(ThreadCycleState {
                         cycle,
                         last_final_slot: slot,
-                        cycle_updates: RollUpdates::new(),
+                        cycle_updates: RollUpdates::default(),
                         roll_count,
                         rng_seed: BitVec::<Lsb0, u8>::new(),
                     });
@@ -826,11 +824,8 @@ impl ProofOfStake {
                 if period == block_slot.period {
                     // we are applying the block itself
                     // compensations have already been taken into account within the block and converted to ledger changes so we ignore them here
-                    entry
-                        .cycle_updates
-                        .chain_subset(&a_block.roll_updates, None)?;
-                    entry.roll_count.apply_subset(&a_block.roll_updates, None)?;
-                    entry.roll_count.remove_nil();
+                    entry.cycle_updates.chain(&a_block.roll_updates)?;
+                    entry.roll_count.apply_updates(&a_block.roll_updates)?;
                     // append the 1st bit of the block's hash to the RNG seed bitfield
                     entry.rng_seed.push(block_id.get_first_bit());
                 } else {
@@ -867,20 +862,21 @@ impl ProofOfStake {
         }
     }
 
+    /// returns the roll sell credit amount (in coins) for each credited address
     pub fn get_roll_sell_credit(
         &self,
-        slot: Slot,
+        cycle: u64,
+        thread: u8,
     ) -> Result<HashMap<Address, u64>, ConsensusError> {
-        let cycle = slot.get_cycle(self.cfg.periods_per_cycle);
         let mut res = HashMap::new();
         if let Some(target_cycle) =
             cycle.checked_sub(self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1)
         {
             let roll_data = self
-                .get_final_roll_data(target_cycle, slot.thread)
+                .get_final_roll_data(target_cycle, thread)
                 .ok_or(ConsensusError::NotFinalRollError)?;
             if !roll_data.is_complete(self.cfg.periods_per_cycle) {
-                return Err(ConsensusError::NotFinalRollError); // target_cycle not completly final
+                return Err(ConsensusError::NotFinalRollError); // target_cycle not completely final
             }
             for (addr, update) in roll_data.cycle_updates.0.iter() {
                 let sale_delta = update.roll_sales.saturating_sub(update.roll_purchases);
