@@ -515,13 +515,15 @@ impl ConsensusWorker {
                 format!(
                     "Next slot for address : {} at {}",
                     slot,
-                    get_block_slot_timestamp(
+                    match get_block_slot_timestamp(
                         self.cfg.thread_count,
                         self.cfg.t0,
                         self.cfg.genesis_timestamp,
                         slot
-                    )?
-                    .to_utc_string()
+                    ) {
+                        Ok(time) => time.to_utc_string(),
+                        Err(_) => "internal error during get_block_slot_timestamp".to_string(),
+                    }
                 )
             } else {
                 "Address not yet selected".to_string()
