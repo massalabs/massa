@@ -171,7 +171,7 @@ async fn test_new_final_ops() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let boot_ledger = LedgerExport {
-        ledger_per_thread: vec![vec![(address_a, LedgerData { balance: 100 })], vec![]],
+        ledger_subset: vec![(address_a, LedgerData { balance: 100 })],
     };
     let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
     let (boot_graph, mut p0, mut p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);

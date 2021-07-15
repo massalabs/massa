@@ -51,14 +51,14 @@ async fn test_block_creation_with_draw() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
 
     //init roll cont
-    let mut roll_counts: Vec<RollCounts> = vec![RollCounts::new(); 2];
+    let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
         roll_sales: 0,
     };
-    let mut updates = RollUpdates::new();
+    let mut updates = RollUpdates::default();
     updates.apply(&address_1, &update).unwrap();
-    roll_counts[0].apply_subset(&updates, None).unwrap();
+    roll_counts.apply_updates(&updates).unwrap();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_roll_counts_file(&roll_counts);

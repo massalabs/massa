@@ -491,7 +491,7 @@ pub fn get_export_active_test_block(
             block,
             children: vec![vec![], vec![]],
             is_final,
-            block_ledger_change: vec![vec![], vec![]],
+            block_ledger_changes: vec![],
             roll_updates: vec![],
         },
         id,
@@ -556,14 +556,10 @@ pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFi
 }
 
 /// generate a named temporary JSON initial rolls file
-pub fn generate_roll_counts_file(roll_counts_vec: &Vec<RollCounts>) -> NamedTempFile {
+pub fn generate_roll_counts_file(roll_counts: &RollCounts) -> NamedTempFile {
     use std::io::prelude::*;
     let roll_counts_file_named = NamedTempFile::new().expect("cannot create temp file");
-    let mut roll_counts_map: HashMap<Address, u64> = HashMap::new();
-    for roll_c in roll_counts_vec.iter() {
-        roll_counts_map.extend(roll_c.0.iter().map(|(k, v)| (*k, *v)))
-    }
-    serde_json::to_writer_pretty(roll_counts_file_named.as_file(), &roll_counts_map)
+    serde_json::to_writer_pretty(roll_counts_file_named.as_file(), &roll_counts.0)
         .expect("unable to write ledger file");
     roll_counts_file_named
         .as_file()
@@ -575,7 +571,7 @@ pub fn generate_roll_counts_file(roll_counts_vec: &Vec<RollCounts>) -> NamedTemp
 /// generate a default named temporary JSON initial rolls file,
 /// asuming two threads.
 pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempFile {
-    let mut roll_counts: Vec<RollCounts> = vec![RollCounts::new(); 2];
+    let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {
         let pub_key = crypto::derive_public_key(key);
         let address = Address::from_public_key(&pub_key).unwrap();
@@ -583,12 +579,9 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
             roll_purchases: 1,
             roll_sales: 0,
         };
-        let mut updates = RollUpdates::new();
+        let mut updates = RollUpdates::default();
         updates.apply(&address, &update).unwrap();
-        let thread = address.get_thread(2);
-        roll_counts[thread as usize]
-            .apply_subset(&updates, None)
-            .unwrap();
+        roll_counts.apply_updates(&updates).unwrap();
     }
     generate_roll_counts_file(&roll_counts)
 }
