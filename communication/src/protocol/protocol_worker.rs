@@ -854,6 +854,7 @@ impl ProtocolWorker {
     ) -> Result<(), CommunicationError> {
         match evt {
             NetworkEvent::NewConnection(node_id) => {
+                info!("Connected to node {}", node_id);
                 massa_trace!(
                     "protocol.protocol_worker.on_network_event.new_connection",
                     { "node": node_id }
@@ -862,6 +863,7 @@ impl ProtocolWorker {
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
+                info!("Connection closed with {}", node_id);
                 massa_trace!(
                     "protocol.protocol_worker.on_network_event.connection_closed",
                     { "node": node_id }
