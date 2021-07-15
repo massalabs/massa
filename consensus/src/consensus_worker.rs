@@ -503,7 +503,7 @@ impl ConsensusWorker {
 
         massa_trace!("create block", { "block": block });
         info!(
-            "Created block {}, by address {}, at slot {} (cycle {})\n{}",
+            "Staked block {}, by address {}, at slot {} (cycle {})\n{}",
             block_id,
             creator_addr,
             cur_slot,
