@@ -183,7 +183,7 @@ impl ConsensusWorker {
         let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
         info!(
             "Starting node at time {}, cycle {}, slot {}",
-            UTime::now(clock_compensation)?,
+            UTime::now(clock_compensation)?.to_utc_string(),
             next_slot.get_cycle(cfg.periods_per_cycle),
             next_slot
         );
@@ -514,7 +514,17 @@ impl ConsensusWorker {
                 .pos
                 .get_next_selected_slot(self.next_slot, *creator_addr)
             {
-                format!("Next slot for address : {}", slot)
+                format!(
+                    "Next slot for address : {} at {}",
+                    slot,
+                    get_block_slot_timestamp(
+                        self.cfg.thread_count,
+                        self.cfg.t0,
+                        self.cfg.genesis_timestamp,
+                        slot
+                    )?
+                    .to_utc_string()
+                )
             } else {
                 "Address not yet selected".to_string()
             }
@@ -774,7 +784,17 @@ impl ConsensusWorker {
                         address,
                         if let Some(slot) = self.pos.get_next_selected_slot(self.next_slot, address)
                         {
-                            format!("Next slot for address : {}", slot)
+                            format!(
+                                "Next slot for address : {} at {}",
+                                slot,
+                                get_block_slot_timestamp(
+                                    self.cfg.thread_count,
+                                    self.cfg.t0,
+                                    self.cfg.genesis_timestamp,
+                                    slot
+                                )?
+                                .to_utc_string()
+                            )
                         } else {
                             "Address not yet selected".to_string()
                         }
