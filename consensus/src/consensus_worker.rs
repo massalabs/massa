@@ -181,7 +181,12 @@ impl ConsensusWorker {
             .map(|(_block_id, period)| *period)
             .collect();
         let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
-
+        info!(
+            "Starting node at time {}, cycle {}, slot {}",
+            UTime::now(clock_compensation)?,
+            next_slot.get_cycle(cfg.periods_per_cycle),
+            next_slot
+        );
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
         Ok(ConsensusWorker {
@@ -277,6 +282,15 @@ impl ConsensusWorker {
         self.next_slot = self.next_slot.get_next_slot(self.cfg.thread_count)?;
 
         massa_trace!("consensus.consensus_worker.slot_tick", { "slot": cur_slot });
+        let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
+        if self
+            .previous_slot
+            .unwrap()
+            .get_cycle(self.cfg.periods_per_cycle)
+            != cur_cycle
+        {
+            info!("Starting cycle {}", cur_cycle);
+        }
 
         // signal tick to pool
         self.pool_command_sender
@@ -490,6 +504,13 @@ impl ConsensusWorker {
         let block = Block { header, operations };
 
         massa_trace!("create block", { "block": block });
+        info!(
+            "Created block {}, by address {}, at slot {} (cycle {})",
+            block_id,
+            creator_addr,
+            cur_slot,
+            cur_slot.get_cycle(self.cfg.periods_per_cycle)
+        );
 
         // add block to db
         self.block_db.incoming_block(
@@ -740,6 +761,7 @@ impl ConsensusWorker {
                 for key in keys.into_iter() {
                     let public = crypto::derive_public_key(&key);
                     let address = Address::from_public_key(&public)?;
+                    info!("Start staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));
                 }
                 Ok(())
