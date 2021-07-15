@@ -14,13 +14,10 @@ use communication::{
 use consensus::start_consensus_controller;
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
-use models::{init_serialization_context, SerializationContext};
+use models::{init_serialization_context, Address, SerializationContext};
 use pool::start_pool_controller;
 use storage::start_storage;
-use tokio::{
-    fs::read_to_string,
-    signal::unix::{signal, SignalKind},
-};
+use tokio::{fs::read_to_string, signal};
 
 async fn run(cfg: config::Config) {
     // Init the global serialization context
@@ -129,7 +126,8 @@ async fn run(cfg: config::Config) {
     .unwrap();
 
     // interrupt signal listener
-    let mut stop_signal = signal(SignalKind::interrupt()).unwrap();
+    let stop_signal = signal::ctrl_c();
+    tokio::pin!(stop_signal);
 
     // loop over messages
     loop {
@@ -152,6 +150,17 @@ async fn run(cfg: config::Config) {
                 match evt {
                 Ok(ApiEvent::AddOperations(operations)) => {
                     massa_trace!("massa-node.main.run.select.api_event.AddOperations", {"operations": operations});
+                    for (id, op) in operations.iter() {
+                        info!("Added operation {}from API : type {}, from address {}, fee{}", id,   match op.content.op {
+                            models::OperationType::Transaction {  amount , ..} => format!("transaction with amount {}", amount),
+                            models::OperationType::RollBuy { roll_count } => format!("buy {} rolls", roll_count),
+                            models::OperationType::RollSell { roll_count } => format!("sell {} rolls", roll_count),
+                        },
+                        match Address::from_public_key(&op.content.sender_public_key){
+                            Ok(addr) => addr.to_string(),
+                            Err(_) => "could not get address from public key".to_string(),
+                        }, op.content.fee);
+                    }
                     if api_pool_command_sender.add_operations(operations)
                             .await
                         .is_err() {
@@ -292,7 +301,7 @@ async fn run(cfg: config::Config) {
                 }
             }},
 
-            _ = stop_signal.recv() => {
+            _ = &mut stop_signal => {
                 massa_trace!("massa-node.main.run.select.stop", {});
                 info!("interrupt signal received");
                 break;

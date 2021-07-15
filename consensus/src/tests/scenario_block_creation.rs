@@ -13,12 +13,7 @@ use time::UTime;
 use crate::{
     ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
-    start_consensus_controller,
-    tests::{
-        mock_pool_controller::{MockPoolController, PoolCommandSink},
-        mock_protocol_controller::MockProtocolController,
-        tools::{self, create_roll_transaction, create_transaction, generate_ledger_file},
-    },
+    tests::tools::{self, create_roll_transaction, create_transaction, generate_ledger_file},
 };
 
 // implement test of issue !424.
@@ -56,14 +51,14 @@ async fn test_block_creation_with_draw() {
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
 
     //init roll cont
-    let mut roll_counts: Vec<RollCounts> = vec![RollCounts::new(); 2];
+    let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
         roll_sales: 0,
     };
-    let mut updates = RollUpdates::new();
+    let mut updates = RollUpdates::default();
     updates.apply(&address_1, &update).unwrap();
-    roll_counts[0].apply_subset(&updates, None).unwrap();
+    roll_counts.apply_updates(&updates).unwrap();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_roll_counts_file(&roll_counts);
@@ -92,114 +87,98 @@ async fn test_block_creation_with_draw() {
 
     let operation_fee = 0;
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_ids = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
-    let genesis_ids = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
-
-    // initial block: addr2 buys 1 roll
-    let op1 = create_roll_transaction(priv_2, pubkey_2, 1, true, 10, operation_fee);
-    let (initial_block_id, block, _) = tools::create_block_with_operations(
-        &cfg,
-        Slot::new(1, 0),
-        &genesis_ids,
-        staking_keys[0].clone(),
-        vec![op1],
-    );
-    tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
-
-    // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
-    // note that blocks in cycle 3 may be created during this, so make sure that their clique is overrun by sending a large amount of blocks
-    let mut cur_parents = vec![initial_block_id, genesis_ids[1]];
-    for delta_period in 0u64..10 {
-        for thread in 0..cfg.thread_count {
-            let res_block_id = tools::create_and_test_block(
-                &mut protocol_controller,
+            // initial block: addr2 buys 1 roll
+            let op1 = create_roll_transaction(priv_2, pubkey_2, 1, true, 10, operation_fee);
+            let (initial_block_id, block, _) = tools::create_block_with_operations(
                 &cfg,
-                Slot::new(cfg.periods_per_cycle + delta_period, thread),
-                cur_parents.clone(),
-                true,
-                false,
+                Slot::new(1, 0),
+                &genesis_ids,
                 staking_keys[0].clone(),
-            )
-            .await;
-            cur_parents[thread as usize] = res_block_id;
-        }
-    }
+                vec![op1],
+            );
+            tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
 
-    // get draws for cycle 3 (lookback = cycle 0)
-    let draws = consensus_command_sender
-        .get_selection_draws(
-            Slot::new(3 * cfg.periods_per_cycle, 0),
-            Slot::new(4 * cfg.periods_per_cycle, 0),
-        )
-        .await
-        .unwrap();
-    let nb_address1_draws = draws.iter().filter(|(_, addr)| *addr == address_1).count();
-    // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
-    // note: this is a statistical test. It may fail in rare occasions.
-    assert!(
-        (0.5 - ((nb_address1_draws as f32)
-            / ((cfg.thread_count as u64 * cfg.periods_per_cycle) as f32)))
-            .abs()
-            < 0.15
-    );
-
-    // check 10 draws
-    let draws: HashMap<Slot, Address> = draws.into_iter().collect();
-    let mut cur_slot = Slot::new(cfg.periods_per_cycle * 3, 0);
-    for _ in 0..10 {
-        // wait block propagation
-        let block_creator = protocol_controller
-            .wait_command(3000.into(), |cmd| match cmd {
-                ProtocolCommand::IntegratedBlock { block, .. } => {
-                    if block.header.content.slot == cur_slot {
-                        Some(block.header.content.creator)
-                    } else {
-                        None
-                    }
+            // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
+            // note that blocks in cycle 3 may be created during this, so make sure that their clique is overrun by sending a large amount of blocks
+            let mut cur_parents = vec![initial_block_id, genesis_ids[1]];
+            for delta_period in 0u64..10 {
+                for thread in 0..cfg.thread_count {
+                    let res_block_id = tools::create_and_test_block(
+                        &mut protocol_controller,
+                        &cfg,
+                        Slot::new(cfg.periods_per_cycle + delta_period, thread),
+                        cur_parents.clone(),
+                        true,
+                        false,
+                        staking_keys[0].clone(),
+                    )
+                    .await;
+                    cur_parents[thread as usize] = res_block_id;
                 }
-                _ => None,
-            })
-            .await
-            .expect("block did not propagate in time");
-        assert_eq!(
-            draws[&cur_slot],
-            Address::from_public_key(&block_creator).unwrap(),
-            "wrong block creator"
-        );
-        cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
-    }
+            }
 
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
+            // get draws for cycle 3 (lookback = cycle 0)
+            let draws = consensus_command_sender
+                .get_selection_draws(
+                    Slot::new(3 * cfg.periods_per_cycle, 0),
+                    Slot::new(4 * cfg.periods_per_cycle, 0),
+                )
+                .await
+                .unwrap();
+            let nb_address1_draws = draws.iter().filter(|(_, addr)| *addr == address_1).count();
+            // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
+            // note: this is a statistical test. It may fail in rare occasions.
+            assert!(
+                (0.5 - ((nb_address1_draws as f32)
+                    / ((cfg.thread_count as u64 * cfg.periods_per_cycle) as f32)))
+                    .abs()
+                    < 0.15
+            );
+
+            // check 10 draws
+            let draws: HashMap<Slot, Address> = draws.into_iter().collect();
+            let mut cur_slot = Slot::new(cfg.periods_per_cycle * 3, 0);
+            for _ in 0..10 {
+                // wait block propagation
+                let block_creator = protocol_controller
+                    .wait_command(3000.into(), |cmd| match cmd {
+                        ProtocolCommand::IntegratedBlock { block, .. } => {
+                            if block.header.content.slot == cur_slot {
+                                Some(block.header.content.creator)
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    })
+                    .await
+                    .expect("block did not propagate in time");
+                assert_eq!(
+                    draws[&cur_slot],
+                    Address::from_public_key(&block_creator).unwrap(),
+                    "wrong block creator"
+                );
+                cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
+            }
+
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -264,106 +243,94 @@ async fn test_order_of_inclusion() {
 
     // there is only one node so it should be drawn at every slot
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
+    tools::consensus_pool_test(
+        cfg.clone(),
+        None,
+        None,
+        None,
+        async move |mut pool_controller,
+                    mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver| {
+            //wait for first slot
+            pool_controller
+                .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
+                    PoolCommand::UpdateCurrentSlot(s) => {
+                        if s == Slot::new(1, 0) {
+                            Some(())
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for slot");
 
-    // launch consensus controller
-    let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            // respond to first pool batch command
+            pool_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    PoolCommand::GetOperationBatch { response_tx, .. } => {
+                        response_tx
+                            .send(vec![
+                                (op3.get_operation_id().unwrap(), op3.clone(), 50),
+                                (op2.get_operation_id().unwrap(), op2.clone(), 50),
+                                (op1.get_operation_id().unwrap(), op1.clone(), 50),
+                            ])
+                            .unwrap();
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for 1st operation batch request");
 
-    //wait for first slot
-    pool_controller
-        .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
-            PoolCommand::UpdateCurrentSlot(s) => {
-                if s == Slot::new(1, 0) {
-                    Some(())
-                } else {
-                    None
-                }
+            // respond to second pool batch command
+            pool_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    PoolCommand::GetOperationBatch {
+                        response_tx,
+                        exclude,
+                        ..
+                    } => {
+                        assert!(!exclude.is_empty());
+                        response_tx.send(vec![]).unwrap();
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for 2nd operation batch request");
+
+            // wait for block
+            let (_block_id, block) = protocol_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for block");
+
+            // assert it's the expected block
+            assert_eq!(block.header.content.slot, Slot::new(1, 0));
+            let expected = vec![op2.clone(), op1.clone()];
+            let res = block.operations.clone();
+            assert_eq!(block.operations.len(), 2);
+            for i in 0..2 {
+                assert_eq!(
+                    expected[i].get_operation_id().unwrap(),
+                    res[i].get_operation_id().unwrap()
+                );
             }
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for slot");
-
-    // respond to first pool batch command
-    pool_controller
-        .wait_command(300.into(), |cmd| match cmd {
-            PoolCommand::GetOperationBatch { response_tx, .. } => {
-                response_tx
-                    .send(vec![
-                        (op3.get_operation_id().unwrap(), op3.clone(), 50),
-                        (op2.get_operation_id().unwrap(), op2.clone(), 50),
-                        (op1.get_operation_id().unwrap(), op1.clone(), 50),
-                    ])
-                    .unwrap();
-                Some(())
-            }
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for 1st operation batch request");
-
-    // respond to second pool batch command
-    pool_controller
-        .wait_command(300.into(), |cmd| match cmd {
-            PoolCommand::GetOperationBatch {
-                response_tx,
-                exclude,
-                ..
-            } => {
-                assert!(!exclude.is_empty());
-                response_tx.send(vec![]).unwrap();
-                Some(())
-            }
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for 2nd operation batch request");
-
-    // wait for block
-    let (_block_id, block) = protocol_controller
-        .wait_command(300.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for block");
-
-    // assert it's the expected block
-    assert_eq!(block.header.content.slot, Slot::new(1, 0));
-    let expected = vec![op2.clone(), op1.clone()];
-    let res = block.operations.clone();
-    assert_eq!(block.operations.len(), 2);
-    for i in 0..2 {
-        assert_eq!(
-            expected[i].get_operation_id().unwrap(),
-            res[i].get_operation_id().unwrap()
-        );
-    }
-
-    // stop controller while ignoring all commands
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
+            (
+                pool_controller,
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -421,119 +388,106 @@ async fn test_block_filling() {
 
     // there is only one node so it should be drawn at every slot
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
+    tools::consensus_pool_test(
+        cfg.clone(),
+        None,
+        None,
+        None,
+        async move |mut pool_controller,
+                    mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver| {
+            let op_size = 10;
 
-    // launch consensus controller
-    cfg.genesis_timestamp = UTime::now(0).unwrap();
-    let (_consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            //wait for first slot
+            pool_controller
+                .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
+                    PoolCommand::UpdateCurrentSlot(s) => {
+                        if s == Slot::new(1, 0) {
+                            Some(())
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for slot");
 
-    let op_size = 10;
+            // respond to first pool batch command
+            pool_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    PoolCommand::GetOperationBatch { response_tx, .. } => {
+                        response_tx
+                            .send(
+                                ops.iter()
+                                    .map(|op| (op.get_operation_id().unwrap(), op.clone(), op_size))
+                                    .collect(),
+                            )
+                            .unwrap();
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for 1st operation batch request");
 
-    //wait for first slot
-    pool_controller
-        .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
-            PoolCommand::UpdateCurrentSlot(s) => {
-                if s == Slot::new(1, 0) {
-                    Some(())
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for slot");
+            // respond to second pool batch command
+            pool_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    PoolCommand::GetOperationBatch {
+                        response_tx,
+                        exclude,
+                        ..
+                    } => {
+                        assert!(!exclude.is_empty());
+                        response_tx.send(vec![]).unwrap();
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for 2nd operation batch request");
 
-    // respond to first pool batch command
-    pool_controller
-        .wait_command(300.into(), |cmd| match cmd {
-            PoolCommand::GetOperationBatch { response_tx, .. } => {
-                response_tx
-                    .send(
-                        ops.iter()
-                            .map(|op| (op.get_operation_id().unwrap(), op.clone(), op_size))
-                            .collect(),
-                    )
-                    .unwrap();
-                Some(())
-            }
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for 1st operation batch request");
+            // wait for block
+            let (_block_id, block) = protocol_controller
+                .wait_command(500.into(), |cmd| match cmd {
+                    ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for block");
 
-    // respond to second pool batch command
-    pool_controller
-        .wait_command(300.into(), |cmd| match cmd {
-            PoolCommand::GetOperationBatch {
-                response_tx,
-                exclude,
-                ..
-            } => {
-                assert!(!exclude.is_empty());
-                response_tx.send(vec![]).unwrap();
-                Some(())
-            }
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for 2nd operation batch request");
+            // assert it's the expected block
+            assert_eq!(block.header.content.slot, Slot::new(1, 0));
+            // create empty block
+            let (_block_id, header) = BlockHeader::new_signed(
+                &priv_a,
+                BlockHeaderContent {
+                    creator: block.header.content.creator,
+                    slot: block.header.content.slot,
+                    parents: block.header.content.parents.clone(),
+                    operation_merkle_root: Hash::hash(&Vec::new()[..]),
+                },
+            )
+            .unwrap();
+            let empty = Block {
+                header,
+                operations: Vec::new(),
+            };
+            let remaining_block_space = (cfg.max_block_size as usize)
+                .checked_sub(empty.to_bytes_compact().unwrap().len() as usize)
+                .unwrap();
 
-    // wait for block
-    let (_block_id, block) = protocol_controller
-        .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for block");
-
-    // assert it's the expected block
-    assert_eq!(block.header.content.slot, Slot::new(1, 0));
-    // create empty block
-    let (_block_id, header) = BlockHeader::new_signed(
-        &priv_a,
-        BlockHeaderContent {
-            creator: block.header.content.creator,
-            slot: block.header.content.slot,
-            parents: block.header.content.parents.clone(),
-            operation_merkle_root: Hash::hash(&Vec::new()[..]),
+            let nb = remaining_block_space / (op_size as usize);
+            assert_eq!(block.operations.len(), nb);
+            (
+                pool_controller,
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
         },
     )
-    .unwrap();
-    let empty = Block {
-        header,
-        operations: Vec::new(),
-    };
-    let remaining_block_space = (cfg.max_block_size as usize)
-        .checked_sub(empty.to_bytes_compact().unwrap().len() as usize)
-        .unwrap();
-
-    let nb = remaining_block_space / (op_size as usize);
-    assert_eq!(block.operations.len(), nb);
-
-    // stop controller while ignoring all commands
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
+    .await;
 }
