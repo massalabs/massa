@@ -135,10 +135,9 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
-    let thread = address.get_thread(2);
 
-    let mut ledger_per_thread = vec![Vec::new(), Vec::new()];
-    ledger_per_thread[thread as usize].push((address, LedgerData { balance: 10 }));
+    let mut ledger_subset = Vec::new();
+    ledger_subset.push((address, LedgerData { balance: 10 }));
 
     let cycle_state = ExportThreadCycleState {
         cycle: 1,
@@ -228,30 +227,28 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
         ],
         dependencies: vec![get_dummy_block_id("b5"), get_dummy_block_id("b6")],
         is_final: true,
-        block_ledger_change: vec![
-            vec![
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: true,
-                        balance_delta: 157,
-                    },
-                ),
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: false,
-                        balance_delta: 44,
-                    },
-                ),
-            ],
-            vec![(
+        block_ledger_changes: vec![
+            (
+                get_random_address(),
+                LedgerChange {
+                    balance_increment: true,
+                    balance_delta: 157,
+                },
+            ),
+            (
+                get_random_address(),
+                LedgerChange {
+                    balance_increment: false,
+                    balance_delta: 44,
+                },
+            ),
+            (
                 get_random_address(),
                 LedgerChange {
                     balance_increment: false,
                     balance_delta: 878,
                 },
-            )],
+            ),
         ],
         roll_updates: vec![
             (
@@ -295,7 +292,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             get_dummy_block_id("parent1"),
             get_dummy_block_id("parent2"),
         ]],
-        ledger: LedgerExport { ledger_per_thread },
+        ledger: LedgerExport { ledger_subset },
     };
     assert_eq!(
         BootsrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())

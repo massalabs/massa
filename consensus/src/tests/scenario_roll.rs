@@ -2,14 +2,21 @@
 
 use std::collections::{HashMap, HashSet};
 
+use communication::protocol::ProtocolCommand;
 use models::{Address, Slot};
+use pool::PoolCommand;
 use serial_test::serial;
 use time::UTime;
 
 use crate::{
-    tests::tools::{
-        self, create_block_with_operations, create_roll_buy, create_roll_sell,
-        generate_ledger_file, get_creator_for_draw, propagate_block, wait_pool_slot,
+    start_consensus_controller,
+    tests::{
+        mock_pool_controller::MockPoolController,
+        mock_protocol_controller::MockProtocolController,
+        tools::{
+            self, create_block_with_operations, create_roll_buy, create_roll_sell,
+            generate_ledger_file, get_creator_for_draw, propagate_block, wait_pool_slot,
+        },
     },
     LedgerData,
 };
@@ -139,16 +146,7 @@ async fn test_roll() {
             assert_eq!(addr_state.active_rolls, Some(0));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 1);
-
-            let balance = consensus_command_sender
-                .get_addresses_info(addresses.clone())
-                .await
-                .unwrap()
-                .get(&address_2)
-                .unwrap()
-                .candidate_ledger_data
-                .balance;
-            assert_eq!(balance, 9000);
+            assert_eq!(addr_state.candidate_ledger_data.balance, 9000);
 
             let (id_1t1, block1t1, _) =
                 create_block_with_operations(&cfg, Slot::new(1, 1), &parents, priv_1, vec![]);
@@ -435,4 +433,257 @@ async fn test_roll() {
         },
     )
     .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_roll_block_creation() {
+    // setup logging
+    /*
+    stderrlog::new()
+        .verbosity(4)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();
+    */
+    let thread_count = 2;
+    // define addresses use for the test
+    // addresses 1 and 2 both in thread 0
+    let mut priv_1 = crypto::generate_random_private_key();
+    let mut pubkey_1 = crypto::derive_public_key(&priv_1);
+    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    while 0 != address_1.get_thread(thread_count) {
+        priv_1 = crypto::generate_random_private_key();
+        pubkey_1 = crypto::derive_public_key(&priv_1);
+        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    }
+    assert_eq!(0, address_1.get_thread(thread_count));
+
+    let mut priv_2 = crypto::generate_random_private_key();
+    let mut pubkey_2 = crypto::derive_public_key(&priv_2);
+    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    while 0 != address_2.get_thread(thread_count) {
+        priv_2 = crypto::generate_random_private_key();
+        pubkey_2 = crypto::derive_public_key(&priv_2);
+        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    }
+    assert_eq!(0, address_2.get_thread(thread_count));
+
+    let mut ledger = HashMap::new();
+    ledger.insert(address_2, LedgerData { balance: 10_000 });
+    let ledger_file = generate_ledger_file(&ledger);
+
+    let staking_file = tools::generate_staking_keys_file(&vec![priv_1]);
+    let roll_counts_file = tools::generate_default_roll_counts_file(vec![priv_1]);
+    let mut cfg = tools::default_consensus_config(
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_file.path(),
+    );
+    cfg.periods_per_cycle = 2;
+    cfg.pos_lookback_cycles = 2;
+    cfg.pos_lock_cycles = 1;
+    cfg.t0 = 500.into();
+    cfg.delta_f0 = 3;
+    cfg.disable_block_creation = false;
+    cfg.thread_count = thread_count;
+    cfg.operation_validity_periods = 10;
+    cfg.operation_batch_size = 500;
+    cfg.max_operations_per_block = 5000;
+    cfg.max_block_size = 500;
+    cfg.block_reward = 0;
+    cfg.roll_price = 1000;
+    cfg.operation_validity_periods = 100;
+
+    // mock protocol & pool
+    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
+        MockProtocolController::new();
+    let (mut pool_controller, pool_command_sender) = MockPoolController::new();
+
+    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
+    // launch consensus controller
+    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
+        start_consensus_controller(
+            cfg.clone(),
+            protocol_command_sender.clone(),
+            protocol_event_receiver,
+            pool_command_sender,
+            None,
+            None,
+            None,
+            0,
+        )
+        .await
+        .expect("could not start consensus controller");
+
+    // operations
+    let rb_a2_r1 = create_roll_buy(priv_2, 1, 90, 0);
+    let rs_a2_r1 = create_roll_sell(priv_2, 1, 90, 0);
+
+    let mut addresses = HashSet::new();
+    addresses.insert(address_2);
+    let addresses = addresses;
+
+    //wait for first slot
+    pool_controller
+        .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
+            PoolCommand::UpdateCurrentSlot(s) => {
+                if s == Slot::new(1, 0) {
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for slot");
+
+    // cycle 0
+
+    // respond to first pool batch command
+    pool_controller
+        .wait_command(300.into(), |cmd| match cmd {
+            PoolCommand::GetOperationBatch {
+                response_tx,
+                target_slot,
+                ..
+            } => {
+                assert_eq!(target_slot, Slot::new(1, 0));
+                response_tx
+                    .send(vec![(
+                        rb_a2_r1.clone().get_operation_id().unwrap(),
+                        rb_a2_r1.clone(),
+                        10,
+                    )])
+                    .unwrap();
+                Some(())
+            }
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for 1st operation batch request");
+
+    // wait for block
+    let (_block_id, block) = protocol_controller
+        .wait_command(500.into(), |cmd| match cmd {
+            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for block");
+
+    // assert it's the expected block
+    assert_eq!(block.header.content.slot, Slot::new(1, 0));
+    assert_eq!(block.operations.len(), 1);
+    assert_eq!(
+        block.operations[0].get_operation_id().unwrap(),
+        rb_a2_r1.clone().get_operation_id().unwrap()
+    );
+
+    let addr_state = consensus_command_sender
+        .get_addresses_info(addresses.clone())
+        .await
+        .unwrap()
+        .get(&address_2)
+        .unwrap()
+        .clone();
+    assert_eq!(addr_state.active_rolls, Some(0));
+    assert_eq!(addr_state.final_rolls, 0);
+    assert_eq!(addr_state.candidate_rolls, 1);
+
+    let balance = consensus_command_sender
+        .get_addresses_info(addresses.clone())
+        .await
+        .unwrap()
+        .get(&address_2)
+        .unwrap()
+        .candidate_ledger_data
+        .balance;
+    assert_eq!(balance, 9000);
+
+    wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 1).await;
+    // slot 1,1
+    pool_controller
+        .wait_command(300.into(), |cmd| match cmd {
+            PoolCommand::GetOperationBatch {
+                response_tx,
+                target_slot,
+                ..
+            } => {
+                assert_eq!(target_slot, Slot::new(1, 1));
+                response_tx.send(vec![]).unwrap();
+                Some(())
+            }
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for operation batch request");
+
+    // wait for block
+    let (_block_id, block) = protocol_controller
+        .wait_command(500.into(), |cmd| match cmd {
+            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for block");
+
+    // assert it's the expected block
+    assert_eq!(block.header.content.slot, Slot::new(1, 1));
+    assert!(block.operations.is_empty());
+
+    // cycle 1
+
+    pool_controller
+        .wait_command(300.into(), |cmd| match cmd {
+            PoolCommand::GetOperationBatch {
+                response_tx,
+                target_slot,
+                ..
+            } => {
+                assert_eq!(target_slot, Slot::new(1, 0));
+                response_tx
+                    .send(vec![(
+                        rs_a2_r1.clone().get_operation_id().unwrap(),
+                        rs_a2_r1.clone(),
+                        10,
+                    )])
+                    .unwrap();
+                Some(())
+            }
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for 1st operation batch request");
+
+    // wait for block
+    let (_block_id, block) = protocol_controller
+        .wait_command(500.into(), |cmd| match cmd {
+            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+            _ => None,
+        })
+        .await
+        .expect("timeout while waiting for block");
+
+    // assert it's the expected block
+    assert_eq!(block.header.content.slot, Slot::new(1, 0));
+    assert_eq!(block.operations.len(), 1);
+    assert_eq!(
+        block.operations[0].get_operation_id().unwrap(),
+        rs_a2_r1.clone().get_operation_id().unwrap()
+    );
+
+    let addr_state = consensus_command_sender
+        .get_addresses_info(addresses.clone())
+        .await
+        .unwrap()
+        .get(&address_2)
+        .unwrap()
+        .clone();
+    assert_eq!(addr_state.active_rolls, Some(0));
+    assert_eq!(addr_state.final_rolls, 0);
+    assert_eq!(addr_state.candidate_rolls, 0);
+    let balance = addr_state.candidate_ledger_data.balance;
+    assert_eq!(balance, 9000);
 }

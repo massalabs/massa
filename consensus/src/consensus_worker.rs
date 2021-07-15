@@ -16,7 +16,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, convert::TryFrom, path::Path};
+use std::{collections::VecDeque, convert::TryFrom, ops::Add, path::Path};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -313,8 +313,8 @@ impl ConsensusWorker {
                 }
                 Err(err) => return Err(err),
             };
-            if let Some((_addr, pub_k, priv_k)) = creator_info {
-                self.create_block(cur_slot, &pub_k, &priv_k).await?;
+            if let Some((addr, pub_k, priv_k)) = creator_info {
+                self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
             }
         }
 
@@ -341,6 +341,7 @@ impl ConsensusWorker {
     async fn create_block(
         &mut self,
         cur_slot: Slot,
+        creator_addr: &Address,
         creator_public_key: &PublicKey,
         creator_private_key: &PrivateKey,
     ) -> Result<(), ConsensusError> {
@@ -471,7 +472,7 @@ impl ConsensusWorker {
 
         massa_trace!("create block", { "block": block });
         info!(
-            "Staked block {}, by address {}, at slot {} (cycle {})\n{}",
+            "Created block {}, by address {}, at slot {} (cycle {})\n{}",
             block_id,
             creator_addr,
             cur_slot,

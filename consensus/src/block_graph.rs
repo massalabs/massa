@@ -1121,7 +1121,7 @@ impl BlockGraph {
             loaded_ledger_addrs,
             sync_thread_ledger_subset,
             sync_ledger_changes,
-        ) = if let Some(ledger_changes) = opt_ledger_changes.take() {
+        ) = if let Some(ref mut ledger_changes) = opt_ledger_changes {
             // list involved addresses
             let involved_addrs = ledger_changes.get_involved_addresses();
             let thread_addrs: HashSet<Address> = involved_addrs
@@ -1156,7 +1156,6 @@ impl BlockGraph {
 
             // try to chain changes to the local ledger changes
             local_ledger_changes.chain(&ledger_changes)?;
-
             (
                 involved_addrs,
                 thread_addrs,
@@ -2519,7 +2518,7 @@ impl BlockGraph {
                 &operation,
                 pos,
             ) {
-                Ok(accu) => accu,
+                Ok(_) => (),
                 Err(err) => {
                     warn!(
                         "block graph check_operations error, operation apply to state: {}",
