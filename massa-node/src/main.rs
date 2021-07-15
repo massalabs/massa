@@ -157,7 +157,11 @@ async fn run(cfg: config::Config) {
                             models::OperationType::Transaction {  amount , ..} => format!("transaction with amount {}", amount),
                             models::OperationType::RollBuy { roll_count } => format!("buy {} rolls", roll_count),
                             models::OperationType::RollSell { roll_count } => format!("sell {} rolls", roll_count),
-                        }, Address::from_public_key(&op.content.sender_public_key).expect("could get address from public key"), op.content.fee);
+                        },
+                        match Address::from_public_key(&op.content.sender_public_key){
+                            Ok(addr) => addr.to_string(),
+                            Err(_) => "could not get address from public key".to_string(),
+                        }, op.content.fee);
                     }
                     if api_pool_command_sender.add_operations(operations)
                             .await
