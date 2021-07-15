@@ -607,6 +607,7 @@ impl NetworkWorker {
             "ip": ip,
             "reason": reason
         });
+        info!("Disconnected from peer {}", ip);
         match reason {
             ConnectionClosureReason::Normal => {}
             ConnectionClosureReason::Failed => {
@@ -815,6 +816,7 @@ impl NetworkWorker {
                         "ip": ip_addr,
                         "connection_id": connection_id
                     });
+                    info!("connected to peer {}", ip_addr);
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (ip_addr, true));
@@ -865,6 +867,7 @@ impl NetworkWorker {
                         "ip": remote_addr.ip(),
                         "connection_id": connection_id
                     });
+                    info!("connected to peer {}", remote_addr);
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (remote_addr.ip(), false));
