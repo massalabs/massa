@@ -2,12 +2,7 @@
 
 use std::collections::HashMap;
 
-use super::{
-    mock_pool_controller::{MockPoolController, PoolCommandSink},
-    mock_protocol_controller::MockProtocolController,
-    tools,
-};
-use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
+use crate::tests::tools::{self, generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
 
@@ -29,60 +24,42 @@ async fn test_parent_in_the_future() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_hashes = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            // Parent, in the future.
+            let (hasht0s1, _, _) = tools::create_block(
+                &cfg,
+                Slot::new(4, 0),
+                genesis_hashes.clone(),
+                staking_keys[0].clone(),
+            );
 
-    let genesis_hashes = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
-
-    // Parent, in the future.
-    let (hasht0s1, _, _) = tools::create_block(
-        &cfg,
-        Slot::new(4, 0),
-        genesis_hashes.clone(),
-        staking_keys[0].clone(),
-    );
-
-    let _ = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(5, 0),
-        vec![hasht0s1],
-        false,
-        false,
-        staking_keys[0].clone(),
+            let _ = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(5, 0),
+                vec![hasht0s1],
+                false,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
     )
     .await;
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -103,75 +80,57 @@ async fn test_parents() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_hashes = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            // generate two normal blocks in each thread
+            let hasht1s1 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 0),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    let genesis_hashes = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
+            let _ = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 1),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    // generate two normal blocks in each thread
-    let hasht1s1 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 0),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
+            let _ = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(3, 0),
+                vec![hasht1s1, genesis_hashes[0].clone()],
+                false,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
     )
     .await;
-
-    let _ = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 1),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    let _ = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(3, 0),
-        vec![hasht1s1, genesis_hashes[0].clone()],
-        false,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -192,86 +151,68 @@ async fn test_parents_in_incompatible_cliques() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
 
-    // mock protocol & pool
-    let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_hashes = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
 
-    // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
-        start_consensus_controller(
-            cfg.clone(),
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
-            None,
-            None,
-            None,
-            0,
-        )
-        .await
-        .expect("could not start consensus controller");
+            let hasht0s1 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 0),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    let genesis_hashes = consensus_command_sender
-        .get_block_graph_status()
-        .await
-        .expect("could not get block graph status")
-        .genesis_blocks;
+            let hasht0s2 = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(2, 0),
+                genesis_hashes.clone(),
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
 
-    let hasht0s1 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 0),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
+            // from that point we have two incompatible clique
+
+            let _ = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(1, 1),
+                vec![hasht0s1, genesis_hashes[1]],
+                true,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+
+            // Block with incompatible parents.
+            let _ = tools::create_and_test_block(
+                &mut protocol_controller,
+                &cfg,
+                Slot::new(2, 1),
+                vec![hasht0s1, hasht0s2],
+                false,
+                false,
+                staking_keys[0].clone(),
+            )
+            .await;
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
     )
     .await;
-
-    let hasht0s2 = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(2, 0),
-        genesis_hashes.clone(),
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // from that point we have two incompatible clique
-
-    let _ = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(1, 1),
-        vec![hasht0s1, genesis_hashes[1]],
-        true,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // Block with incompatible parents.
-    let _ = tools::create_and_test_block(
-        &mut protocol_controller,
-        &cfg,
-        Slot::new(2, 1),
-        vec![hasht0s1, hasht0s2],
-        false,
-        false,
-        staking_keys[0].clone(),
-    )
-    .await;
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }
