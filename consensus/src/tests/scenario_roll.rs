@@ -642,7 +642,7 @@ async fn test_roll_block_creation() {
                 target_slot,
                 ..
             } => {
-                assert_eq!(target_slot, Slot::new(1, 0));
+                assert_eq!(target_slot, Slot::new(2, 0));
                 response_tx
                     .send(vec![(
                         rs_a2_r1.clone().get_operation_id().unwrap(),
@@ -667,7 +667,7 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for block");
 
     // assert it's the expected block
-    assert_eq!(block.header.content.slot, Slot::new(1, 0));
+    assert_eq!(block.header.content.slot, Slot::new(2, 0));
     assert_eq!(block.operations.len(), 1);
     assert_eq!(
         block.operations[0].get_operation_id().unwrap(),
