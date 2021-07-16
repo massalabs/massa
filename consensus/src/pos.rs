@@ -615,19 +615,15 @@ impl ProofOfStake {
         }
     }
 
-    pub fn get_next_selected_slot(&mut self, previous: Slot, address: Address) -> Option<Slot> {
-        let mut cur_cycle = match previous.get_next_slot(self.cfg.thread_count) {
-            Ok(start_slot) => start_slot,
-            Err(_) => return None,
-        }
-        .get_cycle(self.cfg.periods_per_cycle);
+    pub fn get_next_selected_slot(&mut self, from_slot: Slot, address: Address) -> Option<Slot> {
+        let mut cur_cycle = from_slot.get_cycle(self.cfg.periods_per_cycle);
         loop {
             let next_draw = match self.get_cycle_draws(cur_cycle) {
                 Ok(draws) => draws,
                 Err(_) => return None,
             }
             .iter()
-            .filter(|(&k, &addr)| addr == address && k > previous)
+            .filter(|(&k, &addr)| addr == address && k >= from_slot)
             .min_by_key(|(&k, _addr)| k);
             if let Some((next_slot, _next_addr)) = next_draw {
                 return Some(*next_slot);
