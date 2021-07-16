@@ -769,29 +769,7 @@ impl ConsensusWorker {
                 for key in keys.into_iter() {
                     let public = crypto::derive_public_key(&key);
                     let address = Address::from_public_key(&public)?;
-                    info!(
-                        "Start staking with address {}\n{}",
-                        address,
-                        if let Some(slot) = self.pos.get_next_selected_slot(self.next_slot, address)
-                        {
-                            format!(
-                                "Next slot for address : {} at {}",
-                                slot,
-                                match get_block_slot_timestamp(
-                                    self.cfg.thread_count,
-                                    self.cfg.t0,
-                                    self.cfg.genesis_timestamp,
-                                    slot
-                                ) {
-                                    Ok(time) => time.to_utc_string(),
-                                    Err(_) =>
-                                        "internal error during get_block_slot_timestamp".to_string(),
-                                }
-                            )
-                        } else {
-                            "Address not yet selected".to_string()
-                        }
-                    );
+                    info!("Staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));
                 }
                 self.dump_staking_keys().await;
