@@ -208,126 +208,122 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 #[serial]
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager| {
+            // Create 4 nodes.
+            let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
+            let (node_a, node_b, node_c, node_d) = (
+                nodes[0].clone(),
+                nodes[1].clone(),
+                nodes[2].clone(),
+                nodes[3].clone(),
+            );
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let creator_node = node_a.clone();
 
-    // start protocol controller
-    let (
-        mut protocol_command_sender,
-        mut protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        protocol_config.clone(),
-        5u64,
-        network_command_sender,
-        network_event_receiver,
-    )
-    .await
-    .expect("could not start protocol controller");
+            // 1. Close one connection.
+            network_controller.close_connection(node_d.id).await;
 
-    // Create 4 nodes.
-    let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
-    let (node_a, node_b, node_c, node_d) = (
-        nodes[0].clone(),
-        nodes[1].clone(),
-        nodes[2].clone(),
-        nodes[3].clone(),
-    );
+            // 2. Create a block coming from one node.
+            let ref_block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
 
-    let creator_node = node_a.clone();
+            // 3. Send header to protocol.
+            network_controller
+                .send_header(creator_node.id, ref_block.header.clone())
+                .await;
 
-    // 1. Close one connection.
-    network_controller.close_connection(node_d.id).await;
+            // node[1] asks for that block
 
-    // 2. Create a block coming from one node.
-    let ref_block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            // Check protocol sends header to consensus.
+            let (ref_hash, _) =
+                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                    match evt {
+                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                        _ => None,
+                    }
+                })
+                .await
+                {
+                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => {
+                        (block_id, header)
+                    }
+                    _ => panic!("Unexpected or no protocol event."),
+                };
 
-    // 3. Send header to protocol.
-    network_controller
-        .send_header(creator_node.id, ref_block.header.clone())
-        .await;
+            network_controller
+                .send_ask_for_block(node_b.id, vec![ref_hash])
+                .await;
 
-    // node[1] asks for that block
-
-    // Check protocol sends header to consensus.
-    let (ref_hash, _) =
-        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
-        {
-            evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-            _ => None,
-        })
-        .await
-        {
-            Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
-            _ => panic!("Unexpected or no protocol event."),
-        };
-
-    network_controller
-        .send_ask_for_block(node_b.id, vec![ref_hash])
-        .await;
-
-    match tools::wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| match evt {
-        evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-        _ => None,
-    })
-    .await
-    {
-        Some(ProtocolEvent::GetBlocks(mut list)) => {
-            assert_eq!(list.pop().expect("Empty list of hashes."), ref_hash)
-        }
-        _ => panic!("timeout reached while sending get block"),
-    }
-
-    // 5. Propagate header.
-    protocol_command_sender
-        .integrated_block(ref_hash, ref_block)
-        .await
-        .expect("Failed to ask for block.");
-
-    // 6. Check that protocol propagates the header to the right nodes.
-    // node_a created the block and should receive nothing
-    // node_b asked for the block and should receive the full block
-    // node_c did nothing, it should receive the header
-    // node_d was disconnected, so nothing should be send to it
-    let mut expected_headers = HashSet::new();
-    expected_headers.insert(node_c.id.clone());
-
-    let mut expected_full_blocks = HashSet::new();
-    expected_full_blocks.insert(node_b.id.clone());
-
-    loop {
-        match network_controller
-            .wait_command(1000.into(), |cmd| match cmd {
-                cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
-                cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
-                _ => None,
+            match tools::wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
+                    _ => None,
+                }
             })
             .await
-        {
-            Some(NetworkCommand::SendBlockHeader { node, header }) => {
-                assert!(expected_headers.remove(&node));
-                let sent_header_hash = header.compute_block_id().unwrap();
-                assert_eq!(sent_header_hash, ref_hash);
+            {
+                Some(ProtocolEvent::GetBlocks(mut list)) => {
+                    assert_eq!(list.pop().expect("Empty list of hashes."), ref_hash)
+                }
+                _ => panic!("timeout reached while sending get block"),
             }
-            Some(NetworkCommand::SendBlock { node, block }) => {
-                assert!(expected_full_blocks.remove(&node));
-                let sent_header_hash = block.header.compute_block_id().unwrap();
-                assert_eq!(sent_header_hash, ref_hash);
+
+            // 5. Propagate header.
+            protocol_command_sender
+                .integrated_block(ref_hash, ref_block)
+                .await
+                .expect("Failed to ask for block.");
+
+            // 6. Check that protocol propagates the header to the right nodes.
+            // node_a created the block and should receive nothing
+            // node_b asked for the block and should receive the full block
+            // node_c did nothing, it should receive the header
+            // node_d was disconnected, so nothing should be send to it
+            let mut expected_headers = HashSet::new();
+            expected_headers.insert(node_c.id.clone());
+
+            let mut expected_full_blocks = HashSet::new();
+            expected_full_blocks.insert(node_b.id.clone());
+
+            loop {
+                match network_controller
+                    .wait_command(1000.into(), |cmd| match cmd {
+                        cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
+                        _ => None,
+                    })
+                    .await
+                {
+                    Some(NetworkCommand::SendBlockHeader { node, header }) => {
+                        assert!(expected_headers.remove(&node));
+                        let sent_header_hash = header.compute_block_id().unwrap();
+                        assert_eq!(sent_header_hash, ref_hash);
+                    }
+                    Some(NetworkCommand::SendBlock { node, block }) => {
+                        assert!(expected_full_blocks.remove(&node));
+                        let sent_header_hash = block.header.compute_block_id().unwrap();
+                        assert_eq!(sent_header_hash, ref_hash);
+                    }
+                    _ => panic!("Unexpected or no network command."),
+                };
+
+                if expected_headers.is_empty() && expected_full_blocks.is_empty() {
+                    break;
+                }
             }
-            _ => panic!("Unexpected or no network command."),
-        };
-
-        if expected_headers.is_empty() && expected_full_blocks.is_empty() {
-            break;
-        }
-    }
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
