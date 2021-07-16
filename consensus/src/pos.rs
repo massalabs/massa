@@ -615,24 +615,21 @@ impl ProofOfStake {
         }
     }
 
-    pub fn get_next_selected_slot(&self, previous: Slot, address: Address) -> Option<Slot> {
-        let mut cycle = previous.get_cycle(self.cfg.periods_per_cycle);
-        let mut cpt = 0;
-        while let Some((_, draw)) = self.draw_cache.get(&cycle) {
-            let mut draw = draw.iter().collect::<Vec<_>>();
-            draw.sort();
-            for (slot, addr) in draw {
-                if *addr == address && *slot > previous {
-                    return Some(*slot);
-                }
+    pub fn get_next_selected_slot(&mut self, from_slot: Slot, address: Address) -> Option<Slot> {
+        let mut cur_cycle = from_slot.get_cycle(self.cfg.periods_per_cycle);
+        loop {
+            let next_draw = match self.get_cycle_draws(cur_cycle) {
+                Ok(draws) => draws,
+                Err(_) => return None,
             }
-            cycle += 1;
-            cpt += 1;
-            if cpt > self.cfg.pos_draw_cached_cycles {
-                break;
+            .iter()
+            .filter(|(&k, &addr)| addr == address && k >= from_slot)
+            .min_by_key(|(&k, _addr)| k);
+            if let Some((next_slot, _next_addr)) = next_draw {
+                return Some(*next_slot);
             }
+            cur_cycle += 1;
         }
-        None
     }
 
     fn get_cycle_draws(&mut self, cycle: u64) -> Result<&HashMap<Slot, Address>, ConsensusError> {
