@@ -5,6 +5,7 @@
 use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
+use crate::protocol::tests::tools::protocol_test;
 use crate::protocol::ProtocolEvent;
 use serial_test::serial;
 use std::collections::{HashMap, HashSet};
@@ -13,93 +14,86 @@ use std::collections::{HashMap, HashSet};
 #[serial]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
     let protocol_config = tools::create_protocol_config();
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
 
-    let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
-        _ => None,
-    };
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager| {
+            let ask_for_block_cmd_filter = |cmd| match cmd {
+                cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
+                _ => None,
+            };
+            let mut nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
 
-    // start protocol controller
-    let (
-        mut protocol_command_sender,
-        mut protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        protocol_config.clone(),
-        5u64,
-        network_command_sender,
-        network_event_receiver,
+            let creator_node = nodes.pop().expect("Failed to get node info.");
+
+            // 1. Close one connection.
+            network_controller.close_connection(nodes[0].id).await;
+
+            // 2. Create a block coming from node creator_node.
+            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+
+            // 3. Send header to protocol.
+            network_controller
+                .send_header(creator_node.id, block.header.clone())
+                .await;
+
+            // Check protocol sends header to consensus.
+            let received_hash =
+                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                    match evt {
+                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                        _ => None,
+                    }
+                })
+                .await
+                {
+                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
+                    _ => panic!("Unexpected or no protocol event."),
+                };
+
+            // 4. Check that protocol sent the right header to consensus.
+            let expected_hash = block.header.compute_block_id().unwrap();
+            assert_eq!(expected_hash, received_hash);
+
+            // 5. Ask for block.
+            protocol_command_sender
+                .send_wishlist_delta(vec![expected_hash].into_iter().collect(), HashSet::new())
+                .await
+                .expect("Failed to ask for block.");
+
+            // 6. Check that protocol asks the node for the full block.
+            match network_controller
+                .wait_command(1000.into(), ask_for_block_cmd_filter)
+                .await
+                .expect("Protocol didn't send network command.")
+            {
+                NetworkCommand::AskForBlocks { list } => {
+                    assert!(list.get(&creator_node.id).unwrap().contains(&expected_hash));
+                }
+                _ => panic!("Unexpected network command."),
+            };
+
+            // 7. Make sure protocol did not ask for the block again.
+            let got_more_commands = network_controller
+                .wait_command(100.into(), ask_for_block_cmd_filter)
+                .await;
+            assert!(
+                got_more_commands.is_none(),
+                "unexpected command {:?}",
+                got_more_commands
+            );
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+            )
+        },
     )
-    .await
-    .expect("could not start protocol controller");
-
-    let mut nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
-
-    let creator_node = nodes.pop().expect("Failed to get node info.");
-
-    // 1. Close one connection.
-    network_controller.close_connection(nodes[0].id).await;
-
-    // 2. Create a block coming from node creator_node.
-    let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
-
-    // 3. Send header to protocol.
-    network_controller
-        .send_header(creator_node.id, block.header.clone())
-        .await;
-
-    // Check protocol sends header to consensus.
-    let received_hash =
-        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
-        {
-            evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-            _ => None,
-        })
-        .await
-        {
-            Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-            _ => panic!("Unexpected or no protocol event."),
-        };
-
-    // 4. Check that protocol sent the right header to consensus.
-    let expected_hash = block.header.compute_block_id().unwrap();
-    assert_eq!(expected_hash, received_hash);
-
-    // 5. Ask for block.
-    protocol_command_sender
-        .send_wishlist_delta(vec![expected_hash].into_iter().collect(), HashSet::new())
-        .await
-        .expect("Failed to ask for block.");
-
-    // 6. Check that protocol asks the node for the full block.
-    match network_controller
-        .wait_command(1000.into(), ask_for_block_cmd_filter)
-        .await
-        .expect("Protocol didn't send network command.")
-    {
-        NetworkCommand::AskForBlocks { list } => {
-            assert!(list.get(&creator_node.id).unwrap().contains(&expected_hash));
-        }
-        _ => panic!("Unexpected network command."),
-    };
-
-    // 7. Make sure protocol did not ask for the block again.
-    let got_more_commands = network_controller
-        .wait_command(100.into(), ask_for_block_cmd_filter)
-        .await;
-    assert!(
-        got_more_commands.is_none(),
-        "unexpected command {:?}",
-        got_more_commands
-    );
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+    .await;
 }
 
 #[tokio::test]

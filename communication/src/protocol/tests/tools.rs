@@ -313,10 +313,16 @@ pub async fn assert_banned_nodes(
 
 pub async fn protocol_test<F, V>(cfg: ProtocolConfig, test: F)
 where
-    F: FnOnce(MockNetworkController, ProtocolCommandSender, ProtocolManager) -> V,
+    F: FnOnce(
+        MockNetworkController,
+        ProtocolEventReceiver,
+        ProtocolCommandSender,
+        ProtocolManager,
+    ) -> V,
     V: Future<
         Output = (
             MockNetworkController,
+            ProtocolEventReceiver,
             ProtocolCommandSender,
             ProtocolManager,
         ),
@@ -340,12 +346,14 @@ where
     .await
     .expect("could not start protocol controller");
 
-    let (_network_controller, _protocol_command_sender, protocol_manager) = test(
-        network_controller,
-        protocol_command_sender,
-        protocol_manager,
-    )
-    .await;
+    let (_network_controller, protocol_event_receiver, _protocol_command_sender, protocol_manager) =
+        test(
+            network_controller,
+            protocol_event_receiver,
+            protocol_command_sender,
+            protocol_manager,
+        )
+        .await;
 
     protocol_manager
         .stop(protocol_event_receiver, protocol_pool_event_receiver)

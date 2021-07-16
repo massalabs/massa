@@ -2,6 +2,7 @@
 
 #![feature(drain_filter)]
 #![feature(ip)]
+#![feature(async_closure)]
 
 #[macro_use]
 extern crate logging;
