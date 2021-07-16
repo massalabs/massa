@@ -184,6 +184,29 @@ impl ConsensusWorker {
             next_slot.get_cycle(cfg.periods_per_cycle),
             next_slot
         );
+        for addr in staking_keys.keys() {
+            info!(
+                "Start staking with address {}\n{}",
+                addr,
+                if let Some(slot) = pos.get_next_selected_slot(next_slot, *addr) {
+                    format!(
+                        "Next slot for address : {} at {}",
+                        slot,
+                        match get_block_slot_timestamp(
+                            cfg.thread_count,
+                            cfg.t0,
+                            cfg.genesis_timestamp,
+                            slot
+                        ) {
+                            Ok(time) => time.to_utc_string(),
+                            Err(_) => "internal error during get_block_slot_timestamp".to_string(),
+                        }
+                    )
+                } else {
+                    "Address not yet selected".to_string()
+                }
+            )
+        }
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
         Ok(ConsensusWorker {
@@ -773,14 +796,14 @@ impl ConsensusWorker {
                     );
                     self.staking_keys.insert(address, (public, key));
                 }
-                Ok(())
+                self.dump_staking_keys().await
             }
             ConsensusCommand::RemoveStakingAddresses(addresses) => {
                 for address in addresses.into_iter() {
                     self.staking_keys.remove(&address);
                 }
 
-                Ok(())
+                self.dump_staking_keys().await
             }
             ConsensusCommand::GetStakingAddressses(response_tx) => {
                 massa_trace!(
@@ -797,6 +820,20 @@ impl ConsensusWorker {
                     })
             }
         }
+    }
+
+    async fn dump_staking_keys(&self) -> Result<(), ConsensusError> {
+        let keys = self
+            .staking_keys
+            .iter()
+            .map(|(_, (_, key))| *key)
+            .collect::<Vec<_>>();
+        tokio::fs::write(
+            self.cfg.staking_keys_path.clone(),
+            serde_json::to_string_pretty(&keys)?,
+        )
+        .await?;
+        Ok(())
     }
 
     fn get_stats(&mut self) -> Result<ConsensusStats, ConsensusError> {
