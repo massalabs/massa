@@ -74,4 +74,4 @@ wallet_info
 
 ## Next steps
 
-* link:transaction.adoc[Send transactions].
+* link:transaction.adoc[Sending transactions].

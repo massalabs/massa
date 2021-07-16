@@ -49,7 +49,16 @@ On Windows, please go to the link:docs/windows_install.adoc[Install and Run on W
 On a first window:
 ----
 cd massa/massa-node/
+----
+
+Launch the node, on Ubuntu:
+----
 RUST_BACKTRACE=full cargo run --release |& tee logs.txt
+----
+
+On MacOS: 
+----
+RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1
 ----
 
 ### Start the client
@@ -71,7 +80,8 @@ git pull
 
 Here is a set of tutorials:
 
-* link:docs/wallet.adoc[creating a wallet]
-* link:docs/staking.adoc[staking]
-* link:docs/transaction.adoc[sending transactions]
+* link:docs/wallet.adoc[Creating a wallet]
+* link:docs/staking.adoc[Staking]
+* link:docs/transaction.adoc[Sending transactions]
 * Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
+* link:docs/windows_install.adoc[Install and Run on Windows]
