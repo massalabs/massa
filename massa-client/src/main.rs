@@ -591,6 +591,17 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
 }
 
 fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
+    let resp = reqwest::blocking::get(&url)?;
+    if resp.status() != StatusCode::OK {
+        return Err(ReplError::GeneralError(format!(
+            "Error during node connection. Server response code: {}",
+            resp.status()
+        )));
+    }
+
+    let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
+
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
@@ -607,10 +618,29 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         data.node_ip,
         serde_qs::to_string(&Addresses { addrs })?
     );
+
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<data::NextDraws>()?;
-        println!("next_draws:");
-        println!("{}", resp);
+        let addr_map = resp
+            .content()
+            .iter()
+            .fold(HashMap::new(), |mut map, (addr, slot)| {
+                let entry = map.entry(addr).or_insert_with(Vec::new);
+                entry.push(slot);
+                map
+            });
+        for (addr, slots) in addr_map {
+            println!("Next selected slots of address: {}:", addr);
+            for slot in slots {
+                println!(
+                    "   Cycle {}, period {}, thread {}",
+                    slot.get_cycle(consensus_cfg.periods_per_cycle),
+                    slot.period,
+                    slot.thread,
+                );
+            }
+            println!();
+        }
     }
     Ok(())
 }
