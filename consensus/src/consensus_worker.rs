@@ -796,14 +796,16 @@ impl ConsensusWorker {
                     );
                     self.staking_keys.insert(address, (public, key));
                 }
-                self.dump_staking_keys().await
+                self.dump_staking_keys().await;
+                Ok(())
             }
             ConsensusCommand::RemoveStakingAddresses(addresses) => {
                 for address in addresses.into_iter() {
                     self.staking_keys.remove(&address);
                 }
 
-                self.dump_staking_keys().await
+                self.dump_staking_keys().await;
+                Ok(())
             }
             ConsensusCommand::GetStakingAddressses(response_tx) => {
                 massa_trace!(
@@ -822,18 +824,23 @@ impl ConsensusWorker {
         }
     }
 
-    async fn dump_staking_keys(&self) -> Result<(), ConsensusError> {
+    async fn dump_staking_keys(&self) {
         let keys = self
             .staking_keys
             .iter()
             .map(|(_, (_, key))| *key)
             .collect::<Vec<_>>();
-        tokio::fs::write(
-            self.cfg.staking_keys_path.clone(),
-            serde_json::to_string_pretty(&keys)?,
-        )
-        .await?;
-        Ok(())
+        let json = match serde_json::to_string_pretty(&keys) {
+            Ok(json) => json,
+            Err(e) => {
+                warn!("Error while serializing staking keys {}", e);
+                return;
+            }
+        };
+
+        if let Err(e) = tokio::fs::write(self.cfg.staking_keys_path.clone(), json).await {
+            warn!("Error while dumping staking keys {}", e);
+        }
     }
 
     fn get_stats(&mut self) -> Result<ConsensusStats, ConsensusError> {
