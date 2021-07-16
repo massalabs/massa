@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use super::tools::protocol_test;
 use super::{mock_network_controller::MockNetworkController, tools};
 use crate::protocol::{start_protocol_controller, ProtocolEvent};
 use crate::{network::NetworkCommand, protocol::ProtocolPoolEvent};
@@ -11,54 +12,51 @@ use std::collections::{HashMap, HashSet};
 #[serial]
 async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let creator_node = nodes.pop().expect("Failed to get node info.");
 
-    // start protocol controller
-    let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            5u64,
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+            // 1. Create a block coming from one node.
+            let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
 
-    // Create 1 node.
-    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            // 2. Change the slot.
+            block.header.content.slot = Slot::new(1, 1);
 
-    let creator_node = nodes.pop().expect("Failed to get node info.");
+            // 3. Send block to protocol.
+            network_controller.send_block(creator_node.id, block).await;
 
-    // 1. Create a block coming from one node.
-    let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            // The node is banned.
+            tools::assert_banned_node(creator_node.id, &mut network_controller).await;
 
-    // 2. Change the slot.
-    block.header.content.slot = Slot::new(1, 1);
-
-    // 3. Send block to protocol.
-    network_controller.send_block(creator_node.id, block).await;
-
-    // The node is banned.
-    tools::assert_banned_node(creator_node.id, &mut network_controller).await;
-
-    // Check protocol does not send block to consensus.
-    match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt {
-        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-        _ => None,
-    })
-    .await
-    {
-        None => {}
-        _ => panic!("Protocol unexpectedly sent block or header."),
-    }
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+            // Check protocol does not send block to consensus.
+            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    _ => None,
+                }
+            })
+            .await
+            {
+                None => {}
+                _ => panic!("Protocol unexpectedly sent block or header."),
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
