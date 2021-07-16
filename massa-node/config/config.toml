@@ -94,6 +94,7 @@
     write_timeout = 10000
     max_bootstrap_pos_entries = 100000000
     max_bootstrap_pos_cycles = 5
+    enable_clock_synchronization = false
 
 [pool]
     max_pool_size_per_thread = 100000
