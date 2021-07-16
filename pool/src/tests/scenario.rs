@@ -265,136 +265,131 @@ async fn test_get_involved_operations() {
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
 
-    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
-        MockProtocolController::new();
-
-    let (mut pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
-        cfg.clone(),
+    pool_test(
+        cfg,
         thread_count,
         operation_validity_periods,
-        protocol_command_sender,
-        protocol_pool_event_receiver,
+        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+            let op_filter = |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
+                _ => None,
+            };
+
+            pool_command_sender
+                .update_current_slot(Slot::new(1, 0))
+                .await
+                .unwrap();
+            let (op1, _) = get_transaction_with_addresses(1, 1, pubkey_a, priv_a, pubkey_b);
+            let (op2, _) = get_transaction_with_addresses(2, 10, pubkey_b, priv_b, pubkey_b);
+            let (op3, _) = get_transaction_with_addresses(3, 100, pubkey_a, priv_a, pubkey_a);
+            let op1_id = op1.get_operation_id().unwrap();
+            let op2_id = op2.get_operation_id().unwrap();
+            let op3_id = op3.get_operation_id().unwrap();
+            let mut ops = HashMap::new();
+            for (op, id) in vec![op1, op2, op3]
+                .into_iter()
+                .zip(vec![op1_id, op2_id, op3_id].into_iter())
+            {
+                ops.insert(id, op.clone());
+            }
+
+            // Add ops to pool
+            protocol_controller.received_operations(ops.clone()).await;
+
+            let newly_added = match protocol_controller
+                .wait_command(250.into(), op_filter.clone())
+                .await
+            {
+                Some(ProtocolCommand::PropagateOperations(ops)) => ops,
+                Some(_) => panic!("unexpected protocol command"),
+                None => panic!("unexpected timeout reached"),
+            };
+            assert_eq!(
+                newly_added.keys().copied().collect::<HashSet<_>>(),
+                ops.keys().copied().collect::<HashSet<_>>()
+            );
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_a)
+                .await
+                .unwrap();
+            assert_eq!(
+                res.keys().collect::<HashSet<_>>(),
+                vec![&op1_id, &op3_id].into_iter().collect::<HashSet<_>>()
+            );
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_b)
+                .await
+                .unwrap();
+            assert_eq!(
+                res.keys().collect::<HashSet<_>>(),
+                vec![&op1_id, &op2_id].into_iter().collect::<HashSet<_>>()
+            );
+
+            pool_command_sender
+                .update_latest_final_periods(vec![1, 1])
+                .await
+                .unwrap();
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_a)
+                .await
+                .unwrap();
+            assert_eq!(
+                res.keys().collect::<HashSet<_>>(),
+                vec![&op3_id].into_iter().collect::<HashSet<_>>()
+            );
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_b)
+                .await
+                .unwrap();
+            assert_eq!(
+                res.keys().collect::<HashSet<_>>(),
+                vec![&op2_id].into_iter().collect::<HashSet<_>>()
+            );
+
+            pool_command_sender
+                .update_latest_final_periods(vec![2, 2])
+                .await
+                .unwrap();
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_a)
+                .await
+                .unwrap();
+            assert_eq!(
+                res.keys().collect::<HashSet<_>>(),
+                vec![&op3_id].into_iter().collect::<HashSet<_>>()
+            );
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_b)
+                .await
+                .unwrap();
+            assert!(res.is_empty());
+
+            pool_command_sender
+                .update_latest_final_periods(vec![3, 3])
+                .await
+                .unwrap();
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_a)
+                .await
+                .unwrap();
+            assert!(res.is_empty());
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_b)
+                .await
+                .unwrap();
+            assert!(res.is_empty());
+            (protocol_controller, pool_command_sender, pool_manager)
+        },
     )
-    .await
-    .unwrap();
-    let op_filter = |cmd| match cmd {
-        cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
-        _ => None,
-    };
-
-    pool_command_sender
-        .update_current_slot(Slot::new(1, 0))
-        .await
-        .unwrap();
-    let (op1, _) = get_transaction_with_addresses(1, 1, pubkey_a, priv_a, pubkey_b);
-    let (op2, _) = get_transaction_with_addresses(2, 10, pubkey_b, priv_b, pubkey_b);
-    let (op3, _) = get_transaction_with_addresses(3, 100, pubkey_a, priv_a, pubkey_a);
-    let op1_id = op1.get_operation_id().unwrap();
-    let op2_id = op2.get_operation_id().unwrap();
-    let op3_id = op3.get_operation_id().unwrap();
-    let mut ops = HashMap::new();
-    for (op, id) in vec![op1, op2, op3]
-        .into_iter()
-        .zip(vec![op1_id, op2_id, op3_id].into_iter())
-    {
-        ops.insert(id, op.clone());
-    }
-
-    // Add ops to pool
-    protocol_controller.received_operations(ops.clone()).await;
-
-    let newly_added = match protocol_controller
-        .wait_command(250.into(), op_filter.clone())
-        .await
-    {
-        Some(ProtocolCommand::PropagateOperations(ops)) => ops,
-        Some(_) => panic!("unexpected protocol command"),
-        None => panic!("unexpected timeout reached"),
-    };
-    assert_eq!(
-        newly_added.keys().copied().collect::<HashSet<_>>(),
-        ops.keys().copied().collect::<HashSet<_>>()
-    );
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_a)
-        .await
-        .unwrap();
-    assert_eq!(
-        res.keys().collect::<HashSet<_>>(),
-        vec![&op1_id, &op3_id].into_iter().collect::<HashSet<_>>()
-    );
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_b)
-        .await
-        .unwrap();
-    assert_eq!(
-        res.keys().collect::<HashSet<_>>(),
-        vec![&op1_id, &op2_id].into_iter().collect::<HashSet<_>>()
-    );
-
-    pool_command_sender
-        .update_latest_final_periods(vec![1, 1])
-        .await
-        .unwrap();
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_a)
-        .await
-        .unwrap();
-    assert_eq!(
-        res.keys().collect::<HashSet<_>>(),
-        vec![&op3_id].into_iter().collect::<HashSet<_>>()
-    );
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_b)
-        .await
-        .unwrap();
-    assert_eq!(
-        res.keys().collect::<HashSet<_>>(),
-        vec![&op2_id].into_iter().collect::<HashSet<_>>()
-    );
-
-    pool_command_sender
-        .update_latest_final_periods(vec![2, 2])
-        .await
-        .unwrap();
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_a)
-        .await
-        .unwrap();
-    assert_eq!(
-        res.keys().collect::<HashSet<_>>(),
-        vec![&op3_id].into_iter().collect::<HashSet<_>>()
-    );
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_b)
-        .await
-        .unwrap();
-    assert!(res.is_empty());
-
-    pool_command_sender
-        .update_latest_final_periods(vec![3, 3])
-        .await
-        .unwrap();
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_a)
-        .await
-        .unwrap();
-    assert!(res.is_empty());
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_b)
-        .await
-        .unwrap();
-    assert!(res.is_empty());
-
-    pool_manager.stop().await.unwrap();
+    .await;
 }
 
 #[tokio::test]
