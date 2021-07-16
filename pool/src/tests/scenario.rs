@@ -178,65 +178,61 @@ async fn test_pool_with_protocol_events() {
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
 
-    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
-        MockProtocolController::new();
-
-    let (_pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
-        cfg.clone(),
+    pool_test(
+        cfg,
         thread_count,
         operation_validity_periods,
-        protocol_command_sender,
-        protocol_pool_event_receiver,
+        async move |mut protocol_controller, pool_command_sender, pool_manager| {
+            let op_filter = |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
+                _ => None,
+            };
+
+            // generate transactions
+            let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
+            for i in 0..18 {
+                let fee = 40 + i;
+                let expire_period: u64 = 40 + i;
+                let start_period = expire_period.saturating_sub(operation_validity_periods);
+                let (op, thread) = get_transaction(expire_period, fee);
+                let id = op.verify_integrity().unwrap();
+
+                let mut ops = HashMap::new();
+                ops.insert(id, op.clone());
+
+                protocol_controller.received_operations(ops.clone()).await;
+
+                let newly_added = match protocol_controller
+                    .wait_command(250.into(), op_filter.clone())
+                    .await
+                {
+                    Some(ProtocolCommand::PropagateOperations(ops)) => ops,
+                    Some(_) => panic!("unexpected protocol command"),
+                    None => panic!("unexpected timeout reached"),
+                };
+                assert_eq!(
+                    newly_added.keys().copied().collect::<Vec<_>>(),
+                    ops.keys().copied().collect::<Vec<_>>()
+                );
+
+                // duplicate
+                protocol_controller.received_operations(ops.clone()).await;
+
+                match protocol_controller
+                    .wait_command(250.into(), op_filter.clone())
+                    .await
+                {
+                    Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
+                    None => {} // no propagation
+                };
+
+                thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
+            }
+
+            (protocol_controller, pool_command_sender, pool_manager)
+        },
     )
-    .await
-    .unwrap();
-    let op_filter = |cmd| match cmd {
-        cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
-        _ => None,
-    };
-
-    // generate transactions
-    let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
-    for i in 0..18 {
-        let fee = 40 + i;
-        let expire_period: u64 = 40 + i;
-        let start_period = expire_period.saturating_sub(operation_validity_periods);
-        let (op, thread) = get_transaction(expire_period, fee);
-        let id = op.verify_integrity().unwrap();
-
-        let mut ops = HashMap::new();
-        ops.insert(id, op.clone());
-
-        protocol_controller.received_operations(ops.clone()).await;
-
-        let newly_added = match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
-            .await
-        {
-            Some(ProtocolCommand::PropagateOperations(ops)) => ops,
-            Some(_) => panic!("unexpected protocol command"),
-            None => panic!("unexpected timeout reached"),
-        };
-        assert_eq!(
-            newly_added.keys().copied().collect::<Vec<_>>(),
-            ops.keys().copied().collect::<Vec<_>>()
-        );
-
-        // duplicate
-        protocol_controller.received_operations(ops.clone()).await;
-
-        match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
-            .await
-        {
-            Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-            None => {} // no propagation
-        };
-
-        thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
-    }
-
-    pool_manager.stop().await.unwrap();
+    .await;
 }
 
 #[tokio::test]
