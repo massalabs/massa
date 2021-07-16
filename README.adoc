@@ -85,3 +85,11 @@ Here is a set of tutorials:
 * link:docs/transaction.adoc[Sending transactions]
 * Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
 * link:docs/windows_install.adoc[Install and Run on Windows]
+
+
+## Troubleshooting
+
+* If your API can't start, e.g. with `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`, it's probably because the default API port 3030 is already in use on your computer. You should change the port in the config files, both in the API and Client:
+ ** in file `massa/massa-node/config/config.toml`, in section [API], in bind try put another port XXXX
+ ** in file `massa/massa-client/config/config.toml`, put the same port XXXX. 
+
