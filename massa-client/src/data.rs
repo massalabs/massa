@@ -154,6 +154,7 @@ pub struct ConsensusConfig {
     pub delta_f0: u64,
     pub max_block_size: u32,
     pub operation_validity_periods: u64,
+    pub periods_per_cycle: u64,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
@@ -421,13 +422,9 @@ impl std::fmt::Display for State {
 #[derive(Clone, Deserialize)]
 pub struct NextDraws(Vec<(Address, Slot)>);
 
-impl std::fmt::Display for NextDraws {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "next draws :")?;
-        for (addr, slot) in self.0.iter() {
-            writeln!(f, "draw: address: {} slot: {}", addr, slot)?
-        }
-        Ok(())
+impl NextDraws {
+    pub fn content(&self) -> &[(Address, Slot)] {
+        return &self.0;
     }
 }
 
