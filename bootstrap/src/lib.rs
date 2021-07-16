@@ -99,23 +99,30 @@ async fn get_state_internal(
         ));
     }
 
-    let local_time_uncompensated = recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
-    let compensation_millis = if server_time >= local_time_uncompensated {
-        server_time
-            .saturating_sub(local_time_uncompensated)
-            .to_millis()
-    } else {
-        local_time_uncompensated
-            .saturating_sub(server_time)
-            .to_millis()
-    };
-    let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
-        BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
-    })?;
-    debug!(
-        "Server clock compensation set to: {:?}",
+    let compensation_millis = if cfg.enable_clock_synchronization {
+        let local_time_uncompensated =
+            recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
+        let compensation_millis = if server_time >= local_time_uncompensated {
+            server_time
+                .saturating_sub(local_time_uncompensated)
+                .to_millis()
+        } else {
+            local_time_uncompensated
+                .saturating_sub(server_time)
+                .to_millis()
+        };
+        let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
+            BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
+        })?;
+        debug!(
+            "Server clock compensation set to: {:?}",
+            compensation_millis
+        );
         compensation_millis
-    );
+    } else {
+        0
+    };
+
     let sig_prev = sig;
 
     // Second, get peers
