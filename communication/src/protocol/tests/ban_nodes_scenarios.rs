@@ -410,95 +410,91 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 #[serial]
 async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 4 nodes.
+            let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            // Create a block coming from one node.
+            let block = tools::create_block(&nodes[0].private_key, &nodes[0].id.0);
 
-    // start protocol controller
-    let (
-        mut protocol_command_sender,
-        mut protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        protocol_config.clone(),
-        5u64,
-        network_command_sender,
-        network_event_receiver,
-    )
-    .await
-    .expect("could not start protocol controller");
+            let expected_hash = block
+                .header
+                .compute_block_id()
+                .expect("Failed to compute hash.");
 
-    // Create 4 nodes.
-    let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
+            // Propagate the block via 4 nodes.
+            for creator_node in nodes.iter() {
+                // Send block to protocol.
+                network_controller
+                    .send_header(creator_node.id, block.header.clone())
+                    .await;
 
-    // Create a block coming from one node.
-    let block = tools::create_block(&nodes[0].private_key, &nodes[0].id.0);
+                // Check protocol sends header to consensus.
+                let received_hash = match tools::wait_protocol_event(
+                    &mut protocol_event_receiver,
+                    1000.into(),
+                    |evt| match evt {
+                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                        _ => None,
+                    },
+                )
+                .await
+                {
+                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
+                    _ => panic!("Unexpected or no protocol event."),
+                };
 
-    let expected_hash = block
-        .header
-        .compute_block_id()
-        .expect("Failed to compute hash.");
+                // Check that protocol sent the right header to consensus.
+                assert_eq!(expected_hash, received_hash);
+            }
 
-    // Propagate the block via 4 nodes.
-    for creator_node in nodes.iter() {
-        // Send block to protocol.
-        network_controller
-            .send_header(creator_node.id, block.header.clone())
-            .await;
+            // Have one node send that they don't know about the block.
+            let not_banned_nodes =
+                tools::create_and_connect_nodes(1, &mut network_controller).await;
+            network_controller
+                .send_block_not_found(not_banned_nodes[0].id, expected_hash)
+                .await;
 
-        // Check protocol sends header to consensus.
-        let received_hash =
-            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                }
-            })
-            .await
-            {
-                Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                _ => panic!("Unexpected or no protocol event."),
+            // Simulate consensus notifying an attack attempt.
+            protocol_command_sender
+                .notify_block_attack(expected_hash)
+                .await
+                .expect("Failed to ask for block.");
+
+            // Make sure all nodes are banned.
+            let node_ids = nodes.into_iter().map(|node_info| node_info.id).collect();
+            tools::assert_banned_nodes(node_ids, &mut network_controller).await;
+
+            // Make sure protocol did not ban the node that did not know about the block.
+            let ban_cmd_filter = |cmd| match cmd {
+                cmd @ NetworkCommand::Ban { .. } => Some(cmd),
+                _ => None,
             };
+            let got_more_commands = network_controller
+                .wait_command(100.into(), ban_cmd_filter)
+                .await;
+            assert!(
+                got_more_commands.is_none(),
+                "unexpected command {:?}",
+                got_more_commands
+            );
 
-        // Check that protocol sent the right header to consensus.
-        assert_eq!(expected_hash, received_hash);
-    }
-
-    // Have one node send that they don't know about the block.
-    let not_banned_nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-    network_controller
-        .send_block_not_found(not_banned_nodes[0].id, expected_hash)
-        .await;
-
-    // Simulate consensus notifying an attack attempt.
-    protocol_command_sender
-        .notify_block_attack(expected_hash)
-        .await
-        .expect("Failed to ask for block.");
-
-    // Make sure all nodes are banned.
-    let node_ids = nodes.into_iter().map(|node_info| node_info.id).collect();
-    tools::assert_banned_nodes(node_ids, &mut network_controller).await;
-
-    // Make sure protocol did not ban the node that did not know about the block.
-    let ban_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::Ban { .. } => Some(cmd),
-        _ => None,
-    };
-    let got_more_commands = network_controller
-        .wait_command(100.into(), ban_cmd_filter)
-        .await;
-    assert!(
-        got_more_commands.is_none(),
-        "unexpected command {:?}",
-        got_more_commands
-    );
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
