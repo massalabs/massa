@@ -65,56 +65,55 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
 #[serial]
 async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    mut protocol_pool_event_receiver| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let creator_node = nodes.pop().expect("Failed to get node info.");
 
-    // start protocol controller
-    let (_, protocol_event_receiver, mut protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            5u64,
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+            // 1. Create an operation
+            let mut operation = tools::create_operation();
 
-    // Create 1 node.
-    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            // 2. Change the validity period.
+            operation.content.expire_period += 10;
 
-    let creator_node = nodes.pop().expect("Failed to get node info.");
+            // 3. Send block to protocol.
+            network_controller
+                .send_operations(creator_node.id, vec![operation])
+                .await;
 
-    // 1. Create an operation
-    let mut operation = tools::create_operation();
+            // The node is banned.
+            tools::assert_banned_node(creator_node.id, &mut network_controller).await;
 
-    // 2. Change the validity period.
-    operation.content.expire_period += 10;
-
-    // 3. Send block to protocol.
-    network_controller
-        .send_operations(creator_node.id, vec![operation])
-        .await;
-
-    // The node is banned.
-    tools::assert_banned_node(creator_node.id, &mut network_controller).await;
-
-    // Check protocol does not send operation to pool.
-    match tools::wait_protocol_pool_event(&mut protocol_pool_event_receiver, 1000.into(), |evt| {
-        match evt {
-            evt @ ProtocolPoolEvent::ReceivedOperations(..) => Some(evt),
-        }
-    })
-    .await
-    {
-        None => {}
-        _ => panic!("Protocol unexpectedly sent operation."),
-    }
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+            // Check protocol does not send operation to pool.
+            match tools::wait_protocol_pool_event(
+                &mut protocol_pool_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolPoolEvent::ReceivedOperations(..) => Some(evt),
+                },
+            )
+            .await
+            {
+                None => {}
+                _ => panic!("Protocol unexpectedly sent operation."),
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
