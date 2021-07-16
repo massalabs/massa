@@ -179,10 +179,11 @@ impl ConsensusWorker {
             .collect();
         let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
         info!(
-            "Starting node at time {}, cycle {}, slot {}",
+            "Starting node at time {}, cycle {}, period {}, thread {}",
             UTime::now(clock_compensation)?.to_utc_string(),
             next_slot.get_cycle(cfg.periods_per_cycle),
-            next_slot
+            next_slot.period,
+            next_slot.thread,
         );
         for addr in staking_keys.keys() {
             info!(
@@ -495,18 +496,21 @@ impl ConsensusWorker {
 
         massa_trace!("create block", { "block": block });
         info!(
-            "Created block {}, by address {}, at slot {} (cycle {})\n{}",
+            "Staked block {} with address {}, at cycle {}, period {}, thread {}\n{}",
             block_id,
             creator_addr,
-            cur_slot,
             cur_slot.get_cycle(self.cfg.periods_per_cycle),
+            cur_slot.period,
+            cur_slot.thread,
             if let Some(slot) = self
                 .pos
                 .get_next_selected_slot(self.next_slot, *creator_addr)
             {
                 format!(
-                    "Next slot for address : {} at {}",
-                    slot,
+                    "Next slot for this address: cycle {}, period {}, thread {}, at time {}",
+                    slot.get_cycle(self.cfg.periods_per_cycle),
+                    slot.period,
+                    slot.thread,
                     match get_block_slot_timestamp(
                         self.cfg.thread_count,
                         self.cfg.t0,
