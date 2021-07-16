@@ -157,7 +157,7 @@ impl ConsensusWorker {
         pool_command_sender: PoolCommandSender,
         opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
-        mut pos: ProofOfStake,
+        pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
@@ -179,33 +179,14 @@ impl ConsensusWorker {
             .collect();
         let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
         info!(
-            "Starting node at time {}, cycle {}, next slot {}",
+            "Starting node at time {}, cycle {}, period {}, thread {}",
             UTime::now(clock_compensation)?.to_utc_string(),
             next_slot.get_cycle(cfg.periods_per_cycle),
-            next_slot
+            next_slot.period,
+            next_slot.thread,
         );
         for addr in staking_keys.keys() {
-            info!(
-                "Start staking with address {}\n{}",
-                addr,
-                if let Some(slot) = pos.get_next_selected_slot(next_slot, *addr) {
-                    format!(
-                        "Next slot for address : {} at {}",
-                        slot,
-                        match get_block_slot_timestamp(
-                            cfg.thread_count,
-                            cfg.t0,
-                            cfg.genesis_timestamp,
-                            slot
-                        ) {
-                            Ok(time) => time.to_utc_string(),
-                            Err(_) => "internal error during get_block_slot_timestamp".to_string(),
-                        }
-                    )
-                } else {
-                    "Address not yet selected".to_string()
-                }
-            )
+            info!("Staking enabled for address: {}", addr);
         }
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
@@ -341,9 +322,11 @@ impl ConsensusWorker {
                 if let Some(next_addr_slot) = self.pos.get_next_selected_slot(self.next_slot, addr)
                 {
                     info!(
-                        "Next slot for address {}: {} at {}",
+                        "Next slot for address {}: cycle {}, period {}, thread {}, at time {}",
                         addr,
-                        next_addr_slot,
+                        next_addr_slot.get_cycle(self.cfg.periods_per_cycle),
+                        next_addr_slot.period,
+                        next_addr_slot.thread,
                         match get_block_slot_timestamp(
                             self.cfg.thread_count,
                             self.cfg.t0,
@@ -513,11 +496,12 @@ impl ConsensusWorker {
 
         massa_trace!("create block", { "block": block });
         info!(
-            "Created block {}, by address {}, at slot {} (cycle {})",
+            "Staked block {} with address {}, at cycle {}, period {}, thread {}",
             block_id,
             creator_addr,
-            cur_slot,
-            cur_slot.get_cycle(self.cfg.periods_per_cycle)
+            cur_slot.get_cycle(self.cfg.periods_per_cycle),
+            cur_slot.period,
+            cur_slot.thread
         );
 
         // add block to db
