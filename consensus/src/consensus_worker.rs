@@ -186,28 +186,7 @@ impl ConsensusWorker {
             next_slot.thread,
         );
         for addr in staking_keys.keys() {
-            info!(
-                "Start staking with address {}\n{}",
-                addr,
-                if let Some(slot) = pos.get_next_selected_slot(next_slot, *addr) {
-                    format!(
-                        "Next slot for address : period {}, thread {} at {}",
-                        slot.period,
-                        slot.thread,
-                        match get_block_slot_timestamp(
-                            cfg.thread_count,
-                            cfg.t0,
-                            cfg.genesis_timestamp,
-                            slot
-                        ) {
-                            Ok(time) => time.to_utc_string(),
-                            Err(_) => "internal error during get_block_slot_timestamp".to_string(),
-                        }
-                    )
-                } else {
-                    "Address not yet selected".to_string()
-                }
-            )
+            info!("Staking enabled for address: {}", addr);
         }
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
@@ -343,9 +322,11 @@ impl ConsensusWorker {
                 if let Some(next_addr_slot) = self.pos.get_next_selected_slot(self.next_slot, addr)
                 {
                     info!(
-                        "Next slot for address {}: {} at {}",
+                        "Next slot for address {}: cycle {}, period {}, thread {}, at time {}",
                         addr,
-                        next_addr_slot,
+                        next_addr_slot.get_cycle(self.cfg.periods_per_cycle),
+                        next_addr_slot.period,
+                        next_addr_slot.thread,
                         match get_block_slot_timestamp(
                             self.cfg.thread_count,
                             self.cfg.t0,
@@ -515,34 +496,12 @@ impl ConsensusWorker {
 
         massa_trace!("create block", { "block": block });
         info!(
-            "Staked block {} with address {}, at cycle {}, period {}, thread {}\n{}",
+            "Staked block {} with address {}, at cycle {}, period {}, thread {}",
             block_id,
             creator_addr,
             cur_slot.get_cycle(self.cfg.periods_per_cycle),
             cur_slot.period,
-            cur_slot.thread,
-            if let Some(slot) = self
-                .pos
-                .get_next_selected_slot(self.next_slot, *creator_addr)
-            {
-                format!(
-                    "Next slot for this address: cycle {}, period {}, thread {}, at time {}",
-                    slot.get_cycle(self.cfg.periods_per_cycle),
-                    slot.period,
-                    slot.thread,
-                    match get_block_slot_timestamp(
-                        self.cfg.thread_count,
-                        self.cfg.t0,
-                        self.cfg.genesis_timestamp,
-                        slot
-                    ) {
-                        Ok(time) => time.to_utc_string(),
-                        Err(_) => "internal error during get_block_slot_timestamp".to_string(),
-                    }
-                )
-            } else {
-                "Address not yet selected".to_string()
-            }
+            cur_slot.thread
         );
 
         // add block to db
