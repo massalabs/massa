@@ -157,77 +157,68 @@ async fn test_someone_knows_it() {
 async fn test_dont_want_it_anymore() {
     // start
     let protocol_config = tools::create_protocol_config();
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager| {
+            let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let _node_b = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
 
-    // start protocol controller
-    let (
-        mut protocol_command_sender,
-        protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        protocol_config.clone(),
-        5u64,
-        network_command_sender,
-        network_event_receiver,
+            // 2. Create a block coming from node 0.
+            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let hash_1 = block.header.compute_block_id().unwrap();
+            // end set up
+
+            // send wishlist
+            protocol_command_sender
+                .send_wishlist_delta(vec![hash_1].into_iter().collect(), HashSet::new())
+                .await
+                .unwrap();
+
+            // assert it was asked to node A
+            assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
+
+            // we don't want it anymore
+            protocol_command_sender
+                .send_wishlist_delta(HashSet::new(), vec![hash_1].into_iter().collect())
+                .await
+                .unwrap();
+
+            // 7. Make sure protocol did not send additional ask for block commands.
+            let ask_for_block_cmd_filter = |cmd| match cmd {
+                cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
+                _ => None,
+            };
+
+            let got_more_commands = network_controller
+                .wait_command(100.into(), ask_for_block_cmd_filter)
+                .await;
+            assert!(
+                got_more_commands.is_none(),
+                "unexpected command {:?}",
+                got_more_commands
+            );
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+            )
+        },
     )
-    .await
-    .expect("could not start protocol controller");
-
-    let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
-        .await
-        .pop()
-        .unwrap();
-    let _node_b = tools::create_and_connect_nodes(1, &mut network_controller)
-        .await
-        .pop()
-        .unwrap();
-    let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
-        .await
-        .pop()
-        .unwrap();
-
-    // 2. Create a block coming from node 0.
-    let block = tools::create_block(&node_a.private_key, &node_a.id.0);
-    let hash_1 = block.header.compute_block_id().unwrap();
-    // end set up
-
-    // send wishlist
-    protocol_command_sender
-        .send_wishlist_delta(vec![hash_1].into_iter().collect(), HashSet::new())
-        .await
-        .unwrap();
-
-    // assert it was asked to node A
-    assert_hash_asked_to_node(hash_1, node_a.id, &mut network_controller).await;
-
-    // we don't want it anymore
-    protocol_command_sender
-        .send_wishlist_delta(HashSet::new(), vec![hash_1].into_iter().collect())
-        .await
-        .unwrap();
-
-    // 7. Make sure protocol did not send additional ask for block commands.
-    let ask_for_block_cmd_filter = |cmd| match cmd {
-        cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
-        _ => None,
-    };
-
-    let got_more_commands = network_controller
-        .wait_command(100.into(), ask_for_block_cmd_filter)
-        .await;
-    assert!(
-        got_more_commands.is_none(),
-        "unexpected command {:?}",
-        got_more_commands
-    );
-
-    // Close everything
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+    .await;
 }
 
 #[tokio::test]
