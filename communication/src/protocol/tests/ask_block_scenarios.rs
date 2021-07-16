@@ -1,9 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use super::tools;
 use super::tools::protocol_test;
-use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
-use crate::protocol::start_protocol_controller;
 use crate::protocol::ProtocolEvent;
 use serial_test::serial;
 use std::collections::HashSet;
@@ -300,69 +299,61 @@ async fn test_no_one_has_it() {
 async fn test_multiple_blocks_without_a_priori() {
     // start
     let protocol_config = tools::create_protocol_config();
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
 
-    // start protocol controller
-    let (
-        mut protocol_command_sender,
-        protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        protocol_config.clone(),
-        5u64,
-        network_command_sender,
-        network_event_receiver,
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager| {
+            let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let _node_b = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+            let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .unwrap();
+
+            // 2. Create two blocks coming from node 0.
+            let block_1 = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let hash_1 = block_1.header.compute_block_id().unwrap();
+
+            let block_2 = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let hash_2 = block_2.header.compute_block_id().unwrap();
+
+            // node a is disconnected so no node knows about wanted blocks
+            network_controller.close_connection(node_a.id).await;
+            // end set up
+
+            // send wishlist
+            protocol_command_sender
+                .send_wishlist_delta(vec![hash_1, hash_2].into_iter().collect(), HashSet::new())
+                .await
+                .unwrap();
+
+            let list = asked_list(&mut network_controller).await;
+            for (node_id, set) in list.into_iter() {
+                // assert we ask one block per node
+                assert_eq!(
+                    set.len(),
+                    1,
+                    "node {:?} was asked {:?} blocks",
+                    node_id,
+                    set.len()
+                );
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+            )
+        },
     )
-    .await
-    .expect("could not start protocol controller");
-
-    let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
-        .await
-        .pop()
-        .unwrap();
-    let _node_b = tools::create_and_connect_nodes(1, &mut network_controller)
-        .await
-        .pop()
-        .unwrap();
-    let _node_c = tools::create_and_connect_nodes(1, &mut network_controller)
-        .await
-        .pop()
-        .unwrap();
-
-    // 2. Create two blocks coming from node 0.
-    let block_1 = tools::create_block(&node_a.private_key, &node_a.id.0);
-    let hash_1 = block_1.header.compute_block_id().unwrap();
-
-    let block_2 = tools::create_block(&node_a.private_key, &node_a.id.0);
-    let hash_2 = block_2.header.compute_block_id().unwrap();
-
-    // node a is disconnected so no node knows about wanted blocks
-    network_controller.close_connection(node_a.id).await;
-    // end set up
-
-    // send wishlist
-    protocol_command_sender
-        .send_wishlist_delta(vec![hash_1, hash_2].into_iter().collect(), HashSet::new())
-        .await
-        .unwrap();
-
-    let list = asked_list(&mut network_controller).await;
-    for (node_id, set) in list.into_iter() {
-        // assert we ask one block per node
-        assert_eq!(
-            set.len(),
-            1,
-            "node {:?} was asked {:?} blocks",
-            node_id,
-            set.len()
-        );
-    }
-
-    // Close everything
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+    .await;
 }
