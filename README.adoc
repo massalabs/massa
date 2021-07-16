@@ -90,6 +90,6 @@ Here is a set of tutorials:
 ## Troubleshooting
 
 * If your API can't start, e.g. with `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`, it's probably because the default API port 3030 is already in use on your computer. You should change the port in the config files, both in the API and Client:
- ** in file `massa/massa-node/config/config.toml`, in section [API], in bind try put another port XXXX
- ** in file `massa/massa-client/config/config.toml`, put the same port XXXX. 
+ ** in file `massa/massa-node/config/config.toml`, in section [API], in bind, put a new port,
+ ** in file `massa/massa-client/config/config.toml`, put that same port. 
 
