@@ -478,10 +478,6 @@ impl NetworkWorker {
                     }
                     // we don't have this node ID
                     hash_map::Entry::Vacant(entry) => {
-                        info!(
-                            "established protocol channel with connection_id={:?} => node_id={:?}",
-                            new_connection_id, new_node_id
-                        );
                         massa_trace!("node_connected", {
                             "connection_id": new_connection_id,
                             "node_id": new_node_id
