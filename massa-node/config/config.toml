@@ -33,7 +33,7 @@
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 10
-    staking_keys_path = "config/initial_staking_keys.json"
+    staking_keys_path = "config/staking_keys.json"
     roll_price = 500000000000
     #stats
     stats_timespan = 30000
