@@ -422,90 +422,87 @@ async fn test_new_final_ops() {
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
 
-    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
-        MockProtocolController::new();
-
-    let (mut pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
-        cfg.clone(),
+    pool_test(
+        cfg,
         thread_count,
         operation_validity_periods,
-        protocol_command_sender,
-        protocol_pool_event_receiver,
+        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+            let op_filter = |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
+                _ => None,
+            };
+
+            let mut ops: Vec<(OperationId, Operation)> = Vec::new();
+            for i in 0..10 {
+                let (op, _) = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
+                ops.push((op.get_operation_id().unwrap(), op));
+            }
+
+            // Add ops to pool
+            protocol_controller
+                .received_operations(ops.clone().into_iter().collect::<HashMap<_, _>>())
+                .await;
+
+            let newly_added = match protocol_controller
+                .wait_command(250.into(), op_filter.clone())
+                .await
+            {
+                Some(ProtocolCommand::PropagateOperations(ops)) => ops,
+                Some(_) => panic!("unexpected protocol command"),
+                None => panic!("unexpected timeout reached"),
+            };
+            assert_eq!(
+                newly_added.keys().copied().collect::<HashSet<_>>(),
+                ops.iter().map(|(id, _)| *id).collect::<HashSet<_>>()
+            );
+
+            pool_command_sender
+                .final_operations(
+                    ops[..4]
+                        .to_vec()
+                        .iter()
+                        .map(|(id, _)| (*id, (8u64, 0u8)))
+                        .collect::<HashMap<OperationId, (u64, u8)>>(),
+                )
+                .await
+                .unwrap();
+
+            let res = pool_command_sender
+                .get_operations_involving_address(address_a)
+                .await
+                .unwrap();
+            assert_eq!(
+                res.keys().copied().collect::<HashSet<_>>(),
+                ops[4..]
+                    .to_vec()
+                    .iter()
+                    .map(|(id, _)| *id)
+                    .collect::<HashSet<_>>()
+            );
+
+            // try to add ops 0 to 3 to pool
+            protocol_controller
+                .received_operations(
+                    ops[..4]
+                        .to_vec()
+                        .clone()
+                        .into_iter()
+                        .collect::<HashMap<_, _>>(),
+                )
+                .await;
+
+            match protocol_controller
+                .wait_command(500.into(), op_filter.clone())
+                .await
+            {
+                Some(ProtocolCommand::PropagateOperations(_)) => {
+                    panic!("unexpected operation propagation")
+                }
+                Some(_) => panic!("unexpected protocol command"),
+                None => {}
+            };
+            (protocol_controller, pool_command_sender, pool_manager)
+        },
     )
-    .await
-    .unwrap();
-    let op_filter = |cmd| match cmd {
-        cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
-        _ => None,
-    };
-
-    let mut ops: Vec<(OperationId, Operation)> = Vec::new();
-    for i in 0..10 {
-        let (op, _) = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
-        ops.push((op.get_operation_id().unwrap(), op));
-    }
-
-    // Add ops to pool
-    protocol_controller
-        .received_operations(ops.clone().into_iter().collect::<HashMap<_, _>>())
-        .await;
-
-    let newly_added = match protocol_controller
-        .wait_command(250.into(), op_filter.clone())
-        .await
-    {
-        Some(ProtocolCommand::PropagateOperations(ops)) => ops,
-        Some(_) => panic!("unexpected protocol command"),
-        None => panic!("unexpected timeout reached"),
-    };
-    assert_eq!(
-        newly_added.keys().copied().collect::<HashSet<_>>(),
-        ops.iter().map(|(id, _)| *id).collect::<HashSet<_>>()
-    );
-
-    pool_command_sender
-        .final_operations(
-            ops[..4]
-                .to_vec()
-                .iter()
-                .map(|(id, _)| (*id, (8u64, 0u8)))
-                .collect::<HashMap<OperationId, (u64, u8)>>(),
-        )
-        .await
-        .unwrap();
-
-    let res = pool_command_sender
-        .get_operations_involving_address(address_a)
-        .await
-        .unwrap();
-    assert_eq!(
-        res.keys().copied().collect::<HashSet<_>>(),
-        ops[4..]
-            .to_vec()
-            .iter()
-            .map(|(id, _)| *id)
-            .collect::<HashSet<_>>()
-    );
-
-    // try to add ops 0 to 3 to pool
-    protocol_controller
-        .received_operations(
-            ops[..4]
-                .to_vec()
-                .clone()
-                .into_iter()
-                .collect::<HashMap<_, _>>(),
-        )
-        .await;
-
-    match protocol_controller
-        .wait_command(500.into(), op_filter.clone())
-        .await
-    {
-        Some(ProtocolCommand::PropagateOperations(_)) => panic!("unexpected operation propagation"),
-        Some(_) => panic!("unexpected protocol command"),
-        None => {}
-    };
-
-    pool_manager.stop().await.unwrap();
+    .await;
 }
