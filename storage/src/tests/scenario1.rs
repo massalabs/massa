@@ -36,43 +36,43 @@ async fn test_max_block_count() {
         max_bootstrap_pos_cycles: 5,
     });
 
-    let (storage, manager) = start_storage(config).unwrap();
-    assert_eq!(0, storage.len().await.unwrap());
-    //write 6 block. 5 must be in db after. The (1,0) must be removed.
-    add_block(Slot::new(2, 1), &storage).await;
-    assert_eq!(1, storage.len().await.unwrap());
-    add_block(Slot::new(1, 1), &storage).await;
-    assert_eq!(2, storage.len().await.unwrap());
-    add_block(Slot::new(3, 0), &storage).await;
-    assert_eq!(3, storage.len().await.unwrap());
-    add_block(Slot::new(1, 0), &storage).await;
-    assert_eq!(4, storage.len().await.unwrap());
-    add_block(Slot::new(3, 1), &storage).await;
-    assert_eq!(5, storage.len().await.unwrap());
-    add_block(Slot::new(4, 0), &storage).await;
+    tools::storage_test(config, async move |storage| {
+        assert_eq!(0, storage.len().await.unwrap());
+        //write 6 block. 5 must be in db after. The (1,0) must be removed.
+        add_block(Slot::new(2, 1), &storage).await;
+        assert_eq!(1, storage.len().await.unwrap());
+        add_block(Slot::new(1, 1), &storage).await;
+        assert_eq!(2, storage.len().await.unwrap());
+        add_block(Slot::new(3, 0), &storage).await;
+        assert_eq!(3, storage.len().await.unwrap());
+        add_block(Slot::new(1, 0), &storage).await;
+        assert_eq!(4, storage.len().await.unwrap());
+        add_block(Slot::new(3, 1), &storage).await;
+        assert_eq!(5, storage.len().await.unwrap());
+        add_block(Slot::new(4, 0), &storage).await;
 
-    while storage.len().await.unwrap() > 5 {
-        tokio::task::yield_now().await;
-    }
-    let result = storage
-        .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
-        .await
-        .unwrap();
-    assert_eq!(result.len(), 0);
-
-    add_block(Slot::new(4, 1), &storage).await;
-    loop {
+        while storage.len().await.unwrap() > 5 {
+            tokio::task::yield_now().await;
+        }
         let result = storage
-            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
+            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
             .await
             .unwrap();
-        if result.len() == 0 {
-            break;
-        }
-        tokio::task::yield_now().await;
-    }
+        assert_eq!(result.len(), 0);
 
-    manager.stop().await.unwrap();
+        add_block(Slot::new(4, 1), &storage).await;
+        loop {
+            let result = storage
+                .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
+                .await
+                .unwrap();
+            if result.len() == 0 {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -106,42 +106,43 @@ async fn test_max_nb_blocks() {
         max_bootstrap_pos_cycles: 5,
     });
 
-    let (storage, manager) = start_storage(config).unwrap();
-    assert_eq!(0, storage.len().await.unwrap());
-    //write 6 block. 5 must be in db after. The (1,0) must be removed.
-    add_block(Slot::new(2, 1), &storage).await;
-    assert_eq!(1, storage.len().await.unwrap());
-    add_block(Slot::new(1, 1), &storage).await;
-    assert_eq!(2, storage.len().await.unwrap());
-    add_block(Slot::new(3, 0), &storage).await;
-    assert_eq!(3, storage.len().await.unwrap());
-    add_block(Slot::new(1, 0), &storage).await;
-    assert_eq!(4, storage.len().await.unwrap());
-    add_block(Slot::new(3, 1), &storage).await;
-    assert_eq!(5, storage.len().await.unwrap());
-    add_block(Slot::new(4, 0), &storage).await;
+    tools::storage_test(config, async move |storage| {
+        assert_eq!(0, storage.len().await.unwrap());
+        //write 6 block. 5 must be in db after. The (1,0) must be removed.
+        add_block(Slot::new(2, 1), &storage).await;
+        assert_eq!(1, storage.len().await.unwrap());
+        add_block(Slot::new(1, 1), &storage).await;
+        assert_eq!(2, storage.len().await.unwrap());
+        add_block(Slot::new(3, 0), &storage).await;
+        assert_eq!(3, storage.len().await.unwrap());
+        add_block(Slot::new(1, 0), &storage).await;
+        assert_eq!(4, storage.len().await.unwrap());
+        add_block(Slot::new(3, 1), &storage).await;
+        assert_eq!(5, storage.len().await.unwrap());
+        add_block(Slot::new(4, 0), &storage).await;
 
-    while storage.len().await.unwrap() > 5 {
-        tokio::task::yield_now().await;
-    }
-    let result = storage
-        .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
-        .await
-        .unwrap();
-    assert_eq!(result.len(), 0);
-
-    add_block(Slot::new(4, 1), &storage).await;
-    loop {
+        while storage.len().await.unwrap() > 5 {
+            tokio::task::yield_now().await;
+        }
         let result = storage
-            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
+            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
             .await
             .unwrap();
-        if result.len() == 0 {
-            break;
+        assert_eq!(result.len(), 0);
+
+        add_block(Slot::new(4, 1), &storage).await;
+        loop {
+            let result = storage
+                .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(2, 1)))
+                .await
+                .unwrap();
+            if result.len() == 0 {
+                break;
+            }
+            tokio::task::yield_now().await;
         }
-        tokio::task::yield_now().await;
-    }
-    manager.stop().await.unwrap();
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -175,70 +176,70 @@ async fn test_get_slot_range() {
         max_bootstrap_pos_cycles: 5,
     });
 
-    let (storage, manager) = start_storage(config).unwrap();
-    assert_eq!(0, storage.len().await.unwrap());
-    //add block in this order depending on their period and thread
-    add_block(Slot::new(2, 1), &storage).await;
-    add_block(Slot::new(1, 0), &storage).await;
-    add_block(Slot::new(1, 1), &storage).await;
-    add_block(Slot::new(3, 0), &storage).await;
-    add_block(Slot::new(3, 1), &storage).await;
-    add_block(Slot::new(4, 0), &storage).await;
-    assert_eq!(6, storage.len().await.unwrap());
+    tools::storage_test(config, async move |storage| {
+        assert_eq!(0, storage.len().await.unwrap());
+        //add block in this order depending on their period and thread
+        add_block(Slot::new(2, 1), &storage).await;
+        add_block(Slot::new(1, 0), &storage).await;
+        add_block(Slot::new(1, 1), &storage).await;
+        add_block(Slot::new(3, 0), &storage).await;
+        add_block(Slot::new(3, 1), &storage).await;
+        add_block(Slot::new(4, 0), &storage).await;
+        assert_eq!(6, storage.len().await.unwrap());
 
-    // search for (1,2) (3,1)
-    let result = storage
-        .get_slot_range(Some(Slot::new(1, 1)), Some(Slot::new(3, 1)))
-        .await
-        .unwrap();
-    //println!("result:{:#?}", result);
-    assert!(result.contains_key(&get_dummy_block_id("(period: 1, thread: 1)")));
-    assert!(result.contains_key(&get_dummy_block_id("(period: 2, thread: 1)")));
-    assert!(result.contains_key(&get_dummy_block_id("(period: 3, thread: 0)")));
-    assert!(!result.contains_key(&get_dummy_block_id("(period: 3, thread: 1)")));
-    assert!(!result.contains_key(&get_dummy_block_id("(period: 1, thread: 0)")));
-    assert!(!result.contains_key(&get_dummy_block_id("(period: 2, thread: 0)")));
+        // search for (1,2) (3,1)
+        let result = storage
+            .get_slot_range(Some(Slot::new(1, 1)), Some(Slot::new(3, 1)))
+            .await
+            .unwrap();
+        //println!("result:{:#?}", result);
+        assert!(result.contains_key(&get_dummy_block_id("(period: 1, thread: 1)")));
+        assert!(result.contains_key(&get_dummy_block_id("(period: 2, thread: 1)")));
+        assert!(result.contains_key(&get_dummy_block_id("(period: 3, thread: 0)")));
+        assert!(!result.contains_key(&get_dummy_block_id("(period: 3, thread: 1)")));
+        assert!(!result.contains_key(&get_dummy_block_id("(period: 1, thread: 0)")));
+        assert!(!result.contains_key(&get_dummy_block_id("(period: 2, thread: 0)")));
 
-    //range too low
-    let result = storage
-        .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 0)))
-        .await
-        .unwrap();
-    assert_eq!(0, result.len());
-    //range too after
-    let result = storage
-        .get_slot_range(Some(Slot::new(4, 1)), Some(Slot::new(6, 1)))
-        .await
-        .unwrap();
-    //    println!("result:{:?}", result);
-    assert_eq!(0, result.len());
-    //unique range be after
-    let result = storage
-        .get_slot_range(Some(Slot::new(1, 1)), Some(Slot::new(1, 1)))
-        .await
-        .unwrap();
-    assert_eq!(0, result.len());
-    //bad range
-    let result = storage
-        .get_slot_range(Some(Slot::new(3, 1)), Some(Slot::new(1, 1)))
-        .await
-        .unwrap();
-    assert_eq!(0, result.len());
+        //range too low
+        let result = storage
+            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 0)))
+            .await
+            .unwrap();
+        assert_eq!(0, result.len());
+        //range too after
+        let result = storage
+            .get_slot_range(Some(Slot::new(4, 1)), Some(Slot::new(6, 1)))
+            .await
+            .unwrap();
+        //    println!("result:{:?}", result);
+        assert_eq!(0, result.len());
+        //unique range be after
+        let result = storage
+            .get_slot_range(Some(Slot::new(1, 1)), Some(Slot::new(1, 1)))
+            .await
+            .unwrap();
+        assert_eq!(0, result.len());
+        //bad range
+        let result = storage
+            .get_slot_range(Some(Slot::new(3, 1)), Some(Slot::new(1, 1)))
+            .await
+            .unwrap();
+        assert_eq!(0, result.len());
 
-    //unique range inf out
-    let result = storage
-        .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
-        .await
-        .unwrap();
-    assert!(result.contains_key(&get_dummy_block_id("(period: 1, thread: 0)")));
-    //unique range sup out
-    let result = storage
-        .get_slot_range(Some(Slot::new(4, 0)), Some(Slot::new(5, 1)))
-        .await
-        .unwrap();
-    assert!(result.contains_key(&get_dummy_block_id("(period: 4, thread: 0)")));
-
-    manager.stop().await.unwrap();
+        //unique range inf out
+        let result = storage
+            .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
+            .await
+            .unwrap();
+        assert!(result.contains_key(&get_dummy_block_id("(period: 1, thread: 0)")));
+        //unique range sup out
+        let result = storage
+            .get_slot_range(Some(Slot::new(4, 0)), Some(Slot::new(5, 1)))
+            .await
+            .unwrap();
+        assert!(result.contains_key(&get_dummy_block_id("(period: 4, thread: 0)")));
+    })
+    .await;
 }
 
 async fn add_block(slot: Slot, storage: &StorageAccess) {
