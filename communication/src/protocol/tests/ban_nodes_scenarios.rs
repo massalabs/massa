@@ -120,82 +120,83 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
 #[serial]
 async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let to_ban_node = nodes.pop().expect("Failed to get node info.");
 
-    // start protocol controller
-    let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            5u64,
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+            // 1. Create a block coming from one node.
+            let mut block = tools::create_block(&to_ban_node.private_key, &to_ban_node.id.0);
 
-    // Create 1 node.
-    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            // 2. Change the slot.
+            block.header.content.slot = Slot::new(1, 1);
 
-    let to_ban_node = nodes.pop().expect("Failed to get node info.");
+            // 3. Send header to protocol.
+            network_controller
+                .send_header(to_ban_node.id, block.header)
+                .await;
 
-    // 1. Create a block coming from one node.
-    let mut block = tools::create_block(&to_ban_node.private_key, &to_ban_node.id.0);
+            // The node is banned.
+            tools::assert_banned_node(to_ban_node.id, &mut network_controller).await;
 
-    // 2. Change the slot.
-    block.header.content.slot = Slot::new(1, 1);
+            // Check protocol does not send block to consensus.
+            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    _ => None,
+                }
+            })
+            .await
+            {
+                None => {}
+                _ => panic!("Protocol unexpectedly sent block or header."),
+            }
 
-    // 3. Send header to protocol.
-    network_controller
-        .send_header(to_ban_node.id, block.header)
-        .await;
+            // Create another node.
+            let not_banned = tools::create_and_connect_nodes(1, &mut network_controller)
+                .await
+                .pop()
+                .expect("Node not created.");
 
-    // The node is banned.
-    tools::assert_banned_node(to_ban_node.id, &mut network_controller).await;
+            // Create a valid block from the other node.
+            let block = tools::create_block(&not_banned.private_key, &not_banned.id.0);
 
-    // Check protocol does not send block to consensus.
-    match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt {
-        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-        _ => None,
-    })
-    .await
-    {
-        None => {}
-        _ => panic!("Protocol unexpectedly sent block or header."),
-    }
+            // 3. Send header to protocol, via the banned node.
+            network_controller
+                .send_header(to_ban_node.id, block.header)
+                .await;
 
-    // Create another node.
-    let not_banned = tools::create_and_connect_nodes(1, &mut network_controller)
-        .await
-        .pop()
-        .expect("Node not created.");
-
-    // Create a valid block from the other node.
-    let block = tools::create_block(&not_banned.private_key, &not_banned.id.0);
-
-    // 3. Send header to protocol, via the banned node.
-    network_controller
-        .send_header(to_ban_node.id, block.header)
-        .await;
-
-    // Check protocol does not send block to consensus.
-    match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt {
-        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-        _ => None,
-    })
-    .await
-    {
-        None => {}
-        _ => panic!("Protocol unexpectedly sent header coming from banned node."),
-    }
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+            // Check protocol does not send block to consensus.
+            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    _ => None,
+                }
+            })
+            .await
+            {
+                None => {}
+                _ => panic!("Protocol unexpectedly sent header coming from banned node."),
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
