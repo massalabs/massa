@@ -191,8 +191,9 @@ impl ConsensusWorker {
                 addr,
                 if let Some(slot) = pos.get_next_selected_slot(next_slot, *addr) {
                     format!(
-                        "Next slot for address : {} at {}",
-                        slot,
+                        "Next slot for address : period {}, thread {} at {}",
+                        slot.period,
+                        slot.thread,
                         match get_block_slot_timestamp(
                             cfg.thread_count,
                             cfg.t0,
