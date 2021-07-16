@@ -157,7 +157,7 @@ impl ConsensusWorker {
         pool_command_sender: PoolCommandSender,
         opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
-        mut pos: ProofOfStake,
+        pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
