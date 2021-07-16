@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use super::tools;
 use super::tools::protocol_test;
-use super::{mock_network_controller::MockNetworkController, tools};
-use crate::protocol::{start_protocol_controller, ProtocolEvent};
+use crate::protocol::ProtocolEvent;
 use crate::{network::NetworkCommand, protocol::ProtocolPoolEvent};
 use models::Slot;
 use serial_test::serial;
@@ -501,67 +501,65 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
 #[serial]
 async fn test_protocol_removes_banned_node_on_disconnection() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let creator_node = nodes.pop().expect("Failed to get node info.");
 
-    // start protocol controller
-    let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            5u64,
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+            // Get the node banned.
+            let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            block.header.content.slot = Slot::new(1, 1);
+            network_controller
+                .send_header(creator_node.id, block.header)
+                .await;
+            tools::assert_banned_node(creator_node.id, &mut network_controller).await;
 
-    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            // Close the connection.
+            network_controller.close_connection(creator_node.id).await;
 
-    let creator_node = nodes.pop().expect("Failed to get node info.");
+            // Re-connect the node.
+            network_controller.new_connection(creator_node.id).await;
 
-    // Get the node banned.
-    let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
-    block.header.content.slot = Slot::new(1, 1);
-    network_controller
-        .send_header(creator_node.id, block.header)
-        .await;
-    tools::assert_banned_node(creator_node.id, &mut network_controller).await;
+            // The node is not banned anymore.
+            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            network_controller
+                .send_header(creator_node.id, block.header.clone())
+                .await;
 
-    // Close the connection.
-    network_controller.close_connection(creator_node.id).await;
+            // Check protocol sends header to consensus.
+            let received_hash =
+                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                    match evt {
+                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                        _ => None,
+                    }
+                })
+                .await
+                {
+                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
+                    _ => panic!("Unexpected or no protocol event."),
+                };
 
-    // Re-connect the node.
-    network_controller.new_connection(creator_node.id).await;
-
-    // The node is not banned anymore.
-    let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
-    network_controller
-        .send_header(creator_node.id, block.header.clone())
-        .await;
-
-    // Check protocol sends header to consensus.
-    let received_hash =
-        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
-        {
-            evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-            _ => None,
-        })
-        .await
-        {
-            Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-            _ => panic!("Unexpected or no protocol event."),
-        };
-
-    // Check that protocol sent the right header to consensus.
-    let expected_hash = block
-        .header
-        .compute_block_id()
-        .expect("Failed to compute hash.");
-    assert_eq!(expected_hash, received_hash);
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+            // Check that protocol sent the right header to consensus.
+            let expected_hash = block
+                .header
+                .compute_block_id()
+                .expect("Failed to compute hash.");
+            assert_eq!(expected_hash, received_hash);
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
 }
