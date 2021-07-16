@@ -2,9 +2,8 @@
 
 //RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::{mock_network_controller::MockNetworkController, tools};
+use super::tools;
 use crate::network::NetworkCommand;
-use crate::protocol::start_protocol_controller;
 use crate::protocol::tests::tools::protocol_test;
 use crate::protocol::ProtocolEvent;
 use serial_test::serial;
@@ -380,79 +379,74 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 #[serial]
 async fn test_protocol_block_not_found() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let creator_node = nodes.pop().expect("Failed to get node info.");
 
-    // start protocol controller
-    let (
-        mut protocol_command_sender,
-        mut protocol_event_receiver,
-        protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        protocol_config.clone(),
-        5u64,
-        network_command_sender,
-        network_event_receiver,
+            // 1. Create a block coming from one node.
+            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+
+            let expected_hash = block.header.compute_block_id().unwrap();
+
+            // 3. Ask block to protocol.
+            network_controller
+                .send_ask_for_block(creator_node.id, vec![expected_hash])
+                .await;
+
+            // Check protocol sends ask block to consensus.
+            let hash =
+                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                    match evt {
+                        evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
+                        _ => None,
+                    }
+                })
+                .await
+                {
+                    Some(ProtocolEvent::GetBlocks(mut list)) => {
+                        list.pop().expect("Empty list of hashes.")
+                    }
+                    _ => panic!("Unexpected or no protocol event."),
+                };
+            assert_eq!(expected_hash, hash);
+
+            // consensus didn't found block
+            let mut results = HashMap::new();
+            results.insert(expected_hash, None);
+            protocol_command_sender
+                .send_get_blocks_results(results)
+                .await
+                .unwrap();
+
+            // protocol transmits blockNotFound
+            let (node, hash) = match network_controller
+                .wait_command(100.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::BlockNotFound { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::BlockNotFound { node, block_id }) => (node, block_id),
+                _ => panic!("Unexpected or no network command."),
+            };
+
+            assert_eq!(expected_hash, hash);
+            assert_eq!(creator_node.id, node);
+
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+            )
+        },
     )
-    .await
-    .expect("could not start protocol controller");
-
-    // Create 1 node.
-    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-    let creator_node = nodes.pop().expect("Failed to get node info.");
-
-    // 1. Create a block coming from one node.
-    let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
-
-    let expected_hash = block.header.compute_block_id().unwrap();
-
-    // 3. Ask block to protocol.
-    network_controller
-        .send_ask_for_block(creator_node.id, vec![expected_hash])
-        .await;
-
-    // Check protocol sends ask block to consensus.
-    let hash =
-        match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| match evt
-        {
-            evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-            _ => None,
-        })
-        .await
-        {
-            Some(ProtocolEvent::GetBlocks(mut list)) => list.pop().expect("Empty list of hashes."),
-            _ => panic!("Unexpected or no protocol event."),
-        };
-    assert_eq!(expected_hash, hash);
-
-    // consensus didn't found block
-    let mut results = HashMap::new();
-    results.insert(expected_hash, None);
-    protocol_command_sender
-        .send_get_blocks_results(results)
-        .await
-        .unwrap();
-
-    // protocol transmits blockNotFound
-    let (node, hash) = match network_controller
-        .wait_command(100.into(), |cmd| match cmd {
-            cmd @ NetworkCommand::BlockNotFound { .. } => Some(cmd),
-            _ => None,
-        })
-        .await
-    {
-        Some(NetworkCommand::BlockNotFound { node, block_id }) => (node, block_id),
-        _ => panic!("Unexpected or no network command."),
-    };
-
-    assert_eq!(expected_hash, hash);
-    assert_eq!(creator_node.id, node);
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+    .await;
 }
