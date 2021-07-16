@@ -2,6 +2,7 @@
 
 //RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
+use super::tools::protocol_test;
 use super::{mock_network_controller::MockNetworkController, tools};
 use crate::network::NetworkCommand;
 use crate::protocol::start_protocol_controller;
@@ -13,55 +14,53 @@ use std::collections::HashMap;
 #[serial]
 async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    mut protocol_pool_event_receiver| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let creator_node = nodes.pop().expect("Failed to get node info.");
 
-    // start protocol controller
-    let (_, protocol_event_receiver, mut protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            5u64,
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+            // 1. Create an operation
+            let operation = tools::create_operation();
 
-    // Create 1 node.
-    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            let expected_operation_id = operation.verify_integrity().unwrap();
 
-    let creator_node = nodes.pop().expect("Failed to get node info.");
+            // 3. Send operation to protocol.
+            network_controller
+                .send_operations(creator_node.id, vec![operation])
+                .await;
 
-    // 1. Create an operation
-    let operation = tools::create_operation();
+            // Check protocol sends operations to consensus.
+            let received_operations = match tools::wait_protocol_pool_event(
+                &mut protocol_pool_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                },
+            )
+            .await
+            {
+                Some(ProtocolPoolEvent::ReceivedOperations(operations)) => operations,
+                _ => panic!("Unexpected or no protocol pool event."),
+            };
+            assert!(received_operations.contains_key(&expected_operation_id));
 
-    let expected_operation_id = operation.verify_integrity().unwrap();
-
-    // 3. Send operation to protocol.
-    network_controller
-        .send_operations(creator_node.id, vec![operation])
-        .await;
-
-    // Check protocol sends operations to consensus.
-    let received_operations = match tools::wait_protocol_pool_event(
-        &mut protocol_pool_event_receiver,
-        1000.into(),
-        |evt| match evt {
-            evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
         },
     )
-    .await
-    {
-        Some(ProtocolPoolEvent::ReceivedOperations(operations)) => operations,
-        _ => panic!("Unexpected or no protocol pool event."),
-    };
-    assert!(received_operations.contains_key(&expected_operation_id));
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+    .await;
 }
 
 #[tokio::test]
