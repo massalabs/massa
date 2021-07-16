@@ -67,55 +67,55 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 #[serial]
 async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus() {
     let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    mut protocol_pool_event_receiver| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            let creator_node = nodes.pop().expect("Failed to get node info.");
 
-    // start protocol controller
-    let (_, protocol_event_receiver, mut protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            5u64,
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+            // 1. Create an operation.
+            let mut operation = tools::create_operation();
 
-    // Create 1 node.
-    let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            // Change the fee, making the signature invalid.
+            operation.content.fee = 111;
 
-    let creator_node = nodes.pop().expect("Failed to get node info.");
+            // 3. Send operation to protocol.
+            network_controller
+                .send_operations(creator_node.id, vec![operation])
+                .await;
 
-    // 1. Create an operation.
-    let mut operation = tools::create_operation();
+            // Check protocol does not send operations to consensus.
+            match tools::wait_protocol_pool_event(
+                &mut protocol_pool_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                },
+            )
+            .await
+            {
+                Some(ProtocolPoolEvent::ReceivedOperations(_)) => {
+                    panic!("Protocol send invalid operations.")
+                }
+                _ => {}
+            };
 
-    // Change the fee, making the signature invalid.
-    operation.content.fee = 111;
-
-    // 3. Send operation to protocol.
-    network_controller
-        .send_operations(creator_node.id, vec![operation])
-        .await;
-
-    // Check protocol does not send operations to consensus.
-    match tools::wait_protocol_pool_event(&mut protocol_pool_event_receiver, 1000.into(), |evt| {
-        match evt {
-            evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
-        }
-    })
-    .await
-    {
-        Some(ProtocolPoolEvent::ReceivedOperations(_)) => {
-            panic!("Protocol send invalid operations.")
-        }
-        _ => {}
-    };
-
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
