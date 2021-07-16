@@ -755,10 +755,9 @@ impl SignatureEngine {
 
 /// Generate a random private key from a RNG.
 pub fn generate_random_private_key() -> PrivateKey {
-    use secp256k1::rand::FromEntropy;
-    PrivateKey(secp256k1::key::SecretKey::new(
-        &mut secp256k1::rand::StdRng::from_entropy(),
-    ))
+    use secp256k1::rand::rngs::OsRng;
+    let mut rng = OsRng::new().expect("OsRng");
+    PrivateKey(secp256k1::key::SecretKey::new(&mut rng))
 }
 
 pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {

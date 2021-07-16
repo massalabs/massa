@@ -106,52 +106,6 @@ async fn test_ledger_final_balance_increment_new_address() {
 
 #[tokio::test]
 #[serial]
-async fn test_ledger_apply_change_wrong_thread() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
-    let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
-    let cfg = tools::default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new(cfg.clone(), None).unwrap();
-
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
-    let thread = address.get_thread(cfg.thread_count);
-
-    let changes = LedgerChanges(
-        vec![(
-            address.clone(),
-            LedgerChange {
-                balance_delta: 1,
-                balance_increment: true,
-            },
-        )]
-        .into_iter()
-        .collect(),
-    );
-    // Note: wrong thread.
-    assert!(ledger.apply_final_changes(thread + 1, &changes, 1).is_err());
-
-    // Balance should still be zero.
-    let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
-        .expect("Couldn't get final balance.");
-    let final_data_for_address = final_datas
-        .0
-        .get(&address)
-        .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 0);
-}
-
-#[tokio::test]
-#[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)

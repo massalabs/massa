@@ -1,7 +1,7 @@
 # Test config
 
 ## Requirements
-Make sure you have [everything](https://gitlab.com/massalabs/massa-network/-/blob/master/README.md) installed. Agree on the branch to test and pull it.
+Make sure you have [everything](https://gitlab.com/massalabs/massa/-/blob/main/README.adoc) installed. Agree on the branch to test and pull it.
 
 Open needed ports. (For now we use 31234 for common messages and 31235 for bootstrap, but it can change.)
 

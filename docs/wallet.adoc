@@ -53,5 +53,5 @@ Also, if you want to save this wallet and be able to restore it later, click `Sa
 ## Next steps
 
 * Ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
-* link:staking.adoc[Stake] your coins to receive rewards.
-* link:transaction.adoc[Send transactions].
+* link:staking.adoc[Staking] your coins to receive rewards.
+* link:transaction.adoc[Sending transactions].
