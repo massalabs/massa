@@ -11,6 +11,7 @@ use std::collections::HashSet;
 
 use crate::pool_controller;
 use crate::tests::tools::get_transaction_with_addresses;
+use crate::tests::tools::pool_test;
 
 use super::{
     mock_protocol_controller::MockProtocolController,
@@ -24,162 +25,151 @@ async fn test_pool() {
     let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
     let max_pool_size_per_thread = 10;
     cfg.max_pool_size_per_thread = max_pool_size_per_thread;
-
-    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
-        MockProtocolController::new();
-
-    let (mut pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
-        cfg.clone(),
+    pool_test(
+        cfg,
         thread_count,
         operation_validity_periods,
-        protocol_command_sender,
-        protocol_pool_event_receiver,
+        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+            let op_filter = |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
+                _ => None,
+            };
+            // generate transactions
+            let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
+            for i in 0..18 {
+                let fee = 40 + i;
+                let expire_period: u64 = 40 + i;
+                let start_period = expire_period.saturating_sub(operation_validity_periods);
+                let (op, thread) = get_transaction(expire_period, fee);
+                let id = op.verify_integrity().unwrap();
+
+                let mut ops = HashMap::new();
+                ops.insert(id, op.clone());
+
+                pool_command_sender
+                    .add_operations(ops.clone())
+                    .await
+                    .unwrap();
+
+                let newly_added = match protocol_controller
+                    .wait_command(250.into(), op_filter.clone())
+                    .await
+                {
+                    Some(ProtocolCommand::PropagateOperations(ops)) => ops,
+                    Some(_) => panic!("unexpected protocol command"),
+                    None => panic!("unexpected timeout reached"),
+                };
+                assert_eq!(
+                    newly_added.keys().copied().collect::<Vec<_>>(),
+                    ops.keys().copied().collect::<Vec<_>>()
+                );
+
+                // duplicate
+                pool_command_sender
+                    .add_operations(ops.clone())
+                    .await
+                    .unwrap();
+
+                match protocol_controller
+                    .wait_command(250.into(), op_filter.clone())
+                    .await
+                {
+                    Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
+                    None => {} // no propagation
+                };
+
+                thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
+            }
+            // sort from bigger fee to smaller and truncate
+            for lst in thread_tx_lists.iter_mut() {
+                lst.reverse();
+                lst.truncate(max_pool_size_per_thread as usize);
+            }
+
+            // checks ops for thread 0 and 1 and various periods
+            for thread in 0u8..=1 {
+                for period in 0u64..70 {
+                    let target_slot = Slot::new(period, thread);
+                    let max_count = 3;
+                    let res = pool_command_sender
+                        .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
+                        .await
+                        .unwrap();
+                    assert!(res
+                        .iter()
+                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                        .eq(thread_tx_lists[target_slot.thread as usize]
+                            .iter()
+                            .filter(|(_, _, r)| r.contains(&target_slot.period))
+                            .take(max_count)
+                            .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                }
+            }
+            // op ending before or at period 45 should be discarded
+            let final_period = 45u64;
+            pool_command_sender
+                .update_latest_final_periods(vec![final_period; thread_count as usize])
+                .await
+                .unwrap();
+            for lst in thread_tx_lists.iter_mut() {
+                lst.retain(|(_, op, _)| op.content.expire_period > final_period);
+            }
+            // checks ops for thread 0 and 1 and various periods
+            for thread in 0u8..=1 {
+                for period in 0u64..70 {
+                    let target_slot = Slot::new(period, thread);
+                    let max_count = 4;
+                    let res = pool_command_sender
+                        .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
+                        .await
+                        .unwrap();
+                    assert!(res
+                        .iter()
+                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                        .eq(thread_tx_lists[target_slot.thread as usize]
+                            .iter()
+                            .filter(|(_, _, r)| r.contains(&target_slot.period))
+                            .take(max_count)
+                            .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                }
+            }
+            // add transactions from protocol with a high fee but too much in the future: should be ignored
+            {
+                pool_command_sender
+                    .update_current_slot(Slot::new(10, 0))
+                    .await
+                    .unwrap();
+                let fee = 1000;
+                let expire_period: u64 = 300;
+                let (op, thread) = get_transaction(expire_period, fee);
+                let id = op.verify_integrity().unwrap();
+                let mut ops = HashMap::new();
+                ops.insert(id, op);
+
+                pool_command_sender.add_operations(ops).await.unwrap();
+
+                match protocol_controller
+                    .wait_command(250.into(), op_filter.clone())
+                    .await
+                {
+                    Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
+                    None => {} // no propagation
+                };
+                let res = pool_command_sender
+                    .get_operation_batch(
+                        Slot::new(expire_period - 1, thread),
+                        HashSet::new(),
+                        10,
+                        10000,
+                    )
+                    .await
+                    .unwrap();
+                assert!(res.is_empty());
+            }
+            (protocol_controller, pool_command_sender, pool_manager)
+        },
     )
-    .await
-    .unwrap();
-    let op_filter = |cmd| match cmd {
-        cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
-        _ => None,
-    };
-
-    // generate transactions
-    let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
-    for i in 0..18 {
-        let fee = 40 + i;
-        let expire_period: u64 = 40 + i;
-        let start_period = expire_period.saturating_sub(operation_validity_periods);
-        let (op, thread) = get_transaction(expire_period, fee);
-        let id = op.verify_integrity().unwrap();
-
-        let mut ops = HashMap::new();
-        ops.insert(id, op.clone());
-
-        pool_command_sender
-            .add_operations(ops.clone())
-            .await
-            .unwrap();
-
-        let newly_added = match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
-            .await
-        {
-            Some(ProtocolCommand::PropagateOperations(ops)) => ops,
-            Some(_) => panic!("unexpected protocol command"),
-            None => panic!("unexpected timeout reached"),
-        };
-        assert_eq!(
-            newly_added.keys().copied().collect::<Vec<_>>(),
-            ops.keys().copied().collect::<Vec<_>>()
-        );
-
-        // duplicate
-        pool_command_sender
-            .add_operations(ops.clone())
-            .await
-            .unwrap();
-
-        match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
-            .await
-        {
-            Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-            None => {} // no propagation
-        };
-
-        thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
-    }
-
-    // sort from bigger fee to smaller and truncate
-    for lst in thread_tx_lists.iter_mut() {
-        lst.reverse();
-        lst.truncate(max_pool_size_per_thread as usize);
-    }
-
-    // checks ops for thread 0 and 1 and various periods
-    for thread in 0u8..=1 {
-        for period in 0u64..70 {
-            let target_slot = Slot::new(period, thread);
-            let max_count = 3;
-            let res = pool_command_sender
-                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
-                .await
-                .unwrap();
-            assert!(res
-                .iter()
-                .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
-                .eq(thread_tx_lists[target_slot.thread as usize]
-                    .iter()
-                    .filter(|(_, _, r)| r.contains(&target_slot.period))
-                    .take(max_count)
-                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
-        }
-    }
-
-    // op ending before or at period 45 should be discarded
-    let final_period = 45u64;
-    pool_command_sender
-        .update_latest_final_periods(vec![final_period; thread_count as usize])
-        .await
-        .unwrap();
-    for lst in thread_tx_lists.iter_mut() {
-        lst.retain(|(_, op, _)| op.content.expire_period > final_period);
-    }
-
-    // checks ops for thread 0 and 1 and various periods
-    for thread in 0u8..=1 {
-        for period in 0u64..70 {
-            let target_slot = Slot::new(period, thread);
-            let max_count = 4;
-            let res = pool_command_sender
-                .get_operation_batch(target_slot, HashSet::new(), max_count, 10000)
-                .await
-                .unwrap();
-            assert!(res
-                .iter()
-                .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
-                .eq(thread_tx_lists[target_slot.thread as usize]
-                    .iter()
-                    .filter(|(_, _, r)| r.contains(&target_slot.period))
-                    .take(max_count)
-                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
-        }
-    }
-
-    // add transactions from protocol with a high fee but too much in the future: should be ignored
-    {
-        pool_command_sender
-            .update_current_slot(Slot::new(10, 0))
-            .await
-            .unwrap();
-        let fee = 1000;
-        let expire_period: u64 = 300;
-        let (op, thread) = get_transaction(expire_period, fee);
-        let id = op.verify_integrity().unwrap();
-        let mut ops = HashMap::new();
-        ops.insert(id, op);
-
-        pool_command_sender.add_operations(ops).await.unwrap();
-
-        match protocol_controller
-            .wait_command(250.into(), op_filter.clone())
-            .await
-        {
-            Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-            None => {} // no propagation
-        };
-        let res = pool_command_sender
-            .get_operation_batch(
-                Slot::new(expire_period - 1, thread),
-                HashSet::new(),
-                10,
-                10000,
-            )
-            .await
-            .unwrap();
-        assert!(res.is_empty());
-    }
-
-    pool_manager.stop().await.unwrap();
+    .await;
 }
 #[tokio::test]
 #[serial]
