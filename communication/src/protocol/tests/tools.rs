@@ -318,6 +318,7 @@ where
         ProtocolEventReceiver,
         ProtocolCommandSender,
         ProtocolManager,
+        ProtocolPoolEventReceiver,
     ) -> V,
     V: Future<
         Output = (
@@ -325,6 +326,7 @@ where
             ProtocolEventReceiver,
             ProtocolCommandSender,
             ProtocolManager,
+            ProtocolPoolEventReceiver,
         ),
     >,
 {
@@ -346,14 +348,20 @@ where
     .await
     .expect("could not start protocol controller");
 
-    let (_network_controller, protocol_event_receiver, _protocol_command_sender, protocol_manager) =
-        test(
-            network_controller,
-            protocol_event_receiver,
-            protocol_command_sender,
-            protocol_manager,
-        )
-        .await;
+    let (
+        _network_controller,
+        protocol_event_receiver,
+        _protocol_command_sender,
+        protocol_manager,
+        protocol_pool_event_receiver,
+    ) = test(
+        network_controller,
+        protocol_event_receiver,
+        protocol_command_sender,
+        protocol_manager,
+        protocol_pool_event_receiver,
+    )
+    .await;
 
     protocol_manager
         .stop(protocol_event_receiver, protocol_pool_event_receiver)

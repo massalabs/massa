@@ -17,7 +17,8 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -53,6 +54,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )

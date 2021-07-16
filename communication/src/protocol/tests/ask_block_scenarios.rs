@@ -19,7 +19,8 @@ async fn test_without_a_priori() {
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -70,6 +71,7 @@ async fn test_without_a_priori() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -86,7 +88,8 @@ async fn test_someone_knows_it() {
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -145,6 +148,7 @@ async fn test_someone_knows_it() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -161,7 +165,8 @@ async fn test_dont_want_it_anymore() {
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -214,6 +219,7 @@ async fn test_dont_want_it_anymore() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -231,7 +237,8 @@ async fn test_no_one_has_it() {
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -289,6 +296,7 @@ async fn test_no_one_has_it() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -305,7 +313,8 @@ async fn test_multiple_blocks_without_a_priori() {
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -352,6 +361,7 @@ async fn test_multiple_blocks_without_a_priori() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )

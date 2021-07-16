@@ -19,7 +19,8 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             let ask_for_block_cmd_filter = |cmd| match cmd {
                 cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
                 _ => None,
@@ -89,6 +90,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -104,7 +106,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             let send_block_or_header_cmd_filter = |cmd| match cmd {
                 cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
                 cmd @ NetworkCommand::SendBlockHeader { .. } => Some(cmd),
@@ -197,6 +200,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -212,7 +216,8 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             // Create 4 nodes.
             let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
             let (node_a, node_b, node_c, node_d) = (
@@ -319,6 +324,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -335,7 +341,8 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -369,6 +376,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
@@ -384,7 +392,8 @@ async fn test_protocol_block_not_found() {
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
-                    protocol_manager| {
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -445,6 +454,7 @@ async fn test_protocol_block_not_found() {
                 protocol_event_receiver,
                 protocol_command_sender,
                 protocol_manager,
+                protocol_pool_event_receiver,
             )
         },
     )
