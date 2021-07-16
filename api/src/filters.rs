@@ -447,7 +447,8 @@ async fn get_consensus_config(
         "genesis_timestamp": consensus_cfg.genesis_timestamp,
         "delta_f0": consensus_cfg.delta_f0,
         "max_block_size": consensus_cfg.max_block_size,
-        "operation_validity_periods": consensus_cfg.operation_validity_periods
+        "operation_validity_periods": consensus_cfg.operation_validity_periods,
+        "periods_per_cycle": consensus_cfg.periods_per_cycle,
     })))
 }
 

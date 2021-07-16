@@ -151,15 +151,16 @@ async fn run(cfg: config::Config) {
                 Ok(ApiEvent::AddOperations(operations)) => {
                     massa_trace!("massa-node.main.run.select.api_event.AddOperations", {"operations": operations});
                     for (id, op) in operations.iter() {
-                        info!("Added operation {}from API : type {}, from address {}, fee{}", id,   match op.content.op {
-                            models::OperationType::Transaction {  amount , ..} => format!("transaction with amount {}", amount),
-                            models::OperationType::RollBuy { roll_count } => format!("buy {} rolls", roll_count),
-                            models::OperationType::RollSell { roll_count } => format!("sell {} rolls", roll_count),
-                        },
-                        match Address::from_public_key(&op.content.sender_public_key){
+                        let from_address = match Address::from_public_key(&op.content.sender_public_key){
                             Ok(addr) => addr.to_string(),
                             Err(_) => "could not get address from public key".to_string(),
-                        }, op.content.fee);
+                        };
+                        let operation_message =  match op.content.op {
+                            models::OperationType::Transaction {  amount , recipient_address } => format!("transaction from address {} to address {}, with amount {}", from_address, recipient_address, amount),
+                            models::OperationType::RollBuy { roll_count } => format!("address {} buys {} rolls", from_address, roll_count),
+                            models::OperationType::RollSell { roll_count } => format!("address {} sells {} rolls", from_address, roll_count),
+                        };
+                        info!("Added operation {} from API : {}, fee {}", id, operation_message, op.content.fee);
                     }
                     if api_pool_command_sender.add_operations(operations)
                             .await
