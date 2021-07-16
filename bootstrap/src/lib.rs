@@ -169,7 +169,7 @@ async fn get_state_internal(
     signed_data.extend(graph.to_bytes_compact()?);
     let signed_data_hash = Hash::hash(&signed_data);
     verify_signature(&signed_data_hash, &sig, &bootstrap_public_key)?;
-    info!("Successuful bootstrap");
+    info!("Successful bootstrap");
 
     Ok((pos, graph, compensation_millis, peers))
 }
