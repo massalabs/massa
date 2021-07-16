@@ -157,7 +157,7 @@ impl ConsensusWorker {
         pool_command_sender: PoolCommandSender,
         opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
-        pos: ProofOfStake,
+        mut pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
@@ -179,7 +179,7 @@ impl ConsensusWorker {
             .collect();
         let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
         info!(
-            "Starting node at time {}, cycle {}, slot {}",
+            "Starting node at time {}, cycle {}, next slot {}",
             UTime::now(clock_compensation)?.to_utc_string(),
             next_slot.get_cycle(cfg.periods_per_cycle),
             next_slot
@@ -338,6 +338,24 @@ impl ConsensusWorker {
             };
             if let Some((addr, pub_k, priv_k)) = creator_info {
                 self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+                if let Some(next_addr_slot) = self.pos.get_next_selected_slot(self.next_slot, addr)
+                {
+                    info!(
+                        "Next slot for address {}: {} at {}",
+                        addr,
+                        next_addr_slot,
+                        match get_block_slot_timestamp(
+                            self.cfg.thread_count,
+                            self.cfg.t0,
+                            self.cfg.genesis_timestamp,
+                            next_addr_slot
+                        ) {
+                            Ok(time) => time.to_utc_string(),
+                            Err(err) =>
+                                format!("(internal error during get_block_slot_timestamp: {})", err),
+                        }
+                    );
+                }
             }
         }
 
@@ -495,31 +513,11 @@ impl ConsensusWorker {
 
         massa_trace!("create block", { "block": block });
         info!(
-            "Created block {}, by address {}, at slot {} (cycle {})\n{}",
+            "Created block {}, by address {}, at slot {} (cycle {})",
             block_id,
             creator_addr,
             cur_slot,
-            cur_slot.get_cycle(self.cfg.periods_per_cycle),
-            if let Some(slot) = self
-                .pos
-                .get_next_selected_slot(self.next_slot, *creator_addr)
-            {
-                format!(
-                    "Next slot for address : {} at {}",
-                    slot,
-                    match get_block_slot_timestamp(
-                        self.cfg.thread_count,
-                        self.cfg.t0,
-                        self.cfg.genesis_timestamp,
-                        slot
-                    ) {
-                        Ok(time) => time.to_utc_string(),
-                        Err(_) => "internal error during get_block_slot_timestamp".to_string(),
-                    }
-                )
-            } else {
-                "Address not yet selected".to_string()
-            }
+            cur_slot.get_cycle(self.cfg.periods_per_cycle)
         );
 
         // add block to db
@@ -771,29 +769,7 @@ impl ConsensusWorker {
                 for key in keys.into_iter() {
                     let public = crypto::derive_public_key(&key);
                     let address = Address::from_public_key(&public)?;
-                    info!(
-                        "Start staking with address {}\n{}",
-                        address,
-                        if let Some(slot) = self.pos.get_next_selected_slot(self.next_slot, address)
-                        {
-                            format!(
-                                "Next slot for address : {} at {}",
-                                slot,
-                                match get_block_slot_timestamp(
-                                    self.cfg.thread_count,
-                                    self.cfg.t0,
-                                    self.cfg.genesis_timestamp,
-                                    slot
-                                ) {
-                                    Ok(time) => time.to_utc_string(),
-                                    Err(_) =>
-                                        "internal error during get_block_slot_timestamp".to_string(),
-                                }
-                            )
-                        } else {
-                            "Address not yet selected".to_string()
-                        }
-                    );
+                    info!("Staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));
                 }
                 self.dump_staking_keys().await;
