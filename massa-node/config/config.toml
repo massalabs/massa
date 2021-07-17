@@ -4,7 +4,7 @@
 [api]
     max_return_invalid_blocks = 10
     selection_return_periods = 10
-    bind = "127.0.0.1:3030"
+    bind = "127.0.0.1:33033"
 
 [consensus]
     genesis_timestamp = 1626440641000 # to update while testing
