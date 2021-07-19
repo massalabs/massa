@@ -1,13 +1,27 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::StorageConfig;
+use crate::{start_storage, StorageAccess, StorageConfig};
 use crypto::hash::Hash;
+use models::SerializeCompact;
 use models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationId, OperationType, SerializationContext, Slot,
 };
+use std::future::Future;
 
-use models::SerializeCompact;
+/// Runs a storage test, passing the storage access to it.
+pub async fn storage_test<F, V>(cfg: StorageConfig, test: F)
+where
+    F: FnOnce(StorageAccess) -> V,
+    V: Future<Output = ()>,
+{
+    let (storage, manager) = start_storage(cfg).unwrap();
+
+    // Call test func.
+    test(storage).await;
+
+    manager.stop().await.unwrap();
+}
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::hash(s.as_bytes()))
