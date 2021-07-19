@@ -115,7 +115,7 @@ pub fn get_filter(
         .and(warp::path("block"))
         .and(warp::path::param::<BlockId>()) //block id
         .and(warp::path::end())
-        .and_then(move |hash| get_block(evt_tx.clone(), hash, storage.clone()));
+        .and_then(move |hash| wrap_api_call(get_block(evt_tx.clone(), hash, storage.clone())));
 
     let evt_tx = event_tx.clone();
     let operations = warp::get()
@@ -447,8 +447,6 @@ where
     })
 }
 
-
-
 async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_pool_config", {});
     Ok(warp::reply::json(&json!({
@@ -590,46 +588,20 @@ async fn get_block(
     event_tx: mpsc::Sender<ApiEvent>,
     block_id: BlockId,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<Option<ExportBlockStatus>, ApiError> {
     massa_trace!("api.filters.get_block", { "block_id": block_id });
-    match retrieve_block(block_id, &event_tx).await {
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error retrieving active blocks : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-        Ok(None) => {
-            if let Some(cmd_tx) = opt_storage_command_sender {
-                match cmd_tx.get_block(block_id).await {
-                    Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
-                    Ok(None) => Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message": format!("active block not found : {:?}", block_id)
-                        })),
-                        warp::http::StatusCode::NOT_FOUND,
-                    )
-                    .into_response()),
-                    Err(e) => Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message": format!("error retrieving active blocks : {:?}", e)
-                        })),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                    .into_response()),
-                }
-            } else {
-                Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("active block not found : {:?}", block_id)
-                    })),
-                    warp::http::StatusCode::NOT_FOUND,
-                )
-                .into_response())
+    if let Some(block) = retrieve_block(block_id, &event_tx).await? {
+        Ok(Some(block))
+    } else {
+        if let Some(cmd_tx) = opt_storage_command_sender {
+            match cmd_tx.get_block(block_id).await {
+                Ok(Some(block)) => Ok(Some(ExportBlockStatus::Stored(block))),
+                Ok(None) => Err(ApiError::NotFound),
+                Err(e) => Err(e.into()),
             }
+        } else {
+            Err(ApiError::NotFound)
         }
-        Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
     }
 }
 
