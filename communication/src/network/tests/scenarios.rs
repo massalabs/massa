@@ -1,13 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 //to start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
-use super::{mock_establisher, tools};
+use super::tools;
 use crate::network::binders::{ReadBinder, WriteBinder};
 use crate::network::messages::Message;
 use crate::network::node_worker::{NodeCommand, NodeEvent, NodeWorker};
 use crate::network::ConnectionClosureReason;
 use crate::network::NetworkEvent;
-use crate::network::{start_network_controller, PeerInfo};
+use crate::network::PeerInfo;
 use crate::NodeId;
 use crypto::signature;
 use models::BlockId;
@@ -101,76 +101,73 @@ async fn test_multiple_connections_to_controller() {
     let mock2_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 12)), bind_port);
     let mock3_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 13)), bind_port);
 
-    // create establisher
-    let (establisher, mut mock_interface) = mock_establisher::new();
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |_network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            // note: the peers list is empty so the controller will not attempt outgoing connections
 
-    // launch network controller
-    let (_, mut network_event_receiver, network_manager, _) =
-        start_network_controller(network_conf.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
+            // 1) connect peer1 to controller
+            let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock1_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l110
 
-    // note: the peers list is empty so the controller will not attempt outgoing connections
+            // 2) connect peer2 to controller
+            let (conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock2_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            assert_ne!(
+                conn1_id, conn2_id,
+                "IDs of simultaneous connections should be different"
+            );
+            let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l109
 
-    // 1) connect peer1 to controller
-    let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_to_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock1_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
+            // 3) try to establish an extra connection from peer1 to controller with max_in_connections_per_ip = 1
+            tools::rejected_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock1_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+
+            // 4) try to establish an third connection to controller with max_in_connections = 2
+            tools::rejected_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock3_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![conn1_drain, conn2_drain],
+            )
+        },
     )
     .await;
-    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l110
-
-    // 2) connect peer2 to controller
-    let (conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock2_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
-    )
-    .await;
-    assert_ne!(
-        conn1_id, conn2_id,
-        "IDs of simultaneous connections should be different"
-    );
-    let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l109
-
-    // 3) try to establish an extra connection from peer1 to controller with max_in_connections_per_ip = 1
-    tools::rejected_connection_to_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock1_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
-    )
-    .await;
-
-    // 4) try to establish an third connection to controller with max_in_connections = 2
-    tools::rejected_connection_to_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock3_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
-    )
-    .await;
-
-    network_manager
-        .stop(network_event_receiver)
-        .await
-        .expect("error while stopping network");
-
-    tools::incoming_message_drain_stop(conn2_drain).await;
-    tools::incoming_message_drain_stop(conn1_drain).await;
-
-    temp_peers_file.close().unwrap();
 }
 
 // test peer ban
@@ -212,70 +209,67 @@ async fn test_peer_ban() {
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     network_conf.target_out_connections = 10;
 
-    // create establisher
-    let (establisher, mut mock_interface) = mock_establisher::new();
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            // accept connection from controller to peer
+            let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l220
 
-    // launch network controller
-    let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(network_conf.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
+            trace!("test_peer_ban first connection done");
 
-    // accept connection from controller to peer
-    let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
+            // connect peer to controller
+            let (_conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l221
+            trace!("test_peer_ban second connection done");
+
+            //ban connection1.
+            network_command_sender
+                .ban(conn1_id)
+                .await
+                .expect("error during send ban command.");
+
+            // todo in #18
+            // // attempt a new connection from peer to controller: should be rejected
+            // tools::rejected_connection_to_controller(
+            //     &mut network_event_receiver,
+            //     &mut mock_interface,
+            //     mock_addr,
+            //     1_000u64,
+            //     1_000u64,
+            //     1_000u64,
+            // )
+            // .await;
+
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![conn1_drain, conn2_drain],
+            )
+        },
     )
     .await;
-    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l220
-
-    trace!("test_peer_ban first connection done");
-
-    // connect peer to controller
-    let (_conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
-    )
-    .await;
-    let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l221
-    trace!("test_peer_ban second connection done");
-
-    //ban connection1.
-    network_command_sender
-        .ban(conn1_id)
-        .await
-        .expect("error during send ban command.");
-
-    // todo in #18
-    // // attempt a new connection from peer to controller: should be rejected
-    // tools::rejected_connection_to_controller(
-    //     &mut network_event_receiver,
-    //     &mut mock_interface,
-    //     mock_addr,
-    //     1_000u64,
-    //     1_000u64,
-    //     1_000u64,
-    // )
-    // .await;
-
-    // close
-    network_manager
-        .stop(network_event_receiver)
-        .await
-        .expect("error while stopping network");
-
-    tools::incoming_message_drain_stop(conn1_drain).await;
-    tools::incoming_message_drain_stop(conn2_drain).await;
-
-    temp_peers_file.close().unwrap();
 }
 
 // test merge_advertised_peer_list, advertised and wakeup_interval:
@@ -315,99 +309,102 @@ async fn test_advertised_and_wakeup_interval() {
     network_conf.wakeup_interval = UTime::from(500);
     network_conf.connect_timeout = UTime::from(2000);
 
-    // create establisher
-    let (establisher, mut mock_interface) = mock_establisher::new();
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |_network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            // 1) open a connection, advertize peer, disconnect
+            {
+                let (conn2_id, conn2_r, mut conn2_w) = tools::full_connection_to_controller(
+                    &mut network_event_receiver,
+                    &mut mock_interface,
+                    mock_addr,
+                    1_000u64,
+                    1_000u64,
+                    1_000u64,
+                )
+                .await;
+                tools::advertise_peers_in_connection(&mut conn2_w, vec![mock_addr.ip()]).await;
+                // drop the connection
+                drop(conn2_r);
+                drop(conn2_w);
+                // wait for the message signalling the closure of the connection
+                tools::wait_network_event(
+                    &mut network_event_receiver,
+                    1000.into(),
+                    |msg| match msg {
+                        NetworkEvent::ConnectionClosed(closed_node_id) => {
+                            if closed_node_id == conn2_id {
+                                Some(())
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
+                )
+                .await
+                .expect("connection closure message not received");
+            };
 
-    // launch network controller
-    let (_, mut network_event_receiver, network_manager, _) =
-        start_network_controller(network_conf.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
-
-    // 1) open a connection, advertize peer, disconnect
-    {
-        let (conn2_id, conn2_r, mut conn2_w) = tools::full_connection_to_controller(
-            &mut network_event_receiver,
-            &mut mock_interface,
-            mock_addr,
-            1_000u64,
-            1_000u64,
-            1_000u64,
-        )
-        .await;
-        tools::advertise_peers_in_connection(&mut conn2_w, vec![mock_addr.ip()]).await;
-        // drop the connection
-        drop(conn2_r);
-        drop(conn2_w);
-        // wait for the message signalling the closure of the connection
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::ConnectionClosed(closed_node_id) => {
-                if closed_node_id == conn2_id {
-                    Some(())
-                } else {
-                    None
-                }
+            // 2) refuse the first connection attempt coming from controller towards advertised peer
+            {
+                let (_, _, addr, accept_tx) = tokio::time::timeout(
+                    Duration::from_millis(1500),
+                    mock_interface.wait_connection_attempt_from_controller(),
+                )
+                .await
+                .expect("wait_connection_attempt_from_controller timed out")
+                .expect("wait_connection_attempt_from_controller failed");
+                assert_eq!(addr, mock_addr, "unexpected connection attempt address");
+                accept_tx.send(false).expect("accept_tx failed");
             }
-            _ => None,
-        })
-        .await
-        .expect("connection closure message not received");
-    };
 
-    // 2) refuse the first connection attempt coming from controller towards advertised peer
-    {
-        let (_, _, addr, accept_tx) = tokio::time::timeout(
-            Duration::from_millis(1500),
-            mock_interface.wait_connection_attempt_from_controller(),
-        )
-        .await
-        .expect("wait_connection_attempt_from_controller timed out")
-        .expect("wait_connection_attempt_from_controller failed");
-        assert_eq!(addr, mock_addr, "unexpected connection attempt address");
-        accept_tx.send(false).expect("accept_tx failed");
-    }
+            // 3) Next connection attempt from controller, accept connection
+            let (_conn_id, _conn1_w, conn1_drain) = {
+                // drained l357
+                let start_instant = Instant::now();
+                let (conn_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
+                    &mut network_event_receiver,
+                    &mut mock_interface,
+                    mock_addr,
+                    (network_conf.wakeup_interval.to_millis() as u128 * 3u128)
+                        .try_into()
+                        .unwrap(),
+                    1_000u64,
+                    1_000u64,
+                )
+                .await;
+                if start_instant.elapsed() < network_conf.wakeup_interval.to_duration() {
+                    panic!("controller tried to reconnect after a too short delay");
+                }
+                let drain_h = tools::incoming_message_drain_start(conn1_r).await; // drained l357
+                (conn_id, conn1_w, drain_h)
+            };
 
-    // 3) Next connection attempt from controller, accept connection
-    let (_conn_id, _conn1_w, conn1_drain) = {
-        // drained l357
-        let start_instant = Instant::now();
-        let (conn_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
-            &mut network_event_receiver,
-            &mut mock_interface,
-            mock_addr,
-            (network_conf.wakeup_interval.to_millis() as u128 * 3u128)
-                .try_into()
-                .unwrap(),
-            1_000u64,
-            1_000u64,
-        )
-        .await;
-        if start_instant.elapsed() < network_conf.wakeup_interval.to_duration() {
-            panic!("controller tried to reconnect after a too short delay");
-        }
-        let drain_h = tools::incoming_message_drain_start(conn1_r).await; // drained l357
-        (conn_id, conn1_w, drain_h)
-    };
-
-    // 4) check that there are no further connection attempts from controller
-    if let Some(_) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::NewConnection(_) => Some(()),
-            _ => None,
-        })
-        .await
-    {
-        panic!("a connection event was emitted by controller while none were expected");
-    }
-
-    network_manager
-        .stop(network_event_receiver)
-        .await
-        .expect("error while closing");
-
-    tools::incoming_message_drain_stop(conn1_drain).await;
-
-    temp_peers_file.close().unwrap();
+            // 4) check that there are no further connection attempts from controller
+            if let Some(_) =
+                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+                {
+                    NetworkEvent::NewConnection(_) => Some(()),
+                    _ => None,
+                })
+                .await
+            {
+                panic!("a connection event was emitted by controller while none were expected");
+            }
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![conn1_drain],
+            )
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -446,151 +443,147 @@ async fn test_block_not_found() {
     serialization_context.max_ask_blocks_per_message = 3;
     models::init_serialization_context(serialization_context);
 
-    // create establisher
-    let (establisher, mut mock_interface) = mock_establisher::new();
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            // accept connection from controller to peer
+            let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-    // launch network controller
-    let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(network_conf.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
+            // Send ask for block message from connected peer
+            let wanted_hash = get_dummy_block_id("default_val");
+            conn1_w
+                .send(&Message::AskForBlocks(vec![wanted_hash]))
+                .await
+                .unwrap();
 
-    // accept connection from controller to peer
-    let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
+            // assert it is sent to protocol
+            if let Some((list, node)) =
+                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+                {
+                    NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
+                    _ => None,
+                })
+                .await
+            {
+                assert!(list.contains(&wanted_hash));
+                assert_eq!(node, conn1_id);
+            } else {
+                panic!("Timeout while waiting for asked for block event");
+            }
+
+            // reply with block not found
+            network_command_sender
+                .block_not_found(conn1_id, wanted_hash)
+                .await
+                .unwrap();
+
+            //let mut  conn1_r = conn1_drain.0.await.unwrap();
+            // assert that block not found is sent to node
+
+            let timer = sleep(Duration::from_millis(500));
+            tokio::pin!(timer);
+            loop {
+                tokio::select! {
+                    evt = conn1_r.next() => {
+                        let evt = evt.unwrap().unwrap().1;
+                        match evt {
+                        Message::BlockNotFound(hash) => {assert_eq!(hash, wanted_hash); break;}
+                        _ => {}
+                    }},
+                    _ = &mut timer => panic!("timeout reached waiting for message")
+                }
+            }
+
+            //test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
+            let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
+            let mut hash_list = vec![];
+            hash_list.push(get_dummy_block_id("default_val1"));
+            hash_list.push(get_dummy_block_id("default_val2"));
+            hash_list.push(get_dummy_block_id("default_val3"));
+            hash_list.push(get_dummy_block_id("default_val4"));
+            block_list.insert(conn1_id, hash_list);
+
+            network_command_sender
+                .ask_for_block_list(block_list)
+                .await
+                .unwrap();
+            //receive 2 list
+            let timer = sleep(Duration::from_millis(100));
+            tokio::pin!(timer);
+            loop {
+                tokio::select! {
+                    evt = conn1_r.next() => {
+                        let evt = evt.unwrap().unwrap().1;
+                        match evt {
+                        Message::AskForBlocks(list1) => {
+                             assert!(list1.contains(&get_dummy_block_id("default_val1")));
+                             assert!(list1.contains(&get_dummy_block_id("default_val2")));
+                             assert!(list1.contains(&get_dummy_block_id("default_val3")));
+                             break;
+                         }
+                        _ => {}
+                    }},
+                    _ = &mut timer => panic!("timeout reached waiting for message")
+                }
+            }
+            let timer = sleep(Duration::from_millis(100));
+            tokio::pin!(timer);
+            loop {
+                tokio::select! {
+                    evt = conn1_r.next() => {
+                        let evt = evt.unwrap().unwrap().1;
+                        match evt {
+                        Message::AskForBlocks(list2) => {assert!(list2.contains(&get_dummy_block_id("default_val4"))); break;}
+                        _ => {}
+                    }},
+                    _ = &mut timer => panic!("timeout reached waiting for message")
+                }
+            }
+
+            //test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
+            // the message is rejected by the receiver.
+            let wanted_hash1 = get_dummy_block_id("default_val1");
+            let wanted_hash2 = get_dummy_block_id("default_val2");
+            let wanted_hash3 = get_dummy_block_id("default_val3");
+            let wanted_hash4 = get_dummy_block_id("default_val4");
+            conn1_w
+                .send(&Message::AskForBlocks(vec![
+                    wanted_hash1,
+                    wanted_hash2,
+                    wanted_hash3,
+                    wanted_hash4,
+                ]))
+                .await
+                .unwrap();
+            // assert it is sent to protocol
+            if let Some(_) =
+                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+                {
+                    NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
+                    _ => None,
+                })
+                .await
+            {
+                panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
+            }
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
+            (network_event_receiver, network_manager, mock_interface, vec![conn1_drain])
+        },
     )
     .await;
-    //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
-
-    // Send ask for block message from connected peer
-    let wanted_hash = get_dummy_block_id("default_val");
-    conn1_w
-        .send(&Message::AskForBlocks(vec![wanted_hash]))
-        .await
-        .unwrap();
-
-    // assert it is sent to protocol
-    if let Some((list, node)) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
-            _ => None,
-        })
-        .await
-    {
-        assert!(list.contains(&wanted_hash));
-        assert_eq!(node, conn1_id);
-    } else {
-        panic!("Timeout while waiting for asked for block event");
-    }
-
-    // reply with block not found
-    network_command_sender
-        .block_not_found(conn1_id, wanted_hash)
-        .await
-        .unwrap();
-
-    //let mut  conn1_r = conn1_drain.0.await.unwrap();
-    // assert that block not found is sent to node
-
-    let timer = sleep(Duration::from_millis(500));
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            evt = conn1_r.next() => {
-                let evt = evt.unwrap().unwrap().1;
-                match evt {
-                Message::BlockNotFound(hash) => {assert_eq!(hash, wanted_hash); break;}
-                _ => {}
-            }},
-            _ = &mut timer => panic!("timeout reached waiting for message")
-        }
-    }
-
-    //test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
-    let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
-    let mut hash_list = vec![];
-    hash_list.push(get_dummy_block_id("default_val1"));
-    hash_list.push(get_dummy_block_id("default_val2"));
-    hash_list.push(get_dummy_block_id("default_val3"));
-    hash_list.push(get_dummy_block_id("default_val4"));
-    block_list.insert(conn1_id, hash_list);
-
-    network_command_sender
-        .ask_for_block_list(block_list)
-        .await
-        .unwrap();
-    //receive 2 list
-    let timer = sleep(Duration::from_millis(100));
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            evt = conn1_r.next() => {
-                let evt = evt.unwrap().unwrap().1;
-                match evt {
-                Message::AskForBlocks(list1) => {
-                     assert!(list1.contains(&get_dummy_block_id("default_val1")));
-                     assert!(list1.contains(&get_dummy_block_id("default_val2")));
-                     assert!(list1.contains(&get_dummy_block_id("default_val3")));
-                     break;
-                 }
-                _ => {}
-            }},
-            _ = &mut timer => panic!("timeout reached waiting for message")
-        }
-    }
-    let timer = sleep(Duration::from_millis(100));
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            evt = conn1_r.next() => {
-                let evt = evt.unwrap().unwrap().1;
-                match evt {
-                Message::AskForBlocks(list2) => {assert!(list2.contains(&get_dummy_block_id("default_val4"))); break;}
-                _ => {}
-            }},
-            _ = &mut timer => panic!("timeout reached waiting for message")
-        }
-    }
-
-    //test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
-    // the message is rejected by the receiver.
-    let wanted_hash1 = get_dummy_block_id("default_val1");
-    let wanted_hash2 = get_dummy_block_id("default_val2");
-    let wanted_hash3 = get_dummy_block_id("default_val3");
-    let wanted_hash4 = get_dummy_block_id("default_val4");
-    conn1_w
-        .send(&Message::AskForBlocks(vec![
-            wanted_hash1,
-            wanted_hash2,
-            wanted_hash3,
-            wanted_hash4,
-        ]))
-        .await
-        .unwrap();
-    // assert it is sent to protocol
-    if let Some(_) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
-            _ => None,
-        })
-        .await
-    {
-        panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
-    }
-
-    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
-    network_manager
-        .stop(network_event_receiver)
-        .await
-        .expect("error while closing");
-    tools::incoming_message_drain_stop(conn1_drain).await;
-
-    temp_peers_file.close().unwrap();
 }
 
 #[tokio::test]
@@ -622,69 +615,71 @@ async fn test_retry_connection_closed() {
 
     let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
 
-    // create establisher
-    let (establisher, mut mock_interface) = mock_establisher::new();
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            let (node_id, _read, _write) = tools::full_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
 
-    // launch network controller
-    let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(network_conf.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
+            // Ban the node.
+            network_command_sender
+                .ban(node_id)
+                .await
+                .expect("error during send ban command.");
 
-    let (node_id, _read, _write) = tools::full_connection_to_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
+            // Make sure network sends a dis-connect event.
+            if let Some(node) =
+                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+                {
+                    NetworkEvent::ConnectionClosed(node) => Some(node),
+                    _ => None,
+                })
+                .await
+            {
+                assert_eq!(node, node_id);
+            } else {
+                panic!("Timeout while waiting for connection closed event");
+            }
+
+            // Send a command for a node not found in active.
+            network_command_sender
+                .block_not_found(node_id, get_dummy_block_id("default_val"))
+                .await
+                .unwrap();
+
+            // Make sure network re-sends a dis-connect event.
+            if let Some(node) =
+                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+                {
+                    NetworkEvent::ConnectionClosed(node) => Some(node),
+                    _ => None,
+                })
+                .await
+            {
+                assert_eq!(node, node_id);
+            } else {
+                panic!("Timeout while waiting for connection closed event");
+            }
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![],
+            )
+        },
     )
     .await;
-
-    // Ban the node.
-    network_command_sender
-        .ban(node_id)
-        .await
-        .expect("error during send ban command.");
-
-    // Make sure network sends a dis-connect event.
-    if let Some(node) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::ConnectionClosed(node) => Some(node),
-            _ => None,
-        })
-        .await
-    {
-        assert_eq!(node, node_id);
-    } else {
-        panic!("Timeout while waiting for connection closed event");
-    }
-
-    // Send a command for a node not found in active.
-    network_command_sender
-        .block_not_found(node_id, get_dummy_block_id("default_val"))
-        .await
-        .unwrap();
-
-    // Make sure network re-sends a dis-connect event.
-    if let Some(node) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::ConnectionClosed(node) => Some(node),
-            _ => None,
-        })
-        .await
-    {
-        assert_eq!(node, node_id);
-    } else {
-        panic!("Timeout while waiting for connection closed event");
-    }
-
-    network_manager
-        .stop(network_event_receiver)
-        .await
-        .expect("error while closing");
-
-    temp_peers_file.close().unwrap();
 }
 
 #[tokio::test]
@@ -723,86 +718,88 @@ async fn test_operation_messages() {
     serialization_context.max_ask_blocks_per_message = 3;
     models::init_serialization_context(serialization_context);
 
-    // create establisher
-    let (establisher, mut mock_interface) = mock_establisher::new();
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            // accept connection from controller to peer
+            let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-    // launch network controller
-    let (network_command_sender, mut network_event_receiver, network_manager, _) =
-        start_network_controller(network_conf.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
+            // Send transaction message from connected peer
+            let (transaction, _) = get_transaction(50, 10);
+            let ref_id = transaction.verify_integrity().unwrap();
+            conn1_w
+                .send(&Message::Operations(vec![transaction.clone()]))
+                .await
+                .unwrap();
 
-    // accept connection from controller to peer
-    let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
-        &mut network_event_receiver,
-        &mut mock_interface,
-        mock_addr,
-        1_000u64,
-        1_000u64,
-        1_000u64,
+            // assert it is sent to protocol
+            if let Some((operations, node)) =
+                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+                {
+                    NetworkEvent::ReceivedOperations { operations, node } => {
+                        Some((operations, node))
+                    }
+                    _ => None,
+                })
+                .await
+            {
+                assert_eq!(operations.len(), 1);
+                let res_id = operations[0].verify_integrity().unwrap();
+                assert_eq!(ref_id, res_id);
+                assert_eq!(node, conn1_id);
+            } else {
+                panic!("Timeout while waiting for asked for block event");
+            }
+
+            let (transaction2, _) = get_transaction(10, 50);
+            let ref_id2 = transaction2.verify_integrity().unwrap();
+            // reply with another transaction
+            network_command_sender
+                .send_operations(conn1_id, vec![transaction2.clone()])
+                .await
+                .unwrap();
+
+            //let mut  conn1_r = conn1_drain.0.await.unwrap();
+            // assert that transaction is sent to node
+
+            let timer = sleep(Duration::from_millis(500));
+            tokio::pin!(timer);
+            loop {
+                tokio::select! {
+                    evt = conn1_r.next() => {
+                        let evt = evt.unwrap().unwrap().1;
+                        match evt {
+                        Message::Operations(op) => {
+                            assert_eq!(op.len(), 1);
+                            let res_id = op[0].verify_integrity().unwrap();
+                            assert_eq!(ref_id2, res_id);
+                            break;}
+                        _ => {}
+                    }},
+                    _ = &mut timer => panic!("timeout reached waiting for message")
+                }
+            }
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![conn1_drain],
+            )
+        },
     )
     .await;
-    //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
-
-    // Send transaction message from connected peer
-    let (transaction, _) = get_transaction(50, 10);
-    let ref_id = transaction.verify_integrity().unwrap();
-    conn1_w
-        .send(&Message::Operations(vec![transaction.clone()]))
-        .await
-        .unwrap();
-
-    // assert it is sent to protocol
-    if let Some((operations, node)) =
-        tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg {
-            NetworkEvent::ReceivedOperations { operations, node } => Some((operations, node)),
-            _ => None,
-        })
-        .await
-    {
-        assert_eq!(operations.len(), 1);
-        let res_id = operations[0].verify_integrity().unwrap();
-        assert_eq!(ref_id, res_id);
-        assert_eq!(node, conn1_id);
-    } else {
-        panic!("Timeout while waiting for asked for block event");
-    }
-
-    let (transaction2, _) = get_transaction(10, 50);
-    let ref_id2 = transaction2.verify_integrity().unwrap();
-    // reply with another transaction
-    network_command_sender
-        .send_operations(conn1_id, vec![transaction2.clone()])
-        .await
-        .unwrap();
-
-    //let mut  conn1_r = conn1_drain.0.await.unwrap();
-    // assert that transaction is sent to node
-
-    let timer = sleep(Duration::from_millis(500));
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            evt = conn1_r.next() => {
-                let evt = evt.unwrap().unwrap().1;
-                match evt {
-                Message::Operations(op) => {
-                    assert_eq!(op.len(), 1);
-                    let res_id = op[0].verify_integrity().unwrap();
-                    assert_eq!(ref_id2, res_id);
-                    break;}
-                _ => {}
-            }},
-            _ = &mut timer => panic!("timeout reached waiting for message")
-        }
-    }
-
-    let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
-    network_manager
-        .stop(network_event_receiver)
-        .await
-        .expect("error while closing");
-    tools::incoming_message_drain_stop(conn1_drain).await;
-
-    temp_peers_file.close().unwrap();
 }
