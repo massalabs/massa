@@ -10,7 +10,7 @@ link:https://massa.net[Massa] is a new blockchain reaching a high transaction th
 Our research is published in this link:https://arxiv.org/pdf/1803.09029[technical paper].
 It shows that a throughput of 10'000 transactions per second is reached even in a fully decentralized network with thousands of nodes.
 
-An easy-to-read blog post introduction with videos is written link:https://massa.net/blog/post/0/)[here].
+An easy-to-read blog post introduction with videos is written link:https://massa.net/blog/post/0/[here].
 
 We are now releasing the **Massa testnet** in this Gitlab repository, with its explorer available at link:https://test.massa.net[test.massa.net].
 
@@ -85,3 +85,11 @@ Here is a set of tutorials:
 * link:docs/transaction.adoc[Sending transactions]
 * Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
 * link:docs/windows_install.adoc[Install and Run on Windows]
+
+
+## Troubleshooting
+
+* If your API can't start, e.g. with `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`, it's probably because the default API port 3030 is already in use on your computer. You should change the port in the config files, both in the API and Client:
+ ** in file `massa/massa-node/config/config.toml`, in section [API], in bind, put a new port,
+ ** in file `massa/massa-client/config/config.toml`, put that same port. 
+
