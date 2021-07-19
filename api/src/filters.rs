@@ -125,7 +125,7 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |OperationIds { operation_ids }| {
-            get_operations(evt_tx.clone(), operation_ids)
+            wrap_api_call(get_operations(evt_tx.clone(), operation_ids))
         });
 
     let evt_tx = event_tx.clone();
@@ -608,23 +608,13 @@ async fn get_block(
 async fn get_operations(
     event_tx: mpsc::Sender<ApiEvent>,
     operation_ids: HashSet<OperationId>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<Vec<(OperationId, OperationSearchResult)>, ApiError> {
     massa_trace!("api.filters.get_operations", {
         "operation_ids": operation_ids
     });
-    match retrieve_operations(operation_ids, &event_tx).await {
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error retrieving operation : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-        Ok(ops) => Ok(warp::reply::json(&json!(ops
-            .into_iter()
-            .collect::<Vec<(OperationId, OperationSearchResult)>>()))
-        .into_response()),
-    }
+    retrieve_operations(operation_ids, &event_tx)
+        .await
+        .map(|map| map.into_iter().collect())
 }
 
 /// Returns our ip address
