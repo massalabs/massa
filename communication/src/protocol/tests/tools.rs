@@ -4,13 +4,14 @@ use super::mock_network_controller::MockNetworkController;
 use crate::common::NodeId;
 use crate::network::NetworkCommand;
 use crate::protocol::{
-    ProtocolConfig, ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent,
-    ProtocolPoolEventReceiver,
+    start_protocol_controller, ProtocolCommandSender, ProtocolConfig, ProtocolEvent,
+    ProtocolEventReceiver, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
+use futures::Future;
 use models::{Address, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot};
 use models::{Operation, OperationContent, OperationType};
 use std::collections::HashMap;
@@ -308,4 +309,62 @@ pub async fn assert_banned_nodes(
             _ = &mut timer => panic!("Nodes not banned before timeout.")
         }
     }
+}
+
+pub async fn protocol_test<F, V>(cfg: ProtocolConfig, test: F)
+where
+    F: FnOnce(
+        MockNetworkController,
+        ProtocolEventReceiver,
+        ProtocolCommandSender,
+        ProtocolManager,
+        ProtocolPoolEventReceiver,
+    ) -> V,
+    V: Future<
+        Output = (
+            MockNetworkController,
+            ProtocolEventReceiver,
+            ProtocolCommandSender,
+            ProtocolManager,
+            ProtocolPoolEventReceiver,
+        ),
+    >,
+{
+    let (network_controller, network_command_sender, network_event_receiver) =
+        MockNetworkController::new();
+
+    // start protocol controller
+    let (
+        protocol_command_sender,
+        protocol_event_receiver,
+        protocol_pool_event_receiver,
+        protocol_manager,
+    ) = start_protocol_controller(
+        cfg.clone(),
+        5u64,
+        network_command_sender,
+        network_event_receiver,
+    )
+    .await
+    .expect("could not start protocol controller");
+
+    let (
+        _network_controller,
+        protocol_event_receiver,
+        _protocol_command_sender,
+        protocol_manager,
+        protocol_pool_event_receiver,
+    ) = test(
+        network_controller,
+        protocol_event_receiver,
+        protocol_command_sender,
+        protocol_manager,
+        protocol_pool_event_receiver,
+    )
+    .await;
+
+    protocol_manager
+        .stop(protocol_event_receiver, protocol_pool_event_receiver)
+        .await
+        .expect("Failed to shutdown protocol.");
 }
