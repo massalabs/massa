@@ -242,6 +242,14 @@ fn main() {
         send_transaction,
     )
     .new_command(
+        "wallet_add_privkey",
+        "Adds a list of private keys to the wallet. Returns the associated addresses. Parameters: list of private keys separated by ,  (no space).",
+        1,
+        1, //max nb parameters
+        false,
+        wallet_add_privkey,
+    )
+    .new_command(
         "buy_rolls",
         "buy roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>",
         3,
@@ -305,6 +313,7 @@ fn main() {
                 repl.activate_command("send_transaction");
                 repl.activate_command("buy_rolls");
                 repl.activate_command("sell_rolls");
+                repl.activate_command("wallet_add_privkey");
             }
             Err(err) => {
                 println!(
@@ -452,6 +461,40 @@ fn wallet_new_privkey(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplE
             println!("{}", serde_json::to_string_pretty(&addr)?);
         } else {
             println!("Generated address: {}", addr.to_bs58_check());
+        }
+    }
+    Ok(())
+}
+
+fn wallet_add_privkey(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let keys = params[0]
+        .split(',')
+        .map(|str| PrivateKey::from_bs58_check(str.trim()))
+        .collect::<Result<Vec<PrivateKey>, _>>();
+
+    let keys = match keys {
+        Ok(keys) => keys,
+        Err(err) => {
+            println!("Error during keys parsing: {}", err);
+            return Ok(());
+        }
+    };
+
+    for priv_key in keys.into_iter() {
+        if let Some(wallet) = &mut data.wallet {
+            wallet.add_private_key(priv_key)?;
+            let pub_key = derive_public_key(&priv_key);
+            let addr = Address::from_public_key(&pub_key).map_err(|err| {
+                ReplError::GeneralError(format!(
+                    "internal error error during address dedrivation:{}",
+                    err
+                ))
+            })?;
+            if data.cli {
+                println!("{}", serde_json::to_string_pretty(&addr)?);
+            } else {
+                println!("Derived address: {}", addr.to_bs58_check());
+            }
         }
     }
     Ok(())
