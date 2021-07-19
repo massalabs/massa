@@ -139,13 +139,13 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(warp::query::<TimeInterval>()) //start, end
         .and_then(move |TimeInterval { start, end }| {
-            get_block_interval(
+            wrap_api_call(get_block_interval(
                 evt_tx.clone(),
                 consensus_cfg.clone(),
                 start,
                 end,
                 storage.clone(),
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -799,84 +799,49 @@ async fn get_last_final(
     Ok(warp::reply::json(&finals).into_response())
 }
 
-/// Returns all blocks in a time interval wrapped in a reply.
-///
-/// Note: both start time is included and end time is excluded
-async fn get_block_interval(
-    event_tx: mpsc::Sender<ApiEvent>,
-    consensus_cfg: ConsensusConfig,
-    start: Option<UTime>,
-    end: Option<UTime>,
-    opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_block_interval", {});
-    match get_block_interval_process(
-        event_tx,
-        consensus_cfg,
-        start,
-        end,
-        opt_storage_command_sender,
-    )
-    .await
-    {
-        Ok(map) => Ok(warp::reply::json(&map).into_response()),
-        Err(err) => {
-            println!("get_block_interval error:{:?}", err);
-            Ok(warp::reply::with_status(
-                warp::reply::json(&json!({ "message": err })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    }
-}
-
 async fn get_block_from_graph(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: &ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
-) -> Result<Vec<(BlockId, Slot)>, String> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_block_from_graph", {});
-    retrieve_graph_export(&event_tx)
-        .await
-        .map_err(|err| (format!("error retrieving graph : {:?}", err)))
-        .and_then(|graph| {
-            let start = start_opt.unwrap_or_else(|| UTime::from(0));
-            let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
+    let graph = retrieve_graph_export(&event_tx).await?;
 
-            graph
-                .active_blocks
-                .into_iter()
-                .filter_map(|(hash, exported_block)| {
-                    get_block_slot_timestamp(
-                        consensus_cfg.thread_count,
-                        consensus_cfg.t0,
-                        consensus_cfg.genesis_timestamp,
-                        exported_block.block.content.slot,
-                    )
-                    .map_err(|err| (format!("error getting time : {:?}", err)))
-                    .map(|time| {
-                        if start <= time && time < end {
-                            Some((hash, exported_block.block.content.slot))
-                        } else {
-                            None
-                        }
-                    })
-                    .transpose()
-                })
-                .collect::<Result<Vec<(BlockId, Slot)>, String>>()
+    let start = start_opt.unwrap_or_else(|| UTime::from(0));
+    let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
+
+    graph
+        .active_blocks
+        .into_iter()
+        .filter_map(|(hash, exported_block)| {
+            get_block_slot_timestamp(
+                consensus_cfg.thread_count,
+                consensus_cfg.t0,
+                consensus_cfg.genesis_timestamp,
+                exported_block.block.content.slot,
+            )
+            .map_err(|e| ApiError::from(e))
+            .map(|time| {
+                if start <= time && time < end {
+                    Some((hash, exported_block.block.content.slot))
+                } else {
+                    None
+                }
+            })
+            .transpose()
         })
+        .collect::<Result<Vec<(BlockId, Slot)>, ApiError>>()
 }
 
-async fn get_block_interval_process(
+async fn get_block_interval(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(BlockId, Slot)>, String> {
-    massa_trace!("api.filters.get_block_interval_process", {});
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
+    massa_trace!("api.filters.get_block_interval", {});
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
         .is_some()
@@ -895,28 +860,23 @@ async fn get_block_interval_process(
                 consensus_cfg.genesis_timestamp,
                 start,
             )
-            .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
-            .and_then(|opt_slot| {
-                opt_slot
-                    .map(|slot| {
-                        get_block_slot_timestamp(
-                            consensus_cfg.thread_count,
-                            consensus_cfg.t0,
-                            consensus_cfg.genesis_timestamp,
-                            slot,
-                        )
-                        .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                        .and_then(|start_time| {
-                            if start_time == start {
-                                Ok(slot)
-                            } else {
-                                slot.get_next_slot(consensus_cfg.thread_count)
-                                    .map_err(|err| format!("error retrieving next slot: {:?}", err))
-                            }
-                        })
-                    })
-                    .unwrap_or_else(|| Ok(Slot::new(0, 0)))
-            })?;
+            .unwrap_or_else(|_| Some(Slot::new(0, 0)))
+            .map(|slot| {
+                get_block_slot_timestamp(
+                    consensus_cfg.thread_count,
+                    consensus_cfg.t0,
+                    consensus_cfg.genesis_timestamp,
+                    slot,
+                )
+                .and_then(|start_time| {
+                    if start_time == start {
+                        Ok(slot)
+                    } else {
+                        Ok(slot.get_next_slot(consensus_cfg.thread_count)?)
+                    }
+                })
+            })
+            .unwrap_or_else(|| Ok(Slot::new(0, 0)))?;
             Some(slot)
         } else {
             None
@@ -930,28 +890,21 @@ async fn get_block_interval_process(
                 consensus_cfg.genesis_timestamp,
                 end,
             )
-            .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
-            .and_then(|opt_slot| {
-                opt_slot
-                    .map(|slot| {
-                        get_block_slot_timestamp(
-                            consensus_cfg.thread_count,
-                            consensus_cfg.t0,
-                            consensus_cfg.genesis_timestamp,
-                            slot,
-                        )
-                        .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                        .and_then(|end_time| {
-                            if end_time == end {
-                                Ok(slot)
-                            } else {
-                                slot.get_next_slot(consensus_cfg.thread_count)
-                                    .map_err(|err| format!("error retrieving next slot: {:?}", err))
-                            }
-                        })
-                    })
-                    .transpose()
-            })?
+            .unwrap_or_else(|_| None)
+            .map::<Result<_, ApiError>, _>(|slot| {
+                let end_time = get_block_slot_timestamp(
+                    consensus_cfg.thread_count,
+                    consensus_cfg.t0,
+                    consensus_cfg.genesis_timestamp,
+                    slot,
+                )?;
+                if end_time == end {
+                    Ok(slot)
+                } else {
+                    Ok(slot.get_next_slot(consensus_cfg.thread_count)?)
+                }
+            })
+            .transpose()?
         } else {
             None
         };
@@ -966,183 +919,10 @@ async fn get_block_interval_process(
                         .map(|(hash, block)| (hash, block.header.content.slot))
                         .collect(),
                 )
-            })
-            .map_err(|err| (format!("error retrieving slot range: {:?}", err)))?;
+            })?;
     }
 
     Ok(res)
-
-    //old version
-    /*    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
-    for (hash, exported_block) in graph.active_blocks {
-        let header = exported_block.block;
-        let time = match get_block_slot_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            header.slot,
-        ) {
-            Ok(time) => time,
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error getting time : {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        };
-        if start <= time && time < end {
-            res.insert(hash, header.slot);
-        }
-    }
-    if let Some(storage) = opt_storage_command_sender {
-        let start_slot = match get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            start,
-        ) {
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving slot from time: {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-            Ok(Some(slot)) => {
-                if match get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                ) {
-                    Ok(start_time) => start_time,
-                    Err(e) => {
-                        return Ok(warp::reply::with_status(
-                            warp::reply::json(&json!({
-                                "message": format!("error retrieving next slot: {:?}", e)
-                            })),
-                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .into_response())
-                    }
-                } == start
-                {
-                    slot
-                } else {
-                    match slot.get_next_slot(consensus_cfg.thread_count) {
-                        Ok(next) => next,
-                        Err(e) => {
-                            return Ok(warp::reply::with_status(
-                                warp::reply::json(&json!({
-                                    "message": format!("error retrieving next slot: {:?}", e)
-                                })),
-                                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                            )
-                            .into_response())
-                        }
-                    }
-                }
-            }
-            Ok(None) => Slot::new(0, 0),
-        };
-        let end_slot = match get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            end,
-        ) {
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving slot from time: {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-            Ok(Some(slot)) => {
-                if match get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                ) {
-                    Ok(end_time) => end_time,
-                    Err(e) => {
-                        return Ok(warp::reply::with_status(
-                            warp::reply::json(&json!({
-                                "message": format!("error retrieving next slot: {:?}", e)
-                            })),
-                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .into_response())
-                    }
-                } == end
-                {
-                    slot
-                } else {
-                    match slot.get_next_slot(consensus_cfg.thread_count) {
-                        Ok(next) => next,
-                        Err(e) => {
-                            return Ok(warp::reply::with_status(
-                                warp::reply::json(&json!({
-                                    "message": format!("error retrieving next slot: {:?}", e)
-                                })),
-                                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                            )
-                            .into_response())
-                        }
-                    }
-                }
-            }
-            Ok(None) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving end slot from time : no slot found")
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        };
-
-        let blocks = match storage
-            .get_slot_range(Some(start_slot), Some(end_slot))
-            .await
-        {
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving slot range: {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-            Ok(blocks) => blocks,
-        };
-        for (hash, block) in blocks {
-            res.insert(hash, block.header.slot);
-        }
-    }
-
-    Ok(res)*/
 }
 
 /// Returns all block info needed to reconstruct the graph found in the time interval.

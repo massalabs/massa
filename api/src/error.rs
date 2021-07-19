@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 use consensus::ConsensusError;
 use crypto::CryptoError;
+use models::ModelsError;
 use storage::StorageError;
 use thiserror::Error;
 
@@ -20,6 +21,8 @@ pub enum ApiError {
     StorageError(#[from] StorageError),
     #[error("crypto error : {0}")]
     CryptoError(#[from] CryptoError),
+    #[error("models error : {0}")]
+    ModelsError(#[from] ModelsError),
     #[error("not found")]
     NotFound,
 }
