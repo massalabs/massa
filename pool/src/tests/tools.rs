@@ -20,10 +20,10 @@ pub async fn pool_test<F, V>(
     F: FnOnce(MockProtocolController, PoolCommandSender, PoolManager) -> V,
     V: Future<Output = (MockProtocolController, PoolCommandSender, PoolManager)>,
 {
-    let (mut protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
+    let (protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
         MockProtocolController::new();
 
-    let (mut pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
+    let (pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
         cfg.clone(),
         thread_count,
         operation_validity_periods,
@@ -33,14 +33,10 @@ pub async fn pool_test<F, V>(
     .await
     .unwrap();
 
-    let (mut protocol_controller, _pool_command_sender, pool_manager) =
+    let (_protocol_controller, _pool_command_sender, pool_manager) =
         test(protocol_controller, pool_command_sender, pool_manager).await;
 
-    let pool_event_receiver = pool_manager.stop().await.unwrap();
-
-    let stop_fut = pool_event_receiver.drain();
-    tokio::pin!(stop_fut);
-    protocol_controller.ignore_commands_while(stop_fut).await;
+    pool_manager.stop().await.unwrap();
 }
 
 pub fn example_pool_config() -> (PoolConfig, u8, u64) {

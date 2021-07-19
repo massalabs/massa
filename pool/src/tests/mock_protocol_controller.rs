@@ -54,20 +54,4 @@ impl MockProtocolController {
             .await
             .expect("could not send protocol pool event");
     }
-
-    // ignore all commands while waiting for a future
-    pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
-        &mut self,
-        mut future: FutureT,
-    ) -> FutureT::Output {
-        loop {
-            tokio::select!(
-                res = &mut future => return res,
-                cmd = self.protocol_command_rx.recv() => match cmd {
-                    Some(_) => {},
-                    None => return future.await,  // if the protocol controlled dies, wait for the future to finish
-                }
-            );
-        }
-    }
 }
