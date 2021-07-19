@@ -962,14 +962,14 @@ impl ProofOfStake {
                 Ok(&state.roll_count)
             } else {
                 Err(ConsensusError::PosCycleUnavailable(
-                    "target cycle unavaible".to_string(),
+                    "target cycle unavailable".to_string(),
                 ))
             }
         } else if let Some(init) = &self.initial_rolls {
             Ok(&init[thread as usize])
         } else {
             Err(ConsensusError::PosCycleUnavailable(
-                "negative cycle unavaible".to_string(),
+                "negative cycle unavailable".to_string(),
             ))
         }
     }
