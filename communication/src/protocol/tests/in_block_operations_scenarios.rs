@@ -3,17 +3,13 @@
 use crypto::hash::Hash;
 use models::{get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, Slot};
 
-use crate::protocol::{
-    start_protocol_controller,
-    tests::{
-        mock_network_controller::MockNetworkController,
-        tools::{
-            create_and_connect_nodes, create_block_with_operations,
-            create_operation_with_expire_period, create_protocol_config, send_and_propagate_block,
-        },
-    },
+use crate::protocol::tests::tools::{
+    create_and_connect_nodes, create_block_with_operations, create_operation_with_expire_period,
+    create_protocol_config, send_and_propagate_block,
 };
 use serial_test::serial;
+
+use super::tools::protocol_test;
 
 #[tokio::test]
 #[serial]
@@ -25,180 +21,178 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     // .init()
     // .unwrap();
     let protocol_config = create_protocol_config();
-    let serialization_context = get_serialization_context();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            let serialization_context = get_serialization_context();
 
-    let (mut network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
+            // Create 1 node.
+            let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
 
-    // start protocol controller
-    let (_, mut protocol_event_receiver, protocol_pool_event_receiver, protocol_manager) =
-        start_protocol_controller(
-            protocol_config.clone(),
-            5u64,
-            network_command_sender,
-            network_event_receiver,
-        )
-        .await
-        .expect("could not start protocol controller");
+            let creator_node = nodes.pop().expect("Failed to get node info.");
 
-    // Create 1 node.
-    let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
+            let mut private_key = crypto::generate_random_private_key();
+            let mut public_key = crypto::derive_public_key(&private_key);
+            let mut address = Address::from_public_key(&public_key).unwrap();
+            let mut thread = address.get_thread(serialization_context.parent_count);
 
-    let creator_node = nodes.pop().expect("Failed to get node info.");
-
-    let mut private_key = crypto::generate_random_private_key();
-    let mut public_key = crypto::derive_public_key(&private_key);
-    let mut address = Address::from_public_key(&public_key).unwrap();
-    let mut thread = address.get_thread(serialization_context.parent_count);
-
-    while thread != 0 {
-        private_key = crypto::generate_random_private_key();
-        public_key = crypto::derive_public_key(&private_key);
-        address = Address::from_public_key(&public_key).unwrap();
-        thread = address.get_thread(serialization_context.parent_count);
-    }
-
-    let slot_a = Slot::new(1, 0);
-
-    // block with ok operation
-    {
-        let op = create_operation_with_expire_period(private_key, public_key, 5);
-
-        let block = create_block_with_operations(
-            &creator_node.private_key,
-            &creator_node.id.0,
-            slot_a,
-            vec![op],
-        );
-
-        send_and_propagate_block(
-            &mut network_controller,
-            block,
-            true,
-            creator_node.id,
-            &mut protocol_event_receiver,
-        )
-        .await;
-    }
-
-    // block with operation too far in the future
-    {
-        let op = create_operation_with_expire_period(private_key, public_key, 50);
-
-        let block = create_block_with_operations(
-            &creator_node.private_key,
-            &creator_node.id.0,
-            slot_a,
-            vec![op],
-        );
-
-        send_and_propagate_block(
-            &mut network_controller,
-            block,
-            false,
-            creator_node.id,
-            &mut protocol_event_receiver,
-        )
-        .await;
-    }
-    // block with an operation twice
-    {
-        let op = create_operation_with_expire_period(private_key, public_key, 5);
-
-        let block = create_block_with_operations(
-            &creator_node.private_key,
-            &creator_node.id.0,
-            slot_a,
-            vec![op.clone(), op],
-        );
-
-        send_and_propagate_block(
-            &mut network_controller,
-            block,
-            false,
-            creator_node.id,
-            &mut protocol_event_receiver,
-        )
-        .await;
-    }
-    // block with wrong merkle root
-    {
-        let op = create_operation_with_expire_period(private_key, public_key, 5);
-
-        let block = {
-            let operation_merkle_root = Hash::hash("merkle root".as_bytes());
-
-            let (_, header) = BlockHeader::new_signed(
-                &creator_node.private_key,
-                BlockHeaderContent {
-                    creator: crypto::derive_public_key(&creator_node.private_key).clone(),
-                    slot: slot_a,
-                    parents: Vec::new(),
-                    operation_merkle_root,
-                },
-            )
-            .unwrap();
-
-            Block {
-                header,
-                operations: vec![op.clone()],
+            while thread != 0 {
+                private_key = crypto::generate_random_private_key();
+                public_key = crypto::derive_public_key(&private_key);
+                address = Address::from_public_key(&public_key).unwrap();
+                thread = address.get_thread(serialization_context.parent_count);
             }
-        };
 
-        send_and_propagate_block(
-            &mut network_controller,
-            block,
-            false,
-            creator_node.id,
-            &mut protocol_event_receiver,
-        )
-        .await;
-    }
+            let slot_a = Slot::new(1, 0);
 
-    // block with operation with wrong signature
-    {
-        let mut op = create_operation_with_expire_period(private_key, public_key, 5);
-        op.content.fee = 10;
-        let block = create_block_with_operations(
-            &creator_node.private_key,
-            &creator_node.id.0,
-            slot_a,
-            vec![op],
-        );
+            // block with ok operation
+            {
+                let op = create_operation_with_expire_period(private_key, public_key, 5);
 
-        send_and_propagate_block(
-            &mut network_controller,
-            block,
-            false,
-            creator_node.id,
-            &mut protocol_event_receiver,
-        )
-        .await;
-    }
+                let block = create_block_with_operations(
+                    &creator_node.private_key,
+                    &creator_node.id.0,
+                    slot_a,
+                    vec![op],
+                );
 
-    // block with operation in wrong thread
-    {
-        let mut op = create_operation_with_expire_period(private_key, public_key, 5);
-        op.content.fee = 10;
-        let block = create_block_with_operations(
-            &creator_node.private_key,
-            &creator_node.id.0,
-            Slot::new(1, 1),
-            vec![op],
-        );
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block,
+                    true,
+                    creator_node.id,
+                    &mut protocol_event_receiver,
+                )
+                .await;
+            }
 
-        send_and_propagate_block(
-            &mut network_controller,
-            block,
-            false,
-            creator_node.id,
-            &mut protocol_event_receiver,
-        )
-        .await;
-    }
+            // block with operation too far in the future
+            {
+                let op = create_operation_with_expire_period(private_key, public_key, 50);
 
-    protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
-        .await
-        .expect("Failed to shutdown protocol.");
+                let block = create_block_with_operations(
+                    &creator_node.private_key,
+                    &creator_node.id.0,
+                    slot_a,
+                    vec![op],
+                );
+
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block,
+                    false,
+                    creator_node.id,
+                    &mut protocol_event_receiver,
+                )
+                .await;
+            }
+            // block with an operation twice
+            {
+                let op = create_operation_with_expire_period(private_key, public_key, 5);
+
+                let block = create_block_with_operations(
+                    &creator_node.private_key,
+                    &creator_node.id.0,
+                    slot_a,
+                    vec![op.clone(), op],
+                );
+
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block,
+                    false,
+                    creator_node.id,
+                    &mut protocol_event_receiver,
+                )
+                .await;
+            }
+            // block with wrong merkle root
+            {
+                let op = create_operation_with_expire_period(private_key, public_key, 5);
+
+                let block = {
+                    let operation_merkle_root = Hash::hash("merkle root".as_bytes());
+
+                    let (_, header) = BlockHeader::new_signed(
+                        &creator_node.private_key,
+                        BlockHeaderContent {
+                            creator: crypto::derive_public_key(&creator_node.private_key).clone(),
+                            slot: slot_a,
+                            parents: Vec::new(),
+                            operation_merkle_root,
+                        },
+                    )
+                    .unwrap();
+
+                    Block {
+                        header,
+                        operations: vec![op.clone()],
+                    }
+                };
+
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block,
+                    false,
+                    creator_node.id,
+                    &mut protocol_event_receiver,
+                )
+                .await;
+            }
+
+            // block with operation with wrong signature
+            {
+                let mut op = create_operation_with_expire_period(private_key, public_key, 5);
+                op.content.fee = 10;
+                let block = create_block_with_operations(
+                    &creator_node.private_key,
+                    &creator_node.id.0,
+                    slot_a,
+                    vec![op],
+                );
+
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block,
+                    false,
+                    creator_node.id,
+                    &mut protocol_event_receiver,
+                )
+                .await;
+            }
+
+            // block with operation in wrong thread
+            {
+                let mut op = create_operation_with_expire_period(private_key, public_key, 5);
+                op.content.fee = 10;
+                let block = create_block_with_operations(
+                    &creator_node.private_key,
+                    &creator_node.id.0,
+                    Slot::new(1, 1),
+                    vec![op],
+                );
+
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block,
+                    false,
+                    creator_node.id,
+                    &mut protocol_event_receiver,
+                )
+                .await;
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
 }
