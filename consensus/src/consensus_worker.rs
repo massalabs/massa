@@ -861,7 +861,7 @@ impl ConsensusWorker {
                 .pos
                 .get_final_roll_data(self.pos.get_last_final_block_cycle(thread), thread)
                 .ok_or_else(|| {
-                    ConsensusError::PosCycleUnavailable("final cycle unavaible".to_string())
+                    ConsensusError::PosCycleUnavailable("final cycle unavailable".to_string())
                 })?;
             let candidate_data = self.block_db.get_roll_data_at_parent(
                 self.block_db.get_best_parents()[thread as usize],

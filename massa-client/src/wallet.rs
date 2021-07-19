@@ -201,7 +201,7 @@ impl<'a> std::fmt::Display for WalletInfo<'a> {
                 Some(balance) => {
                     write!(f, "State: \n{}", balance)?;
                 }
-                None => writeln!(f, "State: no balance avaible")?,
+                None => writeln!(f, "State: no balance available")?,
             }
         }
         Ok(())
