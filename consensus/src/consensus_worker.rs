@@ -179,7 +179,7 @@ impl ConsensusWorker {
             .collect();
         let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
         info!(
-            "Starting node at time {}, cycle {}, period {}, thread {}",
+            "Started node at time {}, cycle {}, period {}, thread {}",
             UTime::now(clock_compensation)?.to_utc_string(),
             next_slot.get_cycle(cfg.periods_per_cycle),
             next_slot.period,
