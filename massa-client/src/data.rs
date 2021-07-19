@@ -214,7 +214,7 @@ impl<'a> std::fmt::Display for WrappedAddressState {
         )?;
         writeln!(
             f,
-            "    candidate balance:{}",
+            "    candidate balance: {}",
             format_amount(self.candidate_ledger_data.balance)
         )?;
         writeln!(
