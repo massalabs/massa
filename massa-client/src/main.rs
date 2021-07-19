@@ -486,14 +486,14 @@ fn wallet_add_privkey(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
             let pub_key = derive_public_key(&priv_key);
             let addr = Address::from_public_key(&pub_key).map_err(|err| {
                 ReplError::GeneralError(format!(
-                    "internal error error during address dedrivation:{}",
+                    "internal error during address derivation: {}",
                     err
                 ))
             })?;
             if data.cli {
                 println!("{}", serde_json::to_string_pretty(&addr)?);
             } else {
-                println!("Derived address: {}", addr.to_bs58_check());
+                println!("Keypair added. Derived address: {}", addr.to_bs58_check());
             }
         }
     }
