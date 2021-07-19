@@ -418,6 +418,37 @@ pub fn get_filter(
         .boxed()
 }
 
+async fn wrap_api_call<F, T>(fut: F) -> Result<impl Reply, Rejection>
+where
+    F: std::future::Future<Output = Result<T, ApiError>>,
+    T: Serialize,
+{
+    Ok(match fut.await {
+        Ok(output) => {
+            warp::reply::with_status(warp::reply::json(&output), warp::http::StatusCode::OK)
+                .into_response()
+        }
+        Err(ApiError::NotFound) => warp::reply::with_status(
+            warp::reply::json(&json!({
+                "code": warp::http::StatusCode::NOT_FOUND.as_u16(),
+                "message": "not found"
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        )
+        .into_response(),
+        Err(e) => warp::reply::with_status(
+            warp::reply::json(&json!({
+                "code": warp::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                "message": e.to_string()
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response(),
+    })
+}
+
+
+
 async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_pool_config", {});
     Ok(warp::reply::json(&json!({

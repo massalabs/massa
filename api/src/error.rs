@@ -17,4 +17,6 @@ pub enum ApiError {
     ConsensusError(#[from] ConsensusError),
     #[error("crypto error : {0}")]
     CryptoError(#[from] CryptoError),
+    #[error("not found")]
+    NotFound,
 }
