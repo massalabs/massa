@@ -302,13 +302,13 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |Addresses { addrs }| {
-            get_next_draws(
+            wrap_api_call(get_next_draws(
                 evt_tx.clone(),
                 api_cfg.clone(),
                 consensus_cfg.clone(),
                 addrs,
                 clock_compensation,
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -1281,37 +1281,15 @@ async fn get_next_draws(
     consensus_cfg: ConsensusConfig,
     addresses: HashSet<Address>,
     clock_compensation: i64,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let cur_time = match UTime::now(clock_compensation) {
-        Ok(time) => time,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting current time : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+) -> Result<Vec<(Address, Slot)>, ApiError> {
+    let cur_time = UTime::now(clock_compensation)?;
 
-    let start_slot = match consensus::get_latest_block_slot_at_timestamp(
+    let start_slot = consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    ) {
-        Ok(slot) => slot,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting slot at timestamp : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    }
+    )?
     .unwrap_or_else(|| Slot::new(0, 0));
     let end_slot = Slot::new(
         start_slot
@@ -1320,19 +1298,8 @@ async fn get_next_draws(
         start_slot.thread,
     );
 
-    let next_slots: Vec<(Address, Slot)> =
-        match retrieve_selection_draw(start_slot, end_slot, &event_tx).await {
-            Ok(slot) => slot,
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error selecting draw : {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        }
+    let next_slots: Vec<(Address, Slot)> = retrieve_selection_draw(start_slot, end_slot, &event_tx)
+        .await?
         .into_iter()
         .filter_map(|(slt, sel)| {
             if addresses.contains(&sel) {
@@ -1342,7 +1309,7 @@ async fn get_next_draws(
         })
         .collect();
 
-    Ok(warp::reply::json(&next_slots).into_response())
+    Ok(next_slots)
 }
 
 async fn retrieve_stats(event_tx: &mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, ApiError> {
