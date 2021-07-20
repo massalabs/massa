@@ -1,6 +1,6 @@
 ## Episodes
 
-The goal is that everyone runs a node AND stakes.
+The goal is that everyone runs a node AND stakes. We don't measure absolute volumes, only quality.
 
 * We will have release cycles of 1 month each, called "episodes"
 * At the beginning of an episode, participants will have 3 days to setup their nodes with the newest version and start running. After those 3 days, scoring will start, and continue until the second-to-last day of the episode.
