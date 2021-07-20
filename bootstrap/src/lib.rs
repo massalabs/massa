@@ -23,14 +23,15 @@ use error::BootstrapError;
 pub use establisher::Establisher;
 use messages::BootstrapMessage;
 use models::SerializeCompact;
-use rand::{rngs::StdRng, RngCore, SeedableRng};
+use rand::{prelude::SliceRandom, rngs::StdRng, RngCore, SeedableRng};
 use std::convert::TryInto;
 use time::UTime;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
 async fn get_state_internal(
     cfg: &BootstrapConfig,
-    (bootstrap_addr, bootstrap_public_key): (SocketAddr, PublicKey),
+    bootstrap_addr: &SocketAddr,
+    bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
 ) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
@@ -38,7 +39,7 @@ async fn get_state_internal(
 
     // connect and handshake
     let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
-    let (socket_reader, socket_writer) = connector.connect(bootstrap_addr).await?;
+    let (socket_reader, socket_writer) = connector.connect(*bootstrap_addr).await?;
     let mut reader = ReadBinder::new(socket_reader);
     let mut writer = WriteBinder::new(socket_writer);
 
@@ -194,13 +195,16 @@ pub async fn get_state(
     BootstrapError,
 > {
     massa_trace!("bootstrap.lib.get_state", {});
-    if !cfg.bootstrap_list.is_empty() {
-        let mut idx = 0;
-        loop {
-            match get_state_internal(&cfg, cfg.bootstrap_list[idx], &mut establisher).await {
+    if cfg.bootstrap_list.is_empty() {
+        return Ok((None, None, 0, None));
+    }
+    let mut shuffled_list = cfg.bootstrap_list.clone();
+    shuffled_list.shuffle(&mut StdRng::from_entropy());
+    loop {
+        for (addr, pub_key) in shuffled_list.iter() {
+            match get_state_internal(&cfg, addr, pub_key, &mut establisher).await {
                 Err(e) => {
-                    warn!("error {:?} while bootstrapping", e);
-                    idx = (idx + 1) % cfg.bootstrap_list.len();
+                    warn!("error while bootstrapping: {:?}", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
                 Ok((pos, graph, compensation, peers)) => {
@@ -209,7 +213,6 @@ pub async fn get_state(
             }
         }
     }
-    Ok((None, None, 0, None))
 }
 
 pub struct BootstrapManager {
