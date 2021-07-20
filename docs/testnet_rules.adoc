@@ -29,7 +29,7 @@ staker_score = min(average_roll_count, 10)/10 * (final_blocks / max(slots_select
 
 Where `average_roll_count` is the average roll count the staker had during the scoring period of the episode. Note that beyond 10 rolls, there will be no more gains from having more rolls.
 
-And `blocks_created` is the number of blocks that the staker has created and that have become final during the scoring period of the episode. And slots_selected is the number of slots for which the staker was selected to create a block during the scoring period of the episode. This allows favoring stable block creation without favoring absolute block counts.
+And `blocks_created` is the number of blocks that the staker has created and that have become final during the scoring period of the episode. And `slots_selected` is the number of slots for which the staker was selected to create a block during the scoring period of the episode. This allows favoring stable block creation without favoring absolute block counts.
 
 ## Final scoring and rewards
 
