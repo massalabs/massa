@@ -329,7 +329,9 @@ pub fn get_filter(
         .and(warp::path("addresses_info"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| get_addresses_info(addrs, evt_tx.clone()));
+        .and_then(move |Addresses { addrs }| {
+            wrap_api_call(get_addresses_info(addrs, evt_tx.clone()))
+        });
 
     let evt_tx = event_tx.clone();
     let stop_node = warp::post()
@@ -982,48 +984,27 @@ async fn get_network_info(
 async fn get_addresses_info(
     addresses: HashSet<Address>,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<HashMap<Address, AddressState>, ApiError> {
     massa_trace!("api.filters.get_addresses_info", { "addresses": addresses });
     let (response_tx, response_rx) = oneshot::channel();
-    if let Err(err) = event_tx
+    event_tx
         .send(ApiEvent::GetAddressesInfo {
             addresses,
             response_tx,
         })
         .await
-    {
-        return Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error during sending ledger data : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response());
-    }
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get address info : {0}",
+                e
+            ))
+        })?;
 
-    let addrs_info = match response_rx.await {
-        Ok(Ok(addrs_info)) => addrs_info,
-        Ok(Err(err)) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error during exporting addrs info: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error get addrs info: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    let addrs_info = response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve address info : {0}", e))
+    })??;
 
-    Ok(warp::reply::json(&addrs_info).into_response())
+    Ok(addrs_info)
 }
 
 /// Returns connected peers :
