@@ -25,4 +25,6 @@ pub enum ApiError {
     ModelsError(#[from] ModelsError),
     #[error("not found")]
     NotFound,
+    #[error("inconsistency: {0}")]
+    InconsistencyError(String),
 }

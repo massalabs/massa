@@ -154,7 +154,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("current_parents"))
         .and(warp::path::end())
-        .and_then(move || get_current_parents(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_current_parents(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let last_final = warp::get()
@@ -736,20 +736,9 @@ async fn retrieve_selection_draw(
 ///
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_current_parents", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let parents = graph.best_parents;
     let mut best = Vec::new();
@@ -757,19 +746,14 @@ async fn get_current_parents(
         match graph.active_blocks.get_key_value(&hash) {
             Some((_, block)) => best.push((hash, block.block.content.slot)),
             None => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message":
-                            "inconsistency error between best_parents and active_blocks"
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
+                return Err(ApiError::InconsistencyError(
+                    "inconsistency error between best_parents and active_blocks".to_string(),
+                ))
             }
         }
     }
 
-    Ok(warp::reply::json(&best).into_response())
+    Ok(best)
 }
 
 /// Returns last final blocks wrapped in a reply.
