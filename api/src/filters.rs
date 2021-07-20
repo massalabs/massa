@@ -197,7 +197,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("peers"))
         .and(warp::path::end())
-        .and_then(move || get_peers(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_peers(evt_tx.clone())));
 
     let network_cfg = network_config.clone();
     let our_ip = warp::get()
@@ -1037,21 +1037,11 @@ async fn get_addresses_info(
 /// - ip address
 /// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
 ///
-async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_peers(
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
     massa_trace!("api.filters.get_peers", {});
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving peers : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-    Ok(warp::reply::json(&peers).into_response())
+    retrieve_peers(&event_tx).await
 }
 
 async fn get_operations_involving_address(
