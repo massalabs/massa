@@ -827,64 +827,16 @@ async fn get_block_interval(
     let mut res = get_block_from_graph(event_tx, &consensus_cfg, start_opt, end_opt).await?;
 
     if let Some(ref storage) = opt_storage_command_sender {
-        let start_slot = if let Some(start) = start_opt {
-            let slot = get_latest_block_slot_at_timestamp(
-                consensus_cfg.thread_count,
-                consensus_cfg.t0,
-                consensus_cfg.genesis_timestamp,
-                start,
-            )
-            .unwrap_or_else(|_| Some(Slot::new(0, 0)))
-            .map(|slot| {
-                get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                )
-                .and_then(|start_time| {
-                    if start_time == start {
-                        Ok(slot)
-                    } else {
-                        Ok(slot.get_next_slot(consensus_cfg.thread_count)?)
-                    }
-                })
-            })
-            .unwrap_or_else(|| Ok(Slot::new(0, 0)))?;
-            Some(slot)
-        } else {
-            None
-        };
-
-        //get end slot
-        let end_slot_opt = if let Some(end) = end_opt {
-            get_latest_block_slot_at_timestamp(
-                consensus_cfg.thread_count,
-                consensus_cfg.t0,
-                consensus_cfg.genesis_timestamp,
-                end,
-            )
-            .unwrap_or_else(|_| None)
-            .map::<Result<_, ApiError>, _>(|slot| {
-                let end_time = get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                )?;
-                if end_time == end {
-                    Ok(slot)
-                } else {
-                    Ok(slot.get_next_slot(consensus_cfg.thread_count)?)
-                }
-            })
-            .transpose()?
-        } else {
-            None
-        };
+        let (start_slot, end_slot) = time_range_to_slot_range(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            start_opt,
+            end_opt,
+        )?;
 
         storage
-            .get_slot_range(start_slot, end_slot_opt)
+            .get_slot_range(start_slot, end_slot)
             .await
             .map(|blocks| {
                 res.append(
