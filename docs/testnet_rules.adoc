@@ -1,0 +1,38 @@
+Hello everyone, here is a first proposal for a scoring system for the rewards.
+We want you to tell us what you think. Feel free to propose improvements.
+
+The goal is that everyone runs a node AND stakes.
+
+* We will have release cycles of 1 month each, called "episodes"
+* At the beginning of an episode, participants will have 3 days to setup their nodes with the newest version and start running. After those 3 days, scoring will start, and continue until the second-to-last day of the episode.
+* At the end of the episode, all nodes will stop by themselves and become useless/unusable. Participants will have to download + launch the new version for the next episode. Make sure you keep the same node private key and wallet ! At the beginning of the episode, you will be able to ask for coins at a faucet. Everyone will get enough coins to buy 10 rolls at least.
+* After an episode is finished, there will be scores for each node and for each staking address
+
+Scores for nodes will be computed like this:
+```
+node_score = (0.9 + 0.1*maxim_factor) * (inbound_connection_uptime_factor^2)
+
+Where maxim_factor will be a coefficient in [0 ; 1] indicating how geographically underrepresented the node's IP address is (1 meaning that nobody else is around). This is done to favor nodes being spread through the world, which improves decentralization.
+
+And inbound_connection_uptime_factor is the ratio of time (in [0 ; 1]) that the node was reachable from the internet (inbound TCP connections on open ports). Note that this factor is squared to favor maximal uptime, as node stability and reachability is an important factor for the health of the network.
+```
+
+Scores for staking addresses are computed like this:
+```
+staker_score = min(average_roll_count, 10)/10 * (final_blocks / max(slots_selected, 1))^2
+
+Where average_roll_count is the average roll count the staker had during the scoring period of the episode. Note that beyond 10 rolls, there will be no more gains from having more rolls.
+
+And blocks_created is the number of blocks that the staker has created and that have become final during the scoring period of the episode. And slots_selected is the number of slots for which the staker was selected to create a block during the scoring period of the episode. This allows favoring stable block creation without favoring absolute block counts.
+```
+
+
+At the end of the testnet phase (currently planned in Q2 2022):
+* people will be able to claim nodes and stakers by proving they own the corresponding private keys through a signature process that will be setup
+* there will be a  KYC process (most likely including video/liveness) to ensure that the same people don't do multiple claims, and in compliance with anti-laundering laws
+* a person can claim multiple nodes per episode, only the average score will be retained
+* a person can claim multiple stakers per episode, only the average score will be retained
+* the episode score for a person for a given episode will be the minimum between the retained node score and the retained staker score
+* the final testnet score of a person will be the average of all their episode scores
+
+This final score will be used to determine how many rolls the participant will get when we launch the mainnet. There will be a vesting process to avoid mass dumps.
