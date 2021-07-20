@@ -318,7 +318,9 @@ pub fn get_filter(
         .and(warp::path("operations_involving_address"))
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
-        .and_then(move |address| get_operations_involving_address(evt_tx.clone(), address));
+        .and_then(move |address| {
+            wrap_api_call(get_operations_involving_address(evt_tx.clone(), address))
+        });
 
     let evt_tx = event_tx.clone();
     let addresses_info = warp::get()
@@ -1038,42 +1040,32 @@ async fn get_peers(
 async fn get_operations_involving_address(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<HashMap<OperationId, OperationSearchResult>, ApiError> {
     massa_trace!("api.filters.get_operations_involving_address", {
         "address": address
     });
     let (response_tx, response_rx) = oneshot::channel();
-    if let Err(err) = event_tx
+    event_tx
         .send(ApiEvent::GetRecentOperations {
             address,
             response_tx,
         })
         .await
-    {
-        return Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error during sending ledger data : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response());
-    }
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "could not send api event get operation involving address : {0}",
+                e
+            ))
+        })?;
 
-    let res = match response_rx.await {
-        Ok(res) => res,
+    let res = response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!(
+            "could not retrieve operation involving address: {0}",
+            e
+        ))
+    })?;
 
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error get ledger data : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-
-    Ok(warp::reply::json(&res).into_response())
+    Ok(res)
 }
 
 #[derive(Clone, Serialize)]
