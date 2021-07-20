@@ -10,7 +10,7 @@ The goal is that everyone runs a node AND stakes.
 
 Scores for nodes will be computed like this:
 ```
-node_score = (0.9 + 0.1*maxim_factor) * (inbound_connection_uptime_factor^2)
+node_score = (0.8 + 0.2*maxim_factor) * (inbound_connection_uptime_factor^2)
 
 Where maxim_factor will be a coefficient in [0 ; 1] indicating how geographically underrepresented the node's IP address is (1 meaning that nobody else is around). This is done to favor nodes being spread through the world, which improves decentralization.
 
