@@ -162,7 +162,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("last_final"))
         .and(warp::path::end())
-        .and_then(move || get_last_final(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_last_final(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
@@ -760,27 +760,17 @@ async fn get_current_parents(
 ///
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_last_final", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
+
     let finals = graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
-        .map(|(i, (hash, period))| (hash, Slot::new(*period, i as u8)))
-        .collect::<Vec<(&BlockId, Slot)>>();
-    Ok(warp::reply::json(&finals).into_response())
+        .map(|(i, (hash, period))| (*hash, Slot::new(*period, i as u8)))
+        .collect();
+    Ok(finals)
 }
 
 async fn get_block_from_graph(
