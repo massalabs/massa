@@ -271,7 +271,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("last_invalid"))
         .and(warp::path::end())
-        .and_then(move || get_last_invalid(evt_tx.clone(), api_cfg.clone()));
+        .and_then(move || wrap_api_call(get_last_invalid(evt_tx.clone(), api_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config.clone();
@@ -1182,34 +1182,23 @@ async fn get_last_stale(
 async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_last_invalid", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
-    let discarded = graph.discarded_blocks;
 
+    let graph = retrieve_graph_export(&event_tx).await?;
+    let discarded = graph.discarded_blocks;
     let mut discarded = discarded
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| matches!(reason, DiscardReason::Invalid(_)))
-        .map(|(hash, (_reason, header))| (hash, header.content.slot))
-        .collect::<Vec<(&BlockId, Slot)>>();
+        .map(|(hash, (_reason, header))| (*hash, header.content.slot))
+        .collect::<Vec<(BlockId, Slot)>>();
     if !discarded.is_empty() {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
 
-    Ok(warp::reply::json(&json!(discarded)).into_response())
+    Ok(discarded)
 }
 
 /// Returns
