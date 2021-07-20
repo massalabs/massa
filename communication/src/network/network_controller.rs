@@ -75,7 +75,7 @@ pub async fn start_network_controller(
     let public_key = derive_public_key(&private_key);
     let self_node_id = NodeId(public_key);
 
-    debug!("local network node_id={:?}", self_node_id);
+    info!("The node_id of this node is: {:?}", self_node_id);
     massa_trace!("self_node_id", { "node_id": self_node_id });
 
     // create listener
