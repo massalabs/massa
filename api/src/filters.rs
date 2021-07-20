@@ -204,7 +204,7 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("our_ip"))
-        .and_then(move || get_our_ip(network_cfg.clone()));
+        .and_then(move || wrap_api_call(get_our_ip(network_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let network_cfg = network_config.clone();
@@ -622,9 +622,9 @@ async fn get_operations(
 /// Note: as our ip address is in the config,
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
-async fn get_our_ip(network_cfg: NetworkConfig) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_our_ip(network_cfg: NetworkConfig) -> Result<Option<IpAddr>, ApiError> {
     massa_trace!("api.filters.get_our_ip", {});
-    Ok(warp::reply::json(&network_cfg.routable_ip))
+    Ok(network_cfg.routable_ip)
 }
 
 async fn retrieve_graph_export(
