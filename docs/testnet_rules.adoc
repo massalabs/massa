@@ -34,6 +34,7 @@ And `blocks_created` is the number of blocks that the staker has created and tha
 ## Final scoring and rewards
 
 At the end of the testnet phase (currently planned in Q2 2022):
+
 * people will be able to claim nodes and stakers by proving they own the corresponding private keys through a signature process that will be setup
 * there will be a  KYC process (most likely including video/liveness) to ensure that the same people don't do multiple claims, and in compliance with anti-laundering laws
 * a person can claim multiple nodes per episode, only the average score will be retained
