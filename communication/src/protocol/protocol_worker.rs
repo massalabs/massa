@@ -63,7 +63,7 @@ pub enum ProtocolManagementCommand {}
 
 //put in a module to block private access from Protocol_worker.
 mod nodeinfo {
-    use models::BlockId;
+    use models::{BlockId, OperationId};
     use std::collections::HashMap;
     use tokio::time::Instant;
 
@@ -83,6 +83,8 @@ mod nodeinfo {
         pub asked_blocks: HashMap<BlockId, Instant>,
         /// Instant when the node was added
         pub connection_instant: Instant,
+        /// all known operation with instant of that info
+        pub known_operations: HashMap<OperationId, Instant>,
     }
 
     impl NodeInfo {
@@ -93,6 +95,7 @@ mod nodeinfo {
                 wanted_blocks: HashMap::new(),
                 asked_blocks: HashMap::new(),
                 connection_instant: Instant::now(),
+                known_operations: HashMap::new(),
             }
         }
 
@@ -127,6 +130,23 @@ mod nodeinfo {
                     .unwrap(); //never None because is the collection is empty, while loop isn't executed.
                 self.known_blocks.remove(&h);
             }
+        }
+
+        pub fn insert_known_ops(&mut self, ops: HashMap<OperationId, Instant>, max_ops_nb: usize) {
+            self.known_operations.extend(ops);
+            while self.known_operations.len() > max_ops_nb {
+                //remove oldest item
+                let (&h, _) = self
+                    .known_operations
+                    .iter()
+                    .min_by_key(|(h, t)| (*t, *h))
+                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
+                self.known_operations.remove(&h);
+            }
+        }
+
+        pub fn knows_op(&self, op: &OperationId) -> bool {
+            self.known_operations.contains_key(op)
         }
 
         /// insert a block in wanted list of a node.
@@ -337,6 +357,14 @@ impl ProtocolWorker {
                             Instant::now(),
                             self.cfg.max_node_known_blocks_size,
                         );
+                        node_info.insert_known_ops(
+                            block
+                                .operations
+                                .iter()
+                                .map(|op| Ok((op.get_operation_id()?, Instant::now())))
+                                .collect::<Result<_, CommunicationError>>()?,
+                            self.cfg.max_known_ops_size,
+                        );
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
@@ -460,11 +488,23 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operations": ops }
                 );
-                let ops: Vec<Operation> = ops.into_values().collect();
-                for (node, _) in self.active_nodes.iter() {
-                    self.network_command_sender
-                        .send_operations(*node, ops.clone())
-                        .await?
+                let cur_instant = Instant::now();
+                for (node, node_info) in self.active_nodes.iter_mut() {
+                    let new_ops: HashMap<OperationId, Operation> = ops
+                        .iter()
+                        .filter(|(id, _)| !node_info.knows_op(*id))
+                        .map(|(k, v)| (*k, v.clone()))
+                        .collect();
+                    node_info.insert_known_ops(
+                        new_ops.iter().map(|(id, _)| (*id, cur_instant)).collect(),
+                        self.cfg.max_known_ops_size,
+                    );
+                    let to_send = new_ops.into_iter().map(|(_, op)| op).collect::<Vec<_>>();
+                    if !to_send.is_empty() {
+                        self.network_command_sender
+                            .send_operations(*node, to_send)
+                            .await?;
+                    }
                 }
             }
         }
@@ -810,6 +850,14 @@ impl ProtocolWorker {
                 Instant::now(),
                 self.cfg.max_node_known_blocks_size,
             );
+            node_info.insert_known_ops(
+                block
+                    .operations
+                    .iter()
+                    .map(|op| Ok((op.get_operation_id()?, Instant::now())))
+                    .collect::<Result<_, CommunicationError>>()?,
+                self.cfg.max_known_ops_size,
+            );
             massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
             return Ok(Some((block_id, seen_ops)));
         }
@@ -838,6 +886,13 @@ impl ProtocolWorker {
                     return None;
                 }
             }
+        }
+        // add to known ops
+        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            node_info.insert_known_ops(
+                result.iter().map(|(id, _)| (*id, Instant::now())).collect(),
+                self.cfg.max_known_ops_size,
+            );
         }
         Some(result)
     }
