@@ -200,6 +200,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: UTime::from(100),
+        max_known_ops_size: 1000,
     }
 }
 
