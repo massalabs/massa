@@ -503,12 +503,15 @@ impl ProtocolWorker {
                             .collect(),
                         self.cfg.max_known_ops_size,
                     );
-                    self.network_command_sender
-                        .send_operations(
-                            *node,
-                            new_ops.into_iter().map(|(_, op)| op.clone()).collect(),
-                        )
-                        .await?;
+                    let to_send = new_ops
+                        .into_iter()
+                        .map(|(_, op)| op.clone())
+                        .collect::<Vec<_>>();
+                    if !to_send.is_empty() {
+                        self.network_command_sender
+                            .send_operations(*node, to_send)
+                            .await?;
+                    }
                 }
             }
         }
@@ -890,6 +893,13 @@ impl ProtocolWorker {
                     return None;
                 }
             }
+        }
+        // add to known ops
+        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            node_info.insert_know_ops(
+                result.iter().map(|(id, _)| (*id, Instant::now())).collect(),
+                self.cfg.max_known_ops_size,
+            );
         }
         Some(result)
     }
