@@ -45,7 +45,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations(operations)) => operations,
+                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
                 _ => panic!("Unexpected or no protocol pool event."),
             };
             assert!(received_operations.contains_key(&expected_operation_id));
@@ -99,7 +99,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations(_)) => {
+                Some(ProtocolPoolEvent::ReceivedOperations { .. }) => {
                     panic!("Protocol send invalid operations.")
                 }
                 _ => {}
@@ -148,7 +148,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations(operations)) => operations,
+                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
                 _ => panic!("Unexpected or no protocol pool event."),
             };
 

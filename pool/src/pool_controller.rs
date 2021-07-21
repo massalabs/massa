@@ -72,12 +72,12 @@ pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
 impl PoolCommandSender {
     pub async fn add_operations(
         &mut self,
-        ops: HashMap<OperationId, Operation>,
+        operations: HashMap<OperationId, Operation>,
     ) -> Result<(), PoolError> {
-        massa_trace!("pool.command_sender.add_operations", { "ops": ops });
+        massa_trace!("pool.command_sender.add_operations", { "ops": operations });
         let res = self
             .0
-            .send(PoolCommand::AddOperations(ops))
+            .send(PoolCommand::AddOperations(operations))
             .await
             .map_err(|_| PoolError::ChannelError("add_operations command send error".into()));
         res

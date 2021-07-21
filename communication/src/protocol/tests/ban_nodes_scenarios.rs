@@ -96,7 +96,7 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
                 &mut protocol_pool_event_receiver,
                 1000.into(),
                 |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations(..) => Some(evt),
+                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
                 },
             )
             .await
