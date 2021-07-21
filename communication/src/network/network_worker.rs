@@ -603,7 +603,6 @@ impl NetworkWorker {
             "ip": ip,
             "reason": reason
         });
-        info!("Disconnected from peer {}", ip);
         match reason {
             ConnectionClosureReason::Normal => {}
             ConnectionClosureReason::Failed => {
