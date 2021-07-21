@@ -132,7 +132,7 @@ mod nodeinfo {
             }
         }
 
-        pub fn insert_know_ops(&mut self, ops: HashMap<OperationId, Instant>, max_ops_nb: usize) {
+        pub fn insert_known_ops(&mut self, ops: HashMap<OperationId, Instant>, max_ops_nb: usize) {
             self.known_operations.extend(ops);
             while self.known_operations.len() > max_ops_nb {
                 //remove oldest item
@@ -145,7 +145,7 @@ mod nodeinfo {
             }
         }
 
-        pub fn contains_op(&self, op: &OperationId) -> bool {
+        pub fn knows_op(&self, op: &OperationId) -> bool {
             self.known_operations.contains_key(op)
         }
 
@@ -357,7 +357,7 @@ impl ProtocolWorker {
                             Instant::now(),
                             self.cfg.max_node_known_blocks_size,
                         );
-                        node_info.insert_know_ops(
+                        node_info.insert_known_ops(
                             block
                                 .operations
                                 .iter()
@@ -488,24 +488,23 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operations": ops }
                 );
-
+                let cur_instant = Instant::now();
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops = ops
+                    let new_ops: HashMap<OperationId, Operation> = ops
                         .iter()
-                        .filter(|(id, _)| !node_info.contains_op(*id))
-                        .collect::<Vec<_>>();
-
-                    node_info.insert_know_ops(
+                        .filter(|(id, _)| !node_info.knows_op(*id))
+                        .map(|(k, v)| (*k, v.clone()))
+                        .collect();
+                    node_info.insert_known_ops(
                         new_ops
-                            .clone()
-                            .into_iter()
-                            .map(|(id, _)| (*id, Instant::now()))
+                            .iter()
+                            .map(|(id, _)| (*id, cur_instant))
                             .collect(),
                         self.cfg.max_known_ops_size,
                     );
                     let to_send = new_ops
                         .into_iter()
-                        .map(|(_, op)| op.clone())
+                        .map(|(_, op)| op)
                         .collect::<Vec<_>>();
                     if !to_send.is_empty() {
                         self.network_command_sender
@@ -857,7 +856,7 @@ impl ProtocolWorker {
                 Instant::now(),
                 self.cfg.max_node_known_blocks_size,
             );
-            node_info.insert_know_ops(
+            node_info.insert_known_ops(
                 block
                     .operations
                     .iter()
@@ -896,7 +895,7 @@ impl ProtocolWorker {
         }
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_know_ops(
+            node_info.insert_known_ops(
                 result.iter().map(|(id, _)| (*id, Instant::now())).collect(),
                 self.cfg.max_known_ops_size,
             );
