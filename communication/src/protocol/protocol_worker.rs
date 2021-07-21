@@ -63,7 +63,7 @@ pub enum ProtocolManagementCommand {}
 
 //put in a module to block private access from Protocol_worker.
 mod nodeinfo {
-    use models::BlockId;
+    use models::{BlockId, OperationId};
     use std::collections::HashMap;
     use tokio::time::Instant;
 
@@ -83,6 +83,8 @@ mod nodeinfo {
         pub asked_blocks: HashMap<BlockId, Instant>,
         /// Instant when the node was added
         pub connection_instant: Instant,
+        /// all known operation with instant of that info
+        known_operations: HashMap<OperationId, Instant>,
     }
 
     impl NodeInfo {
@@ -93,6 +95,7 @@ mod nodeinfo {
                 wanted_blocks: HashMap::new(),
                 asked_blocks: HashMap::new(),
                 connection_instant: Instant::now(),
+                known_operations: HashMap::new(),
             }
         }
 
@@ -126,6 +129,19 @@ mod nodeinfo {
                     .min_by_key(|(h, (_, t))| (*t, *h))
                     .unwrap(); //never None because is the collection is empty, while loop isn't executed.
                 self.known_blocks.remove(&h);
+            }
+        }
+
+        pub fn insert_know_ops(&mut self, ops: HashMap<OperationId, Instant>, max_ops_nb: usize) {
+            self.known_operations.extend(ops);
+            while self.known_operations.len() > max_ops_nb {
+                //remove oldest item
+                let (&h, _) = self
+                    .known_operations
+                    .iter()
+                    .min_by_key(|(h, t)| (*t, *h))
+                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
+                self.known_operations.remove(&h);
             }
         }
 
