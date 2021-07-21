@@ -854,6 +854,14 @@ impl ProtocolWorker {
                 Instant::now(),
                 self.cfg.max_node_known_blocks_size,
             );
+            node_info.insert_know_ops(
+                block
+                    .operations
+                    .iter()
+                    .map(|op| Ok((op.get_operation_id()?, Instant::now())))
+                    .collect::<Result<_, CommunicationError>>()?,
+                self.cfg.max_known_ops_size,
+            );
             massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
             return Ok(Some((block_id, seen_ops)));
         }
