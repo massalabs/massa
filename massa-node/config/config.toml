@@ -91,7 +91,7 @@
     max_bootstrap_cliques = 1000
     max_bootstrap_deps = 1000
     max_bootstrap_children = 1000
-    max_ping = 500
+    max_ping = 5000
     max_bootstrap_message_size = 1048576000
     read_timeout = 100000
     write_timeout = 10000
