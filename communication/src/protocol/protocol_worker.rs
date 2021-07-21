@@ -496,16 +496,10 @@ impl ProtocolWorker {
                         .map(|(k, v)| (*k, v.clone()))
                         .collect();
                     node_info.insert_known_ops(
-                        new_ops
-                            .iter()
-                            .map(|(id, _)| (*id, cur_instant))
-                            .collect(),
+                        new_ops.iter().map(|(id, _)| (*id, cur_instant)).collect(),
                         self.cfg.max_known_ops_size,
                     );
-                    let to_send = new_ops
-                        .into_iter()
-                        .map(|(_, op)| op)
-                        .collect::<Vec<_>>();
+                    let to_send = new_ops.into_iter().map(|(_, op)| op).collect::<Vec<_>>();
                     if !to_send.is_empty() {
                         self.network_command_sender
                             .send_operations(*node, to_send)
