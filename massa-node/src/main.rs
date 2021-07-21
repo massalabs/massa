@@ -155,7 +155,7 @@ async fn run(cfg: config::Config) {
                             Ok(addr) => addr.to_string(),
                             Err(_) => "could not get address from public key".to_string(),
                         };
-                        let operation_message =  match op.content.op {
+                        let operation_message =  match &op.content.op {
                             models::OperationType::Transaction {  amount , recipient_address } => format!("transaction from address {} to address {}, with amount {}", from_address, recipient_address, amount),
                             models::OperationType::RollBuy { roll_count } => format!("address {} buys {} rolls", from_address, roll_count),
                             models::OperationType::RollSell { roll_count } => format!("address {} sells {} rolls", from_address, roll_count),

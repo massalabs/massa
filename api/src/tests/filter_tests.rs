@@ -9,7 +9,7 @@ use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
 use models::SerializeCompact;
-use models::{Address, Block, BlockHeader, BlockId, Slot};
+use models::{Address, Amount, Block, BlockHeader, BlockId, Slot};
 use models::{
     Operation, OperationContent, OperationId, OperationSearchResult, OperationSearchResultStatus,
     OperationType,
@@ -32,10 +32,10 @@ pub fn create_operation() -> Operation {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::from(0),
     };
     let content = OperationContent {
-        fee: 0,
+        fee: Amount::from(0),
         op,
         sender_public_key: sender_pub,
         expire_period: 0,

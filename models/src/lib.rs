@@ -4,6 +4,7 @@
 extern crate lazy_static;
 
 mod address;
+mod amount;
 mod block;
 mod composite;
 mod context;
@@ -13,6 +14,7 @@ mod serialization;
 mod slot;
 
 pub use address::{Address, ADDRESS_SIZE_BYTES};
+pub use amount::Amount;
 pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId, BLOCK_ID_SIZE_BYTES};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,

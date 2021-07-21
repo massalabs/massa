@@ -23,7 +23,6 @@ use models::{
     Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, OperationType, Slot,
 };
-use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -51,8 +50,7 @@ impl<'a> std::fmt::Display for WrapperOperationType<'a> {
             } => write!(
                 f,
                 "Transaction: recipient:{} amount:{}",
-                recipient_address,
-                format_amount(*amount)
+                recipient_address, amount
             ),
             OperationType::RollBuy { roll_count } => {
                 write!(f, "RollBuy: roll_count:{}", roll_count)
@@ -78,13 +76,11 @@ impl std::fmt::Display for WrapperOperation {
         let op_type = WrapperOperationType::from(&self.0.content.op);
         let addr = Address::from_public_key(&self.0.content.sender_public_key)
             .map_err(|_| std::fmt::Error)?;
+        let amount: String = self.0.content.fee.clone().into();
         write!(
             f,
             "sender:{} fee:{} expire_period:{} {}",
-            addr,
-            format_amount(self.0.content.fee),
-            self.0.content.expire_period,
-            op_type
+            addr, amount, self.0.content.expire_period, op_type
         )
     }
 }
@@ -207,21 +203,13 @@ pub struct WrappedAddressState {
 */
 impl<'a> std::fmt::Display for WrappedAddressState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(
-            f,
-            "    final balance: {}",
-            format_amount(self.final_ledger_data.balance)
-        )?;
+        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
         writeln!(
             f,
             "    candidate balance: {}",
-            format_amount(self.candidate_ledger_data.balance)
+            self.candidate_ledger_data.balance
         )?;
-        writeln!(
-            f,
-            "    locked balance: {}",
-            format_amount(self.locked_balance)
-        )?;
+        writeln!(f, "    locked balance: {}", self.locked_balance)?;
         writeln!(f, "    final rolls: {}", self.final_rolls)?;
         writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
 
@@ -553,34 +541,4 @@ impl std::fmt::Debug for WrappedHash {
             write!(f, "{}", &self.0.to_bs58_check())
         }
     }
-}
-
-const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
-
-pub fn parse_amount(str_amount: &str) -> Result<u64, String> {
-    let res = Decimal::from_str(str_amount)
-        .map_err(|err| err.to_string())?
-        .checked_mul(AMOUNT_DECIMAL_FACTOR.into())
-        .ok_or_else(|| "amount is too large".to_string())?;
-    if res.is_sign_negative() {
-        return Err("amounts should be positive".to_string());
-    }
-    if !res.fract().is_zero() {
-        return Err(format!(
-            "amounts should have a precision down to 1/{}",
-            AMOUNT_DECIMAL_FACTOR
-        ));
-    }
-    let res = res
-        .to_u64()
-        .ok_or_else(|| "amount is too large".to_string())?;
-    Ok(res)
-}
-
-fn format_amount(amount: u64) -> String {
-    Decimal::from_u64(amount)
-        .unwrap() // will never panic
-        .checked_div(AMOUNT_DECIMAL_FACTOR.into()) // will never panic
-        .unwrap() // will never panic
-        .to_string()
 }
