@@ -84,7 +84,7 @@ mod nodeinfo {
         /// Instant when the node was added
         pub connection_instant: Instant,
         /// all known operation with instant of that info
-        known_operations: HashMap<OperationId, Instant>,
+        pub known_operations: HashMap<OperationId, Instant>,
     }
 
     impl NodeInfo {
@@ -143,6 +143,10 @@ mod nodeinfo {
                     .unwrap(); //never None because is the collection is empty, while loop isn't executed.
                 self.known_operations.remove(&h);
             }
+        }
+
+        pub fn contains_op(&self, op: &OperationId) -> bool {
+            self.known_operations.contains_key(op)
         }
 
         /// insert a block in wanted list of a node.
@@ -353,6 +357,14 @@ impl ProtocolWorker {
                             Instant::now(),
                             self.cfg.max_node_known_blocks_size,
                         );
+                        node_info.insert_know_ops(
+                            block
+                                .operations
+                                .iter()
+                                .map(|op| Ok((op.get_operation_id()?, Instant::now())))
+                                .collect::<Result<_, CommunicationError>>()?,
+                            self.cfg.max_known_ops_size,
+                        );
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
@@ -476,11 +488,27 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operations": ops }
                 );
-                let ops: Vec<Operation> = ops.into_values().collect();
-                for (node, _) in self.active_nodes.iter() {
+
+                for (node, node_info) in self.active_nodes.iter_mut() {
+                    let new_ops = ops
+                        .iter()
+                        .filter(|(id, _)| !node_info.contains_op(*id))
+                        .collect::<Vec<_>>();
+
+                    node_info.insert_know_ops(
+                        new_ops
+                            .clone()
+                            .into_iter()
+                            .map(|(id, _)| (*id, Instant::now()))
+                            .collect(),
+                        self.cfg.max_known_ops_size,
+                    );
                     self.network_command_sender
-                        .send_operations(*node, ops.clone())
-                        .await?
+                        .send_operations(
+                            *node,
+                            new_ops.into_iter().map(|(_, op)| op.clone()).collect(),
+                        )
+                        .await?;
                 }
             }
         }
