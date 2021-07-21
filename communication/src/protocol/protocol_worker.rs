@@ -37,7 +37,10 @@ pub enum ProtocolEvent {
 #[derive(Debug, Serialize)]
 pub enum ProtocolPoolEvent {
     /// Operations were received
-    ReceivedOperations(HashMap<OperationId, Operation>),
+    ReceivedOperations {
+        operations: HashMap<OperationId, Operation>,
+        propagate: bool, // whether or not to propagate operations
+    },
 }
 
 /// Commands that protocol worker can process
@@ -842,7 +845,19 @@ impl ProtocolWorker {
             }
         }
 
-        // add to known blocks
+        // send operations to pool, but do not repropagate them
+        if !seen_ops.is_empty() {
+            self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
+                operations: seen_ops
+                    .iter()
+                    .map(|(op_id, (idx, _))| (*op_id, block.operations[*idx].clone()))
+                    .collect(),
+                propagate: false,
+            })
+            .await;
+        }
+
+        // add to known blocks and operations
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_block(
                 block_id,
@@ -861,6 +876,7 @@ impl ProtocolWorker {
             massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
             return Ok(Some((block_id, seen_ops)));
         }
+
         Ok(None)
     }
 
@@ -1002,9 +1018,10 @@ impl ProtocolWorker {
                 if let Some(operations) = self.note_operations_from_node(operations.clone(), &node)
                 {
                     if !operations.is_empty() {
-                        self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations(
+                        self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
                             operations,
-                        ))
+                            propagate: true,
+                        })
                         .await;
                     }
                 } else {

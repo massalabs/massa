@@ -48,9 +48,12 @@ impl MockProtocolController {
         }
     }
 
-    pub async fn received_operations(&mut self, ops: HashMap<OperationId, Operation>) {
+    pub async fn received_operations(&mut self, operations: HashMap<OperationId, Operation>) {
         self.pool_event_tx
-            .send(ProtocolPoolEvent::ReceivedOperations(ops))
+            .send(ProtocolPoolEvent::ReceivedOperations {
+                operations,
+                propagate: true,
+            })
             .await
             .expect("could not send protocol pool event");
     }
