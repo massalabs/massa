@@ -12,7 +12,8 @@ use super::{
 use crate::common::NodeId;
 use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
-use crypto::signature::PrivateKey;
+use crypto::hash::Hash;
+use crypto::signature::{derive_public_key, sign, PrivateKey, PublicKey, Signature};
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
@@ -57,6 +58,10 @@ pub enum NetworkCommand {
     SendOperations {
         node: NodeId,
         operations: Vec<Operation>,
+    },
+    NodeSignMessage {
+        msg: Vec<u8>,
+        response_tx: oneshot::Sender<(PublicKey, Signature)>,
     },
 }
 
@@ -751,6 +756,19 @@ impl NetworkWorker {
                     NodeCommand::SendOperations(operations),
                 )
                 .await;
+            }
+            NetworkCommand::NodeSignMessage { msg, response_tx } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
+                    { "mdg": msg }
+                );
+                let sig = sign(&Hash::hash(&msg), &self.private_key)?;
+                let pubkey = derive_public_key(&self.private_key);
+                response_tx.send((pubkey, sig)).map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "could not send NodeSignMessage response upstream".into(),
+                    )
+                })?;
             }
         }
         Ok(())
