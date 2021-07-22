@@ -192,7 +192,7 @@ impl Repl {
         });
         repl.cmd_list.push(Command {
             name: "help".to_string(),
-            max_nb_param: 0,
+            max_nb_param: 1,
             min_nb_param: 0,
             help: "this help".to_string(),
             active: true,
@@ -372,16 +372,29 @@ impl Repl {
             .cmd_list
             .iter()
             .find(|cmd| cmd.name == typed_command.name)
-            .ok_or(error::ReplError::CommandNotFoundError(typed_command.name))?;
+            .ok_or(error::ReplError::CommandNotFoundError(
+                typed_command.name.clone(),
+            ))?;
         (command.func)(&mut self.data, &typed_command.params)?;
         if command.name == "quit" {
             return Ok(true);
         } else if command.name == "help" {
-            println!("Massa client help:");
-            self.cmd_list
-                .iter()
-                .filter(|cmd| cmd.active && !cmd.name.is_empty())
-                .for_each(|cmd| println!(" - {}  :  {}", cmd.name, cmd.help));
+            if typed_command.params.len() > 0 {
+                let command = self
+                    .cmd_list
+                    .iter()
+                    .find(|cmd| cmd.name == typed_command.params[0])
+                    .ok_or(error::ReplError::CommandNotFoundError(
+                        typed_command.params[0].to_string(),
+                    ))?;
+                println!(" - {}  :  {}", command.name, command.help);
+            } else {
+                println!("Massa client help:");
+                self.cmd_list
+                    .iter()
+                    .filter(|cmd| cmd.active && !cmd.name.is_empty())
+                    .for_each(|cmd| println!(" - {}  :  {}", cmd.name, cmd.help));
+            }
         }
         Ok(false)
     }
