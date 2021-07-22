@@ -47,7 +47,7 @@ pub enum NetworkCommand {
         node: NodeId,
         header: BlockHeader,
     },
-    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
+    GetPeers(oneshot::Sender<(HashMap<IpAddr, PeerInfo>, NodeId)>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
     BlockNotFound {
@@ -712,7 +712,7 @@ impl NetworkWorker {
                     {}
                 );
                 response_tx
-                    .send(self.peer_info_db.get_peers().clone())
+                    .send((self.peer_info_db.get_peers().clone(), self.self_node_id))
                     .map_err(|_| {
                         CommunicationError::ChannelError(
                             "could not send GetPeersChannelError upstream".into(),
