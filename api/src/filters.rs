@@ -2,6 +2,7 @@
 
 use super::config::ApiConfig;
 use crate::ApiError;
+use communication::NodeId;
 use communication::{
     network::{NetworkConfig, PeerInfo},
     protocol::ProtocolConfig,
@@ -44,7 +45,7 @@ pub enum ApiEvent {
         block_id: BlockId,
         response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
     },
-    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
+    GetPeers(oneshot::Sender<(HashMap<IpAddr, PeerInfo>, NodeId)>),
     GetSelectionDraw {
         start: Slot,
         end: Slot,
@@ -752,9 +753,9 @@ async fn retrieve_operations(
     })
 }
 
-async fn retrieve_peers(
+async fn retrieve_peers_and_nodeid(
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
+) -> Result<(HashMap<IpAddr, PeerInfo>, NodeId), ApiError> {
     massa_trace!("api.filters.retrieve_peers", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1448,8 +1449,8 @@ async fn get_network_info(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_network_info", {});
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
+    let (peers, node_id) = match retrieve_peers_and_nodeid(&event_tx).await {
+        Ok(infos) => infos,
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -1464,6 +1465,7 @@ async fn get_network_info(
     Ok(warp::reply::json(&json!({
         "our_ip": our_ip,
         "peers": peers,
+        "node_id": node_id,
     }))
     .into_response())
 }
@@ -1523,8 +1525,8 @@ async fn get_addresses_info(
 ///
 async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_peers", {});
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
+    let peers = match retrieve_peers_and_nodeid(&event_tx).await {
+        Ok((peers, _)) => peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -1624,8 +1626,8 @@ async fn get_state(
         }
     };
 
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
+    let peers = match retrieve_peers_and_nodeid(&event_tx).await {
+        Ok((peers, _)) => peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({

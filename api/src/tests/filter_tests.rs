@@ -937,6 +937,8 @@ async fn test_last_final() {
 #[tokio::test]
 #[serial]
 async fn test_peers() {
+    let private_key = crypto::signature::generate_random_private_key();
+    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
     //test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -945,7 +947,7 @@ async fn test_peers() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send(HashMap::new())
+                        .send((HashMap::new(), node_id))
                         .expect("failed to send peers");
                 }
 
@@ -997,7 +999,7 @@ async fn test_peers() {
         match evt {
             Some(ApiEvent::GetPeers(response_sender_tx)) => {
                 response_sender_tx
-                    .send(cloned)
+                    .send((cloned, node_id))
                     .expect("failed to send peers");
             }
 
@@ -1397,6 +1399,8 @@ async fn test_get_block() {
 #[tokio::test]
 #[serial]
 async fn test_network_info() {
+    let private_key = crypto::signature::generate_random_private_key();
+    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
     //test with empty peer list
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1406,7 +1410,7 @@ async fn test_network_info() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send(HashMap::new())
+                        .send((HashMap::new(), node_id))
                         .expect("failed to send peers");
                 }
 
@@ -1421,6 +1425,7 @@ async fn test_network_info() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value = json!({
+            "node_id" : node_id,
             "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             "peers": HashMap::<IpAddr, String>::new(),
         });
@@ -1458,7 +1463,7 @@ async fn test_network_info() {
         match evt {
             Some(ApiEvent::GetPeers(response_sender_tx)) => {
                 response_sender_tx
-                    .send(cloned)
+                    .send((cloned, node_id))
                     .expect("failed to send peers");
             }
 
@@ -1475,6 +1480,7 @@ async fn test_network_info() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = json!({
+        "node_id" : node_id,
         "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
         "peers": peers,
     });
@@ -1486,6 +1492,8 @@ async fn test_network_info() {
 #[tokio::test]
 #[serial]
 async fn test_state() {
+    let private_key = crypto::signature::generate_random_private_key();
+    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
     //test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1496,7 +1504,7 @@ async fn test_state() {
                 match evt {
                     Some(ApiEvent::GetPeers(response_sender_tx)) => {
                         response_sender_tx
-                            .send(HashMap::new())
+                            .send((HashMap::new(), node_id))
                             .expect("failed to send peers");
                     }
                     Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
@@ -1562,7 +1570,7 @@ async fn test_state() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send(cloned.clone())
+                        .send((cloned.clone(), node_id))
                         .expect("failed to send peers");
                 }
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
