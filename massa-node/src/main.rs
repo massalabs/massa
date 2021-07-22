@@ -292,9 +292,20 @@ async fn run(cfg: config::Config) {
                         .get_staking_addresses()
                             .await
                             .expect("get_staking_addresses failed in api_event_receiver.wait_event")
+                    ).is_err() {
+                        warn!("could not send get_staking_addresses response in api_event_receiver.wait_event");
+                    }
+                },
+                Ok(ApiEvent::NodeSignMessage{message, response_tx}) =>{
+                    massa_trace!("massa-node.main.run.select.api_event.node_sign_message", {});
+                    if response_tx.send(
+                        network_command_sender
+                        .node_sign_message(message)
+                            .await
+                            .expect("node_sign_message failed in api_event_receiver.wait_event")
                         ).is_err() {
-                            warn!("could not send get_staking_addresses response in api_event_receiver.wait_event");
-                        }
+                        warn!("could not send node_sign_message response in api_event_receiver.wait_event");
+                    }
                 },
                 Err(err) => {
                     error!("api communication error: {:?}", err);
