@@ -3,32 +3,48 @@
     "advertised": true,
     "banned": false,
     "bootstrap": true,
+    "ip": "158.69.120.215",
+    "last_alive": 1626969132221,
+    "last_failure": 1626969121217
+  },
+  {
+    "advertised": true,
+    "banned": false,
+    "bootstrap": false,
+    "ip": "93.31.10.235",
+    "last_alive": 1626968082719,
+    "last_failure": 1626968071981
+  },
+  {
+    "advertised": true,
+    "banned": false,
+    "bootstrap": true,
     "ip": "149.202.86.103",
-    "last_alive": null,
-    "last_failure": null
+    "last_alive": 1626968082733,
+    "last_failure": 1626968071995
   },
   {
     "advertised": true,
     "banned": false,
     "bootstrap": true,
     "ip": "149.202.89.125",
-    "last_alive": null,
-    "last_failure": null
-  },
-  {
-    "advertised": true,
-    "banned": false,
-    "bootstrap": true,
-    "ip": "158.69.120.215",
-    "last_alive": null,
-    "last_failure": null
+    "last_alive": 1626968082733,
+    "last_failure": 1626968071995
   },
   {
     "advertised": true,
     "banned": false,
     "bootstrap": true,
     "ip": "158.69.23.120",
-    "last_alive": null,
+    "last_alive": 1626967503887,
     "last_failure": null
+  },
+  {
+    "advertised": true,
+    "banned": false,
+    "bootstrap": false,
+    "ip": "172.104.184.201",
+    "last_alive": 1626969907086,
+    "last_failure": 1626969896658
   }
 ]

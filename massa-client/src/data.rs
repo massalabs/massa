@@ -476,7 +476,7 @@ impl std::fmt::Display for StakerInfo {
 #[derive(Clone, Deserialize)]
 pub struct NetworkInfo {
     our_ip: Option<IpAddr>,
-    peers: HashMap<IpAddr, PeerInfo>,
+    peers: HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>,
     node_id: NodeId,
 }
 impl std::fmt::Display for NetworkInfo {
@@ -491,37 +491,39 @@ impl std::fmt::Display for NetworkInfo {
         )?;
         writeln!(f, "  Peers:")?;
         for peer in self.peers.values() {
-            write!(f, "    {}", WrappedPeerInfo::from(peer))?;
+            write!(f, "    {}", WrappedPeerInfo::from(peer.clone()))?;
         }
         Ok(())
     }
 }
 
 #[derive(Clone, Deserialize)]
-pub struct WrappedPeerInfo(PeerInfo);
+pub struct WrappedPeerInfo((PeerInfo, Vec<(NodeId, bool)>));
 
-impl From<PeerInfo> for WrappedPeerInfo {
-    fn from(peer: PeerInfo) -> Self {
+impl From<(PeerInfo, Vec<(NodeId, bool)>)> for WrappedPeerInfo {
+    fn from(peer: (PeerInfo, Vec<(NodeId, bool)>)) -> Self {
         WrappedPeerInfo(peer)
     }
 }
-impl From<&'_ PeerInfo> for WrappedPeerInfo {
-    fn from(peer: &PeerInfo) -> Self {
-        WrappedPeerInfo(*peer)
-    }
-}
+
 impl std::fmt::Display for WrappedPeerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Peer: Ip: {} bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
-            ,self.0.ip
-            , self.0.bootstrap
-            , self.0.banned
-            , self.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.active_out_connection_attempts
-            , self.0.active_out_connections
-            , self.0.active_in_connections
-            , self.0.advertised)
+        writeln!(f, "{}:", self.0 .0.ip)?;
+        writeln!(f, "      Peer: bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
+            , self.0.0.bootstrap
+            , self.0.0.banned
+            , self.0.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.0.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.0.0.active_out_connection_attempts
+            , self.0.0.active_out_connections
+            , self.0.0.active_in_connections
+            , self.0.0.advertised)?;
+        writeln!(f, "      active_nodes: [")?;
+        for (node_id, out_going) in &self.0 .1 {
+            writeln!(f, "        node_id: {}", node_id)?;
+            writeln!(f, "        is_outgoing: {}", out_going)?;
+        }
+        writeln!(f, "      ]")
     }
 }
 
