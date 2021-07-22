@@ -13,7 +13,7 @@ use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, AddressState, BlockGraphExport,
     ConsensusConfig, ConsensusError, DiscardReason,
 };
-use crypto::signature::PrivateKey;
+use crypto::signature::{PrivateKey, PublicKey, Signature};
 use logging::massa_trace;
 use models::Address;
 use models::ModelsError;
@@ -69,6 +69,10 @@ pub enum ApiEvent {
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
     GetStakingAddresses(oneshot::Sender<HashSet<Address>>),
+    NodeSignMessage {
+        message: Vec<u8>,
+        response_tx: oneshot::Sender<(PublicKey, Signature)>,
+    },
 }
 
 pub enum ApiManagementCommand {}
@@ -356,11 +360,11 @@ pub fn get_filter(
         .and_then(move |Addresses { addrs }| remove_staking_addresses(evt_tx.clone(), addrs));
 
     let evt_tx = event_tx.clone();
-    let send_operations = warp::path("api")
+    let send_operations = warp::post()
+        .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("send_operations"))
         .and(warp::path::end())
-        .and(warp::post())
         .and(warp::body::json())
         .and_then(move |operations| send_operations(operations, evt_tx.clone()));
 
@@ -380,13 +384,22 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || get_active_stakers(evt_tx.clone()));
 
-    let evt_tx = event_tx;
+    let evt_tx = event_tx.clone();
     let staking_addresses = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("staking_addresses"))
         .and(warp::path::end())
         .and_then(move || get_staking_addresses(evt_tx.clone()));
+
+    let evt_tx = event_tx;
+    let node_sign_message = warp::post()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("node_sign_message"))
+        .and(warp::path::end())
+        .and(warp::body::bytes())
+        .and_then(move |msg: warp::hyper::body::Bytes| node_sign_msg(msg.to_vec(), evt_tx.clone()));
 
     block
         .or(blockinterval)
@@ -415,6 +428,7 @@ pub fn get_filter(
         .or(staking_addresses)
         .or(register_staking_private_keys)
         .or(remove_staking_addresses)
+        .or(node_sign_message)
         .boxed()
 }
 
@@ -620,6 +634,52 @@ async fn get_operations(
         Ok(ops) => Ok(warp::reply::json(&json!(ops
             .into_iter()
             .collect::<Vec<(OperationId, OperationSearchResult)>>()))
+        .into_response()),
+    }
+}
+
+async fn do_node_sign_msg(
+    message: Vec<u8>,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<(PublicKey, Signature), ApiError> {
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::NodeSignMessage {
+            message,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event node sign message : {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!(
+            "Could not retrieve node message signature : {0}",
+            e
+        ))
+    })
+}
+
+async fn node_sign_msg(
+    msg: Vec<u8>,
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.node_sign_msg", { "msg": msg });
+    match do_node_sign_msg(msg, &event_tx).await {
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error while making node sign message: {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+        Ok((public_key, signature)) => Ok(warp::reply::json(&json!({
+            "public_key": public_key,
+            "signature": signature
+        }))
         .into_response()),
     }
 }

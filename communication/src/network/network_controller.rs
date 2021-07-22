@@ -9,7 +9,9 @@ use super::{
 };
 use crate::common::NodeId;
 use crate::error::CommunicationError;
-use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use crypto::signature::{
+    derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
+};
 use models::{Block, BlockHeader, BlockId, Operation};
 use std::{
     collections::{HashMap, VecDeque},
@@ -243,6 +245,25 @@ impl NetworkCommandSender {
                 CommunicationError::ChannelError("could not send SendOperations command".into())
             })?;
         Ok(())
+    }
+
+    /// Sign a message using the node's private key
+    pub async fn node_sign_message(
+        &self,
+        msg: Vec<u8>,
+    ) -> Result<(PublicKey, Signature), CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel::<(PublicKey, Signature)>();
+        self.0
+            .send(NetworkCommand::NodeSignMessage { msg, response_tx })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("could not send GetBootstrapPeers command".into())
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            CommunicationError::ChannelError(
+                "could not send GetBootstrapPeers response upstream".into(),
+            )
+        })?)
     }
 }
 
