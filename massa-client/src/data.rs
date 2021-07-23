@@ -518,12 +518,16 @@ impl std::fmt::Display for WrappedPeerInfo {
             , self.0.0.active_out_connections
             , self.0.0.active_in_connections
             , self.0.0.advertised)?;
-        writeln!(f, "      active_nodes: [")?;
-        for (node_id, out_going) in &self.0 .1 {
-            writeln!(f, "        node_id: {}", node_id)?;
-            writeln!(f, "        is_outgoing: {}", out_going)?;
+        if !self.0 .1.is_empty() {
+            writeln!(f, "      active_nodes: [")?;
+            for (node_id, out_going) in &self.0 .1 {
+                writeln!(f, "        node_id: {}", node_id)?;
+                writeln!(f, "        is_outgoing: {}", out_going)?;
+            }
+            writeln!(f, "      ]")
+        } else {
+            writeln!(f,"No active nodes")
         }
-        writeln!(f, "      ]")
     }
 }
 
