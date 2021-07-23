@@ -9,14 +9,10 @@ use models::Slot;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use crate::pool_controller;
 use crate::tests::tools::get_transaction_with_addresses;
 use crate::tests::tools::pool_test;
 
-use super::{
-    mock_protocol_controller::MockProtocolController,
-    tools::{example_pool_config, get_transaction},
-};
+use super::tools::{example_pool_config, get_transaction};
 use serial_test::serial;
 
 #[tokio::test]

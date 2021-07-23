@@ -15,6 +15,7 @@
 use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
+use communication::NodeId;
 use consensus::DiscardReason;
 use consensus::{ExportBlockStatus, LedgerData};
 use crypto::hash::Hash;
@@ -214,7 +215,7 @@ impl<'a> std::fmt::Display for WrappedAddressState {
         )?;
         writeln!(
             f,
-            "    candidate balance:{}",
+            "    candidate balance: {}",
             format_amount(self.candidate_ledger_data.balance)
         )?;
         writeln!(
@@ -476,9 +477,11 @@ impl std::fmt::Display for StakerInfo {
 pub struct NetworkInfo {
     our_ip: Option<IpAddr>,
     peers: HashMap<IpAddr, PeerInfo>,
+    node_id: NodeId,
 }
 impl std::fmt::Display for NetworkInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "  Node Id:{}", self.node_id)?;
         writeln!(
             f,
             "  Our IP address: {}",

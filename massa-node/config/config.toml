@@ -45,6 +45,7 @@
     max_node_wanted_blocks_size = 1024
     max_simultaneous_ask_blocks_per_node = 2048
     max_send_wait = 500
+    max_known_ops_size = 100000
 
 [network]
     bind = "0.0.0.0:31234"
@@ -53,12 +54,12 @@
     connect_timeout = 5000
     wakeup_interval = 10000
     peers_file = "config/peers.json"
-    target_out_connections = 20
-    max_in_connections = 100
-    max_in_connections_per_ip = 5
-    max_out_connection_attempts = 10
-    max_idle_peers = 1000
-    max_banned_peers = 1000
+    target_out_connections = 50
+    max_in_connections = 10000
+    max_in_connections_per_ip = 10
+    max_out_connection_attempts = 100
+    max_idle_peers = 10000
+    max_banned_peers = 10000
     max_advertise_length = 100000
     peers_file_dump_interval = 10000
     max_message_size = 1048576000
@@ -79,7 +80,9 @@
 [bootstrap]
     bootstrap_list = [
         ["149.202.86.103:31235", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
-        ["149.202.89.125:31235", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"]
+        ["149.202.89.125:31235", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
+        ["158.69.120.215:31235", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
+        ["158.69.23.120:31235", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
     ]
     bind = "0.0.0.0:31235" # if you want to bootstrap people
     connect_timeout = 1000
@@ -88,7 +91,7 @@
     max_bootstrap_cliques = 1000
     max_bootstrap_deps = 1000
     max_bootstrap_children = 1000
-    max_ping = 500
+    max_ping = 5000
     max_bootstrap_message_size = 1048576000
     read_timeout = 100000
     write_timeout = 10000

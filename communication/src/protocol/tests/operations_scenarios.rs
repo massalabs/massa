@@ -45,7 +45,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations(operations)) => operations,
+                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
                 _ => panic!("Unexpected or no protocol pool event."),
             };
             assert!(received_operations.contains_key(&expected_operation_id));
@@ -99,7 +99,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations(_)) => {
+                Some(ProtocolPoolEvent::ReceivedOperations { .. }) => {
                     panic!("Protocol send invalid operations.")
                 }
                 _ => {}
@@ -129,7 +129,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                     protocol_manager,
                     mut protocol_pool_event_receiver| {
             // Create 2 nodes.
-            let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
+            let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             // 1. Create an operation
             let operation = tools::create_operation();
@@ -148,7 +148,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations(operations)) => operations,
+                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
                 _ => panic!("Unexpected or no protocol pool event."),
             };
 
@@ -172,10 +172,8 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                     Some(NetworkCommand::SendOperations { node, operations }) => {
                         let id = operations[0].verify_integrity().unwrap();
                         assert_eq!(id, expected_operation_id);
-                        nodes.retain(|node_info| node != node_info.id);
-                        if nodes.is_empty() {
-                            break;
-                        }
+                        assert_eq!(nodes[1].id, node);
+                        break;
                     }
                     _ => panic!("Unexpected or no network command."),
                 };

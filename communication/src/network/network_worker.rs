@@ -12,7 +12,8 @@ use super::{
 use crate::common::NodeId;
 use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
-use crypto::signature::PrivateKey;
+use crypto::hash::Hash;
+use crypto::signature::{derive_public_key, sign, PrivateKey, PublicKey, Signature};
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
@@ -47,7 +48,7 @@ pub enum NetworkCommand {
         node: NodeId,
         header: BlockHeader,
     },
-    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
+    GetPeers(oneshot::Sender<(HashMap<IpAddr, PeerInfo>, NodeId)>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
     BlockNotFound {
@@ -57,6 +58,10 @@ pub enum NetworkCommand {
     SendOperations {
         node: NodeId,
         operations: Vec<Operation>,
+    },
+    NodeSignMessage {
+        msg: Vec<u8>,
+        response_tx: oneshot::Sender<(PublicKey, Signature)>,
     },
 }
 
@@ -603,7 +608,6 @@ impl NetworkWorker {
             "ip": ip,
             "reason": reason
         });
-        info!("Disconnected from peer {}", ip);
         match reason {
             ConnectionClosureReason::Normal => {}
             ConnectionClosureReason::Failed => {
@@ -712,7 +716,7 @@ impl NetworkWorker {
                     {}
                 );
                 response_tx
-                    .send(self.peer_info_db.get_peers().clone())
+                    .send((self.peer_info_db.get_peers().clone(), self.self_node_id))
                     .map_err(|_| {
                         CommunicationError::ChannelError(
                             "could not send GetPeersChannelError upstream".into(),
@@ -752,6 +756,19 @@ impl NetworkWorker {
                     NodeCommand::SendOperations(operations),
                 )
                 .await;
+            }
+            NetworkCommand::NodeSignMessage { msg, response_tx } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
+                    { "mdg": msg }
+                );
+                let sig = sign(&Hash::hash(&msg), &self.private_key)?;
+                let pubkey = derive_public_key(&self.private_key);
+                response_tx.send((pubkey, sig)).map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "could not send NodeSignMessage response upstream".into(),
+                    )
+                })?;
             }
         }
         Ok(())
@@ -812,7 +829,6 @@ impl NetworkWorker {
                         "ip": ip_addr,
                         "connection_id": connection_id
                     });
-                    info!("connected to peer {}", ip_addr);
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (ip_addr, true));
@@ -863,7 +879,6 @@ impl NetworkWorker {
                         "ip": remote_addr.ip(),
                         "connection_id": connection_id
                     });
-                    info!("connected to peer {}", remote_addr);
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (remote_addr.ip(), false));
