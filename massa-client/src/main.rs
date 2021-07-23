@@ -24,6 +24,7 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use crate::wallet::Wallet;
 use crate::wallet::WalletInfo;
+use api::RegisterKey;
 use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
@@ -31,6 +32,7 @@ use communication::network::PeerInfo;
 use consensus::ExportBlockStatus;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
+use log::info;
 use log::trace;
 use models::Address;
 use models::Operation;
@@ -223,6 +225,14 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_addresses_info,
+    )
+    .new_command(
+        "cmd_testnet_rewards_program",
+        "Returns rewards id. Parameter: <staking_address> <discord_ID> ",
+        2,
+        2, //max nb parameters
+        true,
+        cmd_testnet_rewards_program,
     )
     .new_command_noargs(
         "get_active_stakers",
@@ -748,6 +758,41 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
         ))
         .send()?;
     trace!("after sending request to client in cmd_register_staking_keys in massa-client main");
+    Ok(())
+}
+
+fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    info!("testnet reward program is not active yet"); //todo
+    let address = Address::from_bs58_check(params[0].trim())
+        .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+    let msg = params[1];
+
+    let client = reqwest::blocking::Client::new();
+    trace!("before sending request to client in cmd_testnet_rewards_program in massa-client main");
+    let resp = client
+        .post(&format!(
+            "http://{}/api/v1/node_sign_message?{}",
+            data.node_ip, msg,
+        ))
+        .send()?;
+    trace!("after sending request to client in cmd_testnet_rewards_program in massa-client main");
+
+    if resp.status() != StatusCode::OK && resp.status() != StatusCode::NOT_FOUND {
+        //println!("resp.text(self):{:?}", resp.text());
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
+            .unwrap();
+        println!("Server error response status: {} - {}", status, message);
+    } else {
+        let node_reg = resp.json::<RegisterKey>()?;
+    }
+
+    // todo sign msg with staking address
+    // todo print reply
+
     Ok(())
 }
 
