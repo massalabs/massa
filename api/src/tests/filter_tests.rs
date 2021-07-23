@@ -4,6 +4,7 @@ use crate::Addresses;
 use crate::ApiEvent;
 use crate::OperationIds;
 use communication::network::PeerInfo;
+use communication::NodeId;
 use consensus::ExportBlockStatus;
 use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
@@ -977,20 +978,23 @@ async fn test_peers() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                PeerInfo {
-                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                    banned: false,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: true,
-                    active_out_connection_attempts: 1,
-                    active_out_connections: 1,
-                    active_in_connections: 1,
-                },
+                (
+                    PeerInfo {
+                        ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                        banned: false,
+                        bootstrap: false,
+                        last_alive: None,
+                        last_failure: None,
+                        advertised: true,
+                        active_out_connection_attempts: 1,
+                        active_out_connections: 1,
+                        active_in_connections: 1,
+                    },
+                    vec![],
+                ),
             )
         })
-        .collect::<HashMap<IpAddr, PeerInfo>>();
+        .collect::<HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>>();
     let cloned = peers.clone();
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -1441,20 +1445,23 @@ async fn test_network_info() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                PeerInfo {
-                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                    banned: false,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: true,
-                    active_out_connection_attempts: 1,
-                    active_out_connections: 1,
-                    active_in_connections: 1,
-                },
+                (
+                    PeerInfo {
+                        ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                        banned: false,
+                        bootstrap: false,
+                        last_alive: None,
+                        last_failure: None,
+                        advertised: true,
+                        active_out_connection_attempts: 1,
+                        active_out_connections: 1,
+                        active_in_connections: 1,
+                    },
+                    vec![],
+                ),
             )
         })
-        .collect::<HashMap<IpAddr, PeerInfo>>();
+        .collect::<HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>>();
     let cloned = peers.clone();
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -1546,20 +1553,23 @@ async fn test_state() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                PeerInfo {
-                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                    banned: false,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: true,
-                    active_out_connection_attempts: 1,
-                    active_out_connections: 1,
-                    active_in_connections: 1,
-                },
+                (
+                    PeerInfo {
+                        ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                        banned: false,
+                        bootstrap: false,
+                        last_alive: None,
+                        last_failure: None,
+                        advertised: true,
+                        active_out_connection_attempts: 1,
+                        active_out_connections: 1,
+                        active_in_connections: 1,
+                    },
+                    vec![],
+                ),
             )
         })
-        .collect::<HashMap<IpAddr, PeerInfo>>();
+        .collect::<HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>>();
     let cloned = peers.clone();
 
     let (filter, mut rx_api) = mock_filter(None);
