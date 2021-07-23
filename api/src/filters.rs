@@ -45,7 +45,7 @@ pub enum ApiEvent {
         block_id: BlockId,
         response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
     },
-    GetPeers(oneshot::Sender<(HashMap<IpAddr, PeerInfo>, NodeId)>),
+    GetPeers(oneshot::Sender<(HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>, NodeId)>),
     GetSelectionDraw {
         start: Slot,
         end: Slot,
@@ -755,7 +755,7 @@ async fn retrieve_operations(
 
 async fn retrieve_peers_and_nodeid(
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<(HashMap<IpAddr, PeerInfo>, NodeId), ApiError> {
+) -> Result<(HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>, NodeId), ApiError> {
     massa_trace!("api.filters.retrieve_peers", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1641,7 +1641,7 @@ async fn get_state(
 
     let connected_peers: HashSet<IpAddr> = peers
         .iter()
-        .filter(|(_ip, peer_info)| {
+        .filter(|(_ip, (peer_info, _))| {
             peer_info.active_out_connections > 0 || peer_info.active_in_connections > 0
         })
         .map(|(ip, _peer_info)| *ip)

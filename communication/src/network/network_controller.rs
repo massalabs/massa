@@ -190,8 +190,10 @@ impl NetworkCommandSender {
     /// Send the order to get peers.
     pub async fn get_peers(
         &self,
-    ) -> Result<(HashMap<IpAddr, PeerInfo>, NodeId), CommunicationError> {
-        let (response_tx, response_rx) = oneshot::channel::<(HashMap<IpAddr, PeerInfo>, NodeId)>();
+    ) -> Result<(HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>, NodeId), CommunicationError>
+    {
+        let (response_tx, response_rx) =
+            oneshot::channel::<(HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>, NodeId)>();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
             .await
