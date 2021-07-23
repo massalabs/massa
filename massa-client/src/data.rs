@@ -526,7 +526,7 @@ impl std::fmt::Display for WrappedPeerInfo {
             }
             writeln!(f, "      ]")
         } else {
-            writeln!(f,"No active nodes")
+            writeln!(f, "No active nodes")
         }
     }
 }
