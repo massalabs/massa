@@ -666,11 +666,10 @@ async fn do_node_sign_msg(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterKey {
-    public_key: PublicKey,
-    signature: Signature,
+    pub public_key: PublicKey,
+    pub signature: Signature,
 }
-
-async fn node_sign_msg(
+pub async fn node_sign_msg(
     msg: Vec<u8>,
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl Reply, Rejection> {

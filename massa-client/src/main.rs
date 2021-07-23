@@ -771,7 +771,7 @@ fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(
     trace!("before sending request to client in cmd_testnet_rewards_program in massa-client main");
     let resp = client
         .post(&format!("http://{}/api/v1/node_sign_message", data.node_ip,))
-        .body(msg)
+        .body(msg.clone())
         .send()?;
     trace!("after sending request to client in cmd_testnet_rewards_program in massa-client main");
 
@@ -788,8 +788,12 @@ fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(
         let node_reg = resp.json::<RegisterKey>()?;
     }
 
-    // todo sign msg with staking address
-    // todo print reply
+    if let Some(wallet) = &data.wallet {
+        if let Some(stake_reg) = wallet.sign_message(address, msg) {
+
+            // todo print reply
+        }
+    }
 
     Ok(())
 }
