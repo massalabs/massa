@@ -765,15 +765,13 @@ fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(
     info!("testnet reward program is not active yet"); //todo
     let address = Address::from_bs58_check(params[0].trim())
         .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-    let msg = params[1];
+    let msg = params[1].as_bytes().to_vec();
 
     let client = reqwest::blocking::Client::new();
     trace!("before sending request to client in cmd_testnet_rewards_program in massa-client main");
     let resp = client
-        .post(&format!(
-            "http://{}/api/v1/node_sign_message?{}",
-            data.node_ip, msg,
-        ))
+        .post(&format!("http://{}/api/v1/node_sign_message", data.node_ip,))
+        .body(msg)
         .send()?;
     trace!("after sending request to client in cmd_testnet_rewards_program in massa-client main");
 

@@ -399,8 +399,8 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("node_sign_message"))
         .and(warp::path::end())
-        .and(warp::body::json())
-        .and_then(move |msg: String| node_sign_msg(msg.as_bytes().to_vec(), evt_tx.clone()));
+        .and(warp::body::bytes())
+        .and_then(move |msg: warp::hyper::body::Bytes| node_sign_msg(msg.to_vec(), evt_tx.clone()));
 
     block
         .or(blockinterval)
