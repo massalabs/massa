@@ -22,7 +22,7 @@ use tokio::sync::mpsc;
 
 pub use error::ApiError;
 pub use filters::{
-    Addresses, ApiEvent, ApiManagementCommand, OperationIds, PrivateKeys, RegisterKey,
+    Addresses, ApiEvent, ApiManagementCommand, OperationIds, PrivateKeys, PubkeySig,
 };
 
 pub struct ApiEventReceiver(mpsc::Receiver<ApiEvent>);

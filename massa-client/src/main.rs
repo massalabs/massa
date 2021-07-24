@@ -24,7 +24,7 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use crate::wallet::Wallet;
 use crate::wallet::WalletInfo;
-use api::RegisterKey;
+use api::PubkeySig;
 use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
@@ -32,7 +32,6 @@ use communication::network::PeerInfo;
 use consensus::ExportBlockStatus;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
-use log::info;
 use log::trace;
 use models::Address;
 use models::Operation;
@@ -231,7 +230,7 @@ fn main() {
         "Returns rewards id. Parameter: <staking_address> <discord_ID> ",
         2,
         2, //max nb parameters
-        true,
+        false,
         cmd_testnet_rewards_program,
     )
     .new_command_noargs(
@@ -324,6 +323,7 @@ fn main() {
                 repl.activate_command("buy_rolls");
                 repl.activate_command("sell_rolls");
                 repl.activate_command("wallet_add_privkey");
+                repl.activate_command("cmd_testnet_rewards_program");
             }
             Err(err) => {
                 println!(
@@ -762,39 +762,49 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
 }
 
 fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    info!("testnet reward program is not active yet"); //todo
     let address = Address::from_bs58_check(params[0].trim())
         .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
     let msg = params[1].as_bytes().to_vec();
 
+    // get address signature
+    let addr_sig = if let Some(wallet) = &data.wallet {
+        match wallet.sign_message(address, msg.clone()) {
+            Some(sig) => sig,
+            None => {
+                println!("Address not found in wallet");
+                return Err(ReplError::GeneralError(
+                    "address not found in wallet".into(),
+                ));
+            }
+        }
+    } else {
+        return Err(ReplError::GeneralError("wallet unavailable".into()));
+    };
+
+    // get node signature
     let client = reqwest::blocking::Client::new();
-    trace!("before sending request to client in cmd_testnet_rewards_program in massa-client main");
     let resp = client
         .post(&format!("http://{}/api/v1/node_sign_message", data.node_ip,))
-        .body(msg.clone())
+        .body(msg)
         .send()?;
-    trace!("after sending request to client in cmd_testnet_rewards_program in massa-client main");
-
-    if resp.status() != StatusCode::OK && resp.status() != StatusCode::NOT_FOUND {
-        //println!("resp.text(self):{:?}", resp.text());
+    let node_sig = if resp.status() == StatusCode::OK {
+        resp.json::<PubkeySig>()?
+    } else {
         let status = resp.status();
         let message = resp
             .json::<data::ErrorMessage>()
             .map(|message| message.message)
-            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))
-            .unwrap();
-        println!("Server error response status: {} - {}", status, message);
-    } else {
-        let node_reg = resp.json::<RegisterKey>()?;
-    }
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))?;
+        let err_msg = format!("Server error response status: {} - {}", status, message);
+        println!("{}", err_msg);
+        return Err(ReplError::GeneralError(err_msg));
+    };
 
-    if let Some(wallet) = &data.wallet {
-        if let Some(stake_reg) = wallet.sign_message(address, msg) {
-
-            // todo print reply
-        }
-    }
-
+    // print concatenation
+    println!(
+        "Enter the following in discord: {}/{}/{}/{}",
+        node_sig.public_key, node_sig.signature, addr_sig.public_key, addr_sig.signature
+    );
     Ok(())
 }
 

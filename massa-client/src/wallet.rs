@@ -3,7 +3,7 @@
 use crate::ReplData;
 use crate::ReplError;
 use crate::WrappedAddressState;
-use api::RegisterKey;
+use api::PubkeySig;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
@@ -38,11 +38,11 @@ impl Wallet {
         })
     }
 
-    pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<RegisterKey> {
+    pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
         if let Some(key) = self.find_associated_private_key(address) {
             let public_key = crypto::derive_public_key(key);
             if let Ok(signature) = crypto::sign(&Hash::hash(&msg), key) {
-                Some(RegisterKey {
+                Some(PubkeySig {
                     public_key,
                     signature,
                 })
