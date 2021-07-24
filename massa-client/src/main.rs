@@ -771,7 +771,6 @@ fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(
         match wallet.sign_message(address, msg.clone()) {
             Some(sig) => sig,
             None => {
-                println!("Address not found in wallet");
                 return Err(ReplError::GeneralError(
                     "address not found in wallet".into(),
                 ));
@@ -795,9 +794,10 @@ fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(
             .json::<data::ErrorMessage>()
             .map(|message| message.message)
             .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))?;
-        let err_msg = format!("Server error response status: {} - {}", status, message);
-        println!("{}", err_msg);
-        return Err(ReplError::GeneralError(err_msg));
+        return Err(ReplError::GeneralError(format!(
+            "Server error response status: {} - {}",
+            status, message
+        )));
     };
 
     // print concatenation

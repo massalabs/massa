@@ -6,24 +6,24 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ReplError {
-    #[error("error:{0}")]
+    #[error("Error: {0}")]
     GeneralError(String),
     #[error("Error during command parsing")]
     ParseCommandError,
-    #[error("Error command:{0} not found")]
+    #[error("Error command: {0} not found")]
     CommandNotFoundError(String),
-    #[error("Node connection error err:{0}")]
+    #[error("Node connection error err: {0}")]
     NodeConnectionError(#[from] reqwest::Error),
-    #[error("Bad input parameter : {0}")]
+    #[error("Bad input parameter: {0}")]
     BadCommandParameter(String),
-    #[error("Error can't create address from specified hash cause:: {0}")]
+    #[error("Error can't create address from specified hash: {0}")]
     AddressCreationError(String),
-    #[error("IO error err:{0}")]
+    #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
-    #[error("JSON error err:{0}")]
+    #[error("JSON error: {0}")]
     JSONError(#[from] serde_json::Error),
-    #[error("Serde Sq error err:{0}")]
+    #[error("Serde Sq error: {0}")]
     SerdeqsError(#[from] serde_qs::Error),
-    #[error("Str Format error err:{0}")]
+    #[error("Str Format error: {0}")]
     FmtError(#[from] std::fmt::Error),
 }
