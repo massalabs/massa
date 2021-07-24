@@ -664,7 +664,12 @@ async fn do_node_sign_msg(
     })
 }
 
-async fn node_sign_msg(
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PubkeySig {
+    pub public_key: PublicKey,
+    pub signature: Signature,
+}
+pub async fn node_sign_msg(
     msg: Vec<u8>,
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl Reply, Rejection> {
@@ -677,9 +682,9 @@ async fn node_sign_msg(
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
-        Ok((public_key, signature)) => Ok(warp::reply::json(&json!({
-            "public_key": public_key,
-            "signature": signature
+        Ok((public_key, signature)) => Ok(warp::reply::json(&json!(PubkeySig {
+            public_key,
+            signature
         }))
         .into_response()),
     }

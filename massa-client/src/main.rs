@@ -24,6 +24,7 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use crate::wallet::Wallet;
 use crate::wallet::WalletInfo;
+use api::PubkeySig;
 use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
@@ -225,6 +226,14 @@ fn main() {
         true,
         cmd_addresses_info,
     )
+    .new_command(
+        "cmd_testnet_rewards_program",
+        "Returns rewards id. Parameter: <staking_address> <discord_ID> ",
+        2,
+        2, //max nb parameters
+        false,
+        cmd_testnet_rewards_program,
+    )
     .new_command_noargs(
         "get_active_stakers",
         "returns the active stakers and their roll counts for the current cycle.",
@@ -315,6 +324,7 @@ fn main() {
                 repl.activate_command("buy_rolls");
                 repl.activate_command("sell_rolls");
                 repl.activate_command("wallet_add_privkey");
+                repl.activate_command("cmd_testnet_rewards_program");
             }
             Err(err) => {
                 println!(
@@ -749,6 +759,53 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
         ))
         .send()?;
     trace!("after sending request to client in cmd_register_staking_keys in massa-client main");
+    Ok(())
+}
+
+fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let address = Address::from_bs58_check(params[0].trim())
+        .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+    let msg = params[1].as_bytes().to_vec();
+
+    // get address signature
+    let addr_sig = if let Some(wallet) = &data.wallet {
+        match wallet.sign_message(address, msg.clone()) {
+            Some(sig) => sig,
+            None => {
+                return Err(ReplError::GeneralError(
+                    "address not found in wallet".into(),
+                ));
+            }
+        }
+    } else {
+        return Err(ReplError::GeneralError("wallet unavailable".into()));
+    };
+
+    // get node signature
+    let client = reqwest::blocking::Client::new();
+    let resp = client
+        .post(&format!("http://{}/api/v1/node_sign_message", data.node_ip,))
+        .body(msg)
+        .send()?;
+    let node_sig = if resp.status() == StatusCode::OK {
+        resp.json::<PubkeySig>()?
+    } else {
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))?;
+        return Err(ReplError::GeneralError(format!(
+            "Server error response status: {} - {}",
+            status, message
+        )));
+    };
+
+    // print concatenation
+    println!(
+        "Enter the following in discord: {}/{}/{}/{}",
+        node_sig.public_key, node_sig.signature, addr_sig.public_key, addr_sig.signature
+    );
     Ok(())
 }
 
