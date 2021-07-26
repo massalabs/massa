@@ -49,7 +49,7 @@ pub enum NetworkCommand {
         header: BlockHeader,
     },
     //(PeerInfo, Vec<(NodeId, bool)>) peer info + liste des nodes Id associés en connexoin out (true)
-    GetPeers(oneshot::Sender<(HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>, NodeId)>),
+    GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
     BlockNotFound {
@@ -64,6 +64,18 @@ pub enum NetworkCommand {
         msg: Vec<u8>,
         response_tx: oneshot::Sender<(PublicKey, Signature)>,
     },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Peer {
+    pub peer_info: PeerInfo,
+    pub active_nodes: Vec<(NodeId, bool)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Peers {
+    pub our_node_id: NodeId,
+    pub peers: HashMap<IpAddr, Peer>,
 }
 
 #[derive(Debug)]
@@ -718,16 +730,17 @@ impl NetworkWorker {
                 );
 
                 //for each peer get all node id associated to this peer ip.
-                let peer_list: HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)> = self
+                let peers: HashMap<IpAddr, Peer> = self
                     .peer_info_db
                     .get_peers()
                     .iter()
                     .map(|(peer_ip_addr, peer)| {
                         (
                             *peer_ip_addr,
-                            (
-                                peer.clone(),
-                                self.active_connections
+                            Peer {
+                                peer_info: peer.clone(),
+                                active_nodes: self
+                                    .active_connections
                                     .iter()
                                     .filter(|(_, (ip_addr, _))| &peer.ip == ip_addr)
                                     .map(|(out_conn_id, (_, out_going))| {
@@ -744,15 +757,18 @@ impl NetworkWorker {
                                             .map(|node_id| (*node_id, *out_going))
                                     })
                                     .flatten()
-                                    .collect::<Vec<(NodeId, bool)>>(),
-                            ),
+                                    .collect(),
+                            },
                         )
                     })
                     .collect();
 
                 //HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>)
                 response_tx
-                    .send((peer_list, self.self_node_id))
+                    .send(Peers {
+                        peers,
+                        our_node_id: self.self_node_id,
+                    })
                     .map_err(|_| {
                         CommunicationError::ChannelError(
                             "could not send GetPeersChannelError upstream".into(),
