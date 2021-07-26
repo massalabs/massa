@@ -1,0 +1,66 @@
+## Common issues
+
+> Ping too high issue
+
+> Why command "wallet_info" response me back: "No balance info available. Is your node running?"
+It means that there are no scheduled slots in current cycle.
+
+> "Server error response status: 500 Internal Server Error - 
+error selecting draw : ReceiveChannelError("Could not retrieve selection draws: 
+Proof of stake cycle unavailable trying to get PoS draw rolls/seed for cycle 4893 thread 0 which is unavailable")"
+
+
+## Node running
+> How to run node in background?
+
+> What ports does the MASSA use?
+By default Massa use the port 33033 (TCP/UDP)
+
+> How to restart the Node?
+* Ubuntu :  ctrl + c for killing the process and `RUST_BACKTRACE=full cargo run --release |& tee logs.txt`
+* Windows :  ctrl + c for killing the process and `cargo run --release`
+* Mac Os :  ctrl + c for killing the process and `RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1`
+
+> How to migrate from one server to another without loosing staked amount and tokens?
+You need to backup the file wallet.dat and migrate it in the massa-client folder on your new server
+
+
+## Balance and wallet
+> Why is a balance in the client and in the explorer different?
+
+> Does the command "cargo run -- --wallet wallet.dat" override my existing wallet?
+No, it loads the wallet if it exists, otherwise it creates it.
+
+> Where does the wallet.dat placed?
+In the massa-client directory
+
+
+## Rolls and staking
+
+> Do I need to register the keys after subsequent purchases of ROLLs, or do they get stack automatically?
+For now they don't stack automatically. In the future we will add a feature allowing "autocompounding". 
+That being said, some people appear to have done that very early in the project. 
+
+> Why command "next_draws" shows me an empty line
+If you want to see the next block that you will create the command is next_draws <your_address>
+
+> I can buy, send, sell ROLLs and MAS without fee. When should I increase fee >0?
+There are only a few transactions at the same time, so most blocks are created empty.
+We will communicate if you need to increase the fee.
+
+> I am staking ROLLs but my wallet info doesn't change. When i get my first staking rewards?
+You need to wait that your rolls become active (around 8 minutes →  3 cycles of 10 periods (one period is 32 blocks = 16 sec)
+
+## Testnet and rewards
+
+> I want to stake more! Can i abuse the faucet bot to get more coins?
+You can claim testnet token every 24h, this tokens are wortheless, you won't have advantage on the others by doing that.
+
+> Will amount of staked ROLLs affect Testnet rewards?
+No, we will rewards the stability of the node, everyone will have the same amount of token to buy theirs rolls to start at equality. 
+We will communicate information later on how we will rank the node stability.
+
+
+
+
+
