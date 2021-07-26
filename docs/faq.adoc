@@ -1,77 +1,97 @@
-## Common issues
+= FAQ
+:toc:
 
-> Ping too high issue
+== What are the hardware requirements?
+The philosophy of Massa is to be as decentralized as possible. To fulfill this goal, we aim to have low hardware requirements so that many people can run nodes.
+Right now 4 cores and 8 GB of RAM should be enough to run a node. As the number of transactions increase it might not be sufficient anymore. Ultimately, our plan is that the mainnet fits on a desktop computer with 8 cores, 16 GB RAM and 1TB disk.
 
-> Why command "wallet_info" response me back: "No balance info available. Is your node running?"
+== Can it run on a VPS?
 
-It means that there are no scheduled slots in current cycle.
+You can use a VPS to run a node. Pros of VPS is that they have a high availability and are easy to configure. Cons are that nodes running on a VPS can lead to centralization, with a lot of nodes running on the same provider (e.g. AWS).
 
-> "Server error response status: 500 Internal Server Error - 
+== How to run a node in background?
+You can run the following command in the terminal:
+`nohup cargo run --release &`
+the output will go to the `nohup.out` file. You will be able to close the terminal safely then.
+To kill the app you'll have to use `pkill -f massa-node`
 
-error selecting draw : ReceiveChannelError("Could not retrieve selection draws: 
-Proof of stake cycle unavailable trying to get PoS draw rolls/seed for cycle 4893 thread 0 which is unavailable")"
+== Will Massa support smart contracts?
+We will try to support both the EVM for retro compatibility, and a specific WASM engine that fully leverages the Massa protocol, allows developing in many usual languages, and introduces several innovations (e.g. autonomous contracts)
+We are currently finishing the specification of the smart contract engine.
+The development of a preliminary version of the  engine will start after the first release of the testnet.
+ We are planning to use a WASM interpreter and there will be some exciting features, such as self-wakeup, a bit like what is introduced here: https://arxiv.org/pdf/2102.10784.pdf
 
+== I have bought rolls but the command `next_draws` doesn't show anything.
+Our Proof-of-Stake implementation is made of cycles. Each cycle last for 10 periods, which correspond to 320 blocks, or 160 seconds. The `next_draws` command in the client outputs the next block creation opportunity for the provided address. Currently, if the address is not selected for a block creation in this cycle the command does not output anything. Try again in a few minutes and this time you might be selected for block creation in the current cycle!
+In a future version of the API we will provide clearer messages to make it clear that everything is working as intended.
 
-## Node running
-> How to run node in background?
+== What ports does the MASSA use?
 
-> What ports does the MASSA use?
+By default Massa use the port 33033 (TCP/UDP).
 
-By default Massa use the port 33033 (TCP/UDP)
-
-> How to restart the Node?
+== How to restart the Node?
 
 * Ubuntu :  ctrl + c for killing the process and `RUST_BACKTRACE=full cargo run --release |& tee logs.txt`
 * Windows :  ctrl + c for killing the process and `cargo run --release`
 * Mac Os :  ctrl + c for killing the process and `RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1`
 
-> How to migrate from one server to another without loosing staked amount and tokens?
+== How to migrate from one server to another without loosing staked amount and tokens?
 
 You need to backup the file wallet.dat and migrate it in the massa-client folder on your new server
 
+== Why is a balance in the client and in the explorer different?
 
-## Balance and wallet
-> Why is a balance in the client and in the explorer different?
-
-> Does the command "cargo run -- --wallet wallet.dat" override my existing wallet?
+== Does the command "cargo run -- --wallet wallet.dat" override my existing wallet?
 
 No, it loads the wallet if it exists, otherwise it creates it.
 
-> Where does the wallet.dat placed?
+== Where does the wallet.dat placed?
 
 In the massa-client directory
 
+== Rolls and staking
 
-## Rolls and staking
-
-> Do I need to register the keys after subsequent purchases of ROLLs, or do they get stack automatically?
+=== Do I need to register the keys after subsequent purchases of ROLLs, or do they get stack automatically?
 
 For now they don't stack automatically. In the future we will add a feature allowing "autocompounding". 
 That being said, some people appear to have done that very early in the project. 
 
-> Why command "next_draws" shows me an empty line
+=== Why command "next_draws" shows me an empty line
 
 If you want to see the next block that you will create the command is next_draws <your_address>
 
-> I can buy, send, sell ROLLs and MAS without fee. When should I increase fee >0?
+=== I can buy, send, sell ROLLs and MAS without fee. When should I increase fee >0?
 
 There are only a few transactions at the same time, so most blocks are created empty.
 We will communicate if you need to increase the fee.
 
-> I am staking ROLLs but my wallet info doesn't change. When i get my first staking rewards?
+=== I am staking ROLLs but my wallet info doesn't change. When i get my first staking rewards?
 
 You need to wait that your rolls become active (around 8 minutes →  3 cycles of 10 periods (one period is 32 blocks = 16 sec)
 
-## Testnet and rewards
+== Testnet and rewards
 
-> I want to stake more! Can i abuse the faucet bot to get more coins?
+=== I want to stake more! Can i abuse the faucet bot to get more coins?
 
-You can claim testnet token every 24h, this tokens are wortheless, you won't have advantage on the others by doing that.
+You can claim testnet token every 24h, this tokens are worthless, you won't have advantage on the others by doing that.
 
-> Will amount of staked ROLLs affect Testnet rewards?
+=== Will amount of staked ROLLs affect Testnet rewards?
 
 No, we will rewards the stability of the node, everyone will have the same amount of token to buy theirs rolls to start at equality. 
 We will communicate information later on how we will rank the node stability.
+
+= Common issues
+
+== Ping too high issue
+
+== Why command "wallet_info" response me back: "No balance info available. Is your node running?"
+
+It means that there are no scheduled slots in current cycle.
+
+== "Server error response status: 500 Internal Server Error - 
+
+error selecting draw : ReceiveChannelError("Could not retrieve selection draws: 
+Proof of stake cycle unavailable trying to get PoS draw rolls/seed for cycle 4893 thread 0 which is unavailable")"
 
 
 
