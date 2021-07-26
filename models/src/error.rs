@@ -18,4 +18,8 @@ pub enum ModelsError {
     ThreadOverflowError,
     #[error("period overflow error")]
     PeriodOverflowError,
+    #[error("amount parse error")]
+    AmountParseError(String),
+    #[error("checked operation error")]
+    CheckedOperationError(String),
 }

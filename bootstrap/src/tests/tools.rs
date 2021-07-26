@@ -11,8 +11,8 @@ use consensus::{
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, Operation,
-    OperationContent, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
+    Operation, OperationContent, SerializeCompact, Slot,
 };
 use time::UTime;
 use tokio::{
@@ -138,7 +138,12 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
     let address = Address::from_public_key(&public_key).unwrap();
 
     let mut ledger_subset = Vec::new();
-    ledger_subset.push((address, LedgerData { balance: 10 }));
+    ledger_subset.push((
+        address,
+        LedgerData {
+            balance: Amount::from(10),
+        },
+    ));
 
     let cycle_state = ExportThreadCycleState {
         cycle: 1,
@@ -184,11 +189,11 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: 1524878,
+                        fee: Amount::from(1524878),
                         expire_period: 5787899,
                         op: models::OperationType::Transaction {
                             recipient_address: get_random_address(),
-                            amount: 1259787,
+                            amount: Amount::from(1259787),
                         },
                     },
                     signature: get_dummy_signature("dummy_sig_2"),
@@ -196,7 +201,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: 878763222,
+                        fee: Amount::from(878763222),
                         expire_period: 4557887,
                         op: models::OperationType::RollBuy { roll_count: 45544 },
                     },
@@ -205,7 +210,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: 4545,
+                        fee: Amount::from(4545),
                         expire_period: 452524,
                         op: models::OperationType::RollSell {
                             roll_count: 4888787,
@@ -233,21 +238,21 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 get_random_address(),
                 LedgerChange {
                     balance_increment: true,
-                    balance_delta: 157,
+                    balance_delta: Amount::from(157),
                 },
             ),
             (
                 get_random_address(),
                 LedgerChange {
                     balance_increment: false,
-                    balance_delta: 44,
+                    balance_delta: Amount::from(44),
                 },
             ),
             (
                 get_random_address(),
                 LedgerChange {
                     balance_increment: false,
-                    balance_delta: 878,
+                    balance_delta: Amount::from(878),
                 },
             ),
         ],

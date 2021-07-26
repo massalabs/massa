@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::*;
+use models::Amount;
 use serial_test::serial;
 use std::collections::HashMap;
 
@@ -34,7 +35,7 @@ async fn test_find_operation() {
             .in_blocks[&id];
         assert_eq!((out_idx, out_final), (0, true));
         let mut op2 = create_operation();
-        op2.content.fee = 42;
+        op2.content.fee = Amount::from(42);
         let id2 = op2.get_operation_id().unwrap();
         assert!(!command_sender
             .get_operations(vec![id2].into_iter().collect())
