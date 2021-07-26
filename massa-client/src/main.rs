@@ -314,24 +314,26 @@ fn main() {
 
     //filename of the wallet file. There's no security around the wallet file.
     let wallet_file_param = matches.value_of("wallet");
-    if let Some(file_name) = wallet_file_param {
-        match Wallet::new(file_name) {
-            Ok(wallet) => {
-                repl.data.wallet = Some(wallet);
-                repl.activate_command("wallet_info");
-                repl.activate_command("wallet_new_privkey");
-                repl.activate_command("send_transaction");
-                repl.activate_command("buy_rolls");
-                repl.activate_command("sell_rolls");
-                repl.activate_command("wallet_add_privkey");
-                repl.activate_command("cmd_testnet_rewards_program");
-            }
-            Err(err) => {
-                println!(
-                    "Error while loading wallet file:{}. No wallet was loaded.",
-                    err
-                );
-            }
+    let file_name = match wallet_file_param {
+        Some(file_name) => file_name,
+        None => "wallet.dat",
+    };
+    match Wallet::new(file_name) {
+        Ok(wallet) => {
+            repl.data.wallet = Some(wallet);
+            repl.activate_command("wallet_info");
+            repl.activate_command("wallet_new_privkey");
+            repl.activate_command("send_transaction");
+            repl.activate_command("buy_rolls");
+            repl.activate_command("sell_rolls");
+            repl.activate_command("wallet_add_privkey");
+            repl.activate_command("cmd_testnet_rewards_program");
+        }
+        Err(err) => {
+            println!(
+                "Error while loading wallet file:{}. No wallet was loaded.",
+                err
+            );
         }
     }
 
