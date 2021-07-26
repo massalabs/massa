@@ -260,8 +260,8 @@ async fn test_get_addresses_info() {
                 active_rolls: Some(5748),
                 candidate_rolls: 7787,
                 locked_balance: 1745,
-                candidate_ledger_data: LedgerData { balance: 4788 },
-                final_ledger_data: LedgerData { balance: 11414 },
+                candidate_ledger_data: LedgerData::new(4788),
+                final_ledger_data: LedgerData::new(11414),
             },
         );
         let (filter, mut rx_api) = mock_filter(None);

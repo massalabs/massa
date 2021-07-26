@@ -46,7 +46,7 @@ async fn test_block_creation_with_draw() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData { balance: 1000 });
+    ledger.insert(address_2, LedgerData::new(1000));
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
 
@@ -214,7 +214,7 @@ async fn test_order_of_inclusion() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_a, LedgerData { balance: 100 });
+    ledger.insert(address_a, LedgerData::new(100));
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
@@ -356,12 +356,7 @@ async fn test_block_filling() {
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(
-        address_a,
-        LedgerData {
-            balance: 1_000_000_000,
-        },
-    );
+    ledger.insert(address_a, LedgerData::new(1_000_000_000));
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())

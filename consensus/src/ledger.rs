@@ -10,10 +10,9 @@ use std::{
 
 use crate::{ConsensusConfig, ConsensusError};
 use models::{
-    array_from_slice, u8_from_slice, Address, Amount, DeserializeCompact, ModelsError,
-    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
+    array_from_slice, u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt,
+    ModelsError, Operation, SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
 };
-use models::{DeserializeVarInt, Operation};
 use serde::{Deserialize, Serialize};
 
 pub struct Ledger {
@@ -53,6 +52,12 @@ impl DeserializeCompact for LedgerData {
 }
 
 impl LedgerData {
+    pub fn new(starting_balance: u64) -> LedgerData {
+        LedgerData {
+            balance: Amount::from(starting_balance),
+        }
+    }
+
     fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if change.balance_increment {
             self.balance = self
@@ -756,8 +761,8 @@ impl SerializeCompact for LedgerExport {
     /// # use consensus::{LedgerExport, LedgerData};
     /// # let mut ledger = LedgerExport::default();
     /// # ledger.ledger_subset = vec![
-    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData{balance: 1022}),
-    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData{balance: 1020}),
+    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(1022)),
+    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(1020)),
     /// # ];
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
@@ -836,11 +841,11 @@ mod tests {
             for &v2 in &[-100i32, -10, 0, 10, 100] {
                 let mut res = LedgerChange {
                     balance_increment: (v1 >= 0),
-                    balance_delta: v1.abs() as u64,
+                    balance_delta: Amount::from(v1.abs() as u64),
                 };
                 res.chain(&LedgerChange {
                     balance_increment: (v2 >= 0),
-                    balance_delta: v2.abs() as u64,
+                    balance_delta: Amount::from(v2.abs() as u64),
                 })
                 .unwrap();
                 let expect: i32 = v1 + v2;

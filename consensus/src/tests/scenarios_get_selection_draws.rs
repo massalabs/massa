@@ -46,7 +46,7 @@ async fn test_get_selection_draws_high_end_slot() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData { balance: 10_000 });
+    ledger.insert(address_2, LedgerData::new(10_000));
     let ledger_file = generate_ledger_file(&ledger);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(vec![priv_1]);
