@@ -3,7 +3,9 @@
 use super::{
     config::{NetworkConfig, CHANNEL_SIZE},
     establisher::Establisher,
-    network_worker::{NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker},
+    network_worker::{
+        NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker, Peers,
+    },
     peer_info_database::*,
     BootstrapPeers,
 };
@@ -13,10 +15,7 @@ use crypto::signature::{
     derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
 };
 use models::{Block, BlockHeader, BlockId, Operation};
-use std::{
-    collections::{HashMap, VecDeque},
-    net::IpAddr,
-};
+use std::collections::{HashMap, VecDeque};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -188,12 +187,8 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to get peers.
-    pub async fn get_peers(
-        &self,
-    ) -> Result<(HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>, NodeId), CommunicationError>
-    {
-        let (response_tx, response_rx) =
-            oneshot::channel::<(HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>, NodeId)>();
+    pub async fn get_peers(&self) -> Result<Peers, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
             .await
