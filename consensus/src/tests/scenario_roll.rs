@@ -56,7 +56,7 @@ async fn test_roll() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData { balance: 10_000 });
+    ledger.insert(address_2, LedgerData::new(10_000));
     let ledger_file = generate_ledger_file(&ledger);
 
     let staking_file = tools::generate_staking_keys_file(&vec![priv_2]);
@@ -470,7 +470,7 @@ async fn test_roll_block_creation() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData { balance: 10_000 });
+    ledger.insert(address_2, LedgerData::new(10_000));
     let ledger_file = generate_ledger_file(&ledger);
 
     let staking_file = tools::generate_staking_keys_file(&vec![priv_1]);

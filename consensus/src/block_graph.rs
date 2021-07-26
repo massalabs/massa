@@ -12,9 +12,9 @@ use crate::{
 use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
 use models::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
-    BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
-    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, Amount, Block,
+    BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
+    Operation, OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
     BLOCK_ID_SIZE_BYTES,
 };
@@ -1083,7 +1083,7 @@ impl BlockGraph {
                         ledger_changes.apply(
                             &addr,
                             &LedgerChange {
-                                balance_delta,
+                                balance_delta: Amount::from(balance_delta),
                                 balance_increment: true,
                             },
                         )?;
@@ -1233,7 +1233,7 @@ impl BlockGraph {
         reward_ledger_changes.apply(
             &block_creator_address,
             &LedgerChange {
-                balance_delta: self.cfg.block_reward,
+                balance_delta: Amount::from(self.cfg.block_reward),
                 balance_increment: true,
             },
         )?;
@@ -1249,7 +1249,7 @@ impl BlockGraph {
                 roll_unlock_ledger_changes.apply(
                     &addr,
                     &LedgerChange {
-                        balance_delta: amount,
+                        balance_delta: Amount::from(amount),
                         balance_increment: true,
                     },
                 )?;
@@ -3721,21 +3721,21 @@ mod tests {
                 (
                     Address::from_bytes(&Hash::hash("addr01".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: 1,
+                        balance_delta: Amount::from(1),
                         balance_increment: true, // whether to increment or decrement balance of delta
                     },
                 ),
                 (
                     Address::from_bytes(&Hash::hash("addr02".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: 2,
+                        balance_delta: Amount::from(2),
                         balance_increment: false, // whether to increment or decrement balance of delta
                     },
                 ),
                 (
                     Address::from_bytes(&Hash::hash("addr11".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: 3,
+                        balance_delta: Amount::from(3),
                         balance_increment: false, // whether to increment or decrement balance of delta
                     },
                 ),
@@ -3833,7 +3833,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: 1,
+                    balance_delta: Amount::from(1),
                     balance_increment: false,
                 },
             )
@@ -3843,7 +3843,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: 2,
+                    balance_delta: Amount::from(2),
                     balance_increment: true,
                 },
             )
@@ -3864,7 +3864,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: 160,
+                    balance_delta: Amount::from(160),
                     balance_increment: true,
                 },
             )
@@ -3874,7 +3874,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: 159,
+                    balance_delta: Amount::from(159),
                     balance_increment: false,
                 },
             )
@@ -3895,7 +3895,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: 1,
+                    balance_delta: Amount::from(1),
                     balance_increment: true,
                 },
             )
@@ -3918,7 +3918,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: 10,
+                    balance_delta: Amount::from(10),
                     balance_increment: true,
                 },
             )
@@ -3928,7 +3928,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: 9,
+                    balance_delta: Amount::from(9),
                     balance_increment: false,
                 },
             )
@@ -3951,7 +3951,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: 2047,
+                    balance_delta: Amount::from(2047),
                     balance_increment: false,
                 },
             )
@@ -3961,7 +3961,7 @@ mod tests {
             .apply(
                 &address_c,
                 &LedgerChange {
-                    balance_delta: 2048,
+                    balance_delta: Amount::from(2048),
                     balance_increment: true,
                 },
             )
@@ -3984,7 +3984,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: 100,
+                    balance_delta: Amount::from(100),
                     balance_increment: true,
                 },
             )
@@ -3994,7 +3994,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: 99,
+                    balance_delta: Amount::from(99),
                     balance_increment: false,
                 },
             )
@@ -4033,13 +4033,13 @@ mod tests {
                     (
                         address_a,
                         LedgerData {
-                            balance: 1_000_000_000,
+                            balance: Amount::from(1_000_000_000),
                         },
                     ),
                     (
                         address_b,
                         LedgerData {
-                            balance: 2_000_000_000,
+                            balance: Amount::from(2_000_000_000),
                         },
                     ),
                 ],

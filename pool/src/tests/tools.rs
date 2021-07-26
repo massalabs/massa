@@ -5,7 +5,7 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use futures::Future;
-use models::{Address, Operation, OperationContent, OperationType, SerializeCompact};
+use models::{Address, Amount, Operation, OperationContent, OperationType, SerializeCompact};
 
 use crate::{pool_controller, PoolCommandSender, PoolConfig, PoolManager};
 
@@ -89,10 +89,10 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::from(0),
     };
     let content = OperationContent {
-        fee,
+        fee: Amount::from(fee),
         op,
         sender_public_key: sender_pub,
         expire_period,
@@ -115,10 +115,10 @@ pub fn get_transaction_with_addresses(
 ) -> (Operation, u8) {
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::from(0),
     };
     let content = OperationContent {
-        fee,
+        fee: Amount::from(fee),
         op,
         sender_public_key: sender_pub,
         expire_period,

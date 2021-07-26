@@ -18,7 +18,7 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationType, SerializeCompact, Slot,
 };
 use pool::PoolCommand;
@@ -316,7 +316,7 @@ pub fn create_roll_transaction(
 
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from(fee),
         expire_period,
         op,
     };
@@ -356,12 +356,12 @@ pub fn create_transaction(
 ) -> Operation {
     let op = OperationType::Transaction {
         recipient_address,
-        amount,
+        amount: Amount::from(amount),
     };
 
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from(fee),
         expire_period,
         op,
     };
@@ -380,7 +380,7 @@ pub fn create_roll_buy(
     let sender_public_key = crypto::derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from(fee),
         expire_period,
         op,
     };
@@ -399,7 +399,7 @@ pub fn create_roll_sell(
     let sender_public_key = crypto::derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from(fee),
         expire_period,
         op,
     };

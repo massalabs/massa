@@ -7,6 +7,7 @@ use api::PubkeySig;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
+use models::Amount;
 use models::Operation;
 use models::OperationContent;
 use models::OperationType;
@@ -98,7 +99,7 @@ impl Wallet {
         &self,
         operation_type: OperationType,
         from_address: Address,
-        fee: u64,
+        fee: Amount,
         data: &ReplData,
     ) -> Result<Operation, ReplError> {
         //get node serialisation context

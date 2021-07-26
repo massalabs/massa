@@ -55,7 +55,7 @@ impl WrappedOperation {
 
     /// Used to compare operations
     fn get_fee_density(&self) -> Ratio<u64> {
-        Ratio::new(self.op.content.fee, self.byte_count)
+        Ratio::new(self.op.content.fee.clone().into(), self.byte_count)
     }
 }
 
@@ -350,7 +350,7 @@ impl OperationPool {
 mod tests {
     use super::*;
     use crypto::hash::Hash;
-    use models::{Operation, OperationContent, OperationType};
+    use models::{Amount, Operation, OperationContent, OperationType};
     use serial_test::serial;
 
     fn example_pool_config() -> (PoolConfig, u8, u64) {
@@ -403,10 +403,10 @@ mod tests {
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-            amount: 0,
+            amount: Amount::from(0),
         };
         let content = OperationContent {
-            fee,
+            fee: Amount::from(fee),
             op,
             sender_public_key: sender_pub,
             expire_period,

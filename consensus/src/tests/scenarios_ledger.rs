@@ -12,7 +12,7 @@ use crate::{
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
-use models::{Address, Slot};
+use models::{Address, Amount, Slot};
 use serial_test::serial;
 use time::UTime;
 
@@ -83,7 +83,7 @@ async fn test_ledger_final_balance_increment_new_address() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: true,
             },
         )]
@@ -129,7 +129,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: true,
             },
         )]
@@ -153,7 +153,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: u64::MAX,
+                balance_delta: Amount::from(u64::MAX),
                 balance_increment: true,
             },
         )]
@@ -189,7 +189,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: true,
             },
         )]
@@ -214,7 +214,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: false,
             },
         )]
@@ -261,7 +261,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: true,
             },
         )]
@@ -286,7 +286,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: false,
             },
         )]
@@ -311,7 +311,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: false,
             },
         )]
@@ -347,7 +347,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: false,
             },
         )]
@@ -485,7 +485,7 @@ async fn test_ledger_clear() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: true,
             },
         )]
@@ -542,7 +542,7 @@ async fn test_ledger_read_whole() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from(1),
                 balance_increment: true,
             },
         )]
@@ -629,8 +629,8 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Thread 1:
     // address B balance = 3000
     let mut ledger = HashMap::new();
-    ledger.insert(address_1, LedgerData { balance: 1000 });
-    ledger.insert(address_2, LedgerData { balance: 3000 });
+    ledger.insert(address_1, LedgerData::new(1000));
+    ledger.insert(address_2, LedgerData::new(3000));
 
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];

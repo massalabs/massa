@@ -58,7 +58,7 @@ async fn test_operations_check() {
     }
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_1, LedgerData { balance: 5 });
+    ledger.insert(address_1, LedgerData::new(5));
 
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
