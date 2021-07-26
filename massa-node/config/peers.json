@@ -2,17 +2,9 @@
   {
     "advertised": true,
     "banned": false,
-    "bootstrap": false,
-    "ip": "93.31.10.235",
-    "last_alive": null,
-    "last_failure": 1627309307761
-  },
-  {
-    "advertised": true,
-    "banned": false,
     "bootstrap": true,
-    "ip": "158.69.120.215",
-    "last_alive": 1627309297910,
+    "ip": "149.202.86.103",
+    "last_alive": null,
     "last_failure": null
   },
   {
