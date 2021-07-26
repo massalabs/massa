@@ -208,6 +208,7 @@ pub struct WalletInfo<'a> {
 
 impl<'a> std::fmt::Display for WalletInfo<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "WARNING : do not share your private keys")?;
         for key in &self.wallet.keys {
             let public_key = derive_public_key(key);
             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
