@@ -19,7 +19,7 @@ pub use establisher::*;
 pub use network_controller::{
     start_network_controller, NetworkCommandSender, NetworkEventReceiver, NetworkManager,
 };
-pub use network_worker::{BootstrapPeers, NetworkCommand, NetworkEvent};
+pub use network_worker::{BootstrapPeers, NetworkCommand, NetworkEvent, Peer, Peers};
 pub use peer_info_database::PeerInfo;
 
 #[cfg(test)]
