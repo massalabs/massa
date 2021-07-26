@@ -3,8 +3,9 @@ use super::tools::*;
 use crate::Addresses;
 use crate::ApiEvent;
 use crate::OperationIds;
+use communication::network::Peer;
 use communication::network::PeerInfo;
-use communication::NodeId;
+use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
@@ -948,7 +949,10 @@ async fn test_peers() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send((HashMap::new(), node_id))
+                        .send(Peers {
+                            our_node_id: node_id,
+                            peers: HashMap::new(),
+                        })
                         .expect("failed to send peers");
                 }
 
@@ -978,8 +982,8 @@ async fn test_peers() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                (
-                    PeerInfo {
+                Peer {
+                    peer_info: PeerInfo {
                         ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
                         banned: false,
                         bootstrap: false,
@@ -990,11 +994,11 @@ async fn test_peers() {
                         active_out_connections: 1,
                         active_in_connections: 1,
                     },
-                    vec![],
-                ),
+                    active_nodes: vec![],
+                },
             )
         })
-        .collect::<HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>>();
+        .collect::<HashMap<IpAddr, Peer>>();
     let cloned = peers.clone();
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -1003,7 +1007,10 @@ async fn test_peers() {
         match evt {
             Some(ApiEvent::GetPeers(response_sender_tx)) => {
                 response_sender_tx
-                    .send((cloned, node_id))
+                    .send(Peers {
+                        our_node_id: node_id,
+                        peers: cloned,
+                    })
                     .expect("failed to send peers");
             }
 
@@ -1414,7 +1421,10 @@ async fn test_network_info() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send((HashMap::new(), node_id))
+                        .send(Peers {
+                            our_node_id: node_id,
+                            peers: HashMap::new(),
+                        })
                         .expect("failed to send peers");
                 }
 
@@ -1445,8 +1455,8 @@ async fn test_network_info() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                (
-                    PeerInfo {
+                Peer {
+                    peer_info: PeerInfo {
                         ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
                         banned: false,
                         bootstrap: false,
@@ -1457,11 +1467,11 @@ async fn test_network_info() {
                         active_out_connections: 1,
                         active_in_connections: 1,
                     },
-                    vec![],
-                ),
+                    active_nodes: vec![],
+                },
             )
         })
-        .collect::<HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>>();
+        .collect::<HashMap<IpAddr, Peer>>();
     let cloned = peers.clone();
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -1470,7 +1480,10 @@ async fn test_network_info() {
         match evt {
             Some(ApiEvent::GetPeers(response_sender_tx)) => {
                 response_sender_tx
-                    .send((cloned, node_id))
+                    .send(Peers {
+                        our_node_id: node_id,
+                        peers: cloned,
+                    })
                     .expect("failed to send peers");
             }
 
@@ -1511,7 +1524,10 @@ async fn test_state() {
                 match evt {
                     Some(ApiEvent::GetPeers(response_sender_tx)) => {
                         response_sender_tx
-                            .send((HashMap::new(), node_id))
+                            .send(Peers {
+                                our_node_id: node_id,
+                                peers: HashMap::new(),
+                            })
                             .expect("failed to send peers");
                     }
                     Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
@@ -1553,8 +1569,8 @@ async fn test_state() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                (
-                    PeerInfo {
+                Peer {
+                    peer_info: PeerInfo {
                         ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
                         banned: false,
                         bootstrap: false,
@@ -1565,11 +1581,11 @@ async fn test_state() {
                         active_out_connections: 1,
                         active_in_connections: 1,
                     },
-                    vec![],
-                ),
+                    active_nodes: vec![],
+                },
             )
         })
-        .collect::<HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>>();
+        .collect::<HashMap<IpAddr, Peer>>();
     let cloned = peers.clone();
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -1580,7 +1596,10 @@ async fn test_state() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send((cloned.clone(), node_id))
+                        .send(Peers {
+                            our_node_id: node_id,
+                            peers: cloned.clone(),
+                        })
                         .expect("failed to send peers");
                 }
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
