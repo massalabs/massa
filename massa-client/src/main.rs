@@ -28,8 +28,8 @@ use api::PubkeySig;
 use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
-use communication::network::PeerInfo;
-use communication::NodeId;
+use communication::network::Peer;
+use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
@@ -938,9 +938,19 @@ fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/peers", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>>()?;
-        for (_, peer) in resp.into_iter() {
-            println!("    {}", data::WrappedPeerInfo::from(peer));
+        let Peers { peers, .. } = resp.json::<Peers>()?;
+        for (
+            _,
+            Peer {
+                peer_info,
+                active_nodes,
+            },
+        ) in peers.into_iter()
+        {
+            println!(
+                "    {}",
+                data::WrappedPeerInfo::from((peer_info, active_nodes))
+            );
         }
     }
     Ok(())

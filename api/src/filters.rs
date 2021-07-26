@@ -1527,7 +1527,7 @@ async fn get_addresses_info(
 async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_peers", {});
     let peers = match retrieve_peers_and_nodeid(&event_tx).await {
-        Ok(Peers { peers, .. }) => peers,
+        Ok(peers) => peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({

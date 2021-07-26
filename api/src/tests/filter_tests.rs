@@ -968,7 +968,11 @@ async fn test_peers() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value = serde_json::from_str(
-            &serde_json::to_string(&HashMap::<IpAddr, String>::new()).unwrap(),
+            &serde_json::to_string(&Peers {
+                our_node_id: node_id,
+                peers: HashMap::<IpAddr, Peer>::new(),
+            })
+            .unwrap(),
         )
         .unwrap();
         assert_eq!(obtained, expected);
@@ -1035,8 +1039,14 @@ async fn test_peers() {
     handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&peers).unwrap()).unwrap();
+    let expected: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(&Peers {
+            peers,
+            our_node_id: node_id,
+        })
+        .unwrap(),
+    )
+    .unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
