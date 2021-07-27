@@ -103,6 +103,13 @@ async fn dump_peers(
         .collect();
 
     tokio::fs::write(file_path, serde_json::to_string_pretty(&peer_vec)?).await?;
+
+    if peers.iter().fold(0, |acc, (_, p)| {
+        acc + p.active_in_connections + p.active_out_connections
+    }) == 0
+    {
+        warn!("No connection detected");
+    }
     Ok(())
 }
 
