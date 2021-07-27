@@ -166,6 +166,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             ),
         ],
         rng_seed: bitvec![Lsb0, u8 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+        production_stats: vec![(get_random_address(), 1, 2), (get_random_address(), 3, 4)],
     };
     let boot_pos = ExportProofOfStake {
         cycle_states: vec![
@@ -271,6 +272,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                     roll_sales: 11451,
                 },
             ),
+        ],
+        production_events: vec![
+            (12, get_random_address(), true),
+            (31, get_random_address(), false),
         ],
     };
     assert_eq!(
