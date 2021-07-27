@@ -15,6 +15,7 @@ use crypto::{
     signature::{sign, verify_signature, PrivateKey},
 };
 use futures::future::try_join;
+use models::Version;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use time::UTime;
 use tokio::time::timeout;
@@ -51,6 +52,7 @@ impl HandshakeWorker {
         self_node_id: NodeId,
         private_key: PrivateKey,
         timeout_duration: UTime,
+        version: Version,
     ) -> HandshakeWorker {
         HandshakeWorker {
             reader: ReadBinder::new(socket_reader),
@@ -74,6 +76,7 @@ impl HandshakeWorker {
         let send_init_msg = Message::HandshakeInitiation {
             public_key: self.self_node_id.0,
             random_bytes: self_random_bytes,
+            // todo add version
         };
         let send_init_fut = self.writer.send(&send_init_msg);
 
@@ -117,6 +120,8 @@ impl HandshakeWorker {
                 HandshakeErrorType::HandshakeKeyError,
             ));
         }
+
+        // todo check if version is compatible with ours
 
         // sign their random bytes
         let other_random_hash = Hash::hash(&other_random_bytes);

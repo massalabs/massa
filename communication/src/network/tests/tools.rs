@@ -138,6 +138,7 @@ pub async fn full_connection_to_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Default::default(),
     )
     .run()
     .await
@@ -192,6 +193,7 @@ pub async fn rejected_connection_to_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Default::default(),
     )
     .run()
     .await;
@@ -264,6 +266,7 @@ pub async fn full_connection_from_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Default::default(),
     )
     .run()
     .await

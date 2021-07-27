@@ -107,6 +107,7 @@ pub async fn start_network_controller(
             command_rx,
             event_tx,
             manager_rx,
+            version,
         )
         .run_loop()
         .await;

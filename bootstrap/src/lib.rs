@@ -48,7 +48,7 @@ async fn get_state_internal(
     let send_time_uncompensated = UTime::now(0)?;
     match tokio::time::timeout(
         cfg.write_timeout.into(),
-        writer.send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes }),
+        writer.send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes }), // add version
     )
     .await
     {
@@ -81,7 +81,7 @@ async fn get_state_internal(
                     server_time,
                     signature,
                 },
-            )))) => (server_time, signature),
+            )))) => (server_time, signature), // check version
             Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
         };
 
@@ -255,6 +255,7 @@ pub async fn start_bootstrap_server(
                 read_timeout: cfg.read_timeout,
                 write_timeout: cfg.write_timeout,
                 compensation_millis,
+                version,
             }
             .run()
             .await
@@ -278,6 +279,7 @@ struct BootstrapServer {
     read_timeout: UTime,
     write_timeout: UTime,
     compensation_millis: i64,
+    version: Version,
 }
 
 impl BootstrapServer {
@@ -331,10 +333,12 @@ impl BootstrapServer {
             Ok(Err(e)) => return Err(e),
             Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
             Ok(Ok(Some((_, BootstrapMessage::BootstrapInitiation { random_bytes })))) => {
-                random_bytes
+                random_bytes // todo add version
             }
             Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
         };
+
+        // todo check version
 
         // First, sync clocks.
         let server_time = UTime::now(self.compensation_millis)?;
@@ -346,7 +350,7 @@ impl BootstrapServer {
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::BootstrapTime {
                 server_time,
-                signature,
+                signature, // todo add version
             }),
         )
         .await
