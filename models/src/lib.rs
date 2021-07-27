@@ -12,6 +12,7 @@ mod error;
 mod operation;
 mod serialization;
 mod slot;
+mod version;
 
 pub use address::{Address, ADDRESS_SIZE_BYTES};
 pub use amount::Amount;
@@ -32,3 +33,4 @@ pub use serialization::{
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,
 };
 pub use slot::{Slot, SLOT_KEY_SIZE};
+pub use version::Version;
