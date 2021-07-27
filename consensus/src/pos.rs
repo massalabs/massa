@@ -876,28 +876,32 @@ impl ProofOfStake {
                 }
 
                 // update production_stats
-                let last_final_block_cycle = self.get_last_final_block_cycle(thread);
-                for (evt_period, evt_addr, evt_ok) in a_block.production_events.iter() {
-                    let evt_slot = Slot::new(*evt_period, thread);
-                    let evt_cycle = evt_slot.get_cycle(self.cfg.periods_per_cycle);
-                    if let Some(neg_relative_cycle) = last_final_block_cycle.checked_sub(evt_cycle)
-                    {
-                        if let Some(entry) =
-                            self.cycle_states[thread as usize].get_mut(neg_relative_cycle as usize)
+                if period == block_slot.period {
+                    // we are applying the block itself
+                    let last_final_block_cycle = self.get_last_final_block_cycle(thread);
+                    for (evt_period, evt_addr, evt_ok) in a_block.production_events.iter() {
+                        let evt_slot = Slot::new(*evt_period, thread);
+                        let evt_cycle = evt_slot.get_cycle(self.cfg.periods_per_cycle);
+                        if let Some(neg_relative_cycle) =
+                            last_final_block_cycle.checked_sub(evt_cycle)
                         {
-                            match entry.production_stats.entry(*evt_addr) {
-                                hash_map::Entry::Occupied(mut occ) => {
-                                    if *evt_ok {
-                                        occ.get_mut().0 += 1;
-                                    } else {
-                                        occ.get_mut().1 += 1;
+                            if let Some(entry) = self.cycle_states[thread as usize]
+                                .get_mut(neg_relative_cycle as usize)
+                            {
+                                match entry.production_stats.entry(*evt_addr) {
+                                    hash_map::Entry::Occupied(mut occ) => {
+                                        if *evt_ok {
+                                            occ.get_mut().0 += 1;
+                                        } else {
+                                            occ.get_mut().1 += 1;
+                                        }
                                     }
-                                }
-                                hash_map::Entry::Vacant(vac) => {
-                                    if *evt_ok {
-                                        vac.insert((1, 0));
-                                    } else {
-                                        vac.insert((0, 1));
+                                    hash_map::Entry::Vacant(vac) => {
+                                        if *evt_ok {
+                                            vac.insert((1, 0));
+                                        } else {
+                                            vac.insert((0, 1));
+                                        }
                                     }
                                 }
                             }
