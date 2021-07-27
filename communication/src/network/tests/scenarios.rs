@@ -94,7 +94,7 @@ async fn test_multiple_connections_to_controller() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.max_in_connections = 2;
+    network_conf.max_in_nonbootstrap_connections = 2;
     network_conf.max_in_connections_per_ip = 1;
 
     let mock1_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
@@ -197,7 +197,7 @@ async fn test_peer_ban() {
     let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
-        bootstrap: true,
+        bootstrap: false,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -206,8 +206,7 @@ async fn test_peer_ban() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.target_out_connections = 10;
+    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
 
     tools::network_test(
         network_conf.clone(),
@@ -435,7 +434,7 @@ async fn test_block_not_found() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.target_out_connections = 10;
+    network_conf.target_bootstrap_connections = 1;
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
@@ -613,7 +612,8 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
     }]);
 
-    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    network_conf.target_bootstrap_connections = 1;
 
     tools::network_test(
         network_conf.clone(),
@@ -710,7 +710,7 @@ async fn test_operation_messages() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.target_out_connections = 10;
+    network_conf.target_bootstrap_connections = 1;
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
