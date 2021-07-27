@@ -6,7 +6,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{hash_map, HashMap};
 use std::net::IpAddr;
 use std::path::Path;
 use time::UTime;
@@ -65,12 +65,16 @@ pub struct PeerInfoDatabase {
     saver_join_handle: JoinHandle<()>,
     /// Monitor changed peers.
     saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
-    /// Total number of active out connection attempts.
-    active_out_connection_attempts: usize,
-    /// Total number of active out connections.
-    active_out_connections: usize,
-    /// Total number of active in connections
-    active_in_connections: usize,
+    /// Total number of active out bootstrap connection attempts.
+    active_out_bootstrap_connection_attempts: usize,
+    /// Total number of active out non-bootstrap connection attempts.
+    active_out_nonbootstrap_connection_attempts: usize,
+    /// Total number of active bootstrap connections.
+    active_bootstrap_connections: usize,
+    /// Total number of active out non-bootstrap connections.
+    active_out_nonbootstrap_connections: usize,
+    /// Total number of active in non-bootstrap connections
+    active_in_nonbootstrap_connections: usize,
     /// Every wakeup_interval we try to establish a connection with known inactive peers
     wakeup_interval: UTime,
     /// Clock compensation.
@@ -266,9 +270,11 @@ impl PeerInfoDatabase {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation,
         })
@@ -297,16 +303,29 @@ impl PeerInfoDatabase {
 
     /// Gets available out connection attempts
     /// according to NetworkConfig and current connections and connection attempts.
-    pub fn get_available_out_connection_attempts(&self) -> usize {
-        std::cmp::min(
+    // returns (count for bootstrap, count for non-bootstrap)
+    pub fn get_available_out_connection_attempts(&self) -> (usize, usize) {
+        let bootstrap_count = std::cmp::min(
             self.cfg
-                .target_out_connections
-                .saturating_sub(self.active_out_connection_attempts)
-                .saturating_sub(self.active_out_connections),
+                .target_bootstrap_connections
+                .saturating_sub(self.active_out_bootstrap_connection_attempts)
+                .saturating_sub(self.active_bootstrap_connections),
             self.cfg
-                .max_out_connection_attempts
-                .saturating_sub(self.active_out_connection_attempts),
-        )
+                .max_out_bootstrap_connection_attempts
+                .saturating_sub(self.active_out_bootstrap_connection_attempts),
+        );
+
+        let nonbootstrap_count = std::cmp::min(
+            self.cfg
+                .target_out_nonbootstrap_connections
+                .saturating_sub(self.active_out_nonbootstrap_connection_attempts)
+                .saturating_sub(self.active_out_nonbootstrap_connections),
+            self.cfg
+                .max_out_nonbootstrap_connection_attempts
+                .saturating_sub(self.active_out_nonbootstrap_connection_attempts),
+        );
+
+        (bootstrap_count, nonbootstrap_count)
     }
 
     /// Sorts peers by ( last_failure, rev(last_success) )
@@ -317,39 +336,79 @@ impl PeerInfoDatabase {
                 advertised && !banned && out_connection_attempts==0 && out_connections==0 && in_connections=0
                 sorted_by = ( last_failure, rev(last_success) )
         */
-        let available_slots = self.get_available_out_connection_attempts();
-        if available_slots == 0 {
-            return Ok(Vec::new());
-        }
-        let now = UTime::now(self.clock_compensation)?;
-        let mut sorted_peers: Vec<PeerInfo> = self
-            .peers
-            .values()
-            .filter(|&p| {
-                if !(p.advertised && !p.banned && !p.is_active()) {
-                    return false;
-                }
-                if let Some(last_failure) = p.last_failure {
-                    if let Some(last_alive) = p.last_alive {
-                        if last_alive > last_failure {
-                            return true;
-                        }
+        let (available_slots_bootstrap, available_slots_nonbootstrap) =
+            self.get_available_out_connection_attempts();
+        let mut res_ips: Vec<IpAddr> = Vec::new();
+
+        if available_slots_bootstrap > 0 {
+            let now = UTime::now(self.clock_compensation)?;
+            let mut sorted_peers: Vec<PeerInfo> = self
+                .peers
+                .values()
+                .filter(|&p| {
+                    if !(p.bootstrap && p.advertised && !p.banned && !p.is_active()) {
+                        return false;
                     }
-                    return now
-                        .saturating_sub(last_failure)
-                        .saturating_sub(self.wakeup_interval)
-                        > UTime::from(0u64);
-                }
-                true
-            })
-            .copied()
-            .collect();
-        sorted_peers.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
-        Ok(sorted_peers
-            .into_iter()
-            .take(available_slots)
-            .map(|p| p.ip)
-            .collect::<Vec<IpAddr>>())
+                    if let Some(last_failure) = p.last_failure {
+                        if let Some(last_alive) = p.last_alive {
+                            if last_alive > last_failure {
+                                return true;
+                            }
+                        }
+                        return now
+                            .saturating_sub(last_failure)
+                            .saturating_sub(self.wakeup_interval)
+                            > UTime::from(0u64);
+                    }
+                    true
+                })
+                .copied()
+                .collect();
+            sorted_peers
+                .sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
+            res_ips.extend(
+                sorted_peers
+                    .into_iter()
+                    .take(available_slots_bootstrap)
+                    .map(|p| p.ip),
+            )
+        }
+
+        if available_slots_nonbootstrap > 0 {
+            let now = UTime::now(self.clock_compensation)?;
+            let mut sorted_peers: Vec<PeerInfo> = self
+                .peers
+                .values()
+                .filter(|&p| {
+                    if !(!p.bootstrap && p.advertised && !p.banned && !p.is_active()) {
+                        return false;
+                    }
+                    if let Some(last_failure) = p.last_failure {
+                        if let Some(last_alive) = p.last_alive {
+                            if last_alive > last_failure {
+                                return true;
+                            }
+                        }
+                        return now
+                            .saturating_sub(last_failure)
+                            .saturating_sub(self.wakeup_interval)
+                            > UTime::from(0u64);
+                    }
+                    true
+                })
+                .copied()
+                .collect();
+            sorted_peers
+                .sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
+            res_ips.extend(
+                sorted_peers
+                    .into_iter()
+                    .take(available_slots_nonbootstrap)
+                    .map(|p| p.ip),
+            )
+        }
+
+        Ok(res_ips)
     }
 
     /// returns Hashmap of ipAddrs -> Peerinfo
@@ -386,20 +445,32 @@ impl PeerInfoDatabase {
         if !ip.is_global() {
             return Err(CommunicationError::InvalidIpError(*ip));
         }
-        if self.get_available_out_connection_attempts() == 0 {
-            return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
-            ));
+        let (available_bootstrap_conns, available_nonbootstrap_conns) =
+            self.get_available_out_connection_attempts();
+        let peer = self.peers.get_mut(ip).ok_or_else(|| {
+            CommunicationError::PeerConnectionError(
+                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+            )
+        })?;
+        if peer.bootstrap {
+            if available_bootstrap_conns == 0 {
+                return Err(CommunicationError::PeerConnectionError(
+                    NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
+                ));
+            }
+        } else {
+            if available_nonbootstrap_conns == 0 {
+                return Err(CommunicationError::PeerConnectionError(
+                    NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
+                ));
+            }
         }
-        self.peers
-            .get_mut(ip)
-            .ok_or_else(|| {
-                CommunicationError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                )
-            })?
-            .active_out_connection_attempts += 1;
-        self.active_out_connection_attempts += 1;
+        peer.active_out_connection_attempts += 1;
+        if peer.bootstrap {
+            self.active_out_bootstrap_connection_attempts += 1;
+        } else {
+            self.active_out_nonbootstrap_connection_attempts += 1;
+        }
         Ok(())
     }
 
@@ -483,24 +554,26 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
-        if self.active_out_connections == 0 {
-            return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-            ));
-        }
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
             CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
             )
         })?;
-
-        if peer.active_out_connections == 0 {
+        if (peer.bootstrap && self.active_bootstrap_connections == 0)
+            || (!peer.bootstrap && self.active_out_nonbootstrap_connections == 0)
+            || peer.active_out_connections == 0
+        {
             return Err(CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
-        self.active_out_connections -= 1;
         peer.active_out_connections -= 1;
+        if peer.bootstrap {
+            self.active_bootstrap_connections -= 1;
+        } else {
+            self.active_out_nonbootstrap_connections -= 1;
+        }
+
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(&self.cfg, &mut self.peers, None);
             self.request_dump()
@@ -517,24 +590,26 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
-        if self.active_in_connections == 0 {
-            return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-            ));
-        }
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
             CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
             )
         })?;
 
-        if peer.active_in_connections == 0 {
+        if (peer.bootstrap && self.active_bootstrap_connections == 0)
+            || (!peer.bootstrap && self.active_in_nonbootstrap_connections == 0)
+            || peer.active_in_connections == 0
+        {
             return Err(CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
-        self.active_in_connections -= 1;
         peer.active_in_connections -= 1;
+        if peer.bootstrap {
+            self.active_bootstrap_connections -= 1;
+        } else {
+            self.active_in_nonbootstrap_connections -= 1;
+        }
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(&self.cfg, &mut self.peers, None);
             self.request_dump()
@@ -557,27 +632,35 @@ impl PeerInfoDatabase {
     ) -> Result<bool, CommunicationError> {
         // a connection attempt succeeded
         // remove out connection attempt and add out connection
-        if self.active_out_connection_attempts == 0 {
-            return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
-            ));
-        }
-        if self.active_out_connections >= self.cfg.target_out_connections {
-            return Ok(false);
-        }
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
             CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
             )
         })?;
 
-        if peer.active_out_connection_attempts == 0 {
+        if (peer.bootstrap && self.active_out_bootstrap_connection_attempts == 0)
+            || (!peer.bootstrap && self.active_out_nonbootstrap_connection_attempts == 0)
+            || (peer.active_out_connection_attempts == 0)
+        {
             return Err(CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
-        self.active_out_connection_attempts -= 1;
+        if (peer.bootstrap
+            && self.active_out_nonbootstrap_connections
+                >= self.cfg.target_out_nonbootstrap_connections)
+            || (!peer.bootstrap
+                && self.active_out_nonbootstrap_connections
+                    >= self.cfg.target_out_nonbootstrap_connections)
+        {
+            return Ok(false);
+        }
         peer.active_out_connection_attempts -= 1;
+        if peer.bootstrap {
+            self.active_out_bootstrap_connection_attempts -= 1;
+        } else {
+            self.active_out_nonbootstrap_connection_attempts -= 1;
+        }
         peer.advertised = true; // we just connected to it. Assume advertised.
         if peer.banned {
             peer.last_failure = Some(UTime::now(self.clock_compensation)?);
@@ -587,8 +670,12 @@ impl PeerInfoDatabase {
             self.request_dump()?;
             return Ok(false);
         }
-        self.active_out_connections += 1;
         peer.active_out_connections += 1;
+        if peer.bootstrap {
+            self.active_bootstrap_connections += 1;
+        } else {
+            self.active_out_nonbootstrap_connections += 1;
+        }
         self.request_dump()?;
         Ok(true)
     }
@@ -600,23 +687,25 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
-        if self.active_out_connection_attempts == 0 {
-            return Err(CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionFailure(*ip),
-            ));
-        }
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
             CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
             )
         })?;
-        if peer.active_out_connection_attempts == 0 {
+        if (peer.bootstrap && self.active_out_bootstrap_connection_attempts == 0)
+            || (!peer.bootstrap && self.active_out_nonbootstrap_connection_attempts == 0)
+            || peer.active_out_connection_attempts == 0
+        {
             return Err(CommunicationError::PeerConnectionError(
                 NetworkConnectionErrorType::ToManyConnectionFailure(*ip),
             ));
         }
-        self.active_out_connection_attempts -= 1;
         peer.active_out_connection_attempts -= 1;
+        if peer.bootstrap {
+            self.active_out_bootstrap_connection_attempts -= 1;
+        } else {
+            self.active_out_nonbootstrap_connection_attempts -= 1;
+        }
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(&self.cfg, &mut self.peers, None);
@@ -634,10 +723,7 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<bool, CommunicationError> {
         // try to create a new input connection, return false if no slots
-        if !ip.is_global()
-            || self.active_in_connections >= self.cfg.max_in_connections
-            || self.cfg.max_in_connections_per_ip == 0
-        {
+        if !ip.is_global() || self.cfg.max_in_connections_per_ip == 0 {
             return Ok(false);
         }
         if let Some(our_ip) = self.cfg.routable_ip {
@@ -647,29 +733,61 @@ impl PeerInfoDatabase {
                 return Ok(false);
             }
         }
-        let peer = self.peers.entry(*ip).or_insert(PeerInfo {
-            ip: *ip,
-            banned: false,
-            bootstrap: false,
-            last_alive: None,
-            last_failure: None,
-            advertised: false,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
-        });
-        if peer.banned {
-            massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
-            peer.last_failure = Some(UTime::now(self.clock_compensation)?);
-            self.request_dump()?;
-            return Ok(false);
-        }
-        if peer.active_in_connections >= self.cfg.max_in_connections_per_ip {
-            self.request_dump()?;
-            return Ok(false);
-        }
-        self.active_in_connections += 1;
-        peer.active_in_connections += 1;
+
+        match self.peers.entry(*ip) {
+            hash_map::Entry::Occupied(mut occ) => {
+                let peer = occ.get_mut();
+                if (peer.bootstrap
+                    && self.active_bootstrap_connections >= self.cfg.target_bootstrap_connections)
+                    || (!peer.bootstrap
+                        && self.active_in_nonbootstrap_connections
+                            >= self.cfg.max_in_nonbootstrap_connections)
+                {
+                    return Ok(false);
+                }
+                if peer.banned {
+                    massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
+                    peer.last_failure = Some(UTime::now(self.clock_compensation)?);
+                    self.request_dump()?;
+                    return Ok(false);
+                }
+                if peer.active_in_connections >= self.cfg.max_in_connections_per_ip {
+                    self.request_dump()?;
+                    return Ok(false);
+                }
+                peer.active_in_connections += 1;
+                if peer.bootstrap {
+                    self.active_bootstrap_connections += 1;
+                } else {
+                    self.active_in_nonbootstrap_connections += 1;
+                }
+            }
+            hash_map::Entry::Vacant(vac) => {
+                let mut peer = PeerInfo {
+                    ip: *ip,
+                    banned: false,
+                    bootstrap: false,
+                    last_alive: None,
+                    last_failure: None,
+                    advertised: false,
+                    active_out_connection_attempts: 0,
+                    active_out_connections: 0,
+                    active_in_connections: 0,
+                };
+                if self.active_in_nonbootstrap_connections
+                    >= self.cfg.max_in_nonbootstrap_connections
+                {
+                    return Ok(false);
+                }
+                if peer.active_in_connections >= self.cfg.max_in_connections_per_ip {
+                    self.request_dump()?;
+                    return Ok(false);
+                }
+                peer.active_in_connections += 1;
+                vac.insert(peer);
+                self.active_in_nonbootstrap_connections += 1;
+            }
+        };
         self.request_dump()?;
         Ok(true)
     }
@@ -686,7 +804,7 @@ mod tests {
     #[serial]
     async fn test_try_new_in_connection_in_connection_closed() {
         let mut network_config = example_network_config();
-        network_config.target_out_connections = 5;
+        network_config.target_out_nonbootstrap_connections = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         //add peers
@@ -717,9 +835,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -792,7 +912,7 @@ mod tests {
     #[serial]
     async fn test_out_connection_attempt_failed() {
         let mut network_config = example_network_config();
-        network_config.target_out_connections = 5;
+        network_config.target_out_nonbootstrap_connections = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         //add peers
@@ -823,9 +943,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -891,7 +1013,7 @@ mod tests {
     #[serial]
     async fn test_try_out_connection_attempt_success() {
         let mut network_config = example_network_config();
-        network_config.target_out_connections = 5;
+        network_config.target_out_nonbootstrap_connections = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         //add peers
@@ -922,9 +1044,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -992,7 +1116,7 @@ mod tests {
     #[serial]
     async fn test_new_out_connection_closed() {
         let mut network_config = example_network_config();
-        network_config.max_out_connection_attempts = 5;
+        network_config.max_out_nonbootstrap_connection_attempts = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         //add peers
@@ -1016,9 +1140,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1077,7 +1203,7 @@ mod tests {
     #[serial]
     async fn test_new_out_connection_attempt() {
         let mut network_config = example_network_config();
-        network_config.max_out_connection_attempts = 5;
+        network_config.max_out_nonbootstrap_connection_attempts = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         //add peers
@@ -1094,9 +1220,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1190,9 +1318,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1232,8 +1362,9 @@ mod tests {
 
         //add peers
         //peer Ok, return
-        let connected_peers1 =
+        let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
+        connected_peers1.bootstrap = true;
         peers.insert(connected_peers1.ip.clone(), connected_peers1);
         //peer failure to early. not return
         let mut connected_peers2 =
@@ -1297,9 +1428,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1309,11 +1442,11 @@ mod tests {
         assert_eq!(4, ip_list.len());
 
         assert_eq!(
-            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
             ip_list[0]
         );
         assert_eq!(
-            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
             ip_list[1]
         );
         assert_eq!(
@@ -1325,11 +1458,12 @@ mod tests {
             ip_list[3]
         );
     }
+
     fn default_peer_info_not_connected(ip: IpAddr) -> PeerInfo {
         PeerInfo {
             ip,
             banned: false,
-            bootstrap: true,
+            bootstrap: false,
             last_alive: None,
             last_failure: None,
             advertised: true,
@@ -1450,7 +1584,7 @@ mod tests {
         PeerInfo {
             ip,
             banned: false,
-            bootstrap: true,
+            bootstrap: false,
             last_alive: None,
             last_failure: None,
             advertised: false,
@@ -1470,10 +1604,12 @@ mod tests {
             connect_timeout: UTime::from(180_000),
             wakeup_interval: UTime::from(10_000),
             peers_file: std::path::PathBuf::new(),
-            target_out_connections: 10,
-            max_in_connections: 5,
+            target_bootstrap_connections: 1,
+            max_out_bootstrap_connection_attempts: 1,
+            target_out_nonbootstrap_connections: 10,
+            max_in_nonbootstrap_connections: 5,
             max_in_connections_per_ip: 2,
-            max_out_connection_attempts: 15,
+            max_out_nonbootstrap_connection_attempts: 15,
             max_idle_peers: 3,
             max_banned_peers: 3,
             max_advertise_length: 5,
@@ -1525,9 +1661,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
+            active_out_bootstrap_connection_attempts: 0,
+            active_bootstrap_connections: 0,
+            active_out_nonbootstrap_connection_attempts: 0,
+            active_out_nonbootstrap_connections: 0,
+            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
         }
