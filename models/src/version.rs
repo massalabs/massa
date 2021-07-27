@@ -1,11 +1,23 @@
 use std::convert::TryFrom;
 
+use serde::Deserialize;
+
 use crate::{DeserializeCompact, ModelsError, SerializeCompact};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
     network: [char; 4], // ascii and alpha (maj only)
     major: u32,
     minor: u32,
+}
+
+impl<'de> ::serde::Deserialize<'de> for Version {
+    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        todo!()
+    }
 }
 
 impl SerializeCompact for Version {
