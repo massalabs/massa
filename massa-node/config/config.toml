@@ -33,6 +33,7 @@
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 10
+    pos_miss_rate_deactivation_threshold = [7, 10]
     staking_keys_path = "config/staking_keys.json"
     roll_price = 500000000000
     #stats
@@ -97,7 +98,7 @@
     max_bootstrap_message_size = 1048576000
     read_timeout = 100000
     write_timeout = 10000
-    max_bootstrap_pos_entries = 100000000
+    max_bootstrap_pos_entries = 1000000000
     max_bootstrap_pos_cycles = 5
     enable_clock_synchronization = false
 

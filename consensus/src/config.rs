@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crypto::signature::PrivateKey;
+use num::rational::Ratio;
 use serde::Deserialize;
 use std::{default::Default, path::PathBuf, usize};
 use time::UTime;
@@ -47,6 +48,8 @@ pub struct ConsensusConfig {
     pub pos_lock_cycles: u64,
     // number of cached draw cycles for PoS
     pub pos_draw_cached_cycles: usize,
+    // number of cycle misses (strictly) above which stakers are deactivated
+    pub pos_miss_rate_deactivation_threshold: Ratio<u64>,
     /// path to ledger db
     pub ledger_path: PathBuf,
     pub ledger_cache_capacity: u64,

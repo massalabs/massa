@@ -21,6 +21,7 @@ use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationType, SerializeCompact, Slot,
 };
+use num::rational::Ratio;
 use pool::PoolCommand;
 use std::{
     collections::{HashMap, HashSet},
@@ -493,6 +494,7 @@ pub fn get_export_active_test_block(
             is_final,
             block_ledger_changes: vec![],
             roll_updates: vec![],
+            production_events: vec![],
         },
         id,
     )
@@ -654,6 +656,7 @@ pub fn default_consensus_config(
         pos_lookback_cycles: 2,
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
+        pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
         roll_price: 0,
         stats_timespan: 60000.into(),
         staking_keys_path: staking_keys_path.to_path_buf(),
