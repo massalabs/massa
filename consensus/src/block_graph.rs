@@ -4334,6 +4334,7 @@ mod tests {
             roll_price: 10,
             stats_timespan: 60000.into(),
             staking_keys_path: staking_file.path().to_path_buf(),
+            end_timestamp: None,
         }
     }
 }
