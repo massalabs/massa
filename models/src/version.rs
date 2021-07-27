@@ -1,8 +1,9 @@
 use std::convert::TryFrom;
 
 use crate::{DeserializeCompact, ModelsError, SerializeCompact};
+use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Version {
     network: [char; 4], // ascii and alpha (maj only)
     major: u32,

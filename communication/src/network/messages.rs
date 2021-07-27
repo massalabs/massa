@@ -6,7 +6,7 @@ use crypto::{
 };
 use models::{
     array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
-    DeserializeVarInt, ModelsError, Operation, SerializeCompact, SerializeVarInt,
+    DeserializeVarInt, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,7 @@ pub enum Message {
         /// They should send us their handshake initiation message to
         /// let us know their public key.
         random_bytes: [u8; HANDSHAKE_RANDOMNES_SIZE_BYTES],
+        version: Version,
     },
     /// Reply to a handshake initiation message.
     HandshakeReply {
@@ -72,10 +73,12 @@ impl SerializeCompact for Message {
             Message::HandshakeInitiation {
                 public_key,
                 random_bytes,
+                version,
             } => {
                 res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
                 res.extend(&public_key.to_bytes());
                 res.extend(random_bytes);
+                res.extend(version.to_bytes_compact()?);
             }
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
@@ -156,10 +159,14 @@ impl DeserializeCompact for Message {
                 let random_bytes: [u8; HANDSHAKE_RANDOMNES_SIZE_BYTES] =
                     array_from_slice(&buffer[cursor..])?;
                 cursor += HANDSHAKE_RANDOMNES_SIZE_BYTES;
+
+                //version
+                let (version, _) = Version::from_bytes_compact(&buffer[cursor..])?;
                 // return message
                 Message::HandshakeInitiation {
                     public_key,
                     random_bytes,
+                    version,
                 }
             }
             MessageTypeId::HandshakeReply => {
