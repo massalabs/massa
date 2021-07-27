@@ -657,6 +657,7 @@ pub fn default_consensus_config(
         roll_price: 0,
         stats_timespan: 60000.into(),
         staking_keys_path: staking_keys_path.to_path_buf(),
+        end_timestamp: None,
     }
 }
 

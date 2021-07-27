@@ -13,6 +13,8 @@ pub const CHANNEL_SIZE: usize = 256;
 pub struct ConsensusConfig {
     /// Time in millis when the blockclqieu started.
     pub genesis_timestamp: UTime,
+    /// TESTNET: time when the blockclique is ended.
+    pub end_timestamp: Option<UTime>,
     /// Number of threds
     pub thread_count: u8,
     /// Time between the periods in the same slot.

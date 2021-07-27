@@ -17,9 +17,17 @@ use logging::{massa_trace, warn};
 use models::{init_serialization_context, Address, SerializationContext};
 use pool::start_pool_controller;
 use storage::start_storage;
+use time::UTime;
 use tokio::{fs::read_to_string, signal};
 
 async fn run(cfg: config::Config) {
+    if let Some(end) = cfg.consensus.end_timestamp {
+        if end > UTime::now(0).expect("Could not get now time") {
+            info!("This episode has already ended, you can download the next one https://gitlab.com/massalabs/massa");
+            return;
+        }
+    }
+
     // Init the global serialization context
     init_serialization_context(SerializationContext {
         max_block_operations: cfg.consensus.max_operations_per_block,
