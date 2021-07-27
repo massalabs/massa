@@ -17,6 +17,7 @@ stderrlog = { version = "0.5" }
 logging = { path = "../logging" }
 communication = { path = "../communication" }
 consensus = { path = "../consensus" }
+time = { path = "../time" }
 api = { path = "../api" }
 storage = { path = "../storage" }
 models = { path = "../models" }
