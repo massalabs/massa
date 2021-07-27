@@ -22,7 +22,7 @@ use crypto::{
 use error::BootstrapError;
 pub use establisher::Establisher;
 use messages::BootstrapMessage;
-use models::SerializeCompact;
+use models::{SerializeCompact, Version};
 use rand::{prelude::SliceRandom, rngs::StdRng, RngCore, SeedableRng};
 use std::convert::TryInto;
 use time::UTime;
@@ -185,6 +185,7 @@ async fn get_state_internal(
 pub async fn get_state(
     cfg: BootstrapConfig,
     mut establisher: Establisher,
+    version: Version,
 ) -> Result<
     (
         Option<ExportProofOfStake>,
@@ -238,6 +239,7 @@ pub async fn start_bootstrap_server(
     establisher: Establisher,
     private_key: PrivateKey,
     compensation_millis: i64,
+    version: Version,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
     if let Some(bind) = cfg.bind {

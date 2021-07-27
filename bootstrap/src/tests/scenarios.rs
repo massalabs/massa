@@ -33,6 +33,7 @@ async fn test_bootstrap_server() {
         bootstrap_establisher,
         private_key,
         0,
+        Default::default(),
     )
     .await
     .unwrap()
@@ -41,8 +42,11 @@ async fn test_bootstrap_server() {
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let cfg_copy = cfg.clone();
-    let get_state_h =
-        tokio::spawn(async move { get_state(cfg_copy, remote_establisher).await.unwrap() });
+    let get_state_h = tokio::spawn(async move {
+        get_state(cfg_copy, remote_establisher, Default::default())
+            .await
+            .unwrap()
+    });
 
     // accept connection attempt from remote
     let (remote_r, remote_w, conn_addr, resp) = tokio::time::timeout(

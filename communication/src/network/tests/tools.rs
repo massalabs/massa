@@ -398,7 +398,7 @@ where
 
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _private_key) =
-        start_network_controller(cfg.clone(), establisher, 0, None)
+        start_network_controller(cfg.clone(), establisher, 0, None, Default::default())
             .await
             .expect("could not start network controller");
 
