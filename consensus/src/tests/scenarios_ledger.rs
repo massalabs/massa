@@ -646,7 +646,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(10).unwrap());
     cfg.delta_f0 = 4;
-    cfg.block_reward = 1;
+    cfg.block_reward = Amount::from(1);
     cfg.operation_validity_periods = 20;
 
     // mock protocol & pool

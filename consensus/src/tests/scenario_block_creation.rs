@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::SerializeCompact;
-use models::{Address, Block, BlockHeader, BlockHeaderContent, Slot};
+use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use pool::PoolCommand;
 use time::UTime;
 
@@ -53,8 +53,8 @@ async fn test_block_creation_with_draw() {
     //init roll cont
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
-        roll_purchases: 1,
-        roll_sales: 0,
+        roll_purchases: Amount::from(1),
+        roll_sales: Amount::from(0),
     };
     let mut updates = RollUpdates::default();
     updates.apply(&address_1, &update).unwrap();
@@ -67,7 +67,7 @@ async fn test_block_creation_with_draw() {
         roll_counts_file.path(),
         staking_file.path(),
     );
-    cfg.roll_price = 1000;
+    cfg.roll_price = Amount::from(1000);
     cfg.periods_per_cycle = 10_000;
     cfg.t0 = 1000.into();
     cfg.pos_lookback_cycles = 2;
@@ -79,7 +79,7 @@ async fn test_block_creation_with_draw() {
         .unwrap()
         .checked_add(2000.into())
         .unwrap();
-    cfg.block_reward = 0;
+    cfg.block_reward = Amount::from(0);
     cfg.disable_block_creation = false;
     cfg.operation_validity_periods = 100;
     cfg.operation_batch_size = 3;

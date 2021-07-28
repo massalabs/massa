@@ -258,10 +258,10 @@ async fn test_get_addresses_info() {
         addrs_info.insert(
             search_address,
             AddressState {
-                final_rolls: 1233,
-                active_rolls: Some(5748),
-                candidate_rolls: 7787,
-                locked_balance: 1745,
+                final_rolls: Amount::from(1233),
+                active_rolls: Some(Amount::from(5748)),
+                candidate_rolls: Amount::from(7787),
+                locked_balance: Amount::from(1745),
                 candidate_ledger_data: LedgerData::new(4788),
                 final_ledger_data: LedgerData::new(11414),
             },

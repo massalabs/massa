@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use communication::protocol::ProtocolCommand;
-use models::{Address, Slot};
+use models::{Address, Amount, Slot};
 use pool::PoolCommand;
 use serial_test::serial;
 use time::UTime;
@@ -73,8 +73,8 @@ async fn test_roll() {
     cfg.delta_f0 = 3;
     cfg.disable_block_creation = true;
     cfg.thread_count = thread_count;
-    cfg.block_reward = 0;
-    cfg.roll_price = 1000;
+    cfg.block_reward = Amount::from(0);
+    cfg.roll_price = Amount::from(1000);
     cfg.operation_validity_periods = 100;
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
 
@@ -143,7 +143,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 1);
             assert_eq!(addr_state.candidate_ledger_data.balance, 9000);
@@ -175,7 +175,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
             let balance = addr_state.candidate_ledger_data.balance;
@@ -260,7 +260,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(1)));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
 
@@ -295,7 +295,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(1)));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
 
@@ -331,7 +331,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 2);
             let balance = addr_state.candidate_ledger_data.balance;
@@ -361,7 +361,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
             let balance = addr_state.candidate_ledger_data.balance;
@@ -388,7 +388,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
             assert_eq!(addr_state.final_rolls, 2);
             assert_eq!(addr_state.candidate_rolls, 0);
 
@@ -421,7 +421,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
+            assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
             (
@@ -491,8 +491,8 @@ async fn test_roll_block_creation() {
     cfg.operation_batch_size = 500;
     cfg.max_operations_per_block = 5000;
     cfg.max_block_size = 500;
-    cfg.block_reward = 0;
-    cfg.roll_price = 1000;
+    cfg.block_reward = Amount::from(0);
+    cfg.roll_price = Amount::from(1000);
     cfg.operation_validity_periods = 100;
 
     // mock protocol & pool
@@ -588,7 +588,7 @@ async fn test_roll_block_creation() {
         .get(&address_2)
         .unwrap()
         .clone();
-    assert_eq!(addr_state.active_rolls, Some(0));
+    assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
     assert_eq!(addr_state.final_rolls, 0);
     assert_eq!(addr_state.candidate_rolls, 1);
 
@@ -681,7 +681,7 @@ async fn test_roll_block_creation() {
         .get(&address_2)
         .unwrap()
         .clone();
-    assert_eq!(addr_state.active_rolls, Some(0));
+    assert_eq!(addr_state.active_rolls, Some(Amount::from(0)));
     assert_eq!(addr_state.final_rolls, 0);
     assert_eq!(addr_state.candidate_rolls, 0);
     let balance = addr_state.candidate_ledger_data.balance;

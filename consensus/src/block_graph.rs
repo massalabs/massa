@@ -3909,7 +3909,7 @@ mod tests {
         let ledger_file = generate_ledger_file(&HashMap::new());
         let mut cfg = example_consensus_config(ledger_file.path());
 
-        cfg.block_reward = 1;
+        cfg.block_reward = Amount::from(1);
         //to generate address and public keys
         /*        let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
@@ -4476,7 +4476,7 @@ mod tests {
             ledger_cache_capacity: 1000000,
             ledger_flush_interval: Some(200.into()),
             ledger_reset_at_startup: true,
-            block_reward: 1,
+            block_reward: Amount::from(1),
             initial_ledger_path: initial_ledger_path.to_path_buf(),
             operation_batch_size: 100,
             initial_rolls_path: tempdir3.path().to_path_buf(),
@@ -4486,7 +4486,7 @@ mod tests {
             pos_lock_cycles: 1,
             pos_draw_cached_cycles: 2,
             pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
-            roll_price: 10,
+            roll_price: Amount::from(10),
             stats_timespan: 60000.into(),
             staking_keys_path: staking_file.path().to_path_buf(),
             end_timestamp: None,

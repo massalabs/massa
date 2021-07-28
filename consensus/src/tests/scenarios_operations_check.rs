@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use models::{Address, Slot};
+use models::{Address, Amount, Slot};
 
 use crate::{
     ledger::LedgerData,
@@ -72,7 +72,7 @@ async fn test_operations_check() {
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
-    cfg.block_reward = 1;
+    cfg.block_reward = Amount::from(1);
     cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.disable_block_creation = true;

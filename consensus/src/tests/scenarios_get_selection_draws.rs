@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use models::{Address, Slot};
+use models::{Address, Amount, Slot};
 use serial_test::serial;
 use time::UTime;
 
@@ -64,8 +64,8 @@ async fn test_get_selection_draws_high_end_slot() {
     cfg.delta_f0 = 3;
     cfg.disable_block_creation = true;
     cfg.thread_count = thread_count;
-    cfg.block_reward = 0;
-    cfg.roll_price = 1000;
+    cfg.block_reward = Amount::from(0);
+    cfg.roll_price = Amount::from(1000);
     cfg.operation_validity_periods = 100;
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
 

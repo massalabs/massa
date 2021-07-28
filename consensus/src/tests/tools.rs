@@ -578,8 +578,8 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
         let pub_key = crypto::derive_public_key(key);
         let address = Address::from_public_key(&pub_key).unwrap();
         let update = RollUpdate {
-            roll_purchases: 1,
-            roll_sales: 0,
+            roll_purchases: Amount::from(1),
+            roll_sales: Amount::from(0),
         };
         let mut updates = RollUpdates::default();
         updates.apply(&address, &update).unwrap();
@@ -647,7 +647,7 @@ pub fn default_consensus_config(
         ledger_cache_capacity: 1000000,
         ledger_flush_interval: Some(200.into()),
         ledger_reset_at_startup: true,
-        block_reward: 1,
+        block_reward: Amount::from(1),
         initial_ledger_path: initial_ledger_path.to_path_buf(),
         operation_batch_size: 100,
         initial_rolls_path: roll_counts_path.to_path_buf(),
@@ -657,7 +657,7 @@ pub fn default_consensus_config(
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
         pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
-        roll_price: 0,
+        roll_price: Amount::from(0),
         stats_timespan: 60000.into(),
         staking_keys_path: staking_keys_path.to_path_buf(),
         end_timestamp: None,

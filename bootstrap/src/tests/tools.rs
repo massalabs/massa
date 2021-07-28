@@ -148,20 +148,20 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
     let cycle_state = ExportThreadCycleState {
         cycle: 1,
         last_final_slot: Slot::new(1, 1),
-        roll_count: vec![(get_random_address(), 123), (get_random_address(), 456)],
+        roll_count: vec![(get_random_address(), Amount::from(123)), (get_random_address(), Amount::from(456))],
         cycle_updates: vec![
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_purchases: 147,
-                    roll_sales: 44788,
+                    roll_purchases: Amount::from(147),
+                    roll_sales: Amount::from(44788),
                 },
             ),
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_purchases: 8887,
-                    roll_sales: 114,
+                    roll_purchases: Amount::from(8887),
+                    roll_sales: Amount::from(114),
                 },
             ),
         ],
@@ -261,15 +261,15 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_purchases: 778,
-                    roll_sales: 54851,
+                    roll_purchases: Amount::from(778),
+                    roll_sales: Amount::from(54851),
                 },
             ),
             (
                 get_random_address(),
                 RollUpdate {
-                    roll_purchases: 788778,
-                    roll_sales: 11451,
+                    roll_purchases: Amount::from(788778),
+                    roll_sales: Amount::from(11451),
                 },
             ),
         ],
