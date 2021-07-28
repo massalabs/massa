@@ -3,6 +3,7 @@ use std::{
     iter::FromIterator,
 };
 
+use crate::serialization::DeserializeVarInt;
 use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
 use serde::Serialize;
 use std::str::FromStr;
@@ -48,8 +49,51 @@ impl SerializeCompact for Version {
 }
 
 impl DeserializeCompact for Version {
+    /// ```
+    /// # use models::*;
+    /// # use std::convert::TryFrom;
+    /// let v: Version = Version {
+    ///    network: ['T', 'E', 'S', 'T'],
+    ///    major: 1,
+    ///    minor: 2,
+    /// };
+    /// let ser = v.to_bytes_compact().unwrap();
+    /// let (deser, _) = Version::from_bytes_compact(&ser).unwrap();
+    /// assert_eq!(deser, v)
+    /// ```
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        todo!()
+        let mut cursor = 0;
+        let network = buffer[0..4]
+            .iter()
+            .map(|c| char::from(*c))
+            .collect::<Vec<_>>()
+            .get(..4)
+            .ok_or_else(|| {
+                ModelsError::DeserializeError(format!("error deserialising version network ",))
+            })?
+            .try_into()
+            .map_err(|e| {
+                ModelsError::DeserializeError(format!(
+                    "error deserialising version network {:?} ",
+                    e
+                ))
+            })?;
+        cursor += 4;
+
+        let (major, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        let (minor, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        Ok((
+            Version {
+                network,
+                major,
+                minor,
+            },
+            cursor,
+        ))
     }
 }
 
