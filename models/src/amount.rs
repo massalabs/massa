@@ -27,8 +27,9 @@ impl Amount {
 
     /// ```
     /// # use models::Amount;
-    /// let amount_1 : Amount = Amount::from(42);
-    /// let amount_2 : Amount = Amount::from(7);
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("7").unwrap();
     /// let res : Amount = amount_1.checked_sub(amount_2).unwrap();
     /// assert_eq!(res, Amount::from_str("35").unwrap())
     /// ```
@@ -38,8 +39,9 @@ impl Amount {
 
     /// ```
     /// # use models::Amount;
-    /// let amount_1 : Amount = Amount::from(42);
-    /// let amount_2 : Amount = Amount::from(7);
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("7").unwrap();
     /// let res : Amount = amount_1.checked_add(amount_2).unwrap();
     /// assert_eq!(res, Amount::from_str("49").unwrap())
     /// ```
@@ -49,8 +51,9 @@ impl Amount {
 
     /// ```
     /// # use models::Amount;
-    /// let amount_1 : Amount = Amount::from(42);
-    /// let res : Amount = amount_1.checked_mul(Amount::from(7)).unwrap();
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let res : Amount = amount_1.checked_mul_u64(7).unwrap();
     /// assert_eq!(res, Amount::from_str("294").unwrap())
     /// ```
     pub fn checked_mul_u64(self, factor: u64) -> Option<Self> {
