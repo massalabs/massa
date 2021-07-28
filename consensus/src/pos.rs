@@ -891,10 +891,11 @@ impl ProofOfStake {
                             {
                                 match entry.production_stats.entry(*evt_addr) {
                                     hash_map::Entry::Occupied(mut occ) => {
+                                        let cur_val = *occ.get();
                                         if *evt_ok {
-                                            occ.get_mut().0 += 1;
+                                            *occ.get_mut() = (cur_val.0 + 1, cur_val.1);
                                         } else {
-                                            occ.get_mut().1 += 1;
+                                            *occ.get_mut() = (cur_val.0, cur_val.1 + 1);
                                         }
                                     }
                                     hash_map::Entry::Vacant(vac) => {
@@ -992,7 +993,7 @@ impl ProofOfStake {
     pub fn get_roll_deactivations(
         &self,
         cycle: u64,
-        thread: u8,
+        address_thread: u8,
     ) -> Result<HashSet<Address>, ConsensusError> {
         // compute target cycle
         if cycle <= self.cfg.pos_lookback_cycles {
@@ -1001,25 +1002,42 @@ impl ProofOfStake {
         }
         let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
 
-        // get roll data
-        let roll_data = self
-            .get_final_roll_data(target_cycle, thread)
-            .ok_or(ConsensusError::NotFinalRollError)?;
-        if !roll_data.is_complete(self.cfg.periods_per_cycle) {
-            return Err(ConsensusError::NotFinalRollError); // target_cycle not completely final
+        // get roll data from all threads for addresses belonging to address_thread
+        let mut addr_stats: HashMap<Address, (u64, u64)> = HashMap::new();
+        for thread in 0..self.cfg.thread_count {
+            // get roll data
+            let roll_data = self
+                .get_final_roll_data(target_cycle, thread)
+                .ok_or(ConsensusError::NotFinalRollError)?;
+            if !roll_data.is_complete(self.cfg.periods_per_cycle) {
+                return Err(ConsensusError::NotFinalRollError); // target_cycle not completely final
+            }
+            // accumulate counters
+            for (addr, (n_ok, n_nok)) in roll_data.production_stats.iter() {
+                if addr.get_thread(self.cfg.thread_count) != address_thread {
+                    continue;
+                }
+                match addr_stats.entry(*addr) {
+                    hash_map::Entry::Occupied(mut occ) => {
+                        let cur = *occ.get();
+                        *occ.get_mut() = (cur.0 + n_ok, cur.1 + n_nok);
+                    }
+                    hash_map::Entry::Vacant(vac) => {
+                        vac.insert((*n_ok, *n_nok));
+                    }
+                }
+            }
         }
-
         // list addresses with bad stats
-        Ok(roll_data
-            .production_stats
-            .iter()
+        Ok(addr_stats
+            .into_iter()
             .filter_map(|(addr, (ok_count, nok_count))| {
                 if ok_count + nok_count == 0 {
                     return None;
                 }
-                let miss_ratio = Ratio::new(*nok_count, ok_count + nok_count);
+                let miss_ratio = Ratio::new(nok_count, ok_count + nok_count);
                 if miss_ratio > self.cfg.pos_miss_rate_deactivation_threshold {
-                    return Some(*addr);
+                    return Some(addr);
                 }
                 None
             })
