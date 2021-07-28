@@ -29,7 +29,7 @@ pub struct LedgerData {
 impl Default for LedgerData {
     fn default() -> Self {
         LedgerData {
-            balance: Amount::from(0),
+            balance: Amount::default(),
         }
     }
 }
@@ -52,38 +52,32 @@ impl DeserializeCompact for LedgerData {
 }
 
 impl LedgerData {
-    pub fn new(starting_balance: u64) -> LedgerData {
+    pub fn new(starting_balance: Amount) -> LedgerData {
         LedgerData {
-            balance: Amount::from(starting_balance),
+            balance: starting_balance,
         }
     }
 
     fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if change.balance_increment {
-            self.balance = self
-                .balance
-                .checked_add(change.balance_delta)
-                .or_else(|_| {
-                    Err(ConsensusError::InvalidLedgerChange(
-                        "balance overflow in LedgerData::apply_change".into(),
-                    ))
-                })?;
+            self.balance = self.balance.checked_add(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange(
+                    "balance overflow in LedgerData::apply_change".into(),
+                ),
+            )?;
         } else {
-            self.balance = self
-                .balance
-                .checked_sub(change.balance_delta)
-                .or_else(|_| {
-                    Err(ConsensusError::InvalidLedgerChange(
-                        "balance underflow in LedgerData::apply_change".into(),
-                    ))
-                })?;
+            self.balance = self.balance.checked_sub(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange(
+                    "balance underflow in LedgerData::apply_change".into(),
+                ),
+            )?;
         }
         Ok(())
     }
 
     /// returns true if the balance is zero
     fn is_nil(&self) -> bool {
-        self.balance == Amount::from(0)
+        self.balance == Amount::default()
     }
 }
 
@@ -96,7 +90,7 @@ pub struct LedgerChange {
 impl Default for LedgerChange {
     fn default() -> Self {
         LedgerChange {
-            balance_delta: Amount::from(0),
+            balance_delta: Amount::default(),
             balance_increment: true,
         }
     }
@@ -106,42 +100,27 @@ impl LedgerChange {
     /// Applies another ledger change on top of self
     pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
-            self.balance_delta = self
-                .balance_delta
-                .checked_add(change.balance_delta)
-                .or_else(|_| {
-                    Err(ConsensusError::InvalidLedgerChange(
-                        "overflow in LedgerChange::chain".into(),
-                    ))
-                })?;
+            self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into()),
+            )?;
         } else if change.balance_delta > self.balance_delta {
-            self.balance_delta = change
-                .balance_delta
-                .checked_sub(self.balance_delta)
-                .or_else(|_| {
-                    Err(ConsensusError::InvalidLedgerChange(
-                        "underflow in LedgerChange::chain".into(),
-                    ))
-                })?;
+            self.balance_delta = change.balance_delta.checked_sub(self.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
+            )?;
             self.balance_increment = !self.balance_increment;
         } else {
-            self.balance_delta = self
-                .balance_delta
-                .checked_sub(change.balance_delta)
-                .or_else(|_| {
-                    Err(ConsensusError::InvalidLedgerChange(
-                        "underflow in LedgerChange::chain".into(),
-                    ))
-                })?;
+            self.balance_delta = self.balance_delta.checked_sub(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
+            )?;
         }
-        if self.balance_delta == Amount::from(0) {
+        if self.balance_delta == Amount::default() {
             self.balance_increment = true;
         }
         Ok(())
     }
 
     pub fn is_nil(&self) -> bool {
-        self.balance_delta == Amount::from(0)
+        self.balance_delta == Amount::default()
     }
 }
 
@@ -253,7 +232,7 @@ pub trait OperationLedgerInterface {
         &self,
         fee_target: &Address,
         thread_count: u8,
-        roll_price: u64,
+        roll_price: Amount,
     ) -> Result<LedgerChanges, ConsensusError>;
 }
 
@@ -262,7 +241,7 @@ impl OperationLedgerInterface for Operation {
         &self,
         fee_target: &Address,
         _thread_count: u8,
-        roll_price: u64,
+        roll_price: Amount,
     ) -> Result<LedgerChanges, ConsensusError> {
         let mut res = LedgerChanges::default();
 
@@ -310,11 +289,9 @@ impl OperationLedgerInterface for Operation {
                 res.apply(
                     &sender_address,
                     &LedgerChange {
-                        balance_delta: Amount::from(
-                            roll_count
-                                .checked_mul(roll_price)
-                                .ok_or(ConsensusError::RollOverflowError)?,
-                        ),
+                        balance_delta: roll_price
+                            .checked_mul_u64(*roll_count)
+                            .ok_or(ConsensusError::RollOverflowError)?,
                         balance_increment: false,
                     },
                 )?;
@@ -466,7 +443,7 @@ impl Ledger {
         if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
             Ok(LedgerData::from_bytes_compact(&res)?.0.balance)
         } else {
-            Ok(Amount::from(0))
+            Ok(Amount::default())
         }
     }
 
@@ -653,7 +630,7 @@ impl LedgerSubset {
     /// Get the data for given address
     pub fn get_data(&self, address: &Address) -> LedgerData {
         self.0.get(address).cloned().unwrap_or(LedgerData {
-            balance: Amount::from(0),
+            balance: Amount::default(),
         })
     }
 
@@ -757,12 +734,13 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
 impl SerializeCompact for LedgerExport {
     /// ## Example
     /// ```rust
-    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address};
+    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
+    /// # use std::str::FromStr;
     /// # use consensus::{LedgerExport, LedgerData};
     /// # let mut ledger = LedgerExport::default();
     /// # ledger.ledger_subset = vec![
-    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(1022)),
-    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(1020)),
+    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
+    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(Amount::from_str("1020").unwrap())),
     /// # ];
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
@@ -833,6 +811,7 @@ impl DeserializeCompact for LedgerExport {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use std::str::FromStr;
 
     #[test]
     #[serial]
@@ -841,16 +820,19 @@ mod tests {
             for &v2 in &[-100i32, -10, 0, 10, 100] {
                 let mut res = LedgerChange {
                     balance_increment: (v1 >= 0),
-                    balance_delta: Amount::from(v1.abs() as u64),
+                    balance_delta: Amount::from_str(&v1.abs().to_string()).unwrap(),
                 };
                 res.chain(&LedgerChange {
                     balance_increment: (v2 >= 0),
-                    balance_delta: Amount::from(v2.abs() as u64),
+                    balance_delta: Amount::from_str(&v2.abs().to_string()).unwrap(),
                 })
                 .unwrap();
                 let expect: i32 = v1 + v2;
                 assert_eq!(res.balance_increment, (expect >= 0));
-                assert_eq!(res.balance_delta, expect.abs() as u64);
+                assert_eq!(
+                    res.balance_delta,
+                    Amount::from_str(&expect.abs().to_string()).unwrap()
+                );
             }
         }
     }

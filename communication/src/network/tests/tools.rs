@@ -15,6 +15,7 @@ use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use models::{
     Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact,
 };
+use std::str::FromStr;
 use std::{
     future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -23,9 +24,8 @@ use std::{
 };
 use tempfile::NamedTempFile;
 use time::UTime;
-use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
-
 use tokio::time::sleep;
+use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -358,10 +358,10 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: Amount::from(0),
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: Amount::from(fee),
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,

@@ -1,13 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::{HashMap, HashSet};
-
 use communication::protocol::ProtocolCommand;
-use models::{Address, Slot};
+use models::{Address, Amount, Slot};
 use num::rational::Ratio;
 use pool::PoolCommand;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use time::UTime;
 
 use crate::{
@@ -58,7 +58,10 @@ async fn test_roll() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData::new(10_000));
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("10000").unwrap()),
+    );
     let ledger_file = generate_ledger_file(&ledger);
 
     let staking_file = tools::generate_staking_keys_file(&vec![priv_2]);
@@ -75,8 +78,8 @@ async fn test_roll() {
     cfg.delta_f0 = 3;
     cfg.disable_block_creation = true;
     cfg.thread_count = thread_count;
-    cfg.block_reward = 0;
-    cfg.roll_price = 1000;
+    cfg.block_reward = Amount::default();
+    cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
 
@@ -148,7 +151,10 @@ async fn test_roll() {
             assert_eq!(addr_state.active_rolls, Some(0));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 1);
-            assert_eq!(addr_state.candidate_ledger_data.balance, 9000);
+            assert_eq!(
+                addr_state.candidate_ledger_data.balance,
+                Amount::from_str("9000").unwrap()
+            );
 
             let (id_1t1, block1t1, _) =
                 create_block_with_operations(&cfg, Slot::new(1, 1), &parents, priv_1, vec![]);
@@ -181,7 +187,7 @@ async fn test_roll() {
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
             let balance = addr_state.candidate_ledger_data.balance;
-            assert_eq!(balance, 9000);
+            assert_eq!(balance, Amount::from_str("9000").unwrap());
 
             let (id_2t, block2t2, _) =
                 create_block_with_operations(&cfg, Slot::new(2, 1), &parents, priv_1, vec![]);
@@ -337,7 +343,7 @@ async fn test_roll() {
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 2);
             let balance = addr_state.candidate_ledger_data.balance;
-            assert_eq!(balance, 7000);
+            assert_eq!(balance, Amount::from_str("7000").unwrap());
 
             let (id_8t1, block8t1, _) =
                 create_block_with_operations(&cfg, Slot::new(8, 1), &parents, priv_1, vec![]);
@@ -367,7 +373,7 @@ async fn test_roll() {
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
             let balance = addr_state.candidate_ledger_data.balance;
-            assert_eq!(balance, 9000);
+            assert_eq!(balance, Amount::from_str("9000").unwrap());
 
             let (id_9t1, block9t1, _) =
                 create_block_with_operations(&cfg, Slot::new(9, 1), &parents, priv_1, vec![]);
@@ -402,7 +408,7 @@ async fn test_roll() {
                 .unwrap()
                 .candidate_ledger_data
                 .balance;
-            assert_eq!(balance, 10000);
+            assert_eq!(balance, Amount::from_str("10000").unwrap());
 
             let (id_10t1, block10t1, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 1), &parents, priv_1, vec![]);
@@ -472,7 +478,10 @@ async fn test_roll_block_creation() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData::new(10_000));
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("10000").unwrap()),
+    );
     let ledger_file = generate_ledger_file(&ledger);
 
     let staking_file = tools::generate_staking_keys_file(&vec![priv_1]);
@@ -493,8 +502,8 @@ async fn test_roll_block_creation() {
     cfg.operation_batch_size = 500;
     cfg.max_operations_per_block = 5000;
     cfg.max_block_size = 500;
-    cfg.block_reward = 0;
-    cfg.roll_price = 1000;
+    cfg.block_reward = Amount::default();
+    cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
 
     // mock protocol & pool
@@ -602,7 +611,7 @@ async fn test_roll_block_creation() {
         .unwrap()
         .candidate_ledger_data
         .balance;
-    assert_eq!(balance, 9000);
+    assert_eq!(balance, Amount::from_str("9000").unwrap());
 
     wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 1).await;
     // slot 1,1
@@ -687,7 +696,7 @@ async fn test_roll_block_creation() {
     assert_eq!(addr_state.final_rolls, 0);
     assert_eq!(addr_state.candidate_rolls, 0);
     let balance = addr_state.candidate_ledger_data.balance;
-    assert_eq!(balance, 9000);
+    assert_eq!(balance, Amount::from_str("9000").unwrap());
 }
 
 #[tokio::test]
@@ -787,7 +796,7 @@ async fn test_roll_deactivation() {
     cfg.disable_block_creation = true;
     cfg.thread_count = thread_count;
     cfg.operation_batch_size = 500;
-    cfg.roll_price = 10;
+    cfg.roll_price = Amount::from_str("10").unwrap();
     cfg.pos_miss_rate_deactivation_threshold = Ratio::new(50, 100);
 
     // mock protocol & pool

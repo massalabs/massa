@@ -1147,18 +1147,16 @@ impl BlockGraph {
                 }
                 if let Some(ref mut ledger_changes) = opt_ledger_changes {
                     for (addr, compensation) in compensations {
-                        let balance_delta = compensation
-                            .0
-                            .checked_mul(self.cfg.roll_price)
-                            .ok_or_else(|| {
+                        let balance_delta =
+                            self.cfg.roll_price.checked_mul_u64(compensation.0).ok_or(
                                 ConsensusError::InvalidLedgerChange(
                                     "overflow getting compensated roll credit amount".into(),
-                                )
-                            })?;
+                                ),
+                            )?;
                         ledger_changes.apply(
                             &addr,
                             &LedgerChange {
-                                balance_delta: Amount::from(balance_delta),
+                                balance_delta,
                                 balance_increment: true,
                             },
                         )?;
@@ -1324,7 +1322,7 @@ impl BlockGraph {
                 roll_unlock_ledger_changes.apply(
                     &addr,
                     &LedgerChange {
-                        balance_delta: Amount::from(amount),
+                        balance_delta: amount,
                         balance_increment: true,
                     },
                 )?;
@@ -3799,14 +3797,14 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::ledger::LedgerData;
+    use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::path::Path;
-
-    use super::*;
-    use crate::tests::tools::get_dummy_block_id;
+    use std::str::FromStr;
     use tempfile::NamedTempFile;
     use time::UTime;
 
@@ -3853,21 +3851,21 @@ mod tests {
                 (
                     Address::from_bytes(&Hash::hash("addr01".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: Amount::from(1),
+                        balance_delta: Amount::from_str("1").unwrap(),
                         balance_increment: true, // whether to increment or decrement balance of delta
                     },
                 ),
                 (
                     Address::from_bytes(&Hash::hash("addr02".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: Amount::from(2),
+                        balance_delta: Amount::from_str("2").unwrap(),
                         balance_increment: false, // whether to increment or decrement balance of delta
                     },
                 ),
                 (
                     Address::from_bytes(&Hash::hash("addr11".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: Amount::from(3),
+                        balance_delta: Amount::from_str("3").unwrap(),
                         balance_increment: false, // whether to increment or decrement balance of delta
                     },
                 ),
@@ -3890,7 +3888,7 @@ mod tests {
         let ledger_file = generate_ledger_file(&HashMap::new());
         let mut cfg = example_consensus_config(ledger_file.path());
 
-        cfg.block_reward = 1;
+        cfg.block_reward = Amount::from_str("1").unwrap();
         //to generate address and public keys
         /*        let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
@@ -3968,7 +3966,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(1),
+                    balance_delta: Amount::from_str("1").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -3978,7 +3976,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(2),
+                    balance_delta: Amount::from_str("2").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -3999,7 +3997,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(160),
+                    balance_delta: Amount::from_str("160").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -4009,7 +4007,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(159),
+                    balance_delta: Amount::from_str("159").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -4030,7 +4028,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(1),
+                    balance_delta: Amount::from_str("1").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -4053,7 +4051,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(10),
+                    balance_delta: Amount::from_str("10").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -4063,7 +4061,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(9),
+                    balance_delta: Amount::from_str("9").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -4086,7 +4084,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(2047),
+                    balance_delta: Amount::from_str("2047").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -4096,7 +4094,7 @@ mod tests {
             .apply(
                 &address_c,
                 &LedgerChange {
-                    balance_delta: Amount::from(2048),
+                    balance_delta: Amount::from_str("2048").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -4119,7 +4117,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(100),
+                    balance_delta: Amount::from_str("100").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -4129,7 +4127,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(99),
+                    balance_delta: Amount::from_str("99").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -4168,13 +4166,13 @@ mod tests {
                     (
                         address_a,
                         LedgerData {
-                            balance: Amount::from(1_000_000_000),
+                            balance: Amount::from_str("1000000000").unwrap(),
                         },
                     ),
                     (
                         address_b,
                         LedgerData {
-                            balance: Amount::from(2_000_000_000),
+                            balance: Amount::from_str("2000000000").unwrap(),
                         },
                     ),
                 ],
@@ -4201,10 +4199,16 @@ mod tests {
         // B: 1999999901 = 2000_000_000 - 99
         // C: 2048
         // D: 0
-        assert_eq!(res.0[&address_a].balance, 999998224);
-        assert_eq!(res.0[&address_b].balance, 1999999901);
-        assert_eq!(res.0[&address_c].balance, 2048);
-        assert_eq!(res.0[&address_d].balance, 0);
+        assert_eq!(
+            res.0[&address_a].balance,
+            Amount::from_str("999998224").unwrap()
+        );
+        assert_eq!(
+            res.0[&address_b].balance,
+            Amount::from_str("1999999901").unwrap()
+        );
+        assert_eq!(res.0[&address_c].balance, Amount::from_str("2048").unwrap());
+        assert_eq!(res.0[&address_d].balance, Amount::from_str("0").unwrap());
 
         //ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
         let res = block_graph
@@ -4222,7 +4226,10 @@ mod tests {
         // B: 1999999903
         // C: 2048
         // D: 0
-        assert_eq!(res.0[&address_a].balance, 1000000160);
+        assert_eq!(
+            res.0[&address_a].balance,
+            Amount::from_str("1000000160").unwrap()
+        );
 
         //ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
         let res = block_graph.get_ledger_at_parents(
@@ -4457,7 +4464,7 @@ mod tests {
             ledger_cache_capacity: 1000000,
             ledger_flush_interval: Some(200.into()),
             ledger_reset_at_startup: true,
-            block_reward: 1,
+            block_reward: Amount::from_str("1").unwrap(),
             initial_ledger_path: initial_ledger_path.to_path_buf(),
             operation_batch_size: 100,
             initial_rolls_path: tempdir3.path().to_path_buf(),
@@ -4467,7 +4474,7 @@ mod tests {
             pos_lock_cycles: 1,
             pos_draw_cached_cycles: 2,
             pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
-            roll_price: 10,
+            roll_price: Amount::from_str("10").unwrap(),
             stats_timespan: 60000.into(),
             staking_keys_path: staking_file.path().to_path_buf(),
             end_timestamp: None,

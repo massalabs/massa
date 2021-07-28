@@ -334,14 +334,14 @@ mod tests {
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-            amount: Amount::from(0),
+            amount: Amount::default(),
         };
         let ser_type = op.to_bytes_compact().unwrap();
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
         assert_eq!(format!("{:?}", res_type), format!("{:?}", op));
 
         let content = OperationContent {
-            fee: Amount::from(20),
+            fee: Amount::from_str("20").unwrap(),
             sender_public_key: sender_pub,
             op,
             expire_period: 50,

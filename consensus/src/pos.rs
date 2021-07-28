@@ -4,7 +4,7 @@ use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
 use models::{
-    array_from_slice, with_serialization_context, Address, BlockId, DeserializeCompact,
+    array_from_slice, with_serialization_context, Address, Amount, BlockId, DeserializeCompact,
     DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact, SerializeVarInt,
     Slot, ADDRESS_SIZE_BYTES,
 };
@@ -70,27 +70,21 @@ impl RollUpdate {
         self.roll_purchases = self
             .roll_purchases
             .checked_add(change.roll_purchases - compensation_other)
-            .ok_or_else(|| {
-                ConsensusError::InvalidRollUpdate(
-                    "roll_purchases overflow in RollUpdate::chain".into(),
-                )
-            })?;
+            .ok_or(ConsensusError::InvalidRollUpdate(
+                "roll_purchases overflow in RollUpdate::chain".into(),
+            ))?;
         self.roll_sales = self
             .roll_sales
             .checked_add(change.roll_sales - compensation_other)
-            .ok_or_else(|| {
-                ConsensusError::InvalidRollUpdate("roll_sales overflow in RollUpdate::chain".into())
-            })?;
+            .ok_or(ConsensusError::InvalidRollUpdate(
+                "roll_sales overflow in RollUpdate::chain".into(),
+            ))?;
 
         let compensation_self = self.compensate().0;
 
-        let compensation_total = compensation_other
-            .checked_add(compensation_self)
-            .ok_or_else(|| {
-                ConsensusError::InvalidRollUpdate(
-                    "compensation overflow in RollUpdate::chain".into(),
-                )
-            })?;
+        let compensation_total = compensation_other.checked_add(compensation_self).ok_or(
+            ConsensusError::InvalidRollUpdate("compensation overflow in RollUpdate::chain".into()),
+        )?;
         Ok(RollCompensation(compensation_total))
     }
 
@@ -192,19 +186,15 @@ impl RollCounts {
                     if update.roll_purchases >= update.roll_sales {
                         *occ.get_mut() = cur_val
                             .checked_add(update.roll_purchases - update.roll_sales)
-                            .ok_or_else(|| {
-                                ConsensusError::InvalidRollUpdate(
-                                    "overflow while incrementing roll count".into(),
-                                )
-                            })?;
+                            .ok_or(ConsensusError::InvalidRollUpdate(
+                                "overflow while incrementing roll count".into(),
+                            ))?;
                     } else {
                         *occ.get_mut() = cur_val
                             .checked_sub(update.roll_sales - update.roll_purchases)
-                            .ok_or_else(|| {
-                                ConsensusError::InvalidRollUpdate(
-                                    "underflow while decrementing roll count".into(),
-                                )
-                            })?;
+                            .ok_or(ConsensusError::InvalidRollUpdate(
+                                "underflow while decrementing roll count".into(),
+                            ))?;
                     }
                     if *occ.get() == 0 {
                         // remove if 0
@@ -963,7 +953,7 @@ impl ProofOfStake {
         &self,
         cycle: u64,
         thread: u8,
-    ) -> Result<HashMap<Address, u64>, ConsensusError> {
+    ) -> Result<HashMap<Address, Amount>, ConsensusError> {
         let mut res = HashMap::new();
         if let Some(target_cycle) =
             cycle.checked_sub(self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1)
@@ -979,8 +969,9 @@ impl ProofOfStake {
                 if sale_delta > 0 {
                     res.insert(
                         *addr,
-                        sale_delta
-                            .checked_mul(self.cfg.roll_price)
+                        self.cfg
+                            .roll_price
+                            .checked_mul_u64(sale_delta)
                             .ok_or(ConsensusError::RollOverflowError)?,
                     );
                 }
