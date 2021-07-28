@@ -1,13 +1,13 @@
-use std::convert::TryFrom;
+use std::{convert::TryFrom, iter::FromIterator};
 
 use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Version {
-    network: [char; 4], // ascii and alpha (maj only)
-    major: u32,
-    minor: u32,
+    pub network: [char; 4], // ascii and alpha (maj only)
+    pub major: u32,
+    pub minor: u32,
 }
 
 impl Default for Version {
@@ -59,10 +59,23 @@ impl TryFrom<String> for Version {
 
 impl Version {
     pub fn is_compatible(&self, other: &Version) -> bool {
-        todo!()
+        self.network == other.network && self.major == other.major
     }
 
+    /// ```
+    /// # use models::*;
+    /// let v: Version = Version {
+    ///    network: ['T', 'E', 'S', 'T'],
+    ///    major: 1,
+    ///    minor: 2,
+    /// };
+    /// assert_eq!(v.to_string(), "TEST.1.2");
     pub fn to_string(&self) -> String {
-        todo!()
+        let mut res = String::from_iter(self.network);
+        res.push('.');
+        res.push_str(&self.major.to_string());
+        res.push('.');
+        res.push_str(&self.minor.to_string());
+        res
     }
 }
