@@ -49,6 +49,7 @@ async fn run(cfg: config::Config) {
     let (boot_pos, boot_graph, clock_compensation, initial_peers) = get_state(
         cfg.bootstrap.clone(),
         bootstrap::establisher::Establisher::new(),
+        cfg.version,
     )
     .await
     .unwrap();
@@ -60,6 +61,7 @@ async fn run(cfg: config::Config) {
             Establisher::new(),
             clock_compensation,
             initial_peers,
+            cfg.version,
         )
         .await
         .expect("could not start network controller");
@@ -129,6 +131,7 @@ async fn run(cfg: config::Config) {
         bootstrap::Establisher::new(),
         private_key,
         clock_compensation,
+        cfg.version,
     )
     .await
     .unwrap();

@@ -55,6 +55,7 @@ pub enum HandshakeErrorType {
     HandshakeWrongMessageError,
     HandshakeKeyError,
     HandshakeInvalidSignatureError,
+    IncompatibleVersionError,
 }
 
 #[derive(Debug)]
