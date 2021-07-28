@@ -735,6 +735,7 @@ impl SerializeCompact for LedgerExport {
     /// ## Example
     /// ```rust
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
+    /// # use std::str::FromStr;
     /// # use consensus::{LedgerExport, LedgerData};
     /// # let mut ledger = LedgerExport::default();
     /// # ledger.ledger_subset = vec![
