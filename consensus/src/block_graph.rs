@@ -1343,7 +1343,6 @@ impl BlockGraph {
         // apply roll deactivation
         // (step 5.2 in pos.md)
         if accu.same_thread_parent_cycle != block_cycle {
-            let mut ledger_changes = LedgerChanges::default();
             let mut roll_updates = RollUpdates::default();
 
             // get addresses for which to deactivate rolls
@@ -1352,38 +1351,20 @@ impl BlockGraph {
             // load missing address info (because we need to read roll counts)
             self.block_state_sync_rolls(&mut accu, header, pos, &deactivate_addrs)?;
 
-            // accumulate changes
+            // accumulate roll updates
             for addr in deactivate_addrs {
-                let roll_count = accu
-                    .roll_counts
-                    .0
-                    .get(&addr)
-                    .cloned()
-                    .unwrap_or(Amount::from(0));
-                ledger_changes.apply(
-                    &addr,
-                    &LedgerChange {
-                        balance_delta: Amount::from(self.cfg.roll_price).checked_mul(roll_count)?,
-                        balance_increment: true,
-                    },
-                )?;
+                let roll_count = accu.roll_counts.0.get(&addr).unwrap_or(&0);
                 roll_updates.apply(
                     &addr,
                     &RollUpdate {
-                        roll_purchases: Amount::from(0),
-                        roll_sales: roll_count,
+                        roll_purchases: Amount::default(),
+                        roll_sales: *roll_count,
                     },
                 )?;
             }
 
             // apply changes to block state
-            self.block_state_try_apply(
-                &mut accu,
-                &header,
-                Some(ledger_changes),
-                Some(roll_updates),
-                pos,
-            )?;
+            self.block_state_try_apply(&mut accu, &header, None, Some(roll_updates), pos)?;
         }
 
         Ok(accu)
