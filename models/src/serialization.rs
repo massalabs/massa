@@ -241,15 +241,14 @@ impl DeserializeCompact for UTime {
 
 impl SerializeCompact for Amount {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let amount: u64 = self.into();
-        Ok(amount.to_varint_bytes())
+        Ok(self.to_raw().to_varint_bytes())
     }
 }
 
 impl DeserializeCompact for Amount {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
-        Ok((res_u64.into(), delta))
+        Ok((Amount::from_raw(res_u64), delta))
     }
 }
 
