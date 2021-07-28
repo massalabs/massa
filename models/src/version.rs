@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::{DeserializeCompact, ModelsError, SerializeCompact};
+use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -31,7 +31,15 @@ impl<'de> ::serde::Deserialize<'de> for Version {
 
 impl SerializeCompact for Version {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        todo!()
+        let mut res: Vec<u8> = Vec::new();
+        res.extend(self.network.iter().map(|&c| {
+            let mut dst = [0; 1]; //should be enough
+            c.encode_utf8(&mut dst);
+            dst[0]
+        }));
+        res.extend(self.major.to_varint_bytes());
+        res.extend(self.minor.to_varint_bytes());
+        Ok(res)
     }
 }
 
