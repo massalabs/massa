@@ -5,7 +5,7 @@ use consensus::{BootsrapableGraph, ExportProofOfStake};
 use crypto::signature::{Signature, SIGNATURE_SIZE_BYTES};
 use models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
-    SerializeVarInt,
+    SerializeVarInt, Version,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -21,6 +21,7 @@ pub enum BootstrapMessage {
     BootstrapInitiation {
         /// Random data we expect the bootstrap node to sign with its private_key.
         random_bytes: [u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES],
+        version: Version,
     },
     /// Sync clocks,
     BootstrapTime {
@@ -60,9 +61,13 @@ impl SerializeCompact for BootstrapMessage {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         match self {
-            BootstrapMessage::BootstrapInitiation { random_bytes } => {
+            BootstrapMessage::BootstrapInitiation {
+                random_bytes,
+                version,
+            } => {
                 res.extend(u32::from(MessageTypeId::BootstrapInitiation).to_varint_bytes());
                 res.extend(random_bytes);
+                res.extend(&version.to_bytes_compact()?)
             }
             BootstrapMessage::BootstrapTime {
                 server_time,
@@ -109,8 +114,14 @@ impl DeserializeCompact for BootstrapMessage {
                 let random_bytes: [u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES] =
                     array_from_slice(&buffer[cursor..])?;
                 cursor += BOOTSTRAP_RANDOMNES_SIZE_BYTES;
+
+                //version
+                let (version, _) = Version::from_bytes_compact(&buffer[cursor..])?;
                 // return message
-                BootstrapMessage::BootstrapInitiation { random_bytes }
+                BootstrapMessage::BootstrapInitiation {
+                    random_bytes,
+                    version,
+                }
             }
             MessageTypeId::BootstrapTime => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;

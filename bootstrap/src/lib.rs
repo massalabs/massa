@@ -33,6 +33,7 @@ async fn get_state_internal(
     bootstrap_addr: &SocketAddr,
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
+    version: Version,
 ) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     info!("Start bootstrapping from {}", bootstrap_addr);
@@ -48,7 +49,10 @@ async fn get_state_internal(
     let send_time_uncompensated = UTime::now(0)?;
     match tokio::time::timeout(
         cfg.write_timeout.into(),
-        writer.send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes }), // add version
+        writer.send(&messages::BootstrapMessage::BootstrapInitiation {
+            random_bytes,
+            version,
+        }),
     )
     .await
     {
@@ -203,7 +207,7 @@ pub async fn get_state(
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
-            match get_state_internal(&cfg, addr, pub_key, &mut establisher).await {
+            match get_state_internal(&cfg, addr, pub_key, &mut establisher, version).await {
                 Err(e) => {
                     warn!("error while bootstrapping: {:?}", e);
                     sleep(cfg.retry_delay.into()).await;
@@ -321,24 +325,31 @@ impl BootstrapServer {
         let mut writer = WriteBinder::new(writer);
 
         // Initiation
-        let random_bytes = match tokio::time::timeout(self.read_timeout.into(), reader.next()).await
-        {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap init read timed out",
-                )
-                .into())
-            }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
-            Ok(Ok(Some((_, BootstrapMessage::BootstrapInitiation { random_bytes })))) => {
-                random_bytes // todo add version
-            }
-            Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
-        };
+        let (random_bytes, other_version) =
+            match tokio::time::timeout(self.read_timeout.into(), reader.next()).await {
+                Err(_) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "bootstrap init read timed out",
+                    )
+                    .into())
+                }
+                Ok(Err(e)) => return Err(e),
+                Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
+                Ok(Ok(Some((
+                    _,
+                    BootstrapMessage::BootstrapInitiation {
+                        random_bytes,
+                        version,
+                    },
+                )))) => (random_bytes, version),
+                Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
+            };
 
-        // todo check version
+        // check version
+        if !self.version.is_compatible(&other_version) {
+            return Err(BootstrapError::IncompatibleVersionError);
+        }
 
         // First, sync clocks.
         let server_time = UTime::now(self.compensation_millis)?;
