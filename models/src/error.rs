@@ -6,9 +6,9 @@ use thiserror::Error;
 pub enum ModelsError {
     #[error("hashing error")]
     HashError,
-    #[error("Serialization error:{0}")]
+    #[error("Serialization error: {0}")]
     SerializeError(String),
-    #[error("Deserialization error:{0}")]
+    #[error("Deserialization error: {0}")]
     DeserializeError(String),
     #[error("buffer error: {0}")]
     BufferError(String),
@@ -22,6 +22,6 @@ pub enum ModelsError {
     AmountParseError(String),
     #[error("checked operation error")]
     CheckedOperationError(String),
-    #[error("invalid version network")]
-    InavalidVersionNetworkError,
+    #[error("invalid version number: {0}")]
+    InavalidVersionError(String),
 }

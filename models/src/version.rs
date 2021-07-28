@@ -1,81 +1,48 @@
-use std::{
-    convert::{TryFrom, TryInto},
-    iter::FromIterator,
-};
-
-use crate::serialization::DeserializeVarInt;
+use crate::{array_from_slice, serialization::DeserializeVarInt};
 use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
-use std::str::FromStr;
+use serde::de::Unexpected;
+use std::{convert::TryInto, fmt, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
-    pub network: [char; 4], // ascii and alpha (maj only)
-    pub major: u32,
-    pub minor: u32,
+    instance: [char; 4], // ascii uppercase alpha
+    major: u32,
+    minor: u32,
 }
 
-impl Default for Version {
-    fn default() -> Self {
-        Version {
-            network: ['O', 'O', 'O', 'O'],
-            major: 0,
-            minor: 0,
-        }
+struct VersionVisitor;
+
+impl<'de> serde::de::Visitor<'de> for VersionVisitor {
+    type Value = Version;
+
+    fn visit_str<E>(self, value: &str) -> Result<Version, E>
+    where
+        E: serde::de::Error,
+    {
+        Version::from_str(value).map_err(|_| E::invalid_value(Unexpected::Str(value), &self))
+    }
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            formatter,
+            "an Version type representing a version identifier"
+        )
     }
 }
-impl ::serde::Serialize for Version {
+
+impl serde::Serialize for Version {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        let bytes = self
-            .to_bytes_compact()
-            .map_err(|e| serde::ser::Error::custom(format!("models errro {:?}", e)))?;
-        serializer.serialize_bytes(&bytes)
+        serializer.serialize_str(&self.to_string())
     }
-}
-
-impl<'de> ::serde::Deserialize<'de> for Version {
-    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct BytesVisitor;
-
-        impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
-            type Value = Version;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a bytestring")
-            }
-
-            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-            where
-                E: ::serde::de::Error,
-            {
-                Version::from_bytes_compact(v.try_into().map_err(E::custom)?)
-                    .map_err(E::custom)
-                    .map(|(data, _)| data)
-            }
-        }
-
-        d.deserialize_bytes(BytesVisitor)
-    }
-}
-
-fn is_valid_network(network: [char; 4]) -> bool {
-    //todo!()
-    true
 }
 
 impl SerializeCompact for Version {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
-        res.extend(self.network.iter().map(|&c| {
-            let mut dst = [0; 1]; //should be enough
-            c.encode_utf8(&mut dst);
-            dst[0]
-        }));
+        res.extend(self.instance.iter().map(|&c| c as u8));
         res.extend(self.major.to_varint_bytes());
         res.extend(self.minor.to_varint_bytes());
         Ok(res)
@@ -85,48 +52,45 @@ impl SerializeCompact for Version {
 impl DeserializeCompact for Version {
     /// ```
     /// # use models::*;
-    /// # use std::convert::TryFrom;
-    /// let v: Version = Version {
-    ///    network: ['T', 'E', 'S', 'T'],
-    ///    major: 1,
-    ///    minor: 2,
-    /// };
+    /// # use std::str::FromStr;
+    /// let v: Version = Version::from_str("TEST.1.2").unwrap();
     /// let ser = v.to_bytes_compact().unwrap();
     /// let (deser, _) = Version::from_bytes_compact(&ser).unwrap();
     /// assert_eq!(deser, v)
     /// ```
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0;
-        let network = buffer[0..4]
-            .iter()
-            .map(|c| char::from(*c))
-            .collect::<Vec<_>>()
-            .get(..4)
-            .ok_or_else(|| {
-                ModelsError::DeserializeError(format!("error deserialising version network ",))
-            })?
-            .try_into()
-            .map_err(|e| {
-                ModelsError::DeserializeError(format!(
-                    "error deserialising version network {:?} ",
-                    e
-                ))
-            })?;
+
+        // instance
+        let instance: [u8; 4] = array_from_slice(&buffer[cursor..])?;
         cursor += 4;
-
-        if !is_valid_network(network) {
-            return Err(ModelsError::InavalidVersionNetworkError);
+        if instance
+            .iter()
+            .any(|c| !c.is_ascii() || !c.is_ascii_alphabetic() || !c.is_ascii_uppercase())
+        {
+            return Err(ModelsError::InavalidVersionError(
+                "invalid instance value in version identifier during compact deserialization"
+                    .into(),
+            ));
         }
+        let instance: [char; 4] = instance
+            .iter()
+            .map(|&c| c.into())
+            .collect::<Vec<char>>()
+            .try_into()
+            .unwrap(); // will not panic as it was tested above
 
+        // major
         let (major, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
+        // minor
         let (minor, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
         Ok((
             Version {
-                network,
+                instance,
                 major,
                 minor,
             },
@@ -135,77 +99,56 @@ impl DeserializeCompact for Version {
     }
 }
 
-impl TryFrom<String> for Version {
-    type Error = ModelsError;
-
-    /// ```
-    /// # use models::*;
-    /// # use std::convert::TryFrom;
-    /// let v: Version = Version {
-    ///    network: ['T', 'E', 'S', 'T'],
-    ///    major: 1,
-    ///    minor: 2,
-    /// };
-    /// assert_eq!(Version::try_from("TEST.1.2".to_string()).unwrap(), v)
-    /// ```
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let val = value.split('.').collect::<Vec<_>>();
-        if val.len() != 3 {
-            return Err(ModelsError::DeserializeError(
-                "Wrong version format".to_string(),
-            ));
-        }
-        let network = val[0]
-            .chars()
-            .collect::<Vec<_>>()
-            .get(..4)
-            .ok_or_else(|| {
-                ModelsError::DeserializeError(format!("error deserialising version network ",))
-            })?
-            .try_into()
-            .map_err(|e| {
-                ModelsError::DeserializeError(format!(
-                    "error deserialising version network {:?} ",
-                    e
-                ))
-            })?;
-        if !is_valid_network(network) {
-            return Err(ModelsError::InavalidVersionNetworkError);
-        }
-        let major = u32::from_str(val[1]).map_err(|e| {
-            ModelsError::DeserializeError(format!("error deserialising version major {:?}", e))
-        })?;
-        let minor = u32::from_str(val[2]).map_err(|e| {
-            ModelsError::DeserializeError(format!("error deserialising version minor {:?}", e))
-        })?;
-        Ok(Version {
-            network,
-            major,
-            minor,
-        })
+impl Version {
+    pub fn is_compatible(&self, other: &Version) -> bool {
+        self.instance == other.instance && self.major == other.major
     }
 }
 
-impl Version {
-    pub fn is_compatible(&self, other: &Version) -> bool {
-        self.network == other.network && self.major == other.major
-    }
-
+impl fmt::Display for Version {
     /// ```
     /// # use models::*;
-    /// let v: Version = Version {
-    ///    network: ['T', 'E', 'S', 'T'],
-    ///    major: 1,
-    ///    minor: 2,
-    /// };
+    /// # use std::str::FromStr;
+    /// let v: Version = Version::from_str("TEST.1.2").unwrap();
     /// assert_eq!(v.to_string(), "TEST.1.2");
     /// ```
-    pub fn to_string(&self) -> String {
-        let mut res = String::from_iter(self.network);
-        res.push('.');
-        res.push_str(&self.major.to_string());
-        res.push('.');
-        res.push_str(&self.minor.to_string());
-        res
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let network_str: String = self.instance.iter().cloned().collect();
+        write!(f, "{}.{}.{}", network_str, self.major, self.minor)
+    }
+}
+
+impl FromStr for Version {
+    type Err = ModelsError;
+
+    fn from_str(str_version: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<String> = str_version.split('.').map(|v| v.to_string()).collect();
+        if parts.len() != 3 {
+            return Err(ModelsError::InavalidVersionError(
+                "version identifier is not in 3 parts separates by a dot".into(),
+            ));
+        }
+        if parts[0].len() != 4
+            || !parts[0].is_ascii()
+            || parts[0]
+                .chars()
+                .any(|c| !c.is_ascii_alphabetic() || !c.is_ascii_uppercase())
+        {
+            return Err(ModelsError::InavalidVersionError(
+                "version identifier instance part is not 4-char uppercase alphabetic ASCII".into(),
+            ));
+        }
+        let instance: [char; 4] = parts[0].chars().collect::<Vec<char>>().try_into().unwrap(); // will not panic as the length and type were checked above
+        let major: u32 = u32::from_str(&parts[1]).map_err(|_| {
+            ModelsError::InavalidVersionError("version identifier major number invalid".into())
+        })?;
+        let minor: u32 = u32::from_str(&parts[2]).map_err(|_| {
+            ModelsError::InavalidVersionError("version identifier minor number invalid".into())
+        })?;
+        Ok(Version {
+            instance,
+            major,
+            minor,
+        })
     }
 }
