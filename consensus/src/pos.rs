@@ -876,7 +876,7 @@ impl ProofOfStake {
                 }
 
                 // update production_stats
-                // (step 2 in the spec) 
+                // (step 2 in the spec)
                 if period == block_slot.period {
                     // we are applying the block itself
                     let last_final_block_cycle = self.get_last_final_block_cycle(thread);
