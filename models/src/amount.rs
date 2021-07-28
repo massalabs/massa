@@ -2,6 +2,7 @@ use crate::ModelsError;
 use rust_decimal::prelude::*;
 use std::fmt;
 use std::str::FromStr;
+use serde::de::Unexpected;
 
 const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 
@@ -100,53 +101,38 @@ impl FromStr for Amount {
     }
 }
 
-impl ::serde::Serialize for Amount {
-    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        if s.is_human_readable() {
-            s.collect_str(&self.to_string())
-        } else {
-            unimplemented!(
-                "Amount binary serde serialization is unimplemented. Use to_bytes_compact"
-            );
-        }
+
+impl<'de> serde::Deserialize<'de> for Amount {
+    fn deserialize<D>(deserializer: D) -> Result<Amount, D::Error>
+    where
+        D: serde::de::Deserializer<'de>, {
+        deserializer.deserialize_str(AmountVisitor)
     }
 }
 
-impl<'de> ::serde::Deserialize<'de> for Amount {
-    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Amount, D::Error> {
-        if d.is_human_readable() {
-            struct Base58CheckVisitor;
+struct AmountVisitor;
 
-            impl<'de> ::serde::de::Visitor<'de> for Base58CheckVisitor {
-                type Value = Amount;
+impl<'de> serde::de::Visitor<'de> for AmountVisitor {
+    type Value = Amount;
 
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("amount string")
-                }
+    fn visit_str<E>(self, value: &str) -> Result<Amount, E>
+        where E: serde::de::Error
+    {
+        Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Str(value), &self))
+    }
 
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    if let Ok(v_str) = std::str::from_utf8(v) {
-                        Amount::from_str(v_str).map_err(E::custom)
-                    } else {
-                        Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
-                    }
-                }
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            formatter,
+            "an Amount type representing a fixed-point currency amount"
+        )
+    }
+}
 
-                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    Amount::from_str(v).map_err(E::custom)
-                }
-            }
-            d.deserialize_str(Base58CheckVisitor)
-        } else {
-            unimplemented!(
-                "Amount binary serde deserialization is unimplemented. Use from_bytes_compact"
-            );
-        }
+impl serde::Serialize for Amount {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer, {
+        serializer.serialize_str(&self.to_string())
     }
 }
