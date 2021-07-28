@@ -159,7 +159,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: Amount::from_str(&u64::MAX.to_string()).unwrap(),
+                balance_delta: Amount::from_raw(u64::MAX),
                 balance_increment: true,
             },
         )]

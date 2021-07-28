@@ -339,7 +339,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
+            assert_eq!(addr_state.active_rolls, Some(0));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 2);
             let balance = addr_state.candidate_ledger_data.balance;
@@ -369,7 +369,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
+            assert_eq!(addr_state.active_rolls, Some(0));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
             let balance = addr_state.candidate_ledger_data.balance;
@@ -396,7 +396,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
+            assert_eq!(addr_state.active_rolls, Some(0));
             assert_eq!(addr_state.final_rolls, 2);
             assert_eq!(addr_state.candidate_rolls, 0);
 
@@ -429,7 +429,7 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
+            assert_eq!(addr_state.active_rolls, Some(0));
             assert_eq!(addr_state.final_rolls, 0);
             assert_eq!(addr_state.candidate_rolls, 0);
             (

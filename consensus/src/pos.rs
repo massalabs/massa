@@ -262,8 +262,8 @@ impl OperationRollInterface for Operation {
                 res.apply(
                     &Address::from_public_key(&self.content.sender_public_key)?,
                     &RollUpdate {
-                        roll_purchases: roll_count,
-                        roll_sales: 0,
+                        roll_purchases: 0,
+                        roll_sales: roll_count,
                     },
                 )?;
             }
@@ -717,7 +717,6 @@ impl ProofOfStake {
                     if n_rolls == 0 {
                         continue;
                     }
-                    let n_rolls: u64 = n_rolls.into();
                     cum_sum_cursor += n_rolls;
                     cum_sum.push((cum_sum_cursor, *addr));
                 }
@@ -742,7 +741,6 @@ impl ProofOfStake {
                     if n_rolls == 0 {
                         continue;
                     }
-                    let n_rolls: u64 = n_rolls.into();
                     cum_sum_cursor += n_rolls;
                     cum_sum.push((cum_sum_cursor, *addr));
                 }

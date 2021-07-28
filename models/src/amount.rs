@@ -1,12 +1,11 @@
 use crate::ModelsError;
 use rust_decimal::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
 const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Ord, PartialOrd, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
 impl Amount {
@@ -95,5 +94,56 @@ impl FromStr for Amount {
             )
         })?;
         Ok(Amount(res))
+    }
+}
+
+impl ::serde::Serialize for Amount {
+    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        if s.is_human_readable() {
+            s.collect_str(&self.to_string())
+        } else {
+            unimplemented!(
+                "Amount binary serde serialization is unimplemented. Use to_bytes_compact"
+            );
+        }
+    }
+}
+
+impl<'de> ::serde::Deserialize<'de> for Amount {
+    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Amount, D::Error> {
+        if d.is_human_readable() {
+            struct Base58CheckVisitor;
+
+            impl<'de> ::serde::de::Visitor<'de> for Base58CheckVisitor {
+                type Value = Amount;
+
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("amount string")
+                }
+
+                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+                where
+                    E: ::serde::de::Error,
+                {
+                    if let Ok(v_str) = std::str::from_utf8(v) {
+                        Amount::from_str(v_str).map_err(E::custom)
+                    } else {
+                        Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
+                    }
+                }
+
+                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: ::serde::de::Error,
+                {
+                    Amount::from_str(v).map_err(E::custom)
+                }
+            }
+            d.deserialize_str(Base58CheckVisitor)
+        } else {
+            unimplemented!(
+                "Amount binary serde deserialization is unimplemented. Use from_bytes_compact"
+            );
+        }
     }
 }
