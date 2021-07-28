@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crypto::signature::PrivateKey;
+use models::Amount;
 use num::rational::Ratio;
 use serde::Deserialize;
 use std::{default::Default, path::PathBuf, usize};
@@ -56,7 +57,7 @@ pub struct ConsensusConfig {
     pub ledger_flush_interval: Option<UTime>,
     pub ledger_reset_at_startup: bool,
     pub initial_ledger_path: PathBuf,
-    pub block_reward: u64,
+    pub block_reward: Amount,
     pub operation_batch_size: usize,
     pub initial_rolls_path: PathBuf,
     pub initial_draw_seed: String,
