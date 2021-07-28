@@ -734,7 +734,7 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
 impl SerializeCompact for LedgerExport {
     /// ## Example
     /// ```rust
-    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address};
+    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
     /// # use consensus::{LedgerExport, LedgerData};
     /// # let mut ledger = LedgerExport::default();
     /// # ledger.ledger_subset = vec![
