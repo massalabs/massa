@@ -33,7 +33,7 @@ async fn get_state_internal(
     bootstrap_addr: &SocketAddr,
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
-    version: Version,
+    our_version: Version,
 ) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     info!("Start bootstrapping from {}", bootstrap_addr);
@@ -51,7 +51,7 @@ async fn get_state_internal(
         cfg.write_timeout.into(),
         writer.send(&messages::BootstrapMessage::BootstrapInitiation {
             random_bytes,
-            version,
+            version: our_version,
         }),
     )
     .await
@@ -84,8 +84,14 @@ async fn get_state_internal(
                 BootstrapMessage::BootstrapTime {
                     server_time,
                     signature,
+                    version,
                 },
-            )))) => (server_time, signature), // check version
+            )))) => {
+                if !our_version.is_compatible(&version) {
+                    return Err(BootstrapError::IncompatibleVersionError);
+                }
+                (server_time, signature)
+            }
             Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
         };
 
@@ -361,7 +367,8 @@ impl BootstrapServer {
             self.write_timeout.into(),
             writer.send(&messages::BootstrapMessage::BootstrapTime {
                 server_time,
-                signature, // todo add version
+                signature,
+                version: self.version,
             }),
         )
         .await

@@ -27,6 +27,7 @@ pub enum BootstrapMessage {
     BootstrapTime {
         /// The current time on the bootstrap server.
         server_time: UTime,
+        version: Version,
         /// Signature of [BootstrapInitiation.random_bytes + server_time].
         signature: Signature,
     },
@@ -71,11 +72,13 @@ impl SerializeCompact for BootstrapMessage {
             }
             BootstrapMessage::BootstrapTime {
                 server_time,
+                version,
                 signature,
             } => {
                 res.extend(u32::from(MessageTypeId::BootstrapTime).to_varint_bytes());
                 res.extend(&signature.to_bytes());
                 res.extend(server_time.to_bytes_compact()?);
+                res.extend(&version.to_bytes_compact()?)
             }
             BootstrapMessage::BootstrapPeers { peers, signature } => {
                 res.extend(u32::from(MessageTypeId::Peers).to_varint_bytes());
@@ -128,9 +131,12 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += SIGNATURE_SIZE_BYTES;
                 let (server_time, delta) = UTime::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
+
+                let (version, _) = Version::from_bytes_compact(&buffer[cursor..])?;
                 BootstrapMessage::BootstrapTime {
                     server_time,
                     signature,
+                    version,
                 }
             }
             MessageTypeId::Peers => {
