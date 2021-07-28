@@ -1,8 +1,8 @@
 use crate::ModelsError;
 use rust_decimal::prelude::*;
+use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
-use serde::de::Unexpected;
 
 const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 
@@ -101,11 +101,11 @@ impl FromStr for Amount {
     }
 }
 
-
 impl<'de> serde::Deserialize<'de> for Amount {
     fn deserialize<D>(deserializer: D) -> Result<Amount, D::Error>
     where
-        D: serde::de::Deserializer<'de>, {
+        D: serde::de::Deserializer<'de>,
+    {
         deserializer.deserialize_str(AmountVisitor)
     }
 }
@@ -116,7 +116,8 @@ impl<'de> serde::de::Visitor<'de> for AmountVisitor {
     type Value = Amount;
 
     fn visit_str<E>(self, value: &str) -> Result<Amount, E>
-        where E: serde::de::Error
+    where
+        E: serde::de::Error,
     {
         Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Str(value), &self))
     }
@@ -132,7 +133,8 @@ impl<'de> serde::de::Visitor<'de> for AmountVisitor {
 impl serde::Serialize for Amount {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer, {
+        S: serde::Serializer,
+    {
         serializer.serialize_str(&self.to_string())
     }
 }
