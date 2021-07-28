@@ -24,6 +24,7 @@ pool = {path = "../pool"}
 serde_qs = {version= "0.8.3", features = ["warp"]}
 
 [dev-dependencies]
+num = "0.4"
 stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
 tempfile = "3.2"
