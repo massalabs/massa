@@ -1,15 +1,15 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use crate::{
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
 };
 use crypto::signature::PublicKey;
-use models::{Address, BlockId, Operation, Slot};
+use models::{Address, Amount, BlockId, Operation, Slot};
 use pool::PoolCommand;
 use serial_test::serial;
+use std::collections::HashMap;
+use std::str::FromStr;
 use time::UTime;
 
 #[tokio::test]
@@ -171,7 +171,7 @@ async fn test_new_final_ops() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let boot_ledger = LedgerExport {
-        ledger_subset: vec![(address_a, LedgerData::new(100))],
+        ledger_subset: vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))],
     };
     let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
     let (boot_graph, mut p0, mut p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);

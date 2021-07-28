@@ -9,9 +9,10 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
-use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
+use models::{Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
 use num::rational::Ratio;
 use pool::PoolConfig;
+use std::str::FromStr;
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -80,7 +81,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         ledger_cache_capacity: 1000000,
         ledger_flush_interval: Some(200.into()),
         ledger_reset_at_startup: true,
-        block_reward: 10,
+        block_reward: Amount::from_str("10").unwrap(),
         initial_ledger_path: tempdir2.path().to_path_buf(),
         operation_batch_size: 100,
         initial_rolls_path: tempdir3.path().to_path_buf(),
@@ -90,7 +91,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
         pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
-        roll_price: 0,
+        roll_price: Amount::default(),
         stats_timespan: 60000.into(),
         staking_keys_path: staking_file.path().to_path_buf(),
         end_timestamp: None,
