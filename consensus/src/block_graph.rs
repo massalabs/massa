@@ -1341,6 +1341,7 @@ impl BlockGraph {
         }
 
         // apply roll deactivation
+        // (step 5.2 in pos.md)
         if accu.same_thread_parent_cycle != block_cycle {
             let mut ledger_changes = LedgerChanges::default();
             let mut roll_updates = RollUpdates::default();
