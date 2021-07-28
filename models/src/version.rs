@@ -1,7 +1,11 @@
-use std::{convert::TryFrom, iter::FromIterator};
+use std::{
+    convert::{TryFrom, TryInto},
+    iter::FromIterator,
+};
 
 use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
 use serde::Serialize;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Version {
@@ -52,8 +56,48 @@ impl DeserializeCompact for Version {
 impl TryFrom<String> for Version {
     type Error = ModelsError;
 
+    /// ```
+    /// # use models::*;
+    /// # use std::convert::TryFrom;
+    /// let v: Version = Version {
+    ///    network: ['T', 'E', 'S', 'T'],
+    ///    major: 1,
+    ///    minor: 2,
+    /// };
+    /// assert_eq!(Version::try_from("TEST.1.2".to_string()).unwrap(), v)
+    /// ```
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        todo!()
+        let val = value.split('.').collect::<Vec<_>>();
+        if val.len() != 3 {
+            return Err(ModelsError::DeserializeError(
+                "Wrong version format".to_string(),
+            ));
+        }
+        let network = val[0]
+            .chars()
+            .collect::<Vec<_>>()
+            .get(..4)
+            .ok_or_else(|| {
+                ModelsError::DeserializeError(format!("error deserialising version network ",))
+            })?
+            .try_into()
+            .map_err(|e| {
+                ModelsError::DeserializeError(format!(
+                    "error deserialising version network {:?} ",
+                    e
+                ))
+            })?;
+        let major = u32::from_str(val[1]).map_err(|e| {
+            ModelsError::DeserializeError(format!("error deserialising version major {:?}", e))
+        })?;
+        let minor = u32::from_str(val[2]).map_err(|e| {
+            ModelsError::DeserializeError(format!("error deserialising version minor {:?}", e))
+        })?;
+        Ok(Version {
+            network,
+            major,
+            minor,
+        })
     }
 }
 
@@ -70,6 +114,7 @@ impl Version {
     ///    minor: 2,
     /// };
     /// assert_eq!(v.to_string(), "TEST.1.2");
+    /// ```
     pub fn to_string(&self) -> String {
         let mut res = String::from_iter(self.network);
         res.push('.');
