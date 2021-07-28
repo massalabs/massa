@@ -30,6 +30,15 @@ impl<'de> serde::de::Visitor<'de> for VersionVisitor {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for Version {
+    fn deserialize<D>(deserializer: D) -> Result<Version, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(VersionVisitor)
+    }
+}
+
 impl serde::Serialize for Version {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -22,6 +22,6 @@ pub enum ModelsError {
     AmountParseError(String),
     #[error("checked operation error")]
     CheckedOperationError(String),
-    #[error("invalid version number: {0}")]
+    #[error("invalid version identifier: {0}")]
     InavalidVersionError(String),
 }

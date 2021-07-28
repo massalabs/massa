@@ -88,7 +88,10 @@ async fn get_state_internal(
                 },
             )))) => {
                 if !our_version.is_compatible(&version) {
-                    return Err(BootstrapError::IncompatibleVersionError);
+                    return Err(BootstrapError::IncompatibleVersionError(format!(
+                        "remote is running incompatible version: {} (local node version: {})",
+                        version, our_version
+                    )));
                 }
                 (server_time, signature)
             }
@@ -354,7 +357,10 @@ impl BootstrapServer {
 
         // check version
         if !self.version.is_compatible(&other_version) {
-            return Err(BootstrapError::IncompatibleVersionError);
+            return Err(BootstrapError::IncompatibleVersionError(format!(
+                "remote is running incompatible version: {} (local node version: {})",
+                other_version, self.version
+            )));
         }
 
         // First, sync clocks.
