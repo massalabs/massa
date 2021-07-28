@@ -5,10 +5,9 @@ use std::{
 
 use crate::serialization::DeserializeVarInt;
 use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
-use serde::Serialize;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
     pub network: [char; 4], // ascii and alpha (maj only)
     pub major: u32,
@@ -24,14 +23,49 @@ impl Default for Version {
         }
     }
 }
+impl ::serde::Serialize for Version {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let bytes = self
+            .to_bytes_compact()
+            .map_err(|e| serde::ser::Error::custom(format!("models errro {:?}", e)))?;
+        serializer.serialize_bytes(&bytes)
+    }
+}
 
 impl<'de> ::serde::Deserialize<'de> for Version {
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        todo!()
+        struct BytesVisitor;
+
+        impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
+            type Value = Version;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a bytestring")
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: ::serde::de::Error,
+            {
+                Version::from_bytes_compact(v.try_into().map_err(E::custom)?)
+                    .map_err(E::custom)
+                    .map(|(data, _)| data)
+            }
+        }
+
+        d.deserialize_bytes(BytesVisitor)
     }
+}
+
+fn is_valid_network(network: [char; 4]) -> bool {
+    //todo!()
+    true
 }
 
 impl SerializeCompact for Version {
@@ -79,6 +113,10 @@ impl DeserializeCompact for Version {
                 ))
             })?;
         cursor += 4;
+
+        if !is_valid_network(network) {
+            return Err(ModelsError::InavalidVersionNetworkError);
+        }
 
         let (major, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -131,6 +169,9 @@ impl TryFrom<String> for Version {
                     e
                 ))
             })?;
+        if !is_valid_network(network) {
+            return Err(ModelsError::InavalidVersionNetworkError);
+        }
         let major = u32::from_str(val[1]).map_err(|e| {
             ModelsError::DeserializeError(format!("error deserialising version major {:?}", e))
         })?;

@@ -119,7 +119,8 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += BOOTSTRAP_RANDOMNES_SIZE_BYTES;
 
                 //version
-                let (version, _) = Version::from_bytes_compact(&buffer[cursor..])?;
+                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
                 // return message
                 BootstrapMessage::BootstrapInitiation {
                     random_bytes,
@@ -132,7 +133,8 @@ impl DeserializeCompact for BootstrapMessage {
                 let (server_time, delta) = UTime::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
-                let (version, _) = Version::from_bytes_compact(&buffer[cursor..])?;
+                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
                 BootstrapMessage::BootstrapTime {
                     server_time,
                     signature,

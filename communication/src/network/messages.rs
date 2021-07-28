@@ -161,7 +161,9 @@ impl DeserializeCompact for Message {
                 cursor += HANDSHAKE_RANDOMNES_SIZE_BYTES;
 
                 //version
-                let (version, _) = Version::from_bytes_compact(&buffer[cursor..])?;
+                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
                 // return message
                 Message::HandshakeInitiation {
                     public_key,

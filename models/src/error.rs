@@ -22,4 +22,6 @@ pub enum ModelsError {
     AmountParseError(String),
     #[error("checked operation error")]
     CheckedOperationError(String),
+    #[error("invalid version network")]
+    InavalidVersionNetworkError,
 }
