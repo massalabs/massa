@@ -2,6 +2,7 @@ use crate::ModelsError;
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::ops::{AddAssign, Sub, SubAssign};
 use std::str::FromStr;
 
 const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
@@ -12,6 +13,10 @@ pub struct Amount(u64);
 impl Amount {
     pub fn saturating_add(self, amount: Amount) -> Self {
         Amount(self.0.saturating_add(amount.0))
+    }
+
+    pub fn saturating_sub(self, amount: Amount) -> Self {
+        Amount(self.0.saturating_sub(amount.0))
     }
 
     /// ```
@@ -48,9 +53,9 @@ impl Amount {
     /// let res : Amount = amount_1.checked_mul(7).unwrap();
     /// assert_eq!(res, Amount::from(42*7))
     /// ```
-    pub fn checked_mul(self, n: u64) -> Result<Self, ModelsError> {
+    pub fn checked_mul(self, n: Amount) -> Result<Self, ModelsError> {
         self.0
-            .checked_mul(n)
+            .checked_mul(n.0)
             .ok_or_else(|| ModelsError::CheckedOperationError("multiplication error".to_string()))
             .map(Amount)
     }
@@ -120,5 +125,25 @@ impl Into<u64> for &Amount {
 impl std::cmp::PartialEq<u64> for Amount {
     fn eq(&self, other: &u64) -> bool {
         &self.0 == other
+    }
+}
+
+impl Sub for Amount {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        Amount(self.0 - other.0)
+    }
+}
+
+impl AddAssign for Amount {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self(self.0 + other.0);
+    }
+}
+
+impl SubAssign for Amount {
+    fn sub_assign(&mut self, other: Self) {
+        *self = Self(self.0 - other.0);
     }
 }

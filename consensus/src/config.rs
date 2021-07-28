@@ -61,7 +61,7 @@ pub struct ConsensusConfig {
     pub operation_batch_size: usize,
     pub initial_rolls_path: PathBuf,
     pub initial_draw_seed: String,
-    pub roll_price: u64,
+    pub roll_price: Amount,
     // stats timespan
     pub stats_timespan: UTime,
 
