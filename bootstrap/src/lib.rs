@@ -22,7 +22,7 @@ use crypto::{
 use error::BootstrapError;
 pub use establisher::Establisher;
 use messages::BootstrapMessage;
-use models::SerializeCompact;
+use models::{SerializeCompact, Version};
 use rand::{prelude::SliceRandom, rngs::StdRng, RngCore, SeedableRng};
 use std::convert::TryInto;
 use time::UTime;
@@ -33,6 +33,7 @@ async fn get_state_internal(
     bootstrap_addr: &SocketAddr,
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
+    our_version: Version,
 ) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     info!("Start bootstrapping from {}", bootstrap_addr);
@@ -48,7 +49,10 @@ async fn get_state_internal(
     let send_time_uncompensated = UTime::now(0)?;
     match tokio::time::timeout(
         cfg.write_timeout.into(),
-        writer.send(&messages::BootstrapMessage::BootstrapInitiation { random_bytes }),
+        writer.send(&messages::BootstrapMessage::BootstrapInitiation {
+            random_bytes,
+            version: our_version,
+        }),
     )
     .await
     {
@@ -80,8 +84,17 @@ async fn get_state_internal(
                 BootstrapMessage::BootstrapTime {
                     server_time,
                     signature,
+                    version,
                 },
-            )))) => (server_time, signature),
+            )))) => {
+                if !our_version.is_compatible(&version) {
+                    return Err(BootstrapError::IncompatibleVersionError(format!(
+                        "remote is running incompatible version: {} (local node version: {})",
+                        version, our_version
+                    )));
+                }
+                (server_time, signature)
+            }
             Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
         };
 
@@ -185,6 +198,7 @@ async fn get_state_internal(
 pub async fn get_state(
     cfg: BootstrapConfig,
     mut establisher: Establisher,
+    version: Version,
 ) -> Result<
     (
         Option<ExportProofOfStake>,
@@ -202,7 +216,7 @@ pub async fn get_state(
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
-            match get_state_internal(&cfg, addr, pub_key, &mut establisher).await {
+            match get_state_internal(&cfg, addr, pub_key, &mut establisher, version).await {
                 Err(e) => {
                     warn!("error while bootstrapping: {:?}", e);
                     sleep(cfg.retry_delay.into()).await;
@@ -238,6 +252,7 @@ pub async fn start_bootstrap_server(
     establisher: Establisher,
     private_key: PrivateKey,
     compensation_millis: i64,
+    version: Version,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
     if let Some(bind) = cfg.bind {
@@ -253,6 +268,7 @@ pub async fn start_bootstrap_server(
                 read_timeout: cfg.read_timeout,
                 write_timeout: cfg.write_timeout,
                 compensation_millis,
+                version,
             }
             .run()
             .await
@@ -276,6 +292,7 @@ struct BootstrapServer {
     read_timeout: UTime,
     write_timeout: UTime,
     compensation_millis: i64,
+    version: Version,
 }
 
 impl BootstrapServer {
@@ -317,22 +334,34 @@ impl BootstrapServer {
         let mut writer = WriteBinder::new(writer);
 
         // Initiation
-        let random_bytes = match tokio::time::timeout(self.read_timeout.into(), reader.next()).await
-        {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap init read timed out",
-                )
-                .into())
-            }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
-            Ok(Ok(Some((_, BootstrapMessage::BootstrapInitiation { random_bytes })))) => {
-                random_bytes
-            }
-            Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
-        };
+        let (random_bytes, other_version) =
+            match tokio::time::timeout(self.read_timeout.into(), reader.next()).await {
+                Err(_) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "bootstrap init read timed out",
+                    )
+                    .into())
+                }
+                Ok(Err(e)) => return Err(e),
+                Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
+                Ok(Ok(Some((
+                    _,
+                    BootstrapMessage::BootstrapInitiation {
+                        random_bytes,
+                        version,
+                    },
+                )))) => (random_bytes, version),
+                Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
+            };
+
+        // check version
+        if !self.version.is_compatible(&other_version) {
+            return Err(BootstrapError::IncompatibleVersionError(format!(
+                "remote is running incompatible version: {} (local node version: {})",
+                other_version, self.version
+            )));
+        }
 
         // First, sync clocks.
         let server_time = UTime::now(self.compensation_millis)?;
@@ -345,6 +374,7 @@ impl BootstrapServer {
             writer.send(&messages::BootstrapMessage::BootstrapTime {
                 server_time,
                 signature,
+                version: self.version,
             }),
         )
         .await
