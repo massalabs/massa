@@ -14,7 +14,7 @@ use crate::error::CommunicationError;
 use crypto::signature::{
     derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
 };
-use models::{Block, BlockHeader, BlockId, Operation};
+use models::{Block, BlockHeader, BlockId, Operation, Version};
 use std::collections::{HashMap, VecDeque};
 use tokio::{
     sync::{mpsc, oneshot},
@@ -30,6 +30,7 @@ pub async fn start_network_controller(
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
+    version: Version,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -106,6 +107,7 @@ pub async fn start_network_controller(
             command_rx,
             event_tx,
             manager_rx,
+            version,
         )
         .run_loop()
         .await;

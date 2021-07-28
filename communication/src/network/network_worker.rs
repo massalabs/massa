@@ -17,7 +17,7 @@ use crypto::signature::{derive_public_key, sign, PrivateKey, PublicKey, Signatur
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+    SerializeCompact, SerializeVarInt, Version,
 };
 use models::{Block, BlockHeader, BlockId, Operation};
 use serde::{Deserialize, Serialize};
@@ -203,6 +203,7 @@ pub struct NetworkWorker {
         FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, CommunicationError>)>>,
     /// Map of connection to ip, is_outgoing.
     active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
+    version: Version,
 }
 
 impl NetworkWorker {
@@ -226,6 +227,7 @@ impl NetworkWorker {
         controller_command_rx: mpsc::Receiver<NetworkCommand>,
         controller_event_tx: mpsc::Sender<NetworkEvent>,
         controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
+        version: Version,
     ) -> NetworkWorker {
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         NetworkWorker {
@@ -245,6 +247,7 @@ impl NetworkWorker {
             active_nodes: HashMap::new(),
             node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
+            version,
         }
     }
 
@@ -591,12 +594,20 @@ impl NetworkWorker {
         let private_key = self.private_key;
         let message_timeout = self.cfg.message_timeout;
         let connection_id_copy = connection_id;
+        let version = self.version;
         let handshake_fn_handle = tokio::spawn(async move {
             (
                 connection_id_copy,
-                HandshakeWorker::new(reader, writer, self_node_id, private_key, message_timeout)
-                    .run()
-                    .await,
+                HandshakeWorker::new(
+                    reader,
+                    writer,
+                    self_node_id,
+                    private_key,
+                    message_timeout,
+                    version,
+                )
+                .run()
+                .await,
             )
         });
         self.handshake_futures.push(handshake_fn_handle);

@@ -13,7 +13,7 @@ use crate::network::{
 };
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use models::{
-    Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact,
+    Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact, Version,
 };
 use std::str::FromStr;
 use std::{
@@ -138,6 +138,7 @@ pub async fn full_connection_to_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Version::from_str("TEST.1.2").unwrap(),
     )
     .run()
     .await
@@ -192,6 +193,7 @@ pub async fn rejected_connection_to_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Version::from_str("TEST.1.2").unwrap(),
     )
     .run()
     .await;
@@ -264,6 +266,7 @@ pub async fn full_connection_from_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Version::from_str("TEST.1.2").unwrap(),
     )
     .run()
     .await
@@ -398,9 +401,15 @@ where
 
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _private_key) =
-        start_network_controller(cfg.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
+        start_network_controller(
+            cfg.clone(),
+            establisher,
+            0,
+            None,
+            Version::from_str("TEST.1.2").unwrap(),
+        )
+        .await
+        .expect("could not start network controller");
 
     // Call test func.
     //force _mock_interface return to avoid to be dropped before the end of the test (network_manager.stop).
