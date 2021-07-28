@@ -10,6 +10,7 @@ use crypto::{
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
+use num::rational::Ratio;
 use pool::PoolConfig;
 use std::{
     collections::HashMap,
@@ -88,6 +89,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         pos_lookback_cycles: 2,
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
+        pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
         roll_price: 0,
         stats_timespan: 60000.into(),
         staking_keys_path: staking_file.path().to_path_buf(),
