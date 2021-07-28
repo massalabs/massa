@@ -50,7 +50,7 @@ impl Amount {
     /// ```
     /// # use models::Amount;
     /// let amount_1 : Amount = Amount::from(42);
-    /// let res : Amount = amount_1.checked_mul(7).unwrap();
+    /// let res : Amount = amount_1.checked_mul(Amount::from(7)).unwrap();
     /// assert_eq!(res, Amount::from(42*7))
     /// ```
     pub fn checked_mul(self, n: Amount) -> Result<Self, ModelsError> {
