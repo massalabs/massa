@@ -11,7 +11,7 @@ use crypto::{
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
     OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
@@ -33,7 +33,7 @@ pub struct AddressState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,
     pub candidate_rolls: u64,
-    pub locked_balance: u64,
+    pub locked_balance: Amount,
     pub candidate_ledger_data: LedgerData,
     pub final_ledger_data: LedgerData,
 }
@@ -886,10 +886,10 @@ impl ConsensusWorker {
                         final_rolls: *final_data.roll_count.0.get(addr).unwrap_or(&0),
                         active_rolls: lookback_data.map(|data| *data.0.get(addr).unwrap_or(&0)),
                         candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&0),
-                        locked_balance: locked_rolls
-                            .get(addr)
-                            .unwrap_or(&0)
-                            .checked_mul(self.cfg.roll_price)
+                        locked_balance: self
+                            .cfg
+                            .roll_price
+                            .checked_mul_u64(*locked_rolls.get(addr).unwrap_or(&0))
                             .ok_or(ConsensusError::RollOverflowError)?,
                         candidate_ledger_data: ledger_data
                             .candidate_data

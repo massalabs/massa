@@ -77,7 +77,7 @@ impl std::fmt::Display for WrapperOperation {
         let op_type = WrapperOperationType::from(&self.0.content.op);
         let addr = Address::from_public_key(&self.0.content.sender_public_key)
             .map_err(|_| std::fmt::Error)?;
-        let amount: String = self.0.content.fee.clone().into();
+        let amount: String = self.0.content.fee.to_string();
         write!(
             f,
             "sender:{} fee:{} expire_period:{} {}",

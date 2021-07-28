@@ -2,6 +2,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
+use crate::config::BootstrapConfig;
 use bitvec::prelude::*;
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
@@ -14,14 +15,13 @@ use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
     Operation, OperationContent, SerializeCompact, Slot,
 };
+use std::str::FromStr;
 use time::UTime;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::mpsc::Receiver,
     time::sleep,
 };
-
-use crate::config::BootstrapConfig;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -141,7 +141,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
     ledger_subset.push((
         address,
         LedgerData {
-            balance: Amount::from(10),
+            balance: Amount::from_str("10").unwrap(),
         },
     ));
 
@@ -166,6 +166,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             ),
         ],
         rng_seed: bitvec![Lsb0, u8 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+        production_stats: vec![(get_random_address(), 1, 2), (get_random_address(), 3, 4)],
     };
     let boot_pos = ExportProofOfStake {
         cycle_states: vec![
@@ -189,11 +190,11 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: Amount::from(1524878),
+                        fee: Amount::from_str("1524878").unwrap(),
                         expire_period: 5787899,
                         op: models::OperationType::Transaction {
                             recipient_address: get_random_address(),
-                            amount: Amount::from(1259787),
+                            amount: Amount::from_str("1259787").unwrap(),
                         },
                     },
                     signature: get_dummy_signature("dummy_sig_2"),
@@ -201,7 +202,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: Amount::from(878763222),
+                        fee: Amount::from_str("878763222").unwrap(),
                         expire_period: 4557887,
                         op: models::OperationType::RollBuy { roll_count: 45544 },
                     },
@@ -210,7 +211,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: Amount::from(4545),
+                        fee: Amount::from_str("4545").unwrap(),
                         expire_period: 452524,
                         op: models::OperationType::RollSell {
                             roll_count: 4888787,
@@ -238,21 +239,21 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 get_random_address(),
                 LedgerChange {
                     balance_increment: true,
-                    balance_delta: Amount::from(157),
+                    balance_delta: Amount::from_str("157").unwrap(),
                 },
             ),
             (
                 get_random_address(),
                 LedgerChange {
                     balance_increment: false,
-                    balance_delta: Amount::from(44),
+                    balance_delta: Amount::from_str("44").unwrap(),
                 },
             ),
             (
                 get_random_address(),
                 LedgerChange {
                     balance_increment: false,
-                    balance_delta: Amount::from(878),
+                    balance_delta: Amount::from_str("878").unwrap(),
                 },
             ),
         ],
@@ -271,6 +272,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                     roll_sales: 11451,
                 },
             ),
+        ],
+        production_events: vec![
+            (12, get_random_address(), true),
+            (31, get_random_address(), false),
         ],
     };
     assert_eq!(

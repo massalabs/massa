@@ -9,6 +9,7 @@ use crate::protocol::ProtocolPoolEvent;
 use models::Amount;
 use serial_test::serial;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
@@ -83,7 +84,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
             let mut operation = tools::create_operation();
 
             // Change the fee, making the signature invalid.
-            operation.content.fee = Amount::from(111);
+            operation.content.fee = Amount::from_str("111").unwrap();
 
             // 3. Send operation to protocol.
             network_controller

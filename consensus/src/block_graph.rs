@@ -66,6 +66,7 @@ pub struct ActiveBlock {
     pub operation_set: HashMap<OperationId, (usize, u64)>, // index in the block, end of validity period
     pub addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
     pub roll_updates: RollUpdates, // Address -> RollUpdate
+    pub production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
 }
 
 impl ActiveBlock {
@@ -94,6 +95,7 @@ pub struct ExportActiveBlock {
     pub is_final: bool,
     pub block_ledger_changes: Vec<(Address, LedgerChange)>,
     pub roll_updates: Vec<(Address, RollUpdate)>,
+    pub production_events: Vec<(u64, Address, bool)>,
 }
 
 impl From<ActiveBlock> for ExportActiveBlock {
@@ -110,6 +112,7 @@ impl From<ActiveBlock> for ExportActiveBlock {
             is_final: block.is_final,
             block_ledger_changes: block.block_ledger_changes.0.into_iter().collect(),
             roll_updates: block.roll_updates.0.into_iter().collect(),
+            production_events: block.production_events,
         }
     }
 }
@@ -143,6 +146,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             operation_set,
             addresses_to_operations,
             roll_updates: RollUpdates(block.roll_updates.into_iter().collect()),
+            production_events: block.production_events,
         })
     }
 
@@ -225,6 +229,20 @@ impl SerializeCompact for ExportActiveBlock {
         for (addr, roll_update) in self.roll_updates.iter() {
             res.extend(addr.to_bytes());
             res.extend(roll_update.to_bytes_compact()?);
+        }
+
+        // creation events
+        let production_events_count: u32 = self.roll_updates.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many creation events in ActiveBlock: {:?}",
+                err
+            ))
+        })?;
+        res.extend(production_events_count.to_varint_bytes());
+        for (period, addr, has_created) in self.production_events.iter() {
+            res.extend(period.to_varint_bytes());
+            res.extend(addr.to_bytes());
+            res.push(if *has_created { 1u8 } else { 0u8 });
         }
 
         Ok(res)
@@ -350,6 +368,30 @@ impl DeserializeCompact for ExportActiveBlock {
             roll_updates.push((address, roll_update));
         }
 
+        // production_events
+        let (production_events_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        // TODO count check
+        cursor += delta;
+        let mut production_events: Vec<(u64, Address, bool)> =
+            Vec::with_capacity(production_events_count as usize);
+        for _ in 0..production_events_count {
+            let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += ADDRESS_SIZE_BYTES;
+            let has_created = match u8_from_slice(&buffer[cursor..])? {
+                0u8 => false,
+                1u8 => true,
+                _ => {
+                    return Err(ModelsError::SerializeError(
+                        "could not deserialize active_block.production_events.has_created".into(),
+                    ))
+                }
+            };
+            cursor += 1;
+            production_events.push((period, address, has_created));
+        }
+
         Ok((
             ExportActiveBlock {
                 is_final,
@@ -359,6 +401,7 @@ impl DeserializeCompact for ExportActiveBlock {
                 dependencies,
                 block_ledger_changes,
                 roll_updates,
+                production_events,
             },
             cursor,
         ))
@@ -786,6 +829,7 @@ enum HeaderCheckOutcome {
         dependencies: HashSet<BlockId>,
         incompatibilities: HashSet<BlockId>,
         inherited_incompatibilities_count: usize,
+        production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
     },
     Discard(DiscardReason),
     WaitForSlot,
@@ -801,6 +845,7 @@ enum BlockCheckOutcome {
         inherited_incompatibilities_count: usize,
         block_ledger_changes: LedgerChanges,
         roll_updates: RollUpdates,
+        production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
     },
     Discard(DiscardReason),
     WaitForSlot,
@@ -880,7 +925,6 @@ impl BlockGraph {
             block_statuses.insert(
                 hash,
                 BlockStatus::Active(ActiveBlock {
-                    block,
                     parents: Vec::new(),
                     children: vec![HashMap::new(); cfg.thread_count as usize],
                     dependencies: HashSet::new(),
@@ -890,6 +934,8 @@ impl BlockGraph {
                     operation_set: HashMap::with_capacity(0),
                     addresses_to_operations: HashMap::with_capacity(0),
                     roll_updates: RollUpdates::default(), // no roll updates in genesis blocks
+                    production_events: vec![],
+                    block,
                 }),
             );
         }
@@ -1013,6 +1059,35 @@ impl BlockGraph {
         Ok(())
     }
 
+    // loads missing block state rolls if available
+    pub fn block_state_sync_rolls(
+        &self,
+        accu: &mut BlockStateAccumulator,
+        header: &BlockHeader,
+        pos: &ProofOfStake,
+        involved_addrs: &HashSet<Address>,
+    ) -> Result<(), ConsensusError> {
+        let missing_entries: HashSet<Address> = involved_addrs
+            .difference(&accu.loaded_roll_addrs)
+            .copied()
+            .collect();
+        if !missing_entries.is_empty() {
+            let (roll_counts, cycle_roll_updates) = self.get_roll_data_at_parent(
+                header.content.parents[header.content.slot.thread as usize],
+                Some(&missing_entries),
+                pos,
+            )?;
+            accu.roll_counts.sync_from(&involved_addrs, roll_counts);
+            let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
+            if block_cycle == accu.same_thread_parent_cycle {
+                // if the parent cycle is different, ignore cycle roll updates
+                accu.cycle_roll_updates
+                    .sync_from(&involved_addrs, cycle_roll_updates);
+            }
+        }
+        Ok(())
+    }
+
     /// try to apply ledger/roll changes to a block state accumulator
     /// if it fails, the state should remain undisturbed
     pub fn block_state_try_apply(
@@ -1072,18 +1147,16 @@ impl BlockGraph {
                 }
                 if let Some(ref mut ledger_changes) = opt_ledger_changes {
                     for (addr, compensation) in compensations {
-                        let balance_delta = compensation
-                            .0
-                            .checked_mul(self.cfg.roll_price)
-                            .ok_or_else(|| {
+                        let balance_delta =
+                            self.cfg.roll_price.checked_mul_u64(compensation.0).ok_or(
                                 ConsensusError::InvalidLedgerChange(
                                     "overflow getting compensated roll credit amount".into(),
-                                )
-                            })?;
+                                ),
+                            )?;
                         ledger_changes.apply(
                             &addr,
                             &LedgerChange {
-                                balance_delta: Amount::from(balance_delta),
+                                balance_delta,
                                 balance_increment: true,
                             },
                         )?;
@@ -1249,7 +1322,7 @@ impl BlockGraph {
                 roll_unlock_ledger_changes.apply(
                     &addr,
                     &LedgerChange {
-                        balance_delta: Amount::from(amount),
+                        balance_delta: amount,
                         balance_increment: true,
                     },
                 )?;
@@ -1263,6 +1336,33 @@ impl BlockGraph {
                 None,
                 pos,
             )?;
+        }
+
+        // apply roll deactivation
+        // (step 5.2 in pos.md)
+        if accu.same_thread_parent_cycle != block_cycle {
+            let mut roll_updates = RollUpdates::default();
+
+            // get addresses for which to deactivate rolls
+            let deactivate_addrs = pos.get_roll_deactivations(block_cycle, block_thread)?;
+
+            // load missing address info (because we need to read roll counts)
+            self.block_state_sync_rolls(&mut accu, header, pos, &deactivate_addrs)?;
+
+            // accumulate roll updates
+            for addr in deactivate_addrs {
+                let roll_count = accu.roll_counts.0.get(&addr).unwrap_or(&0);
+                roll_updates.apply(
+                    &addr,
+                    &RollUpdate {
+                        roll_purchases: 0,
+                        roll_sales: *roll_count,
+                    },
+                )?;
+            }
+
+            // apply changes to block state
+            self.block_state_try_apply(&mut accu, &header, None, Some(roll_updates), pos)?;
         }
 
         Ok(accu)
@@ -1692,6 +1792,7 @@ impl BlockGraph {
             valid_block_changes,
             valid_block_operation_set,
             valid_block_roll_updates,
+            valid_block_production_events,
         ) = match self.block_statuses.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
@@ -1830,6 +1931,7 @@ impl BlockGraph {
                         inherited_incompatibilities_count,
                         block_ledger_changes,
                         roll_updates,
+                        production_events,
                     } => {
                         // block is valid: remove it from Incoming and return it
                         massa_trace!("consensus.block_graph.process.incoming_block.valid", {
@@ -1844,6 +1946,7 @@ impl BlockGraph {
                             block_ledger_changes,
                             operation_set,
                             roll_updates,
+                            production_events,
                         )
                     }
                     BlockCheckOutcome::WaitForDependencies(dependencies) => {
@@ -1977,6 +2080,7 @@ impl BlockGraph {
             valid_block_operation_set,
             valid_block_addresses_to_operations,
             valid_block_roll_updates,
+            valid_block_production_events,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
@@ -2067,6 +2171,7 @@ impl BlockGraph {
         let mut deps = HashSet::new();
         let mut incomp = HashSet::new();
         let mut missing_deps = HashSet::new();
+        let creator_addr = Address::from_public_key(&header.content.creator)?;
 
         // basic structural checks
         if header.content.parents.len() != (self.cfg.thread_count as usize)
@@ -2109,7 +2214,7 @@ impl BlockGraph {
             }
             Err(err) => return Err(err),
         };
-        if Address::from_public_key(&header.content.creator)? != slot_draw_address {
+        if creator_addr != slot_draw_address {
             // it was not the creator's turn to create a block for this slot
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                 format!("Bad creator turn for the slot:{}", header.content.slot),
@@ -2341,11 +2446,29 @@ impl BlockGraph {
             "block_id": block_id
         });
 
+        // list production events
+        let mut production_events = vec![(header.content.slot.period, creator_addr, true)];
+        for miss_period in
+            (parents[header.content.slot.thread as usize].1 + 1)..header.content.slot.period
+        {
+            let miss_slot = Slot::new(miss_period, header.content.slot.thread);
+            let slot_draw_address = match pos.draw(miss_slot) {
+                Ok(addr) => addr,
+                Err(ConsensusError::PosCycleUnavailable(_)) => {
+                    // slot is not available yet
+                    return Ok(HeaderCheckOutcome::WaitForSlot);
+                }
+                Err(err) => return Err(err),
+            };
+            production_events.push((miss_period, slot_draw_address, false));
+        }
+
         Ok(HeaderCheckOutcome::Proceed {
             parents_hash_period: parents,
             dependencies: deps,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
+            production_events,
         })
     }
 
@@ -2364,6 +2487,7 @@ impl BlockGraph {
         let incomp;
         let parents;
         let inherited_incomp_count;
+        let production_evts;
 
         // check header
         match self.check_header(block_id, &block.header, pos, current_slot)? {
@@ -2372,12 +2496,14 @@ impl BlockGraph {
                 dependencies,
                 incompatibilities,
                 inherited_incompatibilities_count,
+                production_events,
             } => {
                 // block_changes can be ignored as it is empty, (maybe add an error if not)
                 parents = parents_hash_period;
                 deps = dependencies;
                 incomp = incompatibilities;
                 inherited_incomp_count = inherited_incompatibilities_count;
+                production_evts = production_events;
             }
             HeaderCheckOutcome::Discard(reason) => return Ok(BlockCheckOutcome::Discard(reason)),
             HeaderCheckOutcome::WaitForDependencies(deps) => {
@@ -2414,6 +2540,7 @@ impl BlockGraph {
             inherited_incompatibilities_count: inherited_incomp_count,
             block_ledger_changes,
             roll_updates,
+            production_events: production_evts,
         })
     }
 
@@ -2717,6 +2844,7 @@ impl BlockGraph {
         operation_set: HashMap<OperationId, (usize, u64)>,
         addresses_to_operations: HashMap<Address, HashSet<OperationId>>,
         roll_updates: RollUpdates,
+        production_events: Vec<(u64, Address, bool)>,
     ) -> Result<(), ConsensusError> {
         massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
         // add block to status structure
@@ -2733,6 +2861,7 @@ impl BlockGraph {
                 operation_set,
                 addresses_to_operations,
                 roll_updates,
+                production_events,
             }),
         );
 
@@ -3668,13 +3797,14 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::ledger::LedgerData;
+    use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
+    use num::rational::Ratio;
     use serial_test::serial;
     use std::path::Path;
-
-    use super::*;
-    use crate::tests::tools::get_dummy_block_id;
+    use std::str::FromStr;
     use tempfile::NamedTempFile;
     use time::UTime;
 
@@ -3721,26 +3851,27 @@ mod tests {
                 (
                     Address::from_bytes(&Hash::hash("addr01".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: Amount::from(1),
+                        balance_delta: Amount::from_str("1").unwrap(),
                         balance_increment: true, // whether to increment or decrement balance of delta
                     },
                 ),
                 (
                     Address::from_bytes(&Hash::hash("addr02".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: Amount::from(2),
+                        balance_delta: Amount::from_str("2").unwrap(),
                         balance_increment: false, // whether to increment or decrement balance of delta
                     },
                 ),
                 (
                     Address::from_bytes(&Hash::hash("addr11".as_bytes()).into_bytes()).unwrap(),
                     LedgerChange {
-                        balance_delta: Amount::from(3),
+                        balance_delta: Amount::from_str("3").unwrap(),
                         balance_increment: false, // whether to increment or decrement balance of delta
                     },
                 ),
             ],
             roll_updates: vec![],
+            production_events: vec![],
         }
     }
 
@@ -3757,7 +3888,7 @@ mod tests {
         let ledger_file = generate_ledger_file(&HashMap::new());
         let mut cfg = example_consensus_config(ledger_file.path());
 
-        cfg.block_reward = 1;
+        cfg.block_reward = Amount::from_str("1").unwrap();
         //to generate address and public keys
         /*        let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
@@ -3801,6 +3932,7 @@ mod tests {
             is_final: true,
             block_ledger_changes: vec![],
             roll_updates: vec![],
+            production_events: vec![],
         };
         let export_genesist1 = ExportActiveBlock {
             block: block_genesist1,
@@ -3810,6 +3942,7 @@ mod tests {
             is_final: true,
             block_ledger_changes: vec![],
             roll_updates: vec![],
+            production_events: vec![],
         };
         //update ledger with initial content.
         //   Thread 0  [at the output of block p0t0]:
@@ -3833,7 +3966,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(1),
+                    balance_delta: Amount::from_str("1").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -3843,7 +3976,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(2),
+                    balance_delta: Amount::from_str("2").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -3864,7 +3997,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(160),
+                    balance_delta: Amount::from_str("160").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -3874,7 +4007,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(159),
+                    balance_delta: Amount::from_str("159").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -3895,7 +4028,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(1),
+                    balance_delta: Amount::from_str("1").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -3918,7 +4051,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(10),
+                    balance_delta: Amount::from_str("10").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -3928,7 +4061,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(9),
+                    balance_delta: Amount::from_str("9").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -3951,7 +4084,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(2047),
+                    balance_delta: Amount::from_str("2047").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -3961,7 +4094,7 @@ mod tests {
             .apply(
                 &address_c,
                 &LedgerChange {
-                    balance_delta: Amount::from(2048),
+                    balance_delta: Amount::from_str("2048").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -3984,7 +4117,7 @@ mod tests {
             .apply(
                 &address_a,
                 &LedgerChange {
-                    balance_delta: Amount::from(100),
+                    balance_delta: Amount::from_str("100").unwrap(),
                     balance_increment: true,
                 },
             )
@@ -3994,7 +4127,7 @@ mod tests {
             .apply(
                 &address_b,
                 &LedgerChange {
-                    balance_delta: Amount::from(99),
+                    balance_delta: Amount::from_str("99").unwrap(),
                     balance_increment: false,
                 },
             )
@@ -4033,13 +4166,13 @@ mod tests {
                     (
                         address_a,
                         LedgerData {
-                            balance: Amount::from(1_000_000_000),
+                            balance: Amount::from_str("1000000000").unwrap(),
                         },
                     ),
                     (
                         address_b,
                         LedgerData {
-                            balance: Amount::from(2_000_000_000),
+                            balance: Amount::from_str("2000000000").unwrap(),
                         },
                     ),
                 ],
@@ -4066,10 +4199,16 @@ mod tests {
         // B: 1999999901 = 2000_000_000 - 99
         // C: 2048
         // D: 0
-        assert_eq!(res.0[&address_a].balance, 999998224);
-        assert_eq!(res.0[&address_b].balance, 1999999901);
-        assert_eq!(res.0[&address_c].balance, 2048);
-        assert_eq!(res.0[&address_d].balance, 0);
+        assert_eq!(
+            res.0[&address_a].balance,
+            Amount::from_str("999998224").unwrap()
+        );
+        assert_eq!(
+            res.0[&address_b].balance,
+            Amount::from_str("1999999901").unwrap()
+        );
+        assert_eq!(res.0[&address_c].balance, Amount::from_str("2048").unwrap());
+        assert_eq!(res.0[&address_d].balance, Amount::from_str("0").unwrap());
 
         //ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
         let res = block_graph
@@ -4087,7 +4226,10 @@ mod tests {
         // B: 1999999903
         // C: 2048
         // D: 0
-        assert_eq!(res.0[&address_a].balance, 1000000160);
+        assert_eq!(
+            res.0[&address_a].balance,
+            Amount::from_str("1000000160").unwrap()
+        );
 
         //ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
         let res = block_graph.get_ledger_at_parents(
@@ -4322,7 +4464,7 @@ mod tests {
             ledger_cache_capacity: 1000000,
             ledger_flush_interval: Some(200.into()),
             ledger_reset_at_startup: true,
-            block_reward: 1,
+            block_reward: Amount::from_str("1").unwrap(),
             initial_ledger_path: initial_ledger_path.to_path_buf(),
             operation_batch_size: 100,
             initial_rolls_path: tempdir3.path().to_path_buf(),
@@ -4331,7 +4473,8 @@ mod tests {
             pos_lookback_cycles: 2,
             pos_lock_cycles: 1,
             pos_draw_cached_cycles: 2,
-            roll_price: 10,
+            pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
+            roll_price: Amount::from_str("10").unwrap(),
             stats_timespan: 60000.into(),
             staking_keys_path: staking_file.path().to_path_buf(),
             end_timestamp: None,
