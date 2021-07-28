@@ -148,7 +148,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
     let cycle_state = ExportThreadCycleState {
         cycle: 1,
         last_final_slot: Slot::new(1, 1),
-        roll_count: vec![(get_random_address(), Amount::from(123)), (get_random_address(), Amount::from(456))],
+        roll_count: vec![
+            (get_random_address(), Amount::from(123)),
+            (get_random_address(), Amount::from(456)),
+        ],
         cycle_updates: vec![
             (
                 get_random_address(),
