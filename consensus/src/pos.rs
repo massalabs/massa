@@ -876,6 +876,7 @@ impl ProofOfStake {
                 }
 
                 // update production_stats
+                // (step 2 in the spec) 
                 if period == block_slot.period {
                     // we are applying the block itself
                     let last_final_block_cycle = self.get_last_final_block_cycle(thread);
@@ -910,7 +911,7 @@ impl ProofOfStake {
                 }
 
                 // apply the miss/block to the latest cycle_states
-                // (step 2 in the spec)
+                // (step 3 in the spec)
                 let entry = &mut self.cycle_states[thread as usize][0];
                 // update the last_final_slot for the latest cycle
                 entry.last_final_slot = slot;
