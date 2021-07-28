@@ -15,7 +15,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PrivateKey;
 use logging::debug;
-use models::{Address, Amount, Block, BlockId, OperationId, OperationSearchResult, Slot};
+use models::{Address, Block, BlockId, OperationId, OperationSearchResult, Slot};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet, VecDeque};
 use storage::StorageAccess;
@@ -306,7 +306,7 @@ impl ConsensusCommandSender {
 
     pub async fn get_active_stakers(
         &self,
-    ) -> Result<Option<HashMap<Address, Amount>>, ConsensusError> {
+    ) -> Result<Option<HashMap<Address, u64>>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_active_stakers", {});
         self.0

@@ -137,10 +137,10 @@ pub fn create_operation() -> Operation {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: Amount::from(0),
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: Amount::from(0),
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period: 0,
@@ -161,10 +161,10 @@ pub fn create_operation_with_expire_period(
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: Amount::from(0),
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: Amount::from(0),
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period,

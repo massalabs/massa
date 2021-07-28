@@ -18,6 +18,7 @@ use models::{
 };
 use serde_json::json;
 use serial_test::serial;
+use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},
     net::{IpAddr, Ipv4Addr},
@@ -34,10 +35,10 @@ pub fn create_operation() -> Operation {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: Amount::from(0),
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: Amount::from(0),
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period: 0,
@@ -258,12 +259,12 @@ async fn test_get_addresses_info() {
         addrs_info.insert(
             search_address,
             AddressState {
-                final_rolls: Amount::from(1233),
-                active_rolls: Some(Amount::from(5748)),
-                candidate_rolls: Amount::from(7787),
-                locked_balance: Amount::from(1745),
-                candidate_ledger_data: LedgerData::new(4788),
-                final_ledger_data: LedgerData::new(11414),
+                final_rolls: 1233,
+                active_rolls: Some(5748),
+                candidate_rolls: 7787,
+                locked_balance: Amount::from_str("1745").unwrap(),
+                candidate_ledger_data: LedgerData::new(Amount::from_str("4788").unwrap()),
+                final_ledger_data: LedgerData::new(Amount::from_str("11414").unwrap()),
             },
         );
         let (filter, mut rx_api) = mock_filter(None);
