@@ -122,9 +122,7 @@ If the Option is None, all addresses are taken into account.
 4. set `B.roll_updates = new()`
 5. if the block is the first of a new cycle N for thread Tau:
 	1. credit `roll_price * cycle_states[Tau][1 + lookback_cycles + lock_cycles].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
-    2. for all addresses for which cycle_states[Tau][1 + lookback_cycles].prodcution_stats[address].(.0 / (.0 + .1)) > cfg.pos_miss_rate_deactivation_threshold:
-        1. deactivate all active rolls
-        2. reimburse the price of sold rolls
+    2. deactivate all candidate rolls for all addresses for which cycle_states[Tau][1 + lookback_cycles].prodcution_stats[address].(.0 / (.0 + .1)) > cfg.pos_miss_rate_deactivation_threshold
 6. parse the operations of the block in order:
 	1. Apply roll updates to cur_rolls. If the new roll count under/over-flows u64 => block invalid
 	2. try chain roll updates to `B.roll_updates`. If the new roll delta under/over-flows u64 => block invalid
