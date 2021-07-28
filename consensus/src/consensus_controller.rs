@@ -15,7 +15,9 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::signature::PrivateKey;
 use logging::debug;
-use models::{Address, Block, BlockId, OperationId, OperationSearchResult, Slot};
+use models::{
+    Address, Block, BlockId, OperationId, OperationSearchResult, Slot, StakerCycleProductionStats,
+};
 use pool::PoolCommandSender;
 use std::collections::{HashMap, HashSet, VecDeque};
 use storage::StorageAccess;
@@ -355,6 +357,29 @@ impl ConsensusCommandSender {
         massa_trace!("consensus.consensus_controller.get_staking_addresses", {});
         self.0
             .send(ConsensusCommand::GetStakingAddressses(response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError("send error consensus command".to_string())
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
+        })
+    }
+
+    pub async fn get_staker_production_stats(
+        &self,
+        address: Address,
+    ) -> Result<Vec<StakerCycleProductionStats>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!(
+            "consensus.consensus_controller.get_staker_production_stats",
+            {}
+        );
+        self.0
+            .send(ConsensusCommand::GetStakerProductionStats {
+                address,
+                response_tx,
+            })
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError("send error consensus command".to_string())
