@@ -253,7 +253,7 @@ pub trait OperationLedgerInterface {
         &self,
         fee_target: &Address,
         thread_count: u8,
-        roll_price: u64,
+        roll_price: Amount,
     ) -> Result<LedgerChanges, ConsensusError>;
 }
 
@@ -262,7 +262,7 @@ impl OperationLedgerInterface for Operation {
         &self,
         fee_target: &Address,
         _thread_count: u8,
-        roll_price: u64,
+        roll_price: Amount,
     ) -> Result<LedgerChanges, ConsensusError> {
         let mut res = LedgerChanges::default();
 
@@ -310,11 +310,9 @@ impl OperationLedgerInterface for Operation {
                 res.apply(
                     &sender_address,
                     &LedgerChange {
-                        balance_delta: Amount::from(
-                            roll_count
-                                .checked_mul(roll_price)
-                                .ok_or(ConsensusError::RollOverflowError)?,
-                        ),
+                        balance_delta: Amount::from(*roll_count)
+                            .checked_mul(roll_price)
+                            .or(Err(ConsensusError::RollOverflowError))?,
                         balance_increment: false,
                     },
                 )?;

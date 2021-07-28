@@ -11,7 +11,7 @@ use crypto::{
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
     OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
 };
 use pool::PoolCommandSender;
@@ -30,10 +30,10 @@ use tokio::{
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-    pub locked_balance: u64,
+    pub final_rolls: Amount,
+    pub active_rolls: Option<Amount>,
+    pub candidate_rolls: Amount,
+    pub locked_balance: Amount,
     pub candidate_ledger_data: LedgerData,
     pub final_ledger_data: LedgerData,
 }
@@ -75,7 +75,7 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, u64>>>),
+    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, Amount>>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
     GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
@@ -829,9 +829,9 @@ impl ConsensusWorker {
         })
     }
 
-    fn get_active_stakers(&self) -> Result<Option<HashMap<Address, u64>>, ConsensusError> {
+    fn get_active_stakers(&self) -> Result<Option<HashMap<Address, Amount>>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
-        let mut res: HashMap<Address, u64> = HashMap::new();
+        let mut res: HashMap<Address, Amount> = HashMap::new();
         for thread in 0..self.cfg.thread_count {
             match self.pos.get_lookback_roll_count(cur_cycle, thread) {
                 Ok(rolls) => {
@@ -883,14 +883,19 @@ impl ConsensusWorker {
                 states.insert(
                     *addr,
                     AddressState {
-                        final_rolls: *final_data.roll_count.0.get(addr).unwrap_or(&0),
-                        active_rolls: lookback_data.map(|data| *data.0.get(addr).unwrap_or(&0)),
-                        candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&0),
+                        final_rolls: *final_data
+                            .roll_count
+                            .0
+                            .get(addr)
+                            .unwrap_or(&Amount::from(0)),
+                        active_rolls: lookback_data
+                            .map(|data| *data.0.get(addr).unwrap_or(&Amount::from(0))),
+                        candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&Amount::from(0)),
                         locked_balance: locked_rolls
                             .get(addr)
-                            .unwrap_or(&0)
+                            .unwrap_or(&Amount::from(0))
                             .checked_mul(self.cfg.roll_price)
-                            .ok_or(ConsensusError::RollOverflowError)?,
+                            .or_else(|_| Err(ConsensusError::RollOverflowError))?,
                         candidate_ledger_data: ledger_data
                             .candidate_data
                             .0

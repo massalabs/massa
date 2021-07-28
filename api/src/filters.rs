@@ -15,6 +15,7 @@ use consensus::{
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use logging::massa_trace;
 use models::Address;
+use models::Amount;
 use models::ModelsError;
 use models::Operation;
 use models::OperationId;
@@ -64,7 +65,7 @@ pub enum ApiEvent {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, u64>>>),
+    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, Amount>>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
     GetStakingAddresses(oneshot::Sender<HashSet<Address>>),
@@ -2026,7 +2027,7 @@ async fn get_staking_addresses(
 
 async fn retrieve_active_stakers(
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Option<HashMap<Address, u64>>, ApiError> {
+) -> Result<Option<HashMap<Address, Amount>>, ApiError> {
     massa_trace!("api.filters.retrieve_active_stakers", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx

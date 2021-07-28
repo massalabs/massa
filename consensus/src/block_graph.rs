@@ -1150,10 +1150,10 @@ impl BlockGraph {
                         let balance_delta = compensation
                             .0
                             .checked_mul(self.cfg.roll_price)
-                            .ok_or_else(|| {
-                                ConsensusError::InvalidLedgerChange(
+                            .or_else(|_| {
+                                Err(ConsensusError::InvalidLedgerChange(
                                     "overflow getting compensated roll credit amount".into(),
-                                )
+                                ))
                             })?;
                         ledger_changes.apply(
                             &addr,
@@ -1354,20 +1354,24 @@ impl BlockGraph {
 
             // accumulate changes
             for addr in deactivate_addrs {
-                let roll_count = accu.roll_counts.0.get(&addr).unwrap_or(&0);
+                let roll_count = accu
+                    .roll_counts
+                    .0
+                    .get(&addr)
+                    .cloned()
+                    .unwrap_or(Amount::from(0));
                 ledger_changes.apply(
                     &addr,
                     &LedgerChange {
-                        balance_delta: Amount::from(self.cfg.roll_price)
-                            .checked_mul(*roll_count)?,
+                        balance_delta: Amount::from(self.cfg.roll_price).checked_mul(roll_count)?,
                         balance_increment: true,
                     },
                 )?;
                 roll_updates.apply(
                     &addr,
                     &RollUpdate {
-                        roll_purchases: 0,
-                        roll_sales: *roll_count,
+                        roll_purchases: Amount::from(0),
+                        roll_sales: roll_count,
                     },
                 )?;
             }
