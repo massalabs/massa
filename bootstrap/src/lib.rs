@@ -196,7 +196,7 @@ async fn get_state_internal(
 }
 
 pub async fn get_state(
-    mut cfg: BootstrapConfig,
+    cfg: BootstrapConfig,
     mut establisher: Establisher,
     version: Version,
     genesis_timestamp: UTime,
