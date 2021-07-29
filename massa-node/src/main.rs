@@ -207,182 +207,12 @@ async fn run(cfg: config::Config) {
 
             evt = api_event_receiver.wait_event() =>{
                 massa_trace!("massa-node.main.run.select.api_event", {});
-                match evt {
-                Ok(ApiEvent::AddOperations(operations)) => {
-                    massa_trace!("massa-node.main.run.select.api_event.AddOperations", {"operations": operations});
-                    for (id, op) in operations.iter() {
-                        let from_address = match Address::from_public_key(&op.content.sender_public_key){
-                            Ok(addr) => addr.to_string(),
-                            Err(_) => "could not get address from public key".to_string(),
-                        };
-                        let operation_message =  match &op.content.op {
-                            models::OperationType::Transaction {  amount , recipient_address } => format!("transaction from address {} to address {}, with amount {}", from_address, recipient_address, amount),
-                            models::OperationType::RollBuy { roll_count } => format!("address {} buys {} rolls", from_address, roll_count),
-                            models::OperationType::RollSell { roll_count } => format!("address {} sells {} rolls", from_address, roll_count),
-                        };
-                        info!("Added operation {} from API : {}, fee {}", id, operation_message, op.content.fee);
-                    }
-                    if api_pool_command_sender.add_operations(operations)
-                            .await
-                        .is_err() {
-                            warn!("could not send AddOperations to pool in api_event_receiver.wait_event");
-                        }
 
-                },
-                Ok(ApiEvent::AskStop) => {
-                    info!("API asked node stop");
-                    break;
-                },
-                Ok(ApiEvent::GetBlockStatus{block_id, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_active_block", {"block_id": block_id});
-                    if response_tx.send(
-                        consensus_command_sender
-                        .get_block_status(block_id)
-                            .await
-                            .expect("get_active_block failed in api_event_receiver.wait_event")
-                        ).is_err() {
-                            warn!("could not send get_active_block response in api_event_receiver.wait_event");
-                        }
-                },
-                Ok(ApiEvent::GetBlockGraphStatus(response_sender_tx)) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_block_graph_status", {});
-                    if response_sender_tx.send(
-                        consensus_command_sender
-                        .get_block_graph_status()
-                            .await
-                            .expect("get_block_graph_status failed in api_event_receiver.wait_event")
-                        ).is_err() {
-                            warn!("could not send get_block_graph_status response in api_event_receiver.wait_event");
-                        }
-                        trace!("after sending block graph to response_tx sender in loop in massa-node main");
-                },
-                Ok(ApiEvent::GetPeers(response_sender_tx)) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_peers", {});
-                    if response_sender_tx.send(
-                        network_command_sender
-                            .get_peers()
-                            .await
-                            .expect("get_peers failed in api_event_receiver.wait_event")
-                        ).is_err() {
-                            warn!("could not send get_peers response in api_event_receiver.wait_event");
-                        }
-                    },
-                Ok(ApiEvent::GetSelectionDraw {start, end, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_selection_draws", {});
-                    if response_tx.send(
-                        consensus_command_sender
-                            .get_selection_draws(start, end)
-                            .await
-                        ).is_err() {
-                            warn!("could not send get_selection_draws response in api_event_receiver.wait_event");
-                        }
-                    },
-                Ok(ApiEvent::GetAddressesInfo {addresses, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_addresses_info", {});
-                    if response_tx.send(
-                        consensus_command_sender
-                            .get_addresses_info(addresses)
-                            .await
-                        ).is_err() {
-                            warn!("could not send get_addresses_info response in api_event_receiver.wait_event");
-                        }
-                    },
-                Ok(ApiEvent::GetRecentOperations {address, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_operations_involving_address", {});
-                    if response_tx.send(
-                        consensus_command_sender
-                            .get_operations_involving_address(address )
-                            .await
-                            .expect("could not get recent operations")
-                        ).is_err() {
-                            warn!("could not send get_operations_involving_address response in api_event_receiver.wait_event");
-                        }
-                    },
-                Ok(ApiEvent::GetOperations {operation_ids, response_tx}) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_operations", {"operation_ids": operation_ids});
-                    if response_tx.send(
-                        consensus_command_sender
-                            .get_operations(operation_ids)
-                            .await
-                            .expect("could not get operations")
-                        ).is_err() {
-                            warn!("could not send get_operations response in api_event_receiver.wait_event");
-                        }
-                    },
-                Ok(ApiEvent::GetStats(response_tx)) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_stats", {});
-                    if response_tx.send(
-                        consensus_command_sender
-                        .get_stats()
-                            .await
-                            .expect("get_stats failed in api_event_receiver.wait_event")
-                        ).is_err() {
-                            warn!("could not send get_stats response in api_event_receiver.wait_event");
-                        }
-                    },
-                Ok(ApiEvent::GetActiveStakers(response_tx)) => {
-                    massa_trace!("massa-node.main.run.select.api_event.get_active_stakers", {});
-                    if response_tx.send(
-                        consensus_command_sender
-                        .get_active_stakers()
-                            .await
-                            .expect("get_active_stakers failed in api_event_receiver.wait_event")
-                        ).is_err() {
-                            warn!("could not send get_active_stakers response in api_event_receiver.wait_event");
-                        }
-                }
-                Ok(ApiEvent::RegisterStakingPrivateKeys(key)) => {
-                    massa_trace!("massa-node.main.run.select.api_event.register_staking_private_keys", {});
-                    consensus_command_sender
-                    .register_staking_private_keys(key)
-                        .await
-                        .expect("register_staking_private_keys failed in api_event_receiver.wait_event")
-                },
-                Ok(ApiEvent::RemoveStakingAddresses(address)) => {
-                    massa_trace!("massa-node.main.run.select.api_event.remove_staking_addresses", {});
-                    consensus_command_sender
-                    .remove_staking_addresses(address)
-                        .await
-                        .expect("remove_staking_addresses failed in api_event_receiver.wait_event")
-                },
-                Ok(ApiEvent::GetStakingAddresses(response_tx)) =>{
-                    massa_trace!("massa-node.main.run.select.api_event.get_staking_addresses", {});
-                    if response_tx.send(
-                        consensus_command_sender
-                        .get_staking_addresses()
-                            .await
-                            .expect("get_staking_addresses failed in api_event_receiver.wait_event")
-                    ).is_err() {
-                        warn!("could not send get_staking_addresses response in api_event_receiver.wait_event");
-                    }
-                },
-                Ok(ApiEvent::NodeSignMessage{message, response_tx}) =>{
-                    massa_trace!("massa-node.main.run.select.api_event.node_sign_message", {});
-                    if response_tx.send(
-                        network_command_sender
-                        .node_sign_message(message)
-                            .await
-                            .expect("node_sign_message failed in api_event_receiver.wait_event")
-                        ).is_err() {
-                        warn!("could not send node_sign_message response in api_event_receiver.wait_event");
-                    }
-                },
-                Ok(ApiEvent::GetStakerProductionStats{address, response_tx}) =>{
-                    massa_trace!("massa-node.main.run.select.api_event.get_staker_production_stats", {});
-                    if response_tx.send(
-                        consensus_command_sender
-                        .get_staker_production_stats(address)
-                            .await
-                            .expect("get staker production stats failed in api_event_receiver.wait_event")
-                        ).is_err() {
-                        warn!("could not send get_staker_production_stats response in api_event_receiver.wait_event");
-                    }
-                },
-                Err(err) => {
-                    error!("api communication error: {:?}", err);
-                    break;
-                }
-            }},
+                if on_api_event(evt.map_err(|e|format!("api communication error: {:?}", e)).unwrap(),
+                &mut api_pool_command_sender,
+                &consensus_command_sender,
+                &network_command_sender).await {break}
+            }
 
             _ = &mut stop_signal => {
                 massa_trace!("massa-node.main.run.select.stop", {});
@@ -403,6 +233,292 @@ async fn run(cfg: config::Config) {
         network_manager,
     )
     .await
+}
+
+async fn on_api_event(
+    evt: ApiEvent,
+    api_pool_command_sender: &mut PoolCommandSender,
+    consensus_command_sender: &ConsensusCommandSender,
+    network_command_sender: &NetworkCommandSender,
+) -> bool {
+    match evt {
+        ApiEvent::AddOperations(operations) => {
+            massa_trace!("massa-node.main.run.select.api_event.AddOperations", {
+                "operations": operations
+            });
+            for (id, op) in operations.iter() {
+                let from_address = match Address::from_public_key(&op.content.sender_public_key) {
+                    Ok(addr) => addr.to_string(),
+                    Err(_) => "could not get address from public key".to_string(),
+                };
+                let operation_message = match &op.content.op {
+                    models::OperationType::Transaction {
+                        amount,
+                        recipient_address,
+                    } => format!(
+                        "transaction from address {} to address {}, with amount {}",
+                        from_address, recipient_address, amount
+                    ),
+                    models::OperationType::RollBuy { roll_count } => {
+                        format!("address {} buys {} rolls", from_address, roll_count)
+                    }
+                    models::OperationType::RollSell { roll_count } => {
+                        format!("address {} sells {} rolls", from_address, roll_count)
+                    }
+                };
+                info!(
+                    "Added operation {} from API : {}, fee {}",
+                    id, operation_message, op.content.fee
+                );
+            }
+            if api_pool_command_sender
+                .add_operations(operations)
+                .await
+                .is_err()
+            {
+                warn!("could not send AddOperations to pool in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::AskStop => {
+            info!("API asked node stop");
+            return true;
+        }
+        ApiEvent::GetBlockStatus {
+            block_id,
+            response_tx,
+        } => {
+            massa_trace!("massa-node.main.run.select.api_event.get_active_block", {
+                "block_id": block_id
+            });
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_block_status(block_id)
+                        .await
+                        .expect("get_active_block failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_active_block response in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::GetBlockGraphStatus(response_sender_tx) => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.get_block_graph_status",
+                {}
+            );
+            if response_sender_tx
+                .send(
+                    consensus_command_sender
+                        .get_block_graph_status()
+                        .await
+                        .expect("get_block_graph_status failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_block_graph_status response in api_event_receiver.wait_event");
+            }
+            trace!("after sending block graph to response_tx sender in loop in massa-node main");
+        }
+        ApiEvent::GetPeers(response_sender_tx) => {
+            massa_trace!("massa-node.main.run.select.api_event.get_peers", {});
+            if response_sender_tx
+                .send(
+                    network_command_sender
+                        .get_peers()
+                        .await
+                        .expect("get_peers failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_peers response in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::GetSelectionDraw {
+            start,
+            end,
+            response_tx,
+        } => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.get_selection_draws",
+                {}
+            );
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_selection_draws(start, end)
+                        .await,
+                )
+                .is_err()
+            {
+                warn!(
+                    "could not send get_selection_draws response in api_event_receiver.wait_event"
+                );
+            }
+        }
+        ApiEvent::GetAddressesInfo {
+            addresses,
+            response_tx,
+        } => {
+            massa_trace!("massa-node.main.run.select.api_event.get_addresses_info", {
+            });
+            if response_tx
+                .send(consensus_command_sender.get_addresses_info(addresses).await)
+                .is_err()
+            {
+                warn!(
+                    "could not send get_addresses_info response in api_event_receiver.wait_event"
+                );
+            }
+        }
+        ApiEvent::GetRecentOperations {
+            address,
+            response_tx,
+        } => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.get_operations_involving_address",
+                {}
+            );
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_operations_involving_address(address)
+                        .await
+                        .expect("could not get recent operations"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_operations_involving_address response in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::GetOperations {
+            operation_ids,
+            response_tx,
+        } => {
+            massa_trace!("massa-node.main.run.select.api_event.get_operations", {
+                "operation_ids": operation_ids
+            });
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_operations(operation_ids)
+                        .await
+                        .expect("could not get operations"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_operations response in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::GetStats(response_tx) => {
+            massa_trace!("massa-node.main.run.select.api_event.get_stats", {});
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_stats()
+                        .await
+                        .expect("get_stats failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_stats response in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::GetActiveStakers(response_tx) => {
+            massa_trace!("massa-node.main.run.select.api_event.get_active_stakers", {
+            });
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_active_stakers()
+                        .await
+                        .expect("get_active_stakers failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!(
+                    "could not send get_active_stakers response in api_event_receiver.wait_event"
+                );
+            }
+        }
+        ApiEvent::RegisterStakingPrivateKeys(key) => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.register_staking_private_keys",
+                {}
+            );
+            consensus_command_sender
+                .register_staking_private_keys(key)
+                .await
+                .expect("register_staking_private_keys failed in api_event_receiver.wait_event")
+        }
+        ApiEvent::RemoveStakingAddresses(address) => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.remove_staking_addresses",
+                {}
+            );
+            consensus_command_sender
+                .remove_staking_addresses(address)
+                .await
+                .expect("remove_staking_addresses failed in api_event_receiver.wait_event")
+        }
+        ApiEvent::GetStakingAddresses(response_tx) => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.get_staking_addresses",
+                {}
+            );
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_staking_addresses()
+                        .await
+                        .expect("get_staking_addresses failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_staking_addresses response in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::NodeSignMessage {
+            message,
+            response_tx,
+        } => {
+            massa_trace!("massa-node.main.run.select.api_event.node_sign_message", {});
+            if response_tx
+                .send(
+                    network_command_sender
+                        .node_sign_message(message)
+                        .await
+                        .expect("node_sign_message failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!("could not send node_sign_message response in api_event_receiver.wait_event");
+            }
+        }
+        ApiEvent::GetStakerProductionStats {
+            address,
+            response_tx,
+        } => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.get_staker_production_stats",
+                {}
+            );
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_staker_production_stats(address)
+                        .await
+                        .expect(
+                            "get staker production stats failed in api_event_receiver.wait_event",
+                        ),
+                )
+                .is_err()
+            {
+                warn!("could not send get_staker_production_stats response in api_event_receiver.wait_event");
+            }
+        }
+    }
+    false
 }
 
 async fn stop(
