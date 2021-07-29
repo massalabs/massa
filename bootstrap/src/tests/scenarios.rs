@@ -4,6 +4,7 @@ use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::{SerializeCompact, Version};
 use serial_test::serial;
 use std::str::FromStr;
+use time::UTime;
 use tokio::sync::mpsc;
 
 use crate::{get_state, start_bootstrap_server};
@@ -47,6 +48,7 @@ async fn test_bootstrap_server() {
             cfg_copy,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
+            UTime::now(0).unwrap().saturating_sub(1000.into()),
         )
         .await
         .unwrap()
