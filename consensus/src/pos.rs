@@ -6,7 +6,7 @@ use crypto::hash::Hash;
 use models::{
     array_from_slice, with_serialization_context, Address, Amount, BlockId, DeserializeCompact,
     DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact, SerializeVarInt,
-    Slot, ADDRESS_SIZE_BYTES,
+    Slot, StakerCycleProductionStats, ADDRESS_SIZE_BYTES,
 };
 use num::rational::Ratio;
 use rand::distributions::Uniform;
@@ -933,6 +933,50 @@ impl ProofOfStake {
         }
 
         Ok(())
+    }
+
+    pub fn get_staker_production_stats(&self, address: Address) -> Vec<StakerCycleProductionStats> {
+        let mut res: HashMap<u64, StakerCycleProductionStats> = HashMap::new();
+        let mut completeness: HashMap<u64, u8> = HashMap::new();
+        for thread_info in self.cycle_states.iter() {
+            for thread_cycle_info in thread_info.iter() {
+                let cycle = thread_cycle_info.cycle;
+                let thread_cycle_complete =
+                    thread_cycle_info.is_complete(self.cfg.periods_per_cycle);
+                let cycle_complete = if thread_cycle_complete {
+                    *completeness
+                        .entry(cycle)
+                        .and_modify(|n| *n = *n + 1)
+                        .or_insert(1)
+                        == self.cfg.thread_count
+                } else {
+                    false
+                };
+                let (n_ok, n_nok) =
+                    if let Some((n_ok, n_nok)) = thread_cycle_info.production_stats.get(&address) {
+                        (*n_ok, *n_nok)
+                    } else {
+                        (0, 0)
+                    };
+                match res.entry(cycle) {
+                    hash_map::Entry::Occupied(mut occ) => {
+                        let cur = occ.get_mut();
+                        cur.is_final = cycle_complete;
+                        cur.final_ok_count += n_ok;
+                        cur.final_nok_count += n_nok;
+                    }
+                    hash_map::Entry::Vacant(vac) => {
+                        vac.insert(StakerCycleProductionStats {
+                            cycle,
+                            is_final: cycle_complete,
+                            final_ok_count: n_ok,
+                            final_nok_count: n_nok,
+                        });
+                    }
+                }
+            }
+        }
+        res.into_values().collect()
     }
 
     pub fn get_last_final_block_cycle(&self, thread: u8) -> u64 {
