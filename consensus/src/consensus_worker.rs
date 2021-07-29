@@ -97,7 +97,9 @@ pub struct ConsensusStats {
 
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
-pub enum ConsensusEvent {}
+pub enum ConsensusEvent {
+    NeedSync,
+}
 
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
@@ -122,7 +124,7 @@ pub struct ConsensusWorker {
     /// Channel receiving consensus commands.
     controller_command_rx: mpsc::Receiver<ConsensusCommand>,
     /// Channel sending out consensus events.
-    _controller_event_tx: mpsc::Sender<ConsensusEvent>,
+    controller_event_tx: mpsc::Sender<ConsensusEvent>,
     /// Channel receiving consensus management commands.
     controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
     /// Proof of stake module.
@@ -203,7 +205,7 @@ impl ConsensusWorker {
             opt_storage_command_sender,
             block_db,
             controller_command_rx,
-            _controller_event_tx: controller_event_tx,
+            controller_event_tx,
             controller_manager_rx,
             pos,
             previous_slot,
@@ -300,6 +302,21 @@ impl ConsensusWorker {
                 info!("Starting cycle {}", cur_cycle);
             }
         });
+        let now = UTime::now(self.clock_compensation)?;
+        if !self
+            .final_block_stats
+            .iter()
+            .filter(|(time, _, _)| time > &now.saturating_sub(self.cfg.stats_timespan))
+            .any(|(_, _, key)| {
+                self.staking_keys
+                    .iter()
+                    .any(|(_, (pubkey, _))| pubkey == key)
+            })
+        {
+            self.controller_event_tx
+                .send(ConsensusEvent::NeedSync)
+                .await?
+        }
 
         // signal tick to pool
         self.pool_command_sender

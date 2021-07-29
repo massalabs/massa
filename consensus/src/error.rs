@@ -2,6 +2,7 @@
 
 use std::array::TryFromSliceError;
 
+use crate::consensus_worker::ConsensusEvent;
 use communication::CommunicationError;
 use models::ModelsError;
 use rand::distributions::WeightedError;
@@ -83,6 +84,8 @@ pub enum ConsensusError {
     BlockCreationError(String),
     #[error("Proof of stake cycle unavailable {0}")]
     PosCycleUnavailable(String),
+    #[error("error sending consensus event: {0}")]
+    TokioSendError(#[from] tokio::sync::mpsc::error::SendError<ConsensusEvent>),
 }
 
 #[derive(Error, Debug)]

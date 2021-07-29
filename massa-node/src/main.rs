@@ -11,7 +11,7 @@ use communication::{
     network::{start_network_controller, Establisher},
     protocol::start_protocol_controller,
 };
-use consensus::start_consensus_controller;
+use consensus::{start_consensus_controller, ConsensusEvent};
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::{init_serialization_context, Address, SerializationContext};
@@ -148,7 +148,9 @@ async fn run(cfg: config::Config) {
             evt = consensus_event_receiver.wait_event() => {
                 massa_trace!("massa-node.main.run.select.consensus_event", {});
                 match evt {
-                    Ok(_) => (),
+                    Ok(ConsensusEvent::NeedSync) => {
+                        warn!("need sync")
+                    },
                     Err(err) => {
                         error!("consensus_event_receiver.wait_event error: {:?}", err);
                         break;
