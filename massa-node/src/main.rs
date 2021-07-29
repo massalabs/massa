@@ -170,69 +170,75 @@ async fn launch(
 }
 
 async fn run(cfg: config::Config) {
-    let (
-        pool_command_sender,
-        mut consensus_event_receiver,
-        mut api_event_receiver,
-        consensus_command_sender,
-        network_command_sender,
-        bootstrap_manager,
-        api_manager,
-        consensus_manager,
-        pool_manager,
-        protocol_manager,
-        storage_manager,
-        network_manager,
-    ) = launch(cfg).await;
-    // interrupt signal listener
-    let stop_signal = signal::ctrl_c();
-    tokio::pin!(stop_signal);
-    // loop over messages
     loop {
-        massa_trace!("massa-node.main.run.select", {});
-        let mut api_pool_command_sender = pool_command_sender.clone();
-        tokio::select! {
-            evt = consensus_event_receiver.wait_event() => {
-                massa_trace!("massa-node.main.run.select.consensus_event", {});
-                match evt {
-                    Ok(ConsensusEvent::NeedSync) => {
-                        warn!("need sync")
-                    },
-                    Err(err) => {
-                        error!("consensus_event_receiver.wait_event error: {:?}", err);
-                        break;
+        let (
+            pool_command_sender,
+            mut consensus_event_receiver,
+            mut api_event_receiver,
+            consensus_command_sender,
+            network_command_sender,
+            bootstrap_manager,
+            api_manager,
+            consensus_manager,
+            pool_manager,
+            protocol_manager,
+            storage_manager,
+            network_manager,
+        ) = launch(cfg.clone()).await;
+        // interrupt signal listener
+        let stop_signal = signal::ctrl_c();
+        tokio::pin!(stop_signal);
+        // loop over messages
+        let restart = loop {
+            massa_trace!("massa-node.main.run.select", {});
+            let mut api_pool_command_sender = pool_command_sender.clone();
+            tokio::select! {
+                evt = consensus_event_receiver.wait_event() => {
+                    massa_trace!("massa-node.main.run.select.consensus_event", {});
+                    match evt {
+                        Ok(ConsensusEvent::NeedSync) => {
+                            warn!("need sync");
+                            break true;
+                        },
+                        Err(err) => {
+                            error!("consensus_event_receiver.wait_event error: {:?}", err);
+                            break false ;
+                        }
                     }
+                },
+
+                evt = api_event_receiver.wait_event() =>{
+                    massa_trace!("massa-node.main.run.select.api_event", {});
+
+                    if on_api_event(evt.map_err(|e|format!("api communication error: {:?}", e)).unwrap(),
+                    &mut api_pool_command_sender,
+                    &consensus_command_sender,
+                    &network_command_sender).await {break false}
                 }
-            },
 
-            evt = api_event_receiver.wait_event() =>{
-                massa_trace!("massa-node.main.run.select.api_event", {});
-
-                if on_api_event(evt.map_err(|e|format!("api communication error: {:?}", e)).unwrap(),
-                &mut api_pool_command_sender,
-                &consensus_command_sender,
-                &network_command_sender).await {break}
+                _ = &mut stop_signal => {
+                    massa_trace!("massa-node.main.run.select.stop", {});
+                    info!("interrupt signal received");
+                    break false;
+                }
             }
-
-            _ = &mut stop_signal => {
-                massa_trace!("massa-node.main.run.select.stop", {});
-                info!("interrupt signal received");
-                break;
-            }
+        };
+        stop(
+            bootstrap_manager,
+            api_manager,
+            api_event_receiver,
+            consensus_manager,
+            consensus_event_receiver,
+            pool_manager,
+            protocol_manager,
+            storage_manager,
+            network_manager,
+        )
+        .await;
+        if !restart {
+            break;
         }
     }
-    stop(
-        bootstrap_manager,
-        api_manager,
-        api_event_receiver,
-        consensus_manager,
-        consensus_event_receiver,
-        pool_manager,
-        protocol_manager,
-        storage_manager,
-        network_manager,
-    )
-    .await
 }
 
 async fn on_api_event(
