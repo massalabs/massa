@@ -144,6 +144,7 @@ pub struct ConsensusWorker {
     // stats (block -> tx_count, creator)
     final_block_stats: VecDeque<(UTime, u64, PublicKey)>,
     stale_block_stats: VecDeque<UTime>,
+    launch_time: UTime,
 }
 
 impl ConsensusWorker {
@@ -217,6 +218,7 @@ impl ConsensusWorker {
             staking_keys,
             final_block_stats: VecDeque::new(),
             stale_block_stats: VecDeque::new(),
+            launch_time: UTime::now(clock_compensation)?,
         })
     }
 
@@ -303,7 +305,7 @@ impl ConsensusWorker {
             }
         });
         let now = UTime::now(self.clock_compensation)?;
-        if !self
+        if now > self.launch_time.saturating_add(self.cfg.stats_timespan) && !self
             .final_block_stats
             .iter()
             .filter(|(time, _, _)| time > &now.saturating_sub(self.cfg.stats_timespan))
