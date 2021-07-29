@@ -5,26 +5,43 @@
 
 extern crate logging;
 mod config;
-use api::{start_api_controller, ApiEvent};
-use bootstrap::{get_state, start_bootstrap_server};
+use api::{start_api_controller, ApiEvent, ApiEventReceiver, ApiManager};
+use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
-    network::{start_network_controller, Establisher},
-    protocol::start_protocol_controller,
+    network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},
+    protocol::{start_protocol_controller, ProtocolManager},
 };
-use consensus::{start_consensus_controller, ConsensusEvent};
+use consensus::{
+    start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
+    ConsensusManager,
+};
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::{init_serialization_context, Address, SerializationContext};
-use pool::start_pool_controller;
-use storage::start_storage;
+use pool::{start_pool_controller, PoolCommandSender, PoolManager};
+use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::{fs::read_to_string, signal};
 
-async fn run(cfg: config::Config) {
+async fn launch(
+    cfg: config::Config,
+) -> (
+    PoolCommandSender,
+    ConsensusEventReceiver,
+    ApiEventReceiver,
+    ConsensusCommandSender,
+    NetworkCommandSender,
+    Option<BootstrapManager>,
+    ApiManager,
+    ConsensusManager,
+    PoolManager,
+    ProtocolManager,
+    StorageManager,
+    NetworkManager,
+) {
     if let Some(end) = cfg.consensus.end_timestamp {
         if end > UTime::now(0).expect("Could not get now time") {
-            info!("This episode has already ended, you can download the next one https://gitlab.com/massalabs/massa");
-            return;
+            panic!("This episode has already ended, you can download the next one https://gitlab.com/massalabs/massa");
         }
     }
 
@@ -97,7 +114,7 @@ async fn run(cfg: config::Config) {
     .expect("could not start pool controller");
 
     // launch consensus controller
-    let (consensus_command_sender, mut consensus_event_receiver, consensus_manager) =
+    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.consensus.clone(),
             protocol_command_sender.clone(),
@@ -112,7 +129,7 @@ async fn run(cfg: config::Config) {
         .expect("could not start consensus controller");
 
     // launch API controller
-    let (mut api_event_receiver, api_manager) = start_api_controller(
+    let (api_event_receiver, api_manager) = start_api_controller(
         cfg.api.clone(),
         cfg.consensus.clone(),
         cfg.protocol.clone(),
@@ -136,10 +153,40 @@ async fn run(cfg: config::Config) {
     .await
     .unwrap();
 
+    (
+        pool_command_sender,
+        consensus_event_receiver,
+        api_event_receiver,
+        consensus_command_sender,
+        network_command_sender,
+        bootstrap_manager,
+        api_manager,
+        consensus_manager,
+        pool_manager,
+        protocol_manager,
+        storage_manager,
+        network_manager,
+    )
+}
+
+async fn run(cfg: config::Config) {
+    let (
+        pool_command_sender,
+        mut consensus_event_receiver,
+        mut api_event_receiver,
+        consensus_command_sender,
+        network_command_sender,
+        bootstrap_manager,
+        api_manager,
+        consensus_manager,
+        pool_manager,
+        protocol_manager,
+        storage_manager,
+        network_manager,
+    ) = launch(cfg).await;
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
-
     // loop over messages
     loop {
         massa_trace!("massa-node.main.run.select", {});
@@ -344,7 +391,31 @@ async fn run(cfg: config::Config) {
             }
         }
     }
+    stop(
+        bootstrap_manager,
+        api_manager,
+        api_event_receiver,
+        consensus_manager,
+        consensus_event_receiver,
+        pool_manager,
+        protocol_manager,
+        storage_manager,
+        network_manager,
+    )
+    .await
+}
 
+async fn stop(
+    bootstrap_manager: Option<BootstrapManager>,
+    api_manager: ApiManager,
+    api_event_receiver: ApiEventReceiver,
+    consensus_manager: ConsensusManager,
+    consensus_event_receiver: ConsensusEventReceiver,
+    pool_manager: PoolManager,
+    protocol_manager: ProtocolManager,
+    storage_manager: StorageManager,
+    network_manager: NetworkManager,
+) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
