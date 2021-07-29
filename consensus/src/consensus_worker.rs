@@ -17,7 +17,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{cmp::max, collections::VecDeque, convert::TryFrom, path::Path};
+use std::{cmp::{max, min}, collections::VecDeque, convert::TryFrom, path::Path};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -198,6 +198,14 @@ impl ConsensusWorker {
         }
         massa_trace!("consensus.consensus_worker.new", {});
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
+        let mut final_block_stats = VecDeque::new();
+        for thread in 0..cfg.thread_count {
+            final_block_stats.push_back((get_block_slot_timestamp(
+                cfg.thread_count,
+                cfg.t0,
+                cfg.genesis_timestamp,
+                Slot::new(0, thread))?, 0, genesis_public_key))
+        }
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
             genesis_public_key,
@@ -216,7 +224,7 @@ impl ConsensusWorker {
             clock_compensation,
             pool_command_sender,
             staking_keys,
-            final_block_stats: VecDeque::new(),
+            final_block_stats,
             stale_block_stats: VecDeque::new(),
             launch_time: UTime::now(clock_compensation)?,
         })
@@ -853,7 +861,7 @@ impl ConsensusWorker {
         // prune stats
         self.prune_stats()?;
 
-        let timespan = self.cfg.stats_timespan;
+        let timespan = min(UTime::now(self.clock_compensation)?.saturating_sub(self.launch_time), self.cfg.stats_timespan);
         let final_block_count = self.final_block_stats.len() as u64;
         let final_operation_count = self
             .final_block_stats
