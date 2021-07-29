@@ -196,9 +196,10 @@ async fn get_state_internal(
 }
 
 pub async fn get_state(
-    cfg: BootstrapConfig,
+    mut cfg: BootstrapConfig,
     mut establisher: Establisher,
     version: Version,
+    genesis_timestamp: UTime,
 ) -> Result<
     (
         Option<ExportProofOfStake>,
@@ -209,8 +210,18 @@ pub async fn get_state(
     BootstrapError,
 > {
     massa_trace!("bootstrap.lib.get_state", {});
-    if cfg.bootstrap_list.is_empty() {
+    let now = UTime::now(0)?;
+    // if we are before genesis, do not bootstrap
+    if now < genesis_timestamp {
+        massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         return Ok((None, None, 0, None));
+    }
+    // we are after genesis => bootstrap
+    massa_trace!("bootstrap.lib.get_state.init_from_others", {});
+    if cfg.bootstrap_list.is_empty() {
+        return Err(BootstrapError::GeneralError(
+            "no bootstrap nodes found in list".into(),
+        ));
     }
     let mut shuffled_list = cfg.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
