@@ -17,7 +17,12 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{cmp::{max, min}, collections::VecDeque, convert::TryFrom, path::Path};
+use std::{
+    cmp::{max, min},
+    collections::VecDeque,
+    convert::TryFrom,
+    path::Path,
+};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -200,11 +205,16 @@ impl ConsensusWorker {
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
         let mut final_block_stats = VecDeque::new();
         for thread in 0..cfg.thread_count {
-            final_block_stats.push_back((get_block_slot_timestamp(
-                cfg.thread_count,
-                cfg.t0,
-                cfg.genesis_timestamp,
-                Slot::new(0, thread))?, 0, genesis_public_key))
+            final_block_stats.push_back((
+                get_block_slot_timestamp(
+                    cfg.thread_count,
+                    cfg.t0,
+                    cfg.genesis_timestamp,
+                    Slot::new(0, thread),
+                )?,
+                0,
+                genesis_public_key,
+            ))
         }
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
@@ -313,15 +323,18 @@ impl ConsensusWorker {
             }
         });
         let now = UTime::now(self.clock_compensation)?;
-        if now > max(self.cfg.genesis_timestamp,self.launch_time).saturating_add(self.cfg.stats_timespan) && !self
-            .final_block_stats
-            .iter()
-            .filter(|(time, _, _)| time > &now.saturating_sub(self.cfg.stats_timespan))
-            .any(|(_, _, key)| {
-                self.staking_keys
-                    .iter()
-                    .any(|(_, (pubkey, _))| pubkey == key)
-            })
+        if now
+            > max(self.cfg.genesis_timestamp, self.launch_time)
+                .saturating_add(self.cfg.stats_timespan)
+            && !self
+                .final_block_stats
+                .iter()
+                .filter(|(time, _, _)| time > &now.saturating_sub(self.cfg.stats_timespan))
+                .any(|(_, _, key)| {
+                    self.staking_keys
+                        .iter()
+                        .any(|(_, (pubkey, _))| pubkey == key)
+                })
         {
             self.controller_event_tx
                 .send(ConsensusEvent::NeedSync)
@@ -861,7 +874,10 @@ impl ConsensusWorker {
         // prune stats
         self.prune_stats()?;
 
-        let timespan = min(UTime::now(self.clock_compensation)?.saturating_sub(self.launch_time), self.cfg.stats_timespan);
+        let timespan = min(
+            UTime::now(self.clock_compensation)?.saturating_sub(self.launch_time),
+            self.cfg.stats_timespan,
+        );
         let final_block_count = self.final_block_stats.len() as u64;
         let final_operation_count = self
             .final_block_stats
