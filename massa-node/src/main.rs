@@ -197,7 +197,7 @@ async fn run(cfg: config::Config) {
                     massa_trace!("massa-node.main.run.select.consensus_event", {});
                     match evt {
                         Ok(ConsensusEvent::NeedSync) => {
-                            warn!("need sync");
+                            warn!("in response to a desynchronization, the node is going to bootstrap again");
                             break true;
                         },
                         Err(err) => {
@@ -273,7 +273,7 @@ async fn on_api_event(
                     }
                 };
                 info!(
-                    "Added operation {} from API : {}, fee {}",
+                    "Added operation {} from API: {}, fee {}",
                     id, operation_message, op.content.fee
                 );
             }

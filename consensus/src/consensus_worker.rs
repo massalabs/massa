@@ -103,7 +103,7 @@ pub struct ConsensusStats {
 /// Events that are emitted by consensus.
 #[derive(Debug, Clone)]
 pub enum ConsensusEvent {
-    NeedSync,
+    NeedSync, // probable desync detected, need resync
 }
 
 /// Events that are emitted by consensus.
@@ -147,7 +147,7 @@ pub struct ConsensusWorker {
     // staking keys
     staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
     // stats (block -> tx_count, creator)
-    final_block_stats: VecDeque<(UTime, u64, PublicKey)>,
+    final_block_stats: VecDeque<(UTime, u64, Address)>,
     stale_block_stats: VecDeque<UTime>,
     launch_time: UTime,
 }
@@ -202,7 +202,10 @@ impl ConsensusWorker {
             info!("Staking enabled for address: {}", addr);
         }
         massa_trace!("consensus.consensus_worker.new", {});
+
+        // add genesis blocks to stats
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
+        let genesis_addr = Address::from_public_key(&genesis_public_key)?;
         let mut final_block_stats = VecDeque::new();
         for thread in 0..cfg.thread_count {
             final_block_stats.push_back((
@@ -213,9 +216,10 @@ impl ConsensusWorker {
                     Slot::new(0, thread),
                 )?,
                 0,
-                genesis_public_key,
+                genesis_addr,
             ))
         }
+
         Ok(ConsensusWorker {
             cfg: cfg.clone(),
             genesis_public_key,
@@ -313,29 +317,27 @@ impl ConsensusWorker {
         let cur_slot = self.next_slot;
         self.previous_slot = Some(cur_slot);
         self.next_slot = self.next_slot.get_next_slot(self.cfg.thread_count)?;
-
         massa_trace!("consensus.consensus_worker.slot_tick", { "slot": cur_slot });
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
 
-        self.previous_slot.map(|slot| {
+        if let Some(slot) = self.previous_slot {
             if slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
-                info!("Starting cycle {}", cur_cycle);
+                info!("Started cycle {}", cur_cycle);
             }
-        });
+        }
+
+        // check if there are any final blocks not produced by us
+        // if none => we are probably desync
         let now = UTime::now(self.clock_compensation)?;
         if now
             > max(self.cfg.genesis_timestamp, self.launch_time)
                 .saturating_add(self.cfg.stats_timespan)
-            && !self
-                .final_block_stats
-                .iter()
-                .filter(|(time, _, _)| time > &now.saturating_sub(self.cfg.stats_timespan))
-                .any(|(_, _, key)| {
-                    self.staking_keys
-                        .iter()
-                        .any(|(_, (pubkey, _))| pubkey == key)
-                })
+            && !self.final_block_stats.iter().any(|(time, _, addr)| {
+                time > &now.saturating_sub(self.cfg.stats_timespan)
+                    && !self.staking_keys.contains_key(addr)
+            })
         {
+            warn!("desynchronization detected");
             self.controller_event_tx
                 .send(ConsensusEvent::NeedSync)
                 .await?
@@ -1147,7 +1149,7 @@ impl ConsensusWorker {
                 self.final_block_stats.push_back((
                     timestamp,
                     a_block.operation_set.len() as u64,
-                    a_block.block.header.content.creator,
+                    Address::from_public_key(&a_block.block.header.content.creator)?,
                 ));
             }
         }
