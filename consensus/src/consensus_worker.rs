@@ -17,7 +17,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, convert::TryFrom, path::Path};
+use std::{cmp::max, collections::VecDeque, convert::TryFrom, path::Path};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -305,7 +305,7 @@ impl ConsensusWorker {
             }
         });
         let now = UTime::now(self.clock_compensation)?;
-        if now > self.launch_time.saturating_add(self.cfg.stats_timespan) && !self
+        if now > max(self.cfg.genesis_timestamp,self.launch_time).saturating_add(self.cfg.stats_timespan) && !self
             .final_block_stats
             .iter()
             .filter(|(time, _, _)| time > &now.saturating_sub(self.cfg.stats_timespan))
