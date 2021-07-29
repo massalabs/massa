@@ -67,6 +67,7 @@ async fn launch(
         cfg.bootstrap.clone(),
         bootstrap::establisher::Establisher::new(),
         cfg.version,
+        cfg.consensus.genesis_timestamp,
     )
     .await
     .unwrap();
