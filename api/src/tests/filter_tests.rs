@@ -11,6 +11,7 @@ use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
 use models::SerializeCompact;
+use models::StakerCycleProductionStats;
 use models::{Address, Amount, Block, BlockHeader, BlockId, Slot};
 use models::{
     Operation, OperationContent, OperationId, OperationSearchResult, OperationSearchResultStatus,
@@ -1818,6 +1819,14 @@ async fn test_staker_info() {
 
     let staker = get_dummy_staker();
     let cloned_staker = staker.clone();
+
+    let stats = StakerCycleProductionStats {
+        cycle: 0,
+        is_final: true,
+        final_ok_count: 5,
+        final_nok_count: 0,
+    };
+    let cloned_stats = stats.clone();
     //test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1838,6 +1847,11 @@ async fn test_staker_info() {
                         response_tx
                             .send(get_test_block_graph())
                             .expect("failed to send graph");
+                    }
+                    Some(ApiEvent::GetStakerProductionStats { response_tx, .. }) => {
+                        response_tx
+                            .send(vec![stats.clone()])
+                            .expect("failed to send stats");
                     }
 
                     None => break,
@@ -1863,6 +1877,10 @@ async fn test_staker_info() {
         assert_eq!(
             obtained["staker_next_draws"],
             serde_json::to_value(vec![Slot::new(0u64, 0u8)]).unwrap()
+        );
+        assert_eq!(
+            obtained["staker_production"],
+            serde_json::to_value(vec![cloned_stats]).unwrap()
         );
 
         drop(filter);
@@ -1896,7 +1914,13 @@ async fn test_staker_info() {
     let cloned_staker = staker.clone();
     let cloned_graph = graph.clone();
     let (filter, mut rx_api) = mock_filter(None);
-
+    let stats = StakerCycleProductionStats {
+        cycle: 0,
+        is_final: true,
+        final_ok_count: 5,
+        final_nok_count: 0,
+    };
+    let cloned_stats = stats.clone();
     let handle = tokio::spawn(async move {
         loop {
             let cloned = cloned_graph.clone();
@@ -1913,7 +1937,11 @@ async fn test_staker_info() {
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
                     response_tx.send(cloned).expect("failed to send graph");
                 }
-
+                Some(ApiEvent::GetStakerProductionStats { response_tx, .. }) => {
+                    response_tx
+                        .send(vec![stats.clone()])
+                        .expect("failed to send stats");
+                }
                 None => break,
                 _ => {}
             }
@@ -1955,6 +1983,10 @@ async fn test_staker_info() {
     .unwrap();
     assert_eq!(obtained["staker_active_blocks"], expected_active);
     assert_eq!(obtained["staker_discarded_blocks"], expected_discarded);
+    assert_eq!(
+        obtained["staker_production"],
+        serde_json::to_value(vec![cloned_stats]).unwrap()
+    );
 
     drop(filter);
 }

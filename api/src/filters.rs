@@ -19,6 +19,7 @@ use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
+use models::StakerCycleProductionStats;
 use models::{BlockHeader, BlockId, Slot};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
@@ -71,6 +72,10 @@ pub enum ApiEvent {
     NodeSignMessage {
         message: Vec<u8>,
         response_tx: oneshot::Sender<(PublicKey, Signature)>,
+    },
+    GetStakerProductionStats {
+        address: Address,
+        response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
     },
 }
 
@@ -1877,10 +1882,24 @@ async fn get_staker_info(
         })
         .collect();
 
+    let staker_production_stats = match retrieve_staker_production_stats(creator, &event_tx).await {
+        Ok(stats) => stats,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting staker production stats : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
     Ok(warp::reply::json(&json!({
         "staker_active_blocks": blocks,
         "staker_discarded_blocks": discarded,
         "staker_next_draws": next_slots_by_creator,
+        "staker_production": staker_production_stats
     }))
     .into_response())
 }
@@ -1953,6 +1972,32 @@ async fn get_next_draws(
         .collect();
 
     Ok(warp::reply::json(&next_slots).into_response())
+}
+
+async fn retrieve_staker_production_stats(
+    address: Address,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<Vec<StakerCycleProductionStats>, ApiError> {
+    massa_trace!("api.filters.retrieve_staker_production_stats", {});
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetStakerProductionStats {
+            address,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get staker production stats: {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!(
+            "Could not retrieve staker produciton stats: {0}",
+            e
+        ))
+    })
 }
 
 async fn retrieve_stats(event_tx: &mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, ApiError> {
