@@ -318,6 +318,17 @@ async fn run(cfg: config::Config) {
                         warn!("could not send node_sign_message response in api_event_receiver.wait_event");
                     }
                 },
+                Ok(ApiEvent::GetStakerProductionStats{address, response_tx}) =>{
+                    massa_trace!("massa-node.main.run.select.api_event.get_staker_production_stats", {});
+                    if response_tx.send(
+                        consensus_command_sender
+                        .get_staker_production_stats(address)
+                            .await
+                            .expect("get staker production stats failed in api_event_receiver.wait_event")
+                        ).is_err() {
+                        warn!("could not send get_staker_production_stats response in api_event_receiver.wait_event");
+                    }
+                },
                 Err(err) => {
                     error!("api communication error: {:?}", err);
                     break;

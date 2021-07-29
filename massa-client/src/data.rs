@@ -22,7 +22,7 @@ use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{
     Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus, OperationType, Slot,
+    OperationSearchResultStatus, OperationType, Slot, StakerCycleProductionStats,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -422,6 +422,7 @@ pub struct StakerInfo {
     staker_active_blocks: Vec<(Hash, BlockHeader)>,
     staker_discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,
     staker_next_draws: Vec<Slot>,
+    staker_production: Vec<StakerCycleProductionStats>,
 }
 
 impl std::fmt::Display for StakerInfo {
@@ -457,7 +458,34 @@ impl std::fmt::Display for StakerInfo {
                 .iter()
                 .map(|slot| format!("(slot:{})", slot))
                 .collect::<Vec<String>>()
-        )
+        )?;
+        if self.staker_production.is_empty() {
+            writeln!(f, "  no production found")
+        } else {
+            writeln!(f, " production:")?;
+            let mut prods = self.staker_production.clone();
+            prods.sort_unstable_by_key(|p| p.cycle);
+            for prod in prods {
+                writeln!(
+                    f,
+                    "    cycle {} ({}): {}",
+                    prod.cycle,
+                    if prod.is_final { "final" } else { "active" },
+                    if prod.final_ok_count + prod.final_nok_count == 0 {
+                        "no production".to_string()
+                    } else {
+                        format!(
+                            "{}/{} produced ({}% miss)",
+                            prod.final_ok_count,
+                            prod.final_ok_count + prod.final_nok_count,
+                            prod.final_nok_count * 100
+                                / (prod.final_ok_count + prod.final_nok_count)
+                        )
+                    }
+                )?;
+            }
+            writeln!(f, "")
+        }
     }
 }
 

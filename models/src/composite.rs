@@ -36,3 +36,11 @@ impl OperationSearchResult {
         self.in_blocks.extend(other.in_blocks.iter());
     }
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StakerCycleProductionStats {
+    pub cycle: u64,
+    pub is_final: bool,
+    pub final_ok_count: u64,
+    pub final_nok_count: u64,
+}
