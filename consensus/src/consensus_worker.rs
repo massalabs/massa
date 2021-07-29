@@ -139,8 +139,8 @@ pub struct ConsensusWorker {
     clock_compensation: i64,
     // staking keys
     staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
-    // stats (block -> tx_count)
-    final_block_stats: VecDeque<(UTime, u64)>,
+    // stats (block -> tx_count, creator)
+    final_block_stats: VecDeque<(UTime, u64, PublicKey)>,
     stale_block_stats: VecDeque<UTime>,
 }
 
@@ -839,7 +839,7 @@ impl ConsensusWorker {
         let final_operation_count = self
             .final_block_stats
             .iter()
-            .fold(0u64, |acc, (_, tx_n)| acc + tx_n);
+            .fold(0u64, |acc, (_, tx_n, _)| acc + tx_n);
         let stale_block_count = self.stale_block_stats.len() as u64;
         let clique_count = self.block_db.get_clique_count() as u64;
         Ok(ConsensusStats {
@@ -1059,7 +1059,7 @@ impl ConsensusWorker {
     fn prune_stats(&mut self) -> Result<(), ConsensusError> {
         let start_time =
             UTime::now(self.clock_compensation)?.saturating_sub(self.cfg.stats_timespan);
-        self.final_block_stats.retain(|(t, _)| t >= &start_time);
+        self.final_block_stats.retain(|(t, _, _)| t >= &start_time);
         self.stale_block_stats.retain(|t| t >= &start_time);
         Ok(())
     }
@@ -1101,8 +1101,11 @@ impl ConsensusWorker {
                 // List final block
                 new_final_blocks.insert(b_id, a_block);
                 // add to stats
-                self.final_block_stats
-                    .push_back((timestamp, a_block.operation_set.len() as u64));
+                self.final_block_stats.push_back((
+                    timestamp,
+                    a_block.operation_set.len() as u64,
+                    a_block.block.header.content.creator,
+                ));
             }
         }
         // Notify pool of new final ops
