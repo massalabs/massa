@@ -66,7 +66,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
     });
 
     BootstrapConfig {
-        bind: Some("0.0.0.0:31234".parse().unwrap()),
+        bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
         max_bootstrap_blocks: 100,

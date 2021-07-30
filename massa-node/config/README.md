@@ -3,7 +3,7 @@
 ## Requirements
 Make sure you have [everything](https://gitlab.com/massalabs/massa/-/blob/main/README.adoc) installed. Agree on the branch to test and pull it.
 
-Open needed ports. (For now we use 31234 for common messages and 31235 for bootstrap, but it can change.)
+Open needed ports. (For now we use 31244 for common messages and 31245 for bootstrap, but it can change.)
 
 ## Values to update in `config.toml`
 * genesis_timestamp: set it to [current timestamp](https://www.epochconverter.com/) + delta

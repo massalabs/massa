@@ -52,9 +52,9 @@ version = "DEVE.0.0"
     max_known_ops_size = 100000
 
 [network]
-    bind = "0.0.0.0:31234"
+    bind = "0.0.0.0:31244"
     # routable_ip = "200.200.200.200" # Your ip
-    protocol_port = 31234
+    protocol_port = 31244
     connect_timeout = 5000
     wakeup_interval = 10000
     peers_file = "config/peers.json"
@@ -85,12 +85,12 @@ version = "DEVE.0.0"
 
 [bootstrap]
     bootstrap_list = [
-        ["149.202.86.103:31235", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
-        ["149.202.89.125:31235", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
-        ["158.69.120.215:31235", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
-        ["158.69.23.120:31235", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
+        ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
+        ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
+        ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
+        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
     ]
-    bind = "0.0.0.0:31235" # if you want to bootstrap people
+    bind = "0.0.0.0:31245" # if you want to bootstrap people
     connect_timeout = 1000
     retry_delay = 5000
     max_bootstrap_blocks = 1000000
