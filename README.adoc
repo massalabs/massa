@@ -73,6 +73,8 @@ cargo run --release
 ## Update
 ----
 cd massa/
+git stash
+git checkout testnet
 git pull
 ----
 
