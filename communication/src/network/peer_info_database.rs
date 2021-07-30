@@ -648,8 +648,7 @@ impl PeerInfoDatabase {
             ));
         }
         if (peer.bootstrap
-            && self.active_bootstrap_connections
-                >= self.cfg.target_bootstrap_connections)
+            && self.active_bootstrap_connections >= self.cfg.target_bootstrap_connections)
             || (!peer.bootstrap
                 && self.active_out_nonbootstrap_connections
                     >= self.cfg.target_out_nonbootstrap_connections)
