@@ -237,3 +237,72 @@ impl DeserializeCompact for Message {
         Ok((res, cursor))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use rand::{prelude::StdRng, RngCore, SeedableRng};
+    use serial_test::serial;
+
+    use super::*;
+
+    fn initialize_context() -> models::SerializationContext {
+        // Init the serialization context with a default,
+        // can be overwritten with a more specific one in the test.
+        let ctx = models::SerializationContext {
+            max_block_operations: 1024,
+            parent_count: 2,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+            max_block_size: 3 * 1024 * 1024,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
+            max_operations_per_message: 1024,
+            max_bootstrap_message_size: 100000000,
+            max_bootstrap_pos_entries: 1000,
+            max_bootstrap_pos_cycles: 5,
+        };
+        models::init_serialization_context(ctx.clone());
+        ctx
+    }
+
+    #[test]
+    #[serial]
+    fn test_ser_deser() {
+        initialize_context();
+        let mut random_bytes = [0u8; 32];
+        StdRng::from_entropy().fill_bytes(&mut random_bytes);
+        let priv_key = crypto::generate_random_private_key();
+        let public_key = crypto::derive_public_key(&priv_key);
+        let msg = Message::HandshakeInitiation {
+            public_key,
+            random_bytes,
+            version: Version::from_str("TEST.1.2").unwrap(),
+        };
+        let ser = msg.to_bytes_compact().unwrap();
+        let (deser, _) = Message::from_bytes_compact(&ser).unwrap();
+        match (msg, deser) {
+            (
+                Message::HandshakeInitiation {
+                    public_key: pk1,
+                    random_bytes: rb1,
+                    version: v1,
+                },
+                Message::HandshakeInitiation {
+                    public_key,
+                    random_bytes,
+                    version,
+                },
+            ) => {
+                assert_eq!(pk1, public_key);
+                assert_eq!(rb1, random_bytes);
+                assert_eq!(v1, version);
+            }
+            _ => panic!("unexpected message"),
+        }
+    }
+}
