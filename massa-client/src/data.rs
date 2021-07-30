@@ -21,7 +21,7 @@ use consensus::{ExportBlockStatus, LedgerData};
 use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{
-    Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
+    Address, Amount, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, OperationType, Slot, StakerCycleProductionStats,
 };
 use serde::{Deserialize, Serialize};
@@ -189,7 +189,7 @@ pub struct WrappedAddressState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,
     pub candidate_rolls: u64,
-    pub locked_balance: u64,
+    pub locked_balance: Amount,
     pub candidate_ledger_data: LedgerData,
     pub final_ledger_data: LedgerData,
 }
@@ -490,9 +490,44 @@ impl std::fmt::Display for StakerInfo {
 }
 
 #[derive(Clone, Deserialize)]
+pub struct WrappedPeerInfo {
+    pub active_nodes: Vec<(NodeId, bool)>,
+    pub peer_info: PeerInfo,
+}
+
+impl std::fmt::Display for WrappedPeerInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "{}:", self.peer_info.ip)?;
+        writeln!(f, "      Peer: bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
+            , self.peer_info.bootstrap
+            , self.peer_info.banned
+            , self.peer_info.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.active_out_connection_attempts
+            , self.peer_info.active_out_connections
+            , self.peer_info.active_in_connections
+            , self.peer_info.advertised)?;
+        if !self.active_nodes.is_empty() {
+            writeln!(f, "      active_nodes: [")?;
+            for (node_id, outgoing) in &self.active_nodes {
+                writeln!(
+                    f,
+                    "        node_id: {} ({})",
+                    node_id,
+                    if *outgoing { "outgoing" } else { "incoming" }
+                )?;
+            }
+            writeln!(f, "      ]")
+        } else {
+            writeln!(f, "No active nodes")
+        }
+    }
+}
+
+#[derive(Clone, Deserialize)]
 pub struct NetworkInfo {
     our_ip: Option<IpAddr>,
-    peers: HashMap<IpAddr, (PeerInfo, Vec<(NodeId, bool)>)>,
+    peers: HashMap<IpAddr, WrappedPeerInfo>,
     node_id: NodeId,
 }
 impl std::fmt::Display for NetworkInfo {
@@ -507,43 +542,9 @@ impl std::fmt::Display for NetworkInfo {
         )?;
         writeln!(f, "  Peers:")?;
         for peer in self.peers.values() {
-            write!(f, "    {}", WrappedPeerInfo::from(peer.clone()))?;
+            write!(f, "    {}", peer)?;
         }
         Ok(())
-    }
-}
-
-#[derive(Clone, Deserialize)]
-pub struct WrappedPeerInfo((PeerInfo, Vec<(NodeId, bool)>));
-
-impl From<(PeerInfo, Vec<(NodeId, bool)>)> for WrappedPeerInfo {
-    fn from(peer: (PeerInfo, Vec<(NodeId, bool)>)) -> Self {
-        WrappedPeerInfo(peer)
-    }
-}
-
-impl std::fmt::Display for WrappedPeerInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "{}:", self.0 .0.ip)?;
-        writeln!(f, "      Peer: bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
-            , self.0.0.bootstrap
-            , self.0.0.banned
-            , self.0.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.0.active_out_connection_attempts
-            , self.0.0.active_out_connections
-            , self.0.0.active_in_connections
-            , self.0.0.advertised)?;
-        if !self.0 .1.is_empty() {
-            writeln!(f, "      active_nodes: [")?;
-            for (node_id, out_going) in &self.0 .1 {
-                writeln!(f, "        node_id: {}", node_id)?;
-                writeln!(f, "        is_outgoing: {}", out_going)?;
-            }
-            writeln!(f, "      ]")
-        } else {
-            writeln!(f, "No active nodes")
-        }
     }
 }
 

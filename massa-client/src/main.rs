@@ -952,7 +952,10 @@ fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
         {
             println!(
                 "    {}",
-                data::WrappedPeerInfo::from((peer_info, active_nodes))
+                data::WrappedPeerInfo {
+                    peer_info,
+                    active_nodes
+                }
             );
         }
     }
