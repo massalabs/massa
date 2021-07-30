@@ -12,8 +12,8 @@ use thiserror::Error;
 pub enum ConsensusError {
     #[error("Our key is missing")]
     KeyError,
-    #[error("Could not hash block header: {0}")]
-    HeaderHashError(#[from] ModelsError),
+    #[error("models error: {0}")]
+    ModelsError(#[from] ModelsError),
     #[error("Could not create genesis block {0}")]
     GenesisCreationError(String),
     #[error("Could not propagate block: {0}")]
