@@ -49,6 +49,7 @@ async fn test_bootstrap_server() {
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
             UTime::now(0).unwrap().saturating_sub(1000.into()),
+            None,
         )
         .await
         .unwrap()

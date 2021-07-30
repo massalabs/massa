@@ -200,6 +200,7 @@ pub async fn get_state(
     mut establisher: Establisher,
     version: Version,
     genesis_timestamp: UTime,
+    end_timestamp: Option<UTime>,
 ) -> Result<
     (
         Option<ExportProofOfStake>,
@@ -227,6 +228,12 @@ pub async fn get_state(
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
+            if let Some(end) = end_timestamp {
+                if UTime::now(0).expect("could not get now time") > end {
+                    panic!("This episode has already ended, you can download the next one https://gitlab.com/massalabs/massa");
+                }
+            }
+
             match get_state_internal(&cfg, addr, pub_key, &mut establisher, version).await {
                 Err(e) => {
                     warn!("error while bootstrapping: {:?}", e);
