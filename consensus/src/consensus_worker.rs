@@ -487,7 +487,10 @@ impl ConsensusWorker {
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
         let mut operation_set: HashMap<OperationId, (usize, u64)> = HashMap::new(); // (index, validity end period)
-        let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
+        let mut finished = remaining_block_space == 0
+            || remaining_operation_count == 0
+            || self.cfg.max_operations_fill_attempts == 0;
+        let mut attempts = 0;
         while !finished {
             // get a batch of operations
             let operation_batch = self
@@ -499,7 +502,13 @@ impl ConsensusWorker {
                     remaining_block_space,
                 )
                 .await?;
-            finished = operation_batch.len() < self.cfg.operation_batch_size;
+
+            attempts += 1;
+
+            // Finish once we receive a batch that isn't full,
+            // or if the maximum number of attempts has been reached.
+            finished = operation_batch.len() < self.cfg.operation_batch_size
+                || self.cfg.max_operations_fill_attempts == attempts;
 
             for (op_id, op, op_size) in operation_batch.into_iter() {
                 // exclude operation from future batches
