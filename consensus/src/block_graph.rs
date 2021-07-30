@@ -232,12 +232,13 @@ impl SerializeCompact for ExportActiveBlock {
         }
 
         // creation events
-        let production_events_count: u32 = self.production_events.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many creation events in ActiveBlock: {:?}",
-                err
-            ))
-        })?;
+        let production_events_count: u32 =
+            self.production_events.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!(
+                    "too many creation events in ActiveBlock: {:?}",
+                    err
+                ))
+            })?;
         res.extend(production_events_count.to_varint_bytes());
         for (period, addr, has_created) in self.production_events.iter() {
             res.extend(period.to_varint_bytes());
