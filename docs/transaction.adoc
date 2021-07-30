@@ -8,7 +8,7 @@ First check the balance of your addresses with this command in the client:
 wallet_info
 ----
 
-You can send a transaction from an address that has a positive balance, to any address with this command:
+You can send a transaction from an address in your wallet that has a positive balance, to any address with this command:
 ----
 send_transaction <from_address> <to_address> <amount> <fee>
 ----
