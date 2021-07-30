@@ -40,7 +40,7 @@ async fn launch(
     NetworkManager,
 ) {
     if let Some(end) = cfg.consensus.end_timestamp {
-        if end > UTime::now(0).expect("Could not get now time") {
+        if UTime::now(0).expect("could not get now time") > end {
             panic!("This episode has already ended, you can download the next one https://gitlab.com/massalabs/massa");
         }
     }

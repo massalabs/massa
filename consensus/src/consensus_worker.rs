@@ -275,12 +275,13 @@ impl ConsensusWorker {
                 // slot timer
                 _ = &mut next_slot_timer => {
                     massa_trace!("consensus.consensus_worker.run_loop.select.slot_tick", {});
+                    if let Some(end) = self.cfg.end_timestamp {
+                        if UTime::now(self.clock_compensation)? > end {
+                            info!("This episode has come to an end, you can download the next one https://gitlab.com/massalabs/massa");
+                            break;
+                        }
+                    }
                     self.slot_tick(&mut next_slot_timer).await?;
-                    if let Some(end) = self.cfg.end_timestamp{
-                    if end > UTime::now(self.clock_compensation)? {
-                        info!("This episode has come to an end, you can download the next one https://gitlab.com/massalabs/massa");
-                        break;
-                    }}
                 },
 
                 // listen consensus commands
