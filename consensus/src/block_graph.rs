@@ -232,7 +232,7 @@ impl SerializeCompact for ExportActiveBlock {
         }
 
         // creation events
-        let production_events_count: u32 = self.roll_updates.len().try_into().map_err(|err| {
+        let production_events_count: u32 = self.production_events.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
                 "too many creation events in ActiveBlock: {:?}",
                 err
