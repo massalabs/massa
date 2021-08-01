@@ -55,11 +55,6 @@ The launch of mainnet is currently planned for Q2 2022.
 
 By this time, people will be able to claim their rewards through a KYC process (most likely including video/liveness) to ensure that the same people don't do multiple claims, and in compliance with KYC/AML laws.
 
-The testnet score of a person will be the average of all their episode scores. 
+The testnet score of a person will be the sum of all their episode scores. 
 
-The mainnet reward will be proportional to the testnet score.
-
-More info on the mainnet rewards will come later.
-
-
-
+The mainnet reward will be linked to the testnet score. More info on mainnet rewards will come later.
