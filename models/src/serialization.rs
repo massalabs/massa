@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
+use crate::Amount;
 use integer_encoding::VarInt;
 use std::convert::TryInto;
 use std::net::IpAddr;
@@ -235,6 +236,19 @@ impl DeserializeCompact for UTime {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
         Ok((res_u64.into(), delta))
+    }
+}
+
+impl SerializeCompact for Amount {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        Ok(self.to_raw().to_varint_bytes())
+    }
+}
+
+impl DeserializeCompact for Amount {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
+        Ok((Amount::from_raw(res_u64), delta))
     }
 }
 

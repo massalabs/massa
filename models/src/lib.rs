@@ -4,6 +4,7 @@
 extern crate lazy_static;
 
 mod address;
+mod amount;
 mod block;
 mod composite;
 mod context;
@@ -11,11 +12,14 @@ mod error;
 mod operation;
 mod serialization;
 mod slot;
+mod version;
 
 pub use address::{Address, ADDRESS_SIZE_BYTES};
+pub use amount::Amount;
 pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId, BLOCK_ID_SIZE_BYTES};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
+    StakerCycleProductionStats,
 };
 pub use context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
@@ -30,3 +34,4 @@ pub use serialization::{
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,
 };
 pub use slot::{Slot, SLOT_KEY_SIZE};
+pub use version::Version;

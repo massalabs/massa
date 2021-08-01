@@ -15,7 +15,6 @@
 //!
 //! The help command display all available commands.
 
-use crate::data::parse_amount;
 use crate::data::AddressStates;
 use crate::data::GetOperationContent;
 use crate::data::WrappedAddressState;
@@ -24,15 +23,18 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use crate::wallet::Wallet;
 use crate::wallet::WalletInfo;
+use api::PubkeySig;
 use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
-use communication::network::PeerInfo;
+use communication::network::Peer;
+use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
+use models::Amount;
 use models::Operation;
 use models::OperationId;
 use models::OperationType;
@@ -224,6 +226,14 @@ fn main() {
         true,
         cmd_addresses_info,
     )
+    .new_command(
+        "cmd_testnet_rewards_program",
+        "Returns rewards id. Parameter: <staking_address> <discord_ID> ",
+        2,
+        2, //max nb parameters
+        false,
+        cmd_testnet_rewards_program,
+    )
     .new_command_noargs(
         "get_active_stakers",
         "returns the active stakers and their roll counts for the current cycle.",
@@ -304,23 +314,26 @@ fn main() {
 
     //filename of the wallet file. There's no security around the wallet file.
     let wallet_file_param = matches.value_of("wallet");
-    if let Some(file_name) = wallet_file_param {
-        match Wallet::new(file_name) {
-            Ok(wallet) => {
-                repl.data.wallet = Some(wallet);
-                repl.activate_command("wallet_info");
-                repl.activate_command("wallet_new_privkey");
-                repl.activate_command("send_transaction");
-                repl.activate_command("buy_rolls");
-                repl.activate_command("sell_rolls");
-                repl.activate_command("wallet_add_privkey");
-            }
-            Err(err) => {
-                println!(
-                    "Error while loading wallet file:{}. No wallet was loaded.",
-                    err
-                );
-            }
+    let file_name = match wallet_file_param {
+        Some(file_name) => file_name,
+        None => "wallet.dat",
+    };
+    match Wallet::new(file_name) {
+        Ok(wallet) => {
+            repl.data.wallet = Some(wallet);
+            repl.activate_command("wallet_info");
+            repl.activate_command("wallet_new_privkey");
+            repl.activate_command("send_transaction");
+            repl.activate_command("buy_rolls");
+            repl.activate_command("sell_rolls");
+            repl.activate_command("wallet_add_privkey");
+            repl.activate_command("cmd_testnet_rewards_program");
+        }
+        Err(err) => {
+            println!(
+                "Error while loading wallet file:{}. No wallet was loaded.",
+                err
+            );
         }
     }
 
@@ -371,7 +384,7 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let roll_count: u64 = FromStr::from_str(params[1])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect roll buy count: {}", err)))?;
-        let fee: u64 = parse_amount(params[2])
+        let fee = Amount::from_str(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
 
@@ -388,7 +401,7 @@ fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         let roll_count: u64 = FromStr::from_str(params[1]).map_err(|err| {
             ReplError::GeneralError(format!("Incorrect roll sell count: {}", err))
         })?;
-        let fee: u64 = parse_amount(params[2])
+        let fee = Amount::from_str(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollSell { roll_count };
 
@@ -557,8 +570,9 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let recipient_address = Address::from_bs58_check(params[1])
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let amount = parse_amount(params[2]).map_err(ReplError::GeneralError)?;
-        let fee: u64 = parse_amount(params[3])
+        let amount = Amount::from_str(params[2])
+            .map_err(|err| ReplError::GeneralError(format!("Incorrect amount: {}", err)))?;
+        let fee = Amount::from_str(params[3])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::Transaction {
             recipient_address,
@@ -751,6 +765,53 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
     Ok(())
 }
 
+fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let address = Address::from_bs58_check(params[0].trim())
+        .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+    let msg = params[1].as_bytes().to_vec();
+
+    // get address signature
+    let addr_sig = if let Some(wallet) = &data.wallet {
+        match wallet.sign_message(address, msg.clone()) {
+            Some(sig) => sig,
+            None => {
+                return Err(ReplError::GeneralError(
+                    "address not found in wallet".into(),
+                ));
+            }
+        }
+    } else {
+        return Err(ReplError::GeneralError("wallet unavailable".into()));
+    };
+
+    // get node signature
+    let client = reqwest::blocking::Client::new();
+    let resp = client
+        .post(&format!("http://{}/api/v1/node_sign_message", data.node_ip,))
+        .body(msg)
+        .send()?;
+    let node_sig = if resp.status() == StatusCode::OK {
+        resp.json::<PubkeySig>()?
+    } else {
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))?;
+        return Err(ReplError::GeneralError(format!(
+            "Server error response status: {} - {}",
+            status, message
+        )));
+    };
+
+    // print concatenation
+    println!(
+        "Enter the following in discord: {}/{}/{}/{}",
+        node_sig.public_key, node_sig.signature, addr_sig.public_key, addr_sig.signature
+    );
+    Ok(())
+}
+
 fn cmd_remove_staking_addresses(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let addrs_list = params[0]
         .split(',')
@@ -880,9 +941,22 @@ fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/peers", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<std::collections::HashMap<IpAddr, PeerInfo>>()?;
-        for peer in resp.values() {
-            println!("    {}", data::WrappedPeerInfo::from(peer));
+        let Peers { peers, .. } = resp.json::<Peers>()?;
+        for (
+            _,
+            Peer {
+                peer_info,
+                active_nodes,
+            },
+        ) in peers.into_iter()
+        {
+            println!(
+                "    {}",
+                data::WrappedPeerInfo {
+                    peer_info,
+                    active_nodes
+                }
+            );
         }
     }
     Ok(())

@@ -12,7 +12,9 @@ use crypto::{
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
 use futures::Future;
-use models::{Address, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot};
+use models::{
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
+};
 use models::{Operation, OperationContent, OperationType};
 use std::collections::HashMap;
 use time::UTime;
@@ -135,10 +137,10 @@ pub fn create_operation() -> Operation {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: 0,
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period: 0,
@@ -159,10 +161,10 @@ pub fn create_operation_with_expire_period(
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: 0,
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period,
@@ -200,6 +202,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: UTime::from(100),
+        max_known_ops_size: 1000,
     }
 }
 

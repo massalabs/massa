@@ -2,10 +2,9 @@
 
 use super::config::ApiConfig;
 use crate::ApiError;
-use communication::{
-    network::{NetworkConfig, PeerInfo},
-    protocol::ProtocolConfig,
-};
+use communication::network::Peer;
+use communication::network::Peers;
+use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 use consensus::ConsensusStats;
 use consensus::ExportBlockStatus;
 use consensus::Status;
@@ -13,13 +12,14 @@ use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, AddressState, BlockGraphExport,
     ConsensusConfig, ConsensusError, DiscardReason,
 };
-use crypto::signature::PrivateKey;
+use crypto::signature::{PrivateKey, PublicKey, Signature};
 use logging::massa_trace;
 use models::Address;
 use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
+use models::StakerCycleProductionStats;
 use models::{BlockHeader, BlockId, Slot};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
@@ -44,7 +44,7 @@ pub enum ApiEvent {
         block_id: BlockId,
         response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
     },
-    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
+    GetPeers(oneshot::Sender<Peers>),
     GetSelectionDraw {
         start: Slot,
         end: Slot,
@@ -69,6 +69,14 @@ pub enum ApiEvent {
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
     GetStakingAddresses(oneshot::Sender<HashSet<Address>>),
+    NodeSignMessage {
+        message: Vec<u8>,
+        response_tx: oneshot::Sender<(PublicKey, Signature)>,
+    },
+    GetStakerProductionStats {
+        address: Address,
+        response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
+    },
 }
 
 pub enum ApiManagementCommand {}
@@ -356,11 +364,11 @@ pub fn get_filter(
         .and_then(move |Addresses { addrs }| remove_staking_addresses(evt_tx.clone(), addrs));
 
     let evt_tx = event_tx.clone();
-    let send_operations = warp::path("api")
+    let send_operations = warp::post()
+        .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("send_operations"))
         .and(warp::path::end())
-        .and(warp::post())
         .and(warp::body::json())
         .and_then(move |operations| send_operations(operations, evt_tx.clone()));
 
@@ -380,13 +388,22 @@ pub fn get_filter(
         .and(warp::path::end())
         .and_then(move || get_active_stakers(evt_tx.clone()));
 
-    let evt_tx = event_tx;
+    let evt_tx = event_tx.clone();
     let staking_addresses = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("staking_addresses"))
         .and(warp::path::end())
         .and_then(move || get_staking_addresses(evt_tx.clone()));
+
+    let evt_tx = event_tx;
+    let node_sign_message = warp::post()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("node_sign_message"))
+        .and(warp::path::end())
+        .and(warp::body::bytes())
+        .and_then(move |msg: warp::hyper::body::Bytes| node_sign_msg(msg.to_vec(), evt_tx.clone()));
 
     block
         .or(blockinterval)
@@ -415,6 +432,7 @@ pub fn get_filter(
         .or(staking_addresses)
         .or(register_staking_private_keys)
         .or(remove_staking_addresses)
+        .or(node_sign_message)
         .boxed()
 }
 
@@ -624,6 +642,57 @@ async fn get_operations(
     }
 }
 
+async fn do_node_sign_msg(
+    message: Vec<u8>,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<(PublicKey, Signature), ApiError> {
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::NodeSignMessage {
+            message,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event node sign message : {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!(
+            "Could not retrieve node message signature : {0}",
+            e
+        ))
+    })
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PubkeySig {
+    pub public_key: PublicKey,
+    pub signature: Signature,
+}
+pub async fn node_sign_msg(
+    msg: Vec<u8>,
+    event_tx: mpsc::Sender<ApiEvent>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.node_sign_msg", { "msg": msg });
+    match do_node_sign_msg(msg, &event_tx).await {
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error while making node sign message: {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+        Ok((public_key, signature)) => Ok(warp::reply::json(&json!(PubkeySig {
+            public_key,
+            signature
+        }))
+        .into_response()),
+    }
+}
+
 /// Returns our ip address
 ///
 /// Note: as our ip address is in the config,
@@ -692,9 +761,7 @@ async fn retrieve_operations(
     })
 }
 
-async fn retrieve_peers(
-    event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
+async fn retrieve_peers_and_nodeid(event_tx: &mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
     massa_trace!("api.filters.retrieve_peers", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1388,8 +1455,8 @@ async fn get_network_info(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_network_info", {});
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
+    let (peers, node_id) = match retrieve_peers_and_nodeid(&event_tx).await {
+        Ok(Peers { our_node_id, peers }) => (peers, our_node_id),
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -1404,6 +1471,7 @@ async fn get_network_info(
     Ok(warp::reply::json(&json!({
         "our_ip": our_ip,
         "peers": peers,
+        "node_id": node_id,
     }))
     .into_response())
 }
@@ -1463,7 +1531,7 @@ async fn get_addresses_info(
 ///
 async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_peers", {});
-    let peers = match retrieve_peers(&event_tx).await {
+    let peers = match retrieve_peers_and_nodeid(&event_tx).await {
         Ok(peers) => peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
@@ -1564,8 +1632,8 @@ async fn get_state(
         }
     };
 
-    let peers = match retrieve_peers(&event_tx).await {
-        Ok(peers) => peers,
+    let peers = match retrieve_peers_and_nodeid(&event_tx).await {
+        Ok(peers) => peers.peers,
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
@@ -1579,7 +1647,7 @@ async fn get_state(
 
     let connected_peers: HashSet<IpAddr> = peers
         .iter()
-        .filter(|(_ip, peer_info)| {
+        .filter(|(_ip, Peer { peer_info, .. })| {
             peer_info.active_out_connections > 0 || peer_info.active_in_connections > 0
         })
         .map(|(ip, _peer_info)| *ip)
@@ -1814,10 +1882,24 @@ async fn get_staker_info(
         })
         .collect();
 
+    let staker_production_stats = match retrieve_staker_production_stats(creator, &event_tx).await {
+        Ok(stats) => stats,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting staker production stats : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
     Ok(warp::reply::json(&json!({
         "staker_active_blocks": blocks,
         "staker_discarded_blocks": discarded,
         "staker_next_draws": next_slots_by_creator,
+        "staker_production": staker_production_stats
     }))
     .into_response())
 }
@@ -1890,6 +1972,32 @@ async fn get_next_draws(
         .collect();
 
     Ok(warp::reply::json(&next_slots).into_response())
+}
+
+async fn retrieve_staker_production_stats(
+    address: Address,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<Vec<StakerCycleProductionStats>, ApiError> {
+    massa_trace!("api.filters.retrieve_staker_production_stats", {});
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetStakerProductionStats {
+            address,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get staker production stats: {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!(
+            "Could not retrieve staker produciton stats: {0}",
+            e
+        ))
+    })
 }
 
 async fn retrieve_stats(event_tx: &mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, ApiError> {

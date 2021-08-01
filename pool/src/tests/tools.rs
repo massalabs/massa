@@ -1,15 +1,14 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use super::mock_protocol_controller::MockProtocolController;
+use crate::{pool_controller, PoolCommandSender, PoolConfig, PoolManager};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
 use futures::Future;
-use models::{Address, Operation, OperationContent, OperationType, SerializeCompact};
-
-use crate::{pool_controller, PoolCommandSender, PoolConfig, PoolManager};
-
-use super::mock_protocol_controller::MockProtocolController;
+use models::{Address, Amount, Operation, OperationContent, OperationType, SerializeCompact};
+use std::str::FromStr;
 
 pub async fn pool_test<F, V>(
     cfg: PoolConfig,
@@ -89,10 +88,10 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,
@@ -115,10 +114,10 @@ pub fn get_transaction_with_addresses(
 ) -> (Operation, u8) {
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,

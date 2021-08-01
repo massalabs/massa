@@ -3,19 +3,23 @@ use super::tools::*;
 use crate::Addresses;
 use crate::ApiEvent;
 use crate::OperationIds;
+use communication::network::Peer;
 use communication::network::PeerInfo;
+use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
 use models::SerializeCompact;
-use models::{Address, Block, BlockHeader, BlockId, Slot};
+use models::StakerCycleProductionStats;
+use models::{Address, Amount, Block, BlockHeader, BlockId, Slot};
 use models::{
     Operation, OperationContent, OperationId, OperationSearchResult, OperationSearchResultStatus,
     OperationType,
 };
 use serde_json::json;
 use serial_test::serial;
+use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},
     net::{IpAddr, Ipv4Addr},
@@ -32,10 +36,10 @@ pub fn create_operation() -> Operation {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: 0,
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period: 0,
@@ -259,9 +263,9 @@ async fn test_get_addresses_info() {
                 final_rolls: 1233,
                 active_rolls: Some(5748),
                 candidate_rolls: 7787,
-                locked_balance: 1745,
-                candidate_ledger_data: LedgerData { balance: 4788 },
-                final_ledger_data: LedgerData { balance: 11414 },
+                locked_balance: Amount::from_str("1745").unwrap(),
+                candidate_ledger_data: LedgerData::new(Amount::from_str("4788").unwrap()),
+                final_ledger_data: LedgerData::new(Amount::from_str("11414").unwrap()),
             },
         );
         let (filter, mut rx_api) = mock_filter(None);
@@ -937,6 +941,8 @@ async fn test_last_final() {
 #[tokio::test]
 #[serial]
 async fn test_peers() {
+    let private_key = crypto::signature::generate_random_private_key();
+    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
     //test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -945,7 +951,10 @@ async fn test_peers() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send(HashMap::new())
+                        .send(Peers {
+                            our_node_id: node_id,
+                            peers: HashMap::new(),
+                        })
                         .expect("failed to send peers");
                 }
 
@@ -961,7 +970,11 @@ async fn test_peers() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value = serde_json::from_str(
-            &serde_json::to_string(&HashMap::<IpAddr, String>::new()).unwrap(),
+            &serde_json::to_string(&Peers {
+                our_node_id: node_id,
+                peers: HashMap::<IpAddr, Peer>::new(),
+            })
+            .unwrap(),
         )
         .unwrap();
         assert_eq!(obtained, expected);
@@ -975,20 +988,23 @@ async fn test_peers() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                PeerInfo {
-                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                    banned: false,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: true,
-                    active_out_connection_attempts: 1,
-                    active_out_connections: 1,
-                    active_in_connections: 1,
+                Peer {
+                    peer_info: PeerInfo {
+                        ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                        banned: false,
+                        bootstrap: false,
+                        last_alive: None,
+                        last_failure: None,
+                        advertised: true,
+                        active_out_connection_attempts: 1,
+                        active_out_connections: 1,
+                        active_in_connections: 1,
+                    },
+                    active_nodes: vec![],
                 },
             )
         })
-        .collect::<HashMap<IpAddr, PeerInfo>>();
+        .collect::<HashMap<IpAddr, Peer>>();
     let cloned = peers.clone();
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -997,7 +1013,10 @@ async fn test_peers() {
         match evt {
             Some(ApiEvent::GetPeers(response_sender_tx)) => {
                 response_sender_tx
-                    .send(cloned)
+                    .send(Peers {
+                        our_node_id: node_id,
+                        peers: cloned,
+                    })
                     .expect("failed to send peers");
             }
 
@@ -1022,8 +1041,14 @@ async fn test_peers() {
     handle.await.unwrap();
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&peers).unwrap()).unwrap();
+    let expected: serde_json::Value = serde_json::from_str(
+        &serde_json::to_string(&Peers {
+            peers,
+            our_node_id: node_id,
+        })
+        .unwrap(),
+    )
+    .unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
@@ -1397,6 +1422,8 @@ async fn test_get_block() {
 #[tokio::test]
 #[serial]
 async fn test_network_info() {
+    let private_key = crypto::signature::generate_random_private_key();
+    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
     //test with empty peer list
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1406,7 +1433,10 @@ async fn test_network_info() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send(HashMap::new())
+                        .send(Peers {
+                            our_node_id: node_id,
+                            peers: HashMap::new(),
+                        })
                         .expect("failed to send peers");
                 }
 
@@ -1421,6 +1451,7 @@ async fn test_network_info() {
         assert_eq!(res.status(), 200);
         let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
         let expected: serde_json::Value = json!({
+            "node_id" : node_id,
             "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             "peers": HashMap::<IpAddr, String>::new(),
         });
@@ -1436,20 +1467,23 @@ async fn test_network_info() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                PeerInfo {
-                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                    banned: false,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: true,
-                    active_out_connection_attempts: 1,
-                    active_out_connections: 1,
-                    active_in_connections: 1,
+                Peer {
+                    peer_info: PeerInfo {
+                        ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                        banned: false,
+                        bootstrap: false,
+                        last_alive: None,
+                        last_failure: None,
+                        advertised: true,
+                        active_out_connection_attempts: 1,
+                        active_out_connections: 1,
+                        active_in_connections: 1,
+                    },
+                    active_nodes: vec![],
                 },
             )
         })
-        .collect::<HashMap<IpAddr, PeerInfo>>();
+        .collect::<HashMap<IpAddr, Peer>>();
     let cloned = peers.clone();
     let (filter, mut rx_api) = mock_filter(None);
 
@@ -1458,7 +1492,10 @@ async fn test_network_info() {
         match evt {
             Some(ApiEvent::GetPeers(response_sender_tx)) => {
                 response_sender_tx
-                    .send(cloned)
+                    .send(Peers {
+                        our_node_id: node_id,
+                        peers: cloned,
+                    })
                     .expect("failed to send peers");
             }
 
@@ -1475,6 +1512,7 @@ async fn test_network_info() {
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
     let expected: serde_json::Value = json!({
+        "node_id" : node_id,
         "our_ip": IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
         "peers": peers,
     });
@@ -1486,6 +1524,8 @@ async fn test_network_info() {
 #[tokio::test]
 #[serial]
 async fn test_state() {
+    let private_key = crypto::signature::generate_random_private_key();
+    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
     //test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1496,7 +1536,10 @@ async fn test_state() {
                 match evt {
                     Some(ApiEvent::GetPeers(response_sender_tx)) => {
                         response_sender_tx
-                            .send(HashMap::new())
+                            .send(Peers {
+                                our_node_id: node_id,
+                                peers: HashMap::new(),
+                            })
                             .expect("failed to send peers");
                     }
                     Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
@@ -1538,20 +1581,23 @@ async fn test_state() {
         .map(|index| {
             (
                 IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                PeerInfo {
-                    ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
-                    banned: false,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: true,
-                    active_out_connection_attempts: 1,
-                    active_out_connections: 1,
-                    active_in_connections: 1,
+                Peer {
+                    peer_info: PeerInfo {
+                        ip: IpAddr::V4(Ipv4Addr::new(169, 202, 0, index)),
+                        banned: false,
+                        bootstrap: false,
+                        last_alive: None,
+                        last_failure: None,
+                        advertised: true,
+                        active_out_connection_attempts: 1,
+                        active_out_connections: 1,
+                        active_in_connections: 1,
+                    },
+                    active_nodes: vec![],
                 },
             )
         })
-        .collect::<HashMap<IpAddr, PeerInfo>>();
+        .collect::<HashMap<IpAddr, Peer>>();
     let cloned = peers.clone();
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -1562,7 +1608,10 @@ async fn test_state() {
             match evt {
                 Some(ApiEvent::GetPeers(response_sender_tx)) => {
                     response_sender_tx
-                        .send(cloned.clone())
+                        .send(Peers {
+                            our_node_id: node_id,
+                            peers: cloned.clone(),
+                        })
                         .expect("failed to send peers");
                 }
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
@@ -1770,6 +1819,14 @@ async fn test_staker_info() {
 
     let staker = get_dummy_staker();
     let cloned_staker = staker.clone();
+
+    let stats = StakerCycleProductionStats {
+        cycle: 0,
+        is_final: true,
+        final_ok_count: 5,
+        final_nok_count: 0,
+    };
+    let cloned_stats = stats.clone();
     //test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1790,6 +1847,11 @@ async fn test_staker_info() {
                         response_tx
                             .send(get_test_block_graph())
                             .expect("failed to send graph");
+                    }
+                    Some(ApiEvent::GetStakerProductionStats { response_tx, .. }) => {
+                        response_tx
+                            .send(vec![stats.clone()])
+                            .expect("failed to send stats");
                     }
 
                     None => break,
@@ -1815,6 +1877,10 @@ async fn test_staker_info() {
         assert_eq!(
             obtained["staker_next_draws"],
             serde_json::to_value(vec![Slot::new(0u64, 0u8)]).unwrap()
+        );
+        assert_eq!(
+            obtained["staker_production"],
+            serde_json::to_value(vec![cloned_stats]).unwrap()
         );
 
         drop(filter);
@@ -1848,7 +1914,13 @@ async fn test_staker_info() {
     let cloned_staker = staker.clone();
     let cloned_graph = graph.clone();
     let (filter, mut rx_api) = mock_filter(None);
-
+    let stats = StakerCycleProductionStats {
+        cycle: 0,
+        is_final: true,
+        final_ok_count: 5,
+        final_nok_count: 0,
+    };
+    let cloned_stats = stats.clone();
     let handle = tokio::spawn(async move {
         loop {
             let cloned = cloned_graph.clone();
@@ -1865,7 +1937,11 @@ async fn test_staker_info() {
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
                     response_tx.send(cloned).expect("failed to send graph");
                 }
-
+                Some(ApiEvent::GetStakerProductionStats { response_tx, .. }) => {
+                    response_tx
+                        .send(vec![stats.clone()])
+                        .expect("failed to send stats");
+                }
                 None => break,
                 _ => {}
             }
@@ -1907,6 +1983,10 @@ async fn test_staker_info() {
     .unwrap();
     assert_eq!(obtained["staker_active_blocks"], expected_active);
     assert_eq!(obtained["staker_discarded_blocks"], expected_discarded);
+    assert_eq!(
+        obtained["staker_production"],
+        serde_json::to_value(vec![cloned_stats]).unwrap()
+    );
 
     drop(filter);
 }

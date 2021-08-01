@@ -1,9 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::{HashMap, HashSet};
-
-use models::{Address, Slot};
-
 use crate::{
     ledger::LedgerData,
     start_consensus_controller,
@@ -16,7 +12,10 @@ use crate::{
         },
     },
 };
+use models::{Address, Amount, Slot};
 use serial_test::serial;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
@@ -58,7 +57,7 @@ async fn test_operations_check() {
     }
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_1, LedgerData { balance: 5 });
+    ledger.insert(address_1, LedgerData::new(Amount::from_str("5").unwrap()));
 
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
@@ -72,7 +71,7 @@ async fn test_operations_check() {
     cfg.t0 = 1000.into();
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
-    cfg.block_reward = 1;
+    cfg.block_reward = Amount::from_str("1").unwrap();
     cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.disable_block_creation = true;
@@ -127,7 +126,7 @@ async fn test_operations_check() {
         .unwrap()
         .candidate_ledger_data
         .clone();
-    assert_eq!(res.balance, 1);
+    assert_eq!(res.balance, Amount::from_str("1").unwrap());
 
     // receive block b with invalid operation (not enough coins)
     let operation_2 = create_transaction(private_key_2, public_key_2, address_1, 10, 8, 1);
@@ -161,7 +160,7 @@ async fn test_operations_check() {
         .unwrap()
         .candidate_ledger_data
         .clone();
-    assert_eq!(res.balance, 5);
+    assert_eq!(res.balance, Amount::from_str("5").unwrap());
 
     // receive block with reused operation
     let (_, block_1c, _) = create_block_with_operations(

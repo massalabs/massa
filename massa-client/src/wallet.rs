@@ -3,9 +3,11 @@
 use crate::ReplData;
 use crate::ReplError;
 use crate::WrappedAddressState;
+use api::PubkeySig;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
+use models::Amount;
 use models::Operation;
 use models::OperationContent;
 use models::OperationType;
@@ -35,6 +37,22 @@ impl Wallet {
             keys,
             wallet_path: json_file.to_string(),
         })
+    }
+
+    pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
+        if let Some(key) = self.find_associated_private_key(address) {
+            let public_key = crypto::derive_public_key(key);
+            if let Ok(signature) = crypto::sign(&Hash::hash(&msg), key) {
+                Some(PubkeySig {
+                    public_key,
+                    signature,
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     /// Adds a new private key to wallet, if it was missing
@@ -81,7 +99,7 @@ impl Wallet {
         &self,
         operation_type: OperationType,
         from_address: Address,
-        fee: u64,
+        fee: Amount,
         data: &ReplData,
     ) -> Result<Operation, ReplError> {
         //get node serialisation context
@@ -190,6 +208,7 @@ pub struct WalletInfo<'a> {
 
 impl<'a> std::fmt::Display for WalletInfo<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "WARNING : do not share your private keys")?;
         for key in &self.wallet.keys {
             let public_key = derive_public_key(key);
             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;

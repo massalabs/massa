@@ -4,7 +4,7 @@ use crate::{start_storage, StorageAccess, StorageConfig};
 use crypto::hash::Hash;
 use models::SerializeCompact;
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationId, OperationType, SerializationContext, Slot,
 };
 use std::future::Future;
@@ -56,10 +56,10 @@ pub fn create_operation() -> Operation {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: 0,
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period: 0,

@@ -18,10 +18,12 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationType, SerializeCompact, Slot,
 };
+use num::rational::Ratio;
 use pool::PoolCommand;
+use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
@@ -316,7 +318,7 @@ pub fn create_roll_transaction(
 
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -356,12 +358,12 @@ pub fn create_transaction(
 ) -> Operation {
     let op = OperationType::Transaction {
         recipient_address,
-        amount,
+        amount: Amount::from_str(&amount.to_string()).unwrap(),
     };
 
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -380,7 +382,7 @@ pub fn create_roll_buy(
     let sender_public_key = crypto::derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -399,7 +401,7 @@ pub fn create_roll_sell(
     let sender_public_key = crypto::derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -493,6 +495,7 @@ pub fn get_export_active_test_block(
             is_final,
             block_ledger_changes: vec![],
             roll_updates: vec![],
+            production_events: vec![],
         },
         id,
     )
@@ -645,7 +648,7 @@ pub fn default_consensus_config(
         ledger_cache_capacity: 1000000,
         ledger_flush_interval: Some(200.into()),
         ledger_reset_at_startup: true,
-        block_reward: 1,
+        block_reward: Amount::from_str("1").unwrap(),
         initial_ledger_path: initial_ledger_path.to_path_buf(),
         operation_batch_size: 100,
         initial_rolls_path: roll_counts_path.to_path_buf(),
@@ -654,9 +657,11 @@ pub fn default_consensus_config(
         pos_lookback_cycles: 2,
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
-        roll_price: 0,
+        pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
+        roll_price: Amount::default(),
         stats_timespan: 60000.into(),
         staking_keys_path: staking_keys_path.to_path_buf(),
+        end_timestamp: None,
     }
 }
 

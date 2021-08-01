@@ -1,9 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
-use models::{Address, Slot};
+use models::{Address, Amount, Slot};
 use serial_test::serial;
+use std::collections::HashMap;
+use std::str::FromStr;
 use time::UTime;
 
 use crate::{
@@ -46,7 +46,10 @@ async fn test_get_selection_draws_high_end_slot() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData { balance: 10_000 });
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("10000").unwrap()),
+    );
     let ledger_file = generate_ledger_file(&ledger);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(vec![priv_1]);
@@ -64,8 +67,8 @@ async fn test_get_selection_draws_high_end_slot() {
     cfg.delta_f0 = 3;
     cfg.disable_block_creation = true;
     cfg.thread_count = thread_count;
-    cfg.block_reward = 0;
-    cfg.roll_price = 1000;
+    cfg.block_reward = Amount::default();
+    cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
 

@@ -40,7 +40,7 @@ On Windows, please go to the link:docs/windows_install.adoc[Install and Run on W
 * install link:https://doc.rust-lang.org/edition-guide/rust-2018/rustup-for-managing-rust-versions.html[nigthly]: `rustup toolchain install nightly`
 * set it as default: `rustup default nightly`
 * check rust version: `rustc --version`
-* clone this repo: `git clone https://gitlab.com/massalabs/massa.git`
+* clone this repo: `git clone --branch testnet https://gitlab.com/massalabs/massa.git`
 
 ## Run
 
@@ -73,6 +73,8 @@ cargo run --release
 ## Update
 ----
 cd massa/
+git stash
+git checkout testnet
 git pull
 ----
 

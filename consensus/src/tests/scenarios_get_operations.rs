@@ -1,19 +1,18 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::{HashMap, HashSet};
-
-use crypto::{hash::Hash, signature::PublicKey};
-use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
-    OperationSearchResult, OperationSearchResultStatus, Slot,
-};
-use serial_test::serial;
-use time::UTime;
-
 use crate::{
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
 };
+use crypto::{hash::Hash, signature::PublicKey};
+use models::{
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
+    OperationSearchResult, OperationSearchResultStatus, Slot,
+};
+use serial_test::serial;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
+use time::UTime;
 
 #[tokio::test]
 #[serial]
@@ -84,7 +83,7 @@ async fn test_storage() {
     ];
 
     let boot_ledger = LedgerExport {
-        ledger_subset: vec![(address_a, LedgerData { balance: 100 })],
+        ledger_subset: vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))],
     };
 
     let (boot_graph, b1, b2) = get_bootgraph(
@@ -329,8 +328,14 @@ async fn test_consensus_and_storage() {
 
     let boot_ledger = LedgerExport {
         ledger_subset: vec![
-            (address_a, LedgerData { balance: 1000 }),
-            (address_b, LedgerData { balance: 1000 }),
+            (
+                address_a,
+                LedgerData::new(Amount::from_str("1000").unwrap()),
+            ),
+            (
+                address_b,
+                LedgerData::new(Amount::from_str("1000").unwrap()),
+            ),
         ],
     };
 

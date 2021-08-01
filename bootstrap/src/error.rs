@@ -32,4 +32,6 @@ pub enum BootstrapError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("missing private key file")]
     MissingKeyError,
+    #[error("incompatible version: {0}")]
+    IncompatibleVersionError(String),
 }

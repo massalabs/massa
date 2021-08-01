@@ -1,9 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
-use models::SerializeCompact;
+use models::{SerializeCompact, Version};
 use serial_test::serial;
 use std::str::FromStr;
+use time::UTime;
 use tokio::sync::mpsc;
 
 use crate::{get_state, start_bootstrap_server};
@@ -33,6 +34,7 @@ async fn test_bootstrap_server() {
         bootstrap_establisher,
         private_key,
         0,
+        Version::from_str("TEST.1.2").unwrap(),
     )
     .await
     .unwrap()
@@ -41,8 +43,17 @@ async fn test_bootstrap_server() {
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let cfg_copy = cfg.clone();
-    let get_state_h =
-        tokio::spawn(async move { get_state(cfg_copy, remote_establisher).await.unwrap() });
+    let get_state_h = tokio::spawn(async move {
+        get_state(
+            cfg_copy,
+            remote_establisher,
+            Version::from_str("TEST.1.2").unwrap(),
+            UTime::now(0).unwrap().saturating_sub(1000.into()),
+            None,
+        )
+        .await
+        .unwrap()
+    });
 
     // accept connection attempt from remote
     let (remote_r, remote_w, conn_addr, resp) = tokio::time::timeout(

@@ -127,12 +127,12 @@ impl PoolWorker {
     /// * cmd: consensus command to process
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
-            PoolCommand::AddOperations(mut ops) => {
-                let newly_added = self.operation_pool.add_operations(ops.clone())?;
-                ops.retain(|op_id, _op| newly_added.contains(op_id));
-                if !ops.is_empty() {
+            PoolCommand::AddOperations(mut operations) => {
+                let newly_added = self.operation_pool.add_operations(operations.clone())?;
+                operations.retain(|op_id, _op| newly_added.contains(op_id));
+                if !operations.is_empty() {
                     self.protocol_command_sender
-                        .propagate_operations(ops)
+                        .propagate_operations(operations)
                         .await?;
                 }
             }
@@ -185,13 +185,20 @@ impl PoolWorker {
         event: ProtocolPoolEvent,
     ) -> Result<(), PoolError> {
         match event {
-            ProtocolPoolEvent::ReceivedOperations(mut ops) => {
-                let newly_added = self.operation_pool.add_operations(ops.clone())?;
-                ops.retain(|op_id, _op| newly_added.contains(op_id));
-                if !ops.is_empty() {
-                    self.protocol_command_sender
-                        .propagate_operations(ops)
-                        .await?;
+            ProtocolPoolEvent::ReceivedOperations {
+                mut operations,
+                propagate,
+            } => {
+                if propagate {
+                    let newly_added = self.operation_pool.add_operations(operations.clone())?;
+                    operations.retain(|op_id, _op| newly_added.contains(op_id));
+                    if !operations.is_empty() {
+                        self.protocol_command_sender
+                            .propagate_operations(operations)
+                            .await?;
+                    }
+                } else {
+                    self.operation_pool.add_operations(operations)?;
                 }
             }
         }

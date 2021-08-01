@@ -1,20 +1,19 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use serial_test::serial;
-use std::collections::HashMap;
-
-use communication::protocol::ProtocolCommand;
-use crypto::hash::Hash;
-use models::SerializeCompact;
-use models::{Address, Block, BlockHeader, BlockHeaderContent, Slot};
-use pool::PoolCommand;
-use time::UTime;
-
 use crate::{
     ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
     tests::tools::{self, create_roll_transaction, create_transaction, generate_ledger_file},
 };
+use communication::protocol::ProtocolCommand;
+use crypto::hash::Hash;
+use models::SerializeCompact;
+use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
+use pool::PoolCommand;
+use serial_test::serial;
+use std::collections::HashMap;
+use std::str::FromStr;
+use time::UTime;
 
 // implement test of issue !424.
 #[tokio::test]
@@ -46,7 +45,10 @@ async fn test_block_creation_with_draw() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData { balance: 1000 });
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("1000").unwrap()),
+    );
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
 
@@ -67,7 +69,7 @@ async fn test_block_creation_with_draw() {
         roll_counts_file.path(),
         staking_file.path(),
     );
-    cfg.roll_price = 1000;
+    cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.periods_per_cycle = 10_000;
     cfg.t0 = 1000.into();
     cfg.pos_lookback_cycles = 2;
@@ -79,7 +81,7 @@ async fn test_block_creation_with_draw() {
         .unwrap()
         .checked_add(2000.into())
         .unwrap();
-    cfg.block_reward = 0;
+    cfg.block_reward = Amount::default();
     cfg.disable_block_creation = false;
     cfg.operation_validity_periods = 100;
     cfg.operation_batch_size = 3;
@@ -214,7 +216,7 @@ async fn test_order_of_inclusion() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_a, LedgerData { balance: 100 });
+    ledger.insert(address_a, LedgerData::new(Amount::from_str("100").unwrap()));
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
@@ -358,9 +360,7 @@ async fn test_block_filling() {
     let mut ledger = HashMap::new();
     ledger.insert(
         address_a,
-        LedgerData {
-            balance: 1_000_000_000,
-        },
+        LedgerData::new(Amount::from_str("1000000000").unwrap()),
     );
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)

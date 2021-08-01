@@ -12,11 +12,12 @@ use super::{
 use crate::common::NodeId;
 use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
-use crypto::signature::PrivateKey;
+use crypto::hash::Hash;
+use crypto::signature::{derive_public_key, sign, PrivateKey, PublicKey, Signature};
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+    SerializeCompact, SerializeVarInt, Version,
 };
 use models::{Block, BlockHeader, BlockId, Operation};
 use serde::{Deserialize, Serialize};
@@ -47,7 +48,8 @@ pub enum NetworkCommand {
         node: NodeId,
         header: BlockHeader,
     },
-    GetPeers(oneshot::Sender<HashMap<IpAddr, PeerInfo>>),
+    //(PeerInfo, Vec<(NodeId, bool)>) peer info + liste des nodes Id associés en connexoin out (true)
+    GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
     BlockNotFound {
@@ -58,6 +60,22 @@ pub enum NetworkCommand {
         node: NodeId,
         operations: Vec<Operation>,
     },
+    NodeSignMessage {
+        msg: Vec<u8>,
+        response_tx: oneshot::Sender<(PublicKey, Signature)>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Peer {
+    pub peer_info: PeerInfo,
+    pub active_nodes: Vec<(NodeId, bool)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Peers {
+    pub our_node_id: NodeId,
+    pub peers: HashMap<IpAddr, Peer>,
 }
 
 #[derive(Debug)]
@@ -185,6 +203,7 @@ pub struct NetworkWorker {
         FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, CommunicationError>)>>,
     /// Map of connection to ip, is_outgoing.
     active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
+    version: Version,
 }
 
 impl NetworkWorker {
@@ -208,6 +227,7 @@ impl NetworkWorker {
         controller_command_rx: mpsc::Receiver<NetworkCommand>,
         controller_event_tx: mpsc::Sender<NetworkEvent>,
         controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
+        version: Version,
     ) -> NetworkWorker {
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         NetworkWorker {
@@ -227,6 +247,7 @@ impl NetworkWorker {
             active_nodes: HashMap::new(),
             node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
+            version,
         }
     }
 
@@ -573,12 +594,20 @@ impl NetworkWorker {
         let private_key = self.private_key;
         let message_timeout = self.cfg.message_timeout;
         let connection_id_copy = connection_id;
+        let version = self.version;
         let handshake_fn_handle = tokio::spawn(async move {
             (
                 connection_id_copy,
-                HandshakeWorker::new(reader, writer, self_node_id, private_key, message_timeout)
-                    .run()
-                    .await,
+                HandshakeWorker::new(
+                    reader,
+                    writer,
+                    self_node_id,
+                    private_key,
+                    message_timeout,
+                    version,
+                )
+                .run()
+                .await,
             )
         });
         self.handshake_futures.push(handshake_fn_handle);
@@ -603,7 +632,6 @@ impl NetworkWorker {
             "ip": ip,
             "reason": reason
         });
-        info!("Disconnected from peer {}", ip);
         match reason {
             ConnectionClosureReason::Normal => {}
             ConnectionClosureReason::Failed => {
@@ -711,8 +739,47 @@ impl NetworkWorker {
                     "network_worker.manage_network_command receive NetworkCommand::GetPeers",
                     {}
                 );
+
+                //for each peer get all node id associated to this peer ip.
+                let peers: HashMap<IpAddr, Peer> = self
+                    .peer_info_db
+                    .get_peers()
+                    .iter()
+                    .map(|(peer_ip_addr, peer)| {
+                        (
+                            *peer_ip_addr,
+                            Peer {
+                                peer_info: peer.clone(),
+                                active_nodes: self
+                                    .active_connections
+                                    .iter()
+                                    .filter(|(_, (ip_addr, _))| &peer.ip == ip_addr)
+                                    .map(|(out_conn_id, (_, out_going))| {
+                                        self.active_nodes
+                                            .iter()
+                                            .filter_map(|(node_id, (conn_id, _))| {
+                                                if out_conn_id == conn_id {
+                                                    Some(node_id)
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .next()
+                                            .map(|node_id| (*node_id, *out_going))
+                                    })
+                                    .flatten()
+                                    .collect(),
+                            },
+                        )
+                    })
+                    .collect();
+
+                //HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>)
                 response_tx
-                    .send(self.peer_info_db.get_peers().clone())
+                    .send(Peers {
+                        peers,
+                        our_node_id: self.self_node_id,
+                    })
                     .map_err(|_| {
                         CommunicationError::ChannelError(
                             "could not send GetPeersChannelError upstream".into(),
@@ -752,6 +819,19 @@ impl NetworkWorker {
                     NodeCommand::SendOperations(operations),
                 )
                 .await;
+            }
+            NetworkCommand::NodeSignMessage { msg, response_tx } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
+                    { "mdg": msg }
+                );
+                let sig = sign(&Hash::hash(&msg), &self.private_key)?;
+                let pubkey = derive_public_key(&self.private_key);
+                response_tx.send((pubkey, sig)).map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "could not send NodeSignMessage response upstream".into(),
+                    )
+                })?;
             }
         }
         Ok(())
@@ -812,7 +892,6 @@ impl NetworkWorker {
                         "ip": ip_addr,
                         "connection_id": connection_id
                     });
-                    info!("connected to peer {}", ip_addr);
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (ip_addr, true));
@@ -863,7 +942,6 @@ impl NetworkWorker {
                         "ip": remote_addr.ip(),
                         "connection_id": connection_id
                     });
-                    info!("connected to peer {}", remote_addr);
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (remote_addr.ip(), false));

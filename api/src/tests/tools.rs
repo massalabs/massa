@@ -9,8 +9,10 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
-use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
+use models::{Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
+use num::rational::Ratio;
 use pool::PoolConfig;
+use std::str::FromStr;
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -79,7 +81,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         ledger_cache_capacity: 1000000,
         ledger_flush_interval: Some(200.into()),
         ledger_reset_at_startup: true,
-        block_reward: 10,
+        block_reward: Amount::from_str("10").unwrap(),
         initial_ledger_path: tempdir2.path().to_path_buf(),
         operation_batch_size: 100,
         initial_rolls_path: tempdir3.path().to_path_buf(),
@@ -88,9 +90,11 @@ pub fn get_consensus_config() -> ConsensusConfig {
         pos_lookback_cycles: 2,
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
-        roll_price: 0,
+        pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
+        roll_price: Amount::default(),
         stats_timespan: 60000.into(),
         staking_keys_path: staking_file.path().to_path_buf(),
+        end_timestamp: None,
     }
 }
 
@@ -101,6 +105,7 @@ pub fn get_protocol_config() -> ProtocolConfig {
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: UTime::from(100),
+        max_known_ops_size: 1000,
     }
 }
 pub fn get_pool_config() -> PoolConfig {
@@ -141,10 +146,12 @@ pub fn get_network_config() -> NetworkConfig {
         connect_timeout: UTime::from(180_000),
         wakeup_interval: UTime::from(10_000),
         peers_file: std::path::PathBuf::new(),
-        target_out_connections: 10,
-        max_in_connections: 5,
+        target_bootstrap_connections: 0,
+        max_out_bootstrap_connection_attempts: 1,
+        target_out_nonbootstrap_connections: 10,
+        max_in_nonbootstrap_connections: 5,
         max_in_connections_per_ip: 2,
-        max_out_connection_attempts: 15,
+        max_out_nonbootstrap_connection_attempts: 15,
         max_idle_peers: 3,
         max_banned_peers: 3,
         max_advertise_length: 5,

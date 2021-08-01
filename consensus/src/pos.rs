@@ -4,10 +4,11 @@ use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
 use models::{
-    array_from_slice, with_serialization_context, Address, BlockId, DeserializeCompact,
+    array_from_slice, with_serialization_context, Address, Amount, BlockId, DeserializeCompact,
     DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact, SerializeVarInt,
-    Slot, ADDRESS_SIZE_BYTES,
+    Slot, StakerCycleProductionStats, ADDRESS_SIZE_BYTES,
 };
+use num::rational::Ratio;
 use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -69,27 +70,21 @@ impl RollUpdate {
         self.roll_purchases = self
             .roll_purchases
             .checked_add(change.roll_purchases - compensation_other)
-            .ok_or_else(|| {
-                ConsensusError::InvalidRollUpdate(
-                    "roll_purchases overflow in RollUpdate::chain".into(),
-                )
-            })?;
+            .ok_or(ConsensusError::InvalidRollUpdate(
+                "roll_purchases overflow in RollUpdate::chain".into(),
+            ))?;
         self.roll_sales = self
             .roll_sales
             .checked_add(change.roll_sales - compensation_other)
-            .ok_or_else(|| {
-                ConsensusError::InvalidRollUpdate("roll_sales overflow in RollUpdate::chain".into())
-            })?;
+            .ok_or(ConsensusError::InvalidRollUpdate(
+                "roll_sales overflow in RollUpdate::chain".into(),
+            ))?;
 
         let compensation_self = self.compensate().0;
 
-        let compensation_total = compensation_other
-            .checked_add(compensation_self)
-            .ok_or_else(|| {
-                ConsensusError::InvalidRollUpdate(
-                    "compensation overflow in RollUpdate::chain".into(),
-                )
-            })?;
+        let compensation_total = compensation_other.checked_add(compensation_self).ok_or(
+            ConsensusError::InvalidRollUpdate("compensation overflow in RollUpdate::chain".into()),
+        )?;
         Ok(RollCompensation(compensation_total))
     }
 
@@ -191,19 +186,15 @@ impl RollCounts {
                     if update.roll_purchases >= update.roll_sales {
                         *occ.get_mut() = cur_val
                             .checked_add(update.roll_purchases - update.roll_sales)
-                            .ok_or_else(|| {
-                                ConsensusError::InvalidRollUpdate(
-                                    "overflow while incrementing roll count".into(),
-                                )
-                            })?;
+                            .ok_or(ConsensusError::InvalidRollUpdate(
+                                "overflow while incrementing roll count".into(),
+                            ))?;
                     } else {
                         *occ.get_mut() = cur_val
                             .checked_sub(update.roll_sales - update.roll_purchases)
-                            .ok_or_else(|| {
-                                ConsensusError::InvalidRollUpdate(
-                                    "underflow while decrementing roll count".into(),
-                                )
-                            })?;
+                            .ok_or(ConsensusError::InvalidRollUpdate(
+                                "underflow while decrementing roll count".into(),
+                            ))?;
                     }
                     if *occ.get() == 0 {
                         // remove if 0
@@ -293,6 +284,8 @@ pub struct ThreadCycleState {
     pub cycle_updates: RollUpdates,
     /// Used to seed the random selector at each cycle
     rng_seed: BitVec<Lsb0, u8>,
+    /// Per-address production statistics (ok_count, nok_count)
+    pub production_stats: HashMap<Address, (u64, u64)>,
 }
 
 pub struct ProofOfStake {
@@ -376,6 +369,8 @@ pub struct ExportThreadCycleState {
     pub cycle_updates: Vec<(Address, RollUpdate)>,
     /// Used to seed random selector at each cycle
     pub rng_seed: BitVec<Lsb0, u8>,
+    /// Address production stats (ok_count, nok_count)
+    pub production_stats: Vec<(Address, u64, u64)>,
 }
 
 impl SerializeCompact for ExportThreadCycleState {
@@ -423,6 +418,20 @@ impl SerializeCompact for ExportThreadCycleState {
         })?;
         res.extend(n_entries.to_varint_bytes());
         res.extend(self.rng_seed.clone().into_vec());
+
+        // production stats
+        let n_entries: u32 = self.production_stats.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many entries when serializing ExportThreadCycleState production_stats: {:?}",
+                err
+            ))
+        })?;
+        res.extend(n_entries.to_varint_bytes());
+        for (addr, ok_count, nok_count) in self.production_stats.iter() {
+            res.extend(addr.to_bytes());
+            res.extend(ok_count.to_varint_bytes());
+            res.extend(nok_count.to_varint_bytes());
+        }
 
         Ok(res)
     }
@@ -494,6 +503,26 @@ impl DeserializeCompact for ExportThreadCycleState {
         }
         cursor += rng_seed.elements();
 
+        // production stats
+        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+        if n_entries > max_entries {
+            return Err(ModelsError::SerializeError(
+                "invalid number entries when deserializing ExportThreadCycleStat production_stats"
+                    .into(),
+            ));
+        }
+        let mut production_stats = Vec::with_capacity(n_entries as usize);
+        for _ in 0..n_entries {
+            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += ADDRESS_SIZE_BYTES;
+            let (ok_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            let (nok_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            production_stats.push((addr, ok_count, nok_count));
+        }
+
         // return struct
         Ok((
             ExportThreadCycleState {
@@ -502,6 +531,7 @@ impl DeserializeCompact for ExportThreadCycleState {
                 roll_count,
                 cycle_updates,
                 rng_seed,
+                production_stats,
             },
             cursor,
         ))
@@ -561,6 +591,7 @@ impl ProofOfStake {
                     roll_count: thread_rolls.clone(),
                     cycle_updates: RollUpdates::default(),
                     rng_seed,
+                    production_stats: Default::default(),
                 };
                 history.push_front(thread_cycle_state);
                 cycle_states.push(history);
@@ -826,21 +857,59 @@ impl ProofOfStake {
                         cycle_updates: RollUpdates::default(),
                         roll_count,
                         rng_seed: BitVec::<Lsb0, u8>::new(),
+                        production_stats: Default::default(),
                     });
                     // If cycle_states becomes longer than pos_lookback_cycles+pos_lock_cycles+1, truncate it by removing the back elements
                     self.cycle_states[thread as usize].truncate(
                         (self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 2) as usize,
                     );
                 }
-                // apply the miss/block to the latest cycle_states
+
+                // update production_stats
                 // (step 2 in the spec)
+                if period == block_slot.period {
+                    // we are applying the block itself
+                    let last_final_block_cycle = self.get_last_final_block_cycle(thread);
+                    for (evt_period, evt_addr, evt_ok) in a_block.production_events.iter() {
+                        let evt_slot = Slot::new(*evt_period, thread);
+                        let evt_cycle = evt_slot.get_cycle(self.cfg.periods_per_cycle);
+                        if let Some(neg_relative_cycle) =
+                            last_final_block_cycle.checked_sub(evt_cycle)
+                        {
+                            if let Some(entry) = self.cycle_states[thread as usize]
+                                .get_mut(neg_relative_cycle as usize)
+                            {
+                                match entry.production_stats.entry(*evt_addr) {
+                                    hash_map::Entry::Occupied(mut occ) => {
+                                        let cur_val = *occ.get();
+                                        if *evt_ok {
+                                            *occ.get_mut() = (cur_val.0 + 1, cur_val.1);
+                                        } else {
+                                            *occ.get_mut() = (cur_val.0, cur_val.1 + 1);
+                                        }
+                                    }
+                                    hash_map::Entry::Vacant(vac) => {
+                                        if *evt_ok {
+                                            vac.insert((1, 0));
+                                        } else {
+                                            vac.insert((0, 1));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // apply the miss/block to the latest cycle_states
+                // (step 3 in the spec)
                 let entry = &mut self.cycle_states[thread as usize][0];
                 // update the last_final_slot for the latest cycle
                 entry.last_final_slot = slot;
                 // check if we are applying the block itself or a miss
                 if period == block_slot.period {
                     // we are applying the block itself
-                    // compensations have already been taken into account within the block and converted to ledger changes so we ignore them here
+                    // compensations/deactivations have already been taken into account within the block and converted to ledger changes so we ignore them here
                     entry.cycle_updates.chain(&a_block.roll_updates)?;
                     entry.roll_count.apply_updates(&a_block.roll_updates)?;
                     // append the 1st bit of the block's hash to the RNG seed bitfield
@@ -866,6 +935,50 @@ impl ProofOfStake {
         Ok(())
     }
 
+    pub fn get_staker_production_stats(&self, address: Address) -> Vec<StakerCycleProductionStats> {
+        let mut res: HashMap<u64, StakerCycleProductionStats> = HashMap::new();
+        let mut completeness: HashMap<u64, u8> = HashMap::new();
+        for thread_info in self.cycle_states.iter() {
+            for thread_cycle_info in thread_info.iter() {
+                let cycle = thread_cycle_info.cycle;
+                let thread_cycle_complete =
+                    thread_cycle_info.is_complete(self.cfg.periods_per_cycle);
+                let cycle_complete = if thread_cycle_complete {
+                    *completeness
+                        .entry(cycle)
+                        .and_modify(|n| *n = *n + 1)
+                        .or_insert(1)
+                        == self.cfg.thread_count
+                } else {
+                    false
+                };
+                let (n_ok, n_nok) =
+                    if let Some((n_ok, n_nok)) = thread_cycle_info.production_stats.get(&address) {
+                        (*n_ok, *n_nok)
+                    } else {
+                        (0, 0)
+                    };
+                match res.entry(cycle) {
+                    hash_map::Entry::Occupied(mut occ) => {
+                        let cur = occ.get_mut();
+                        cur.is_final = cycle_complete;
+                        cur.final_ok_count += n_ok;
+                        cur.final_nok_count += n_nok;
+                    }
+                    hash_map::Entry::Vacant(vac) => {
+                        vac.insert(StakerCycleProductionStats {
+                            cycle,
+                            is_final: cycle_complete,
+                            final_ok_count: n_ok,
+                            final_nok_count: n_nok,
+                        });
+                    }
+                }
+            }
+        }
+        res.into_values().collect()
+    }
+
     pub fn get_last_final_block_cycle(&self, thread: u8) -> u64 {
         self.cycle_states[thread as usize][0].cycle
     }
@@ -884,7 +997,7 @@ impl ProofOfStake {
         &self,
         cycle: u64,
         thread: u8,
-    ) -> Result<HashMap<Address, u64>, ConsensusError> {
+    ) -> Result<HashMap<Address, Amount>, ConsensusError> {
         let mut res = HashMap::new();
         if let Some(target_cycle) =
             cycle.checked_sub(self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1)
@@ -900,14 +1013,70 @@ impl ProofOfStake {
                 if sale_delta > 0 {
                     res.insert(
                         *addr,
-                        sale_delta
-                            .checked_mul(self.cfg.roll_price)
+                        self.cfg
+                            .roll_price
+                            .checked_mul_u64(sale_delta)
                             .ok_or(ConsensusError::RollOverflowError)?,
                     );
                 }
             }
         }
         Ok(res)
+    }
+
+    /// returns the list of addresses whose rolls need to be deactivated
+    pub fn get_roll_deactivations(
+        &self,
+        cycle: u64,
+        address_thread: u8,
+    ) -> Result<HashSet<Address>, ConsensusError> {
+        // compute target cycle
+        if cycle <= self.cfg.pos_lookback_cycles {
+            // no lookback cycles yet: do not deactivate anyone
+            return Ok(HashSet::new());
+        }
+        let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
+
+        // get roll data from all threads for addresses belonging to address_thread
+        let mut addr_stats: HashMap<Address, (u64, u64)> = HashMap::new();
+        for thread in 0..self.cfg.thread_count {
+            // get roll data
+            let roll_data = self
+                .get_final_roll_data(target_cycle, thread)
+                .ok_or(ConsensusError::NotFinalRollError)?;
+            if !roll_data.is_complete(self.cfg.periods_per_cycle) {
+                return Err(ConsensusError::NotFinalRollError); // target_cycle not completely final
+            }
+            // accumulate counters
+            for (addr, (n_ok, n_nok)) in roll_data.production_stats.iter() {
+                if addr.get_thread(self.cfg.thread_count) != address_thread {
+                    continue;
+                }
+                match addr_stats.entry(*addr) {
+                    hash_map::Entry::Occupied(mut occ) => {
+                        let cur = *occ.get();
+                        *occ.get_mut() = (cur.0 + n_ok, cur.1 + n_nok);
+                    }
+                    hash_map::Entry::Vacant(vac) => {
+                        vac.insert((*n_ok, *n_nok));
+                    }
+                }
+            }
+        }
+        // list addresses with bad stats
+        Ok(addr_stats
+            .into_iter()
+            .filter_map(|(addr, (ok_count, nok_count))| {
+                if ok_count + nok_count == 0 {
+                    return None;
+                }
+                let miss_ratio = Ratio::new(nok_count, ok_count + nok_count);
+                if miss_ratio > self.cfg.pos_miss_rate_deactivation_threshold {
+                    return Some(addr);
+                }
+                None
+            })
+            .collect())
     }
 
     /// gets the number of locked rolls at a given slot for a set of addresses
@@ -983,6 +1152,11 @@ impl ThreadCycleState {
             roll_count: self.roll_count.0.clone().into_iter().collect(),
             cycle_updates: self.cycle_updates.0.clone().into_iter().collect(),
             rng_seed: self.rng_seed.clone(),
+            production_stats: self
+                .production_stats
+                .iter()
+                .map(|(k, (v_ok, v_nok))| (*k, *v_ok, *v_nok))
+                .collect(),
         }
     }
 
@@ -993,6 +1167,11 @@ impl ThreadCycleState {
             roll_count: RollCounts(export.roll_count.into_iter().collect()),
             cycle_updates: RollUpdates(export.cycle_updates.into_iter().collect()),
             rng_seed: export.rng_seed,
+            production_stats: export
+                .production_stats
+                .into_iter()
+                .map(|(k, v_ok, v_nok)| (k, (v_ok, v_nok)))
+                .collect(),
         }
     }
 

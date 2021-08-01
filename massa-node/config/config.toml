@@ -1,3 +1,5 @@
+version = "DEVE.0.0"
+
 [logging]
     level = 2
 
@@ -7,10 +9,11 @@
     bind = "127.0.0.1:33033"
 
 [consensus]
-    genesis_timestamp = 1626440641000 # to update while testing
+    genesis_timestamp = 1626440641000
+    end_timestamp = 1626440641000
     t0 = 16000
     thread_count = 32
-    genesis_key = 'SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S'
+    genesis_key = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
     max_discarded_blocks = 500
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 400
@@ -23,7 +26,7 @@
     ledger_cache_capacity = 1048576
     ledger_flush_interval = 10000
     ledger_reset_at_startup = true
-    block_reward = 1000000000
+    block_reward = "1.0"
     initial_ledger_path = "config/initial_ledger.json"
     operation_batch_size = 1024
     #POS
@@ -33,10 +36,11 @@
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 10
+    pos_miss_rate_deactivation_threshold = [7, 10]
     staking_keys_path = "config/staking_keys.json"
-    roll_price = 500000000000
+    roll_price = "500"
     #stats
-    stats_timespan = 30000
+    stats_timespan = 60000  # also used for desync detection
 
 [protocol]
     message_timeout = 5000
@@ -45,20 +49,23 @@
     max_node_wanted_blocks_size = 1024
     max_simultaneous_ask_blocks_per_node = 2048
     max_send_wait = 500
+    max_known_ops_size = 100000
 
 [network]
-    bind = "0.0.0.0:31234"
+    bind = "0.0.0.0:31244"
     # routable_ip = "200.200.200.200" # Your ip
-    protocol_port = 31234
+    protocol_port = 31244
     connect_timeout = 5000
     wakeup_interval = 10000
     peers_file = "config/peers.json"
-    target_out_connections = 20
-    max_in_connections = 100
+    target_bootstrap_connections = 1
+    max_out_bootstrap_connection_attempts = 1
+    target_out_nonbootstrap_connections = 10
+    max_in_nonbootstrap_connections = 50
     max_in_connections_per_ip = 5
-    max_out_connection_attempts = 10
-    max_idle_peers = 1000
-    max_banned_peers = 1000
+    max_out_nonbootstrap_connection_attempts = 5
+    max_idle_peers = 10000
+    max_banned_peers = 10000
     max_advertise_length = 100000
     peers_file_dump_interval = 10000
     max_message_size = 1048576000
@@ -78,21 +85,23 @@
 
 [bootstrap]
     bootstrap_list = [
-        ["149.202.86.103:31235", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
-        ["149.202.89.125:31235", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"]
+        ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
+        ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
+        ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
+        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
     ]
-    bind = "0.0.0.0:31235" # if you want to bootstrap people
+    bind = "0.0.0.0:31245" # if you want to bootstrap people
     connect_timeout = 1000
     retry_delay = 5000
     max_bootstrap_blocks = 1000000
     max_bootstrap_cliques = 1000
     max_bootstrap_deps = 1000
     max_bootstrap_children = 1000
-    max_ping = 500
+    max_ping = 5000
     max_bootstrap_message_size = 1048576000
     read_timeout = 100000
     write_timeout = 10000
-    max_bootstrap_pos_entries = 100000000
+    max_bootstrap_pos_entries = 1000000000
     max_bootstrap_pos_cycles = 5
     enable_clock_synchronization = false
 

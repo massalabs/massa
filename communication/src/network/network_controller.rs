@@ -3,18 +3,19 @@
 use super::{
     config::{NetworkConfig, CHANNEL_SIZE},
     establisher::Establisher,
-    network_worker::{NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker},
+    network_worker::{
+        NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker, Peers,
+    },
     peer_info_database::*,
     BootstrapPeers,
 };
 use crate::common::NodeId;
 use crate::error::CommunicationError;
-use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey};
-use models::{Block, BlockHeader, BlockId, Operation};
-use std::{
-    collections::{HashMap, VecDeque},
-    net::IpAddr,
+use crypto::signature::{
+    derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
 };
+use models::{Block, BlockHeader, BlockId, Operation, Version};
+use std::collections::{HashMap, VecDeque};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -29,6 +30,7 @@ pub async fn start_network_controller(
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
+    version: Version,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -75,7 +77,7 @@ pub async fn start_network_controller(
     let public_key = derive_public_key(&private_key);
     let self_node_id = NodeId(public_key);
 
-    debug!("local network node_id={:?}", self_node_id);
+    info!("The node_id of this node is: {:?}", self_node_id);
     massa_trace!("self_node_id", { "node_id": self_node_id });
 
     // create listener
@@ -105,6 +107,7 @@ pub async fn start_network_controller(
             command_rx,
             event_tx,
             manager_rx,
+            version,
         )
         .run_loop()
         .await;
@@ -186,8 +189,8 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to get peers.
-    pub async fn get_peers(&self) -> Result<HashMap<IpAddr, PeerInfo>, CommunicationError> {
-        let (response_tx, response_rx) = oneshot::channel::<HashMap<IpAddr, PeerInfo>>();
+    pub async fn get_peers(&self) -> Result<Peers, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
             .await
@@ -243,6 +246,25 @@ impl NetworkCommandSender {
                 CommunicationError::ChannelError("could not send SendOperations command".into())
             })?;
         Ok(())
+    }
+
+    /// Sign a message using the node's private key
+    pub async fn node_sign_message(
+        &self,
+        msg: Vec<u8>,
+    ) -> Result<(PublicKey, Signature), CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel::<(PublicKey, Signature)>();
+        self.0
+            .send(NetworkCommand::NodeSignMessage { msg, response_tx })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("could not send GetBootstrapPeers command".into())
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            CommunicationError::ChannelError(
+                "could not send GetBootstrapPeers response upstream".into(),
+            )
+        })?)
     }
 }
 

@@ -15,15 +15,15 @@
 use chrono::Local;
 use chrono::TimeZone;
 use communication::network::PeerInfo;
+use communication::NodeId;
 use consensus::DiscardReason;
 use consensus::{ExportBlockStatus, LedgerData};
 use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{
-    Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus, OperationType, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
+    OperationSearchResultStatus, OperationType, Slot, StakerCycleProductionStats,
 };
-use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -51,8 +51,7 @@ impl<'a> std::fmt::Display for WrapperOperationType<'a> {
             } => write!(
                 f,
                 "Transaction: recipient:{} amount:{}",
-                recipient_address,
-                format_amount(*amount)
+                recipient_address, amount
             ),
             OperationType::RollBuy { roll_count } => {
                 write!(f, "RollBuy: roll_count:{}", roll_count)
@@ -78,13 +77,11 @@ impl std::fmt::Display for WrapperOperation {
         let op_type = WrapperOperationType::from(&self.0.content.op);
         let addr = Address::from_public_key(&self.0.content.sender_public_key)
             .map_err(|_| std::fmt::Error)?;
+        let amount: String = self.0.content.fee.to_string();
         write!(
             f,
             "sender:{} fee:{} expire_period:{} {}",
-            addr,
-            format_amount(self.0.content.fee),
-            self.0.content.expire_period,
-            op_type
+            addr, amount, self.0.content.expire_period, op_type
         )
     }
 }
@@ -192,7 +189,7 @@ pub struct WrappedAddressState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,
     pub candidate_rolls: u64,
-    pub locked_balance: u64,
+    pub locked_balance: Amount,
     pub candidate_ledger_data: LedgerData,
     pub final_ledger_data: LedgerData,
 }
@@ -207,21 +204,13 @@ pub struct WrappedAddressState {
 */
 impl<'a> std::fmt::Display for WrappedAddressState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(
-            f,
-            "    final balance: {}",
-            format_amount(self.final_ledger_data.balance)
-        )?;
+        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
         writeln!(
             f,
             "    candidate balance: {}",
-            format_amount(self.candidate_ledger_data.balance)
+            self.candidate_ledger_data.balance
         )?;
-        writeln!(
-            f,
-            "    locked balance: {}",
-            format_amount(self.locked_balance)
-        )?;
+        writeln!(f, "    locked balance: {}", self.locked_balance)?;
         writeln!(f, "    final rolls: {}", self.final_rolls)?;
         writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
 
@@ -433,6 +422,7 @@ pub struct StakerInfo {
     staker_active_blocks: Vec<(Hash, BlockHeader)>,
     staker_discarded_blocks: Vec<(Hash, DiscardReason, BlockHeader)>,
     staker_next_draws: Vec<Slot>,
+    staker_production: Vec<StakerCycleProductionStats>,
 }
 
 impl std::fmt::Display for StakerInfo {
@@ -468,17 +458,81 @@ impl std::fmt::Display for StakerInfo {
                 .iter()
                 .map(|slot| format!("(slot:{})", slot))
                 .collect::<Vec<String>>()
-        )
+        )?;
+        if self.staker_production.is_empty() {
+            writeln!(f, "  no production found")
+        } else {
+            writeln!(f, " production:")?;
+            let mut prods = self.staker_production.clone();
+            prods.sort_unstable_by_key(|p| p.cycle);
+            for prod in prods {
+                writeln!(
+                    f,
+                    "    cycle {} ({}): {}",
+                    prod.cycle,
+                    if prod.is_final { "final" } else { "active" },
+                    if prod.final_ok_count + prod.final_nok_count == 0 {
+                        "no production".to_string()
+                    } else {
+                        format!(
+                            "{}/{} produced ({}% miss)",
+                            prod.final_ok_count,
+                            prod.final_ok_count + prod.final_nok_count,
+                            prod.final_nok_count * 100
+                                / (prod.final_ok_count + prod.final_nok_count)
+                        )
+                    }
+                )?;
+            }
+            writeln!(f, "")
+        }
+    }
+}
+
+#[derive(Clone, Deserialize)]
+pub struct WrappedPeerInfo {
+    pub active_nodes: Vec<(NodeId, bool)>,
+    pub peer_info: PeerInfo,
+}
+
+impl std::fmt::Display for WrappedPeerInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "{}:", self.peer_info.ip)?;
+        writeln!(f, "      Peer: bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
+            , self.peer_info.bootstrap
+            , self.peer_info.banned
+            , self.peer_info.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.active_out_connection_attempts
+            , self.peer_info.active_out_connections
+            , self.peer_info.active_in_connections
+            , self.peer_info.advertised)?;
+        if !self.active_nodes.is_empty() {
+            writeln!(f, "      active_nodes: [")?;
+            for (node_id, outgoing) in &self.active_nodes {
+                writeln!(
+                    f,
+                    "        node_id: {} ({})",
+                    node_id,
+                    if *outgoing { "outgoing" } else { "incoming" }
+                )?;
+            }
+            writeln!(f, "      ]")
+        } else {
+            writeln!(f, "No active nodes")
+        }
     }
 }
 
 #[derive(Clone, Deserialize)]
 pub struct NetworkInfo {
     our_ip: Option<IpAddr>,
-    peers: HashMap<IpAddr, PeerInfo>,
+    peers: HashMap<IpAddr, WrappedPeerInfo>,
+    node_id: NodeId,
 }
 impl std::fmt::Display for NetworkInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "  Node Id:{}", self.node_id)?;
         writeln!(
             f,
             "  Our IP address: {}",
@@ -488,37 +542,9 @@ impl std::fmt::Display for NetworkInfo {
         )?;
         writeln!(f, "  Peers:")?;
         for peer in self.peers.values() {
-            write!(f, "    {}", WrappedPeerInfo::from(peer))?;
+            write!(f, "    {}", peer)?;
         }
         Ok(())
-    }
-}
-
-#[derive(Clone, Deserialize)]
-pub struct WrappedPeerInfo(PeerInfo);
-
-impl From<PeerInfo> for WrappedPeerInfo {
-    fn from(peer: PeerInfo) -> Self {
-        WrappedPeerInfo(peer)
-    }
-}
-impl From<&'_ PeerInfo> for WrappedPeerInfo {
-    fn from(peer: &PeerInfo) -> Self {
-        WrappedPeerInfo(*peer)
-    }
-}
-impl std::fmt::Display for WrappedPeerInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Peer: Ip: {} bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
-            ,self.0.ip
-            , self.0.bootstrap
-            , self.0.banned
-            , self.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.active_out_connection_attempts
-            , self.0.active_out_connections
-            , self.0.active_in_connections
-            , self.0.advertised)
     }
 }
 
@@ -553,34 +579,4 @@ impl std::fmt::Debug for WrappedHash {
             write!(f, "{}", &self.0.to_bs58_check())
         }
     }
-}
-
-const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
-
-pub fn parse_amount(str_amount: &str) -> Result<u64, String> {
-    let res = Decimal::from_str(str_amount)
-        .map_err(|err| err.to_string())?
-        .checked_mul(AMOUNT_DECIMAL_FACTOR.into())
-        .ok_or_else(|| "amount is too large".to_string())?;
-    if res.is_sign_negative() {
-        return Err("amounts should be positive".to_string());
-    }
-    if !res.fract().is_zero() {
-        return Err(format!(
-            "amounts should have a precision down to 1/{}",
-            AMOUNT_DECIMAL_FACTOR
-        ));
-    }
-    let res = res
-        .to_u64()
-        .ok_or_else(|| "amount is too large".to_string())?;
-    Ok(res)
-}
-
-fn format_amount(amount: u64) -> String {
-    Decimal::from_u64(amount)
-        .unwrap() // will never panic
-        .checked_div(AMOUNT_DECIMAL_FACTOR.into()) // will never panic
-        .unwrap() // will never panic
-        .to_string()
 }

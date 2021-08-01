@@ -12,6 +12,7 @@ time = {path = "../time"}
 thiserror = "1.0"
 integer-encoding = "3.0"
 num_enum = "0.5"
+rust_decimal = "1.15"
 
 [dev-dependencies]
 stderrlog = { version = "0.5" }

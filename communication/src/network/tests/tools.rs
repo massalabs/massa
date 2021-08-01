@@ -12,7 +12,10 @@ use crate::network::{
     PeerInfo,
 };
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
-use models::{Address, BlockId, Operation, OperationContent, OperationType, SerializeCompact};
+use models::{
+    Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact, Version,
+};
+use std::str::FromStr;
 use std::{
     future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -21,9 +24,8 @@ use std::{
 };
 use tempfile::NamedTempFile;
 use time::UTime;
-use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
-
 use tokio::time::sleep;
+use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -79,11 +81,13 @@ pub fn create_network_config(
         protocol_port: network_controller_port,
         connect_timeout: UTime::from(3000),
         peers_file: peers_file_path.to_path_buf(),
-        target_out_connections: 10,
+        target_out_nonbootstrap_connections: 10,
         wakeup_interval: UTime::from(3000),
-        max_in_connections: 100,
+        target_bootstrap_connections: 0,
+        max_out_bootstrap_connection_attempts: 1,
+        max_in_nonbootstrap_connections: 100,
         max_in_connections_per_ip: 100,
-        max_out_connection_attempts: 100,
+        max_out_nonbootstrap_connection_attempts: 100,
         max_idle_peers: 100,
         max_banned_peers: 100,
         max_advertise_length: 10,
@@ -134,6 +138,7 @@ pub async fn full_connection_to_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Version::from_str("TEST.1.2").unwrap(),
     )
     .run()
     .await
@@ -188,6 +193,7 @@ pub async fn rejected_connection_to_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Version::from_str("TEST.1.2").unwrap(),
     )
     .run()
     .await;
@@ -260,6 +266,7 @@ pub async fn full_connection_from_controller(
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
+        Version::from_str("TEST.1.2").unwrap(),
     )
     .run()
     .await
@@ -354,10 +361,10 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,
@@ -394,9 +401,15 @@ where
 
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _private_key) =
-        start_network_controller(cfg.clone(), establisher, 0, None)
-            .await
-            .expect("could not start network controller");
+        start_network_controller(
+            cfg.clone(),
+            establisher,
+            0,
+            None,
+            Version::from_str("TEST.1.2").unwrap(),
+        )
+        .await
+        .expect("could not start network controller");
 
     // Call test func.
     //force _mock_interface return to avoid to be dropped before the end of the test (network_manager.stop).

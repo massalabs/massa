@@ -30,6 +30,7 @@ dependencies = [
  "log",
  "logging",
  "models",
+ "num",
  "pool",
  "pretty_assertions",
  "serde",
@@ -872,7 +873,6 @@ dependencies = [
  "models",
  "pool",
  "reqwest",
- "rust_decimal",
  "rustyline",
  "serde",
  "serde_json",
@@ -902,6 +902,7 @@ dependencies = [
  "serial_test",
  "stderrlog",
  "storage",
+ "time 0.1.0",
  "tokio",
  "tokio-util",
  "toml",
@@ -975,6 +976,7 @@ dependencies = [
  "lazy_static",
  "num_enum",
  "pretty_assertions",
+ "rust_decimal",
  "serde",
  "serial_test",
  "stderrlog",
@@ -1062,6 +1064,7 @@ dependencies = [
  "autocfg 1.0.1",
  "num-integer",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1071,6 +1074,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26873667bbbb7c5182d4a37c1add32cdf09f841af72da53318fdb81543c15085"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1104,6 +1108,7 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1630,9 +1635,9 @@ dependencies = [
 
 [[package]]
 name = "rust_decimal"
-version = "1.14.3"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01127cb8617e5e21bcf2e19b5eb48317735ca677f1d0a94833c21c331c446582"
+checksum = "c5446d1cf2dfe2d6367c8b27f2082bdf011e60e76fa1fcd140047f535156d6e7"
 dependencies = [
  "arrayvec",
  "num-traits",
