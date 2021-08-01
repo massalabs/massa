@@ -219,18 +219,18 @@ impl NodeWorker {
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
                             _ => {  // wrong message
-                                warn!("node_worker.run_loop.self.socket_reader.next(). other message Error");
+                                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Error", {});
                                 exit_reason = ConnectionClosureReason::Failed;
                                 break;
                             },
                         }
                     },
                     Ok(None)=> {
-                        warn!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error");
+                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error", {});
                         break
                     }, // peer closed cleanly
                     Err(err) => {  //stream error
-                        warn!("node_worker.run_loop.self.socket_reader.next(). receive Error:{}", err);
+                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{:?}", err)});
                         exit_reason = ConnectionClosureReason::Failed;
                         break;
                     },
