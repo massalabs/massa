@@ -6,7 +6,7 @@ Nodes in the Massa network need to establish connections between them in order t
 
 In order for a node A to establish a connection towards a node B, it is necessary that node B is routable. This means that node B has a public IP address that can be reached from node A, and that ports TCP 31244 and TCP 31245 are open on node B and that inbound connections on those ports are allowed by firewalls on node B. Once such a connection is established, communication through this connection is bidirectional, and it does not matter anymore which one of the two nodes initiated the connection establishment.
 
-If only a small number of nodes are routable, all other nodes will be able to connect only to those routable nodes, which can overload them and generally hurt the decentralization and security of the network, as those few routable nodes become de-facto central communication hubs, choke points, and single points of failure.
+If only a small number of nodes are routable, all other nodes will be able to connect only to those routable nodes, which can overload them and generally hurt the decentralization and security of the network, as those few routable nodes become de-facto central communication hubs, choke points, and single points of failure. It is therefore important to have as many routable nodes as possible.
 
 In Massa, nodes are non-routable by default, an require a manual operation to be made routable.
 
