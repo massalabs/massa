@@ -43,6 +43,9 @@ Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 
 *** `routable_samples` is the number of random connection trials that resulted in a successful connection.
 *** Maximum score is achieved if the node can always be reached by other nodes.
 
+We encourage every person to run only one node.
+Running multiple nodes with the same staking keys will result in roll slashing in the future.
+Running multiple nodes with the same node_privkey.key also reduces network health and will be a point of attention for rewards.
 
 ## Registration
 
