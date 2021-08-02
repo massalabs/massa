@@ -178,40 +178,44 @@ impl Wallet {
             })?
         );
         let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server response code: {}",
-                resp.status()
-            )));
-        }
-        let map_info = resp.json::<HashMap<Address, AddressState>>()?;
+        if resp.status() == StatusCode::OK {
+            let map_info = resp.json::<HashMap<Address, AddressState>>()?;
 
-        if let Some(info) = map_info.get(&from_address) {
-            match operation_type {
-                OperationType::Transaction { amount, .. } => {
-                    if info.candidate_ledger_data.balance < fee.saturating_add(amount) {
-                        println!("Warning : currently address {} has not enough MAS for that transaction. It may be rejected", from_address);
+            if let Some(info) = map_info.get(&from_address) {
+                match operation_type {
+                    OperationType::Transaction { amount, .. } => {
+                        if info.candidate_ledger_data.balance < fee.saturating_add(amount) {
+                            println!("Warning : currently address {} has not enough coins for that transaction. It may be rejected", from_address);
+                        }
+                    }
+                    OperationType::RollBuy { roll_count } => {
+                        if info.candidate_ledger_data.balance
+                            < consensus_cfg
+                                .roll_price
+                                .checked_mul_u64(roll_count)
+                                .unwrap()
+                                .saturating_add(fee)
+                        // it's just to print a warning
+                        {
+                            println!("Warning : currently address {} has not enough coins for that roll buy. It may be rejected", from_address);
+                            println!(
+                                "Info : current roll price is {} coins",
+                                consensus_cfg.roll_price
+                            );
+                        }
+                    }
+                    OperationType::RollSell { roll_count } => {
+                        if info.candidate_rolls < roll_count
+                            || info.candidate_ledger_data.balance < fee
+                        {
+                            println!("Warning : currently address {} has not enough rolls or coins for that roll sell. It may be rejected", from_address);
+                        }
                     }
                 }
-                OperationType::RollBuy { roll_count } => {
-                    if info.candidate_ledger_data.balance
-                        < consensus_cfg.roll_price.checked_mul_u64(roll_count).ok_or(
-                            ReplError::GeneralError("could not checked mul roll count".to_string()),
-                        )?
-                    {
-                        println!("Warning : currently address {} has not enough MAS for that roll buy. It may be rejected", from_address);
-                    }
-                }
-                OperationType::RollSell { roll_count } => {
-                    if info.candidate_rolls < roll_count {
-                        println!("Warning : currently address {} has not enough rolls for that roll sell. It may be rejected", from_address);
-                    }
-                }
+            } else {
+                println!("Warning : currently address {} is not known by consensus. That operation may be rejected", from_address);
             }
-        } else {
-            println!("Warning : currently address {} is not known by consensus. That operation may be rejected", from_address);
         }
-
         let operation_content = OperationContent {
             fee,
             expire_period,
