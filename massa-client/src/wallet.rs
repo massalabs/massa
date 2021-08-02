@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::data::ConsensusConfig;
 use crate::ReplData;
 use crate::ReplError;
 use crate::WrappedAddressState;
@@ -169,53 +170,9 @@ impl Wallet {
             expire_period += 1;
         }
 
-        // get address info
-        let url = format!(
-            "http://{}/api/v1/addresses_info?{}",
-            data.node_ip,
-            serde_qs::to_string(&Addresses {
-                addrs: vec![from_address].into_iter().collect()
-            })?
-        );
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() == StatusCode::OK {
-            let map_info = resp.json::<HashMap<Address, AddressState>>()?;
+        //we don't care if that fails
+        let _ = check_if_valid(data, &operation_type, from_address, fee, consensus_cfg);
 
-            if let Some(info) = map_info.get(&from_address) {
-                match operation_type {
-                    OperationType::Transaction { amount, .. } => {
-                        if info.candidate_ledger_data.balance < fee.saturating_add(amount) {
-                            println!("Warning : currently address {} has not enough coins for that transaction. It may be rejected", from_address);
-                        }
-                    }
-                    OperationType::RollBuy { roll_count } => {
-                        if info.candidate_ledger_data.balance
-                            < consensus_cfg
-                                .roll_price
-                                .checked_mul_u64(roll_count)
-                                .unwrap()
-                                .saturating_add(fee)
-                        // it's just to print a warning
-                        {
-                            println!("Warning : currently address {} has not enough coins for that roll buy. It may be rejected", from_address);
-                            println!(
-                                "Info : current roll price is {} coins",
-                                consensus_cfg.roll_price
-                            );
-                        }
-                    }
-                    OperationType::RollSell { roll_count } => {
-                        if info.candidate_rolls < roll_count
-                            || info.candidate_ledger_data.balance < fee
-                        {
-                            println!("Warning : currently address {} has not enough rolls or coins for that roll sell. It may be rejected", from_address);
-                        }
-                    }
-                }
-            } else {
-                println!("Warning : currently address {} is not known by consensus. That operation may be rejected", from_address);
-            }
-        }
         let operation_content = OperationContent {
             fee,
             expire_period,
@@ -231,6 +188,60 @@ impl Wallet {
             signature,
         })
     }
+}
+
+fn check_if_valid(
+    data: &ReplData,
+    operation_type: &OperationType,
+    from_address: Address,
+    fee: Amount,
+    consensus_cfg: ConsensusConfig,
+) -> Result<(), ReplError>{
+    // get address info
+    let addrs = serde_qs::to_string(&Addresses {
+        addrs: vec![from_address].into_iter().collect(),
+    }) ?;
+    let url = format!("http://{}/api/v1/addresses_info?{}", data.node_ip, addrs);
+    let resp =  reqwest::blocking::get(&url)?;
+    if resp.status() == StatusCode::OK {
+        let map_info =  resp.json::<HashMap<Address, AddressState>>()?;
+
+        if let Some(info) = map_info.get(&from_address) {
+            match operation_type {
+                OperationType::Transaction { amount, .. } => {
+                    if info.candidate_ledger_data.balance < fee.saturating_add(*amount) {
+                        println!("Warning : currently address {} has not enough coins for that transaction. It may be rejected", from_address);
+                    }
+                }
+                OperationType::RollBuy { roll_count } => {
+                    if info.candidate_ledger_data.balance
+                        < consensus_cfg
+                            .roll_price
+                            .checked_mul_u64(*roll_count)
+                            .ok_or(ReplError::GeneralError("".to_string()))?
+                            .saturating_add(fee)
+                    // it's just to print a warning
+                    {
+                        println!("Warning : currently address {} has not enough coins for that roll buy. It may be rejected", from_address);
+                        println!(
+                            "Info : current roll price is {} coins",
+                            consensus_cfg.roll_price
+                        );
+                    }
+                }
+                OperationType::RollSell { roll_count } => {
+                    if info.candidate_rolls < *roll_count
+                        || info.candidate_ledger_data.balance < fee
+                    {
+                        println!("Warning : currently address {} has not enough rolls or coins for that roll sell. It may be rejected", from_address);
+                    }
+                }
+            }
+        } else {
+            println!("Warning : currently address {} is not known by consensus. That operation may be rejected", from_address);
+        }
+    }
+    Ok(())
 }
 
 /*impl std::fmt::Display for Wallet {
