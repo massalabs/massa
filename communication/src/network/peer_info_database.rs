@@ -201,6 +201,7 @@ fn cleanup_peers(
     idle_peers.truncate(cfg.max_idle_peers);
 
     // sort and truncate inactive banned peers
+    // todo forget about old banned peers
     banned_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
 
@@ -1621,6 +1622,7 @@ mod tests {
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
             max_send_wait: UTime::from(100),
+            ban_timeout: UTime::from(100_000_000),
         }
     }
 
