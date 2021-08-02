@@ -148,6 +148,14 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    pub async fn unban(&self, node_id: NodeId) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::Unban(node_id))
+            .await
+            .map_err(|_| CommunicationError::ChannelError("could not send Unban command".into()))?;
+        Ok(())
+    }
+
     /// Send the order to send block.
     pub async fn send_block(&self, node: NodeId, block: Block) -> Result<(), CommunicationError> {
         self.0
