@@ -673,7 +673,7 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
     let url = format!(
         "http://{}/api/v1/next_draws?{}",
         data.node_ip,
-        serde_qs::to_string(&Addresses { addrs })?
+        serde_qs::to_string(&Addresses { addrs: addrs.clone() })?
     );
 
     if let Some(resp) = request_data(data, &url)? {
@@ -681,12 +681,13 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         let addr_map = resp
             .content()
             .iter()
-            .fold(HashMap::new(), |mut map, (addr, slot)| {
+            .fold(addrs.iter().map(|addr|(addr, Vec::new())).collect::<HashMap<_,_>>(), |mut map, (addr, slot)| {
                 let entry = map.entry(addr).or_insert_with(Vec::new);
                 entry.push(slot);
                 map
             });
         for (addr, slots) in addr_map {
+            if !slots.is_empty(){
             println!("Next selected slots of address: {}:", addr);
             for slot in slots {
                 println!(
@@ -695,7 +696,7 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
                     slot.period,
                     slot.thread,
                 );
-            }
+            }} else {println!("No known selected slots of address: {}", addr);}
             println!();
         }
     }
