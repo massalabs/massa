@@ -152,6 +152,7 @@ pub struct ConsensusConfig {
     pub max_block_size: u32,
     pub operation_validity_periods: u64,
     pub periods_per_cycle: u64,
+    pub roll_price: Amount,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]

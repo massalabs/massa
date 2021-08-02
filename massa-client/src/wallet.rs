@@ -4,6 +4,7 @@ use crate::ReplData;
 use crate::ReplError;
 use crate::WrappedAddressState;
 use api::PubkeySig;
+use consensus::AddressState;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
@@ -165,6 +166,42 @@ impl Wallet {
         let mut expire_period = slot.period + consensus_cfg.operation_validity_periods;
         if slot.thread >= from_address.get_thread(consensus_cfg.thread_count) {
             expire_period += 1;
+        }
+
+        // get address info
+        let url = format!(
+            "http://{}/api/v1/addresses_info?{}",
+            data.node_ip, from_address
+        );
+        let resp = reqwest::blocking::get(&url)?;
+        if resp.status() != StatusCode::OK {
+            return Err(ReplError::GeneralError(format!(
+                "Error during node connection. Server response code: {}",
+                resp.status()
+            )));
+        }
+        let info = resp.json::<AddressState>()?;
+
+        match operation_type {
+            OperationType::Transaction { amount, .. } => {
+                if info.candidate_ledger_data.balance < fee.saturating_add(amount) {
+                    println!("Warning : currently address {} has not enough MAS for that transaction. It may be rejected", from_address);
+                }
+            }
+            OperationType::RollBuy { roll_count } => {
+                if info.candidate_ledger_data.balance
+                    < consensus_cfg.roll_price.checked_mul_u64(roll_count).ok_or(
+                        ReplError::GeneralError("could not checked mul roll count".to_string()),
+                    )?
+                {
+                    println!("Warning : currently address {} has not enough MAS for that roll buy. It may be rejected", from_address);
+                }
+            }
+            OperationType::RollSell { roll_count } => {
+                if info.candidate_rolls < roll_count {
+                    println!("Warning : currently address {} has not enough rolls for that roll sell. It may be rejected", from_address);
+                }
+            }
         }
 
         let operation_content = OperationContent {
