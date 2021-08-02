@@ -15,7 +15,10 @@ use crypto::signature::{
     derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
 };
 use models::{Block, BlockHeader, BlockId, Operation, Version};
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    net::IpAddr,
+};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -148,9 +151,9 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    pub async fn unban(&self, node_id: NodeId) -> Result<(), CommunicationError> {
+    pub async fn unban(&self, ip: IpAddr) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::Unban(node_id))
+            .send(NetworkCommand::Unban(ip))
             .await
             .map_err(|_| CommunicationError::ChannelError("could not send Unban command".into()))?;
         Ok(())

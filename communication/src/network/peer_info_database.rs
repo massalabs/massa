@@ -291,6 +291,12 @@ impl PeerInfoDatabase {
         res
     }
 
+    pub async fn unban(&mut self, ip: IpAddr) {
+        if let Some(peer) = self.peers.get_mut(&ip) {
+            peer.banned = false;
+        }
+    }
+
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.
     /// A warning is raised on dump failure.
     pub async fn stop(self) -> Result<(), CommunicationError> {
