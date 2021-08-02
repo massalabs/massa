@@ -77,6 +77,7 @@ pub enum ApiEvent {
         address: Address,
         response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
     },
+    Unban(IpAddr),
 }
 
 pub enum ApiManagementCommand {}
@@ -346,6 +347,15 @@ pub fn get_filter(
         .and_then(move || stop_node(evt_tx.clone()));
 
     let evt_tx = event_tx.clone();
+    let unban = warp::post()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("unban"))
+        .and(warp::path::param::<IpAddr>())
+        .and(warp::path::end())
+        .and_then(move |ip| unban(evt_tx.clone(), ip));
+
+    let evt_tx = event_tx.clone();
     let register_staking_private_keys = warp::post()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -412,6 +422,7 @@ pub fn get_filter(
         .or(graph_interval)
         .or(cliques)
         .or(peers)
+        .or(unban)
         .or(our_ip)
         .or(network_info)
         .or(state)
@@ -482,6 +493,20 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
                 "message": format!("error stopping node : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+    }
+}
+
+async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.unban", {});
+    match evt_tx.send(ApiEvent::Unban(ip)).await {
+        Ok(_) => Ok(warp::reply().into_response()),
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error unbanning : {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )

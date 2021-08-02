@@ -469,6 +469,13 @@ async fn on_api_event(
                 .await
                 .expect("remove_staking_addresses failed in api_event_receiver.wait_event")
         }
+        ApiEvent::Unban(ip) => {
+            massa_trace!("massa-node.main.run.select.api_event.unban", {});
+            network_command_sender
+                .unban(ip)
+                .await
+                .expect("unban failed in api_event_receiver.wait_event")
+        }
         ApiEvent::GetStakingAddresses(response_tx) => {
             massa_trace!(
                 "massa-node.main.run.select.api_event.get_staking_addresses",
