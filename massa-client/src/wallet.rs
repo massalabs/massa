@@ -196,15 +196,15 @@ fn check_if_valid(
     from_address: Address,
     fee: Amount,
     consensus_cfg: ConsensusConfig,
-) -> Result<(), ReplError>{
+) -> Result<(), ReplError> {
     // get address info
     let addrs = serde_qs::to_string(&Addresses {
         addrs: vec![from_address].into_iter().collect(),
-    }) ?;
+    })?;
     let url = format!("http://{}/api/v1/addresses_info?{}", data.node_ip, addrs);
-    let resp =  reqwest::blocking::get(&url)?;
+    let resp = reqwest::blocking::get(&url)?;
     if resp.status() == StatusCode::OK {
-        let map_info =  resp.json::<HashMap<Address, AddressState>>()?;
+        let map_info = resp.json::<HashMap<Address, AddressState>>()?;
 
         if let Some(info) = map_info.get(&from_address) {
             match operation_type {
