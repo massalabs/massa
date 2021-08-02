@@ -539,7 +539,7 @@ impl PeerInfoDatabase {
         })?;
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.banned {
-            // todo : peer.banned = true;
+            peer.banned = true;
             if !peer.is_active() && !peer.bootstrap {
                 cleanup_peers(&self.cfg, &mut self.peers, None);
             }
