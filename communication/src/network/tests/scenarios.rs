@@ -182,12 +182,12 @@ async fn test_multiple_connections_to_controller() {
 #[tokio::test]
 #[serial]
 async fn test_peer_ban() {
-    // setup logging
-    /*stderrlog::new()
-    .verbosity(4)
-    .timestamp(stderrlog::Timestamp::Millisecond)
-    .init()
-    .unwrap();*/
+    // //setup logging
+    // stderrlog::new()
+    // .verbosity(4)
+    // .timestamp(stderrlog::Timestamp::Millisecond)
+    // .init()
+    // .unwrap();
 
     //test config
     let bind_port: u16 = 50_000;
@@ -258,12 +258,33 @@ async fn test_peer_ban() {
                 1_000u64,
             )
             .await;
+            tools::incoming_message_drain_stop(conn1_drain).await;
 
+            sleep(Duration::from_secs(3)).await;
+            //unban connection1.
+            network_command_sender
+                .unban(mock_addr.ip())
+                .await
+                .expect("error during send unban command.");
+            println!("5");
+            // accept connection from controller to peer after unban
+            let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn1_drain_bis = tools::incoming_message_drain_start(conn1_r).await; // drained l220
+
+            trace!("test_peer_ban unbanned connection done");
             (
                 network_event_receiver,
                 network_manager,
                 mock_interface,
-                vec![conn1_drain, conn2_drain],
+                vec![conn2_drain, conn1_drain_bis],
             )
         },
     )
