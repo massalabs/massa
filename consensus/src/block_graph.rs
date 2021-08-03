@@ -1379,7 +1379,7 @@ impl BlockGraph {
         &self.best_parents
     }
 
-    pub fn get_block_ids_by_creator(&self, address: &Address) -> HashSet<BlockId> {
+    pub fn get_block_ids_by_creator(&self, address: &Address) -> HashMap<BlockId, Status> {
         todo!()
     }
     ///for algo see pos.md

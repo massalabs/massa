@@ -91,7 +91,7 @@ pub enum ConsensusCommand {
     },
     GetBlockIdsByCreator {
         address: Address,
-        response_tx: oneshot::Sender<HashSet<BlockId>>,
+        response_tx: oneshot::Sender<HashMap<BlockId, Status>>,
     },
 }
 

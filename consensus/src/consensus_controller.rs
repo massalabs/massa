@@ -227,7 +227,7 @@ impl ConsensusCommandSender {
     pub async fn get_block_ids_by_creator(
         &self,
         address: Address,
-    ) -> Result<HashSet<BlockId>, ConsensusError> {
+    ) -> Result<HashMap<BlockId, Status>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_block_ids_by_creator", {
         });
