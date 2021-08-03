@@ -734,10 +734,14 @@ fn cmd_block_ids_by_creator(data: &mut ReplData, params: &[&str]) -> Result<(), 
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<HashMap<BlockId, Status>>()?;
         println!("block_ids_by_creator:");
-        for (op_id, status) in resp {
+
+        if resp.is_empty() {
+            println!("No blocks found.")
+        }
+        for (block_id, status) in resp {
             println!(
                 "block {} status: {}",
-                op_id,
+                block_id,
                 match status {
                     Status::Active => "active",
                     Status::Final => "final",
