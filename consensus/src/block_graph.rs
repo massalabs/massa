@@ -1379,6 +1379,9 @@ impl BlockGraph {
         &self.best_parents
     }
 
+    pub fn get_block_ids_by_creator(&self, address: &Address) -> HashSet<BlockId> {
+        todo!()
+    }
     ///for algo see pos.md
     // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
     // returns (roll_counts, cycle_roll_updates)
