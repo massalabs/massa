@@ -70,8 +70,9 @@ impl StorageCleaner {
                         &self.hash_to_block,
                         &self.op_to_block,
                         &self.addr_to_op,
+                        &self.addr_to_block
                     )
-                        .transaction(|(slots, hashes, ops, addr_to_op)| {
+                        .transaction(|(slots, hashes, ops, addr_to_op, addr_to_block)| {
                             slots.remove(&slot)?;
                             let s_block = hashes
                                 .remove(&hash)?
@@ -167,6 +168,46 @@ impl StorageCleaner {
                                 addr_to_op.insert(&addr.to_bytes(), ivec)?;
                             }
 
+                            // update addr_to_block
+                            let creator_addr = Address::from_public_key(&block.header.content.creator).map_err(|err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(format!(
+                                        "error computing creator address: {:?}",
+                                        err
+                                    )),
+                                )
+                            })?;
+                            if let Some(ivec_blocks) = addr_to_block.get(&creator_addr.to_bytes())? {
+                                let mut ids = block_id_from_ivec(ivec_blocks).map_err(|err| {
+                                    sled::transaction::ConflictableTransactionError::Abort(
+                                        InternalError::TransactionError(format!(
+                                            "error deserializing block ids: {:?}",
+                                            err
+                                        )),
+                                    )
+                                })?;
+                                ids.remove(&block.header.compute_block_id().map_err(|err| {
+                                    sled::transaction::ConflictableTransactionError::Abort(
+                                        InternalError::TransactionError(format!(
+                                            "error computing block id: {:?}",
+                                            err
+                                        )),
+                                    )
+                                })?);
+                                if ids.is_empty() {
+                                    addr_to_block.remove(&creator_addr.to_bytes())?;
+                                } else {
+                                    let ivec = block_id_to_ivec(&ids).map_err(|err| {
+                                        sled::transaction::ConflictableTransactionError::Abort(
+                                            InternalError::TransactionError(format!(
+                                                "error serializing block ids: {:?}",
+                                                err
+                                            )),
+                                        )
+                                    })?;
+                                    addr_to_block.insert(&creator_addr.to_bytes(), ivec)?;
+                                }
+                            }
                             Ok(())
                         })?;
                 }
@@ -223,7 +264,7 @@ fn block_id_from_ivec(buffer: IVec) -> Result<HashSet<BlockId>, StorageError> {
     Ok(blocks)
 }
 
-fn block_id_to_ivec(block_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
+fn block_id_to_ivec(block_ids: &HashSet<BlockId>) -> Result<IVec, StorageError> {
     let mut res: Vec<u8> = Vec::with_capacity(BLOCK_ID_SIZE_BYTES * block_ids.len());
     for block_id in block_ids.iter() {
         res.extend(block_id.to_bytes());
