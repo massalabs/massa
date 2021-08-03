@@ -695,4 +695,24 @@ impl BlockStorage {
                 StorageError::OperationError(format!("error getting operation: {:?}", err))
             })
     }
+
+    pub async fn get_block_id_by_creator(
+        &self,
+        address: &Address,
+    ) -> Result<HashSet<BlockId>, StorageError> {
+        Ok(self.addr_to_block.transaction(|addr_to_block| {
+            if let Some(ivec_blocks) = addr_to_block.get(&address.to_bytes())? {
+                Ok(block_id_from_ivec(ivec_blocks).map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!(
+                            "error deserializing block ids: {:?}",
+                            err
+                        )),
+                    )
+                })?)
+            } else {
+                Ok(HashSet::new())
+            }
+        })?)
+    }
 }

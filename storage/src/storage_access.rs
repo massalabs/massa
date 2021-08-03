@@ -131,6 +131,13 @@ impl StorageAccess {
     ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
         self.0.get_operations(operation_ids).await
     }
+
+    pub async fn get_block_id_by_creator(
+        &self,
+        address: &Address,
+    ) -> Result<HashSet<BlockId>, StorageError> {
+        self.0.get_block_id_by_creator(address).await
+    }
 }
 
 pub struct StorageManager {
