@@ -26,8 +26,9 @@ pub struct StorageCleaner {
     block_count: Arc<AtomicUsize>,
     hash_to_block: sled::Tree,
     slot_to_hash: sled::Tree,
-    op_to_block: sled::Tree, // op_id -> (block_id, index)
-    addr_to_op: sled::Tree,  // address -> Vec<operationId>
+    op_to_block: sled::Tree,   // op_id -> (block_id, index)
+    addr_to_op: sled::Tree,    // address -> Vec<operationId>
+    addr_to_block: sled::Tree, // addr -> Vec<BlockId>
 }
 
 impl StorageCleaner {
@@ -39,6 +40,7 @@ impl StorageCleaner {
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
         addr_to_op: sled::Tree, // address -> Vec<operationId>
+        addr_to_block: sled::Tree,
         block_count: Arc<AtomicUsize>,
     ) -> Result<Self, StorageError> {
         Ok(StorageCleaner {
@@ -50,6 +52,7 @@ impl StorageCleaner {
             slot_to_hash,
             op_to_block,
             addr_to_op,
+            addr_to_block,
         })
     }
 
@@ -221,6 +224,8 @@ pub struct BlockStorage {
     op_to_block: sled::Tree,
     /// Address -> HashSet<OperationId>
     addr_to_op: sled::Tree,
+    /// Address -> HashSet<BlockId>
+    addr_to_block: sled::Tree,
     notify: Arc<Notify>,
 }
 
@@ -231,6 +236,7 @@ impl BlockStorage {
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
         addr_to_op: sled::Tree, // address -> Vec<operationId>
+        addr_to_block: sled::Tree,
         block_count: Arc<AtomicUsize>,
         notify: Arc<Notify>,
     ) -> Result<BlockStorage, StorageError> {
@@ -241,6 +247,7 @@ impl BlockStorage {
             slot_to_hash,
             op_to_block,
             addr_to_op, // address -> Vec<operationId>
+            addr_to_block,
             notify,
         };
 
