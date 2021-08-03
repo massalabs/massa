@@ -212,6 +212,24 @@ fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
     Ok(res[..].into())
 }
 
+fn block_id_from_ivec(buffer: IVec) -> Result<HashSet<BlockId>, StorageError> {
+    let block_count = buffer.len() / BLOCK_ID_SIZE_BYTES;
+    let mut blocks: HashSet<BlockId> = HashSet::with_capacity(block_count as usize);
+    for id_i in 0..block_count {
+        let cursor = OPERATION_ID_SIZE_BYTES * id_i;
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        blocks.insert(block_id);
+    }
+    Ok(blocks)
+}
+
+fn block_id_to_ivec(block_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
+    let mut res: Vec<u8> = Vec::with_capacity(BLOCK_ID_SIZE_BYTES * block_ids.len());
+    for block_id in block_ids.iter() {
+        res.extend(block_id.to_bytes());
+    }
+    Ok(res[..].into())
+}
 #[derive(Clone)]
 pub struct BlockStorage {
     cfg: StorageConfig,
