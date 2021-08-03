@@ -693,7 +693,7 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         );
         for (addr, slots) in addr_map {
             println!("Next selected slots of address: {}:", addr);
-            for slot in slots {
+            for slot in slots.iter() {
                 println!(
                     "   Cycle {}, period {}, thread {}",
                     slot.get_cycle(consensus_cfg.periods_per_cycle),
