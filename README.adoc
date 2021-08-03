@@ -86,8 +86,8 @@ Here is a set of tutorials:
 * link:docs/staking.adoc[Staking]
 * link:docs/transaction.adoc[Sending transactions]
 * Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
-* link:docs/windows_install.aldoc[Install and Run on Windows]
-* link:docs/routability.adoc[Routability tutoria]
+* link:docs/windows_install.adoc[Install and Run on Windows]
+* link:docs/routability.adoc[Routability tutorial]
 
 ## Troubleshooting
 
