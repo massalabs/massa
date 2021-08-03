@@ -77,6 +77,10 @@ pub enum ApiEvent {
         address: Address,
         response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
     },
+    GetBlockIdsByCreator {
+        address: Address,
+        response_tx: oneshot::Sender<HashMap<BlockId, Status>>,
+    },
 }
 
 pub enum ApiManagementCommand {}
@@ -174,7 +178,7 @@ pub fn get_filter(
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
-    let storage = opt_storage_command_sender;
+    let storage = opt_storage_command_sender.clone();
     let graph_interval = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -190,6 +194,16 @@ pub fn get_filter(
                 storage.clone(),
             )
         });
+
+    let evt_tx = event_tx.clone();
+    let storage = opt_storage_command_sender;
+    let block_ids_by_creator = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("block_ids_by_creator"))
+        .and(warp::path::param::<Address>())
+        .and(warp::path::end())
+        .and_then(move |addr| get_block_ids_by_creator(evt_tx.clone(), addr, storage.clone()));
 
     let evt_tx = event_tx.clone();
     let cliques = warp::get()
@@ -433,6 +447,7 @@ pub fn get_filter(
         .or(register_staking_private_keys)
         .or(remove_staking_addresses)
         .or(node_sign_message)
+        .or(block_ids_by_creator)
         .boxed()
 }
 
@@ -620,6 +635,45 @@ async fn get_block(
     }
 }
 
+async fn get_block_ids_by_creator(
+    event_tx: mpsc::Sender<ApiEvent>,
+    address: Address,
+    opt_storage_command_sender: Option<StorageAccess>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.get_block_ids_by_creator", {
+        "address": address
+    });
+    let res = match retrieve_block_ids_by_creator_from_consensus(address, &event_tx).await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving active blocks : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(mut res) => {
+            if let Some(cmd_tx) = opt_storage_command_sender {
+                match retrieve_block_ids_by_creator_from_storage(address, &cmd_tx).await {
+                    Ok(res2) => res.extend(res2),
+                    Err(e) => {
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&json!({
+                                "message": format!("error retrieving active blocks : {:?}", e)
+                            })),
+                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        )
+                        .into_response())
+                    }
+                }
+            }
+            res
+        }
+    };
+    Ok(warp::reply::json(&res).into_response())
+}
+
 async fn get_operations(
     event_tx: mpsc::Sender<ApiEvent>,
     operation_ids: HashSet<OperationId>,
@@ -737,6 +791,43 @@ async fn retrieve_block(
     response_rx
         .await
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
+}
+
+async fn retrieve_block_ids_by_creator_from_consensus(
+    address: Address,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<HashMap<BlockId, Status>, ApiError> {
+    massa_trace!("api.filters.retrieve_block_ids_by_creator", {
+        "address": address
+    });
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetBlockIdsByCreator {
+            address,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event GetBlockIdsByCreator : {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve GetBlockIdsByCreator : {0}", e))
+    })
+}
+
+async fn retrieve_block_ids_by_creator_from_storage(
+    address: Address,
+    storage_access: &StorageAccess,
+) -> Result<HashMap<BlockId, Status>, ApiError> {
+    Ok(storage_access
+        .get_block_id_by_creator(&address)
+        .await?
+        .into_iter()
+        .map(|id| (id, Status::Final))
+        .collect())
 }
 
 async fn retrieve_operations(
