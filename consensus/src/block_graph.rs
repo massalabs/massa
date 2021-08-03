@@ -1380,7 +1380,32 @@ impl BlockGraph {
     }
 
     pub fn get_block_ids_by_creator(&self, address: &Address) -> HashMap<BlockId, Status> {
-        todo!()
+        self.block_statuses
+            .iter()
+            .filter_map(|(id, block)| match block {
+                BlockStatus::Active(ActiveBlock {
+                    block, is_final, ..
+                }) => {
+                    if let Ok(creator) = Address::from_public_key(&block.header.content.creator) {
+                        if creator != *address {
+                            None
+                        } else {
+                            Some((
+                                *id,
+                                if *is_final {
+                                    Status::Final
+                                } else {
+                                    Status::Active
+                                },
+                            ))
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect()
     }
     ///for algo see pos.md
     // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
