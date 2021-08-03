@@ -266,7 +266,7 @@ async fn test_peer_ban() {
                 .unban(mock_addr.ip())
                 .await
                 .expect("error during send unban command.");
-            println!("5");
+
             // accept connection from controller to peer after unban
             let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
