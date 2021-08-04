@@ -467,6 +467,7 @@ async fn get_consensus_config(
         "max_block_size": consensus_cfg.max_block_size,
         "operation_validity_periods": consensus_cfg.operation_validity_periods,
         "periods_per_cycle": consensus_cfg.periods_per_cycle,
+        "roll_price": consensus_cfg.roll_price,
     })))
 }
 
