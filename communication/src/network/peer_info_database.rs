@@ -124,7 +124,9 @@ fn cleanup_peers(
     cfg: &NetworkConfig,
     peers: &mut HashMap<IpAddr, PeerInfo>,
     opt_new_peers: Option<&Vec<IpAddr>>,
-) {
+    clock_compensation: i64,
+    ban_timeout: UTime,
+) -> Result<(), CommunicationError> {
     // filter and map new peers, remove duplicates
     let mut res_new_peers: Vec<PeerInfo> = if let Some(new_peers) = opt_new_peers {
         new_peers
@@ -201,6 +203,10 @@ fn cleanup_peers(
     idle_peers.truncate(cfg.max_idle_peers);
 
     // sort and truncate inactive banned peers
+    // forget about old banned peers
+
+    let ban_limit = UTime::now(clock_compensation)?.saturating_sub(ban_timeout);
+    banned_peers.drain_filter(|p| p.last_failure.unwrap_or(UTime::from(0)) > ban_limit);
     banned_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
 
@@ -208,6 +214,7 @@ fn cleanup_peers(
     peers.extend(keep_peers.into_iter().map(|p| (p.ip, p)));
     peers.extend(banned_peers.into_iter().map(|p| (p.ip, p)));
     peers.extend(idle_peers.into_iter().map(|p| (p.ip, p)));
+    Ok(())
 }
 
 impl PeerInfoDatabase {
@@ -232,7 +239,7 @@ impl PeerInfoDatabase {
         .collect::<HashMap<IpAddr, PeerInfo>>();
 
         // cleanup
-        cleanup_peers(cfg, &mut peers, None);
+        cleanup_peers(cfg, &mut peers, None, clock_compensation, cfg.ban_timeout)?;
 
         // setup saver
         let peers_file = cfg.peers_file.clone();
@@ -487,7 +494,13 @@ impl PeerInfoDatabase {
         if new_peers.is_empty() {
             return Ok(());
         }
-        cleanup_peers(&self.cfg, &mut self.peers, Some(new_peers));
+        cleanup_peers(
+            &self.cfg,
+            &mut self.peers,
+            Some(new_peers),
+            self.clock_compensation,
+            self.cfg.ban_timeout,
+        )?;
         self.request_dump()
     }
 
@@ -541,7 +554,13 @@ impl PeerInfoDatabase {
         if !peer.banned {
             // todo : peer.banned = true;
             if !peer.is_active() && !peer.bootstrap {
-                cleanup_peers(&self.cfg, &mut self.peers, None);
+                cleanup_peers(
+                    &self.cfg,
+                    &mut self.peers,
+                    None,
+                    self.clock_compensation,
+                    self.cfg.ban_timeout,
+                )?;
             }
         }
         self.request_dump()
@@ -576,7 +595,13 @@ impl PeerInfoDatabase {
         }
 
         if !peer.is_active() && !peer.bootstrap {
-            cleanup_peers(&self.cfg, &mut self.peers, None);
+            cleanup_peers(
+                &self.cfg,
+                &mut self.peers,
+                None,
+                self.clock_compensation,
+                self.cfg.ban_timeout,
+            )?;
             self.request_dump()
         } else {
             Ok(())
@@ -612,7 +637,13 @@ impl PeerInfoDatabase {
             self.active_in_nonbootstrap_connections -= 1;
         }
         if !peer.is_active() && !peer.bootstrap {
-            cleanup_peers(&self.cfg, &mut self.peers, None);
+            cleanup_peers(
+                &self.cfg,
+                &mut self.peers,
+                None,
+                self.clock_compensation,
+                self.cfg.ban_timeout,
+            )?;
             self.request_dump()
         } else {
             Ok(())
@@ -665,7 +696,13 @@ impl PeerInfoDatabase {
         if peer.banned {
             peer.last_failure = Some(UTime::now(self.clock_compensation)?);
             if !peer.is_active() && !peer.bootstrap {
-                cleanup_peers(&self.cfg, &mut self.peers, None);
+                cleanup_peers(
+                    &self.cfg,
+                    &mut self.peers,
+                    None,
+                    self.clock_compensation,
+                    self.cfg.ban_timeout,
+                )?;
             }
             self.request_dump()?;
             return Ok(false);
@@ -708,7 +745,13 @@ impl PeerInfoDatabase {
         }
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.is_active() && !peer.bootstrap {
-            cleanup_peers(&self.cfg, &mut self.peers, None);
+            cleanup_peers(
+                &self.cfg,
+                &mut self.peers,
+                None,
+                self.clock_compensation,
+                self.cfg.ban_timeout,
+            )?;
         }
         self.request_dump()
     }
@@ -1482,7 +1525,14 @@ mod tests {
         let mut peers = HashMap::new();
 
         //Call with empty db.
-        cleanup_peers(&network_config, &mut peers, None);
+        cleanup_peers(
+            &network_config,
+            &mut peers,
+            None,
+            0,
+            network_config.ban_timeout,
+        )
+        .unwrap();
         assert!(peers.is_empty());
 
         let mut connected_peers1 =
@@ -1544,7 +1594,14 @@ mod tests {
         peers.insert(banned_host3.ip.clone(), banned_host3);
         peers.insert(banned_host2.ip.clone(), banned_host2);
 
-        cleanup_peers(&network_config, &mut peers, None);
+        cleanup_peers(
+            &network_config,
+            &mut peers,
+            None,
+            0,
+            network_config.ban_timeout,
+        )
+        .unwrap();
 
         assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11))));
         assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12))));
@@ -1568,7 +1625,14 @@ mod tests {
         network_config.max_advertise_length = 1;
         network_config.max_idle_peers = 5;
 
-        cleanup_peers(&network_config, &mut peers, Some(&advertised));
+        cleanup_peers(
+            &network_config,
+            &mut peers,
+            Some(&advertised),
+            0,
+            network_config.ban_timeout,
+        )
+        .unwrap();
 
         assert!(peers.contains_key(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 43))));
     }
@@ -1621,6 +1685,7 @@ mod tests {
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
             max_send_wait: UTime::from(100),
+            ban_timeout: UTime::from(100_000_000),
         }
     }
 
