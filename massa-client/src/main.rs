@@ -39,6 +39,7 @@ use models::Operation;
 use models::OperationId;
 use models::OperationType;
 use models::Slot;
+use models::StakerCycleProductionStats;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -185,6 +186,14 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_staker_info,
+    )
+    .new_command(
+        "staker_stats",
+        "staker stats from staker address -> (block creation history)",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_staker_stats,
     )
     .new_command(
         "register_staking_keys",
@@ -643,6 +652,41 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
         let resp = resp.json::<data::StakerInfo>()?;
         println!("staker_info:");
         println!("{}", resp);
+    }
+    Ok(())
+}
+
+fn cmd_staker_stats(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/staker_stats/{}", data.node_ip, params[0]);
+    if let Some(resp) = request_data(data, &url)? {
+        let staker_production = resp.json::<Vec<StakerCycleProductionStats>>()?;
+        println!("staker_stats:");
+        if staker_production.is_empty() {
+            println!("  no production found");
+        } else {
+            println!(" production:");
+            let mut prods = staker_production.clone();
+            prods.sort_unstable_by_key(|p| p.cycle);
+            for prod in prods {
+                println!(
+                    "    cycle {} ({}): {}",
+                    prod.cycle,
+                    if prod.is_final { "final" } else { "active" },
+                    if prod.final_ok_count + prod.final_nok_count == 0 {
+                        "no production".to_string()
+                    } else {
+                        format!(
+                            "{}/{} produced ({}% miss)",
+                            prod.final_ok_count,
+                            prod.final_ok_count + prod.final_nok_count,
+                            prod.final_nok_count * 100
+                                / (prod.final_ok_count + prod.final_nok_count)
+                        )
+                    }
+                );
+            }
+            println!("");
+        }
     }
     Ok(())
 }

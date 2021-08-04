@@ -301,6 +301,15 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
+    let staker_stats = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("staker_info"))
+        .and(warp::path::param::<Address>())
+        .and(warp::path::end())
+        .and_then(move |creator| get_staker_stats(evt_tx.clone(), creator));
+
+    let evt_tx = event_tx.clone();
     let api_cfg = api_config;
     let consensus_cfg = consensus_config;
     let next_draws = warp::get()
@@ -418,6 +427,7 @@ pub fn get_filter(
         .or(last_stale)
         .or(last_invalid)
         .or(staker_info)
+        .or(staker_stats)
         .or(addresses_info)
         .or(stop_node)
         .or(send_operations)
@@ -1903,6 +1913,29 @@ async fn get_staker_info(
         "staker_production": staker_production_stats
     }))
     .into_response())
+}
+
+/// Returns staker production stats
+async fn get_staker_stats(
+    event_tx: mpsc::Sender<ApiEvent>,
+    creator: Address,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_staker_stats", {});
+
+    let staker_production_stats = match retrieve_staker_production_stats(creator, &event_tx).await {
+        Ok(stats) => stats,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting staker production stats : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    Ok(warp::reply::json(&json!(staker_production_stats)).into_response())
 }
 
 async fn get_next_draws(
