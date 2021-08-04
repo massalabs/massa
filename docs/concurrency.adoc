@@ -85,18 +85,14 @@ Secondly, care should be taken not to introduce dependencies on `_Command` type 
     *** Storage
     
 
-## Cannot block on relations
+## Blocking relationships
 
-If a component has a relationship with another by sending `_Command` type of messages, then the receiving component cannot block on the sender, which means that it cannot send `_Command` type of messages to it, even indirectly via another (or several other) component(s).
+If a component has a relationship with another by sending `_Command` type of messages, than the receiving component cannot block on the sender, which means that it cannot send `_Command` type of messages to it, even indirectly via another, or several other, component(s).
 
-* Storage cannot block on API and Consensus.
-* Network cannot block on Protocol, Bootstrap, and Massa-node.
-* Protocol cannot block on Consensus and Pool, also not via Network(to which it sends commands).
-* Pool cannot block on Consensus and Massa-node, also not via Protocol(to which it sends commands).
-* Consensus cannot block on Bootstrap and Massa-node, also not via Protocol, Pool, or Storage(to which it sends commands).
-
-
-
-
-
-
+* Storage cannot block on API and Consensus, blocks on nothing.
+* Network cannot block on Protocol, Bootstrap, and Massa-node, blocks on Node(s).
+* Protocol cannot block on Consensus and Pool, blocks on Network.
+* Pool cannot block on Consensus and Massa-node, blocks on Protocol.
+* Consensus cannot block on Bootstrap and Massa-node, blocks on Protocol, Pool, and Storage.
+* API blocks on Storage and Massa-node.
+* Massa-node cannot block on API, blocks on Consensus, Pool, and Network.
