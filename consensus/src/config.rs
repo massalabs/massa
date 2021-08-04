@@ -37,6 +37,8 @@ pub struct ConsensusConfig {
     pub delta_f0: u64,
     /// Maximum number of operations per block
     pub max_operations_per_block: u32,
+    /// Maximum tries to fill a block with operations
+    pub max_operations_fill_attempts: u32,
     /// Maximum block size in bytes
     pub max_block_size: u32,
     /// Maximum operation validity period count
