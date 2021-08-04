@@ -164,6 +164,7 @@ pub fn get_network_config() -> NetworkConfig {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_send_wait: UTime::from(100),
+        ban_timeout: UTime::from(100_000_000),
     }
 }
 
