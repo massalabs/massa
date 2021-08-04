@@ -711,7 +711,7 @@ impl BlockStorage {
                     )
                 })?)
             } else {
-                Ok(HashSet::new())
+                Ok(HashSet::with_capacity(0))
             }
         })?)
     }
