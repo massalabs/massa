@@ -318,7 +318,7 @@ impl NetworkWorker {
                     },
 
                 // wake up interval
-                _ = wakeup_interval.tick() => (),
+                _ = wakeup_interval.tick() => { self.peer_info_db.tick()?; }
 
                 // wait for a handshake future to complete
                 Some(res) = self.handshake_futures.next() => {
@@ -834,7 +834,7 @@ impl NetworkWorker {
                     )
                 })?;
             }
-            NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await,
+            NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
         }
         Ok(())
     }

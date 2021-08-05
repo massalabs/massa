@@ -843,7 +843,7 @@ fn cmd_unban(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     };
     let client = reqwest::blocking::Client::new();
     client
-        .post(&format!("http://{}/api/v1/unban?{}", data.node_ip, ip))
+        .post(&format!("http://{}/api/v1/unban/{}", data.node_ip, ip))
         .send()?;
     println!("Unbanning {}", ip);
     Ok(())

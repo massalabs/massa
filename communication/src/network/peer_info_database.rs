@@ -204,9 +204,8 @@ fn cleanup_peers(
 
     // sort and truncate inactive banned peers
     // forget about old banned peers
-
     let ban_limit = UTime::now(clock_compensation)?.saturating_sub(ban_timeout);
-    banned_peers.drain_filter(|p| p.last_failure.unwrap_or(UTime::from(0)) > ban_limit);
+    banned_peers.drain_filter(|p| p.last_failure.map_or(true, |v| v > ban_limit));
     banned_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
 
@@ -288,6 +287,17 @@ impl PeerInfoDatabase {
         })
     }
 
+    pub fn tick(&mut self) -> Result<(), CommunicationError> {
+        cleanup_peers(
+            &self.cfg,
+            &mut self.peers,
+            None,
+            self.clock_compensation,
+            self.cfg.ban_timeout,
+        )?;
+        Ok(())
+    }
+
     /// Request peers dump to file
     fn request_dump(&self) -> Result<(), CommunicationError> {
         trace!("before sending self.peers.clone() from saver_watch_tx in peer_info_database request_dump");
@@ -298,10 +308,20 @@ impl PeerInfoDatabase {
         res
     }
 
-    pub async fn unban(&mut self, ip: IpAddr) {
+    pub async fn unban(&mut self, ip: IpAddr) -> Result<(), CommunicationError> {
         if let Some(peer) = self.peers.get_mut(&ip) {
             peer.banned = false;
+        } else {
+            return Ok(());
         }
+        cleanup_peers(
+            &self.cfg,
+            &mut self.peers,
+            None,
+            self.clock_compensation,
+            self.cfg.ban_timeout,
+        )?;
+        Ok(())
     }
 
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.

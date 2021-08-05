@@ -182,12 +182,12 @@ async fn test_multiple_connections_to_controller() {
 #[tokio::test]
 #[serial]
 async fn test_peer_ban() {
-    // //setup logging
-    // stderrlog::new()
-    // .verbosity(4)
-    // .timestamp(stderrlog::Timestamp::Millisecond)
-    // .init()
-    // .unwrap();
+    /*//setup logging
+    stderrlog::new()
+        .verbosity(4)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();*/
 
     //test config
     let bind_port: u16 = 50_000;
@@ -206,7 +206,8 @@ async fn test_peer_ban() {
         active_in_connections: 0,
     }]);
 
-    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    network_conf.wakeup_interval = 1000.into();
 
     tools::network_test(
         network_conf.clone(),
@@ -216,7 +217,7 @@ async fn test_peer_ban() {
                     network_manager,
                     mut mock_interface| {
             // accept connection from controller to peer
-            let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+            let (conn1_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock_addr,
@@ -225,12 +226,12 @@ async fn test_peer_ban() {
                 1_000u64,
             )
             .await;
-            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l220
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
 
             trace!("test_peer_ban first connection done");
 
             // connect peer to controller
-            let (_conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
+            let (_conn2_id, conn2_r, conn2_w) = tools::full_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock_addr,
@@ -239,7 +240,7 @@ async fn test_peer_ban() {
                 1_000u64,
             )
             .await;
-            let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l221
+            let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
             trace!("test_peer_ban second connection done");
 
             //ban connection1.
@@ -247,6 +248,22 @@ async fn test_peer_ban() {
                 .ban(conn1_id)
                 .await
                 .expect("error during send ban command.");
+
+            // make sure the ban message was processed
+            sleep(Duration::from_millis(200)).await;
+
+            // stop conn1 and conn2
+            tools::incoming_message_drain_stop(conn1_drain).await;
+            drop(conn1_w);
+            tools::incoming_message_drain_stop(conn2_drain).await;
+            drop(conn2_w);
+            sleep(Duration::from_millis(200)).await;
+
+            // drain all messages
+            let _ = tools::wait_network_event(&mut network_event_receiver, 500.into(), |_msg| {
+                Option::<()>::None
+            })
+            .await;
 
             // attempt a new connection from peer to controller: should be rejected
             tools::rejected_connection_to_controller(
@@ -258,17 +275,18 @@ async fn test_peer_ban() {
                 1_000u64,
             )
             .await;
-            tools::incoming_message_drain_stop(conn1_drain).await;
 
-            sleep(Duration::from_secs(3)).await;
             //unban connection1.
             network_command_sender
                 .unban(mock_addr.ip())
                 .await
                 .expect("error during send unban command.");
 
+            // wait for new connection attempt
+            sleep(network_conf.wakeup_interval.to_duration()).await;
+
             // accept connection from controller to peer after unban
-            let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+            let (_conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock_addr,
@@ -277,14 +295,14 @@ async fn test_peer_ban() {
                 1_000u64,
             )
             .await;
-            let conn1_drain_bis = tools::incoming_message_drain_start(conn1_r).await; // drained l220
+            let conn1_drain_bis = tools::incoming_message_drain_start(conn1_r).await;
 
             trace!("test_peer_ban unbanned connection done");
             (
                 network_event_receiver,
                 network_manager,
                 mock_interface,
-                vec![conn2_drain, conn1_drain_bis],
+                vec![conn1_drain_bis],
             )
         },
     )
