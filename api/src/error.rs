@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 use consensus::ConsensusError;
 use crypto::CryptoError;
+use storage::StorageError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -17,4 +18,6 @@ pub enum ApiError {
     ConsensusError(#[from] ConsensusError),
     #[error("crypto error : {0}")]
     CryptoError(#[from] CryptoError),
+    #[error("storage error : {0}")]
+    StorageError(#[from] StorageError),
 }

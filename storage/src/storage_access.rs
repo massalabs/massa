@@ -26,11 +26,13 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         db.drop_tree("slot_to_hash")?;
         db.drop_tree("op_to_block")?;
         db.drop_tree("addr_to_op")?;
+        db.drop_tree("addr_to_block")?;
     }
     let hash_to_block = db.open_tree("hash_to_block")?;
     let slot_to_hash = db.open_tree("slot_to_hash")?;
     let op_to_block = db.open_tree("op_to_block")?;
     let addr_to_op = db.open_tree("addr_to_op")?;
+    let addr_to_block = db.open_tree("addr_to_block")?;
 
     let block_count = Arc::new(AtomicUsize::new(hash_to_block.len()));
     let notify = Arc::new(Notify::new());
@@ -41,6 +43,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         slot_to_hash.clone(),
         op_to_block.clone(),
         addr_to_op.clone(),
+        addr_to_block.clone(),
         block_count.clone(),
         notify.clone(),
     )?;
@@ -53,6 +56,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         slot_to_hash,
         op_to_block,
         addr_to_op,
+        addr_to_block,
         block_count,
     )?;
     let join_handle = tokio::spawn(async move {
@@ -126,6 +130,13 @@ impl StorageAccess {
         operation_ids: HashSet<OperationId>,
     ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
         self.0.get_operations(operation_ids).await
+    }
+
+    pub async fn get_block_ids_by_creator(
+        &self,
+        address: &Address,
+    ) -> Result<HashSet<BlockId>, StorageError> {
+        self.0.get_block_ids_by_creator(address).await
     }
 }
 

@@ -89,6 +89,10 @@ pub enum ConsensusCommand {
         address: Address,
         response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
     },
+    GetBlockIdsByCreator {
+        address: Address,
+        response_tx: oneshot::Sender<HashMap<BlockId, Status>>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -860,6 +864,17 @@ impl ConsensusWorker {
                         ))
                     })
             }
+            ConsensusCommand::GetBlockIdsByCreator {
+                address,
+                response_tx,
+            } => response_tx
+                .send(self.block_db.get_block_ids_by_creator(&address))
+                .map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get block ids by creator response: {:?}",
+                        err
+                    ))
+                }),
         }
     }
 
