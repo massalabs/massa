@@ -78,6 +78,10 @@ pub enum ApiEvent {
         response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
     },
     Unban(IpAddr),
+    GetBlockIdsByCreator {
+        address: Address,
+        response_tx: oneshot::Sender<HashMap<BlockId, Status>>,
+    },
 }
 
 pub enum ApiManagementCommand {}
@@ -175,7 +179,7 @@ pub fn get_filter(
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
-    let storage = opt_storage_command_sender;
+    let storage = opt_storage_command_sender.clone();
     let graph_interval = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -191,6 +195,16 @@ pub fn get_filter(
                 storage.clone(),
             )
         });
+
+    let evt_tx = event_tx.clone();
+    let storage = opt_storage_command_sender;
+    let block_ids_by_creator = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("block_ids_by_creator"))
+        .and(warp::path::param::<Address>())
+        .and(warp::path::end())
+        .and_then(move |addr| get_block_ids_by_creator(evt_tx.clone(), addr, storage.clone()));
 
     let evt_tx = event_tx.clone();
     let cliques = warp::get()
@@ -300,6 +314,15 @@ pub fn get_filter(
                 clock_compensation,
             )
         });
+
+    let evt_tx = event_tx.clone();
+    let staker_stats = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("staker_info"))
+        .and(warp::path::param::<Address>())
+        .and(warp::path::end())
+        .and_then(move |creator| get_staker_stats(evt_tx.clone(), creator));
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config;
@@ -429,6 +452,7 @@ pub fn get_filter(
         .or(last_stale)
         .or(last_invalid)
         .or(staker_info)
+        .or(staker_stats)
         .or(addresses_info)
         .or(stop_node)
         .or(send_operations)
@@ -444,6 +468,7 @@ pub fn get_filter(
         .or(register_staking_private_keys)
         .or(remove_staking_addresses)
         .or(node_sign_message)
+        .or(block_ids_by_creator)
         .boxed()
 }
 
@@ -478,6 +503,7 @@ async fn get_consensus_config(
         "max_block_size": consensus_cfg.max_block_size,
         "operation_validity_periods": consensus_cfg.operation_validity_periods,
         "periods_per_cycle": consensus_cfg.periods_per_cycle,
+        "roll_price": consensus_cfg.roll_price,
     })))
 }
 
@@ -645,6 +671,45 @@ async fn get_block(
     }
 }
 
+async fn get_block_ids_by_creator(
+    event_tx: mpsc::Sender<ApiEvent>,
+    address: Address,
+    opt_storage_command_sender: Option<StorageAccess>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.get_block_ids_by_creator", {
+        "address": address
+    });
+    let res = match retrieve_block_ids_by_creator_from_consensus(address, &event_tx).await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving active blocks : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(mut res) => {
+            if let Some(cmd_tx) = opt_storage_command_sender {
+                match retrieve_block_ids_by_creator_from_storage(address, &cmd_tx).await {
+                    Ok(res2) => res.extend(res2),
+                    Err(e) => {
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&json!({
+                                "message": format!("error retrieving active blocks : {:?}", e)
+                            })),
+                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        )
+                        .into_response())
+                    }
+                }
+            }
+            res
+        }
+    };
+    Ok(warp::reply::json(&res).into_response())
+}
+
 async fn get_operations(
     event_tx: mpsc::Sender<ApiEvent>,
     operation_ids: HashSet<OperationId>,
@@ -762,6 +827,43 @@ async fn retrieve_block(
     response_rx
         .await
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
+}
+
+async fn retrieve_block_ids_by_creator_from_consensus(
+    address: Address,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<HashMap<BlockId, Status>, ApiError> {
+    massa_trace!("api.filters.retrieve_block_ids_by_creator", {
+        "address": address
+    });
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetBlockIdsByCreator {
+            address,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event GetBlockIdsByCreator : {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve GetBlockIdsByCreator : {0}", e))
+    })
+}
+
+async fn retrieve_block_ids_by_creator_from_storage(
+    address: Address,
+    storage_access: &StorageAccess,
+) -> Result<HashMap<BlockId, Status>, ApiError> {
+    Ok(storage_access
+        .get_block_ids_by_creator(&address)
+        .await?
+        .into_iter()
+        .map(|id| (id, Status::Final))
+        .collect())
 }
 
 async fn retrieve_operations(
@@ -1927,6 +2029,29 @@ async fn get_staker_info(
         "staker_production": staker_production_stats
     }))
     .into_response())
+}
+
+/// Returns staker production stats
+async fn get_staker_stats(
+    event_tx: mpsc::Sender<ApiEvent>,
+    creator: Address,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_staker_stats", {});
+
+    let staker_production_stats = match retrieve_staker_production_stats(creator, &event_tx).await {
+        Ok(stats) => stats,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting staker production stats : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    Ok(warp::reply::json(&json!(staker_production_stats)).into_response())
 }
 
 async fn get_next_draws(

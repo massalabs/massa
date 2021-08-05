@@ -532,6 +532,26 @@ async fn on_api_event(
                 warn!("could not send get_staker_production_stats response in api_event_receiver.wait_event");
             }
         }
+        ApiEvent::GetBlockIdsByCreator {
+            address,
+            response_tx,
+        } => {
+            massa_trace!(
+                "massa-node.main.run.select.api_event.get_block_ids_by_creator",
+                {}
+            );
+            if response_tx
+                .send(
+                    consensus_command_sender
+                        .get_block_ids_by_creator(address)
+                        .await
+                        .expect("get_block_ids_by_creator failed in api_event_receiver.wait_event"),
+                )
+                .is_err()
+            {
+                warn!("could not send get_block_ids_by_creator response in api_event_receiver.wait_event");
+            }
+        }
     }
     false
 }

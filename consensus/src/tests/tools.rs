@@ -643,6 +643,7 @@ pub fn default_consensus_config(
         disable_block_creation: true,
         max_block_size,
         max_operations_per_block,
+        max_operations_fill_attempts: 6,
         operation_validity_periods: 1,
         ledger_path: tempdir.path().to_path_buf(),
         ledger_cache_capacity: 1000000,

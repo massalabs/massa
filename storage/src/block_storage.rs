@@ -26,8 +26,9 @@ pub struct StorageCleaner {
     block_count: Arc<AtomicUsize>,
     hash_to_block: sled::Tree,
     slot_to_hash: sled::Tree,
-    op_to_block: sled::Tree, // op_id -> (block_id, index)
-    addr_to_op: sled::Tree,  // address -> Vec<operationId>
+    op_to_block: sled::Tree,   // op_id -> (block_id, index)
+    addr_to_op: sled::Tree,    // address -> Vec<operationId>
+    addr_to_block: sled::Tree, // addr -> Vec<BlockId>
 }
 
 impl StorageCleaner {
@@ -39,6 +40,7 @@ impl StorageCleaner {
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
         addr_to_op: sled::Tree, // address -> Vec<operationId>
+        addr_to_block: sled::Tree,
         block_count: Arc<AtomicUsize>,
     ) -> Result<Self, StorageError> {
         Ok(StorageCleaner {
@@ -50,6 +52,7 @@ impl StorageCleaner {
             slot_to_hash,
             op_to_block,
             addr_to_op,
+            addr_to_block,
         })
     }
 
@@ -67,8 +70,9 @@ impl StorageCleaner {
                         &self.hash_to_block,
                         &self.op_to_block,
                         &self.addr_to_op,
+                        &self.addr_to_block
                     )
-                        .transaction(|(slots, hashes, ops, addr_to_op)| {
+                        .transaction(|(slots, hashes, ops, addr_to_op, addr_to_block)| {
                             slots.remove(&slot)?;
                             let s_block = hashes
                                 .remove(&hash)?
@@ -164,6 +168,46 @@ impl StorageCleaner {
                                 addr_to_op.insert(&addr.to_bytes(), ivec)?;
                             }
 
+                            // update addr_to_block
+                            let creator_addr = Address::from_public_key(&block.header.content.creator).map_err(|err| {
+                                sled::transaction::ConflictableTransactionError::Abort(
+                                    InternalError::TransactionError(format!(
+                                        "error computing creator address: {:?}",
+                                        err
+                                    )),
+                                )
+                            })?;
+                            if let Some(ivec_blocks) = addr_to_block.get(&creator_addr.to_bytes())? {
+                                let mut ids = block_ids_from_ivec(ivec_blocks).map_err(|err| {
+                                    sled::transaction::ConflictableTransactionError::Abort(
+                                        InternalError::TransactionError(format!(
+                                            "error deserializing block ids: {:?}",
+                                            err
+                                        )),
+                                    )
+                                })?;
+                                ids.remove(&block.header.compute_block_id().map_err(|err| {
+                                    sled::transaction::ConflictableTransactionError::Abort(
+                                        InternalError::TransactionError(format!(
+                                            "error computing block id: {:?}",
+                                            err
+                                        )),
+                                    )
+                                })?);
+                                if ids.is_empty() {
+                                    addr_to_block.remove(&creator_addr.to_bytes())?;
+                                } else {
+                                    let ivec = block_id_to_ivec(&ids).map_err(|err| {
+                                        sled::transaction::ConflictableTransactionError::Abort(
+                                            InternalError::TransactionError(format!(
+                                                "error serializing block ids: {:?}",
+                                                err
+                                            )),
+                                        )
+                                    })?;
+                                    addr_to_block.insert(&creator_addr.to_bytes(), ivec)?;
+                                }
+                            }
                             Ok(())
                         })?;
                 }
@@ -209,6 +253,24 @@ fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
     Ok(res[..].into())
 }
 
+fn block_ids_from_ivec(buffer: IVec) -> Result<HashSet<BlockId>, StorageError> {
+    let block_count = buffer.len() / BLOCK_ID_SIZE_BYTES;
+    let mut blocks: HashSet<BlockId> = HashSet::with_capacity(block_count as usize);
+    for id_i in 0..block_count {
+        let cursor = BLOCK_ID_SIZE_BYTES * id_i;
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        blocks.insert(block_id);
+    }
+    Ok(blocks)
+}
+
+fn block_id_to_ivec(block_ids: &HashSet<BlockId>) -> Result<IVec, StorageError> {
+    let mut res: Vec<u8> = Vec::with_capacity(BLOCK_ID_SIZE_BYTES * block_ids.len());
+    for block_id in block_ids.iter() {
+        res.extend(block_id.to_bytes());
+    }
+    Ok(res[..].into())
+}
 #[derive(Clone)]
 pub struct BlockStorage {
     cfg: StorageConfig,
@@ -221,6 +283,8 @@ pub struct BlockStorage {
     op_to_block: sled::Tree,
     /// Address -> HashSet<OperationId>
     addr_to_op: sled::Tree,
+    /// Address -> HashSet<BlockId>
+    addr_to_block: sled::Tree,
     notify: Arc<Notify>,
 }
 
@@ -231,6 +295,7 @@ impl BlockStorage {
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
         addr_to_op: sled::Tree, // address -> Vec<operationId>
+        addr_to_block: sled::Tree,
         block_count: Arc<AtomicUsize>,
         notify: Arc<Notify>,
     ) -> Result<BlockStorage, StorageError> {
@@ -241,6 +306,7 @@ impl BlockStorage {
             slot_to_hash,
             op_to_block,
             addr_to_op, // address -> Vec<operationId>
+            addr_to_block,
             notify,
         };
 
@@ -294,8 +360,9 @@ impl BlockStorage {
             &self.slot_to_hash,
             &self.op_to_block,
             &self.addr_to_op,
+            &self.addr_to_block,
         )
-            .transaction(|(hash_tx, slot_tx, op_tx, addr_tx)| {
+            .transaction(|(hash_tx, slot_tx, op_tx, addr_tx, addr_to_block)| {
                 // add block
                 let serialized_block = block.to_bytes_compact().map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
@@ -392,6 +459,49 @@ impl BlockStorage {
                     })?;
                     addr_tx.insert(&addr.to_bytes(), ivec)?;
                 }
+
+                // update addr_to_block
+                let creator_addr = Address::from_public_key(&block.header.content.creator)
+                    .map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error computing creator address: {:?}",
+                                err
+                            )),
+                        )
+                    })?;
+                let mut ids =
+                    if let Some(ivec_blocks) = addr_to_block.get(&creator_addr.to_bytes())? {
+                        block_ids_from_ivec(ivec_blocks).map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(format!(
+                                    "error deserializing block ids: {:?}",
+                                    err
+                                )),
+                            )
+                        })?
+                    } else {
+                        HashSet::new()
+                    };
+
+                ids.insert(block.header.compute_block_id().map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!(
+                            "error computing block id: {:?}",
+                            err
+                        )),
+                    )
+                })?);
+
+                let ivec = block_id_to_ivec(&ids).map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!(
+                            "error serializing block ids: {:?}",
+                            err
+                        )),
+                    )
+                })?;
+                addr_to_block.insert(&creator_addr.to_bytes(), ivec)?;
                 Ok(true)
             })
             .map_err(|err| StorageError::AddBlockError(format!("Error adding a block: {:?}", err)))
@@ -584,5 +694,25 @@ impl BlockStorage {
             .map_err(|err| {
                 StorageError::OperationError(format!("error getting operation: {:?}", err))
             })
+    }
+
+    pub async fn get_block_ids_by_creator(
+        &self,
+        address: &Address,
+    ) -> Result<HashSet<BlockId>, StorageError> {
+        Ok(self.addr_to_block.transaction(|addr_to_block| {
+            if let Some(ivec_blocks) = addr_to_block.get(&address.to_bytes())? {
+                Ok(block_ids_from_ivec(ivec_blocks).map_err(|err| {
+                    sled::transaction::ConflictableTransactionError::Abort(
+                        InternalError::TransactionError(format!(
+                            "error deserializing block ids: {:?}",
+                            err
+                        )),
+                    )
+                })?)
+            } else {
+                Ok(HashSet::with_capacity(0))
+            }
+        })?)
     }
 }

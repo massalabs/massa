@@ -57,4 +57,6 @@ pub struct NetworkConfig {
     pub max_operations_per_message: u32,
     /// Max wait time for sending a Network or Node event.
     pub max_send_wait: UTime,
+    /// Time after which we forget a node
+    pub ban_timeout: UTime,
 }

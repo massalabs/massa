@@ -1379,6 +1379,34 @@ impl BlockGraph {
         &self.best_parents
     }
 
+    pub fn get_block_ids_by_creator(&self, address: &Address) -> HashMap<BlockId, Status> {
+        self.block_statuses
+            .iter()
+            .filter_map(|(id, block)| match block {
+                BlockStatus::Active(ActiveBlock {
+                    block, is_final, ..
+                }) => {
+                    if let Ok(creator) = Address::from_public_key(&block.header.content.creator) {
+                        if creator != *address {
+                            None
+                        } else {
+                            Some((
+                                *id,
+                                if *is_final {
+                                    Status::Final
+                                } else {
+                                    Status::Active
+                                },
+                            ))
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect()
+    }
     ///for algo see pos.md
     // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
     // returns (roll_counts, cycle_roll_updates)
@@ -4460,6 +4488,7 @@ mod tests {
             disable_block_creation: true,
             max_block_size,
             max_operations_per_block,
+            max_operations_fill_attempts: 6,
             operation_validity_periods: 3,
             ledger_path: tempdir.path().to_path_buf(),
             ledger_cache_capacity: 1000000,

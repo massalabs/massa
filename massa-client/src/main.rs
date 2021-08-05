@@ -30,15 +30,18 @@ use clap::Arg;
 use communication::network::Peer;
 use communication::network::Peers;
 use consensus::ExportBlockStatus;
+use consensus::Status;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
 use models::Amount;
+use models::BlockId;
 use models::Operation;
 use models::OperationId;
 use models::OperationType;
 use models::Slot;
+use models::StakerCycleProductionStats;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -195,6 +198,14 @@ fn main() {
         cmd_staker_info,
     )
     .new_command(
+        "staker_stats",
+        "staker stats from staker address -> (block creation history)",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_staker_stats,
+    )
+    .new_command(
         "register_staking_keys",
         "add a new private key for the node to use to stake",
         1,
@@ -225,6 +236,13 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_operations_involving_address,
+    ).new_command(
+        "block_ids_by_creator",
+        "list blocks created by the provided address. Note that old blocks are forgotten.",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_block_ids_by_creator,
     )
     .new_command(
         "addresses_info",
@@ -655,6 +673,41 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
     Ok(())
 }
 
+fn cmd_staker_stats(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/staker_stats/{}", data.node_ip, params[0]);
+    if let Some(resp) = request_data(data, &url)? {
+        let staker_production = resp.json::<Vec<StakerCycleProductionStats>>()?;
+        println!("staker_stats:");
+        if staker_production.is_empty() {
+            println!("  no production found");
+        } else {
+            println!(" production:");
+            let mut prods = staker_production.clone();
+            prods.sort_unstable_by_key(|p| p.cycle);
+            for prod in prods {
+                println!(
+                    "    cycle {} ({}): {}",
+                    prod.cycle,
+                    if prod.is_final { "final" } else { "active" },
+                    if prod.final_ok_count + prod.final_nok_count == 0 {
+                        "no production".to_string()
+                    } else {
+                        format!(
+                            "{}/{} produced ({}% miss)",
+                            prod.final_ok_count,
+                            prod.final_ok_count + prod.final_nok_count,
+                            prod.final_nok_count * 100
+                                / (prod.final_ok_count + prod.final_nok_count)
+                        )
+                    }
+                );
+            }
+            println!("");
+        }
+    }
+    Ok(())
+}
+
 fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
     let resp = reqwest::blocking::get(&url)?;
@@ -681,28 +734,36 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
     let url = format!(
         "http://{}/api/v1/next_draws?{}",
         data.node_ip,
-        serde_qs::to_string(&Addresses { addrs })?
+        serde_qs::to_string(&Addresses {
+            addrs: addrs.clone()
+        })?
     );
 
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<data::NextDraws>()?;
-        let addr_map = resp
-            .content()
-            .iter()
-            .fold(HashMap::new(), |mut map, (addr, slot)| {
+        let addr_map = resp.content().iter().fold(
+            addrs
+                .iter()
+                .map(|addr| (addr, Vec::new()))
+                .collect::<HashMap<_, _>>(),
+            |mut map, (addr, slot)| {
                 let entry = map.entry(addr).or_insert_with(Vec::new);
                 entry.push(slot);
                 map
-            });
+            },
+        );
         for (addr, slots) in addr_map {
             println!("Next selected slots of address: {}:", addr);
-            for slot in slots {
+            for slot in slots.iter() {
                 println!(
                     "   Cycle {}, period {}, thread {}",
                     slot.get_cycle(consensus_cfg.periods_per_cycle),
                     slot.period,
                     slot.thread,
                 );
+            }
+            if slots.is_empty() {
+                println!("No known selected slots of address: {}", addr);
             }
             println!();
         }
@@ -720,6 +781,32 @@ fn cmd_operations_involving_address(data: &mut ReplData, params: &[&str]) -> Res
         println!("operations_involving_address:");
         for (op_id, is_final) in resp {
             println!("operation {} is final: {}", op_id, is_final);
+        }
+    }
+    Ok(())
+}
+
+fn cmd_block_ids_by_creator(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!(
+        "http://{}/api/v1/block_ids_by_creator/{}",
+        data.node_ip, params[0]
+    );
+    if let Some(resp) = request_data(data, &url)? {
+        let resp = resp.json::<HashMap<BlockId, Status>>()?;
+        println!("block_ids_by_creator:");
+
+        if resp.is_empty() {
+            println!("No blocks found.")
+        }
+        for (block_id, status) in resp {
+            println!(
+                "block {} status: {}",
+                block_id,
+                match status {
+                    Status::Active => "active",
+                    Status::Final => "final",
+                }
+            );
         }
     }
     Ok(())

@@ -76,6 +76,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         disable_block_creation: true,
         max_block_size: 1024 * 1024,
         max_operations_per_block: 1024,
+        max_operations_fill_attempts: 6,
         operation_validity_periods: 3,
         ledger_path: tempdir.path().to_path_buf(),
         ledger_cache_capacity: 1000000,
@@ -163,6 +164,7 @@ pub fn get_network_config() -> NetworkConfig {
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
         max_send_wait: UTime::from(100),
+        ban_timeout: UTime::from(100_000_000),
     }
 }
 
