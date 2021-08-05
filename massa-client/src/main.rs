@@ -30,11 +30,13 @@ use clap::Arg;
 use communication::network::Peer;
 use communication::network::Peers;
 use consensus::ExportBlockStatus;
+use consensus::Status;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
 use models::Amount;
+use models::BlockId;
 use models::Operation;
 use models::OperationId;
 use models::OperationType;
@@ -226,6 +228,13 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_operations_involving_address,
+    ).new_command(
+        "block_ids_by_creator",
+        "list blocks created by the provided address. Note that old blocks are forgotten.",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_block_ids_by_creator,
     )
     .new_command(
         "addresses_info",
@@ -756,6 +765,32 @@ fn cmd_operations_involving_address(data: &mut ReplData, params: &[&str]) -> Res
         println!("operations_involving_address:");
         for (op_id, is_final) in resp {
             println!("operation {} is final: {}", op_id, is_final);
+        }
+    }
+    Ok(())
+}
+
+fn cmd_block_ids_by_creator(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!(
+        "http://{}/api/v1/block_ids_by_creator/{}",
+        data.node_ip, params[0]
+    );
+    if let Some(resp) = request_data(data, &url)? {
+        let resp = resp.json::<HashMap<BlockId, Status>>()?;
+        println!("block_ids_by_creator:");
+
+        if resp.is_empty() {
+            println!("No blocks found.")
+        }
+        for (block_id, status) in resp {
+            println!(
+                "block {} status: {}",
+                block_id,
+                match status {
+                    Status::Active => "active",
+                    Status::Final => "final",
+                }
+            );
         }
     }
     Ok(())

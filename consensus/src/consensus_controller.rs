@@ -224,6 +224,24 @@ impl ConsensusCommandSender {
             ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
         })
     }
+    pub async fn get_block_ids_by_creator(
+        &self,
+        address: Address,
+    ) -> Result<HashMap<BlockId, Status>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_block_ids_by_creator", {
+        });
+        self.0
+            .send(ConsensusCommand::GetBlockIdsByCreator {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| ConsensusError::SendChannelError("send error consensus command".into()))?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError("consensus command response read error".to_string())
+        })
+    }
 
     pub async fn get_operations(
         &self,
