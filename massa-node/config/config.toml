@@ -41,7 +41,7 @@ version = "DEVE.0.0"
     staking_keys_path = "config/staking_keys.json"
     roll_price = "500"
     #stats
-    stats_timespan = 60000  # also used for desync detection
+    stats_timespan = 480000  # also used for desync detection. Should be t0*periods_per_cycle*(pos_lookback_cycles+1)
 
 [protocol]
     message_timeout = 5000
