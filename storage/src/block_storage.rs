@@ -178,7 +178,7 @@ impl StorageCleaner {
                                 )
                             })?;
                             if let Some(ivec_blocks) = addr_to_block.get(&creator_addr.to_bytes())? {
-                                let mut ids = block_id_from_ivec(ivec_blocks).map_err(|err| {
+                                let mut ids = block_ids_from_ivec(ivec_blocks).map_err(|err| {
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError(format!(
                                             "error deserializing block ids: {:?}",
@@ -253,11 +253,11 @@ fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
     Ok(res[..].into())
 }
 
-fn block_id_from_ivec(buffer: IVec) -> Result<HashSet<BlockId>, StorageError> {
+fn block_ids_from_ivec(buffer: IVec) -> Result<HashSet<BlockId>, StorageError> {
     let block_count = buffer.len() / BLOCK_ID_SIZE_BYTES;
     let mut blocks: HashSet<BlockId> = HashSet::with_capacity(block_count as usize);
     for id_i in 0..block_count {
-        let cursor = OPERATION_ID_SIZE_BYTES * id_i;
+        let cursor = BLOCK_ID_SIZE_BYTES * id_i;
         let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
         blocks.insert(block_id);
     }
@@ -472,7 +472,7 @@ impl BlockStorage {
                     })?;
                 let mut ids =
                     if let Some(ivec_blocks) = addr_to_block.get(&creator_addr.to_bytes())? {
-                        block_id_from_ivec(ivec_blocks).map_err(|err| {
+                        block_ids_from_ivec(ivec_blocks).map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
                                     "error deserializing block ids: {:?}",
@@ -696,13 +696,13 @@ impl BlockStorage {
             })
     }
 
-    pub async fn get_block_id_by_creator(
+    pub async fn get_block_ids_by_creator(
         &self,
         address: &Address,
     ) -> Result<HashSet<BlockId>, StorageError> {
         Ok(self.addr_to_block.transaction(|addr_to_block| {
             if let Some(ivec_blocks) = addr_to_block.get(&address.to_bytes())? {
-                Ok(block_id_from_ivec(ivec_blocks).map_err(|err| {
+                Ok(block_ids_from_ivec(ivec_blocks).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!(
                             "error deserializing block ids: {:?}",

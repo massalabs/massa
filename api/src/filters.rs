@@ -823,7 +823,7 @@ async fn retrieve_block_ids_by_creator_from_storage(
     storage_access: &StorageAccess,
 ) -> Result<HashMap<BlockId, Status>, ApiError> {
     Ok(storage_access
-        .get_block_id_by_creator(&address)
+        .get_block_ids_by_creator(&address)
         .await?
         .into_iter()
         .map(|id| (id, Status::Final))
