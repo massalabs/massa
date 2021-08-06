@@ -21,7 +21,7 @@ Secondly, care should be taken not to introduce dependencies on `_Command` type 
 
 * Massa-node:
   ** Receives events from:
-    *** Api (Note: is this actually a `_Command`?)
+    *** Api
     *** Consensus
   ** Sends commands to:
     *** Consensus
@@ -80,7 +80,7 @@ Secondly, care should be taken not to introduce dependencies on `_Command` type 
 
 * API:
   ** Sends events to:
-    *** Massa-node(Note: is this actually a `_Command`?)
+    *** Massa-node
   ** Sends commands to:
     *** Storage
     
