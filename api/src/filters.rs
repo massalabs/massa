@@ -319,7 +319,7 @@ pub fn get_filter(
     let staker_stats = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
-        .and(warp::path("staker_info"))
+        .and(warp::path("staker_stats"))
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
         .and_then(move |creator| get_staker_stats(evt_tx.clone(), creator));
