@@ -205,7 +205,7 @@ fn cleanup_peers(
     // sort and truncate inactive banned peers
     // forget about old banned peers
     let ban_limit = UTime::now(clock_compensation)?.saturating_sub(ban_timeout);
-    banned_peers.drain_filter(|p| p.last_failure.map_or(false, |v| v < ban_limit));
+    banned_peers.retain(|p| p.last_failure.map_or(false, |v| v >= ban_limit));
     banned_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
 
