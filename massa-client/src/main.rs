@@ -182,6 +182,14 @@ fn main() {
     )
     .new_command_noargs("stop_node", "Gracefully stop the node", true, cmd_stop_node)
     .new_command(
+        "unban",
+        "unban <ip address>",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_unban,
+    )
+    .new_command(
         "staker_info",
         "staker info from staker address -> (blocks created, next slots in which the address will be selected)",
         1,
@@ -822,6 +830,22 @@ fn cmd_stop_node(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError>
         .send()?;
     trace!("after sending request to client in cmd_stop_node in massa-client main");
     println!("Stopping node");
+    Ok(())
+}
+
+fn cmd_unban(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let ip = match IpAddr::from_str(params[0]) {
+        Ok(ip) => ip,
+        Err(e) => {
+            println!("Error during ip parsing: {}", e);
+            return Ok(());
+        }
+    };
+    let client = reqwest::blocking::Client::new();
+    client
+        .post(&format!("http://{}/api/v1/unban/{}", data.node_ip, ip))
+        .send()?;
+    println!("Unbanning {}", ip);
     Ok(())
 }
 
