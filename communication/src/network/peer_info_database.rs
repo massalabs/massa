@@ -1583,17 +1583,20 @@ mod tests {
         banned_host1.banned = true;
         banned_host1.active_out_connections = 0;
         banned_host1.last_alive = Some(UTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
+        banned_host1.last_failure = Some(UTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
         let mut banned_host2 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 24)));
         banned_host2.bootstrap = false;
         banned_host2.banned = true;
         banned_host2.active_out_connections = 0;
         banned_host2.last_alive = Some(UTime::now(0).unwrap().checked_sub(900.into()).unwrap());
+        banned_host2.last_failure = Some(UTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
         let mut banned_host3 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 25)));
         banned_host3.bootstrap = false;
         banned_host3.banned = true;
         banned_host3.last_alive = Some(UTime::now(0).unwrap().checked_sub(900.into()).unwrap());
+        banned_host3.last_failure = Some(UTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
 
         let mut advertised_host1 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 35)));
