@@ -204,9 +204,8 @@ fn cleanup_peers(
 
     // sort and truncate inactive banned peers
     // forget about old banned peers
-
     let ban_limit = UTime::now(clock_compensation)?.saturating_sub(ban_timeout);
-    banned_peers.drain_filter(|p| p.last_failure.unwrap_or(UTime::from(0)) > ban_limit);
+    banned_peers.retain(|p| p.last_failure.map_or(false, |v| v >= ban_limit));
     banned_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_failure), p.last_alive));
     banned_peers.truncate(cfg.max_banned_peers);
 
@@ -288,6 +287,17 @@ impl PeerInfoDatabase {
         })
     }
 
+    pub fn tick(&mut self) -> Result<(), CommunicationError> {
+        cleanup_peers(
+            &self.cfg,
+            &mut self.peers,
+            None,
+            self.clock_compensation,
+            self.cfg.ban_timeout,
+        )?;
+        Ok(())
+    }
+
     /// Request peers dump to file
     fn request_dump(&self) -> Result<(), CommunicationError> {
         trace!("before sending self.peers.clone() from saver_watch_tx in peer_info_database request_dump");
@@ -296,6 +306,22 @@ impl PeerInfoDatabase {
         });
         trace!("before sending self.peers.clone() from saver_watch_tx in peer_info_database request_dump");
         res
+    }
+
+    pub async fn unban(&mut self, ip: IpAddr) -> Result<(), CommunicationError> {
+        if let Some(peer) = self.peers.get_mut(&ip) {
+            peer.banned = false;
+        } else {
+            return Ok(());
+        }
+        cleanup_peers(
+            &self.cfg,
+            &mut self.peers,
+            None,
+            self.clock_compensation,
+            self.cfg.ban_timeout,
+        )?;
+        Ok(())
     }
 
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.
@@ -552,7 +578,7 @@ impl PeerInfoDatabase {
         })?;
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.banned {
-            // todo : peer.banned = true;
+            peer.banned = true;
             if !peer.is_active() && !peer.bootstrap {
                 cleanup_peers(
                     &self.cfg,
@@ -1535,6 +1561,8 @@ mod tests {
         .unwrap();
         assert!(peers.is_empty());
 
+        let now = UTime::now(0).unwrap();
+
         let mut connected_peers1 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         connected_peers1.last_alive =
@@ -1556,18 +1584,21 @@ mod tests {
         banned_host1.bootstrap = false;
         banned_host1.banned = true;
         banned_host1.active_out_connections = 0;
-        banned_host1.last_alive = Some(UTime::now(0).unwrap().checked_sub(1000.into()).unwrap());
+        banned_host1.last_alive = Some(now.checked_sub(1000.into()).unwrap());
+        banned_host1.last_failure = Some(now.checked_sub(2000.into()).unwrap());
         let mut banned_host2 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 24)));
         banned_host2.bootstrap = false;
         banned_host2.banned = true;
         banned_host2.active_out_connections = 0;
-        banned_host2.last_alive = Some(UTime::now(0).unwrap().checked_sub(900.into()).unwrap());
+        banned_host2.last_alive = Some(now.checked_sub(900.into()).unwrap());
+        banned_host2.last_failure = Some(now.checked_sub(2000.into()).unwrap());
         let mut banned_host3 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 25)));
         banned_host3.bootstrap = false;
         banned_host3.banned = true;
-        banned_host3.last_alive = Some(UTime::now(0).unwrap().checked_sub(900.into()).unwrap());
+        banned_host3.last_alive = Some(now.checked_sub(900.into()).unwrap());
+        banned_host3.last_failure = Some(now.checked_sub(2000.into()).unwrap());
 
         let mut advertised_host1 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 35)));
@@ -1581,7 +1612,7 @@ mod tests {
         advertised_host2.bootstrap = false;
         advertised_host2.advertised = true;
         advertised_host2.active_out_connections = 0;
-        advertised_host2.last_alive = Some(UTime::now(0).unwrap().checked_sub(900.into()).unwrap());
+        advertised_host2.last_alive = Some(now.checked_sub(900.into()).unwrap());
 
         peers.insert(advertised_host1.ip.clone(), advertised_host1);
         peers.insert(banned_host1.ip.clone(), banned_host1);
