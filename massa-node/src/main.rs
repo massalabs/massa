@@ -510,21 +510,18 @@ async fn on_api_event(
                 warn!("could not send node_sign_message response in api_event_receiver.wait_event");
             }
         }
-        ApiEvent::GetStakerProductionStats {
-            address,
-            response_tx,
-        } => {
+        ApiEvent::GetStakersProductionStats { addrs, response_tx } => {
             massa_trace!(
-                "massa-node.main.run.select.api_event.get_staker_production_stats",
+                "massa-node.main.run.select.api_event.get_stakers_production_stats",
                 {}
             );
             if response_tx
                 .send(
                     consensus_command_sender
-                        .get_staker_production_stats(address)
+                        .get_stakers_production_stats(addrs)
                         .await
                         .expect(
-                            "get staker production stats failed in api_event_receiver.wait_event",
+                            "get stakers production stats failed in api_event_receiver.wait_event",
                         ),
                 )
                 .is_err()

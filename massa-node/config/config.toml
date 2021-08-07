@@ -41,7 +41,7 @@ version = "DEVE.0.0"
     staking_keys_path = "config/staking_keys.json"
     roll_price = "500"
     #stats
-    stats_timespan = 480000  # also used for desync detection. Should be t0*periods_per_cycle*(pos_lookback_cycles+1)
+    stats_timespan = 480000  # also used for desync detection. Should be at least t0*periods_per_cycle*(pos_lookback_cycles+1)
 
 [protocol]
     message_timeout = 5000
@@ -92,7 +92,7 @@ version = "DEVE.0.0"
         ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
         ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
     ]
-    bind = "0.0.0.0:31245" # if you want to bootstrap people
+    bind = "0.0.0.0:31245"
     connect_timeout = 1000
     retry_delay = 5000
     max_bootstrap_blocks = 1000000

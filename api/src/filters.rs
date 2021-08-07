@@ -19,7 +19,7 @@ use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
-use models::StakerCycleProductionStats;
+use models::StakersCycleProductionStats;
 use models::{BlockHeader, BlockId, Slot};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
@@ -73,9 +73,9 @@ pub enum ApiEvent {
         message: Vec<u8>,
         response_tx: oneshot::Sender<(PublicKey, Signature)>,
     },
-    GetStakerProductionStats {
-        address: Address,
-        response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
+    GetStakersProductionStats {
+        addrs: HashSet<Address>,
+        response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,
     },
     Unban(IpAddr),
     GetBlockIdsByCreator {
@@ -320,9 +320,9 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("staker_stats"))
-        .and(warp::path::param::<Address>())
         .and(warp::path::end())
-        .and_then(move |creator| get_staker_stats(evt_tx.clone(), creator));
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
+        .and_then(move |Addresses { addrs }| get_stakers_stats(evt_tx.clone(), addrs));
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config;
@@ -2009,41 +2009,27 @@ async fn get_staker_info(
         })
         .collect();
 
-    let staker_production_stats = match retrieve_staker_production_stats(creator, &event_tx).await {
-        Ok(stats) => stats,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting staker production stats : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-
     Ok(warp::reply::json(&json!({
         "staker_active_blocks": blocks,
         "staker_discarded_blocks": discarded,
-        "staker_next_draws": next_slots_by_creator,
-        "staker_production": staker_production_stats
+        "staker_next_draws": next_slots_by_creator
     }))
     .into_response())
 }
 
 /// Returns staker production stats
-async fn get_staker_stats(
+async fn get_stakers_stats(
     event_tx: mpsc::Sender<ApiEvent>,
-    creator: Address,
+    addrs: HashSet<Address>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_staker_stats", {});
+    massa_trace!("api.filters.get_stakers_stats", { "addrs": addrs });
 
-    let staker_production_stats = match retrieve_staker_production_stats(creator, &event_tx).await {
+    let stakers_production_stats = match retrieve_stakers_production_stats(addrs, &event_tx).await {
         Ok(stats) => stats,
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error getting staker production stats : {:?}", err)
+                    "message": format!("error getting staker production stats: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -2051,7 +2037,7 @@ async fn get_staker_stats(
         }
     };
 
-    Ok(warp::reply::json(&json!(staker_production_stats)).into_response())
+    Ok(warp::reply::json(&json!(stakers_production_stats)).into_response())
 }
 
 async fn get_next_draws(
@@ -2124,17 +2110,16 @@ async fn get_next_draws(
     Ok(warp::reply::json(&next_slots).into_response())
 }
 
-async fn retrieve_staker_production_stats(
-    address: Address,
+async fn retrieve_stakers_production_stats(
+    addrs: HashSet<Address>,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Vec<StakerCycleProductionStats>, ApiError> {
-    massa_trace!("api.filters.retrieve_staker_production_stats", {});
+) -> Result<Vec<StakersCycleProductionStats>, ApiError> {
+    massa_trace!("api.filters.retrieve_stakers_production_stats", {
+        "addrs": addrs
+    });
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
-        .send(ApiEvent::GetStakerProductionStats {
-            address,
-            response_tx,
-        })
+        .send(ApiEvent::GetStakersProductionStats { addrs, response_tx })
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!(
@@ -2144,7 +2129,7 @@ async fn retrieve_staker_production_stats(
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!(
-            "Could not retrieve staker produciton stats: {0}",
+            "Could not retrieve stakers produciton stats: {0}",
             e
         ))
     })
