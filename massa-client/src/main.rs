@@ -41,7 +41,7 @@ use models::Operation;
 use models::OperationId;
 use models::OperationType;
 use models::Slot;
-use models::StakerCycleProductionStats;
+use models::StakersCycleProductionStats;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -199,7 +199,7 @@ fn main() {
     )
     .new_command(
         "staker_stats",
-        "staker stats from staker address -> (block creation history)",
+        "production stats from staker address. Parameters: list of addresses separated by , (no space).",
         1,
         1, //max nb parameters
         true,
@@ -674,35 +674,54 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
 }
 
 fn cmd_staker_stats(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    let url = format!("http://{}/api/v1/staker_stats/{}", data.node_ip, params[0]);
+    let addr_list = params[0]
+        .split(',')
+        .map(|str| Address::from_bs58_check(str.trim()))
+        .collect::<Result<HashSet<Address>, _>>();
+    let addrs = match addr_list {
+        Ok(addrs) => addrs,
+        Err(err) => {
+            println!("Error during addresses parsing: {}", err);
+            return Ok(());
+        }
+    };
+    let url = format!(
+        "http://{}/api/v1/staker_stats?{}",
+        data.node_ip,
+        serde_qs::to_string(&Addresses {
+            addrs: addrs.clone()
+        })?
+    );
     if let Some(resp) = request_data(data, &url)? {
-        let staker_production = resp.json::<Vec<StakerCycleProductionStats>>()?;
-        println!("staker_stats:");
-        if staker_production.is_empty() {
-            println!("  no production found");
-        } else {
-            println!(" production:");
-            let mut prods = staker_production.clone();
-            prods.sort_unstable_by_key(|p| p.cycle);
-            for prod in prods {
-                println!(
-                    "    cycle {} ({}): {}",
-                    prod.cycle,
-                    if prod.is_final { "final" } else { "active" },
-                    if prod.final_ok_count + prod.final_nok_count == 0 {
-                        "no production".to_string()
-                    } else {
-                        format!(
-                            "{}/{} produced ({}% miss)",
-                            prod.final_ok_count,
-                            prod.final_ok_count + prod.final_nok_count,
-                            prod.final_nok_count * 100
-                                / (prod.final_ok_count + prod.final_nok_count)
-                        )
-                    }
-                );
+        let mut stakers_prods = resp.json::<Vec<StakersCycleProductionStats>>()?;
+        if stakers_prods.is_empty() {
+            println!("no available cycle stats");
+        }
+        stakers_prods.sort_unstable_by_key(|p| p.cycle);
+        for cycle_stats in stakers_prods.into_iter() {
+            println!(
+                "cycle {} ({}) stats:",
+                cycle_stats.cycle,
+                if cycle_stats.is_final {
+                    "final"
+                } else {
+                    "active"
+                }
+            );
+
+            for (addr, (n_ok, n_nok)) in cycle_stats.ok_nok_counts.into_iter() {
+                if n_ok + n_nok == 0 {
+                    println!("\t{}: not selected during cycle", addr);
+                } else {
+                    println!(
+                        "\t{}: {}/{} produced ({}% miss)",
+                        addr,
+                        n_ok,
+                        n_ok + n_nok,
+                        n_nok * 100 / (n_ok + n_nok)
+                    )
+                }
             }
-            println!("");
         }
     }
     Ok(())
