@@ -362,7 +362,7 @@ impl NetworkWorker {
                     if let Some((connection_id, _)) = self
                         .active_nodes
                         .remove(&node_id) {
-                        info!("protocol channel closed node_id={:?}", node_id);
+                        massa_trace!("protocol channel closed", {"node_id": node_id});
                         self.connection_closed(connection_id, reason).await?;
                     }
                 },

@@ -19,7 +19,7 @@ pub use amount::Amount;
 pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId, BLOCK_ID_SIZE_BYTES};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
-    StakerCycleProductionStats,
+    StakersCycleProductionStats,
 };
 pub use context::{
     get_serialization_context, init_serialization_context, with_serialization_context,

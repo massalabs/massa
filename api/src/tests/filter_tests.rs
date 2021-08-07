@@ -11,7 +11,7 @@ use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
 use models::SerializeCompact;
-use models::StakerCycleProductionStats;
+use models::StakersCycleProductionStats;
 use models::{Address, Amount, Block, BlockHeader, BlockId, Slot};
 use models::{
     Operation, OperationContent, OperationId, OperationSearchResult, OperationSearchResultStatus,
@@ -1818,15 +1818,17 @@ async fn test_staker_info() {
     initialize_context();
 
     let staker = get_dummy_staker();
+    let staker_addr = Address::from_public_key(&staker).unwrap();
     let cloned_staker = staker.clone();
 
-    let stats = StakerCycleProductionStats {
+    let stats = StakersCycleProductionStats {
         cycle: 0,
         is_final: true,
-        final_ok_count: 5,
-        final_nok_count: 0,
+        ok_nok_counts: vec![(staker_addr, (5, 0))].into_iter().collect(),
     };
-    let cloned_stats = stats.clone();
+    let mut staker_stats: Vec<StakersCycleProductionStats> = Vec::with_capacity(1);
+    staker_stats.insert(0, stats);
+
     //test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1848,9 +1850,9 @@ async fn test_staker_info() {
                             .send(get_test_block_graph())
                             .expect("failed to send graph");
                     }
-                    Some(ApiEvent::GetStakerProductionStats { response_tx, .. }) => {
+                    Some(ApiEvent::GetStakersProductionStats { response_tx, .. }) => {
                         response_tx
-                            .send(vec![stats.clone()])
+                            .send(staker_stats.clone())
                             .expect("failed to send stats");
                     }
 
@@ -1877,10 +1879,6 @@ async fn test_staker_info() {
         assert_eq!(
             obtained["staker_next_draws"],
             serde_json::to_value(vec![Slot::new(0u64, 0u8)]).unwrap()
-        );
-        assert_eq!(
-            obtained["staker_production"],
-            serde_json::to_value(vec![cloned_stats]).unwrap()
         );
 
         drop(filter);
@@ -1914,13 +1912,11 @@ async fn test_staker_info() {
     let cloned_staker = staker.clone();
     let cloned_graph = graph.clone();
     let (filter, mut rx_api) = mock_filter(None);
-    let stats = StakerCycleProductionStats {
+    let stats = vec![StakersCycleProductionStats {
         cycle: 0,
         is_final: true,
-        final_ok_count: 5,
-        final_nok_count: 0,
-    };
-    let cloned_stats = stats.clone();
+        ok_nok_counts: vec![(staker_addr, (5, 0))].into_iter().collect(),
+    }];
     let handle = tokio::spawn(async move {
         loop {
             let cloned = cloned_graph.clone();
@@ -1937,9 +1933,9 @@ async fn test_staker_info() {
                 Some(ApiEvent::GetBlockGraphStatus(response_tx)) => {
                     response_tx.send(cloned).expect("failed to send graph");
                 }
-                Some(ApiEvent::GetStakerProductionStats { response_tx, .. }) => {
+                Some(ApiEvent::GetStakersProductionStats { response_tx, .. }) => {
                     response_tx
-                        .send(vec![stats.clone()])
+                        .send(stats.clone())
                         .expect("failed to send stats");
                 }
                 None => break,
@@ -1983,10 +1979,6 @@ async fn test_staker_info() {
     .unwrap();
     assert_eq!(obtained["staker_active_blocks"], expected_active);
     assert_eq!(obtained["staker_discarded_blocks"], expected_discarded);
-    assert_eq!(
-        obtained["staker_production"],
-        serde_json::to_value(vec![cloned_stats]).unwrap()
-    );
 
     drop(filter);
 }
