@@ -6,7 +6,7 @@ use crypto::hash::Hash;
 use models::{
     array_from_slice, with_serialization_context, Address, Amount, BlockId, DeserializeCompact,
     DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact, SerializeVarInt,
-    Slot, StakerCycleProductionStats, ADDRESS_SIZE_BYTES,
+    Slot, StakersCycleProductionStats, ADDRESS_SIZE_BYTES,
 };
 use num::rational::Ratio;
 use rand::distributions::Uniform;
@@ -935,15 +935,27 @@ impl ProofOfStake {
         Ok(())
     }
 
-    pub fn get_staker_production_stats(&self, address: Address) -> Vec<StakerCycleProductionStats> {
-        let mut res: HashMap<u64, StakerCycleProductionStats> = HashMap::new();
+    pub fn get_stakers_production_stats(
+        &self,
+        addrs: HashSet<Address>,
+    ) -> Vec<StakersCycleProductionStats> {
+        let mut res: HashMap<u64, StakersCycleProductionStats> = HashMap::new();
         let mut completeness: HashMap<u64, u8> = HashMap::new();
         for thread_info in self.cycle_states.iter() {
             for thread_cycle_info in thread_info.iter() {
                 let cycle = thread_cycle_info.cycle;
                 let thread_cycle_complete =
                     thread_cycle_info.is_complete(self.cfg.periods_per_cycle);
-                let cycle_complete = if thread_cycle_complete {
+
+                let cycle_entry = res
+                    .entry(cycle)
+                    .or_insert_with(|| StakersCycleProductionStats {
+                        cycle,
+                        is_final: false,
+                        ok_nok_counts: HashMap::new(),
+                    });
+
+                cycle_entry.is_final = if thread_cycle_complete {
                     *completeness
                         .entry(cycle)
                         .and_modify(|n| *n = *n + 1)
@@ -952,27 +964,20 @@ impl ProofOfStake {
                 } else {
                     false
                 };
-                let (n_ok, n_nok) =
-                    if let Some((n_ok, n_nok)) = thread_cycle_info.production_stats.get(&address) {
-                        (*n_ok, *n_nok)
-                    } else {
-                        (0, 0)
-                    };
-                match res.entry(cycle) {
-                    hash_map::Entry::Occupied(mut occ) => {
-                        let cur = occ.get_mut();
-                        cur.is_final = cycle_complete;
-                        cur.final_ok_count += n_ok;
-                        cur.final_nok_count += n_nok;
-                    }
-                    hash_map::Entry::Vacant(vac) => {
-                        vac.insert(StakerCycleProductionStats {
-                            cycle,
-                            is_final: cycle_complete,
-                            final_ok_count: n_ok,
-                            final_nok_count: n_nok,
-                        });
-                    }
+
+                for addr in &addrs {
+                    let (n_ok, n_nok) = thread_cycle_info
+                        .production_stats
+                        .get(&addr)
+                        .unwrap_or(&(0, 0));
+                    cycle_entry
+                        .ok_nok_counts
+                        .entry(*addr)
+                        .and_modify(|(p_ok, p_nok)| {
+                            *p_ok += n_ok;
+                            *p_nok += n_nok;
+                        })
+                        .or_insert_with(|| (*n_ok, *n_nok));
                 }
             }
         }

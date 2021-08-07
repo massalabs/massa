@@ -13,7 +13,7 @@ use crypto::{
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
     OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
-    StakerCycleProductionStats,
+    StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
@@ -85,9 +85,9 @@ pub enum ConsensusCommand {
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(HashSet<Address>),
     GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
-    GetStakerProductionStats {
-        address: Address,
-        response_tx: oneshot::Sender<Vec<StakerCycleProductionStats>>,
+    GetStakersProductionStats {
+        addrs: HashSet<Address>,
+        response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,
     },
     GetBlockIdsByCreator {
         address: Address,
@@ -847,16 +847,13 @@ impl ConsensusWorker {
                         ))
                     })
             }
-            ConsensusCommand::GetStakerProductionStats {
-                address,
-                response_tx,
-            } => {
+            ConsensusCommand::GetStakersProductionStats { addrs, response_tx } => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_staker_production_stats",
+                    "consensus.consensus_worker.process_consensus_command.get_stakers_production_stats",
                     {}
                 );
                 response_tx
-                    .send(self.pos.get_staker_production_stats(address))
+                    .send(self.pos.get_stakers_production_stats(addrs))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send get_staking addresses response: {:?}",
