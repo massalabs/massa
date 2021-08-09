@@ -29,7 +29,6 @@ use std::{
 use tokio::sync::mpsc::error::SendTimeoutError;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-use tokio::time::Duration;
 
 /// Commands that the worker can execute
 #[derive(Debug)]
@@ -255,10 +254,7 @@ impl NetworkWorker {
     async fn send_network_event(&self, event: NetworkEvent) -> Result<(), CommunicationError> {
         let result = self
             .controller_event_tx
-            .send_timeout(
-                event,
-                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
-            )
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => return Ok(()),
