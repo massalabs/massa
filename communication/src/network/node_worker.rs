@@ -9,11 +9,7 @@ use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use models::{Block, BlockHeader, BlockId, Operation};
 use std::net::IpAddr;
-use tokio::{
-    sync::mpsc,
-    sync::mpsc::error::SendTimeoutError,
-    time::timeout,
-};
+use tokio::{sync::mpsc, sync::mpsc::error::SendTimeoutError, time::timeout};
 
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
