@@ -17,12 +17,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{
-    cmp::max,
-    collections::VecDeque,
-    convert::TryFrom,
-    path::Path,
-};
+use std::{cmp::max, collections::VecDeque, convert::TryFrom, path::Path};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -251,10 +246,7 @@ impl ConsensusWorker {
             final_block_stats,
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
-            stats_history_timespan: max(
-                stats_desync_detection_timespan,
-                cfg.stats_timespan,
-            ),
+            stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
             cfg,
             launch_time: UTime::now(clock_compensation)?,
         })
