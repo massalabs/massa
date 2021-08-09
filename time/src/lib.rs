@@ -69,7 +69,7 @@ impl From<UTime> for Duration {
     /// assert_eq!(res, duration);
     /// ```
     fn from(value: UTime) -> Self {
-        Duration::from_millis(value.to_millis())
+        value.to_duration()
     }
 }
 

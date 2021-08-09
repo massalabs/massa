@@ -30,6 +30,7 @@ version = "DEVE.0.0"
     block_reward = "1.0"
     initial_ledger_path = "config/initial_ledger.json"
     operation_batch_size = 1024
+    max_send_wait = 500
     #POS
     initial_rolls_path = "config/initial_rolls.json"
     initial_draw_seed = "massa_genesis_seed"
@@ -41,7 +42,7 @@ version = "DEVE.0.0"
     staking_keys_path = "config/staking_keys.json"
     roll_price = "500"
     #stats
-    stats_timespan = 480000  # also used for desync detection. Should be at least t0*periods_per_cycle*(pos_lookback_cycles+1)
+    stats_timespan = 60000
 
 [protocol]
     message_timeout = 5000
