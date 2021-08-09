@@ -25,7 +25,7 @@ use std::{
 use storage::StorageAccess;
 use time::UTime;
 use tokio::{
-    sync::{mpsc, oneshot},
+    sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
     time::{sleep_until, Sleep},
 };
 
@@ -346,10 +346,8 @@ impl ConsensusWorker {
                     && !self.staking_keys.contains_key(addr)
             })
         {
-            warn!("desynchronization detected");
-            self.controller_event_tx
-                .send(ConsensusEvent::NeedSync)
-                .await?
+            warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
+            let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
         }
 
         // signal tick to pool
@@ -374,6 +372,8 @@ impl ConsensusWorker {
                         "consensus.consensus_worker.slot_tick.block_creatorunavailable",
                         {}
                     );
+                    warn!("desynchronization detected because the lookback cycle is not final at the current time");
+                    let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
                     None
                 }
                 Err(err) => return Err(err),
@@ -587,6 +587,26 @@ impl ConsensusWorker {
         )?;
 
         Ok(())
+    }
+
+    async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<(), ConsensusError> {
+        let result = self
+            .controller_event_tx
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
+            .await;
+        match result {
+            Ok(()) => return Ok(()),
+            Err(SendTimeoutError::Closed(event)) => {
+                debug!(
+                    "failed to send ConsensusEvent due to channel closure: {:?}",
+                    event
+                );
+            }
+            Err(SendTimeoutError::Timeout(event)) => {
+                debug!("failed to send ConsensusEvent due to timeout: {:?}", event);
+            }
+        }
+        Err(ConsensusError::ChannelError("failed to send event".into()))
     }
 
     /// Manages given consensus command.

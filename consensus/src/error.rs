@@ -86,6 +86,8 @@ pub enum ConsensusError {
     PosCycleUnavailable(String),
     #[error("error sending consensus event: {0}")]
     TokioSendError(#[from] tokio::sync::mpsc::error::SendError<ConsensusEvent>),
+    #[error("channel error: {0}")]
+    ChannelError(String),
 }
 
 #[derive(Error, Debug)]

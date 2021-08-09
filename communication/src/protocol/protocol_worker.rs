@@ -13,7 +13,7 @@ use time::TimeError;
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
-    time::{sleep, sleep_until, Duration, Instant, Sleep},
+    time::{sleep, sleep_until, Instant, Sleep},
 };
 
 /// Possible types of events that can happen.
@@ -247,10 +247,7 @@ impl ProtocolWorker {
     async fn send_protocol_event(&self, event: ProtocolEvent) {
         let result = self
             .controller_event_tx
-            .send_timeout(
-                event,
-                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
-            )
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}
@@ -269,10 +266,7 @@ impl ProtocolWorker {
     async fn send_protocol_pool_event(&self, event: ProtocolPoolEvent) {
         let result = self
             .controller_pool_event_tx
-            .send_timeout(
-                event,
-                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
-            )
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}
