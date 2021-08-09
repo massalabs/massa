@@ -49,7 +49,7 @@ Running multiple nodes with the same node_privkey.key also reduces network healt
 
 ## Registration
 
-To validate your participation to the testnet staking reward program, you have to register with your Discord account. Write something in the `testnet-rewards` channel and our Discord bot will DM you instructions.
+To validate your participation to the testnet staking reward program, you have to register with your Discord account. Write something in the `testnet-rewards` channel of our link:https://discord.com/invite/TnsJQzXkRN[Discord] and our bot will DM you instructions.
 
 
 ## From scores to rewards
