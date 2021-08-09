@@ -17,12 +17,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{
-    cmp::{max, min},
-    collections::VecDeque,
-    convert::TryFrom,
-    path::Path,
-};
+use std::{cmp::max, collections::VecDeque, convert::TryFrom, path::Path};
 use std::{
     collections::{HashMap, HashSet},
     usize,
@@ -30,7 +25,7 @@ use std::{
 use storage::StorageAccess;
 use time::UTime;
 use tokio::{
-    sync::{mpsc, oneshot},
+    sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
     time::{sleep_until, Sleep},
 };
 
@@ -153,6 +148,8 @@ pub struct ConsensusWorker {
     // stats (block -> tx_count, creator)
     final_block_stats: VecDeque<(UTime, u64, Address)>,
     stale_block_stats: VecDeque<UTime>,
+    stats_history_timespan: UTime,
+    stats_desync_detection_timespan: UTime,
     launch_time: UTime,
 }
 
@@ -224,8 +221,12 @@ impl ConsensusWorker {
             ))
         }
 
+        // desync detection timespan
+        let stats_desync_detection_timespan = cfg
+            .t0
+            .checked_mul(cfg.periods_per_cycle * (cfg.pos_lookback_cycles + 1))?;
+
         Ok(ConsensusWorker {
-            cfg: cfg.clone(),
             genesis_public_key,
             protocol_command_sender,
             protocol_event_receiver,
@@ -244,6 +245,9 @@ impl ConsensusWorker {
             staking_keys,
             final_block_stats,
             stale_block_stats: VecDeque::new(),
+            stats_desync_detection_timespan,
+            stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
+            cfg,
             launch_time: UTime::now(clock_compensation)?,
         })
     }
@@ -319,6 +323,7 @@ impl ConsensusWorker {
         &mut self,
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
+        let now = UTime::now(self.clock_compensation)?;
         let cur_slot = self.next_slot;
         self.previous_slot = Some(cur_slot);
         self.next_slot = self.next_slot.get_next_slot(self.cfg.thread_count)?;
@@ -333,19 +338,16 @@ impl ConsensusWorker {
 
         // check if there are any final blocks not produced by us
         // if none => we are probably desync
-        let now = UTime::now(self.clock_compensation)?;
         if now
             > max(self.cfg.genesis_timestamp, self.launch_time)
-                .saturating_add(self.cfg.stats_timespan)
+                .saturating_add(self.stats_desync_detection_timespan)
             && !self.final_block_stats.iter().any(|(time, _, addr)| {
-                time > &now.saturating_sub(self.cfg.stats_timespan)
+                time > &now.saturating_sub(self.stats_desync_detection_timespan)
                     && !self.staking_keys.contains_key(addr)
             })
         {
-            warn!("desynchronization detected");
-            self.controller_event_tx
-                .send(ConsensusEvent::NeedSync)
-                .await?
+            warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
+            let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
         }
 
         // signal tick to pool
@@ -370,6 +372,8 @@ impl ConsensusWorker {
                         "consensus.consensus_worker.slot_tick.block_creatorunavailable",
                         {}
                     );
+                    warn!("desynchronization detected because the lookback cycle is not final at the current time");
+                    let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
                     None
                 }
                 Err(err) => return Err(err),
@@ -415,6 +419,9 @@ impl ConsensusWorker {
             )?
             .estimate_instant(self.clock_compensation)?,
         ));
+
+        // prune stats
+        self.prune_stats()?;
 
         Ok(())
     }
@@ -580,6 +587,26 @@ impl ConsensusWorker {
         )?;
 
         Ok(())
+    }
+
+    async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<(), ConsensusError> {
+        let result = self
+            .controller_event_tx
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
+            .await;
+        match result {
+            Ok(()) => return Ok(()),
+            Err(SendTimeoutError::Closed(event)) => {
+                debug!(
+                    "failed to send ConsensusEvent due to channel closure: {:?}",
+                    event
+                );
+            }
+            Err(SendTimeoutError::Timeout(event)) => {
+                debug!("failed to send ConsensusEvent due to timeout: {:?}", event);
+            }
+        }
+        Err(ConsensusError::ChannelError("failed to send event".into()))
     }
 
     /// Manages given consensus command.
@@ -895,22 +922,29 @@ impl ConsensusWorker {
     }
 
     fn get_stats(&mut self) -> Result<ConsensusStats, ConsensusError> {
-        // prune stats
-        self.prune_stats()?;
-
-        let timespan = min(
-            UTime::now(self.clock_compensation)?.saturating_sub(self.launch_time),
-            self.cfg.stats_timespan,
+        let timespan_end = max(self.launch_time, UTime::now(self.clock_compensation)?);
+        let timespan_start = max(
+            timespan_end.saturating_sub(self.cfg.stats_timespan),
+            self.launch_time,
         );
-        let final_block_count = self.final_block_stats.len() as u64;
+        let final_block_count = self
+            .final_block_stats
+            .iter()
+            .filter(|(t, _, _)| *t >= timespan_start && *t < timespan_end)
+            .count() as u64;
         let final_operation_count = self
             .final_block_stats
             .iter()
+            .filter(|(t, _, _)| *t >= timespan_start && *t < timespan_end)
             .fold(0u64, |acc, (_, tx_n, _)| acc + tx_n);
-        let stale_block_count = self.stale_block_stats.len() as u64;
+        let stale_block_count = self
+            .stale_block_stats
+            .iter()
+            .filter(|t| **t >= timespan_start && **t < timespan_end)
+            .count() as u64;
         let clique_count = self.block_db.get_clique_count() as u64;
         Ok(ConsensusStats {
-            timespan,
+            timespan: timespan_end.saturating_sub(timespan_start),
             final_block_count,
             final_operation_count,
             stale_block_count,
@@ -1125,7 +1159,7 @@ impl ConsensusWorker {
     // prune statistics
     fn prune_stats(&mut self) -> Result<(), ConsensusError> {
         let start_time =
-            UTime::now(self.clock_compensation)?.saturating_sub(self.cfg.stats_timespan);
+            UTime::now(self.clock_compensation)?.saturating_sub(self.stats_history_timespan);
         self.final_block_stats.retain(|(t, _, _)| t >= &start_time);
         self.stale_block_stats.retain(|t| t >= &start_time);
         Ok(())
@@ -1222,9 +1256,6 @@ impl ConsensusWorker {
         if let Some(storage_cmd) = &self.opt_storage_command_sender {
             storage_cmd.add_block_batch(discarded_final_blocks).await?;
         }
-
-        // prune stats
-        self.prune_stats()?;
 
         Ok(())
     }

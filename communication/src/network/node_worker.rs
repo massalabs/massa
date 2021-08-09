@@ -9,11 +9,7 @@ use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use models::{Block, BlockHeader, BlockId, Operation};
 use std::net::IpAddr;
-use tokio::{
-    sync::mpsc,
-    sync::mpsc::error::SendTimeoutError,
-    time::{timeout, Duration},
-};
+use tokio::{sync::mpsc, sync::mpsc::error::SendTimeoutError, time::timeout};
 
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
@@ -106,10 +102,7 @@ impl NodeWorker {
     async fn send_node_event(&self, event: NodeEvent) {
         let result = self
             .node_event_tx
-            .send_timeout(
-                event,
-                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
-            )
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}

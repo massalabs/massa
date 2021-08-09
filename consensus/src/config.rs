@@ -66,6 +66,8 @@ pub struct ConsensusConfig {
     pub roll_price: Amount,
     // stats timespan
     pub stats_timespan: UTime,
+    // max event send wait
+    pub max_send_wait: UTime,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
