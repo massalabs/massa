@@ -256,7 +256,7 @@ impl BootstrapManager {
     pub async fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
         if self.manager_tx.send(()).await.is_err() {
-            warn!("bootstrap server  already dropped");
+            warn!("bootstrap server already dropped");
         }
         let _ = self.join_handle.await?;
         Ok(())
@@ -326,11 +326,11 @@ impl BootstrapServer {
                     match res {
                         Ok(res)=> {
                             if let Err(e) = self.manage_bootstrap(res).await {
-                                warn!("error while managing bootstrap connection: {:?} - bootstrap attempt ignored", e.to_string());
+                                debug!("error while managing bootstrap connection: {:?} - bootstrap attempt ignored", e.to_string());
                             }
                         },
                         Err(e) => {
-                            warn!("error while accepting bootstrap connection: {:?} - connection attempt ignored", e.to_string());
+                            debug!("error while accepting bootstrap connection: {:?} - connection attempt ignored", e.to_string());
                         }
                     }
                 },
