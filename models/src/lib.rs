@@ -8,6 +8,7 @@ mod amount;
 mod block;
 mod composite;
 mod context;
+mod endorsement;
 mod error;
 mod operation;
 mod serialization;
