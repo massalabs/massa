@@ -8,7 +8,9 @@ use crate::{
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
-    signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES},
+    signature::{
+        verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+    },
 };
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -56,6 +58,23 @@ impl EndorsementId {
 pub struct Endorsement {
     pub content: EndorsementContent,
     pub signature: Signature,
+}
+
+impl Endorsement {
+    /// Verify the signature and integrity of the endorsement and computes ID
+    pub fn verify_integrity(&self) -> Result<EndorsementId, ModelsError> {
+        let content_hash = Hash::hash(&self.content.to_bytes_compact()?);
+        verify_signature(
+            &content_hash,
+            &self.signature,
+            &self.content.sender_public_key,
+        )?;
+        self.get_endorsement_id()
+    }
+
+    pub fn get_endorsement_id(&self) -> Result<EndorsementId, ModelsError> {
+        Ok(EndorsementId(Hash::hash(&self.to_bytes_compact()?)))
+    }
 }
 
 impl SerializeCompact for Endorsement {
@@ -176,6 +195,7 @@ mod tests {
             max_bootstrap_pos_entries: 1000,
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
+            max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
         };
         crate::init_serialization_context(ctx);
