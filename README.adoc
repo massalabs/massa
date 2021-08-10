@@ -20,7 +20,7 @@ We are now releasing the **Massa testnet** in this Gitlab repository, with its e
 As decentralization is our core value, we would like to help you start and run a Massa node. 
 Running a node during the testnet phase also helps us finding bugs and improving usability, so it will be rewarded with real Massa on mainnet launch. 
 
-The mechanics and amounts of those rewards are currently in discussion, the main idea is that the more block rewards you receive, the more Massa you will get at launch, with a per-person cap.
+The mechanics and amounts of those rewards are described in ŧhe link:docs/testnet_rules.adoc[Testnet rules].
  
 
 ## Testnet Discussions
