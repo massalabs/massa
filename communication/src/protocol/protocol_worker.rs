@@ -7,6 +7,7 @@ use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use itertools::Itertools;
 use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId};
+use models::{Endorsement, EndorsementId};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -66,7 +67,7 @@ pub enum ProtocolManagementCommand {}
 
 //put in a module to block private access from Protocol_worker.
 mod nodeinfo {
-    use models::{BlockId, OperationId};
+    use models::{BlockId, EndorsementId, OperationId};
     use std::collections::HashMap;
     use tokio::time::Instant;
 
@@ -88,6 +89,8 @@ mod nodeinfo {
         pub connection_instant: Instant,
         /// all known operation with instant of that info
         pub known_operations: HashMap<OperationId, Instant>,
+        /// all known endorsements with instant of that info
+        pub known_endorsements: HashMap<EndorsementId, Instant>,
     }
 
     impl NodeInfo {
@@ -99,6 +102,7 @@ mod nodeinfo {
                 asked_blocks: HashMap::new(),
                 connection_instant: Instant::now(),
                 known_operations: HashMap::new(),
+                known_endorsements: HashMap::new(),
             }
         }
 
@@ -132,6 +136,23 @@ mod nodeinfo {
                     .min_by_key(|(h, (_, t))| (*t, *h))
                     .unwrap(); //never None because is the collection is empty, while loop isn't executed.
                 self.known_blocks.remove(&h);
+            }
+        }
+
+        pub fn insert_known_endorsements(
+            &mut self,
+            endorsements: HashMap<EndorsementId, Instant>,
+            max_endorsements_nb: usize,
+        ) {
+            self.known_endorsements.extend(endorsements);
+            while self.known_operations.len() > max_endorsements_nb {
+                //remove oldest item
+                let (&h, _) = self
+                    .known_endorsements
+                    .iter()
+                    .min_by_key(|(h, t)| (*t, *h))
+                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
+                self.known_endorsements.remove(&h);
             }
         }
 
@@ -907,6 +928,39 @@ impl ProtocolWorker {
         Some(result)
     }
 
+    /// Check endorsements
+    fn note_endorsements_from_node(
+        &mut self,
+        endorsements: Vec<Endorsement>,
+        source_node_id: &NodeId,
+    ) -> Option<HashMap<EndorsementId, Endorsement>> {
+        massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
+        let mut result = HashMap::with_capacity(endorsements.len());
+        for endorsement in endorsements.into_iter() {
+            match endorsement.verify_integrity() {
+                Ok(endorsement_id) => {
+                    result.insert(endorsement_id, endorsement);
+                }
+                Err(err) => {
+                    massa_trace!("protocol.protocol_worker.note_endorsements_from_node.invalid", { "node": source_node_id, "endorsement": endorsement, "err": format!("{:?}", err) });
+                    warn!(
+                        "node {:?} sent an invalid endorsement: {:?}",
+                        source_node_id, err
+                    );
+                    return None;
+                }
+            }
+        }
+        // add to known endorsements
+        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            node_info.insert_known_endorsements(
+                result.iter().map(|(id, _)| (*id, Instant::now())).collect(),
+                self.cfg.max_known_endorsements_size,
+            );
+        }
+        Some(result)
+    }
+
     /// Manages network event
     /// Only used by the worker.
     ///
@@ -1024,7 +1078,14 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
-                // TODO: handle.
+                if let Some(operations) = self.note_endorsements_from_node(endorsements, &node) {
+                    if !operations.is_empty() {
+                        // TODO: send event to pool.
+                    }
+                } else {
+                    warn!("node {:?} sent us critically incorrect operation", node,);
+                    let _ = self.ban_node(&node).await;
+                }
             }
         }
         Ok(())
