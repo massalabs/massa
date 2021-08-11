@@ -1009,8 +1009,7 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                if let Some(operations) = self.note_operations_from_node(operations.clone(), &node)
-                {
+                if let Some(operations) = self.note_operations_from_node(operations, &node) {
                     if !operations.is_empty() {
                         self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
                             operations,
