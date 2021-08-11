@@ -902,7 +902,7 @@ impl ProtocolWorker {
         source_node_id: &NodeId,
     ) -> Option<HashMap<OperationId, Operation>> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
-        let mut result = HashMap::new();
+        let mut result = HashMap::with_capacity(operations.len());
         for op in operations.into_iter() {
             match op.verify_integrity() {
                 Ok(operation_id) => {
