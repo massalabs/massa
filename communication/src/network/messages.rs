@@ -131,7 +131,7 @@ impl SerializeCompact for Message {
             }
             Message::Endorsements(endorsements) => {
                 res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
-                res.extend((endorsements.len() as u64).to_varint_bytes());
+                res.extend((endorsements.len() as u32).to_varint_bytes());
                 for endorsement in endorsements.iter() {
                     res.extend(endorsement.to_bytes_compact()?);
                 }
