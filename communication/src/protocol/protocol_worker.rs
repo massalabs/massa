@@ -42,6 +42,11 @@ pub enum ProtocolPoolEvent {
         operations: HashMap<OperationId, Operation>,
         propagate: bool, // whether or not to propagate operations
     },
+    /// Endorsements were received
+    ReceivedEndorsements {
+        endorsements: HashMap<EndorsementId, Endorsement>,
+        propagate: bool, // whether or not to propagate endorsements
+    },
 }
 
 /// Commands that protocol worker can process
@@ -1078,9 +1083,13 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
-                if let Some(operations) = self.note_endorsements_from_node(endorsements, &node) {
-                    if !operations.is_empty() {
-                        // TODO: send event to pool.
+                if let Some(endorsements) = self.note_endorsements_from_node(endorsements, &node) {
+                    if !endorsements.is_empty() {
+                        self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
+                            endorsements,
+                            propagate: true,
+                        })
+                        .await;
                     }
                 } else {
                     warn!("node {:?} sent us critically incorrect operation", node,);
