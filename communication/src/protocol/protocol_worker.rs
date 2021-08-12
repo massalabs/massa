@@ -1023,6 +1023,10 @@ impl ProtocolWorker {
                     let _ = self.ban_node(&node).await;
                 }
             }
+            NetworkEvent::ReceivedEndorsements { node, endorsements } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
+                // TODO: handle.
+            }
         }
         Ok(())
     }
