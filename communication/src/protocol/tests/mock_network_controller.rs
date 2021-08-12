@@ -2,7 +2,7 @@
 
 use crate::common::NodeId;
 use crate::network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
-use models::{Block, BlockHeader, BlockId, Operation};
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -87,6 +87,20 @@ impl MockNetworkController {
             })
             .await
             .expect("Couldn't send operations to protocol.");
+    }
+
+    pub async fn send_endorsements(
+        &mut self,
+        source_node_id: NodeId,
+        endorsements: Vec<Endorsement>,
+    ) {
+        self.network_event_tx
+            .send(NetworkEvent::ReceivedEndorsements {
+                node: source_node_id,
+                endorsements,
+            })
+            .await
+            .expect("Couldn't send endorsements to protocol.");
     }
 
     pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: Vec<BlockId>) {

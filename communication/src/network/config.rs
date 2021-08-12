@@ -55,6 +55,8 @@ pub struct NetworkConfig {
     pub max_ask_blocks_per_message: u32,
     /// Max number of operations per message
     pub max_operations_per_message: u32,
+    /// Max number of endorsements per message
+    pub max_endorsements_per_message: u32,
     /// Max wait time for sending a Network or Node event.
     pub max_send_wait: UTime,
     /// Time after which we forget a node

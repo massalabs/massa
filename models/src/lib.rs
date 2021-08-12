@@ -26,6 +26,7 @@ pub use context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
     SerializationContext,
 };
+pub use endorsement::{Endorsement, EndorsementContent, EndorsementId};
 pub use error::ModelsError;
 pub use operation::{
     Operation, OperationContent, OperationId, OperationType, OPERATION_ID_SIZE_BYTES,

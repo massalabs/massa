@@ -43,6 +43,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
                 1000.into(),
                 |evt| match evt {
                     evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    _ => None,
                 },
             )
             .await
@@ -97,6 +98,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
                 1000.into(),
                 |evt| match evt {
                     evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    _ => None,
                 },
             )
             .await
@@ -146,6 +148,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                 1000.into(),
                 |evt| match evt {
                     evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    _ => None,
                 },
             )
             .await

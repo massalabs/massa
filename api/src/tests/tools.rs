@@ -108,6 +108,7 @@ pub fn get_protocol_config() -> ProtocolConfig {
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: UTime::from(100),
         max_known_ops_size: 1000,
+        max_known_endorsements_size: 1000,
     }
 }
 pub fn get_pool_config() -> PoolConfig {
@@ -132,6 +133,7 @@ pub fn initialize_context() -> models::SerializationContext {
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
@@ -164,6 +166,7 @@ pub fn get_network_config() -> NetworkConfig {
         private_key_file: std::path::PathBuf::new(),
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_send_wait: UTime::from(100),
         ban_timeout: UTime::from(100_000_000),
     }

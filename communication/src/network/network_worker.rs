@@ -19,7 +19,7 @@ use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,
 };
-use models::{Block, BlockHeader, BlockId, Operation};
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -59,6 +59,10 @@ pub enum NetworkCommand {
     SendOperations {
         node: NodeId,
         operations: Vec<Operation>,
+    },
+    SendEndorsements {
+        node: NodeId,
+        endorsements: Vec<Endorsement>,
     },
     NodeSignMessage {
         msg: Vec<u8>,
@@ -105,6 +109,10 @@ pub enum NetworkEvent {
     ReceivedOperations {
         node: NodeId,
         operations: Vec<Operation>,
+    },
+    ReceivedEndorsements {
+        node: NodeId,
+        endorsements: Vec<Endorsement>,
     },
 }
 
@@ -817,6 +825,17 @@ impl NetworkWorker {
                 )
                 .await;
             }
+            NetworkCommand::SendEndorsements { node, endorsements } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::SendEndorsements",
+                    { "node": node, "endorsements": endorsements }
+                );
+                self.forward_message_to_node_or_resend_close_event(
+                    &node,
+                    NodeCommand::SendEndorsements(endorsements),
+                )
+                .await;
+            }
             NetworkCommand::NodeSignMessage { msg, response_tx } => {
                 massa_trace!(
                     "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
@@ -1041,6 +1060,11 @@ impl NetworkWorker {
             NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedOperations { node, operations })
+                    .await;
+            }
+            NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
+                let _ = self
+                    .send_network_event(NetworkEvent::ReceivedEndorsements { node, endorsements })
                     .await;
             }
         }
