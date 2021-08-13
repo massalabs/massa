@@ -205,7 +205,7 @@ impl PoolWorker {
                 mut endorsements,
                 propagate,
             } => {
-                // TODO: handle.
+                // TODO: handle incoming endorsements.
                 if propagate {
                 } else {
                 }
