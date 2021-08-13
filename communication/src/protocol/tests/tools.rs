@@ -15,7 +15,7 @@ use futures::Future;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
 };
-use models::{Operation, OperationContent, OperationType};
+use models::{Endorsement, EndorsementContent, Operation, OperationContent, OperationType};
 use std::collections::HashMap;
 use time::UTime;
 use tokio::time::sleep;
@@ -151,6 +151,26 @@ pub fn create_operation() -> Operation {
     Operation { content, signature }
 }
 
+/// Creates an endorsement for use in protocol tests,
+/// without paying attention to consensus related things.
+pub fn create_endorsement() -> Endorsement {
+    let sender_priv = crypto::generate_random_private_key();
+    let sender_public_key = crypto::derive_public_key(&sender_priv);
+
+    let content = EndorsementContent {
+        sender_public_key,
+        slot: Slot::new(10, 1),
+        index: 0,
+        endorsed_block: Hash::hash(&[]),
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    Endorsement {
+        content: content.clone(),
+        signature,
+    }
+}
+
 pub fn create_operation_with_expire_period(
     sender_priv: PrivateKey,
     sender_pub: PublicKey,
@@ -204,6 +224,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: UTime::from(100),
         max_known_ops_size: 1000,
+        max_known_endorsements_size: 1000,
     }
 }
 
