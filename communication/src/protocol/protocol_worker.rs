@@ -542,7 +542,7 @@ impl ProtocolWorker {
                     { "endorsements": endorsements }
                 );
                 let cur_instant = Instant::now();
-                for (_node, node_info) in self.active_nodes.iter_mut() {
+                for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_endorsements: HashMap<EndorsementId, Endorsement> = endorsements
                         .iter()
                         .filter(|(id, _)| !node_info.knows_endorsement(*id))
@@ -560,7 +560,9 @@ impl ProtocolWorker {
                         .map(|(_, op)| op)
                         .collect::<Vec<_>>();
                     if !to_send.is_empty() {
-                        // TODO: add network command.
+                        self.network_command_sender
+                            .send_endorsements(*node, to_send)
+                            .await?;
                     }
                 }
             }
