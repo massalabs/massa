@@ -201,6 +201,15 @@ impl PoolWorker {
                     self.operation_pool.add_operations(operations)?;
                 }
             }
+            ProtocolPoolEvent::ReceivedEndorsements {
+                mut endorsements,
+                propagate,
+            } => {
+                // TODO: handle.
+                if propagate {
+                } else {
+                }
+            }
         }
         Ok(())
     }
