@@ -150,7 +150,7 @@ mod nodeinfo {
             max_endorsements_nb: usize,
         ) {
             self.known_endorsements.extend(endorsements);
-            while self.known_operations.len() > max_endorsements_nb {
+            while self.known_endorsements.len() > max_endorsements_nb {
                 //remove oldest item
                 let (&h, _) = self
                     .known_endorsements
@@ -1092,7 +1092,7 @@ impl ProtocolWorker {
                         .await;
                     }
                 } else {
-                    warn!("node {:?} sent us critically incorrect operation", node,);
+                    warn!("node {:?} sent us critically incorrect endorsements", node,);
                     let _ = self.ban_node(&node).await;
                 }
             }
