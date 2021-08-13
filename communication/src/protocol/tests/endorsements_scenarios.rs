@@ -4,12 +4,10 @@
 
 use super::tools;
 use super::tools::protocol_test;
-use crate::network::NetworkCommand;
 use crate::protocol::ProtocolPoolEvent;
-use models::{Amount, Slot};
+use models::Slot;
 use serial_test::serial;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[tokio::test]
 #[serial]

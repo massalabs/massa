@@ -65,6 +65,8 @@ pub enum ProtocolCommand {
     GetBlocksResults(HashMap<BlockId, Option<Block>>),
     /// Propagate operations
     PropagateOperations(HashMap<OperationId, Operation>),
+    /// Propagate endorsements
+    PropagateEndorsements(HashMap<EndorsementId, Endorsement>),
 }
 
 #[derive(Debug, Serialize)]
@@ -159,6 +161,10 @@ mod nodeinfo {
                     .unwrap(); //never None because is the collection is empty, while loop isn't executed.
                 self.known_endorsements.remove(&h);
             }
+        }
+
+        pub fn knows_endorsement(&self, endorsement_id: &EndorsementId) -> bool {
+            self.known_endorsements.contains_key(endorsement_id)
         }
 
         pub fn insert_known_ops(&mut self, ops: HashMap<OperationId, Instant>, max_ops_nb: usize) {
@@ -527,6 +533,34 @@ impl ProtocolWorker {
                         self.network_command_sender
                             .send_operations(*node, to_send)
                             .await?;
+                    }
+                }
+            }
+            ProtocolCommand::PropagateEndorsements(endorsements) => {
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.propagate_endorsements.begin",
+                    { "endorsements": endorsements }
+                );
+                let cur_instant = Instant::now();
+                for (_node, node_info) in self.active_nodes.iter_mut() {
+                    let new_endorsements: HashMap<EndorsementId, Endorsement> = endorsements
+                        .iter()
+                        .filter(|(id, _)| !node_info.knows_endorsement(*id))
+                        .map(|(k, v)| (*k, v.clone()))
+                        .collect();
+                    node_info.insert_known_endorsements(
+                        new_endorsements
+                            .iter()
+                            .map(|(id, _)| (*id, cur_instant))
+                            .collect(),
+                        self.cfg.max_known_endorsements_size,
+                    );
+                    let to_send = new_endorsements
+                        .into_iter()
+                        .map(|(_, op)| op)
+                        .collect::<Vec<_>>();
+                    if !to_send.is_empty() {
+                        // TODO: add network command.
                     }
                 }
             }
