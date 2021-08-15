@@ -103,6 +103,12 @@ This delay will increase in the future.
 
 == Testnet and rewards
 
+=== How can I migrate my node from one computer/provider to another and keep my score in the Testnet Staking Reward Program?
+
+If you migrate your node from one computer/provider to another you should save the private key associated to the staking address that is registered. This private key is located in the `wallet.dat` file located in `massa-client` folder. You can also save your node private key `node_privkey.key` located in the `massa-node/config` folder, if you don't then don't forget to register your new node private key to the Discord bot.
+
+If your new node has a new IP address then you should not forget to register the new IP address to the Discord bot.
+
 === I want to stake more! Can I abuse the faucet bot to get more coins?
 
 You can claim testnet tokens every 24h.
@@ -119,4 +125,4 @@ We will communicate information later on how we will rank the node stability.
 
 === Ping too high issue
 
-Check the quality of your internet connection. Try inreasing the "max_ping" setting in massa-node/config/config.toml
+Check the quality of your internet connection. Try increasing the `max_ping` setting in the `massa-node/config/config.toml` file.
