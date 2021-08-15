@@ -7,7 +7,8 @@
 //! or as CLI using the API command has a parameter.
 //!
 //! Parameters:
-//! * -n (--node): the node IP
+//! * -c (--cli): The format of the displayed command output. Set to false display user-friendly output.
+//! * -n (--node): the node IP.
 //! * -s (--short) The format of the displayed hash. Set to true display sort hash (default).
 //! * -w (--wallet) activate the wallet command, using the file specified.
 //!
@@ -68,6 +69,15 @@ fn main() {
         .version("0.3")
         .author("Massa Labs <info@massa.net>")
         .about("Massa")
+		.arg(
+            Arg::with_name("cli")
+                .short("c")
+                .long("cli")
+                .value_name("true, false")
+                .help("false: set user-friendly output")
+                .required(false)
+                .takes_value(true),
+        )
         .arg(
             Arg::with_name("nodeip")
                 .short("n")
@@ -307,6 +317,26 @@ fn main() {
 
     let matches = app.get_matches();
 
+    //cli or not cli output.
+    let cli = matches
+        .value_of("cli")
+        .and_then(|val| {
+            FromStr::from_str(val)
+                .map_err(|err| {
+                    println!("bad cli value, using default");
+                    err
+                })
+                .ok()
+        })
+        .unwrap_or(true);
+	
+	if !cli {
+        repl.data.cli = false;
+    }
+	else {
+		repl.data.cli = true;
+	}
+
     //ip address of the node to connect.
     let node_ip = matches
         .value_of("nodeip")
@@ -373,7 +403,6 @@ fn main() {
                 .values_of("")
                 .map(|list| list.collect())
                 .unwrap_or_default();
-            repl.data.cli = true;
             repl.run_cmd(cmd, &args);
         }
     }
