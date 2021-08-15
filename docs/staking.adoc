@@ -19,7 +19,7 @@ wallet_info
 
 Buy rolls with it: put your address, the number of rolls you want to buy, and the operation fee (you can put 0):
 ----
-buy_rolls <address>  <roll count> <fee>
+buy_rolls <address> <roll count> <fee>
 ----
 
 It should take less than one minute for your roll to become final, check with:
