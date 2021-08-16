@@ -9,7 +9,7 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
-use models::{Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
+use models::{Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Slot, Version};
 use num::rational::Ratio;
 use pool::PoolConfig;
 use std::str::FromStr;
@@ -203,6 +203,7 @@ pub fn mock_filter(
     let (evt_tx, evt_rx) = mpsc::channel(1);
     (
         get_filter(
+            Version::from_str("DEVE.0.0").unwrap(),
             get_api_config(),
             get_consensus_config(),
             get_protocol_config(),
