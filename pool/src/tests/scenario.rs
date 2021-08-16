@@ -9,8 +9,7 @@ use models::Slot;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use crate::tests::tools::get_transaction_with_addresses;
-use crate::tests::tools::pool_test;
+use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 
 use super::tools::{example_pool_config, get_transaction};
 use serial_test::serial;
@@ -224,6 +223,62 @@ async fn test_pool_with_protocol_events() {
 
                 thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
             }
+
+            (protocol_controller, pool_command_sender, pool_manager)
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_pool_propagate_newly_added_endorsements() {
+    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+    let max_pool_size_per_thread = 10;
+    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+
+    pool_test(
+        cfg,
+        thread_count,
+        operation_validity_periods,
+        async move |mut protocol_controller, pool_command_sender, pool_manager| {
+            let op_filter = |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
+                _ => None,
+            };
+
+            let endorsement = tools::create_endorsement();
+            let mut endorsements = HashMap::new();
+            let id = endorsement.verify_integrity().unwrap();
+            endorsements.insert(id.clone(), endorsement.clone());
+
+            protocol_controller
+                .received_endorsements(endorsements.clone())
+                .await;
+
+            let newly_added = match protocol_controller
+                .wait_command(250.into(), op_filter.clone())
+                .await
+            {
+                Some(ProtocolCommand::PropagateEndorsements(endorsements)) => endorsements,
+                Some(_) => panic!("unexpected protocol command"),
+                None => panic!("unexpected timeout reached"),
+            };
+            assert!(newly_added.contains_key(&id));
+            assert_eq!(newly_added.len(), 1);
+
+            // duplicate
+            protocol_controller
+                .received_endorsements(endorsements)
+                .await;
+
+            match protocol_controller
+                .wait_command(250.into(), op_filter.clone())
+                .await
+            {
+                Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
+                None => {} // no propagation
+            };
 
             (protocol_controller, pool_command_sender, pool_manager)
         },
