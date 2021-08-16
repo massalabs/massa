@@ -9,7 +9,7 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
-use models::{Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Slot};
+use models::{Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Slot, Version};
 use num::rational::Ratio;
 use pool::PoolConfig;
 use std::str::FromStr;
@@ -184,11 +184,7 @@ pub fn get_header(slot: Slot, creator: Option<PublicKey>) -> (BlockId, BlockHead
     BlockHeader::new_signed(
         &private_key,
         BlockHeaderContent {
-            creator: if creator.is_none() {
-                public_key
-            } else {
-                creator.unwrap()
-            },
+            creator: creator.unwrap_or_else(|| public_key),
             slot,
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
@@ -203,6 +199,7 @@ pub fn mock_filter(
     let (evt_tx, evt_rx) = mpsc::channel(1);
     (
         get_filter(
+            Version::from_str("DEVE.0.0").unwrap(),
             get_api_config(),
             get_consensus_config(),
             get_protocol_config(),

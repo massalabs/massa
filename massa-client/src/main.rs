@@ -43,6 +43,7 @@ use models::OperationId;
 use models::OperationType;
 use models::Slot;
 use models::StakersCycleProductionStats;
+use models::Version;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -163,6 +164,12 @@ fn main() {
         "network information: own IP address, connected peers",
         true,
         cmd_network_info,
+    )
+    .new_command_noargs(
+        "version",
+        "current node version",
+        true,
+        cmd_version,
     )
     .new_command_noargs("state", "summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count", true, cmd_state)
     .new_command_noargs(
@@ -864,6 +871,16 @@ fn cmd_network_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplErr
     if let Some(resp) = request_data(data, &url)? {
         let info = resp.json::<data::NetworkInfo>()?;
         println!("network_info:");
+        println!("{}", info);
+    }
+    Ok(())
+}
+
+fn cmd_version(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/version", data.node_ip);
+    if let Some(resp) = request_data(data, &url)? {
+        let info = resp.json::<Version>()?;
+        println!("version:");
         println!("{}", info);
     }
     Ok(())
