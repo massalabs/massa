@@ -184,11 +184,7 @@ pub fn get_header(slot: Slot, creator: Option<PublicKey>) -> (BlockId, BlockHead
     BlockHeader::new_signed(
         &private_key,
         BlockHeaderContent {
-            creator: if creator.is_none() {
-                public_key
-            } else {
-                creator.unwrap()
-            },
+            creator: creator.unwrap_or_else(|| public_key),
             slot,
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
