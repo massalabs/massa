@@ -132,6 +132,7 @@ async fn launch(
 
     // launch API controller
     let (api_event_receiver, api_manager) = start_api_controller(
+        cfg.version,
         cfg.api.clone(),
         cfg.consensus.clone(),
         cfg.protocol.clone(),
