@@ -110,7 +110,7 @@ impl OperationPool {
 
             // Already present
             if self.ops.contains_key(&op_id) {
-                massa_trace!("pool add_operations  op already present.)", {});
+                massa_trace!("pool add_operations op already present", {});
                 continue;
             }
 

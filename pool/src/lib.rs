@@ -7,6 +7,7 @@
 extern crate logging;
 
 mod config;
+mod endorsement_pool;
 mod error;
 mod operation_pool;
 mod pool_controller;
