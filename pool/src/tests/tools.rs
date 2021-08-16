@@ -7,7 +7,10 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use futures::Future;
-use models::{Address, Amount, Operation, OperationContent, OperationType, SerializeCompact};
+use models::{
+    Address, Amount, Endorsement, EndorsementContent, Operation, OperationContent, OperationType,
+    SerializeCompact, Slot,
+};
 use std::str::FromStr;
 
 pub async fn pool_test<F, V>(
@@ -104,6 +107,25 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         Operation { content, signature },
         Address::from_public_key(&sender_pub).unwrap().get_thread(2),
     )
+}
+
+/// Creates an endorsement for use in pool tests.
+pub fn create_endorsement() -> Endorsement {
+    let sender_priv = crypto::generate_random_private_key();
+    let sender_public_key = crypto::derive_public_key(&sender_priv);
+
+    let content = EndorsementContent {
+        sender_public_key,
+        slot: Slot::new(10, 1),
+        index: 0,
+        endorsed_block: Hash::hash(&[]),
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    Endorsement {
+        content: content.clone(),
+        signature,
+    }
 }
 
 pub fn get_transaction_with_addresses(

@@ -5,6 +5,7 @@ use std::{
     u64,
 };
 
+use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
 
 use super::{config::PoolConfig, error::PoolError};
@@ -55,6 +56,8 @@ pub struct PoolWorker {
     controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,
     /// operation pool
     operation_pool: OperationPool,
+    /// Endorsement pool.
+    endorsement_pool: EndorsementPool,
 }
 
 impl PoolWorker {
@@ -84,7 +87,12 @@ impl PoolWorker {
             protocol_pool_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_pool: OperationPool::new(cfg, thread_count, operation_validity_periods),
+            operation_pool: OperationPool::new(
+                cfg.clone(),
+                thread_count,
+                operation_validity_periods,
+            ),
+            endorsement_pool: EndorsementPool::new(cfg),
         })
     }
 
@@ -205,9 +213,18 @@ impl PoolWorker {
                 mut endorsements,
                 propagate,
             } => {
-                // TODO: handle.
                 if propagate {
+                    let newly_added = self
+                        .endorsement_pool
+                        .add_endorsements(endorsements.clone())?;
+                    endorsements.retain(|id, _| newly_added.contains(id));
+                    if !endorsements.is_empty() {
+                        self.protocol_command_sender
+                            .propagate_endorsements(endorsements)
+                            .await?;
+                    }
                 } else {
+                    self.endorsement_pool.add_endorsements(endorsements)?;
                 }
             }
         }
