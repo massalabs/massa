@@ -30,7 +30,7 @@ impl EndorsementPool {
 
             // Already present
             if self.endorsements.contains_key(&endorsement_id) {
-                massa_trace!("pool add_endorsement endorsement already present.)", {});
+                massa_trace!("pool add_endorsement endorsement already present", {});
                 continue;
             }
 
