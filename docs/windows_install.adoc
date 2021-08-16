@@ -11,29 +11,30 @@
   *** Testing Tools Core Feature
  ** Click install on the bottom right to download & install those packages
 * Install Rust, to be downloaded link:https://www.rust-lang.org/tools/install[here]
-* Install Visual Studio Code, to be downloaded link:https://code.visualstudio.com/[here]
- ** Install the Rust Analyzer extension for VSC, link:https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[here]
- ** Install the CodeLLDB extension for VSC, link:https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb[here]
+* Install Git for windows, to be downloaded link:https://git-scm.com/download/win[here]
 
+## Clone the Massa Git Repository 
 
-# Download the Massa Git Repository 
-
-* Download the Massa Git Repository here (in ZIP): link:https://gitlab.com/massalabs/massa[Massa].
-* Extract the ZIP.
-
-
-# Launch your Node
-
-* Open Visual Studio Code
-* Open the VSC Terminal
+* Open Windows Power Shell
+ ** Type: `git clone https://gitlab.com/massalabs/massa.git`
+* Change default Rust to nightly
  ** Type: `rustup default nightly`
- ** Type: `cd /path/to/folder`
+
+## Launch your Node
+* Open Windows Power Shell
+ ** Type: `cd /massa`
  ** Type: `cd /massa-node`
  ** Type: `cargo run --release`
-
-Once the process is finished, you should leave the VSC Terminal opened. 
-
+ 
 Your node is running. 
+Once the process is finished, you should leave the Powershell opened. 
 
-You can now move toward the wallet creation (using Powershell or the Classic Terminal), and then the staking process. 
+You can now launch your client and move toward the wallet creation then the staking process. 
+
+## Launch your Client
+* Open Windows Power Shell
+ ** Type: `cd /massa`
+ ** Type: `cd /massa-client`
+ ** Type: `cargo run --release`
+
 
