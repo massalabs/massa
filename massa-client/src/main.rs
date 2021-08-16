@@ -69,7 +69,7 @@ fn main() {
         .version("0.3")
         .author("Massa Labs <info@massa.net>")
         .about("Massa")
-		.arg(
+        .arg(
             Arg::with_name("cli")
                 .short("c")
                 .long("cli")
@@ -329,13 +329,12 @@ fn main() {
                 .ok()
         })
         .unwrap_or(true);
-	
-	if !cli {
+
+    if !cli {
         repl.data.cli = false;
+    } else {
+        repl.data.cli = true;
     }
-	else {
-		repl.data.cli = true;
-	}
 
     //ip address of the node to connect.
     let node_ip = matches
