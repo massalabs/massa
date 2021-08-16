@@ -20,7 +20,7 @@ use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
 use models::StakersCycleProductionStats;
-use models::{BlockHeader, BlockId, Slot};
+use models::{BlockHeader, BlockId, Slot, Version};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -110,6 +110,7 @@ pub struct Addresses {
 /// and combines them into one filter
 ///
 pub fn get_filter(
+    node_version: Version,
     api_config: ApiConfig,
     consensus_config: ConsensusConfig,
     _protocol_config: ProtocolConfig,
@@ -244,6 +245,13 @@ pub fn get_filter(
         .and(warp::path("node_config"))
         .and(warp::path::end())
         .and_then(get_node_config);
+
+    let version = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("version"))
+        .and(warp::path::end())
+        .and_then(move || get_version(node_version));
 
     let pool_cfg = pool_config;
     let pool_config = warp::get()
@@ -469,6 +477,7 @@ pub fn get_filter(
         .or(remove_staking_addresses)
         .or(node_sign_message)
         .or(block_ids_by_creator)
+        .or(version)
         .boxed()
 }
 
@@ -489,6 +498,11 @@ async fn get_node_config() -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_node_config", {});
     let context = models::with_serialization_context(|context| context.clone());
     Ok(warp::reply::json(&context))
+}
+
+async fn get_version(version: Version) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_version", {});
+    Ok(warp::reply::json(&version))
 }
 
 async fn get_consensus_config(
