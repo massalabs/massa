@@ -7,7 +7,7 @@
 //! or as CLI using the API command has a parameter.
 //!
 //! Parameters:
-//! * -c (--cli): The format of the displayed command output. Set to false display user-friendly output.
+//! * -c (--cli): The format of the displayed command output (Command Line Interface or user-friendly). Set to false display user-friendly output (default).
 //! * -n (--node): the node IP.
 //! * -s (--short) The format of the displayed hash. Set to true display sort hash (default).
 //! * -w (--wallet) activate the wallet command, using the file specified.
@@ -328,14 +328,11 @@ fn main() {
                 })
                 .ok()
         })
-        .unwrap_or(true);
+        .unwrap_or(false);
 	
-	if !cli {
-        repl.data.cli = false;
+	if cli {
+        repl.data.cli = true;
     }
-	else {
-		repl.data.cli = true;
-	}
 
     //ip address of the node to connect.
     let node_ip = matches
