@@ -49,13 +49,12 @@ use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Write;
-use std::fs::read_to_string;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::Ordering;
-mod config;
+mod client_config;
 mod data;
 mod repl;
 mod wallet;
@@ -109,7 +108,17 @@ fn main() {
 
     // load config
     let config_path = "config/config.toml";
-    let cfg = config::Config::from_toml(&read_to_string(config_path).unwrap()).unwrap();
+    let override_config_path = "config/user_config.toml";
+    let mut cfg = config::Config::default();
+    cfg.merge(config::File::with_name(config_path))
+        .expect("could not load main config file");
+    if std::path::Path::new(override_config_path).is_file() {
+        cfg.merge(config::File::with_name(override_config_path))
+            .expect("could not load override config file");
+    }
+    let cfg = cfg
+        .try_into::<client_config::Config>()
+        .expect("error structuring config");
 
     //add client commands that can be executed.
     // The Repl struct manage command registration for cli mode with clap and REPL mode with rustyline
