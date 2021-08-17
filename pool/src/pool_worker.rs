@@ -148,7 +148,9 @@ impl PoolWorker {
                 self.operation_pool.update_current_slot(slot)?
             }
             PoolCommand::UpdateLatestFinalPeriods(periods) => {
-                self.operation_pool.update_latest_final_periods(periods)?
+                self.operation_pool
+                    .update_latest_final_periods(periods.clone())?;
+                self.endorsement_pool.update_latest_final_periods(periods)
             }
             PoolCommand::GetOperationBatch {
                 target_slot,

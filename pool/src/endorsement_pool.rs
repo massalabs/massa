@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolConfig, PoolError};
-use models::{Endorsement, EndorsementId};
+use models::{Endorsement, EndorsementContent, EndorsementId};
 use std::collections::{HashMap, HashSet};
 
 pub struct EndorsementPool {
@@ -15,6 +15,17 @@ impl EndorsementPool {
             endorsements: Default::default(),
             cfg,
         }
+    }
+
+    /// Removes endorsements that are too old
+    pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {
+        self.endorsements.drain_filter(
+            |_,
+             Endorsement {
+                 content: EndorsementContent { slot, .. },
+                 ..
+             }| periods[slot.thread as usize] > slot.period,
+        );
     }
 
     /// Incoming endorsements. Returns newly added

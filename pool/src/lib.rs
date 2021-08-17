@@ -2,6 +2,7 @@
 
 #![feature(map_first_last)]
 #![feature(async_closure)]
+#![feature(hash_drain_filter)]
 
 #[macro_use]
 extern crate logging;
