@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolConfig, PoolError};
-use models::{Endorsement, EndorsementContent, EndorsementId};
+use models::{BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
 use std::collections::{HashMap, HashSet};
 
 pub struct EndorsementPool {
@@ -26,6 +26,21 @@ impl EndorsementPool {
                  ..
              }| periods[slot.thread as usize] > slot.period,
         );
+    }
+
+    pub fn get_endorsement(&self, target_slot: Slot, parent: BlockId) -> Vec<Endorsement> {
+        self.endorsements
+            .iter()
+            .filter_map(|(_, endorsement)| {
+                if endorsement.content.endorsed_block == parent.0
+                    && endorsement.content.slot == target_slot
+                {
+                    Some(endorsement.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Incoming endorsements. Returns newly added
