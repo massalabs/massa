@@ -2236,7 +2236,7 @@ impl BlockGraph {
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
         let slot_draw_address = match pos.draw(header.content.slot) {
-            Ok(addr) => addr,
+            Ok(addr) => addr[0],
             Err(ConsensusError::PosCycleUnavailable(_)) => {
                 // slot is not available yet
                 return Ok(HeaderCheckOutcome::WaitForSlot);
@@ -2482,7 +2482,7 @@ impl BlockGraph {
         {
             let miss_slot = Slot::new(miss_period, header.content.slot.thread);
             let slot_draw_address = match pos.draw(miss_slot) {
-                Ok(addr) => addr,
+                Ok(addr) => addr[0], //
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     // slot is not available yet
                     return Ok(HeaderCheckOutcome::WaitForSlot);
