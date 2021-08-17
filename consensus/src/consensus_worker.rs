@@ -11,9 +11,9 @@ use crypto::{
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
 use models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
-    OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
-    StakersCycleProductionStats,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    EndorsementContent, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
+    SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
@@ -355,9 +355,27 @@ impl ConsensusWorker {
             .update_current_slot(cur_slot)
             .await?;
 
-        // create endorsement if selected
+        let mut endorsments = Vec::new();
+        if cur_slot.period > 0 {
+            let endorsments_creators = self.pos.draw(cur_slot)?;
+            for i in 1..self.cfg.endorsement_nb + 1 {
+                for addr in endorsments_creators.iter() {
+                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
+                        let endo = create_endorsement(
+                            cur_slot,
+                            pub_k,
+                            priv_k,
+                            i as u32,
+                            self.block_db.get_best_parents()[cur_slot.thread as usize].0,
+                        );
+                        endorsments.push(endo)
+                    }
+                }
+            }
+        }
+        // todo send endorsments to pool
 
-        // create a block if enabled and possible
+        // create a endorsement and block if enabled and possible
         if !self.cfg.disable_block_creation && cur_slot.period > 0 {
             let creator_info = match self.pos.draw(cur_slot) {
                 Ok(addr) => {
@@ -1279,4 +1297,21 @@ async fn load_initial_staking_keys(
             ))
         })
         .collect()
+}
+
+pub fn create_endorsement(
+    slot: Slot,
+    sender_public_key: &PublicKey,
+    private_key: &PrivateKey,
+    index: u32,
+    endorsed_block: Hash,
+) -> Result<Endorsement, ConsensusError> {
+    let content = EndorsementContent {
+        sender_public_key: sender_public_key.clone(),
+        slot,
+        index,
+        endorsed_block,
+    };
+    let signature = crypto::sign(&Hash::hash(&content.to_bytes_compact()?), private_key)?;
+    Ok(Endorsement { content, signature })
 }
