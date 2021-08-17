@@ -10,7 +10,7 @@ edition = "2018"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 rustyline = "7.1.0"
 serde = { version = "1.0", features = ["derive"] }
-toml = { version = "0.5" }
+config = { version = "0.11" }
 clap = "2.33.3"
 thiserror = "1.0"
 crypto = {path = "../crypto"}
