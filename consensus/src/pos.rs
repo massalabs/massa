@@ -293,7 +293,7 @@ pub struct ProofOfStake {
     cfg: ConsensusConfig,
     /// Index by thread and cycle number
     cycle_states: Vec<VecDeque<ThreadCycleState>>,
-    /// Cycle draw cache: cycle_number => (counter, map(slot => vec<address> (nb endorsement +1)))
+    /// Cycle draw cache: cycle_number => (counter, map(slot => (block_creator_addr, vec<endorsement_creator_addr>)))
     draw_cache: HashMap<u64, (usize, HashMap<Slot, (Address, Vec<Address>)>)>,
     draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
@@ -654,7 +654,7 @@ impl ProofOfStake {
                 Err(_) => return None,
             }
             .iter()
-            .filter(|(&k, addr)| addr.0 == address && k >= from_slot)
+            .filter(|(&k, (b_addr, _))| *b_addr == address && k >= from_slot)
             .min_by_key(|(&k, _addr)| k);
             if let Some((next_slot, _next_addr)) = next_draw {
                 return Some(*next_slot);
@@ -792,8 +792,8 @@ impl ProofOfStake {
                 continue;
             }
             for draw_thread in 0..self.cfg.thread_count {
-                let mut res = Vec::new();
-                for _ in 0..self.cfg.endorsement_count + 1 {
+                let mut res = Vec::with_capacity(self.cfg.endorsement_count as usize + 1);
+                for _ in 0..(self.cfg.endorsement_count + 1) {
                     let sample = rng.sample(&distribution);
 
                     // locate the draw in the cum_sum through binary search

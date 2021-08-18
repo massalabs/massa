@@ -4,12 +4,14 @@ use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    ModelsError, Slot,
+    BlockId, ModelsError, Slot, BLOCK_ID_SIZE_BYTES,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
+    sign,
     signature::{
-        verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+        verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
+        SIGNATURE_SIZE_BYTES,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -60,6 +62,12 @@ pub struct Endorsement {
     pub signature: Signature,
 }
 
+impl EndorsementContent {
+    pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
+        Ok(Hash::hash(&self.to_bytes_compact()?))
+    }
+}
+
 impl Endorsement {
     /// Verify the signature and integrity of the endorsement and computes ID
     pub fn verify_integrity(&self) -> Result<EndorsementId, ModelsError> {
@@ -69,10 +77,21 @@ impl Endorsement {
             &self.signature,
             &self.content.sender_public_key,
         )?;
-        self.get_endorsement_id()
+        self.compute_endorsement_id()
     }
 
-    pub fn get_endorsement_id(&self) -> Result<EndorsementId, ModelsError> {
+    pub fn new_signed(
+        private_key: &PrivateKey,
+        content: EndorsementContent,
+    ) -> Result<(EndorsementId, Self), ModelsError> {
+        let content_hash = content.compute_hash()?;
+        let signature = sign(&content_hash, private_key)?;
+        let endorsement = Endorsement { content, signature };
+        let e_id = endorsement.compute_endorsement_id()?;
+        Ok((e_id, endorsement))
+    }
+
+    pub fn compute_endorsement_id(&self) -> Result<EndorsementId, ModelsError> {
         Ok(EndorsementId(Hash::hash(&self.to_bytes_compact()?)))
     }
 }
@@ -118,7 +137,7 @@ pub struct EndorsementContent {
     /// endorsement index inside the block
     pub index: u32,
     /// hash of endorsed block
-    pub endorsed_block: Hash,
+    pub endorsed_block: BlockId,
 }
 
 impl SerializeCompact for EndorsementContent {
@@ -134,7 +153,7 @@ impl SerializeCompact for EndorsementContent {
         // endorsement index inside the block
         res.extend(self.index.to_varint_bytes());
 
-        // hash of endorsed block
+        // id of endorsed block
         res.extend(&self.endorsed_block.to_bytes());
 
         Ok(res)
@@ -157,9 +176,9 @@ impl DeserializeCompact for EndorsementContent {
         let (index, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
-        // hash of endorsed block
-        let endorsed_block = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += HASH_SIZE_BYTES;
+        // id of endorsed block
+        let endorsed_block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += BLOCK_ID_SIZE_BYTES;
 
         Ok((
             EndorsementContent {
@@ -207,7 +226,7 @@ mod tests {
             sender_public_key,
             slot: Slot::new(10, 1),
             index: 0,
-            endorsed_block: Hash::hash(&[]),
+            endorsed_block: BlockId(Hash::hash(&[])),
         };
         let hash = Hash::hash(&content.to_bytes_compact().unwrap());
         let signature = crypto::sign(&hash, &sender_priv).unwrap();

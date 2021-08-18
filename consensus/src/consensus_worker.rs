@@ -12,8 +12,8 @@ use crypto::{
 };
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
-    SerializeCompact, Slot, StakersCycleProductionStats,
+    EndorsementContent, EndorsementId, Operation, OperationId, OperationSearchResult,
+    OperationSearchResultStatus, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
@@ -355,38 +355,10 @@ impl ConsensusWorker {
             .update_current_slot(cur_slot)
             .await?;
 
-        let mut endorsments = Vec::new();
-        if cur_slot.period > 0 {
-            let endorsments_creators = self.pos.draw(cur_slot)?.1;
-            for (endorsement_index, endorsement_creator) in
-                endorsments_creators.into_iter().enumerate()
-            {
-                if let Some((pub_k, priv_k)) = self.staking_keys.get(&endorsement_creator) {
-                    let endo = create_endorsement(
-                        cur_slot,
-                        pub_k,
-                        priv_k,
-                        endorsement_index as u32,
-                        self.block_db.get_best_parents()[cur_slot.thread as usize].0,
-                    );
-                    endorsments.push(endo)
-                }
-            }
-        }
-        // todo send endorsments to pool
-
-        // create a endorsement and block if enabled and possible
+        // create endorsements and block if enabled and possible
         if !self.cfg.disable_block_creation && cur_slot.period > 0 {
-            let creator_info = match self.pos.draw(cur_slot) {
-                Ok(addr) => {
-                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr.0) {
-                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                        Some((addr.0, *pub_k, *priv_k))
-                    } else {
-                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
-                        None
-                    }
-                }
+            let (block_draw, endorsement_draws) = match self.pos.draw(cur_slot) {
+                Ok((b_draw, e_draws)) => (Some(b_draw), e_draws),
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     massa_trace!(
                         "consensus.consensus_worker.slot_tick.block_creatorunavailable",
@@ -394,31 +366,66 @@ impl ConsensusWorker {
                     );
                     warn!("desynchronization detected because the lookback cycle is not final at the current time");
                     let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
-                    None
+                    (None, Vec::new())
                 }
                 Err(err) => return Err(err),
             };
-            if let Some((addr, pub_k, priv_k)) = creator_info {
-                self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
-                if let Some(next_addr_slot) = self.pos.get_next_selected_slot(self.next_slot, addr)
-                {
-                    info!(
-                        "Next slot for address {}: cycle {}, period {}, thread {}, at time {}",
-                        addr,
-                        next_addr_slot.get_cycle(self.cfg.periods_per_cycle),
-                        next_addr_slot.period,
-                        next_addr_slot.thread,
-                        match get_block_slot_timestamp(
-                            self.cfg.thread_count,
-                            self.cfg.t0,
-                            self.cfg.genesis_timestamp,
-                            next_addr_slot
-                        ) {
-                            Ok(time) => time.to_utc_string(),
-                            Err(err) =>
-                                format!("(internal error during get_block_slot_timestamp: {})", err),
-                        }
-                    );
+
+            // create endorsements
+            //TODO add check that we aren't accidentally double-staking endorsements
+            let mut endorsements = HashMap::new();
+            for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
+                if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
+                    massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
+                        { "index": endorsement_index, "addr": addr, "pubkey": pub_k, "unlocked": true });
+                    let (endorsement_id, endorsement) = create_endorsement(
+                        cur_slot,
+                        *pub_k,
+                        priv_k,
+                        endorsement_index as u32,
+                        self.block_db.get_best_parents()[cur_slot.thread as usize],
+                    )?;
+                    endorsements.insert(endorsement_id, endorsement);
+                } else {
+                    massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
+                        { "index": endorsement_index, "addr": addr, "unlocked": false });
+                }
+            }
+            if !endorsements.is_empty() {
+                // send endorsement batch to pool
+                self.pool_command_sender
+                    .add_endorsements(endorsements)
+                    .await?;
+            }
+
+            // create block (note that we do that AFTER endorsement creation to make sure we can include our own endorsements)
+            if let Some(addr) = block_draw {
+                if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
+                    massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
+                    self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+                    if let Some(next_addr_slot) =
+                        self.pos.get_next_selected_slot(self.next_slot, addr)
+                    {
+                        info!(
+                            "Next block creation slot for address {}: cycle {}, period {}, thread {}, at time {}",
+                            addr,
+                            next_addr_slot.get_cycle(self.cfg.periods_per_cycle),
+                            next_addr_slot.period,
+                            next_addr_slot.thread,
+                            match get_block_slot_timestamp(
+                                self.cfg.thread_count,
+                                self.cfg.t0,
+                                self.cfg.genesis_timestamp,
+                                next_addr_slot
+                            ) {
+                                Ok(time) => time.to_utc_string(),
+                                Err(err) =>
+                                    format!("(internal error during get_block_slot_timestamp: {})", err),
+                            }
+                        );
+                    }
+                } else {
+                    massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
                 }
             }
         }
@@ -727,7 +734,7 @@ impl ConsensusWorker {
                         } else {
                             match self.pos.draw(cur_slot) {
                                 Err(err) => break Err(err),
-                                Ok(sel_addr) => sel_addr.0,
+                                Ok((sel_addr, _)) => sel_addr,
                             }
                         },
                     ));
@@ -1301,17 +1308,17 @@ async fn load_initial_staking_keys(
 
 pub fn create_endorsement(
     slot: Slot,
-    sender_public_key: &PublicKey,
+    sender_public_key: PublicKey,
     private_key: &PrivateKey,
     index: u32,
-    endorsed_block: Hash,
-) -> Result<Endorsement, ConsensusError> {
+    endorsed_block: BlockId,
+) -> Result<(EndorsementId, Endorsement), ConsensusError> {
     let content = EndorsementContent {
-        sender_public_key: sender_public_key.clone(),
+        sender_public_key,
         slot,
         index,
         endorsed_block,
     };
-    let signature = crypto::sign(&Hash::hash(&content.to_bytes_compact()?), private_key)?;
-    Ok(Endorsement { content, signature })
+    let (e_id, endorsement) = Endorsement::new_signed(private_key, content)?;
+    Ok((e_id, endorsement))
 }

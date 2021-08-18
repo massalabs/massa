@@ -40,7 +40,7 @@ pub enum PoolCommand {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     FinalOperations(HashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
-    AddEndorsements(Vec<Endorsement>),
+    AddEndorsements(HashMap<EndorsementId, Endorsement>),
 }
 
 /// Events that are emitted by pool.
@@ -183,15 +183,16 @@ impl PoolWorker {
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
             PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops)?,
-            PoolCommand::AddEndorsements(endorsements) => {
-                let map = endorsements
-                    .iter()
-                    .map(|ed| Ok((ed.get_endorsement_id()?, ed.clone())))
-                    .collect::<Result<HashMap<EndorsementId, Endorsement>, PoolError>>()?;
-                self.endorsement_pool.add_endorsements(map.clone())?;
-                self.protocol_command_sender
-                    .propagate_endorsements(map)
-                    .await?;
+            PoolCommand::AddEndorsements(mut endorsements) => {
+                let newly_added = self
+                    .endorsement_pool
+                    .add_endorsements(endorsements.clone())?;
+                endorsements.retain(|e_id, _e| newly_added.contains(e_id));
+                if !endorsements.is_empty() {
+                    self.protocol_command_sender
+                        .propagate_endorsements(endorsements)
+                        .await?;
+                }
             }
         }
         Ok(())
