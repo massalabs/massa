@@ -64,6 +64,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     BootstrapConfig {
@@ -184,6 +185,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                     slot: Slot::new(1, 1),
                     parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
                     operation_merkle_root: Hash::hash("op_hash".as_bytes()),
+                    endorsements: Vec::new(),
                 },
                 signature: get_dummy_signature("dummy_sig_1"),
             },

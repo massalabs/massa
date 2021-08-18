@@ -35,6 +35,7 @@ async fn test_max_block_count() {
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     tools::storage_test(config, async move |storage| {
@@ -106,6 +107,7 @@ async fn test_max_nb_blocks() {
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     tools::storage_test(config, async move |storage| {
@@ -177,6 +179,7 @@ async fn test_get_slot_range() {
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     tools::storage_test(config, async move |storage| {

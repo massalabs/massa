@@ -425,6 +425,7 @@ mod test {
             max_operations_per_message: 1024,
             max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
+            max_block_endorsments: 8,
         };
         crate::init_serialization_context(ctx);
         let private_key = crypto::generate_random_private_key();
@@ -442,6 +443,7 @@ mod test {
                     BlockId(Hash::hash("ghi".as_bytes())),
                 ],
                 operation_merkle_root: Hash::hash("mno".as_bytes()),
+                endorsements: Vec::new(),
             },
         )
         .unwrap();

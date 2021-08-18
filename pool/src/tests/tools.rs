@@ -71,6 +71,7 @@ pub fn example_pool_config() -> (PoolConfig, u8, u64) {
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     (
