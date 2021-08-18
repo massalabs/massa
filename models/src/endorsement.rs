@@ -4,7 +4,7 @@ use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    ModelsError, Slot,
+    BlockId, ModelsError, Slot, BLOCK_ID_SIZE_BYTES,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -118,7 +118,7 @@ pub struct EndorsementContent {
     /// endorsement index inside the block
     pub index: u32,
     /// hash of endorsed block
-    pub endorsed_block: Hash,
+    pub endorsed_block: BlockId,
 }
 
 impl SerializeCompact for EndorsementContent {
@@ -158,8 +158,8 @@ impl DeserializeCompact for EndorsementContent {
         cursor += delta;
 
         // hash of endorsed block
-        let endorsed_block = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += HASH_SIZE_BYTES;
+        let endorsed_block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += BLOCK_ID_SIZE_BYTES;
 
         Ok((
             EndorsementContent {
@@ -197,6 +197,7 @@ mod tests {
             max_operations_per_message: 1024,
             max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
+            max_block_endorsments: 8,
         };
         crate::init_serialization_context(ctx);
 
@@ -207,7 +208,7 @@ mod tests {
             sender_public_key,
             slot: Slot::new(10, 1),
             index: 0,
-            endorsed_block: Hash::hash(&[]),
+            endorsed_block: BlockId(Hash::hash("blk".as_bytes())),
         };
         let hash = Hash::hash(&content.to_bytes_compact().unwrap());
         let signature = crypto::sign(&hash, &sender_priv).unwrap();

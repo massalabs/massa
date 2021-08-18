@@ -8,8 +8,8 @@ use crypto::{
 };
 use futures::Future;
 use models::{
-    Address, Amount, Endorsement, EndorsementContent, Operation, OperationContent, OperationType,
-    SerializeCompact, Slot,
+    Address, Amount, BlockId, Endorsement, EndorsementContent, Operation, OperationContent,
+    OperationType, SerializeCompact, Slot,
 };
 use std::str::FromStr;
 
@@ -71,6 +71,7 @@ pub fn example_pool_config() -> (PoolConfig, u8, u64) {
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     (
@@ -118,7 +119,7 @@ pub fn create_endorsement() -> Endorsement {
         sender_public_key,
         slot: Slot::new(10, 1),
         index: 0,
-        endorsed_block: Hash::hash(&[]),
+        endorsed_block: BlockId(Hash::hash("blabla".as_bytes())),
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();

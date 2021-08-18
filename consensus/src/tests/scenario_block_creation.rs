@@ -468,6 +468,7 @@ async fn test_block_filling() {
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
                     operation_merkle_root: Hash::hash(&Vec::new()[..]),
+                    endorsements: Vec::new(),
                 },
             )
             .unwrap();
