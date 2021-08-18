@@ -344,11 +344,8 @@ fn main() {
                 })
                 .ok()
         })
-        .unwrap_or(true);
-
-    if !cli {
-        repl.data.cli = false;
-    } else {
+        .unwrap_or(false);
+    if cli {
         repl.data.cli = true;
     }
 
