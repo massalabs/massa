@@ -163,7 +163,7 @@ pub fn create_endorsement() -> Endorsement {
         sender_public_key,
         slot: Slot::new(10, 1),
         index: 0,
-        endorsed_block: Hash::hash(&[]),
+        endorsed_block: BlockId(Hash::hash(&[])),
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
