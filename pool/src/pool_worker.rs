@@ -13,6 +13,7 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 
+use crypto::signature::PublicKey;
 use models::{Address, BlockId, Endorsement, Operation, OperationId, OperationSearchResult, Slot};
 use tokio::sync::{mpsc, oneshot};
 
@@ -41,6 +42,7 @@ pub enum PoolCommand {
     GetEndorsements {
         target_slot: Slot,
         parent: BlockId,
+        creators: Vec<PublicKey>,
         response_tx: oneshot::Sender<Vec<Endorsement>>,
     },
 }
@@ -190,9 +192,13 @@ impl PoolWorker {
             PoolCommand::GetEndorsements {
                 target_slot,
                 parent,
+                creators,
                 response_tx,
             } => response_tx
-                .send(self.endorsement_pool.get_endorsement(target_slot, parent))
+                .send(
+                    self.endorsement_pool
+                        .get_endorsement(target_slot, parent, creators),
+                )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())
