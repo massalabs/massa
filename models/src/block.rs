@@ -2,8 +2,8 @@
 
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    DeserializeMinBEInt, Endorsement, ModelsError, Operation, OperationId, SerializeCompact,
-    SerializeMinBEInt, Slot, SLOT_KEY_SIZE,
+    DeserializeMinBEInt, DeserializeVarInt, Endorsement, ModelsError, Operation, OperationId,
+    SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -321,13 +321,10 @@ impl SerializeCompact for BlockHeaderContent {
         res.extend(&self.operation_merkle_root.to_bytes());
 
         // endorsements
-        let max_block_endorsements =
-            with_serialization_context(|context| context.max_block_endorsments);
-
         let endorsements_count: u32 = self.endorsements.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many endorsements: {:?}", err))
         })?;
-        res.extend(endorsements_count.to_be_bytes_min(max_block_endorsements)?);
+        res.extend(endorsements_count.to_varint_bytes());
         for endorsement in self.endorsements.iter() {
             res.extend(endorsement.to_bytes_compact()?);
         }
@@ -377,14 +374,13 @@ impl DeserializeCompact for BlockHeaderContent {
 
         // endorsements
         let (endorsement_count, delta) =
-            u32::from_be_bytes_min(&buffer[cursor..], max_block_endorsments)?;
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsments)?;
         cursor += delta;
 
         let mut endorsements: Vec<Endorsement> = Vec::with_capacity(endorsement_count as usize);
-        for _ in 0..(endorsement_count as usize) {
+        for _ in 0..endorsement_count {
             let (endorsement, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-
             endorsements.push(endorsement);
         }
 
@@ -404,6 +400,7 @@ impl DeserializeCompact for BlockHeaderContent {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::EndorsementContent;
     use serial_test::serial;
 
     #[test]
@@ -443,7 +440,26 @@ mod test {
                     BlockId(Hash::hash("ghi".as_bytes())),
                 ],
                 operation_merkle_root: Hash::hash("mno".as_bytes()),
-                endorsements: Vec::new(),
+                endorsements: vec![
+                    Endorsement {
+                        content: EndorsementContent {
+                            sender_public_key: public_key,
+                            slot: Slot::new(1, 2),
+                            index: 1,
+                            endorsed_block: BlockId(Hash::hash("blk1".as_bytes())),
+                        },
+                        signature: sign(&Hash::hash("dta".as_bytes()), &private_key).unwrap(),
+                    },
+                    Endorsement {
+                        content: EndorsementContent {
+                            sender_public_key: public_key,
+                            slot: Slot::new(4, 5),
+                            index: 3,
+                            endorsed_block: BlockId(Hash::hash("blk2".as_bytes())),
+                        },
+                        signature: sign(&Hash::hash("dat".as_bytes()), &private_key).unwrap(),
+                    },
+                ],
             },
         )
         .unwrap();
