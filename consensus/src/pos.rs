@@ -786,7 +786,7 @@ impl ProofOfStake {
             }
             for draw_thread in 0..self.cfg.thread_count {
                 let mut res = Vec::new();
-                for _ in 0..self.cfg.endorsement_nb + 1 {
+                for _ in 0..self.cfg.endorsement_count + 1 {
                     let sample = rng.sample(&distribution);
 
                     // locate the draw in the cum_sum through binary search

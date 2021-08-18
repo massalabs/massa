@@ -358,7 +358,7 @@ impl ConsensusWorker {
         let mut endorsments = Vec::new();
         if cur_slot.period > 0 {
             let endorsments_creators = self.pos.draw(cur_slot)?;
-            for i in 1..self.cfg.endorsement_nb + 1 {
+            for i in 1..self.cfg.endorsement_count + 1 {
                 for addr in endorsments_creators.iter() {
                     if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
                         let endo = create_endorsement(

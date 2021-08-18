@@ -665,7 +665,7 @@ pub fn default_consensus_config(
         staking_keys_path: staking_keys_path.to_path_buf(),
         end_timestamp: None,
         max_send_wait: 500.into(),
-        endorsement_nb: 8,
+        endorsement_count: 8,
     }
 }
 
