@@ -294,7 +294,7 @@ pub struct ProofOfStake {
     /// Index by thread and cycle number
     cycle_states: Vec<VecDeque<ThreadCycleState>>,
     /// Cycle draw cache: cycle_number => (counter, map(slot => vec<address> (nb endorsement +1)))
-    draw_cache: HashMap<u64, (usize, HashMap<Slot, Vec<Address>>)>,
+    draw_cache: HashMap<u64, (usize, HashMap<Slot, (Address, Vec<Address>)>)>,
     draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
     initial_rolls: Option<Vec<RollCounts>>,
@@ -654,7 +654,7 @@ impl ProofOfStake {
                 Err(_) => return None,
             }
             .iter()
-            .filter(|(&k, addr)| addr[0] == address && k >= from_slot)
+            .filter(|(&k, addr)| addr.0 == address && k >= from_slot)
             .min_by_key(|(&k, _addr)| k);
             if let Some((next_slot, _next_addr)) = next_draw {
                 return Some(*next_slot);
@@ -666,7 +666,7 @@ impl ProofOfStake {
     fn get_cycle_draws(
         &mut self,
         cycle: u64,
-    ) -> Result<&HashMap<Slot, Vec<Address>>, ConsensusError> {
+    ) -> Result<&HashMap<Slot, (Address, Vec<Address>)>, ConsensusError> {
         self.draw_cache_counter += 1;
 
         // check if cycle is already in cache
@@ -767,7 +767,8 @@ impl ProofOfStake {
 
         // perform draws
         let distribution = Uniform::new(0, cum_sum_max);
-        let mut draws: HashMap<Slot, Vec<Address>> = HashMap::with_capacity(blocks_in_cycle);
+        let mut draws: HashMap<Slot, (Address, Vec<Address>)> =
+            HashMap::with_capacity(blocks_in_cycle);
         let cycle_first_period = cycle * self.cfg.periods_per_cycle;
         let cycle_last_period = (cycle + 1) * self.cfg.periods_per_cycle - 1;
         if cycle_first_period == 0 {
@@ -776,7 +777,13 @@ impl ProofOfStake {
                 &self.cfg.genesis_key,
             ))?;
             for draw_thread in 0..self.cfg.thread_count {
-                draws.insert(Slot::new(0, draw_thread), vec![genesis_addr]); // maybe add endorsement in genesis blocks ?
+                draws.insert(
+                    Slot::new(0, draw_thread),
+                    (
+                        genesis_addr,
+                        vec![genesis_addr; self.cfg.endorsement_count as usize],
+                    ),
+                );
             }
         }
         for draw_period in cycle_first_period..=cycle_last_period {
@@ -799,7 +806,10 @@ impl ProofOfStake {
                     res.push(found_addr)
                 }
 
-                draws.insert(Slot::new(draw_period, draw_thread), res);
+                draws.insert(
+                    Slot::new(draw_period, draw_thread),
+                    (res[0], res[1..].to_vec()),
+                );
             }
         }
 
@@ -811,7 +821,7 @@ impl ProofOfStake {
             .1)
     }
 
-    pub fn draw(&mut self, slot: Slot) -> Result<Vec<Address>, ConsensusError> {
+    pub fn draw(&mut self, slot: Slot) -> Result<(Address, Vec<Address>), ConsensusError> {
         let cycle = slot.get_cycle(self.cfg.periods_per_cycle);
         let cycle_draws = self.get_cycle_draws(cycle)?;
         Ok(cycle_draws

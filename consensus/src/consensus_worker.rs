@@ -357,19 +357,19 @@ impl ConsensusWorker {
 
         let mut endorsments = Vec::new();
         if cur_slot.period > 0 {
-            let endorsments_creators = self.pos.draw(cur_slot)?;
-            for i in 1..self.cfg.endorsement_count + 1 {
-                for addr in endorsments_creators.iter() {
-                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
-                        let endo = create_endorsement(
-                            cur_slot,
-                            pub_k,
-                            priv_k,
-                            i as u32,
-                            self.block_db.get_best_parents()[cur_slot.thread as usize].0,
-                        );
-                        endorsments.push(endo)
-                    }
+            let endorsments_creators = self.pos.draw(cur_slot)?.1;
+            for (endorsement_index, endorsement_creator) in
+                endorsments_creators.into_iter().enumerate()
+            {
+                if let Some((pub_k, priv_k)) = self.staking_keys.get(&endorsement_creator) {
+                    let endo = create_endorsement(
+                        cur_slot,
+                        pub_k,
+                        priv_k,
+                        endorsement_index as u32,
+                        self.block_db.get_best_parents()[cur_slot.thread as usize].0,
+                    );
+                    endorsments.push(endo)
                 }
             }
         }
@@ -379,9 +379,9 @@ impl ConsensusWorker {
         if !self.cfg.disable_block_creation && cur_slot.period > 0 {
             let creator_info = match self.pos.draw(cur_slot) {
                 Ok(addr) => {
-                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr[0]) {
+                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr.0) {
                         massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                        Some((addr[0], *pub_k, *priv_k))
+                        Some((addr.0, *pub_k, *priv_k))
                     } else {
                         massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
                         None
@@ -727,7 +727,7 @@ impl ConsensusWorker {
                         } else {
                             match self.pos.draw(cur_slot) {
                                 Err(err) => break Err(err),
-                                Ok(sel_addr) => sel_addr[0],
+                                Ok(sel_addr) => sel_addr.0,
                             }
                         },
                     ));
