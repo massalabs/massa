@@ -13,7 +13,9 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 
-use models::{Address, Operation, OperationId, OperationSearchResult, Slot};
+use models::{
+    Address, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult, Slot,
+};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.
@@ -38,6 +40,7 @@ pub enum PoolCommand {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     FinalOperations(HashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
+    AddEndorsements(Vec<Endorsement>),
 }
 
 /// Events that are emitted by pool.
@@ -180,6 +183,16 @@ impl PoolWorker {
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
             PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops)?,
+            PoolCommand::AddEndorsements(endorsements) => {
+                let map = endorsements
+                    .iter()
+                    .map(|ed| Ok((ed.get_endorsement_id()?, ed.clone())))
+                    .collect::<Result<HashMap<EndorsementId, Endorsement>, PoolError>>()?;
+                self.endorsement_pool.add_endorsements(map.clone())?;
+                self.protocol_command_sender
+                    .propagate_endorsements(map)
+                    .await?;
+            }
         }
         Ok(())
     }
