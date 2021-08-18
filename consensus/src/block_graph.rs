@@ -2236,8 +2236,8 @@ impl BlockGraph {
         // (step 1 in consensus/pos.md)
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
-        let slot_draw_address = match pos.draw(header.content.slot) {
-            Ok(addr) => addr,
+        let (slot_draw_address, endorsement_draws) = match pos.draw(header.content.slot) {
+            Ok(draws) => draws,
             Err(ConsensusError::PosCycleUnavailable(_)) => {
                 // slot is not available yet
                 return Ok(HeaderCheckOutcome::WaitForSlot);
@@ -2482,8 +2482,8 @@ impl BlockGraph {
             (parents[header.content.slot.thread as usize].1 + 1)..header.content.slot.period
         {
             let miss_slot = Slot::new(miss_period, header.content.slot.thread);
-            let slot_draw_address = match pos.draw(miss_slot) {
-                Ok(addr) => addr,
+            let (slot_draw_address, endorsement_draws) = match pos.draw(miss_slot) {
+                Ok(draws) => draws,
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     // slot is not available yet
                     return Ok(HeaderCheckOutcome::WaitForSlot);
