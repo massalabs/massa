@@ -757,7 +757,8 @@ impl SerializeCompact for LedgerExport {
     /// #     max_endorsements_per_message: 1024,
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
-    /// #     max_bootstrap_pos_entries:10000,
+    /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
