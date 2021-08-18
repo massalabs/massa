@@ -19,7 +19,7 @@ impl EndorsementPool {
 
     /// Removes endorsements that are too old
     pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {
-        self.endorsements.drain_filter(
+        self.endorsements.retain(
             |_,
              Endorsement {
                  content: EndorsementContent { slot, .. },
