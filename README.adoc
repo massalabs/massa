@@ -92,4 +92,4 @@ Here is a set of tutorials:
 
 ## FAQ
 
-You'll find answer to common issues and questions regarding the Massa protocol in the link:docs/faq.adoc[FAQ].
+You'll find answer to common questions regarding the Massa protocol in the link:docs/faq.adoc[FAQ].
