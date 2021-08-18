@@ -444,6 +444,7 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&Vec::new()[..]),
+                endorsements: Vec::new(),
             },
         )?;
         let block = Block {
@@ -563,6 +564,7 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&total_hash),
+                endorsements: Vec::new(), // todo
             },
         )?;
         let block = Block { header, operations };
