@@ -125,6 +125,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                             slot: slot_a,
                             parents: Vec::new(),
                             operation_merkle_root,
+                            endorsements: Vec::new(),
                         },
                     )
                     .unwrap();
