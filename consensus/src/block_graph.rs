@@ -891,6 +891,7 @@ fn create_genesis_block(
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
+            endorsements: Vec::new(),
         },
     )?;
 
