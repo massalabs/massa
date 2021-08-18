@@ -13,7 +13,7 @@ use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
-    Operation, OperationContent, SerializeCompact, Slot,
+    Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
 use std::str::FromStr;
 use time::UTime;
@@ -64,6 +64,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     BootstrapConfig {
@@ -184,6 +185,26 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                     slot: Slot::new(1, 1),
                     parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
                     operation_merkle_root: Hash::hash("op_hash".as_bytes()),
+                    endorsements: vec![
+                        Endorsement {
+                            content: EndorsementContent {
+                                sender_public_key: get_random_public_key(),
+                                slot: Slot::new(1, 2),
+                                index: 1,
+                                endorsed_block: get_dummy_block_id("p1"),
+                            },
+                            signature: get_dummy_signature("dummy_sig_0"),
+                        },
+                        Endorsement {
+                            content: EndorsementContent {
+                                sender_public_key: get_random_public_key(),
+                                slot: Slot::new(4, 5),
+                                index: 3,
+                                endorsed_block: get_dummy_block_id("p1"),
+                            },
+                            signature: get_dummy_signature("dummy_sig_00"),
+                        },
+                    ],
                 },
                 signature: get_dummy_signature("dummy_sig_1"),
             },

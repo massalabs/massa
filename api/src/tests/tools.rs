@@ -138,6 +138,7 @@ pub fn initialize_context() -> models::SerializationContext {
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     };
     models::init_serialization_context(ctx.clone());
     ctx
@@ -196,6 +197,7 @@ pub fn get_header(slot: Slot, creator: Option<PublicKey>) -> (BlockId, BlockHead
             slot,
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
+            endorsements: Vec::new(),
         },
     )
     .unwrap()
@@ -313,6 +315,7 @@ pub fn get_test_block() -> Block {
                     get_dummy_block_id("parent2"),
                 ],
                 slot: Slot::new(1, 0),
+                endorsements: Vec::new(),
             },
             signature: crypto::signature::Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"

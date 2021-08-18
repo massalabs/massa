@@ -134,6 +134,7 @@ impl SerializeCompact for Slot {
     /// #    max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
@@ -172,6 +173,7 @@ impl DeserializeCompact for Slot {
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);

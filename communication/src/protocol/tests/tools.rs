@@ -57,6 +57,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
             slot: Slot::new(0, 0),
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
+            endorsements: Vec::new(),
         },
     )
     .unwrap();
@@ -86,6 +87,7 @@ pub fn create_block_with_operations(
             slot,
             parents: Vec::new(),
             operation_merkle_root,
+            endorsements: Vec::new(),
         },
     )
     .unwrap();
@@ -161,7 +163,7 @@ pub fn create_endorsement() -> Endorsement {
         sender_public_key,
         slot: Slot::new(10, 1),
         index: 0,
-        endorsed_block: Hash::hash(&[]),
+        endorsed_block: BlockId(Hash::hash(&[])),
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
@@ -215,6 +217,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     ProtocolConfig {
