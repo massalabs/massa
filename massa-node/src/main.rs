@@ -4,7 +4,7 @@
 #![feature(destructuring_assignment)]
 
 extern crate logging;
-mod config;
+mod node_config;
 use api::{start_api_controller, ApiEvent, ApiEventReceiver, ApiManager};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
@@ -21,10 +21,10 @@ use models::{init_serialization_context, Address, SerializationContext};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use storage::{start_storage, StorageManager};
 use time::UTime;
-use tokio::{fs::read_to_string, signal};
+use tokio::signal;
 
 async fn launch(
-    cfg: config::Config,
+    cfg: node_config::Config,
 ) -> (
     PoolCommandSender,
     ConsensusEventReceiver,
@@ -134,6 +134,7 @@ async fn launch(
 
     // launch API controller
     let (api_event_receiver, api_manager) = start_api_controller(
+        cfg.version,
         cfg.api.clone(),
         cfg.consensus.clone(),
         cfg.protocol.clone(),
@@ -173,7 +174,7 @@ async fn launch(
     )
 }
 
-async fn run(cfg: config::Config) {
+async fn run(cfg: node_config::Config) {
     loop {
         let (
             pool_command_sender,
@@ -612,7 +613,17 @@ async fn stop(
 async fn main() {
     // load config
     let config_path = "config/config.toml";
-    let cfg = config::Config::from_toml(&read_to_string(config_path).await.unwrap()).unwrap();
+    let override_config_path = "config/user_config.toml";
+    let mut cfg = config::Config::default();
+    cfg.merge(config::File::with_name(config_path))
+        .expect("could not load main config file");
+    if std::path::Path::new(override_config_path).is_file() {
+        cfg.merge(config::File::with_name(override_config_path))
+            .expect("could not load override config file");
+    }
+    let cfg = cfg
+        .try_into::<node_config::Config>()
+        .expect("error structuring config");
 
     // setup logging
     stderrlog::new()

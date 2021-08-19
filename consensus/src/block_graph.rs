@@ -74,17 +74,7 @@ pub struct ActiveBlock {
 impl ActiveBlock {
     /// Computes the fitness of the block
     fn fitness(&self) -> u64 {
-        /*
-        self.block
-            .header
-            .endorsements
-            .iter()
-            .fold(1, |acc, endorsement| match endorsement {
-                Some(_) => acc + 1,
-                None => acc,
-            })
-        */
-        1
+        1 + self.block.header.content.endorsements.len() as u64
     }
 }
 
