@@ -2270,6 +2270,52 @@ impl BlockGraph {
             )));
         }
 
+        let mut endorsements_to_check = header.content.endorsements.clone();
+        // check endorsements
+        for (i, drawn) in endorsement_draws.iter().enumerate() {
+            if let Some((idx, ed)) = header
+                .content
+                .endorsements
+                .iter()
+                .enumerate()
+                .find(|(_, ed)| ed.content.index == i as u32)
+            {
+                endorsements_to_check.remove(idx);
+                if ed.content.slot != header.content.slot {
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        format!(
+                            "Bad endorsement slot for header in slot: {}",
+                            header.content.slot
+                        ),
+                    )));
+                }
+                if Address::from_public_key(&ed.content.sender_public_key)? != *drawn {
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        format!("Bad endorser for header in slot: {}", header.content.slot),
+                    )));
+                }
+                if ed.content.endorsed_block
+                    != header.content.parents[header.content.slot.thread as usize]
+                {
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        format!(
+                            "Bad endorsed parent for header in slot: {}",
+                            header.content.slot
+                        ),
+                    )));
+                }
+            }
+        }
+        // there is at least an endorsment that wasn't drawn still left to check
+        if !endorsements_to_check.is_empty() {
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                format!(
+                    "Unexpected endorsement for header in slot: {}",
+                    header.content.slot
+                ),
+            )));
+        }
+
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
         // note: Some(x) > None
