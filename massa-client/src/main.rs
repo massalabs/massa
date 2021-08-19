@@ -7,7 +7,8 @@
 //! or as CLI using the API command has a parameter.
 //!
 //! Parameters:
-//! * -n (--node): the node IP
+//! * -c (--cli): The format of the displayed command output. Set to false display user-friendly output.
+//! * -n (--node): the node IP.
 //! * -s (--short) The format of the displayed hash. Set to true display sort hash (default).
 //! * -w (--wallet) activate the wallet command, using the file specified.
 //!
@@ -42,18 +43,18 @@ use models::OperationId;
 use models::OperationType;
 use models::Slot;
 use models::StakersCycleProductionStats;
+use models::Version;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Write;
-use std::fs::read_to_string;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::Ordering;
-mod config;
+mod client_config;
 mod data;
 mod repl;
 mod wallet;
@@ -68,6 +69,15 @@ fn main() {
         .version("0.3")
         .author("Massa Labs <info@massa.net>")
         .about("Massa")
+        .arg(
+            Arg::with_name("cli")
+                .short("c")
+                .long("cli")
+                .value_name("true, false")
+                .help("false: set user-friendly output")
+                .required(false)
+                .takes_value(true),
+        )
         .arg(
             Arg::with_name("nodeip")
                 .short("n")
@@ -98,7 +108,17 @@ fn main() {
 
     // load config
     let config_path = "config/config.toml";
-    let cfg = config::Config::from_toml(&read_to_string(config_path).unwrap()).unwrap();
+    let override_config_path = "config/user_config.toml";
+    let mut cfg = config::Config::default();
+    cfg.merge(config::File::with_name(config_path))
+        .expect("could not load main config file");
+    if std::path::Path::new(override_config_path).is_file() {
+        cfg.merge(config::File::with_name(override_config_path))
+            .expect("could not load override config file");
+    }
+    let cfg = cfg
+        .try_into::<client_config::Config>()
+        .expect("error structuring config");
 
     //add client commands that can be executed.
     // The Repl struct manage command registration for cli mode with clap and REPL mode with rustyline
@@ -153,6 +173,12 @@ fn main() {
         "network information: own IP address, connected peers",
         true,
         cmd_network_info,
+    )
+    .new_command_noargs(
+        "version",
+        "current node version",
+        true,
+        cmd_version,
     )
     .new_command_noargs("state", "summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count", true, cmd_state)
     .new_command_noargs(
@@ -307,6 +333,22 @@ fn main() {
 
     let matches = app.get_matches();
 
+    //cli or not cli output.
+    let cli = matches
+        .value_of("cli")
+        .and_then(|val| {
+            FromStr::from_str(val)
+                .map_err(|err| {
+                    println!("bad cli value, using default");
+                    err
+                })
+                .ok()
+        })
+        .unwrap_or(false);
+    if cli {
+        repl.data.cli = true;
+    }
+
     //ip address of the node to connect.
     let node_ip = matches
         .value_of("nodeip")
@@ -373,7 +415,6 @@ fn main() {
                 .values_of("")
                 .map(|list| list.collect())
                 .unwrap_or_default();
-            repl.data.cli = true;
             repl.run_cmd(cmd, &args);
         }
     }
@@ -836,6 +877,16 @@ fn cmd_network_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplErr
     if let Some(resp) = request_data(data, &url)? {
         let info = resp.json::<data::NetworkInfo>()?;
         println!("network_info:");
+        println!("{}", info);
+    }
+    Ok(())
+}
+
+fn cmd_version(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/version", data.node_ip);
+    if let Some(resp) = request_data(data, &url)? {
+        let info = resp.json::<Version>()?;
+        println!("version:");
         println!("{}", info);
     }
     Ok(())

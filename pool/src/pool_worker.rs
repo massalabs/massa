@@ -12,9 +12,8 @@ use super::{config::PoolConfig, error::PoolError};
 use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
-
 use models::{
-    Address, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult, Slot,
 };
 use tokio::sync::{mpsc, oneshot};
 
@@ -40,6 +39,12 @@ pub enum PoolCommand {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     FinalOperations(HashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
+    GetEndorsements {
+        target_slot: Slot,
+        parent: BlockId,
+        creators: Vec<Address>,
+        response_tx: oneshot::Sender<Vec<Endorsement>>,
+    },
     AddEndorsements(HashMap<EndorsementId, Endorsement>),
 }
 
@@ -151,7 +156,9 @@ impl PoolWorker {
                 self.operation_pool.update_current_slot(slot)?
             }
             PoolCommand::UpdateLatestFinalPeriods(periods) => {
-                self.operation_pool.update_latest_final_periods(periods)?
+                self.operation_pool
+                    .update_latest_final_periods(periods.clone())?;
+                self.endorsement_pool.update_latest_final_periods(periods)
             }
             PoolCommand::GetOperationBatch {
                 target_slot,
@@ -183,6 +190,17 @@ impl PoolWorker {
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
             PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops)?,
+            PoolCommand::GetEndorsements {
+                target_slot,
+                parent,
+                creators,
+                response_tx,
+            } => response_tx
+                .send(
+                    self.endorsement_pool
+                        .get_endorsements(target_slot, parent, creators)?,
+                )
+                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
             PoolCommand::AddEndorsements(mut endorsements) => {
                 let newly_added = self
                     .endorsement_pool
