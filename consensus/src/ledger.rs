@@ -225,12 +225,25 @@ impl LedgerChanges {
                 .collect(),
         )
     }
+
+    /// add reward related changes
+    pub fn add_reward(
+        &mut self,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
+        reward: Amount,
+    ) {
+        todo!()
+    }
 }
 
 pub trait OperationLedgerInterface {
     fn get_ledger_changes(
         &self,
-        fee_target: &Address,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
         thread_count: u8,
         roll_price: Amount,
     ) -> Result<LedgerChanges, ConsensusError>;
@@ -239,7 +252,9 @@ pub trait OperationLedgerInterface {
 impl OperationLedgerInterface for Operation {
     fn get_ledger_changes(
         &self,
-        fee_target: &Address,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
         _thread_count: u8,
         roll_price: Amount,
     ) -> Result<LedgerChanges, ConsensusError> {
@@ -256,13 +271,7 @@ impl OperationLedgerInterface for Operation {
         )?;
 
         // fee target
-        res.apply(
-            &fee_target,
-            &LedgerChange {
-                balance_delta: self.content.fee.clone().into(),
-                balance_increment: true,
-            },
-        )?;
+        res.add_reward(creator, endorsers, parent_creator, self.content.fee);
 
         // operation type specific
         match &self.content.op {

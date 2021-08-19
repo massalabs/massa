@@ -52,6 +52,8 @@ pub struct BlockStateAccumulator {
     pub roll_updates: RollUpdates,
     pub cycle_roll_updates: RollUpdates,
     pub same_thread_parent_cycle: u64,
+    pub same_thread_parent_creator: Address,
+    pub endorsers_addresses: Vec<Address>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1045,10 +1047,13 @@ impl BlockGraph {
         let op_roll_updates = operation.get_roll_updates()?;
         // get ledger changes
         let op_ledger_changes = operation.get_ledger_changes(
-            &block_creator_address,
+            block_creator_address,
+            state_accu.endorsers_addresses.clone(),
+            state_accu.same_thread_parent_creator,
             self.cfg.thread_count,
             self.cfg.roll_price,
         )?;
+        // todo add reward
         // apply to block state accumulator
         self.block_state_try_apply(
             state_accu,
@@ -1282,14 +1287,26 @@ impl BlockGraph {
         let block_creator_address = Address::from_public_key(&header.content.creator)?;
 
         // get same thread parent cycle
-        let same_thread_parent_cycle = self
+        let same_thread_parent = &self
             .get_active_block(&header.content.parents[block_thread as usize])
             .ok_or(ConsensusError::MissingBlock)?
-            .block
+            .block;
+
+        let same_thread_parent_cycle = same_thread_parent
             .header
             .content
             .slot
             .get_cycle(self.cfg.periods_per_cycle);
+
+        let same_thread_parent_creator =
+            Address::from_public_key(&same_thread_parent.header.content.creator)?;
+
+        let endorsers_addresses = header
+            .content
+            .endorsements
+            .iter()
+            .map(|ed| Address::from_public_key(&ed.content.sender_public_key))
+            .collect::<Result<Vec<_>, _>>()?;
 
         // init block state accumulator
         let mut accu = BlockStateAccumulator {
@@ -1301,17 +1318,19 @@ impl BlockGraph {
             roll_updates: Default::default(),
             cycle_roll_updates: Default::default(),
             same_thread_parent_cycle,
+            same_thread_parent_creator,
+            endorsers_addresses: endorsers_addresses.clone(),
         };
 
         // block constant ledger reward
         let mut reward_ledger_changes = LedgerChanges::default();
-        reward_ledger_changes.apply(
-            &block_creator_address,
-            &LedgerChange {
-                balance_delta: Amount::from(self.cfg.block_reward),
-                balance_increment: true,
-            },
-        )?;
+        reward_ledger_changes.add_reward(
+            block_creator_address,
+            endorsers_addresses,
+            same_thread_parent_creator,
+            Amount::from(self.cfg.block_reward),
+        );
+
         self.block_state_try_apply(&mut accu, &header, Some(reward_ledger_changes), None, pos)?;
 
         // apply roll lock funds release

@@ -394,7 +394,7 @@ impl ConsensusWorker {
             if !endorsements.is_empty() {
                 // send endorsement batch to pool
                 self.pool_command_sender
-                    .add_endorsements(endorsements)
+                    .add_endorsements(endorsements.clone())
                     .await?;
             }
 
@@ -402,7 +402,14 @@ impl ConsensusWorker {
             if let Some(addr) = block_draw {
                 if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
                     massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                    self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+                    self.create_block(
+                        cur_slot,
+                        &addr,
+                        &pub_k,
+                        &priv_k,
+                        endorsements.into_values().collect(),
+                    )
+                    .await?;
                     if let Some(next_addr_slot) =
                         self.pos.get_next_selected_slot(self.next_slot, addr)
                     {
@@ -459,6 +466,7 @@ impl ConsensusWorker {
         creator_addr: &Address,
         creator_public_key: &PublicKey,
         creator_private_key: &PrivateKey,
+        endorsements: Vec<Endorsement>,
     ) -> Result<(), ConsensusError> {
         // get parents
         let parents = self.block_db.get_best_parents();
@@ -471,7 +479,7 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&Vec::new()[..]),
-                endorsements: Vec::new(),
+                endorsements: endorsements.clone(),
             },
         )?;
         let block = Block {
@@ -591,7 +599,7 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&total_hash),
-                endorsements: Vec::new(), // todo
+                endorsements,
             },
         )?;
         let block = Block { header, operations };
