@@ -34,7 +34,8 @@ impl EndorsementPool {
         parent: BlockId,
         creators: Vec<Address>,
     ) -> Result<Vec<Endorsement>, PoolError> {
-        self.endorsements
+        let mut candidates = self
+            .endorsements
             .iter()
             .filter_map(|(_, endorsement)| {
                 let creator = match Address::from_public_key(&endorsement.content.sender_public_key)
@@ -51,7 +52,18 @@ impl EndorsementPool {
                     None
                 }
             })
-            .collect::<Result<_, _>>()
+            .collect::<Result<Vec<Endorsement>, PoolError>>()?;
+        candidates.sort_unstable_by_key(|endo| endo.content.index);
+        let mut res = Vec::new();
+        let mut i = -1;
+        for endo in candidates.into_iter() {
+            if i != endo.content.index as i32 {
+                // if previously inserted endorsement has different index
+                i = endo.content.index as i32;
+                res.push(endo);
+            }
+        }
+        Ok(res)
     }
 
     /// Incoming endorsements. Returns newly added
