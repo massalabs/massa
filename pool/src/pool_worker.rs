@@ -12,9 +12,9 @@ use super::{config::PoolConfig, error::PoolError};
 use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
-
-use crypto::signature::PublicKey;
-use models::{Address, BlockId, Endorsement, Operation, OperationId, OperationSearchResult, Slot};
+use models::{
+    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult, Slot,
+};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.
@@ -45,6 +45,7 @@ pub enum PoolCommand {
         creators: Vec<Address>,
         response_tx: oneshot::Sender<Vec<Endorsement>>,
     },
+    AddEndorsements(HashMap<EndorsementId, Endorsement>),
 }
 
 /// Events that are emitted by pool.
@@ -200,6 +201,17 @@ impl PoolWorker {
                         .get_endorsements(target_slot, parent, creators)?,
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::AddEndorsements(mut endorsements) => {
+                let newly_added = self
+                    .endorsement_pool
+                    .add_endorsements(endorsements.clone())?;
+                endorsements.retain(|e_id, _e| newly_added.contains(e_id));
+                if !endorsements.is_empty() {
+                    self.protocol_command_sender
+                        .propagate_endorsements(endorsements)
+                        .await?;
+                }
+            }
         }
         Ok(())
     }

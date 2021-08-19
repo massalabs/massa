@@ -9,7 +9,9 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
-use models::{Address, Operation, OperationId, OperationSearchResult, Slot};
+use models::{
+    Address, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult, Slot,
+};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -208,6 +210,21 @@ impl PoolCommandSender {
                 e
             ))
         })
+    }
+
+    pub async fn add_endorsements(
+        &mut self,
+        endorsements: HashMap<EndorsementId, Endorsement>,
+    ) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.add_endorsements", {
+            "endorsements": endorsements
+        });
+        let res = self
+            .0
+            .send(PoolCommand::AddEndorsements(endorsements))
+            .await
+            .map_err(|_| PoolError::ChannelError("add_endorsements command send error".into()));
+        res
     }
 }
 
