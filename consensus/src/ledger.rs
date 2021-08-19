@@ -233,8 +233,58 @@ impl LedgerChanges {
         endorsers: Vec<Address>,
         parent_creator: Address,
         reward: Amount,
-    ) {
-        todo!()
+    ) -> Result<(), ConsensusError> {
+        let mut total_rem = Amount::from_raw(0);
+        let (main, rem) =
+            reward.integer_division_and_remainder(Amount::from_raw(1 + endorsers.len() as u64));
+        total_rem = total_rem.saturating_add(rem);
+        let (third, rem) = reward
+            .integer_division_and_remainder(Amount::from_raw(3 * (1 + endorsers.len() as u64)));
+        total_rem = total_rem.saturating_add(
+            rem.checked_mul_u64(3 * endorsers.len() as u64)
+                .ok_or(ConsensusError::AmountOverflowError)?,
+        );
+
+        self.apply(
+            &creator,
+            &LedgerChange {
+                balance_delta: main,
+                balance_increment: true,
+            },
+        )?;
+        self.apply(
+            &creator,
+            &LedgerChange {
+                balance_delta: total_rem,
+                balance_increment: true,
+            },
+        )?;
+
+        for ed in endorsers.iter() {
+            self.apply(
+                &creator,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
+            self.apply(
+                ed,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
+            self.apply(
+                &parent_creator,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
+        }
+
+        Ok(())
     }
 }
 
