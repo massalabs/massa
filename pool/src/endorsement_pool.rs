@@ -45,7 +45,7 @@ impl EndorsementPool {
                 };
                 if endorsement.content.endorsed_block == parent
                     && endorsement.content.slot == target_slot
-                    && creators[endorsement.content.index as usize] == creator
+                    && creators.get(endorsement.content.index as usize) == Some(&creator)
                 {
                     Some(Ok(endorsement.clone()))
                 } else {
@@ -54,16 +54,8 @@ impl EndorsementPool {
             })
             .collect::<Result<Vec<Endorsement>, PoolError>>()?;
         candidates.sort_unstable_by_key(|endo| endo.content.index);
-        let mut res = Vec::new();
-        let mut i = -1;
-        for endo in candidates.into_iter() {
-            if i != endo.content.index as i32 {
-                // if previously inserted endorsement has different index
-                i = endo.content.index as i32;
-                res.push(endo);
-            }
-        }
-        Ok(res)
+        candidates.dedup_by_key(|e| e.content.index);
+        Ok(candidates)
     }
 
     /// Incoming endorsements. Returns newly added
