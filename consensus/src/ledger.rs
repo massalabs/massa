@@ -225,6 +225,17 @@ impl LedgerChanges {
                 .collect(),
         )
     }
+
+    /// add reward related changes
+    pub fn add_reward(
+        &mut self,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
+        reward: Amount,
+    ) {
+        todo!()
+    }
 }
 
 pub trait OperationLedgerInterface {
