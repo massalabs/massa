@@ -119,4 +119,4 @@ We will communicate information later on how we will rank the node stability.
 
 === Ping too high issue
 
-Check the quality of your internet connection. Try inreasing the "max_ping" setting in massa-node/config/config.toml
+Check the quality of your internet connection. Try increasing the "max_ping" setting in massa-node/config/config.toml

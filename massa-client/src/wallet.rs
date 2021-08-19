@@ -31,7 +31,7 @@ impl Wallet {
     /// Generates a new wallet initialized with the provided json file content
     pub fn new(json_file: &str) -> Result<Wallet, ReplError> {
         let path = std::path::Path::new(json_file);
-        let keys = if path.exists() {
+        let keys = if path.is_file() {
             serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(path)?)?
         } else {
             Vec::new()
