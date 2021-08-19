@@ -1,8 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolConfig, PoolError};
-use crypto::signature::PublicKey;
-use models::{BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
+use models::{Address, BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
 use std::collections::{HashMap, HashSet};
 
 pub struct EndorsementPool {
@@ -29,26 +28,30 @@ impl EndorsementPool {
         );
     }
 
-    pub fn get_endorsement(
+    pub fn get_endorsements(
         &self,
         target_slot: Slot,
         parent: BlockId,
-        creators: Vec<PublicKey>,
-    ) -> Vec<Endorsement> {
+        creators: Vec<Address>,
+    ) -> Result<Vec<Endorsement>, PoolError> {
         self.endorsements
             .iter()
             .filter_map(|(_, endorsement)| {
-                if endorsement.content.endorsed_block == parent.0
-                    && endorsement.content.slot == target_slot
-                    && creators[endorsement.content.index as usize]
-                        == endorsement.content.sender_public_key
+                let creator = match Address::from_public_key(&endorsement.content.sender_public_key)
                 {
-                    Some(endorsement.clone())
+                    Ok(addr) => addr,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                if endorsement.content.endorsed_block == parent
+                    && endorsement.content.slot == target_slot
+                    && creators[endorsement.content.index as usize] == creator
+                {
+                    Some(Ok(endorsement.clone()))
                 } else {
                     None
                 }
             })
-            .collect()
+            .collect::<Result<_, _>>()
     }
 
     /// Incoming endorsements. Returns newly added

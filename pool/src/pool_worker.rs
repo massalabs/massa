@@ -42,7 +42,7 @@ pub enum PoolCommand {
     GetEndorsements {
         target_slot: Slot,
         parent: BlockId,
-        creators: Vec<PublicKey>,
+        creators: Vec<Address>,
         response_tx: oneshot::Sender<Vec<Endorsement>>,
     },
 }
@@ -197,7 +197,7 @@ impl PoolWorker {
             } => response_tx
                 .send(
                     self.endorsement_pool
-                        .get_endorsement(target_slot, parent, creators),
+                        .get_endorsements(target_slot, parent, creators)?,
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
