@@ -284,8 +284,8 @@ pub struct ThreadCycleState {
     pub cycle_updates: RollUpdates,
     /// Used to seed the random selector at each cycle
     rng_seed: BitVec<Lsb0, u8>,
-    /// Per-address production statistics (ok_count, nok_count)
-    pub production_stats: HashMap<Address, (u64, u64)>,
+    /// Per-address production statistics (ok_count, nok_count, endorsement_count)
+    pub production_stats: HashMap<Address, (u64, u64, u64)>,
 }
 
 pub struct ProofOfStake {
@@ -369,8 +369,8 @@ pub struct ExportThreadCycleState {
     pub cycle_updates: Vec<(Address, RollUpdate)>,
     /// Used to seed random selector at each cycle
     pub rng_seed: BitVec<Lsb0, u8>,
-    /// Address production stats (ok_count, nok_count)
-    pub production_stats: Vec<(Address, u64, u64)>,
+    /// Address production stats (ok_count, nok_count, endorsement_count)
+    pub production_stats: Vec<(Address, u64, u64, u64)>,
 }
 
 impl SerializeCompact for ExportThreadCycleState {
@@ -427,10 +427,11 @@ impl SerializeCompact for ExportThreadCycleState {
             ))
         })?;
         res.extend(n_entries.to_varint_bytes());
-        for (addr, ok_count, nok_count) in self.production_stats.iter() {
+        for (addr, ok_count, nok_count, ed_count) in self.production_stats.iter() {
             res.extend(addr.to_bytes());
             res.extend(ok_count.to_varint_bytes());
             res.extend(nok_count.to_varint_bytes());
+            res.extend(ed_count.to_varint_bytes());
         }
 
         Ok(res)
@@ -520,7 +521,9 @@ impl DeserializeCompact for ExportThreadCycleState {
             cursor += delta;
             let (nok_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
-            production_stats.push((addr, ok_count, nok_count));
+            let (ed_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            production_stats.push((addr, ok_count, nok_count, ed_count));
         }
 
         // return struct
@@ -904,19 +907,20 @@ impl ProofOfStake {
                                     hash_map::Entry::Occupied(mut occ) => {
                                         let cur_val = *occ.get();
                                         if *evt_ok {
-                                            *occ.get_mut() = (cur_val.0 + 1, cur_val.1);
+                                            *occ.get_mut() = (cur_val.0 + 1, cur_val.1, cur_val.2);
                                         } else {
-                                            *occ.get_mut() = (cur_val.0, cur_val.1 + 1);
+                                            *occ.get_mut() = (cur_val.0, cur_val.1 + 1, cur_val.2);
                                         }
                                     }
                                     hash_map::Entry::Vacant(vac) => {
                                         if *evt_ok {
-                                            vac.insert((1, 0));
+                                            vac.insert((1, 0, 0));
                                         } else {
-                                            vac.insert((0, 1));
+                                            vac.insert((0, 1, 0));
                                         }
                                     }
                                 }
+                                // todo update endorsement count
                             }
                         }
                     }
@@ -974,6 +978,7 @@ impl ProofOfStake {
                         cycle,
                         is_final: false,
                         ok_nok_counts: HashMap::new(),
+                        endorsements: HashMap::new(),
                     });
 
                 cycle_entry.is_final = if thread_cycle_complete {
@@ -987,10 +992,10 @@ impl ProofOfStake {
                 };
 
                 for addr in &addrs {
-                    let (n_ok, n_nok) = thread_cycle_info
+                    let (n_ok, n_nok, ed) = thread_cycle_info
                         .production_stats
                         .get(&addr)
-                        .unwrap_or(&(0, 0));
+                        .unwrap_or(&(0, 0, 0));
                     cycle_entry
                         .ok_nok_counts
                         .entry(*addr)
@@ -999,6 +1004,7 @@ impl ProofOfStake {
                             *p_nok += n_nok;
                         })
                         .or_insert_with(|| (*n_ok, *n_nok));
+                    cycle_entry.endorsements.entry(*addr).or_insert_with(|| *ed);
                 }
             }
         }
@@ -1074,7 +1080,7 @@ impl ProofOfStake {
                 return Err(ConsensusError::NotFinalRollError); // target_cycle not completely final
             }
             // accumulate counters
-            for (addr, (n_ok, n_nok)) in roll_data.production_stats.iter() {
+            for (addr, (n_ok, n_nok, ed_count)) in roll_data.production_stats.iter() {
                 if addr.get_thread(self.cfg.thread_count) != address_thread {
                     continue;
                 }
@@ -1181,7 +1187,7 @@ impl ThreadCycleState {
             production_stats: self
                 .production_stats
                 .iter()
-                .map(|(k, (v_ok, v_nok))| (*k, *v_ok, *v_nok))
+                .map(|(k, (v_ok, v_nok, ed))| (*k, *v_ok, *v_nok, *ed))
                 .collect(),
         }
     }
@@ -1196,7 +1202,7 @@ impl ThreadCycleState {
             production_stats: export
                 .production_stats
                 .into_iter()
-                .map(|(k, v_ok, v_nok)| (k, (v_ok, v_nok)))
+                .map(|(k, v_ok, v_nok, ed)| (k, (v_ok, v_nok, ed)))
                 .collect(),
         }
     }

@@ -43,4 +43,5 @@ pub struct StakersCycleProductionStats {
     pub cycle: u64,
     pub is_final: bool,
     pub ok_nok_counts: HashMap<Address, (u64, u64)>,
+    pub endorsements: HashMap<Address, u64>,
 }
