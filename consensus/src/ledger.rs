@@ -233,8 +233,9 @@ impl LedgerChanges {
         endorsers: Vec<Address>,
         parent_creator: Address,
         reward: Amount,
+        endorsement_count: u32,
     ) -> Result<(), ConsensusError> {
-        let mut total_rem = Amount::from_raw(0);
+        let mut total_rem = Amount::default();
         let (main, rem) =
             reward.integer_division_and_remainder(Amount::from_raw(1 + endorsers.len() as u64));
         total_rem = total_rem.saturating_add(rem);
