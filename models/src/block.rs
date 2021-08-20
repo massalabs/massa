@@ -444,7 +444,7 @@ mod test {
                     Endorsement {
                         content: EndorsementContent {
                             sender_public_key: public_key,
-                            slot: Slot::new(1, 2),
+                            slot: Slot::new(1, 1),
                             index: 1,
                             endorsed_block: BlockId(Hash::hash("blk1".as_bytes())),
                         },
@@ -453,7 +453,7 @@ mod test {
                     Endorsement {
                         content: EndorsementContent {
                             sender_public_key: public_key,
-                            slot: Slot::new(4, 5),
+                            slot: Slot::new(4, 0),
                             index: 3,
                             endorsed_block: BlockId(Hash::hash("blk2".as_bytes())),
                         },

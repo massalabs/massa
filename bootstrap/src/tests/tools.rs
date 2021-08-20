@@ -189,7 +189,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                         Endorsement {
                             content: EndorsementContent {
                                 sender_public_key: get_random_public_key(),
-                                slot: Slot::new(1, 2),
+                                slot: Slot::new(1, 0),
                                 index: 1,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
@@ -198,7 +198,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                         Endorsement {
                             content: EndorsementContent {
                                 sender_public_key: get_random_public_key(),
-                                slot: Slot::new(4, 5),
+                                slot: Slot::new(4, 1),
                                 index: 3,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
