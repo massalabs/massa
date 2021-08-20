@@ -88,6 +88,8 @@ pub enum ConsensusError {
     TokioSendError(#[from] tokio::sync::mpsc::error::SendError<ConsensusEvent>),
     #[error("channel error: {0}")]
     ChannelError(String),
+    #[error("amount overflow")]
+    AmountOverflowError,
 }
 
 #[derive(Error, Debug)]
