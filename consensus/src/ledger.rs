@@ -233,6 +233,7 @@ impl LedgerChanges {
         endorsers: Vec<Address>,
         parent_creator: Address,
         reward: Amount,
+        endorsement_count: u32,
     ) {
         todo!()
     }
@@ -246,6 +247,7 @@ pub trait OperationLedgerInterface {
         parent_creator: Address,
         thread_count: u8,
         roll_price: Amount,
+        endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError>;
 }
 
@@ -257,6 +259,7 @@ impl OperationLedgerInterface for Operation {
         parent_creator: Address,
         _thread_count: u8,
         roll_price: Amount,
+        endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {
         let mut res = LedgerChanges::default();
 
@@ -271,7 +274,13 @@ impl OperationLedgerInterface for Operation {
         )?;
 
         // fee target
-        res.add_reward(creator, endorsers, parent_creator, self.content.fee);
+        res.add_reward(
+            creator,
+            endorsers,
+            parent_creator,
+            self.content.fee,
+            endorsement_count,
+        );
 
         // operation type specific
         match &self.content.op {

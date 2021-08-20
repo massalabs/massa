@@ -1042,6 +1042,7 @@ impl BlockGraph {
             state_accu.same_thread_parent_creator,
             self.cfg.thread_count,
             self.cfg.roll_price,
+            self.cfg.endorsement_count,
         )?;
         // todo add reward
         // apply to block state accumulator
@@ -1319,6 +1320,7 @@ impl BlockGraph {
             endorsers_addresses,
             same_thread_parent_creator,
             Amount::from(self.cfg.block_reward),
+            self.cfg.endorsement_count,
         );
 
         self.block_state_try_apply(&mut accu, &header, Some(reward_ledger_changes), None, pos)?;
