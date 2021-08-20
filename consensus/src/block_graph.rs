@@ -3888,6 +3888,7 @@ mod tests {
     use crate::ledger::LedgerData;
     use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
+    use models::{Endorsement, EndorsementContent};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::path::Path;
@@ -3906,7 +3907,14 @@ mod tests {
                         get_dummy_block_id("parent2"),
                     ],
                     slot: Slot::new(1, 0),
-                    endorsements: Vec::new(),
+                    endorsements: vec![ Endorsement{content: EndorsementContent{
+                        sender_public_key: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                        endorsed_block: get_dummy_block_id("parent1"),
+                        index: 0,
+                        slot: Slot::new(1, 0),
+                    }, signature: crypto::signature::Signature::from_bs58_check(
+                        "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+                    ).unwrap() }],
                 },
                 signature: crypto::signature::Signature::from_bs58_check(
                     "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"

@@ -922,7 +922,7 @@ async fn test_roll_deactivation() {
                 best_parents[cur_slot.thread as usize] = block_id;
             }
 
-            // chech candidate rolls
+            // check candidate rolls
             let addrs_info = consensus_command_sender
                 .get_addresses_info(
                     vec![address_a0, address_a1, address_b0, address_b1]
