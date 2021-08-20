@@ -13,7 +13,8 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use models::{
-    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
+    Slot,
 };
 use tokio::sync::{mpsc, oneshot};
 
