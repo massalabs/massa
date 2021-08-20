@@ -913,6 +913,30 @@ impl ProtocolWorker {
             .await;
         }
 
+        let ed_ids = match block
+            .header
+            .content
+            .endorsements
+            .iter()
+            .map(|ed| ed.compute_endorsement_id())
+            .collect::<Result<Vec<_>, _>>()
+        {
+            Ok(ids) => ids,
+            Err(_) => {
+                massa_trace!("protocol.protocol_worker.note_block_from_node.err_computing_endorsement_ids",
+            { "node": source_node_id,"block_id":block_id, "block": block });
+                return Ok(None);
+            }
+        };
+        self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
+            endorsements: ed_ids
+                .into_iter()
+                .zip(block.header.content.endorsements.clone())
+                .collect(),
+            propagate: false,
+        })
+        .await;
+
         // add to known blocks and operations
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_block(
