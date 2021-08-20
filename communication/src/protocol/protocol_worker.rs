@@ -804,6 +804,32 @@ impl ProtocolWorker {
                         self.cfg.max_node_known_blocks_size,
                     );
                     massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
+
+                    // send endorsements to pool
+
+                    let ed_ids = match header
+                        .content
+                        .endorsements
+                        .iter()
+                        .map(|ed| ed.compute_endorsement_id())
+                        .collect::<Result<Vec<_>, _>>()
+                    {
+                        Ok(ids) => ids,
+                        Err(_) => {
+                            massa_trace!("protocol.protocol_worker.note_block_from_node.err_computing_endorsement_ids",
+            { "node": source_node_id,"block_id":block_id});
+                            return Ok(None);
+                        }
+                    };
+                    self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
+                        endorsements: ed_ids
+                            .into_iter()
+                            .zip(header.content.endorsements.clone())
+                            .collect(),
+                        propagate: false,
+                    })
+                    .await;
+
                     return Ok(Some(block_id));
                 }
                 Ok(None)
