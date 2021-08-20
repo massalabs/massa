@@ -235,47 +235,11 @@ impl LedgerChanges {
         reward: Amount,
         endorsement_count: u32,
     ) -> Result<(), ConsensusError> {
-        let mut total_rem = Amount::default();
-        let (main, rem) =
-            reward.integer_division_and_remainder(Amount::from_raw(1 + endorsers.len() as u64));
-        total_rem = total_rem.saturating_add(rem);
-        let (third, rem) = reward
-            .integer_division_and_remainder(Amount::from_raw(3 * (1 + endorsers.len() as u64)));
-        total_rem = total_rem.saturating_add(
-            rem.checked_mul_u64(3 * endorsers.len() as u64)
-                .ok_or(ConsensusError::AmountOverflowError)?,
-        );
-
-        self.apply(
-            &creator,
-            &LedgerChange {
-                balance_delta: main,
-                balance_increment: true,
-            },
-        )?;
-        self.apply(
-            &creator,
-            &LedgerChange {
-                balance_delta: total_rem,
-                balance_increment: true,
-            },
-        )?;
-
-        for ed in endorsers.iter() {
-            self.apply(
-                &creator,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
-            self.apply(
-                ed,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
+        let endorsers_count = endorsers.len() as u64;
+        let third = reward
+            .checked_div_u64(3 * (1 + (endorsement_count as u64)))
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        for ed in endorsers {
             self.apply(
                 &parent_creator,
                 &LedgerChange {
@@ -283,9 +247,34 @@ impl LedgerChanges {
                     balance_increment: true,
                 },
             )?;
+            self.apply(
+                &ed,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
         }
+        let total_credited = third
+            .checked_mul_u64(2 * endorsers_count)
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        // here we credited only parent_creator and ed for every endorsement
+        // total_credited now contains the total amount already credited
 
-        Ok(())
+        let expected_credit = reward
+            .checked_mul_u64(1 + endorsers_count)
+            .ok_or(ConsensusError::AmountOverflowError)?
+            .checked_div_u64(1 + (endorsement_count as u64))
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        // here expected_credit contains the expected amount that should be credited in total
+        // the difference between expected_credit and total_credited is sent to the block creator
+        self.apply(
+            &creator,
+            &LedgerChange {
+                balance_delta: expected_credit.saturating_sub(total_credited),
+                balance_increment: true,
+            },
+        )
     }
 }
 

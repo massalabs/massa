@@ -64,12 +64,12 @@ impl Amount {
     /// ```
     /// # use models::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_raw(42);
-    /// let amount_2 : Amount = Amount::from_raw(5);
-    /// assert_eq!(amount_1.integer_division_and_remainder(amount_2), (Amount::from_raw(8), Amount::from_raw(2)))
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let res : Amount = amount_1.checked_div_u64(7).unwrap();
+    /// assert_eq!(res, Amount::from_str("6").unwrap());
     /// ```
-    pub fn integer_division_and_remainder(self, amount: Amount) -> (Amount, Amount) {
-        (Amount(self.0 / amount.0), Amount(self.0 % amount.0))
+    pub fn checked_div_u64(self, factor: u64) -> Option<Self> {
+        self.0.checked_div(factor).map(Amount)
     }
 }
 
