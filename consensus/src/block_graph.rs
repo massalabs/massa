@@ -1319,7 +1319,7 @@ impl BlockGraph {
             block_creator_address,
             endorsers_addresses,
             same_thread_parent_creator,
-            Amount::from(self.cfg.block_reward),
+            self.cfg.block_reward,
             self.cfg.endorsement_count,
         );
 
