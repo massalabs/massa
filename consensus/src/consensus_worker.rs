@@ -394,7 +394,7 @@ impl ConsensusWorker {
             if !endorsements.is_empty() {
                 // send endorsement batch to pool
                 self.pool_command_sender
-                    .add_endorsements(endorsements.clone())
+                    .add_endorsements(endorsements)
                     .await?;
             }
 
