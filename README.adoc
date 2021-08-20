@@ -20,7 +20,7 @@ We are now releasing the **Massa testnet** in this Gitlab repository, with its e
 As decentralization is our core value, we would like to help you start and run a Massa node. 
 Running a node during the testnet phase also helps us finding bugs and improving usability, so it will be rewarded with real Massa on mainnet launch. 
 
-The mechanics of those rewards are described in ŧhe link:docs/testnet_rules.adoc[Testnet rules].
+The mechanics of those rewards are described in the link:docs/testnet_rules.adoc[Testnet rules].
  
 
 ## Testnet Discussions
@@ -89,12 +89,7 @@ Here is a set of tutorials:
 * link:docs/windows_install.adoc[Install and Run on Windows]
 * link:docs/routability.adoc[Routability tutorial]
 
-## Troubleshooting
 
-* If your API can't start, e.g. with `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`, it's probably because the default API port 33033 is already in use on your computer. You should change the port in the config files, both in the API and Client:
- ** in file `massa/massa-node/config/config.toml`, in section [API], in bind, put a new port,
- ** in file `massa/massa-client/config/config.toml`, put that same port.
+## FAQ and Troubleshooting
 
-## FAQ
-
-You'll find answer to common questions regarding the Massa protocol in the link:docs/faq.adoc[FAQ].
+You'll find answer to common issues and questions regarding the Massa protocol in the link:docs/faq.adoc[FAQ].
