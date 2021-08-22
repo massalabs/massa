@@ -2409,9 +2409,14 @@ impl BlockGraph {
         // check endorsements
         for endorsement in header.content.endorsements.iter() {
             // check that the draw is correct
-            if Address::from_public_key(&endorsement.content.sender_public_key)? != endorsement_draws[endorsement.content.index as usize] {
+            if Address::from_public_key(&endorsement.content.sender_public_key)?
+                != endorsement_draws[endorsement.content.index as usize]
+            {
                 return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!("endorser draw mismatch for header in slot: {}", header.content.slot),
+                    format!(
+                        "endorser draw mismatch for header in slot: {}",
+                        header.content.slot
+                    ),
                 )));
             }
             // check that the endorsement slot matches the endorsed block

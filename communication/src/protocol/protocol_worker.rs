@@ -799,7 +799,7 @@ impl ProtocolWorker {
         let block_id = match self.check_header(&header) {
             Ok(Some(block_id)) => block_id,
             Ok(None) => return Ok(None),
-            Err(err) => return Err(err)
+            Err(err) => return Err(err),
         };
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
@@ -810,7 +810,7 @@ impl ProtocolWorker {
                 self.cfg.max_node_known_blocks_size,
             );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
-            
+
             // send endorsements to pool
             let ed_ids = match header
                 .content
@@ -843,11 +843,16 @@ impl ProtocolWorker {
     }
 
     fn check_header(&self, header: &BlockHeader) -> Result<Option<BlockId>, CommunicationError> {
-        massa_trace!("protocol.protocol_worker.check_header.start", { "header": header });
+        massa_trace!("protocol.protocol_worker.check_header.start", {
+            "header": header
+        });
 
         // refuse genesis blocks
-        if header.content.slot.period == 0 || header.content.parents.is_empty() {  // genesis
-            massa_trace!("protocol.protocol_worker.check_header.err_is_genesis", { "header": header });
+        if header.content.slot.period == 0 || header.content.parents.is_empty() {
+            // genesis
+            massa_trace!("protocol.protocol_worker.check_header.err_is_genesis", {
+                "header": header
+            });
             return Ok(None);
         }
 
@@ -861,8 +866,10 @@ impl ProtocolWorker {
         };
 
         // check endorsement intrinsic integrity
-        let mut used_endorsements: HashSet<EndorsementId> = HashSet::with_capacity(header.content.endorsements.len());
-        let mut used_endorsement_indices: HashSet<u32> = HashSet::with_capacity(header.content.endorsements.len());
+        let mut used_endorsements: HashSet<EndorsementId> =
+            HashSet::with_capacity(header.content.endorsements.len());
+        let mut used_endorsement_indices: HashSet<u32> =
+            HashSet::with_capacity(header.content.endorsements.len());
         for endorsement in header.content.endorsements.iter() {
             // check signature
             let endorsement_id = match endorsement.verify_integrity() {
@@ -883,17 +890,21 @@ impl ProtocolWorker {
                 return Ok(None);
             }
             // check slot
-            if (endorsement.content.slot.thread != header.content.slot.thread) || (endorsement.content.slot >= header.content.slot) {
+            if (endorsement.content.slot.thread != header.content.slot.thread)
+                || (endorsement.content.slot >= header.content.slot)
+            {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "edorsement": endorsement});
                 return Ok(None);
             }
             // check endorsed block
-            if endorsement.content.endorsed_block != header.content.parents[header.content.slot.thread as usize] {
+            if endorsement.content.endorsed_block
+                != header.content.parents[header.content.slot.thread as usize]
+            {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "edorsement": endorsement});
                 return Ok(None);
             }
         }
-        
+
         Ok(Some(block_id))
     }
 
@@ -909,7 +920,7 @@ impl ProtocolWorker {
         let block_id = match self.check_header(&block.header) {
             Ok(Some(block_id)) => block_id,
             Ok(None) => return Ok(None),
-            Err(err) => return Err(err)
+            Err(err) => return Err(err),
         };
 
         // check operations (period, reuse, signatures, thread)
