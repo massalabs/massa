@@ -2,9 +2,9 @@
 
 use crate::{
     serialization::{
-        array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
+        array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt
     },
-    BlockId, ModelsError, Slot, BLOCK_ID_SIZE_BYTES,
+    with_serialization_context, BlockId, ModelsError, Slot, BLOCK_ID_SIZE_BYTES,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -162,6 +162,7 @@ impl SerializeCompact for EndorsementContent {
 
 impl DeserializeCompact for EndorsementContent {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let max_block_endorsments = with_serialization_context(|context| context.max_block_endorsments);
         let mut cursor = 0usize;
 
         // sender public key
@@ -173,7 +174,7 @@ impl DeserializeCompact for EndorsementContent {
         cursor += delta;
 
         // endorsement index inside the block
-        let (index, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        let (index, delta) = u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsments)?;
         cursor += delta;
 
         // id of endorsed block

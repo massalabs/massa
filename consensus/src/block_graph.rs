@@ -2262,52 +2262,6 @@ impl BlockGraph {
             )));
         }
 
-        let mut endorsements_to_check = header.content.endorsements.clone();
-        // check endorsements
-        for (i, drawn) in endorsement_draws.iter().enumerate() {
-            if let Some((idx, ed)) = header
-                .content
-                .endorsements
-                .iter()
-                .enumerate()
-                .find(|(_, ed)| ed.content.index == i as u32)
-            {
-                endorsements_to_check.remove(idx);
-                if ed.content.slot != header.content.slot {
-                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                        format!(
-                            "Bad endorsement slot for header in slot: {}",
-                            header.content.slot
-                        ),
-                    )));
-                }
-                if Address::from_public_key(&ed.content.sender_public_key)? != *drawn {
-                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                        format!("Bad endorser for header in slot: {}", header.content.slot),
-                    )));
-                }
-                if ed.content.endorsed_block
-                    != header.content.parents[header.content.slot.thread as usize]
-                {
-                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                        format!(
-                            "Bad endorsed parent for header in slot: {}",
-                            header.content.slot
-                        ),
-                    )));
-                }
-            }
-        }
-        // there is at least an endorsment that wasn't drawn still left to check
-        if !endorsements_to_check.is_empty() {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                format!(
-                    "Unexpected endorsement for header in slot: {}",
-                    header.content.slot
-                ),
-            )));
-        }
-
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
         // note: Some(x) > None
@@ -2451,6 +2405,23 @@ impl BlockGraph {
             parents[header.content.slot.thread as usize].0, block_id
         ))
         })?;
+
+        // check endorsements
+        for endorsement in header.content.endorsements.iter() {
+            // check that the draw is correct
+            if Address::from_public_key(&endorsement.content.sender_public_key)? != endorsement_draws[endorsement.content.index as usize] {
+                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!("endorser draw mismatch for header in slot: {}", header.content.slot),
+                )));
+            }
+            // check that the endorsement slot matches the endorsed block
+            if endorsement.content.slot != parent_in_own_thread.block.header.content.slot {
+                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
+                            parent_in_own_thread.block.header.content.slot, endorsement.content.slot),
+                )));
+            }
+        }
 
         // thread incompatibility test
         parent_in_own_thread.children[header.content.slot.thread as usize]
