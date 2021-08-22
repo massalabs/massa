@@ -52,6 +52,8 @@ pub struct BlockStateAccumulator {
     pub roll_updates: RollUpdates,
     pub cycle_roll_updates: RollUpdates,
     pub same_thread_parent_cycle: u64,
+    pub same_thread_parent_creator: Address,
+    pub endorsers_addresses: Vec<Address>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1035,10 +1037,14 @@ impl BlockGraph {
         let op_roll_updates = operation.get_roll_updates()?;
         // get ledger changes
         let op_ledger_changes = operation.get_ledger_changes(
-            &block_creator_address,
+            block_creator_address,
+            state_accu.endorsers_addresses.clone(),
+            state_accu.same_thread_parent_creator,
             self.cfg.thread_count,
             self.cfg.roll_price,
+            self.cfg.endorsement_count,
         )?;
+        // todo add reward
         // apply to block state accumulator
         self.block_state_try_apply(
             state_accu,
@@ -1272,14 +1278,26 @@ impl BlockGraph {
         let block_creator_address = Address::from_public_key(&header.content.creator)?;
 
         // get same thread parent cycle
-        let same_thread_parent_cycle = self
+        let same_thread_parent = &self
             .get_active_block(&header.content.parents[block_thread as usize])
             .ok_or(ConsensusError::MissingBlock)?
-            .block
+            .block;
+
+        let same_thread_parent_cycle = same_thread_parent
             .header
             .content
             .slot
             .get_cycle(self.cfg.periods_per_cycle);
+
+        let same_thread_parent_creator =
+            Address::from_public_key(&same_thread_parent.header.content.creator)?;
+
+        let endorsers_addresses = header
+            .content
+            .endorsements
+            .iter()
+            .map(|ed| Address::from_public_key(&ed.content.sender_public_key))
+            .collect::<Result<Vec<_>, _>>()?;
 
         // init block state accumulator
         let mut accu = BlockStateAccumulator {
@@ -1291,17 +1309,20 @@ impl BlockGraph {
             roll_updates: Default::default(),
             cycle_roll_updates: Default::default(),
             same_thread_parent_cycle,
+            same_thread_parent_creator,
+            endorsers_addresses: endorsers_addresses.clone(),
         };
 
         // block constant ledger reward
         let mut reward_ledger_changes = LedgerChanges::default();
-        reward_ledger_changes.apply(
-            &block_creator_address,
-            &LedgerChange {
-                balance_delta: Amount::from(self.cfg.block_reward),
-                balance_increment: true,
-            },
-        )?;
+        reward_ledger_changes.add_reward(
+            block_creator_address,
+            endorsers_addresses,
+            same_thread_parent_creator,
+            self.cfg.block_reward,
+            self.cfg.endorsement_count,
+        );
+
         self.block_state_try_apply(&mut accu, &header, Some(reward_ledger_changes), None, pos)?;
 
         // apply roll lock funds release
@@ -2238,6 +2259,52 @@ impl BlockGraph {
             // it was not the creator's turn to create a block for this slot
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                 format!("Bad creator turn for the slot:{}", header.content.slot),
+            )));
+        }
+
+        let mut endorsements_to_check = header.content.endorsements.clone();
+        // check endorsements
+        for (i, drawn) in endorsement_draws.iter().enumerate() {
+            if let Some((idx, ed)) = header
+                .content
+                .endorsements
+                .iter()
+                .enumerate()
+                .find(|(_, ed)| ed.content.index == i as u32)
+            {
+                endorsements_to_check.remove(idx);
+                if ed.content.slot != header.content.slot {
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        format!(
+                            "Bad endorsement slot for header in slot: {}",
+                            header.content.slot
+                        ),
+                    )));
+                }
+                if Address::from_public_key(&ed.content.sender_public_key)? != *drawn {
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        format!("Bad endorser for header in slot: {}", header.content.slot),
+                    )));
+                }
+                if ed.content.endorsed_block
+                    != header.content.parents[header.content.slot.thread as usize]
+                {
+                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                        format!(
+                            "Bad endorsed parent for header in slot: {}",
+                            header.content.slot
+                        ),
+                    )));
+                }
+            }
+        }
+        // there is at least an endorsment that wasn't drawn still left to check
+        if !endorsements_to_check.is_empty() {
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                format!(
+                    "Unexpected endorsement for header in slot: {}",
+                    header.content.slot
+                ),
             )));
         }
 
@@ -3821,6 +3888,7 @@ mod tests {
     use crate::ledger::LedgerData;
     use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
+    use models::{Endorsement, EndorsementContent};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::path::Path;
@@ -3839,7 +3907,14 @@ mod tests {
                         get_dummy_block_id("parent2"),
                     ],
                     slot: Slot::new(1, 0),
-                    endorsements: Vec::new(),
+                    endorsements: vec![ Endorsement{content: EndorsementContent{
+                        sender_public_key: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                        endorsed_block: get_dummy_block_id("parent1"),
+                        index: 0,
+                        slot: Slot::new(1, 0),
+                    }, signature: crypto::signature::Signature::from_bs58_check(
+                        "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+                    ).unwrap() }],
                 },
                 signature: crypto::signature::Signature::from_bs58_check(
                     "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"

@@ -374,7 +374,7 @@ impl ConsensusWorker {
             // create endorsements
             //TODO add check that we aren't accidentally double-staking endorsements
             let mut endorsements = HashMap::new();
-            for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
+            for (endorsement_index, addr) in endorsement_draws.iter().enumerate() {
                 if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
                     massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
                         { "index": endorsement_index, "addr": addr, "pubkey": pub_k, "unlocked": true });
@@ -402,7 +402,8 @@ impl ConsensusWorker {
             if let Some(addr) = block_draw {
                 if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
                     massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                    self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+                    self.create_block(cur_slot, &addr, &pub_k, &priv_k, endorsement_draws)
+                        .await?;
                     if let Some(next_addr_slot) =
                         self.pos.get_next_selected_slot(self.next_slot, addr)
                     {
@@ -459,9 +460,19 @@ impl ConsensusWorker {
         creator_addr: &Address,
         creator_public_key: &PublicKey,
         creator_private_key: &PrivateKey,
+        endorsement_draws: Vec<Address>,
     ) -> Result<(), ConsensusError> {
         // get parents
         let parents = self.block_db.get_best_parents();
+
+        let endorsements = self
+            .pool_command_sender
+            .get_endorsements(
+                cur_slot,
+                parents[cur_slot.thread as usize],
+                endorsement_draws,
+            )
+            .await?;
 
         // create empty block
         let (_block_id, header) = BlockHeader::new_signed(
@@ -471,7 +482,7 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&Vec::new()[..]),
-                endorsements: Vec::new(),
+                endorsements: endorsements.clone(),
             },
         )?;
         let block = Block {
@@ -591,7 +602,7 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.clone(),
                 operation_merkle_root: Hash::hash(&total_hash),
-                endorsements: Vec::new(), // todo
+                endorsements,
             },
         )?;
         let block = Block { header, operations };
