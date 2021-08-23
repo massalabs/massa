@@ -241,13 +241,13 @@ async fn test_pool_propagate_newly_added_endorsements() {
         cfg,
         thread_count,
         operation_validity_periods,
-        async move |mut protocol_controller, pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
                 _ => None,
             };
-
-            let endorsement = tools::create_endorsement(Slot::new(10, 0));
+            let target_slot = Slot::new(10, 0);
+            let endorsement = tools::create_endorsement(target_slot);
             let mut endorsements = HashMap::new();
             let id = endorsement.verify_integrity().unwrap();
             endorsements.insert(id.clone(), endorsement.clone());
@@ -280,6 +280,19 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 None => {} // no propagation
             };
 
+            let res = pool_command_sender
+                .get_endorsements(
+                    target_slot,
+                    endorsement.content.endorsed_block,
+                    vec![Address::from_public_key(&endorsement.content.sender_public_key).unwrap()],
+                )
+                .await
+                .unwrap();
+            assert_eq!(res.len(), 1);
+            assert_eq!(
+                res[0].compute_endorsement_id().unwrap(),
+                endorsement.compute_endorsement_id().unwrap()
+            );
             (protocol_controller, pool_command_sender, pool_manager)
         },
     )
