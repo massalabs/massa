@@ -12,9 +12,9 @@ use crate::{
 use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
 use models::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, Amount, Block,
-    BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
-    Operation, OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
+    BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
+    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
     BLOCK_ID_SIZE_BYTES,
 };
@@ -1321,7 +1321,7 @@ impl BlockGraph {
             same_thread_parent_creator,
             self.cfg.block_reward,
             self.cfg.endorsement_count,
-        );
+        )?;
 
         self.block_state_try_apply(&mut accu, &header, Some(reward_ledger_changes), None, pos)?;
 
