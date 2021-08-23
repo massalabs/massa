@@ -796,7 +796,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-        let block_id = match self.check_header(&header) {
+        let (block_id, endorsement_ids) = match self.check_header(&header) {
             Ok(Some(block_id)) => block_id,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
@@ -835,14 +835,22 @@ impl ProtocolWorker {
             })
             .await;
 
-            //TODO add to node info known endorsements
+            // add endorsements to known endorsements
+            let now = Instant::now();
+            node_info.insert_known_endorsements(
+                endorsement_ids.iter().map(|v| (*v, now)).collect(),
+                self.cfg.max_known_endorsements_size,
+            );
 
             return Ok(Some(block_id));
         }
         Ok(None)
     }
 
-    fn check_header(&self, header: &BlockHeader) -> Result<Option<BlockId>, CommunicationError> {
+    fn check_header(
+        &self,
+        header: &BlockHeader,
+    ) -> Result<Option<(BlockId, Vec<EndorsementId>)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.check_header.start", {
             "header": header
         });
@@ -866,8 +874,8 @@ impl ProtocolWorker {
         };
 
         // check endorsement intrinsic integrity
-        let mut used_endorsements: HashSet<EndorsementId> =
-            HashSet::with_capacity(header.content.endorsements.len());
+        let mut endorsement_ids: Vec<EndorsementId> =
+            Vec::with_capacity(header.content.endorsements.len());
         let mut used_endorsement_indices: HashSet<u32> =
             HashSet::with_capacity(header.content.endorsements.len());
         for endorsement in header.content.endorsements.iter() {
@@ -880,10 +888,11 @@ impl ProtocolWorker {
                 }
             };
             // check reuse
-            if !used_endorsements.insert(endorsement_id) {
+            if endorsement_ids.contains(&endorsement_id) {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_reused", { "header": header, "edorsement": endorsement});
                 return Ok(None);
             }
+            endorsement_ids.push(endorsement_id);
             // check index reuse
             if !used_endorsement_indices.insert(endorsement.content.index) {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "edorsement": endorsement});
@@ -905,7 +914,7 @@ impl ProtocolWorker {
             }
         }
 
-        Ok(Some(block_id))
+        Ok(Some((block_id, endorsement_ids)))
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
@@ -917,7 +926,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
-        let block_id = match self.check_header(&block.header) {
+        let (block_id, endorsement_ids) = match self.check_header(&block.header) {
             Ok(Some(block_id)) => block_id,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
@@ -1004,7 +1013,7 @@ impl ProtocolWorker {
             .await;
         }
 
-        // send endorsements to pool
+        // send endorsements to pool, but do not repropagate them
         let ed_ids = match block
             .header
             .content
@@ -1029,22 +1038,21 @@ impl ProtocolWorker {
         })
         .await;
 
-        // add to known blocks and operations
-        //TODO add a "known endorsements" part
+        // add to known blocks, operations, endorsements
+        let now = Instant::now();
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_block(
-                block_id,
-                true,
-                Instant::now(),
-                self.cfg.max_node_known_blocks_size,
-            );
+            node_info.insert_known_block(block_id, true, now, self.cfg.max_node_known_blocks_size);
             node_info.insert_known_ops(
                 block
                     .operations
                     .iter()
-                    .map(|op| Ok((op.get_operation_id()?, Instant::now())))
+                    .map(|op| Ok((op.get_operation_id()?, now)))
                     .collect::<Result<_, CommunicationError>>()?,
                 self.cfg.max_known_ops_size,
+            );
+            node_info.insert_known_endorsements(
+                endorsement_ids.iter().map(|v| (*v, now)).collect(),
+                self.cfg.max_known_endorsements_size,
             );
             massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
             return Ok(Some((block_id, seen_ops)));
