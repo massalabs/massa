@@ -6,19 +6,22 @@ use std::collections::{HashMap, HashSet};
 
 pub struct EndorsementPool {
     endorsements: HashMap<EndorsementId, Endorsement>,
+    latest_final_periods: Vec<u64>,
     cfg: PoolConfig,
 }
 
 impl EndorsementPool {
-    pub fn new(cfg: PoolConfig) -> EndorsementPool {
+    pub fn new(cfg: PoolConfig, thread_count: u8) -> EndorsementPool {
         EndorsementPool {
             endorsements: Default::default(),
             cfg,
+            latest_final_periods: vec![0; thread_count as usize],
         }
     }
 
     /// Removes endorsements that are too old
     pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {
+        self.latest_final_periods = periods.clone();
         self.endorsements.retain(
             |_,
              Endorsement {
@@ -72,6 +75,14 @@ impl EndorsementPool {
             // Already present
             if self.endorsements.contains_key(&endorsement_id) {
                 massa_trace!("pool add_endorsement endorsement already present", {});
+                continue;
+            }
+
+            // too old
+            if endorsement.content.slot.period
+                < self.latest_final_periods[endorsement.content.slot.thread as usize]
+            {
+                massa_trace!("pool add_endorsement endorsement too old", {});
                 continue;
             }
 
