@@ -121,7 +121,7 @@ We will communicate information later on how we will rank the node stability.
 
 Check the quality of your internet connection. Try increasing the "max_ping" setting in your config file:
 
-* create (or edit) file `massa-node/config/user_config.toml` with the following content:
+* edit file `massa-node/config/config.toml` with the following content:
 +
 ```toml
 [bootstrap]
@@ -133,14 +133,14 @@ Check the quality of your internet connection. Try increasing the "max_ping" set
 === API can't start
 
 * If your API can't start, e.g. with `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`, it's probably because the default API port 33033 is already in use on your computer. You should change the port in the config files, both in the API and Client:
- ** create (or edit) file `massa-node/config/user_config.toml` to change the port used by the API:
+ ** edit file `massa-node/config/config.toml` to change the port used by the API:
 +
 ```toml
 [api]
     bind = "127.0.0.1:33033" # change port here
 ```
 +
- ** create (or edit) file `massa-client/config/user_config.toml` and put the same port:
+ ** edit file `massa-client/config/config.toml` and put the same port:
 +
 ```toml
 default_node = "127.0.0.1:33033" # change port here as well
