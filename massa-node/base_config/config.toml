@@ -34,7 +34,7 @@ version = "DEVE.0.0"
     #POS
     initial_rolls_path = "base_config/initial_rolls.json"
     initial_draw_seed = "massa_genesis_seed"
-    periods_per_cycle = 10
+    periods_per_cycle = 128
     pos_lookback_cycles = 2
     pos_lock_cycles = 1
     pos_draw_cached_cycles = 10
