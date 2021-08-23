@@ -111,13 +111,13 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 }
 
 /// Creates an endorsement for use in pool tests.
-pub fn create_endorsement() -> Endorsement {
+pub fn create_endorsement(slot: Slot) -> Endorsement {
     let sender_priv = crypto::generate_random_private_key();
     let sender_public_key = crypto::derive_public_key(&sender_priv);
 
     let content = EndorsementContent {
         sender_public_key,
-        slot: Slot::new(10, 1),
+        slot,
         index: 0,
         endorsed_block: BlockId(Hash::hash("blabla".as_bytes())),
     };

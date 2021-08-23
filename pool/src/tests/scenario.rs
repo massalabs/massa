@@ -247,7 +247,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 _ => None,
             };
 
-            let endorsement = tools::create_endorsement();
+            let endorsement = tools::create_endorsement(Slot::new(10, 0));
             let mut endorsements = HashMap::new();
             let id = endorsement.verify_integrity().unwrap();
             endorsements.insert(id.clone(), endorsement.clone());
@@ -278,6 +278,50 @@ async fn test_pool_propagate_newly_added_endorsements() {
             {
                 Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
                 None => {} // no propagation
+            };
+
+            (protocol_controller, pool_command_sender, pool_manager)
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_pool_add_old_endorsements() {
+    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+    let max_pool_size_per_thread = 10;
+    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+
+    pool_test(
+        cfg,
+        thread_count,
+        operation_validity_periods,
+        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+            let op_filter = |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
+                _ => None,
+            };
+
+            let endorsement = tools::create_endorsement(Slot::new(1, 0));
+            let mut endorsements = HashMap::new();
+            let id = endorsement.verify_integrity().unwrap();
+            endorsements.insert(id.clone(), endorsement.clone());
+
+            pool_command_sender
+                .update_latest_final_periods(vec![50, 50])
+                .await
+                .unwrap();
+            protocol_controller
+                .received_endorsements(endorsements.clone())
+                .await;
+
+            match protocol_controller
+                .wait_command(250.into(), op_filter.clone())
+                .await
+            {
+                Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
+                None => {} // no propagation: endorsement is too old compared to final periods
             };
 
             (protocol_controller, pool_command_sender, pool_manager)
