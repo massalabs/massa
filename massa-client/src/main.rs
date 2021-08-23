@@ -107,8 +107,8 @@ fn main() {
         );
 
     // load config
-    let config_path = "config/config.toml";
-    let override_config_path = "config/user_config.toml";
+    let config_path = "base_config/config.toml";
+    let override_config_path = "config/config.toml";
     let mut cfg = config::Config::default();
     cfg.merge(config::File::with_name(config_path))
         .expect("could not load main config file");
