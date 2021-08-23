@@ -172,6 +172,11 @@ impl DeserializeCompact for EndorsementContent {
 
         // slot
         let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
+        if slot.period == 0 {
+            return Err(ModelsError::DeserializeError(
+                "the target period of an endorsement cannot be 0".into(),
+            ));
+        }
         cursor += delta;
 
         // endorsement index inside the block
