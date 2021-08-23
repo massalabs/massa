@@ -3864,7 +3864,7 @@ mod tests {
     use crate::ledger::LedgerData;
     use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
-    use models::{Endorsement, EndorsementContent};
+    use models::{Amount, Endorsement, EndorsementContent};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::path::Path;
