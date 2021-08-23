@@ -1,4 +1,0 @@
-# user config file. This file overrides massa-node/base_config/config.toml
-
-[network]
-    # routable_ip = "200.200.200.200" # routable public IP of the node
