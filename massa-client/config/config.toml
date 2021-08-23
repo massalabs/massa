@@ -1,2 +1,3 @@
+# user config file. This file overrides massa-client/base_config/config.toml
 
-default_node = "127.0.0.1:33033"
+# default_node = "127.0.0.1:33033"

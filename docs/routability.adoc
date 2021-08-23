@@ -17,7 +17,7 @@ In Massa, nodes are non-routable by default, an require a manual operation to be
   * if the router uses DHCP, the MAC address of the computer running the node must be set to have a permanent DHCP lease (a local IP address that never changes, usually of the form 192.168.X.XX)
   * incoming connections on TCP ports 31244 and 31245 must be directed towards the local IP address of the computer running the node
 * setup the firewall on your computer to allow incoming TCP connections on ports 31244 and 31245 (ex: `ufw allow 31244 && ufw allow 31245` on ubuntu, or setup the windows firewall on windows)
-* create a new file `massa-node/config/user_config.toml` with the following contents:
+* edit file `massa-node/config/config.toml` with the following contents:
 +
 ```toml
 [network]
