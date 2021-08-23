@@ -811,6 +811,16 @@ impl ProtocolWorker {
             );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
 
+            // add endorsements to known endorsements
+            let now = Instant::now();
+            node_info.insert_known_endorsements(
+                endorsement_ids.iter().map(|v| (*v, now)).collect(),
+                self.cfg.max_known_endorsements_size,
+            );
+
+            // end node mutable borrow
+            drop(node_info);
+
             // send endorsements to pool
             let ed_ids = match header
                 .content
@@ -834,13 +844,6 @@ impl ProtocolWorker {
                 propagate: false,
             })
             .await;
-
-            // add endorsements to known endorsements
-            let now = Instant::now();
-            node_info.insert_known_endorsements(
-                endorsement_ids.iter().map(|v| (*v, now)).collect(),
-                self.cfg.max_known_endorsements_size,
-            );
 
             return Ok(Some(block_id));
         }

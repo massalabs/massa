@@ -12,9 +12,9 @@ use crate::{
 use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
 use models::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, Amount, Block,
-    BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
-    Operation, OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
+    BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
+    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
     BLOCK_ID_SIZE_BYTES,
 };
@@ -1321,7 +1321,7 @@ impl BlockGraph {
             same_thread_parent_creator,
             self.cfg.block_reward,
             self.cfg.endorsement_count,
-        );
+        )?;
 
         self.block_state_try_apply(&mut accu, &header, Some(reward_ledger_changes), None, pos)?;
 
@@ -3864,7 +3864,7 @@ mod tests {
     use crate::ledger::LedgerData;
     use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
-    use models::{Endorsement, EndorsementContent};
+    use models::{Amount, Endorsement, EndorsementContent};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::path::Path;

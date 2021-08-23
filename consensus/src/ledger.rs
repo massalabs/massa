@@ -319,7 +319,7 @@ impl OperationLedgerInterface for Operation {
             parent_creator,
             self.content.fee,
             endorsement_count,
-        );
+        )?;
 
         // operation type specific
         match &self.content.op {
