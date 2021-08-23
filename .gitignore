@@ -4,10 +4,11 @@ lcov.info
 **/target
 **/Cargo.lock
 !/testrun/Cargo.lock
-massa-client/config/history.txt
+massa-client/config/*
+!massa-client/config/info.adoc
 massa-client/wallet.dat
 massa-node/storage/block_store/
 massa-node/storage/ledger/
-massa-node/config/node_privkey.key
-massa-node/config/staking_keys.json
+massa-node/config/*
+!massa-node/config/info.adoc
 massa-node/logs.txt
