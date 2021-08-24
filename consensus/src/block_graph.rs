@@ -2408,6 +2408,14 @@ impl BlockGraph {
 
         // check endorsements
         for endorsement in header.content.endorsements.iter() {
+            if endorsement.content.index >= self.cfg.endorsement_count {
+                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!(
+                        "endorsement index too high for header in slot: {}",
+                        header.content.slot
+                    ),
+                )));
+            }
             // check that the draw is correct
             if Address::from_public_key(&endorsement.content.sender_public_key)?
                 != endorsement_draws[endorsement.content.index as usize]
