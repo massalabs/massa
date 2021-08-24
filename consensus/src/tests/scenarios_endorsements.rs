@@ -146,7 +146,7 @@ async fn test_endorsement_check() {
             // create an otherwise valid endorsement with index = 1, include it in valid block(1,0), assert it is not propagated
 
             let content = EndorsementContent {
-                sender_public_key: pub_key_c,
+                sender_public_key: pub_key_b,
                 slot: Slot::new(1, 0),
                 index: 1,
                 endorsed_block: parents[0],
@@ -164,7 +164,7 @@ async fn test_endorsement_check() {
 
             // create an otherwise valid endorsement with genesis 1 as endorsed block, include it in valid block(1,0), assert it is not propagated
             let content = EndorsementContent {
-                sender_public_key: pub_key_c,
+                sender_public_key: pub_key_b,
                 slot: Slot::new(1, 0),
                 index: 0,
                 endorsed_block: parents[1],
@@ -182,7 +182,7 @@ async fn test_endorsement_check() {
 
             // create a valid endorsement, include it in valid block(1,1), assert it is propagated
             let content = EndorsementContent {
-                sender_public_key: pub_key_c,
+                sender_public_key: pub_key_b,
                 slot: Slot::new(1, 0),
                 index: 0,
                 endorsed_block: parents[0],

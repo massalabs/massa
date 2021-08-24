@@ -416,7 +416,17 @@ async fn test_block_filling() {
                 })
                 .await
                 .expect("timeout while waiting for slot");
-
+            // respond to endorsement command
+            pool_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for endorsement request");
             // respond to first pool batch command
             pool_controller
                 .wait_command(300.into(), |cmd| match cmd {
