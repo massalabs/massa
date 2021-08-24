@@ -100,9 +100,12 @@ async fn test_update_latest_final_block_cmd_notification() {
                     response_tx.send(Vec::new()).unwrap();
                     None
                 }
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
-
             // wait for initial final periods notification
             let final_periods = pool_controller
                 .wait_command(300.into(), update_final_notification_filter)
