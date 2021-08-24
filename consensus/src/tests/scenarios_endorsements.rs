@@ -1,12 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use models::{Address, Amount, Slot};
+use crypto::hash::Hash;
+use models::{Address, Amount, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
 
-use crate::tests::tools::{self, generate_ledger_file};
+use crate::tests::tools::{self, create_block, generate_ledger_file};
 
 #[tokio::test]
 #[serial]
@@ -68,7 +69,7 @@ async fn test_endorsement_check() {
     tools::consensus_without_pool_test(
         cfg.clone(),
         None,
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let draws: HashMap<_, _> = consensus_command_sender
                 .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))
                 .await
@@ -76,11 +77,54 @@ async fn test_endorsement_check() {
                 .into_iter()
                 .collect();
 
-            let staker_a = draws.get(&Slot::new(1, 0)).unwrap().0;
-            let staker_b = draws.get(&Slot::new(1, 0)).unwrap().1[0];
-            let staker_c = draws.get(&Slot::new(1, 1)).unwrap().1[0];
+            let address_a = draws.get(&Slot::new(1, 0)).unwrap().0;
+            let address_b = draws.get(&Slot::new(1, 0)).unwrap().1[0];
+            let address_c = draws.get(&Slot::new(1, 1)).unwrap().1[0];
 
-            // todo : create an otherwise valid endorsement with another address, include it in valid block(1,0), assert it is not propagated
+            let (pub_key_a, priv_key_a) = if address_a == address_1 {
+                (pubkey_1, priv_1)
+            } else {
+                (pubkey_2, priv_2)
+            };
+            let (pub_key_b, priv_key_b) = if address_b == address_1 {
+                (pubkey_1, priv_1)
+            } else {
+                (pubkey_2, priv_2)
+            };
+            let (pub_key_c, priv_key_c) = if address_c == address_1 {
+                (pubkey_1, priv_1)
+            } else {
+                (pubkey_2, priv_2)
+            };
+
+            let parents = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .unwrap()
+                .best_parents;
+
+            let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
+
+            // create an otherwise valid endorsement with another address, include it in valid block(1,0), assert it is not propagated
+            let sender_priv = crypto::generate_random_private_key();
+            let sender_public_key = crypto::derive_public_key(&sender_priv);
+            let content = EndorsementContent {
+                sender_public_key,
+                slot: Slot::new(1, 0),
+                index: 0,
+                endorsed_block: parents[0],
+            };
+            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let signature = crypto::sign(&hash, &sender_priv).unwrap();
+            let ed = Endorsement {
+                content: content.clone(),
+                signature,
+            };
+
+            b10.header.content.endorsements = vec![ed];
+
+            tools::propagate_block(&mut protocol_controller, b10, false, 500).await;
+
             // todo : create an otherwise valid endorsement at slot (1,1), include it in valid block(1,0), assert it is not propagated
             // todo : create an otherwise valid endorsement with index = 1, include it in valid block(1,0), assert it is not propagated
             // todo : create an otherwise valid endorsement with genesis 1 as endorsed block, include it in valid block(1,0), assert it is not propagated
