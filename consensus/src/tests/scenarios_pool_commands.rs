@@ -318,6 +318,10 @@ async fn test_max_attempts_get_operations() {
                         target_slot,
                         ..
                     } => Some((response_tx, target_slot)),
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 };
 
@@ -347,6 +351,10 @@ async fn test_max_attempts_get_operations() {
             // The next command should be a slot update.
             let slot_filter = |cmd| match cmd {
                 PoolCommand::UpdateCurrentSlot(slot) => Some(slot),
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
 
@@ -430,6 +438,10 @@ async fn test_max_batch_size_get_operations() {
                     target_slot,
                     ..
                 } => Some((response_tx, target_slot)),
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
 

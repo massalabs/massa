@@ -267,6 +267,10 @@ async fn test_order_of_inclusion() {
                             None
                         }
                     }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 })
                 .await
@@ -285,6 +289,10 @@ async fn test_order_of_inclusion() {
                             .unwrap();
                         Some(())
                     }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 })
                 .await
@@ -301,6 +309,10 @@ async fn test_order_of_inclusion() {
                         assert!(!exclude.is_empty());
                         response_tx.send(vec![]).unwrap();
                         Some(())
+                    }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
                     }
                     _ => None,
                 })

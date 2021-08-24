@@ -546,6 +546,10 @@ async fn test_roll_block_creation() {
                     None
                 }
             }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
+            }
             _ => None,
         })
         .await
@@ -570,6 +574,10 @@ async fn test_roll_block_creation() {
                     )])
                     .unwrap();
                 Some(())
+            }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
             }
             _ => None,
         })
@@ -627,6 +635,10 @@ async fn test_roll_block_creation() {
                 response_tx.send(vec![]).unwrap();
                 Some(())
             }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
+            }
             _ => None,
         })
         .await
@@ -663,6 +675,10 @@ async fn test_roll_block_creation() {
                     )])
                     .unwrap();
                 Some(())
+            }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
             }
             _ => None,
         })
