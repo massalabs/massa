@@ -162,7 +162,23 @@ async fn test_endorsement_check() {
 
             tools::propagate_block(&mut protocol_controller, b10, false, 500).await;
 
-            // todo : create an otherwise valid endorsement with genesis 1 as endorsed block, include it in valid block(1,0), assert it is not propagated
+            // create an otherwise valid endorsement with genesis 1 as endorsed block, include it in valid block(1,0), assert it is not propagated
+            let content = EndorsementContent {
+                sender_public_key: pub_key_c,
+                slot: Slot::new(1, 0),
+                index: 0,
+                endorsed_block: parents[1],
+            };
+            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let signature = crypto::sign(&hash, &sender_priv).unwrap();
+            let ed = Endorsement {
+                content: content.clone(),
+                signature,
+            };
+            let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
+            b10.header.content.endorsements = vec![ed];
+
+            tools::propagate_block(&mut protocol_controller, b10, false, 500).await;
             // todo : create a valid endorsement, include it in valid block(1,1), assert it is propagated
 
             (
