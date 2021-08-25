@@ -151,6 +151,8 @@ pub struct ConsensusWorker {
     stats_history_timespan: UTime,
     stats_desync_detection_timespan: UTime,
     launch_time: UTime,
+    // endorsed slots cache
+    endorsed_slots: HashSet<Slot>,
 }
 
 impl ConsensusWorker {
@@ -249,6 +251,7 @@ impl ConsensusWorker {
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
             cfg,
             launch_time: UTime::now(clock_compensation)?,
+            endorsed_slots: HashSet::new(),
         })
     }
 
@@ -285,7 +288,7 @@ impl ConsensusWorker {
                     massa_trace!("consensus.consensus_worker.run_loop.select.slot_tick", {});
                     if let Some(end) = self.cfg.end_timestamp {
                         if UTime::now(self.clock_compensation)? > end {
-                            info!("This episode has come to an end, you can download the next one https://gitlab.com/massalabs/massa");
+                            info!("This episode has come to an end, please get the latest testnet node version to continue");
                             break;
                         }
                     }
@@ -355,7 +358,7 @@ impl ConsensusWorker {
             .update_current_slot(cur_slot)
             .await?;
 
-        // create endorsements and block if enabled and possible
+        // create blocks
         if !self.cfg.disable_block_creation && cur_slot.period > 0 {
             let (block_draw, endorsement_draws) = match self.pos.draw(cur_slot) {
                 Ok((b_draw, e_draws)) => (Some(b_draw), e_draws),
@@ -371,34 +374,6 @@ impl ConsensusWorker {
                 Err(err) => return Err(err),
             };
 
-            // create endorsements
-            //TODO add check that we aren't accidentally double-staking endorsements
-            let mut endorsements = HashMap::new();
-            for (endorsement_index, addr) in endorsement_draws.iter().enumerate() {
-                if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
-                    massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
-                        { "index": endorsement_index, "addr": addr, "pubkey": pub_k, "unlocked": true });
-                    let (endorsement_id, endorsement) = create_endorsement(
-                        cur_slot,
-                        *pub_k,
-                        priv_k,
-                        endorsement_index as u32,
-                        self.block_db.get_best_parents()[cur_slot.thread as usize],
-                    )?;
-                    endorsements.insert(endorsement_id, endorsement);
-                } else {
-                    massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
-                        { "index": endorsement_index, "addr": addr, "unlocked": false });
-                }
-            }
-            if !endorsements.is_empty() {
-                // send endorsement batch to pool
-                self.pool_command_sender
-                    .add_endorsements(endorsements)
-                    .await?;
-            }
-
-            // create block (note that we do that AFTER endorsement creation to make sure we can include our own endorsements)
             if let Some(addr) = block_draw {
                 if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
                     massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
@@ -1208,11 +1183,11 @@ impl ConsensusWorker {
     async fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
-        // Propagate newly active blocks.
-        for (hash, block) in self.block_db.get_blocks_to_propagate().into_iter() {
-            massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "hash": hash, "block": block });
+        // Propagate new blocks
+        for (block_id, block) in self.block_db.get_blocks_to_propagate().into_iter() {
+            massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "block_id": block_id, "block": block });
             self.protocol_command_sender
-                .integrated_block(hash, block)
+                .integrated_block(block_id, block)
                 .await?;
         }
 
@@ -1270,18 +1245,85 @@ impl ConsensusWorker {
             self.wishlist = new_wishlist;
         }
 
-        // send latest final periods to pool, if changed
+        // note new latest final periods
         let latest_final_periods: Vec<u64> = self
             .block_db
             .get_latest_final_blocks_periods()
             .iter()
             .map(|(_block_id, period)| *period)
             .collect();
+        // if changed...
         if self.latest_final_periods != latest_final_periods {
+            // discard endorsed slots cache
+            self.endorsed_slots
+                .retain(|s| s.period >= latest_final_periods[s.thread as usize]);
+
+            // update final periods
             self.latest_final_periods = latest_final_periods;
+
+            // send latest final periods to pool
             self.pool_command_sender
                 .update_latest_final_periods(self.latest_final_periods.clone())
                 .await?;
+        }
+
+        // Produce endorsements
+        if !self.cfg.disable_block_creation {
+            // iterate on all blockclique blocks
+            for block_id in self.block_db.get_blockclique().into_iter() {
+                let block_slot = match self.block_db.get_active_block(block_id) {
+                    Some(b) => b.block.header.content.slot,
+                    None => continue,
+                };
+                if self.endorsed_slots.contains(&block_slot) {
+                    // skip already endorsed (to prevent double stake pernalty)
+                    continue;
+                }
+                // check that the block to endorse is at most one period before the last slot
+                if let Some(prev_slot) = self.previous_slot {
+                    if prev_slot.period.saturating_sub(block_slot.period) > 1 {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+                // check endorsement draws
+                let endorsement_draws = match self.pos.draw(block_slot) {
+                    Ok((_b_draw, e_draws)) => e_draws,
+                    Err(err) => {
+                        warn!(
+                            "could not draw endorsements at slot {}: {}",
+                            block_slot, err
+                        );
+                        Vec::new()
+                    }
+                };
+                let mut endorsements = HashMap::new();
+                for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
+                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
+                        massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
+                            { "index": endorsement_index, "addr": addr, "pubkey": pub_k, "unlocked": true });
+                        let (endorsement_id, endorsement) = create_endorsement(
+                            block_slot,
+                            *pub_k,
+                            priv_k,
+                            endorsement_index as u32,
+                            *block_id,
+                        )?;
+                        endorsements.insert(endorsement_id, endorsement);
+                        self.endorsed_slots.insert(block_slot);
+                    } else {
+                        massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
+                            { "index": endorsement_index, "addr": addr, "unlocked": false });
+                    }
+                }
+                // send endorsement batch to pool
+                if !endorsements.is_empty() {
+                    self.pool_command_sender
+                        .add_endorsements(endorsements)
+                        .await?;
+                }
+            }
         }
 
         // add stale blocks to stats
