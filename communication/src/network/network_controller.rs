@@ -14,7 +14,7 @@ use crate::error::CommunicationError;
 use crypto::signature::{
     derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
 };
-use models::{Block, BlockHeader, BlockId, Operation, Version};
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -255,6 +255,20 @@ impl NetworkCommandSender {
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("could not send SendOperations command".into())
+            })?;
+        Ok(())
+    }
+
+    pub async fn send_endorsements(
+        &self,
+        node: NodeId,
+        endorsements: Vec<Endorsement>,
+    ) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::SendEndorsements { node, endorsements })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("could not send send_endorsement command".into())
             })?;
         Ok(())
     }

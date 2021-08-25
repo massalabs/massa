@@ -58,9 +58,11 @@ async fn launch(
         max_bootstrap_children: cfg.bootstrap.max_bootstrap_children,
         max_ask_blocks_per_message: cfg.network.max_ask_blocks_per_message,
         max_operations_per_message: cfg.network.max_operations_per_message,
+        max_endorsements_per_message: cfg.network.max_endorsements_per_message,
         max_bootstrap_message_size: cfg.bootstrap.max_bootstrap_message_size,
         max_bootstrap_pos_cycles: cfg.bootstrap.max_bootstrap_pos_cycles,
         max_bootstrap_pos_entries: cfg.bootstrap.max_bootstrap_pos_entries,
+        max_block_endorsments: cfg.consensus.endorsement_count,
     });
 
     let (boot_pos, boot_graph, clock_compensation, initial_peers) = get_state(

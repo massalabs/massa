@@ -6,7 +6,8 @@ use crypto::{
 };
 use models::{
     array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
-    DeserializeVarInt, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version,
+    DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt,
+    Version,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -50,6 +51,8 @@ pub enum Message {
     BlockNotFound(BlockId),
     /// Operations
     Operations(Vec<Operation>),
+    /// Endorsements
+    Endorsements(Vec<Endorsement>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -64,6 +67,7 @@ enum MessageTypeId {
     PeerList = 6,
     BlockNotFound = 7,
     Operations = 8,
+    Endorsements = 9,
 }
 
 impl SerializeCompact for Message {
@@ -125,6 +129,13 @@ impl SerializeCompact for Message {
                     res.extend(op.to_bytes_compact()?);
                 }
             }
+            Message::Endorsements(endorsements) => {
+                res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
+                res.extend((endorsements.len() as u32).to_varint_bytes());
+                for endorsement in endorsements.iter() {
+                    res.extend(endorsement.to_bytes_compact()?);
+                }
+            }
         }
         Ok(res)
     }
@@ -134,14 +145,19 @@ impl DeserializeCompact for Message {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
-        let (max_ask_blocks_per_message, max_peer_list_length, max_operations_per_message) =
-            with_serialization_context(|context| {
-                (
-                    context.max_ask_blocks_per_message,
-                    context.max_peer_list_length,
-                    context.max_operations_per_message,
-                )
-            });
+        let (
+            max_ask_blocks_per_message,
+            max_peer_list_length,
+            max_operations_per_message,
+            max_endorsements_per_message,
+        ) = with_serialization_context(|context| {
+            (
+                context.max_ask_blocks_per_message,
+                context.max_peer_list_length,
+                context.max_operations_per_message,
+                context.max_endorsements_per_message,
+            )
+        });
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -233,6 +249,22 @@ impl DeserializeCompact for Message {
                 }
                 Message::Operations(ops)
             }
+            MessageTypeId::Endorsements => {
+                // length
+                let (length, delta) = u32::from_varint_bytes_bounded(
+                    &buffer[cursor..],
+                    max_endorsements_per_message,
+                )?;
+                cursor += delta;
+                // operations
+                let mut endorsements: Vec<Endorsement> = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let (endorsement, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
+                    cursor += delta;
+                    endorsements.push(endorsement);
+                }
+                Message::Endorsements(endorsements)
+            }
         };
         Ok((res, cursor))
     }
@@ -262,9 +294,11 @@ mod tests {
             max_bootstrap_children: 100,
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
+            max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
+            max_block_endorsments: 8,
         };
         models::init_serialization_context(ctx.clone());
         ctx

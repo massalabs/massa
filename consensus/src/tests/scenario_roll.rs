@@ -232,6 +232,7 @@ async fn test_roll() {
                 .await
                 .unwrap()
                 .into_iter()
+                .map(|(s, (b, e))| (s, b))
                 .collect();
 
             let other_addr = if *draws.get(&Slot::new(6, 0)).unwrap() == address_1 {
@@ -545,6 +546,10 @@ async fn test_roll_block_creation() {
                     None
                 }
             }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
+            }
             _ => None,
         })
         .await
@@ -569,6 +574,10 @@ async fn test_roll_block_creation() {
                     )])
                     .unwrap();
                 Some(())
+            }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
             }
             _ => None,
         })
@@ -626,6 +635,10 @@ async fn test_roll_block_creation() {
                 response_tx.send(vec![]).unwrap();
                 Some(())
             }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
+            }
             _ => None,
         })
         .await
@@ -662,6 +675,10 @@ async fn test_roll_block_creation() {
                     )])
                     .unwrap();
                 Some(())
+            }
+            PoolCommand::GetEndorsements { response_tx, .. } => {
+                response_tx.send(Vec::new()).unwrap();
+                None
             }
             _ => None,
         })
@@ -856,7 +873,7 @@ async fn test_roll_deactivation() {
                     .await
                     .unwrap()
                     .into_iter()
-                    .map(|(k, v)| (k, Some(v)))
+                    .map(|(k, (v, e))| (k, Some(v)))
                     .collect::<HashMap<Slot, Option<Address>>>();
                 if cur_cycle == 0 {
                     // controlled misses in cycle 0
@@ -922,7 +939,7 @@ async fn test_roll_deactivation() {
                 best_parents[cur_slot.thread as usize] = block_id;
             }
 
-            // chech candidate rolls
+            // check candidate rolls
             let addrs_info = consensus_command_sender
                 .get_addresses_info(
                     vec![address_a0, address_a1, address_b0, address_b1]

@@ -12,9 +12,9 @@ use crate::{
 use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
 use models::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, Amount, Block,
-    BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
-    Operation, OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
+    BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
+    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
     BLOCK_ID_SIZE_BYTES,
 };
@@ -52,6 +52,8 @@ pub struct BlockStateAccumulator {
     pub roll_updates: RollUpdates,
     pub cycle_roll_updates: RollUpdates,
     pub same_thread_parent_cycle: u64,
+    pub same_thread_parent_creator: Address,
+    pub endorsers_addresses: Vec<Address>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,17 +74,7 @@ pub struct ActiveBlock {
 impl ActiveBlock {
     /// Computes the fitness of the block
     fn fitness(&self) -> u64 {
-        /*
-        self.block
-            .header
-            .endorsements
-            .iter()
-            .fold(1, |acc, endorsement| match endorsement {
-                Some(_) => acc + 1,
-                None => acc,
-            })
-        */
-        1
+        1 + self.block.header.content.endorsements.len() as u64
     }
 }
 
@@ -487,30 +479,101 @@ pub struct ExportDiscardedBlocks {
     pub map: HashMap<BlockId, (DiscardReason, BlockHeader)>,
 }
 
-#[derive(Debug, Clone)]
-pub struct BlockGraphExport {
-    /// Genesis blocks.
-    pub genesis_blocks: Vec<BlockId>,
-    /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: HashMap<BlockId, ExportCompiledBlock>,
-    /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: ExportDiscardedBlocks,
-    /// Best parents hashe in each thread.
-    pub best_parents: Vec<BlockId>,
-    /// Latest final period and block hash in each thread.
-    pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
-    /// Head of the incompatibility graph.
-    pub gi_head: HashMap<BlockId, HashSet<BlockId>>,
-    /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<HashSet<BlockId>>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportClique {
+    pub block_ids: Vec<BlockId>,
+    pub fitness: u64,
+    pub is_blockclique: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerDataExport {
-    /// Candidate data
-    pub candidate_data: LedgerSubset,
-    /// Final data
-    pub final_data: LedgerSubset,
+impl<'a> From<&'a Clique> for ExportClique {
+    fn from(clique: &'a Clique) -> Self {
+        ExportClique {
+            block_ids: clique.block_ids.iter().cloned().collect(),
+            fitness: clique.fitness,
+            is_blockclique: clique.is_blockclique,
+        }
+    }
+}
+
+impl<'a> From<&'a ExportClique> for Clique {
+    fn from(export_clique: &'a ExportClique) -> Self {
+        Clique {
+            block_ids: export_clique.block_ids.iter().cloned().collect(),
+            fitness: export_clique.fitness,
+            is_blockclique: export_clique.is_blockclique,
+        }
+    }
+}
+
+impl SerializeCompact for ExportClique {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        // block_ids
+        let block_ids_count: u32 = self.block_ids.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!("too many blocks in in clique: {:?}", err))
+        })?;
+        res.extend(block_ids_count.to_varint_bytes());
+        for b_id in self.block_ids.iter() {
+            res.extend(&b_id.to_bytes());
+        }
+
+        // fitness
+        res.extend(self.fitness.to_varint_bytes());
+
+        // is_blockclique
+        res.push(if self.is_blockclique { 1u8 } else { 0u8 });
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for ExportClique {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
+        let mut cursor = 0usize;
+        let max_bootstrap_blocks =
+            with_serialization_context(|context| context.max_bootstrap_blocks);
+
+        // block_ids
+        let (block_count, delta) = u32::from_varint_bytes(buffer)?;
+        if block_count > max_bootstrap_blocks {
+            return Err(ModelsError::DeserializeError(format!(
+                "too many blocks in clique for deserialization"
+            )));
+        }
+        cursor += delta;
+        let mut block_ids: Vec<BlockId> = Vec::with_capacity(block_count as usize);
+        for _ in 0..(block_count as usize) {
+            let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += BLOCK_ID_SIZE_BYTES;
+            block_ids.push(b_id);
+        }
+
+        // fitness
+        let (fitness, delta) = u64::from_varint_bytes(buffer)?;
+        cursor += delta;
+
+        // is_blockclique
+        let is_blockclique = match u8_from_slice(&buffer[cursor..])? {
+            0u8 => false,
+            1u8 => true,
+            _ => {
+                return Err(ModelsError::SerializeError(
+                    "could not deserialize active_block.production_events.has_created".into(),
+                ))
+            }
+        };
+
+        Ok((
+            ExportClique {
+                block_ids,
+                fitness,
+                is_blockclique,
+            },
+            cursor,
+        ))
+    }
 }
 
 impl<'a> From<&'a BlockGraph> for BlockGraphExport {
@@ -523,7 +586,11 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
             best_parents: block_graph.best_parents.clone(),
             latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
             gi_head: block_graph.gi_head.clone(),
-            max_cliques: block_graph.max_cliques.clone(),
+            max_cliques: block_graph
+                .max_cliques
+                .iter()
+                .map(|v| ExportClique::from(v))
+                .collect(),
         };
 
         for (hash, block) in block_graph.block_statuses.iter() {
@@ -560,6 +627,32 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct BlockGraphExport {
+    /// Genesis blocks.
+    pub genesis_blocks: Vec<BlockId>,
+    /// Map of active blocks, were blocks are in their exported version.
+    pub active_blocks: HashMap<BlockId, ExportCompiledBlock>,
+    /// Finite cache of discarded blocks, in exported version.
+    pub discarded_blocks: ExportDiscardedBlocks,
+    /// Best parents hashe in each thread.
+    pub best_parents: Vec<BlockId>,
+    /// Latest final period and block hash in each thread.
+    pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
+    /// Head of the incompatibility graph.
+    pub gi_head: HashMap<BlockId, HashSet<BlockId>>,
+    /// List of maximal cliques of compatible blocks.
+    pub max_cliques: Vec<ExportClique>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LedgerDataExport {
+    /// Candidate data
+    pub candidate_data: LedgerSubset,
+    /// Final data
+    pub final_data: LedgerSubset,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootsrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
@@ -571,7 +664,7 @@ pub struct BootsrapableGraph {
     /// Head of the incompatibility graph.
     pub gi_head: Vec<(BlockId, Vec<BlockId>)>,
     /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<Vec<BlockId>>,
+    pub max_cliques: Vec<ExportClique>,
     /// Ledger at last final blocks
     pub ledger: LedgerExport,
 }
@@ -604,9 +697,8 @@ impl<'a> TryFrom<&'a BlockGraph> for BootsrapableGraph {
                 .collect(),
             max_cliques: block_graph
                 .max_cliques
-                .clone()
-                .into_iter()
-                .map(|clique| clique.into_iter().collect())
+                .iter()
+                .map(|clique| ExportClique::from(clique))
                 .collect(),
             ledger: LedgerExport::try_from(&block_graph.ledger)?,
         })
@@ -677,19 +769,9 @@ impl SerializeCompact for BootsrapableGraph {
             return Err(ModelsError::SerializeError(format!("too many blocks in max_cliques for serialization context in BootstrapableGraph: {:?}", max_cliques_count)));
         }
         res.extend(max_cliques_count.to_varint_bytes());
-        for set in self.max_cliques.iter() {
-            let set_count: u32 = set.len().try_into().map_err(|err| {
-                ModelsError::SerializeError(format!(
-                    "too many entry in max_cliques set in BootsrapableGraph: {:?}",
-                    err
-                ))
-            })?;
-            res.extend(set_count.to_varint_bytes());
-            for hash in set {
-                res.extend(&hash.to_bytes());
-            }
+        for e_clique in self.max_cliques.iter() {
+            res.extend(e_clique.to_bytes_compact()?);
         }
-
         // ledger
         res.extend(self.ledger.to_bytes_compact()?);
 
@@ -774,22 +856,14 @@ impl DeserializeCompact for BootsrapableGraph {
             return Err(ModelsError::DeserializeError(format!("too many blocks in max_cliques for deserialization context in BootstrapableGraph: {:?}", max_cliques_count)));
         }
         cursor += delta;
-        let mut max_cliques: Vec<Vec<BlockId>> = Vec::with_capacity(max_cliques_count as usize);
+        let mut max_cliques: Vec<ExportClique> = Vec::with_capacity(max_cliques_count as usize);
         for _ in 0..(max_cliques_count as usize) {
-            let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            if set_count > max_bootstrap_blocks {
-                return Err(ModelsError::DeserializeError(format!("too many blocks in a clique for deserialization context in BootstrapableGraph: {:?}", set_count)));
-            }
+            let (c, delta) = ExportClique::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-            let mut set: Vec<BlockId> = Vec::with_capacity(set_count as usize);
-            for _ in 0..(set_count as usize) {
-                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += BLOCK_ID_SIZE_BYTES;
-                set.push(hash);
-            }
-            max_cliques.push(set);
+            max_cliques.push(c);
         }
 
+        // ledger
         let (ledger, delta) = LedgerExport::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
@@ -807,6 +881,13 @@ impl DeserializeCompact for BootsrapableGraph {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Clique {
+    pub block_ids: HashSet<BlockId>,
+    pub fitness: u64,
+    pub is_blockclique: bool,
+}
+
 pub struct BlockGraph {
     cfg: ConsensusConfig,
     genesis_hashes: Vec<BlockId>,
@@ -815,7 +896,7 @@ pub struct BlockGraph {
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
     best_parents: Vec<BlockId>,
     gi_head: HashMap<BlockId, HashSet<BlockId>>,
-    max_cliques: Vec<HashSet<BlockId>>,
+    max_cliques: Vec<Clique>,
     to_propagate: HashMap<BlockId, Block>,
     attack_attempts: Vec<BlockId>,
     new_final_blocks: HashSet<BlockId>,
@@ -891,6 +972,7 @@ fn create_genesis_block(
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::hash(&Vec::new()),
+            endorsements: Vec::new(),
         },
     )?;
 
@@ -973,7 +1055,7 @@ impl BlockGraph {
                 max_cliques: boot_graph
                     .max_cliques
                     .into_iter()
-                    .map(|v| v.into_iter().collect())
+                    .map(|v| Clique::from(&v))
                     .collect(),
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
@@ -1021,7 +1103,11 @@ impl BlockGraph {
                 latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0)).collect(),
                 best_parents: block_hashes,
                 gi_head: HashMap::new(),
-                max_cliques: vec![HashSet::new()],
+                max_cliques: vec![Clique {
+                    block_ids: HashSet::new(),
+                    fitness: 0,
+                    is_blockclique: true,
+                }],
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
@@ -1044,10 +1130,14 @@ impl BlockGraph {
         let op_roll_updates = operation.get_roll_updates()?;
         // get ledger changes
         let op_ledger_changes = operation.get_ledger_changes(
-            &block_creator_address,
+            block_creator_address,
+            state_accu.endorsers_addresses.clone(),
+            state_accu.same_thread_parent_creator,
             self.cfg.thread_count,
             self.cfg.roll_price,
+            self.cfg.endorsement_count,
         )?;
+        // todo add reward
         // apply to block state accumulator
         self.block_state_try_apply(
             state_accu,
@@ -1281,14 +1371,26 @@ impl BlockGraph {
         let block_creator_address = Address::from_public_key(&header.content.creator)?;
 
         // get same thread parent cycle
-        let same_thread_parent_cycle = self
+        let same_thread_parent = &self
             .get_active_block(&header.content.parents[block_thread as usize])
             .ok_or(ConsensusError::MissingBlock)?
-            .block
+            .block;
+
+        let same_thread_parent_cycle = same_thread_parent
             .header
             .content
             .slot
             .get_cycle(self.cfg.periods_per_cycle);
+
+        let same_thread_parent_creator =
+            Address::from_public_key(&same_thread_parent.header.content.creator)?;
+
+        let endorsers_addresses = header
+            .content
+            .endorsements
+            .iter()
+            .map(|ed| Address::from_public_key(&ed.content.sender_public_key))
+            .collect::<Result<Vec<_>, _>>()?;
 
         // init block state accumulator
         let mut accu = BlockStateAccumulator {
@@ -1300,17 +1402,20 @@ impl BlockGraph {
             roll_updates: Default::default(),
             cycle_roll_updates: Default::default(),
             same_thread_parent_cycle,
+            same_thread_parent_creator,
+            endorsers_addresses: endorsers_addresses.clone(),
         };
 
         // block constant ledger reward
         let mut reward_ledger_changes = LedgerChanges::default();
-        reward_ledger_changes.apply(
-            &block_creator_address,
-            &LedgerChange {
-                balance_delta: Amount::from(self.cfg.block_reward),
-                balance_increment: true,
-            },
+        reward_ledger_changes.add_reward(
+            block_creator_address,
+            endorsers_addresses,
+            same_thread_parent_creator,
+            self.cfg.block_reward,
+            self.cfg.endorsement_count,
         )?;
+
         self.block_state_try_apply(&mut accu, &header, Some(reward_ledger_changes), None, pos)?;
 
         // apply roll lock funds release
@@ -2235,8 +2340,8 @@ impl BlockGraph {
         // (step 1 in consensus/pos.md)
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
-        let slot_draw_address = match pos.draw(header.content.slot) {
-            Ok(addr) => addr,
+        let (slot_draw_address, endorsement_draws) = match pos.draw(header.content.slot) {
+            Ok(draws) => draws,
             Err(ConsensusError::PosCycleUnavailable(_)) => {
                 // slot is not available yet
                 return Ok(HeaderCheckOutcome::WaitForSlot);
@@ -2394,6 +2499,28 @@ impl BlockGraph {
         ))
         })?;
 
+        // check endorsements
+        for endorsement in header.content.endorsements.iter() {
+            // check that the draw is correct
+            if Address::from_public_key(&endorsement.content.sender_public_key)?
+                != endorsement_draws[endorsement.content.index as usize]
+            {
+                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!(
+                        "endorser draw mismatch for header in slot: {}",
+                        header.content.slot
+                    ),
+                )));
+            }
+            // check that the endorsement slot matches the endorsed block
+            if endorsement.content.slot != parent_in_own_thread.block.header.content.slot {
+                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
+                            parent_in_own_thread.block.header.content.slot, endorsement.content.slot),
+                )));
+            }
+        }
+
         // thread incompatibility test
         parent_in_own_thread.children[header.content.slot.thread as usize]
             .keys()
@@ -2481,8 +2608,8 @@ impl BlockGraph {
             (parents[header.content.slot.thread as usize].1 + 1)..header.content.slot.period
         {
             let miss_slot = Slot::new(miss_period, header.content.slot.thread);
-            let slot_draw_address = match pos.draw(miss_slot) {
-                Ok(addr) => addr,
+            let (slot_draw_address, endorsement_draws) = match pos.draw(miss_slot) {
+                Ok(draws) => draws,
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     // slot is not available yet
                     return Ok(HeaderCheckOutcome::WaitForSlot);
@@ -2863,9 +2990,9 @@ impl BlockGraph {
 
     fn add_block_to_graph(
         &mut self,
-        hash: BlockId,
+        add_block_id: BlockId,
         parents_hash_period: Vec<(BlockId, u64)>,
-        block: Block,
+        add_block: Block,
         deps: HashSet<BlockId>,
         incomp: HashSet<BlockId>,
         inherited_incomp_count: usize,
@@ -2875,15 +3002,17 @@ impl BlockGraph {
         roll_updates: RollUpdates,
         production_events: Vec<(u64, Address, bool)>,
     ) -> Result<(), ConsensusError> {
-        massa_trace!("consensus.block_graph.add_block_to_graph", { "hash": hash });
+        massa_trace!("consensus.block_graph.add_block_to_graph", {
+            "block_id": add_block_id
+        });
         // add block to status structure
         self.block_statuses.insert(
-            hash,
+            add_block_id,
             BlockStatus::Active(ActiveBlock {
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
                 descendants: HashSet::new(),
-                block: block.clone(),
+                block: add_block.clone(),
                 children: vec![HashMap::new(); self.cfg.thread_count as usize],
                 is_final: false,
                 block_ledger_changes,
@@ -2897,12 +3026,12 @@ impl BlockGraph {
         // add as child to parents
         for (parent_h, _parent_period) in parents_hash_period.iter() {
             if let Some(BlockStatus::Active(a_parent)) = self.block_statuses.get_mut(parent_h) {
-                a_parent.children[block.header.content.slot.thread as usize]
-                    .insert(hash, block.header.content.slot.period);
+                a_parent.children[add_block.header.content.slot.thread as usize]
+                    .insert(add_block_id, add_block.header.content.slot.period);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
                     "inconsistency inside block statuses adding child {:?} of block {:?}",
-                    hash, parent_h
+                    add_block_id, parent_h
                 )));
             }
         }
@@ -2917,7 +3046,7 @@ impl BlockGraph {
                     continue;
                 }
                 if let Some(BlockStatus::Active(ab)) = self.block_statuses.get_mut(&ancestor_h) {
-                    ab.descendants.insert(hash);
+                    ab.descendants.insert(add_block_id);
                     for (ancestor_parent_h, _) in ab.parents.iter() {
                         ancestors.push_front(*ancestor_parent_h);
                     }
@@ -2934,9 +3063,9 @@ impl BlockGraph {
             self.gi_head
                 .get_mut(incomp_h)
                 .ok_or(ConsensusError::MissingBlock)?
-                .insert(hash);
+                .insert(add_block_id);
         }
-        self.gi_head.insert(hash, incomp.clone());
+        self.gi_head.insert(add_block_id, incomp.clone());
 
         // max cliques update
         massa_trace!(
@@ -2949,18 +3078,26 @@ impl BlockGraph {
             //   therefore it is not forking and can simply be added to the cliques it is compatible with
             self.max_cliques
                 .iter_mut()
-                .filter(|c| incomp.is_disjoint(c))
+                .filter(|c| incomp.is_disjoint(&c.block_ids))
                 .for_each(|c| {
-                    c.insert(hash);
+                    c.block_ids.insert(add_block_id);
                 });
         } else {
             // fully recompute max cliques
             massa_trace!(
                 "consensus.block_graph.add_block_to_graph.clique_full_computing",
-                { "hash": hash }
+                { "hash": add_block_id }
             );
             let before = self.max_cliques.len();
-            self.max_cliques = self.compute_max_cliques();
+            self.max_cliques = self
+                .compute_max_cliques()
+                .into_iter()
+                .map(|c| Clique {
+                    block_ids: c,
+                    fitness: 0,
+                    is_blockclique: false,
+                })
+                .collect();
             let after = self.max_cliques.len();
             if before != after {
                 massa_trace!(
@@ -2970,7 +3107,7 @@ impl BlockGraph {
                 //gi_head
                 warn!(
                     "clique number went from {:?} to {:?} after adding {:?}",
-                    before, after, hash
+                    before, after, add_block_id
                 );
             }
         }
@@ -2978,26 +3115,31 @@ impl BlockGraph {
         // compute clique fitnesses and find blockclique
         massa_trace!("consensus.block_graph.add_block_to_graph.compute_clique_fitnesses_and_find_blockclique", {});
         // note: clique_fitnesses is pair (fitness, -hash_sum) where the second parameter is negative for sorting
-        let mut clique_fitnesses = vec![(0u64, num::BigInt::default()); self.max_cliques.len()];
-        let mut blockclique_i = 0usize;
-        for (clique_i, clique) in self.max_cliques.iter().enumerate() {
-            let mut sum_fit: u64 = 0;
-            let mut sum_hash = num::BigInt::default();
-            for block_h in clique.iter() {
-                sum_fit = sum_fit
-                    .checked_add(
-                        BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
-                            .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {:?} - missing {:?}", hash, block_h)))?
-                            .fitness(),
-                    )
-                    .ok_or(ConsensusError::FitnessOverflow)?;
-                sum_hash -=
-                    num::BigInt::from_bytes_be(num::bigint::Sign::Plus, &block_h.to_bytes());
+        {
+            let mut blockclique_i = 0usize;
+            let mut max_clique_fitness = (0u64, num::BigInt::default());
+            for (clique_i, clique) in self.max_cliques.iter_mut().enumerate() {
+                clique.fitness = 0;
+                clique.is_blockclique = false;
+                let mut sum_hash = num::BigInt::default();
+                for block_h in clique.block_ids.iter() {
+                    clique.fitness = clique.fitness
+                        .checked_add(
+                            BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
+                                .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {:?} - missing {:?}", add_block_id, block_h)))?
+                                .fitness(),
+                        )
+                        .ok_or(ConsensusError::FitnessOverflow)?;
+                    sum_hash -=
+                        num::BigInt::from_bytes_be(num::bigint::Sign::Plus, &block_h.to_bytes());
+                }
+                let cur_fit = (clique.fitness, sum_hash);
+                if cur_fit > max_clique_fitness {
+                    blockclique_i = clique_i;
+                    max_clique_fitness = cur_fit;
+                }
             }
-            clique_fitnesses[clique_i] = (sum_fit, sum_hash);
-            if clique_fitnesses[clique_i] > clique_fitnesses[blockclique_i] {
-                blockclique_i = clique_i;
-            }
+            self.max_cliques[blockclique_i].is_blockclique = true;
         }
 
         // update best parents
@@ -3006,12 +3148,18 @@ impl BlockGraph {
             {}
         );
         {
+            let blockclique_i = self
+                .max_cliques
+                .iter()
+                .enumerate()
+                .find(|(_, c)| c.is_blockclique)
+                .map_or(0, |(i, _)| i);
             let blockclique = &self.max_cliques[blockclique_i];
             let mut parents_updated = 0u8;
-            for block_h in blockclique.iter() {
+            for block_h in blockclique.block_ids.iter() {
                 let block_a = BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
-                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {:?} - missing {:?}", hash, block_h)))?;
-                if blockclique.is_disjoint(
+                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {:?} - missing {:?}", add_block_id, block_h)))?;
+                if blockclique.block_ids.is_disjoint(
                     &block_a.children[block_a.block.header.content.slot.thread as usize]
                         .keys()
                         .copied()
@@ -3032,40 +3180,29 @@ impl BlockGraph {
             {}
         );
         let stale_blocks = {
-            let fitness_threshold = clique_fitnesses[blockclique_i]
-                .0
+            let blockclique_i = self
+                .max_cliques
+                .iter()
+                .enumerate()
+                .find(|(_, c)| c.is_blockclique)
+                .map_or(0, |(i, _)| i);
+            let fitness_threshold = self.max_cliques[blockclique_i]
+                .fitness
                 .saturating_sub(self.cfg.delta_f0);
             // iterate from largest to smallest to minimize reallocations
             let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
-            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].len()));
+            indices
+                .sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].block_ids.len()));
             let mut high_set: HashSet<BlockId> = HashSet::new();
             let mut low_set: HashSet<BlockId> = HashSet::new();
-            let mut keep_mask = vec![true; self.max_cliques.len()];
             for clique_i in indices.into_iter() {
-                if clique_fitnesses[clique_i].0 >= fitness_threshold {
-                    high_set.extend(&self.max_cliques[clique_i]);
+                if self.max_cliques[clique_i].fitness >= fitness_threshold {
+                    high_set.extend(&self.max_cliques[clique_i].block_ids);
                 } else {
-                    low_set.extend(&self.max_cliques[clique_i]);
-                    keep_mask[clique_i] = false;
+                    low_set.extend(&self.max_cliques[clique_i].block_ids);
                 }
             }
-            let mut clique_i = 0;
-            self.max_cliques.retain(|_| {
-                clique_i += 1;
-                keep_mask[clique_i - 1]
-            });
-            clique_i = 0;
-            clique_fitnesses.retain(|_| {
-                clique_i += 1;
-                if keep_mask[clique_i - 1] {
-                    true
-                } else {
-                    if blockclique_i > clique_i - 1 {
-                        blockclique_i -= 1;
-                    }
-                    false
-                }
-            });
+            self.max_cliques.retain(|c| c.fitness >= fitness_threshold);
             &low_set - &high_set
         };
         // mark stale blocks
@@ -3078,7 +3215,7 @@ impl BlockGraph {
                 self.block_statuses.remove(&stale_block_hash)
             {
                 if active_block.is_final {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} was already final", hash, stale_block_hash)));
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} was already final", add_block_id, stale_block_hash)));
                 }
 
                 // remove from gi_head
@@ -3091,13 +3228,20 @@ impl BlockGraph {
                 }
 
                 // remove from cliques
+                let stale_block_fitness = active_block.fitness();
                 self.max_cliques.iter_mut().for_each(|c| {
-                    c.remove(&stale_block_hash);
+                    if c.block_ids.remove(&stale_block_hash) {
+                        c.fitness -= stale_block_fitness;
+                    }
                 });
-                self.max_cliques.retain(|c| !c.is_empty()); // remove empty cliques
+                self.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
                 if self.max_cliques.is_empty() {
                     // make sure at least one clique remains
-                    self.max_cliques = vec![HashSet::new()];
+                    self.max_cliques = vec![Clique {
+                        block_ids: HashSet::new(),
+                        fitness: 0,
+                        is_blockclique: true,
+                    }];
                 }
 
                 // remove from parent's children
@@ -3127,7 +3271,7 @@ impl BlockGraph {
                     },
                 );
             } else {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} is missing", hash, stale_block_hash)));
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} is missing", add_block_id, stale_block_hash)));
             }
         }
 
@@ -3139,10 +3283,10 @@ impl BlockGraph {
         let final_blocks = {
             // short-circuiting intersection of cliques from smallest to largest
             let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
-            indices.sort_unstable_by_key(|&i| self.max_cliques[i].len());
-            let mut final_candidates = self.max_cliques[indices[0]].clone();
+            indices.sort_unstable_by_key(|&i| self.max_cliques[i].block_ids.len());
+            let mut final_candidates = self.max_cliques[indices[0]].block_ids.clone();
             for i in 1..indices.len() {
-                final_candidates.retain(|v| self.max_cliques[i].contains(v));
+                final_candidates.retain(|v| self.max_cliques[i].block_ids.contains(v));
                 if final_candidates.is_empty() {
                     break;
                 }
@@ -3153,8 +3297,8 @@ impl BlockGraph {
                 "consensus.block_graph.add_block_to_graph.list_final_blocks.restrict",
                 {}
             );
-            indices.retain(|&i| clique_fitnesses[i].0 > self.cfg.delta_f0);
-            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(clique_fitnesses[i].0));
+            indices.retain(|&i| self.max_cliques[i].fitness > self.cfg.delta_f0);
+            indices.sort_unstable_by_key(|&i| std::cmp::Reverse(self.max_cliques[i].fitness));
 
             let mut final_blocks: HashSet<BlockId> = HashSet::new();
             for clique_i in indices.into_iter() {
@@ -3176,7 +3320,7 @@ impl BlockGraph {
                         BlockGraph::get_full_active_block(&self.block_statuses, candidate_h)
                             .ok_or(ConsensusError::MissingBlock)?
                             .descendants
-                            .intersection(clique)
+                            .intersection(&clique.block_ids)
                             .map(|h| {
                                 if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(h) {
                                     return ab.fitness();
@@ -3212,41 +3356,46 @@ impl BlockGraph {
                 }
             }
 
-            // remove from cliques
-            self.max_cliques.iter_mut().for_each(|c| {
-                c.remove(&final_block_hash);
-            });
-            self.max_cliques.retain(|c| !c.is_empty()); // remove empty cliques
-            if self.max_cliques.is_empty() {
-                // make sure at least one clique remains
-                self.max_cliques = vec![HashSet::new()];
-            }
-
             // mark as final and update latest_final_blocks_periods
-            if let Some(BlockStatus::Active(ActiveBlock {
-                block: final_block,
-                is_final,
-                ..
-            })) = self.block_statuses.get_mut(&final_block_hash)
+            if let Some(BlockStatus::Active(final_block)) =
+                self.block_statuses.get_mut(&final_block_hash)
             {
                 massa_trace!("consensus.block_graph.add_block_to_graph.final", {
                     "hash": final_block_hash
                 });
-                *is_final = true;
+                final_block.is_final = true;
+                // remove from cliques
+                let final_block_fitness = final_block.fitness();
+                self.max_cliques.iter_mut().for_each(|c| {
+                    if c.block_ids.remove(&final_block_hash) {
+                        c.fitness -= final_block_fitness;
+                    }
+                });
+                self.max_cliques.retain(|c| !c.block_ids.is_empty()); // remove empty cliques
+                if self.max_cliques.is_empty() {
+                    // make sure at least one clique remains
+                    self.max_cliques = vec![Clique {
+                        block_ids: HashSet::new(),
+                        fitness: 0,
+                        is_blockclique: true,
+                    }];
+                }
                 // update latest final blocks
-                if final_block.header.content.slot.period
+                if final_block.block.header.content.slot.period
                     > self.latest_final_blocks_periods
-                        [final_block.header.content.slot.thread as usize]
+                        [final_block.block.header.content.slot.thread as usize]
                         .1
                 {
                     self.latest_final_blocks_periods
-                        [final_block.header.content.slot.thread as usize] =
-                        (final_block_hash, final_block.header.content.slot.period);
+                        [final_block.block.header.content.slot.thread as usize] = (
+                        final_block_hash,
+                        final_block.block.header.content.slot.period,
+                    );
                 }
                 // update new final blocks list
                 self.new_final_blocks.insert(final_block_hash);
             } else {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", hash, final_block_hash)));
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", add_block_id, final_block_hash)));
             }
         }
 
@@ -3799,6 +3948,14 @@ impl BlockGraph {
         self.max_cliques.len()
     }
 
+    pub fn get_blockclique(&self) -> HashSet<BlockId> {
+        self.max_cliques
+            .iter()
+            .enumerate()
+            .find(|(_, c)| c.is_blockclique)
+            .map_or_else(|| HashSet::new(), |(_, v)| v.block_ids.clone())
+    }
+
     // Get the headers to be propagated.
     // Must be called by the consensus worker within `block_db_changed`.
     pub fn get_blocks_to_propagate(&mut self) -> HashMap<BlockId, Block> {
@@ -3830,6 +3987,7 @@ mod tests {
     use crate::ledger::LedgerData;
     use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
+    use models::{Amount, Endorsement, EndorsementContent};
     use num::rational::Ratio;
     use serial_test::serial;
     use std::path::Path;
@@ -3848,6 +4006,14 @@ mod tests {
                         get_dummy_block_id("parent2"),
                     ],
                     slot: Slot::new(1, 0),
+                    endorsements: vec![ Endorsement{content: EndorsementContent{
+                        sender_public_key: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                        endorsed_block: get_dummy_block_id("parent1"),
+                        index: 0,
+                        slot: Slot::new(1, 0),
+                    }, signature: crypto::signature::Signature::from_bs58_check(
+                        "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
+                    ).unwrap() }],
                 },
                 signature: crypto::signature::Signature::from_bs58_check(
                     "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -4290,9 +4456,11 @@ mod tests {
             max_bootstrap_children: 100,
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
+            max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
+            max_block_endorsments: 8,
         });
 
         let active_block = get_export_active_test_block();
@@ -4340,12 +4508,16 @@ mod tests {
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![vec![
-                get_dummy_block_id("max_cliques11"),
-                get_dummy_block_id("max_cliques12"),
-            ]
-            .into_iter()
-            .collect()],
+            max_cliques: vec![ExportClique {
+                block_ids: vec![
+                    get_dummy_block_id("max_cliques11"),
+                    get_dummy_block_id("max_cliques12"),
+                ]
+                .into_iter()
+                .collect(),
+                fitness: 12,
+                is_blockclique: true,
+            }],
             ledger: LedgerExport {
                 ledger_subset: Vec::new(),
             },
@@ -4470,9 +4642,11 @@ mod tests {
             max_bootstrap_children: 100,
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
+            max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
+            max_block_endorsments: 8,
         });
 
         ConsensusConfig {
@@ -4509,6 +4683,7 @@ mod tests {
             staking_keys_path: staking_file.path().to_path_buf(),
             end_timestamp: None,
             max_send_wait: 500.into(),
+            endorsement_count: 8,
         }
     }
 }

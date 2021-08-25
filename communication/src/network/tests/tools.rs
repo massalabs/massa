@@ -68,9 +68,11 @@ pub fn create_network_config(
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     NetworkConfig {
@@ -98,6 +100,7 @@ pub fn create_network_config(
         private_key_file: get_temp_private_key_file().path().to_path_buf(),
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_send_wait: UTime::from(100),
         ban_timeout: UTime::from(100_000_000),
     }

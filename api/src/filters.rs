@@ -48,7 +48,7 @@ pub enum ApiEvent {
     GetSelectionDraw {
         start: Slot,
         end: Slot,
-        response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
+        response_tx: oneshot::Sender<Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError>>,
     },
     AddOperations(HashMap<OperationId, Operation>),
     GetAddressesInfo {
@@ -920,7 +920,7 @@ async fn retrieve_selection_draw(
     start: Slot,
     end: Slot,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Vec<(Slot, Address)>, ApiError> {
+) -> Result<Vec<(Slot, (Address, Vec<Address>))>, ApiError> {
     massa_trace!("api.filters.retrieve_selection_draw", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1542,7 +1542,7 @@ async fn get_cliques(
 
     let mut hashes = HashSet::new();
     for clique in graph.max_cliques.iter() {
-        hashes.extend(clique)
+        hashes.extend(&clique.block_ids)
     }
 
     let mut hashes_map = HashMap::new();
@@ -1563,7 +1563,7 @@ async fn get_cliques(
     let mut res = Vec::new();
     for clique in graph.max_cliques.iter() {
         let mut set = HashSet::new();
-        for hash in clique.iter() {
+        for hash in clique.block_ids.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
                     set.insert((k, *v));
@@ -2015,7 +2015,8 @@ async fn get_staker_info(
             }
         }
         .into_iter()
-        .filter_map(|(slt, sel)| {
+        .filter_map(|(slt, (sel, _))| {
+            // todo retrieve next endorsment by staker ?
             if sel == creator {
                 return Some(slt);
             }
@@ -2113,8 +2114,9 @@ async fn get_next_draws(
             }
         }
         .into_iter()
-        .filter_map(|(slt, sel)| {
+        .filter_map(|(slt, (sel, _))| {
             if addresses.contains(&sel) {
+                // todo retrive endorsements by addressess ?
                 return Some((sel, slt));
             }
             None

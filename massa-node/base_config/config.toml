@@ -18,7 +18,8 @@ version = "DEVE.0.0"
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 400
     max_dependency_blocks = 2048
-    delta_f0 = 64
+    endorsement_count = 8
+    delta_f0 = 576
     max_operations_per_block = 102400
     max_operations_fill_attempts = 102400
     max_block_size = 102400
@@ -52,6 +53,7 @@ version = "DEVE.0.0"
     max_simultaneous_ask_blocks_per_node = 2048
     max_send_wait = 500
     max_known_ops_size = 100000
+    max_known_endorsements_size = 100000
 
 [network]
     bind = "0.0.0.0:31244"
@@ -76,6 +78,7 @@ version = "DEVE.0.0"
     private_key_file="config/node_privkey.key"
     max_ask_blocks_per_message = 128
     max_operations_per_message = 1024
+    max_endorsements_per_message = 1024
     max_send_wait = 500
     ban_timeout = 3600000
 

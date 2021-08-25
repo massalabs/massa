@@ -225,23 +225,80 @@ impl LedgerChanges {
                 .collect(),
         )
     }
+
+    /// add reward related changes
+    pub fn add_reward(
+        &mut self,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
+        reward: Amount,
+        endorsement_count: u32,
+    ) -> Result<(), ConsensusError> {
+        let endorsers_count = endorsers.len() as u64;
+        let third = reward
+            .checked_div_u64(3 * (1 + (endorsement_count as u64)))
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        for ed in endorsers {
+            self.apply(
+                &parent_creator,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
+            self.apply(
+                &ed,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
+        }
+        let total_credited = third
+            .checked_mul_u64(2 * endorsers_count)
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        // here we credited only parent_creator and ed for every endorsement
+        // total_credited now contains the total amount already credited
+
+        let expected_credit = reward
+            .checked_mul_u64(1 + endorsers_count)
+            .ok_or(ConsensusError::AmountOverflowError)?
+            .checked_div_u64(1 + (endorsement_count as u64))
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        // here expected_credit contains the expected amount that should be credited in total
+        // the difference between expected_credit and total_credited is sent to the block creator
+        self.apply(
+            &creator,
+            &LedgerChange {
+                balance_delta: expected_credit.saturating_sub(total_credited),
+                balance_increment: true,
+            },
+        )
+    }
 }
 
 pub trait OperationLedgerInterface {
     fn get_ledger_changes(
         &self,
-        fee_target: &Address,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
         thread_count: u8,
         roll_price: Amount,
+        endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError>;
 }
 
 impl OperationLedgerInterface for Operation {
     fn get_ledger_changes(
         &self,
-        fee_target: &Address,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
         _thread_count: u8,
         roll_price: Amount,
+        endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {
         let mut res = LedgerChanges::default();
 
@@ -256,12 +313,12 @@ impl OperationLedgerInterface for Operation {
         )?;
 
         // fee target
-        res.apply(
-            &fee_target,
-            &LedgerChange {
-                balance_delta: self.content.fee.clone().into(),
-                balance_increment: true,
-            },
+        res.add_reward(
+            creator,
+            endorsers,
+            parent_creator,
+            self.content.fee,
+            endorsement_count,
         )?;
 
         // operation type specific
@@ -754,9 +811,11 @@ impl SerializeCompact for LedgerExport {
     /// #     max_bootstrap_children: 100,
     /// #     max_ask_blocks_per_message: 10,
     /// #     max_operations_per_message: 1024,
+    /// #     max_endorsements_per_message: 1024,
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
-    /// #     max_bootstrap_pos_entries:10000,
+    /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
