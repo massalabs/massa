@@ -77,6 +77,9 @@ impl PoolCommandSink {
                         Some(PoolCommand::GetOperationBatch{response_tx, ..}) => {
                             response_tx.send(vec![]).unwrap();
                         },
+                        Some(PoolCommand::GetEndorsements{response_tx, ..}) => {
+                            response_tx.send(vec![]).unwrap();
+                        }
                         Some(_) => {},
                         None => {
                             let _  = stop_rx.await;

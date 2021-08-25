@@ -6,14 +6,13 @@ use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
 use crate::protocol::ProtocolPoolEvent;
-use models::Amount;
+use models::Slot;
 use serial_test::serial;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
-async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
+async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
     let protocol_config = tools::create_protocol_config();
     protocol_test(
         protocol_config,
@@ -27,31 +26,31 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
-            // 1. Create an operation
-            let operation = tools::create_operation();
+            // 1. Create an endorsement
+            let endorsement = tools::create_endorsement();
 
-            let expected_operation_id = operation.verify_integrity().unwrap();
+            let expected_endorsement_id = endorsement.verify_integrity().unwrap();
 
-            // 3. Send operation to protocol.
+            // 3. Send endorsement to protocol.
             network_controller
-                .send_operations(creator_node.id, vec![operation])
+                .send_endorsements(creator_node.id, vec![endorsement])
                 .await;
 
-            // Check protocol sends operations to consensus.
-            let received_operations = match tools::wait_protocol_pool_event(
+            // Check protocol sends endorsements to pool.
+            let received_endorsements = match tools::wait_protocol_pool_event(
                 &mut protocol_pool_event_receiver,
                 1000.into(),
                 |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
                     _ => None,
                 },
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
+                Some(ProtocolPoolEvent::ReceivedEndorsements { endorsements, .. }) => endorsements,
                 _ => panic!("Unexpected or no protocol pool event."),
             };
-            assert!(received_operations.contains_key(&expected_operation_id));
+            assert!(received_endorsements.contains_key(&expected_endorsement_id));
 
             (
                 network_controller,
@@ -67,7 +66,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 
 #[tokio::test]
 #[serial]
-async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus() {
+async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
     let protocol_config = tools::create_protocol_config();
     protocol_test(
         protocol_config,
@@ -81,30 +80,30 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
-            // 1. Create an operation.
-            let mut operation = tools::create_operation();
+            // 1. Create an endorsement.
+            let mut endorsement = tools::create_endorsement();
 
-            // Change the fee, making the signature invalid.
-            operation.content.fee = Amount::from_str("111").unwrap();
+            // Change the slot, making the signature invalid.
+            endorsement.content.slot = Slot::new(1, 1);
 
             // 3. Send operation to protocol.
             network_controller
-                .send_operations(creator_node.id, vec![operation])
+                .send_endorsements(creator_node.id, vec![endorsement])
                 .await;
 
-            // Check protocol does not send operations to consensus.
+            // Check protocol does not send endorsements to pool.
             match tools::wait_protocol_pool_event(
                 &mut protocol_pool_event_receiver,
                 1000.into(),
                 |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
                     _ => None,
                 },
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations { .. }) => {
-                    panic!("Protocol send invalid operations.")
+                Some(ProtocolPoolEvent::ReceivedEndorsements { .. }) => {
+                    panic!("Protocol send invalid endorsements.")
                 }
                 _ => {}
             };
@@ -123,7 +122,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 
 #[tokio::test]
 #[serial]
-async fn test_protocol_propagates_operations_to_active_nodes() {
+async fn test_protocol_propagates_endorsements_to_active_nodes() {
     let protocol_config = tools::create_protocol_config();
     protocol_test(
         protocol_config,
@@ -135,48 +134,48 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
-            // 1. Create an operation
-            let operation = tools::create_operation();
+            // 1. Create an endorsement
+            let endorsement = tools::create_endorsement();
 
-            // Send operation and wait for the protocol event,
+            // Send endorsement and wait for the protocol event,
             // just to be sure the nodes are connected before sending the propagate command.
             network_controller
-                .send_operations(nodes[0].id, vec![operation.clone()])
+                .send_endorsements(nodes[0].id, vec![endorsement.clone()])
                 .await;
-            let _received_operations = match tools::wait_protocol_pool_event(
+            let _received_endorsements = match tools::wait_protocol_pool_event(
                 &mut protocol_pool_event_receiver,
                 1000.into(),
                 |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
                     _ => None,
                 },
             )
             .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
+                Some(ProtocolPoolEvent::ReceivedEndorsements { endorsements, .. }) => endorsements,
                 _ => panic!("Unexpected or no protocol pool event."),
             };
 
-            let expected_operation_id = operation.verify_integrity().unwrap();
+            let expected_endorsement_id = endorsement.verify_integrity().unwrap();
 
             let mut ops = HashMap::new();
-            ops.insert(expected_operation_id.clone(), operation);
+            ops.insert(expected_endorsement_id.clone(), endorsement);
             protocol_command_sender
-                .propagate_operations(ops)
+                .propagate_endorsements(ops)
                 .await
                 .unwrap();
 
             loop {
                 match network_controller
                     .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
                         _ => None,
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendOperations { node, operations }) => {
-                        let id = operations[0].verify_integrity().unwrap();
-                        assert_eq!(id, expected_operation_id);
+                    Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
+                        let id = endorsements[0].verify_integrity().unwrap();
+                        assert_eq!(id, expected_endorsement_id);
                         assert_eq!(nodes[1].id, node);
                         break;
                     }

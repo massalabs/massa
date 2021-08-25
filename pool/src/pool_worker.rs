@@ -5,14 +5,17 @@ use std::{
     u64,
 };
 
+use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
 
 use super::{config::PoolConfig, error::PoolError};
 use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
-
-use models::{Address, Operation, OperationId, OperationSearchResult, Slot};
+use models::{
+    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
+    Slot,
+};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.
@@ -37,6 +40,13 @@ pub enum PoolCommand {
         response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
     },
     FinalOperations(HashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
+    GetEndorsements {
+        target_slot: Slot,
+        parent: BlockId,
+        creators: Vec<Address>,
+        response_tx: oneshot::Sender<Vec<Endorsement>>,
+    },
+    AddEndorsements(HashMap<EndorsementId, Endorsement>),
 }
 
 /// Events that are emitted by pool.
@@ -55,6 +65,8 @@ pub struct PoolWorker {
     controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,
     /// operation pool
     operation_pool: OperationPool,
+    /// Endorsement pool.
+    endorsement_pool: EndorsementPool,
 }
 
 impl PoolWorker {
@@ -84,7 +96,12 @@ impl PoolWorker {
             protocol_pool_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_pool: OperationPool::new(cfg, thread_count, operation_validity_periods),
+            operation_pool: OperationPool::new(
+                cfg.clone(),
+                thread_count,
+                operation_validity_periods,
+            ),
+            endorsement_pool: EndorsementPool::new(cfg, thread_count),
         })
     }
 
@@ -140,7 +157,9 @@ impl PoolWorker {
                 self.operation_pool.update_current_slot(slot)?
             }
             PoolCommand::UpdateLatestFinalPeriods(periods) => {
-                self.operation_pool.update_latest_final_periods(periods)?
+                self.operation_pool
+                    .update_latest_final_periods(periods.clone())?;
+                self.endorsement_pool.update_latest_final_periods(periods)
             }
             PoolCommand::GetOperationBatch {
                 target_slot,
@@ -172,6 +191,28 @@ impl PoolWorker {
                 )
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
             PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops)?,
+            PoolCommand::GetEndorsements {
+                target_slot,
+                parent,
+                creators,
+                response_tx,
+            } => response_tx
+                .send(
+                    self.endorsement_pool
+                        .get_endorsements(target_slot, parent, creators)?,
+                )
+                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::AddEndorsements(mut endorsements) => {
+                let newly_added = self
+                    .endorsement_pool
+                    .add_endorsements(endorsements.clone())?;
+                endorsements.retain(|e_id, _e| newly_added.contains(e_id));
+                if !endorsements.is_empty() {
+                    self.protocol_command_sender
+                        .propagate_endorsements(endorsements)
+                        .await?;
+                }
+            }
         }
         Ok(())
     }
@@ -199,6 +240,24 @@ impl PoolWorker {
                     }
                 } else {
                     self.operation_pool.add_operations(operations)?;
+                }
+            }
+            ProtocolPoolEvent::ReceivedEndorsements {
+                mut endorsements,
+                propagate,
+            } => {
+                if propagate {
+                    let newly_added = self
+                        .endorsement_pool
+                        .add_endorsements(endorsements.clone())?;
+                    endorsements.retain(|id, _| newly_added.contains(id));
+                    if !endorsements.is_empty() {
+                        self.protocol_command_sender
+                            .propagate_endorsements(endorsements)
+                            .await?;
+                    }
+                } else {
+                    self.endorsement_pool.add_endorsements(endorsements)?;
                 }
             }
         }

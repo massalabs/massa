@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
+    block_graph::ExportClique,
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
 };
@@ -100,9 +101,12 @@ async fn test_update_latest_final_block_cmd_notification() {
                     response_tx.send(Vec::new()).unwrap();
                     None
                 }
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
-
             // wait for initial final periods notification
             let final_periods = pool_controller
                 .wait_command(300.into(), update_final_notification_filter)
@@ -315,6 +319,10 @@ async fn test_max_attempts_get_operations() {
                         target_slot,
                         ..
                     } => Some((response_tx, target_slot)),
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 };
 
@@ -344,6 +352,10 @@ async fn test_max_attempts_get_operations() {
             // The next command should be a slot update.
             let slot_filter = |cmd| match cmd {
                 PoolCommand::UpdateCurrentSlot(slot) => Some(slot),
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
 
@@ -427,6 +439,10 @@ async fn test_max_batch_size_get_operations() {
                     target_slot,
                     ..
                 } => Some((response_tx, target_slot)),
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
 
@@ -505,7 +521,11 @@ fn get_bootgraph(
                 .collect(),
 
             /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![vec![g0_id, p1t0_id, g1_id]],
+            max_cliques: vec![ExportClique {
+                block_ids: vec![g0_id, p1t0_id, g1_id],
+                fitness: 1111,
+                is_blockclique: true,
+            }],
             ledger,
         },
         p1t0_id,
