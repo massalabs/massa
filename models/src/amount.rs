@@ -60,6 +60,17 @@ impl Amount {
     pub fn checked_mul_u64(self, factor: u64) -> Option<Self> {
         self.0.checked_mul(factor).map(Amount)
     }
+
+    /// ```
+    /// # use models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let res : Amount = amount_1.checked_div_u64(7).unwrap();
+    /// assert_eq!(res, Amount::from_str("6").unwrap());
+    /// ```
+    pub fn checked_div_u64(self, factor: u64) -> Option<Self> {
+        self.0.checked_div(factor).map(Amount)
+    }
 }
 
 impl fmt::Display for Amount {

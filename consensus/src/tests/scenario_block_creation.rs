@@ -130,14 +130,17 @@ async fn test_block_creation_with_draw() {
             }
 
             // get draws for cycle 3 (lookback = cycle 0)
-            let draws = consensus_command_sender
+            let draws: HashMap<_, _> = consensus_command_sender
                 .get_selection_draws(
                     Slot::new(3 * cfg.periods_per_cycle, 0),
                     Slot::new(4 * cfg.periods_per_cycle, 0),
                 )
                 .await
-                .unwrap();
-            let nb_address1_draws = draws.iter().filter(|(_, addr)| *addr == address_1).count();
+                .unwrap()
+                .into_iter()
+                .map(|(s, (b, e))| (s, b))
+                .collect();
+            let nb_address1_draws = draws.iter().filter(|(_, addr)| **addr == address_1).count();
             // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
             // note: this is a statistical test. It may fail in rare occasions.
             assert!(
@@ -264,6 +267,10 @@ async fn test_order_of_inclusion() {
                             None
                         }
                     }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 })
                 .await
@@ -282,6 +289,10 @@ async fn test_order_of_inclusion() {
                             .unwrap();
                         Some(())
                     }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 })
                 .await
@@ -298,6 +309,10 @@ async fn test_order_of_inclusion() {
                         assert!(!exclude.is_empty());
                         response_tx.send(vec![]).unwrap();
                         Some(())
+                    }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
                     }
                     _ => None,
                 })
@@ -413,7 +428,17 @@ async fn test_block_filling() {
                 })
                 .await
                 .expect("timeout while waiting for slot");
-
+            // respond to endorsement command
+            pool_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for endorsement request");
             // respond to first pool batch command
             pool_controller
                 .wait_command(300.into(), |cmd| match cmd {
@@ -468,6 +493,7 @@ async fn test_block_filling() {
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
                     operation_merkle_root: Hash::hash(&Vec::new()[..]),
+                    endorsements: Vec::new(),
                 },
             )
             .unwrap();

@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
+    block_graph::ExportClique,
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     BootsrapableGraph, LedgerData, LedgerExport,
 };
@@ -113,6 +114,7 @@ async fn test_storage() {
                     .map(|idx| BlockId(Hash::hash(format!("parent {:?}", idx).as_bytes())))
                     .collect(),
                 slot: Slot::new(1,1),
+                endorsements: Vec::new(),
             },
             signature: crypto::signature::Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -356,6 +358,7 @@ async fn test_consensus_and_storage() {
                     .map(|idx| BlockId(Hash::hash(format!("parent {:?}", idx).as_bytes())))
                     .collect(),
                 slot: Slot::new(1,1),
+                endorsements: Vec::new(),
             },
             signature: crypto::signature::Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -567,7 +570,11 @@ fn get_bootgraph(
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![vec![g0_id, p1t0_id, g1_id, p1t1_id, p2t0_id]],
+            max_cliques: vec![ExportClique {
+                block_ids: vec![g0_id, p1t0_id, g1_id, p1t1_id, p2t0_id],
+                fitness: 123,
+                is_blockclique: true,
+            }],
             ledger,
         },
         p1t0_id,

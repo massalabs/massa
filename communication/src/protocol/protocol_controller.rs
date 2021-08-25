@@ -11,7 +11,7 @@ use crate::{
     error::CommunicationError,
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
-use models::{Block, BlockId, Operation, OperationId};
+use models::{Block, BlockId, Endorsement, EndorsementId, Operation, OperationId};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::{sync::mpsc, task::JoinHandle};
 
@@ -172,6 +172,23 @@ impl ProtocolCommandSender {
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("propagate_operation command send error".into())
+            });
+        res
+    }
+
+    pub async fn propagate_endorsements(
+        &mut self,
+        endorsements: HashMap<EndorsementId, Endorsement>,
+    ) -> Result<(), CommunicationError> {
+        massa_trace!("protocol.command_sender.propagate_endorsements", {
+            "endorsements": endorsements
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("propagate_endorsements command send error".into())
             });
         res
     }

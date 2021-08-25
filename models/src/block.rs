@@ -2,8 +2,8 @@
 
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    DeserializeMinBEInt, ModelsError, Operation, OperationId, SerializeCompact, SerializeMinBEInt,
-    Slot, SLOT_KEY_SIZE,
+    DeserializeMinBEInt, DeserializeVarInt, Endorsement, ModelsError, Operation, OperationId,
+    SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -129,6 +129,7 @@ pub struct BlockHeaderContent {
     pub slot: Slot,
     pub parents: Vec<BlockId>,
     pub operation_merkle_root: Hash, // all operations hash
+    pub endorsements: Vec<Endorsement>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -319,6 +320,15 @@ impl SerializeCompact for BlockHeaderContent {
         // operations merkle root
         res.extend(&self.operation_merkle_root.to_bytes());
 
+        // endorsements
+        let endorsements_count: u32 = self.endorsements.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!("too many endorsements: {:?}", err))
+        })?;
+        res.extend(endorsements_count.to_varint_bytes());
+        for endorsement in self.endorsements.iter() {
+            res.extend(endorsement.to_bytes_compact()?);
+        }
+
         Ok(res)
     }
 }
@@ -359,12 +369,28 @@ impl DeserializeCompact for BlockHeaderContent {
         let operation_merkle_root = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
         cursor += HASH_SIZE_BYTES;
 
+        let max_block_endorsments =
+            with_serialization_context(|context| context.max_block_endorsments);
+
+        // endorsements
+        let (endorsement_count, delta) =
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsments)?;
+        cursor += delta;
+
+        let mut endorsements: Vec<Endorsement> = Vec::with_capacity(endorsement_count as usize);
+        for _ in 0..endorsement_count {
+            let (endorsement, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+            endorsements.push(endorsement);
+        }
+
         Ok((
             BlockHeaderContent {
                 creator,
                 slot,
                 parents,
                 operation_merkle_root,
+                endorsements,
             },
             cursor,
         ))
@@ -374,6 +400,7 @@ impl DeserializeCompact for BlockHeaderContent {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::EndorsementContent;
     use serial_test::serial;
 
     #[test]
@@ -393,7 +420,9 @@ mod test {
             max_bootstrap_pos_entries: 1000,
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
+            max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
+            max_block_endorsments: 8,
         };
         crate::init_serialization_context(ctx);
         let private_key = crypto::generate_random_private_key();
@@ -411,6 +440,26 @@ mod test {
                     BlockId(Hash::hash("ghi".as_bytes())),
                 ],
                 operation_merkle_root: Hash::hash("mno".as_bytes()),
+                endorsements: vec![
+                    Endorsement {
+                        content: EndorsementContent {
+                            sender_public_key: public_key,
+                            slot: Slot::new(1, 1),
+                            index: 1,
+                            endorsed_block: BlockId(Hash::hash("blk1".as_bytes())),
+                        },
+                        signature: sign(&Hash::hash("dta".as_bytes()), &private_key).unwrap(),
+                    },
+                    Endorsement {
+                        content: EndorsementContent {
+                            sender_public_key: public_key,
+                            slot: Slot::new(4, 0),
+                            index: 3,
+                            endorsed_block: BlockId(Hash::hash("blk2".as_bytes())),
+                        },
+                        signature: sign(&Hash::hash("dat".as_bytes()), &private_key).unwrap(),
+                    },
+                ],
             },
         )
         .unwrap();
