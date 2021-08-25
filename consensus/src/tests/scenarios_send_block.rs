@@ -44,7 +44,8 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
                 .get_selection_draws(slot.clone(), Slot::new(2 + start_slot, 0))
                 .await
                 .expect("could not get selection draws.")[0]
-                .1;
+                .1
+                 .0;
             let creator = tools::get_creator_for_draw(&draw, &staking_keys.clone());
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,

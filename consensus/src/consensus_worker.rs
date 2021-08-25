@@ -58,7 +58,7 @@ pub enum ConsensusCommand {
     GetSelectionDraws {
         start: Slot,
         end: Slot,
-        response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
+        response_tx: oneshot::Sender<Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError>>,
     },
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootsrapableGraph)>),
@@ -741,13 +741,13 @@ impl ConsensusWorker {
                         cur_slot,
                         if cur_slot.period == 0 {
                             match Address::from_public_key(&self.genesis_public_key) {
-                                Ok(addr) => addr,
+                                Ok(addr) => (addr, Vec::new()),
                                 Err(err) => break Err(err.into()),
                             }
                         } else {
                             match self.pos.draw(cur_slot) {
                                 Err(err) => break Err(err),
-                                Ok((sel_addr, _)) => sel_addr,
+                                Ok((block_addr, endo_addrs)) => (block_addr, endo_addrs),
                             }
                         },
                     ));

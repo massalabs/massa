@@ -204,10 +204,9 @@ impl ConsensusCommandSender {
         &self,
         start: Slot,
         end: Slot,
-    ) -> Result<Vec<(Slot, Address)>, ConsensusError> {
+    ) -> Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError> {
         massa_trace!("consensus.consensus_controller.get_selection_draws", {});
-        let (response_tx, response_rx) =
-            oneshot::channel::<Result<Vec<(Slot, Address)>, ConsensusError>>();
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(ConsensusCommand::GetSelectionDraws {
                 start,
