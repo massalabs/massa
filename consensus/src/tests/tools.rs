@@ -18,8 +18,8 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
-    OperationType, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use pool::PoolCommand;
@@ -669,7 +669,7 @@ pub fn default_consensus_config(
         staking_keys_path: staking_keys_path.to_path_buf(),
         end_timestamp: None,
         max_send_wait: 500.into(),
-        endorsement_count: 8,
+        endorsement_count: 0,
     }
 }
 

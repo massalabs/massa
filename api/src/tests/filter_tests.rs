@@ -1841,7 +1841,10 @@ async fn test_staker_info() {
                         response_tx
                             .send(Ok(vec![(
                                 Slot::new(0, 0),
-                                Address::from_public_key(&cloned_staker).unwrap(),
+                                (
+                                    Address::from_public_key(&cloned_staker).unwrap(),
+                                    Vec::new(),
+                                ),
                             )]))
                             .expect("failed to send selection draw");
                     }
@@ -1926,7 +1929,10 @@ async fn test_staker_info() {
                     response_tx
                         .send(Ok(vec![(
                             Slot::new(0, 0),
-                            Address::from_public_key(&cloned_staker).unwrap(),
+                            (
+                                Address::from_public_key(&cloned_staker).unwrap(),
+                                Vec::new(),
+                            ),
                         )]))
                         .expect("failed to send selection draw");
                 }

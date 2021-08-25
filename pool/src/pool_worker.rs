@@ -101,7 +101,7 @@ impl PoolWorker {
                 thread_count,
                 operation_validity_periods,
             ),
-            endorsement_pool: EndorsementPool::new(cfg),
+            endorsement_pool: EndorsementPool::new(cfg, thread_count),
         })
     }
 

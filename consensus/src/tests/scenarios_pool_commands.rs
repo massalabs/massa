@@ -100,9 +100,12 @@ async fn test_update_latest_final_block_cmd_notification() {
                     response_tx.send(Vec::new()).unwrap();
                     None
                 }
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
-
             // wait for initial final periods notification
             let final_periods = pool_controller
                 .wait_command(300.into(), update_final_notification_filter)
@@ -315,6 +318,10 @@ async fn test_max_attempts_get_operations() {
                         target_slot,
                         ..
                     } => Some((response_tx, target_slot)),
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 };
 
@@ -344,6 +351,10 @@ async fn test_max_attempts_get_operations() {
             // The next command should be a slot update.
             let slot_filter = |cmd| match cmd {
                 PoolCommand::UpdateCurrentSlot(slot) => Some(slot),
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
 
@@ -427,6 +438,10 @@ async fn test_max_batch_size_get_operations() {
                     target_slot,
                     ..
                 } => Some((response_tx, target_slot)),
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
+                    None
+                }
                 _ => None,
             };
 

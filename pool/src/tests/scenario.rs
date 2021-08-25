@@ -241,13 +241,13 @@ async fn test_pool_propagate_newly_added_endorsements() {
         cfg,
         thread_count,
         operation_validity_periods,
-        async move |mut protocol_controller, pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
                 _ => None,
             };
-
-            let endorsement = tools::create_endorsement();
+            let target_slot = Slot::new(10, 0);
+            let endorsement = tools::create_endorsement(target_slot);
             let mut endorsements = HashMap::new();
             let id = endorsement.verify_integrity().unwrap();
             endorsements.insert(id.clone(), endorsement.clone());
@@ -278,6 +278,63 @@ async fn test_pool_propagate_newly_added_endorsements() {
             {
                 Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
                 None => {} // no propagation
+            };
+
+            let res = pool_command_sender
+                .get_endorsements(
+                    target_slot,
+                    endorsement.content.endorsed_block,
+                    vec![Address::from_public_key(&endorsement.content.sender_public_key).unwrap()],
+                )
+                .await
+                .unwrap();
+            assert_eq!(res.len(), 1);
+            assert_eq!(
+                res[0].compute_endorsement_id().unwrap(),
+                endorsement.compute_endorsement_id().unwrap()
+            );
+            (protocol_controller, pool_command_sender, pool_manager)
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_pool_add_old_endorsements() {
+    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+    let max_pool_size_per_thread = 10;
+    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+
+    pool_test(
+        cfg,
+        thread_count,
+        operation_validity_periods,
+        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+            let op_filter = |cmd| match cmd {
+                cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
+                _ => None,
+            };
+
+            let endorsement = tools::create_endorsement(Slot::new(1, 0));
+            let mut endorsements = HashMap::new();
+            let id = endorsement.verify_integrity().unwrap();
+            endorsements.insert(id.clone(), endorsement.clone());
+
+            pool_command_sender
+                .update_latest_final_periods(vec![50, 50])
+                .await
+                .unwrap();
+            protocol_controller
+                .received_endorsements(endorsements.clone())
+                .await;
+
+            match protocol_controller
+                .wait_command(250.into(), op_filter.clone())
+                .await
+            {
+                Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
+                None => {} // no propagation: endorsement is too old compared to final periods
             };
 
             (protocol_controller, pool_command_sender, pool_manager)

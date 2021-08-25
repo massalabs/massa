@@ -809,7 +809,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             ledger[&address_1].balance,
             Amount::from_str("991").unwrap(),
             "wrong address balance"
-        );
+        ); // TODO update balance with endorsement rewards
         assert_eq!(
             ledger[&address_2].balance,
             Amount::from_str("2985").unwrap(),
