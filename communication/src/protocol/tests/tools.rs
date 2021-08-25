@@ -88,7 +88,10 @@ pub fn create_block_with_operations(
         BlockHeaderContent {
             creator: public_key.clone(),
             slot,
-            parents: Vec::new(),
+            parents: vec![
+                BlockId(Hash::hash("Genesis 0".as_bytes())),
+                BlockId(Hash::hash("Genesis 1".as_bytes())),
+            ],
             operation_merkle_root,
             endorsements: Vec::new(),
         },
