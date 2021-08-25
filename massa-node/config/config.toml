@@ -1,0 +1,4 @@
+# this is the user config file. It overrides the one in massa-node/base_config
+
+[network]
+    # routable_ip = "200.200.200.200" # uncomment and type the node's routable public IP (IPV4 or IPV6)
