@@ -18,8 +18,8 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    OperationType, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use pool::PoolCommand;
@@ -798,7 +798,7 @@ pub async fn consensus_without_pool_test<F, V>(
 pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
     let mut res = HashSet::new();
     for (i, clique) in graph.max_cliques.iter().enumerate() {
-        if clique.contains(&hash) {
+        if clique.block_ids.contains(&hash) {
             res.insert(i);
         }
     }

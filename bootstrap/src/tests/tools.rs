@@ -6,7 +6,7 @@ use crate::config::BootstrapConfig;
 use bitvec::prelude::*;
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
-    BootsrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake,
+    BootsrapableGraph, ConsensusCommand, ExportActiveBlock, ExportClique, ExportProofOfStake,
     ExportThreadCycleState, LedgerChange, LedgerData, LedgerExport, RollUpdate,
 };
 use crypto::hash::Hash;
@@ -321,10 +321,13 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             (get_dummy_block_id("parent1"), vec![]),
             (get_dummy_block_id("parent2"), vec![]),
         ],
-        max_cliques: vec![vec![
-            get_dummy_block_id("parent1"),
-            get_dummy_block_id("parent2"),
-        ]],
+        max_cliques: vec![ExportClique {
+            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")]
+                .into_iter()
+                .collect(),
+            fitness: 123,
+            is_blockclique: true,
+        }],
         ledger: LedgerExport { ledger_subset },
     };
     assert_eq!(

@@ -1271,7 +1271,7 @@ impl ConsensusWorker {
         if !self.cfg.disable_block_creation {
             // iterate on all blockclique blocks
             for block_id in self.block_db.get_blockclique().into_iter() {
-                let block_slot = match self.block_db.get_active_block(block_id) {
+                let block_slot = match self.block_db.get_active_block(&block_id) {
                     Some(b) => b.block.header.content.slot,
                     None => continue,
                 };
@@ -1308,7 +1308,7 @@ impl ConsensusWorker {
                             *pub_k,
                             priv_k,
                             endorsement_index as u32,
-                            *block_id,
+                            block_id,
                         )?;
                         endorsements.insert(endorsement_id, endorsement);
                         self.endorsed_slots.insert(block_slot);

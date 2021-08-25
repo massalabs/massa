@@ -7,6 +7,7 @@ use communication::network::Peer;
 use communication::network::PeerInfo;
 use communication::network::Peers;
 use consensus::ExportBlockStatus;
+use consensus::ExportClique;
 use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
@@ -370,8 +371,19 @@ async fn test_cliques() {
     let mut graph = get_test_block_graph();
     let hash_set = (0..2)
         .map(|_| get_test_block_id())
-        .collect::<HashSet<BlockId>>();
-    graph.max_cliques = vec![hash_set.clone(), hash_set.clone()];
+        .collect::<Vec<BlockId>>();
+    graph.max_cliques = vec![
+        ExportClique {
+            block_ids: hash_set.clone(),
+            is_blockclique: true,
+            fitness: 2,
+        },
+        ExportClique {
+            block_ids: hash_set.clone(),
+            is_blockclique: false,
+            fitness: 1,
+        },
+    ];
     let mut active_blocks = HashMap::new();
     active_blocks.insert(
         get_test_block_id(),

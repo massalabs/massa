@@ -1,9 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::tests::tools::{self, generate_ledger_file};
-use models::Slot;
+use models::{BlockId, Slot};
 use serial_test::serial;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 #[tokio::test]
 #[serial]
@@ -87,7 +87,7 @@ async fn test_thread_incompatibility() {
             assert_eq!(status.max_cliques.len(), 2);
 
             for clique in status.max_cliques.clone() {
-                if clique.contains(&hash_1) && clique.contains(&hash_3) {
+                if clique.block_ids.contains(&hash_1) && clique.block_ids.contains(&hash_3) {
                     panic!("incompatible blocks in the same clique")
                 }
             }
@@ -258,7 +258,7 @@ async fn test_grandpa_incompatibility() {
             assert_eq!(status.max_cliques.len(), 2);
 
             for clique in status.max_cliques.clone() {
-                if clique.contains(&hash_3) && clique.contains(&hash_4) {
+                if clique.block_ids.contains(&hash_3) && clique.block_ids.contains(&hash_4) {
                     panic!("incompatible blocks in the same clique")
                 }
             }
@@ -293,14 +293,19 @@ async fn test_grandpa_incompatibility() {
                 }
             }
 
-            let latest_extra_blocks = latest_extra_blocks.into_iter().collect();
+            let latest_extra_blocks: HashSet<BlockId> = latest_extra_blocks.into_iter().collect();
             let status = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status");
+            assert_eq!(status.max_cliques.len(), 1, "wrong cliques (len)");
             assert_eq!(
-                status.max_cliques,
-                vec![latest_extra_blocks],
+                status.max_cliques[0]
+                    .block_ids
+                    .iter()
+                    .cloned()
+                    .collect::<HashSet<BlockId>>(),
+                latest_extra_blocks,
                 "wrong cliques"
             );
 

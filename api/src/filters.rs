@@ -1542,7 +1542,7 @@ async fn get_cliques(
 
     let mut hashes = HashSet::new();
     for clique in graph.max_cliques.iter() {
-        hashes.extend(clique)
+        hashes.extend(&clique.block_ids)
     }
 
     let mut hashes_map = HashMap::new();
@@ -1563,7 +1563,7 @@ async fn get_cliques(
     let mut res = Vec::new();
     for clique in graph.max_cliques.iter() {
         let mut set = HashSet::new();
-        for hash in clique.iter() {
+        for hash in clique.block_ids.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
                     set.insert((k, *v));
