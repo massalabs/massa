@@ -6,9 +6,12 @@ lcov.info
 !/testrun/Cargo.lock
 massa-client/config/*
 !massa-client/config/info.adoc
+!massa-client/config/config.toml
 massa-client/wallet.dat
-massa-node/storage/block_store/
-massa-node/storage/ledger/
+massa-node/storage/*
+!massa-node/storage/info.adoc
+!massa-node/storage/peers.json
 massa-node/config/*
 !massa-node/config/info.adoc
+!massa-node/config/config.toml
 massa-node/logs.txt
