@@ -27,8 +27,9 @@ impl EndorsementPool {
              Endorsement {
                  content: EndorsementContent { slot, .. },
                  ..
-             }| periods[slot.thread as usize] > slot.period,
+             }| periods[slot.thread as usize] >= slot.period,
         );
+        self.latest_final_periods = periods;
     }
 
     pub fn get_endorsements(
