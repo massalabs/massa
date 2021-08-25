@@ -180,8 +180,10 @@ impl DeserializeCompact for EndorsementContent {
         cursor += delta;
 
         // endorsement index inside the block
-        let (index, delta) =
-            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsments)?;
+        let (index, delta) = u32::from_varint_bytes_bounded(
+            &buffer[cursor..],
+            max_block_endorsments.saturating_sub(1),
+        )?;
         cursor += delta;
 
         // id of endorsed block
