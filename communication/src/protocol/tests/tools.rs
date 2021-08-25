@@ -54,8 +54,11 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
         private_key,
         BlockHeaderContent {
             creator: public_key.clone(),
-            slot: Slot::new(0, 0),
-            parents: Vec::new(),
+            slot: Slot::new(1, 0),
+            parents: vec![
+                BlockId(Hash::hash("Genesis 0".as_bytes())),
+                BlockId(Hash::hash("Genesis 1".as_bytes())),
+            ],
             operation_merkle_root: Hash::hash(&Vec::new()),
             endorsements: Vec::new(),
         },
