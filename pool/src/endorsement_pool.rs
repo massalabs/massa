@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 pub struct EndorsementPool {
     endorsements: HashMap<EndorsementId, Endorsement>,
     latest_final_periods: Vec<u64>,
+    current_slot: Option<Slot>,
     cfg: PoolConfig,
 }
 
@@ -15,6 +16,7 @@ impl EndorsementPool {
         EndorsementPool {
             endorsements: Default::default(),
             cfg,
+            current_slot: None,
             latest_final_periods: vec![0; thread_count as usize],
         }
     }
@@ -91,6 +93,41 @@ impl EndorsementPool {
                 .insert(endorsement_id.clone(), endorsement);
             newly_added.insert(endorsement_id);
         }
+
+        // prune excess endorsements
+        let removed = self.prune();
+        for id in removed {
+            newly_added.remove(&id);
+        }
+
         Ok(newly_added)
+    }
+
+    pub fn update_current_slot(&mut self, slot: Slot) {
+        self.current_slot = Some(slot);
+        self.prune();
+    }
+
+    fn prune(&mut self) -> Vec<EndorsementId> {
+        let mut removed = Vec::new();
+        if self.endorsements.len() > self.cfg.max_endorsement_count as usize {
+            let excess = self.endorsements.len() - self.cfg.max_endorsement_count as usize;
+            let candidates = self.endorsements.clone();
+            let mut candidates: Vec<_> = candidates.into_iter().collect();
+            candidates.sort_unstable_by_key(|(_, e)| {
+                let slot = e.content.slot;
+                let thread_count = self.latest_final_periods.len();
+                let current_slot = self.current_slot.unwrap_or_else(|| Slot::new(0, 0));
+                num::abs_sub(
+                    slot.thread as i64 / thread_count as i64 + slot.period as i64,
+                    current_slot.thread as i64 / thread_count as i64 + current_slot.period as i64,
+                )
+            });
+            for (id, _) in candidates[0..excess].into_iter() {
+                self.endorsements.remove(id);
+                removed.push(*id);
+            }
+        }
+        removed
     }
 }
