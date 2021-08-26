@@ -4403,7 +4403,9 @@ mod tests {
             },
         };
 
-        let block_graph = BlockGraph::new(cfg, Some(export_graph)).await.unwrap();
+        let block_graph = BlockGraph::new(cfg, Some(export_graph), HashMap::new())
+            .await
+            .unwrap();
 
         //Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
         let res = block_graph
@@ -4577,7 +4579,7 @@ mod tests {
     async fn test_clique_calculation() {
         let ledger_file = generate_ledger_file(&HashMap::new());
         let cfg = example_consensus_config(ledger_file.path());
-        let mut block_graph = BlockGraph::new(cfg, None).await.unwrap();
+        let mut block_graph = BlockGraph::new(cfg, None, HashMap::new()).await.unwrap();
         let hashes: Vec<BlockId> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
             "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
