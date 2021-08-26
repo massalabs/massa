@@ -514,13 +514,13 @@ impl SerializeCompact for ExportClique {
         let block_ids_count: u32 = self.block_ids.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many blocks in in clique: {:?}", err))
         })?;
-        res.extend(block_ids_count.to_varint_bytes());
+        res.extend(&block_ids_count.to_varint_bytes());
         for b_id in self.block_ids.iter() {
             res.extend(&b_id.to_bytes());
         }
 
         // fitness
-        res.extend(self.fitness.to_varint_bytes());
+        res.extend(&self.fitness.to_varint_bytes());
 
         // is_blockclique
         res.push(if self.is_blockclique { 1u8 } else { 0u8 });
@@ -536,7 +536,7 @@ impl DeserializeCompact for ExportClique {
             with_serialization_context(|context| context.max_bootstrap_blocks);
 
         // block_ids
-        let (block_count, delta) = u32::from_varint_bytes(buffer)?;
+        let (block_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if block_count > max_bootstrap_blocks {
             return Err(ModelsError::DeserializeError(format!(
                 "too many blocks in clique for deserialization"
@@ -551,7 +551,7 @@ impl DeserializeCompact for ExportClique {
         }
 
         // fitness
-        let (fitness, delta) = u64::from_varint_bytes(buffer)?;
+        let (fitness, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
         // is_blockclique
