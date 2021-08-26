@@ -322,9 +322,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             (get_dummy_block_id("parent2"), vec![]),
         ],
         max_cliques: vec![ExportClique {
-            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")]
-                .into_iter()
-                .collect(),
+            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
             fitness: 123,
             is_blockclique: true,
         }],

@@ -369,7 +369,7 @@ async fn test_cliques() {
 
     //add default cliques
     let mut graph = get_test_block_graph();
-    let hash_set = (0..2)
+    let hash_set = (0..1)
         .map(|_| get_test_block_id())
         .collect::<Vec<BlockId>>();
     graph.max_cliques = vec![
