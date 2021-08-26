@@ -9,8 +9,11 @@ use crate::{
     },
     pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
-use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
+use crypto::{
+    hash::Hash,
+    signature::{PrivateKey, PublicKey},
+};
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
     BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
@@ -913,6 +916,7 @@ pub struct BlockGraph {
     new_final_blocks: HashSet<BlockId>,
     new_stale_blocks: HashMap<BlockId, Slot>,
     ledger: Ledger,
+    staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
 }
 
 #[derive(Debug)]
@@ -1005,6 +1009,7 @@ impl BlockGraph {
     pub async fn new(
         cfg: ConsensusConfig,
         init: Option<BootstrapableGraph>,
+        staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
     ) -> Result<Self, ConsensusError> {
         // load genesis blocks
 
@@ -1073,6 +1078,7 @@ impl BlockGraph {
                 ledger,
                 new_final_blocks: Default::default(),
                 new_stale_blocks: Default::default(),
+                staking_keys,
             };
             // compute block descendants
             let active_blocks_map: HashMap<BlockId, Vec<BlockId>> = res_graph
@@ -1124,8 +1130,13 @@ impl BlockGraph {
                 ledger,
                 new_final_blocks: Default::default(),
                 new_stale_blocks: Default::default(),
+                staking_keys,
             })
         }
+    }
+
+    pub fn update_staking_keys(&mut self, staking_keys: HashMap<Address, (PublicKey, PrivateKey)>) {
+        self.staking_keys = staking_keys;
     }
 
     pub fn block_state_try_apply_op(
@@ -1469,6 +1480,15 @@ impl BlockGraph {
             // accumulate roll updates
             for addr in deactivate_addrs {
                 let roll_count = accu.roll_counts.0.get(&addr).unwrap_or(&0);
+                if self
+                    .staking_keys
+                    .keys()
+                    .into_iter()
+                    .find(|a| **a == addr)
+                    .is_some()
+                {
+                    info!("Staking address {} was deactivated", addr)
+                }
                 roll_updates.apply(
                     &addr,
                     &RollUpdate {

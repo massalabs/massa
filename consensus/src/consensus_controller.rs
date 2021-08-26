@@ -13,13 +13,19 @@ use super::{
     pos::ProofOfStake,
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
-use crypto::signature::PrivateKey;
+use crypto::{
+    derive_public_key,
+    signature::{PrivateKey, PublicKey},
+};
 use logging::debug;
 use models::{
     Address, Block, BlockId, OperationId, OperationSearchResult, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    path::Path,
+};
 use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -71,9 +77,10 @@ pub async fn start_consensus_controller(
             "thread_count should divide t0".to_string(),
         ));
     }
+    let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
 
     // start worker
-    let block_db = BlockGraph::new(cfg.clone(), boot_graph).await?;
+    let block_db = BlockGraph::new(cfg.clone(), boot_graph, staking_keys.clone()).await?;
     let pos = ProofOfStake::new(cfg.clone(), block_db.get_genesis_block_ids(), boot_pos).await?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
@@ -92,6 +99,7 @@ pub async fn start_consensus_controller(
             event_tx,
             manager_rx,
             clock_compensation,
+            staking_keys,
         )
         .await?
         .run_loop()
@@ -115,6 +123,24 @@ pub async fn start_consensus_controller(
             manager_tx,
         },
     ))
+}
+
+async fn load_initial_staking_keys(
+    path: &Path,
+) -> Result<HashMap<Address, (PublicKey, PrivateKey)>, ConsensusError> {
+    if !std::path::Path::is_file(path) {
+        return Ok(HashMap::new());
+    }
+    serde_json::from_str::<Vec<PrivateKey>>(&tokio::fs::read_to_string(path).await?)?
+        .iter()
+        .map(|private_key| {
+            let public_key = derive_public_key(private_key);
+            Ok((
+                Address::from_public_key(&public_key)?,
+                (public_key, *private_key),
+            ))
+        })
+        .collect()
 }
 
 #[derive(Clone)]

@@ -178,6 +178,7 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
+        staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let previous_slot = get_current_latest_block_slot(
             cfg.thread_count,
@@ -193,7 +194,6 @@ impl ConsensusWorker {
             .iter()
             .map(|(_block_id, period)| *period)
             .collect();
-        let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
         info!(
             "Started node at time {}, cycle {}, period {}, thread {}",
             UTime::now(clock_compensation)?.to_utc_string(),
@@ -864,6 +864,7 @@ impl ConsensusWorker {
                     info!("Staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));
                 }
+                self.block_db.update_staking_keys(self.staking_keys.clone());
                 self.dump_staking_keys().await;
                 Ok(())
             }
@@ -872,6 +873,7 @@ impl ConsensusWorker {
                     self.staking_keys.remove(&address);
                 }
 
+                self.block_db.update_staking_keys(self.staking_keys.clone());
                 self.dump_staking_keys().await;
                 Ok(())
             }
@@ -1341,24 +1343,6 @@ impl ConsensusWorker {
 
         Ok(())
     }
-}
-
-async fn load_initial_staking_keys(
-    path: &Path,
-) -> Result<HashMap<Address, (PublicKey, PrivateKey)>, ConsensusError> {
-    if !std::path::Path::is_file(path) {
-        return Ok(HashMap::new());
-    }
-    serde_json::from_str::<Vec<PrivateKey>>(&tokio::fs::read_to_string(path).await?)?
-        .iter()
-        .map(|private_key| {
-            let public_key = derive_public_key(private_key);
-            Ok((
-                Address::from_public_key(&public_key)?,
-                (public_key, *private_key),
-            ))
-        })
-        .collect()
 }
 
 pub fn create_endorsement(
