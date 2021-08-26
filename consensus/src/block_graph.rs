@@ -780,7 +780,10 @@ impl SerializeCompact for BootstrapableGraph {
 
         //gi_head
         let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many gi_head in BootstrapableGraph: {:?}", err))
+            ModelsError::SerializeError(format!(
+                "too many gi_head in BootstrapableGraph: {:?}",
+                err
+            ))
         })?;
         res.extend(gi_head_count.to_varint_bytes());
         for (gihash, set) in self.gi_head.iter() {
