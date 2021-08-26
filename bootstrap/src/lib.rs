@@ -2,7 +2,7 @@
 
 use binders::{ReadBinder, WriteBinder};
 use communication::network::{BootstrapPeers, NetworkCommandSender};
-use consensus::{BootsrapableGraph, ConsensusCommandSender, ExportProofOfStake};
+use consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use establisher::{ReadHalf, WriteHalf};
 use log::{debug, info, warn};
 use std::net::SocketAddr;
@@ -34,7 +34,7 @@ async fn get_state_internal(
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
     our_version: Version,
-) -> Result<(ExportProofOfStake, BootsrapableGraph, i64, BootstrapPeers), BootstrapError> {
+) -> Result<(ExportProofOfStake, BootstrapableGraph, i64, BootstrapPeers), BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     info!("Start bootstrapping from {}", bootstrap_addr);
 
@@ -204,7 +204,7 @@ pub async fn get_state(
 ) -> Result<
     (
         Option<ExportProofOfStake>,
-        Option<BootsrapableGraph>,
+        Option<BootstrapableGraph>,
         i64,
         Option<BootstrapPeers>,
     ),
