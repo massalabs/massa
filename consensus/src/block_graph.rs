@@ -3159,9 +3159,8 @@ impl BlockGraph {
             let blockclique_i = self
                 .max_cliques
                 .iter()
-                .enumerate()
-                .find(|(_, c)| c.is_blockclique)
-                .map_or(0, |(i, _)| i);
+                .position(|c| c.is_blockclique)
+                .unwrap_or_default();
             let blockclique = &self.max_cliques[blockclique_i];
             let mut parents_updated = 0u8;
             for block_h in blockclique.block_ids.iter() {
@@ -3191,9 +3190,8 @@ impl BlockGraph {
             let blockclique_i = self
                 .max_cliques
                 .iter()
-                .enumerate()
-                .find(|(_, c)| c.is_blockclique)
-                .map_or(0, |(i, _)| i);
+                .position(|c| c.is_blockclique)
+                .unwrap_or_default();
             let fitness_threshold = self.max_cliques[blockclique_i]
                 .fitness
                 .saturating_sub(self.cfg.delta_f0);
