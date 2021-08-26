@@ -155,7 +155,7 @@ impl DeserializeCompact for BootstrapPeers {
         let mut cursor = 0usize;
 
         //peers
-        let (peers_count, delta) = u32::from_varint_bytes(buffer)?;
+        let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         let max_peer_list_length =
             with_serialization_context(|context| context.max_peer_list_length);
         if peers_count > max_peer_list_length {

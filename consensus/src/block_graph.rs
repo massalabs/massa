@@ -742,7 +742,10 @@ impl SerializeCompact for BootstrapableGraph {
 
         //gi_head
         let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many gi_head in BootstrapableGraph: {:?}", err))
+            ModelsError::SerializeError(format!(
+                "too many gi_head in BootstrapableGraph: {:?}",
+                err
+            ))
         })?;
         res.extend(gi_head_count.to_varint_bytes());
         for (gihash, set) in self.gi_head.iter() {
@@ -797,7 +800,7 @@ impl DeserializeCompact for BootstrapableGraph {
             });
 
         //active_blocks
-        let (active_blocks_count, delta) = u32::from_varint_bytes(buffer)?;
+        let (active_blocks_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if active_blocks_count > max_bootstrap_blocks {
             return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {:?}", active_blocks_count)));
         }

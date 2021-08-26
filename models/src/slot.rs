@@ -184,7 +184,7 @@ impl DeserializeCompact for Slot {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let parent_count = with_serialization_context(|context| context.parent_count);
         let mut cursor = 0usize;
-        let (period, delta) = u64::from_varint_bytes(buffer)?;
+        let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
         let thread = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;
