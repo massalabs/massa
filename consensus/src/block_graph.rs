@@ -544,7 +544,7 @@ impl DeserializeCompact for ExportClique {
         }
         cursor += delta;
         let mut block_ids: Vec<BlockId> = Vec::with_capacity(block_count as usize);
-        for _ in 0..(block_count as usize) {
+        for _ in 0..block_count {
             let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
             block_ids.push(b_id);
@@ -564,6 +564,7 @@ impl DeserializeCompact for ExportClique {
                 ))
             }
         };
+        cursor += 1;
 
         Ok((
             ExportClique {
@@ -761,17 +762,21 @@ impl SerializeCompact for BootsrapableGraph {
         //max_cliques
         let max_cliques_count: u32 = self.max_cliques.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many max_cliques in BootsrapableGraph: {:?}",
+                "too many max_cliques in BootsrapableGraph (format): {:?}",
                 err
             ))
         })?;
         if max_cliques_count > max_bootstrap_cliques {
-            return Err(ModelsError::SerializeError(format!("too many blocks in max_cliques for serialization context in BootstrapableGraph: {:?}", max_cliques_count)));
+            return Err(ModelsError::SerializeError(format!(
+                "too many max_cliques for serialization context in BootstrapableGraph: {:?}",
+                max_cliques_count
+            )));
         }
         res.extend(max_cliques_count.to_varint_bytes());
         for e_clique in self.max_cliques.iter() {
             res.extend(e_clique.to_bytes_compact()?);
         }
+
         // ledger
         res.extend(self.ledger.to_bytes_compact()?);
 
@@ -850,14 +855,17 @@ impl DeserializeCompact for BootsrapableGraph {
             gi_head.push((gihash, set));
         }
 
-        //max_cliques: Vec<HashSet<BlockId>>
+        //max_cliques
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if max_cliques_count > max_bootstrap_cliques {
-            return Err(ModelsError::DeserializeError(format!("too many blocks in max_cliques for deserialization context in BootstrapableGraph: {:?}", max_cliques_count)));
+            return Err(ModelsError::DeserializeError(format!(
+                "too many for deserialization context in BootstrapableGraph: {:?}",
+                max_cliques_count
+            )));
         }
         cursor += delta;
         let mut max_cliques: Vec<ExportClique> = Vec::with_capacity(max_cliques_count as usize);
-        for _ in 0..(max_cliques_count as usize) {
+        for _ in 0..max_cliques_count {
             let (c, delta) = ExportClique::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             max_cliques.push(c);
