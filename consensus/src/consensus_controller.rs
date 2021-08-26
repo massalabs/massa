@@ -39,7 +39,7 @@ pub async fn start_consensus_controller(
     pool_command_sender: PoolCommandSender,
     opt_storage_command_sender: Option<StorageAccess>,
     boot_pos: Option<ExportProofOfStake>,
-    boot_graph: Option<BootsrapableGraph>,
+    boot_graph: Option<BootstrapableGraph>,
     clock_compensation: i64,
 ) -> Result<
     (
@@ -229,9 +229,9 @@ impl ConsensusCommandSender {
 
     pub async fn get_bootstrap_state(
         &self,
-    ) -> Result<(ExportProofOfStake, BootsrapableGraph), ConsensusError> {
+    ) -> Result<(ExportProofOfStake, BootstrapableGraph), ConsensusError> {
         let (response_tx, response_rx) =
-            oneshot::channel::<(ExportProofOfStake, BootsrapableGraph)>();
+            oneshot::channel::<(ExportProofOfStake, BootstrapableGraph)>();
         massa_trace!("consensus.consensus_controller.get_bootstrap_state", {});
         self.0
             .send(ConsensusCommand::GetBootstrapState(response_tx))

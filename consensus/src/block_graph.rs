@@ -655,7 +655,7 @@ pub struct LedgerDataExport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BootsrapableGraph {
+pub struct BootstrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Vec<(BlockId, ExportActiveBlock)>,
     /// Best parents hashe in each thread.
@@ -670,7 +670,7 @@ pub struct BootsrapableGraph {
     pub ledger: LedgerExport,
 }
 
-impl<'a> TryFrom<&'a BlockGraph> for BootsrapableGraph {
+impl<'a> TryFrom<&'a BlockGraph> for BootstrapableGraph {
     type Error = ConsensusError;
     fn try_from(block_graph: &'a BlockGraph) -> Result<Self, Self::Error> {
         let mut active_blocks = HashMap::new();
@@ -683,7 +683,7 @@ impl<'a> TryFrom<&'a BlockGraph> for BootsrapableGraph {
             }
         }
 
-        Ok(BootsrapableGraph {
+        Ok(BootstrapableGraph {
             active_blocks: active_blocks
                 .into_iter()
                 .map(|(hash, block)| (hash, block.into()))
@@ -706,7 +706,7 @@ impl<'a> TryFrom<&'a BlockGraph> for BootsrapableGraph {
     }
 }
 
-impl SerializeCompact for BootsrapableGraph {
+impl SerializeCompact for BootstrapableGraph {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         let (max_bootstrap_blocks, max_bootstrap_cliques) = with_serialization_context(|context| {
@@ -716,7 +716,7 @@ impl SerializeCompact for BootsrapableGraph {
         //active_blocks
         let blocks_count: u32 = self.active_blocks.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many active blocks in BootsrapableGraph: {:?}",
+                "too many active blocks in BootstrapableGraph: {:?}",
                 err
             ))
         })?;
@@ -742,14 +742,14 @@ impl SerializeCompact for BootsrapableGraph {
 
         //gi_head
         let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many gi_head in BootsrapableGraph: {:?}", err))
+            ModelsError::SerializeError(format!("too many gi_head in BootstrapableGraph: {:?}", err))
         })?;
         res.extend(gi_head_count.to_varint_bytes());
         for (gihash, set) in self.gi_head.iter() {
             res.extend(&gihash.to_bytes());
             let set_count: u32 = set.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
-                    "too many entry in gi_head set in BootsrapableGraph: {:?}",
+                    "too many entry in gi_head set in BootstrapableGraph: {:?}",
                     err
                 ))
             })?;
@@ -762,7 +762,7 @@ impl SerializeCompact for BootsrapableGraph {
         //max_cliques
         let max_cliques_count: u32 = self.max_cliques.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many max_cliques in BootsrapableGraph (format): {:?}",
+                "too many max_cliques in BootstrapableGraph (format): {:?}",
                 err
             ))
         })?;
@@ -784,7 +784,7 @@ impl SerializeCompact for BootsrapableGraph {
     }
 }
 
-impl DeserializeCompact for BootsrapableGraph {
+impl DeserializeCompact for BootstrapableGraph {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
         let (max_bootstrap_blocks, parent_count, max_bootstrap_cliques) =
@@ -876,7 +876,7 @@ impl DeserializeCompact for BootsrapableGraph {
         cursor += delta;
 
         Ok((
-            BootsrapableGraph {
+            BootstrapableGraph {
                 active_blocks,
                 best_parents,
                 latest_final_blocks_periods,
@@ -1001,7 +1001,7 @@ impl BlockGraph {
     /// * serialization_context: SerializationContext instance
     pub async fn new(
         cfg: ConsensusConfig,
-        init: Option<BootsrapableGraph>,
+        init: Option<BootstrapableGraph>,
     ) -> Result<Self, ConsensusError> {
         // load genesis blocks
 
@@ -4335,7 +4335,7 @@ mod tests {
             .unwrap();
         blockp3t1.block.header.content.slot = Slot::new(3, 1);
 
-        let export_graph = BootsrapableGraph {
+        let export_graph = BootstrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
             active_blocks: vec![
                 (hash_genesist0, export_genesist0),
@@ -4476,7 +4476,7 @@ mod tests {
 
         println!("{:?}", new_block);
 
-        let graph = BootsrapableGraph {
+        let graph = BootstrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
             active_blocks: vec![
                 (get_dummy_block_id("active11"), active_block.clone()),
@@ -4530,7 +4530,7 @@ mod tests {
         };
 
         let bytes = graph.to_bytes_compact().unwrap();
-        let (new_graph, cursor) = BootsrapableGraph::from_bytes_compact(&bytes).unwrap();
+        let (new_graph, cursor) = BootstrapableGraph::from_bytes_compact(&bytes).unwrap();
 
         assert_eq!(bytes.len(), cursor);
         assert_eq!(

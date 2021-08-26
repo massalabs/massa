@@ -9,7 +9,7 @@ use crate::{
     ConsensusConfig,
 };
 use crate::{
-    start_consensus_controller, BootsrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
+    start_consensus_controller, BootstrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
     ExportProofOfStake,
 };
 use communication::protocol::ProtocolCommand;
@@ -678,7 +678,7 @@ pub async fn consensus_pool_test<F, V>(
     cfg: ConsensusConfig,
     opt_storage_command_sender: Option<StorageAccess>,
     boot_pos: Option<ExportProofOfStake>,
-    boot_graph: Option<BootsrapableGraph>,
+    boot_graph: Option<BootstrapableGraph>,
     test: F,
 ) where
     F: FnOnce(

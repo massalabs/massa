@@ -6,7 +6,7 @@ use crate::config::BootstrapConfig;
 use bitvec::prelude::*;
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
-    BootsrapableGraph, ConsensusCommand, ExportActiveBlock, ExportClique, ExportProofOfStake,
+    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportClique, ExportProofOfStake,
     ExportThreadCycleState, LedgerChange, LedgerData, LedgerExport, RollUpdate,
 };
 use crypto::hash::Hash;
@@ -134,7 +134,7 @@ where
     }
 }
 
-pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
+pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
@@ -310,7 +310,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
         "ExportProofOfStake serialization inconsistent"
     );
 
-    let boot_graph = BootsrapableGraph {
+    let boot_graph = BootstrapableGraph {
         active_blocks: vec![(get_dummy_block_id("block1"), block1)],
         best_parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
         latest_final_blocks_periods: vec![
@@ -331,13 +331,13 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
         ledger: LedgerExport { ledger_subset },
     };
     assert_eq!(
-        BootsrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
+        BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
             .unwrap()
             .0
             .to_bytes_compact()
             .unwrap(),
         boot_graph.to_bytes_compact().unwrap(),
-        "BootsrapableGraph serialization inconsistent"
+        "BootstrapableGraph serialization inconsistent"
     );
 
     (boot_pos, boot_graph)

@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::network::BootstrapPeers;
-use consensus::{BootsrapableGraph, ExportProofOfStake};
+use consensus::{BootstrapableGraph, ExportProofOfStake};
 use crypto::signature::{Signature, SIGNATURE_SIZE_BYTES};
 use models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
@@ -43,7 +43,7 @@ pub enum BootstrapMessage {
         /// PoS
         pos: ExportProofOfStake,
         /// block graph
-        graph: BootsrapableGraph,
+        graph: BootstrapableGraph,
         /// Signature of [BootstrapPeers.signature + peers]
         signature: Signature,
     },
@@ -154,7 +154,7 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += SIGNATURE_SIZE_BYTES;
                 let (pos, delta) = ExportProofOfStake::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                let (graph, delta) = BootsrapableGraph::from_bytes_compact(&buffer[cursor..])?;
+                let (graph, delta) = BootstrapableGraph::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState {

@@ -61,7 +61,7 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError>>,
     },
     /// Returns the bootstrap state
-    GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootsrapableGraph)>),
+    GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootstrapableGraph)>),
     /// Returns info for a set of addresses (rolls and balance)
     GetAddressesInfo {
         addresses: HashSet<Address>,
@@ -747,7 +747,7 @@ impl ConsensusWorker {
                 );
                 let resp = (
                     self.pos.export(),
-                    BootsrapableGraph::try_from(&self.block_db)?,
+                    BootstrapableGraph::try_from(&self.block_db)?,
                 );
                 response_tx.send(resp).map_err(|err| {
                     ConsensusError::SendChannelError(format!(

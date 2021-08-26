@@ -3,7 +3,7 @@
 use crate::{
     block_graph::ExportClique,
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
-    BootsrapableGraph, LedgerData, LedgerExport,
+    BootstrapableGraph, LedgerData, LedgerExport,
 };
 use crypto::{hash::Hash, signature::PublicKey};
 use models::{
@@ -515,7 +515,7 @@ fn get_bootgraph(
     creator: PublicKey,
     operations: Vec<Operation>,
     ledger: LedgerExport,
-) -> (BootsrapableGraph, BlockId, BlockId) {
+) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =
         get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
     let (genesis_1, g1_id) =
@@ -542,7 +542,7 @@ fn get_bootgraph(
         false,
     );
     (
-        BootsrapableGraph {
+        BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
             active_blocks: vec![
                 (g0_id, genesis_0.clone()),
