@@ -507,6 +507,44 @@ impl<'a> From<&'a ExportClique> for Clique {
 }
 
 impl SerializeCompact for ExportClique {
+    /// ## Example
+    /// ```rust
+    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
+    /// # use crypto::hash::Hash;
+    /// # use std::str::FromStr;
+    /// # use consensus::ExportClique;
+    /// # models::init_serialization_context(models::SerializationContext {
+    /// #     max_block_operations: 1024,
+    /// #     parent_count: 2,
+    /// #     max_peer_list_length: 128,
+    /// #     max_message_size: 3 * 1024 * 1024,
+    /// #     max_block_size: 3 * 1024 * 1024,
+    /// #     max_bootstrap_blocks: 100,
+    /// #     max_bootstrap_cliques: 100,
+    /// #     max_bootstrap_deps: 100,
+    /// #     max_bootstrap_children: 100,
+    /// #     max_ask_blocks_per_message: 10,
+    /// #     max_operations_per_message: 1024,
+    /// #     max_endorsements_per_message: 1024,
+    /// #     max_bootstrap_message_size: 100000000,
+    /// #     max_bootstrap_pos_cycles: 10000,
+    /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
+    /// # });
+    /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
+    /// #     BlockId(Hash::hash(s.as_bytes()))
+    /// # }
+    /// let clique = ExportClique {
+    ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+    ///         fitness: 123,
+    ///         is_blockclique: true,
+    ///     };
+    /// let bytes = clique.clone().to_bytes_compact().unwrap();
+    /// let (res, _) = ExportClique::from_bytes_compact(&bytes).unwrap();
+    /// assert_eq!(clique.block_ids, res.block_ids);
+    /// assert_eq!(clique.is_blockclique, res.is_blockclique);
+    /// assert_eq!(clique.fitness, res.fitness);
+    /// ```
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
