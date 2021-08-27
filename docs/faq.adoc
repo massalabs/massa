@@ -103,6 +103,14 @@ This delay will increase in the future.
 
 == Testnet and rewards
 
+=== How can I migrate my node from one computer/provider to another and keep my score in the Testnet Staking Reward Program?
+
+If you migrate your node from one computer/provider to another you should save the private key associated to the staking address that is registered. This private key is located in the `wallet.dat` file located in `massa-client` folder. You can also save your node private key `node_privkey.key` located in the `massa-node/config` folder, if you don't then don't forget to register your new node private key to the Discord bot.
+
+If your new node has a new IP address then you should not forget to register the new IP address to the Discord bot.
+
+If you lost `wallet.dat` and/or `node_privkey.key`, don't panic, just redo the whole node setup and rewards registration process and the newly generated keys will be associated to your discord account. Past scores won't be lost.
+
 === I want to stake more! Can I abuse the faucet bot to get more coins?
 
 You can claim testnet tokens every 24h.
