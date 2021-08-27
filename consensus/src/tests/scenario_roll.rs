@@ -232,7 +232,7 @@ async fn test_roll() {
                 .await
                 .unwrap()
                 .into_iter()
-                .map(|(s, (b, e))| (s, b))
+                .map(|(s, (b, _e))| (s, b))
                 .collect();
 
             let other_addr = if *draws.get(&Slot::new(6, 0)).unwrap() == address_1 {
@@ -873,7 +873,7 @@ async fn test_roll_deactivation() {
                     .await
                     .unwrap()
                     .into_iter()
-                    .map(|(k, (v, e))| (k, Some(v)))
+                    .map(|(k, (v, _e))| (k, Some(v)))
                     .collect::<HashMap<Slot, Option<Address>>>();
                 if cur_cycle == 0 {
                     // controlled misses in cycle 0

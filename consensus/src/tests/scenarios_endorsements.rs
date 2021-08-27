@@ -81,17 +81,17 @@ async fn test_endorsement_check() {
             let address_b = draws.get(&Slot::new(1, 0)).unwrap().1[0];
             let address_c = draws.get(&Slot::new(1, 1)).unwrap().1[0];
 
-            let (pub_key_a, priv_key_a) = if address_a == address_1 {
+            let (_pub_key_a, priv_key_a) = if address_a == address_1 {
                 (pubkey_1, priv_1)
             } else {
                 (pubkey_2, priv_2)
             };
-            let (pub_key_b, priv_key_b) = if address_b == address_1 {
+            let (pub_key_b, _priv_key_b) = if address_b == address_1 {
                 (pubkey_1, priv_1)
             } else {
                 (pubkey_2, priv_2)
             };
-            let (pub_key_c, priv_key_c) = if address_c == address_1 {
+            let (pub_key_c, _priv_key_c) = if address_c == address_1 {
                 (pubkey_1, priv_1)
             } else {
                 (pubkey_2, priv_2)
