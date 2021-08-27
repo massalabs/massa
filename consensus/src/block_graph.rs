@@ -2657,7 +2657,7 @@ impl BlockGraph {
             (parents[header.content.slot.thread as usize].1 + 1)..header.content.slot.period
         {
             let miss_slot = Slot::new(miss_period, header.content.slot.thread);
-            let (slot_draw_address, endorsement_draws) = match pos.draw(miss_slot) {
+            let (slot_draw_address, _endorsement_draws) = match pos.draw(miss_slot) {
                 Ok(draws) => draws,
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     // slot is not available yet

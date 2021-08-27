@@ -116,6 +116,7 @@ pub fn get_pool_config() -> PoolConfig {
     PoolConfig {
         max_pool_size_per_thread: 100000,
         max_operation_future_validity_start_periods: 200,
+        max_endorsement_count: 1000,
     }
 }
 
