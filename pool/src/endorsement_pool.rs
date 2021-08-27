@@ -139,7 +139,7 @@ impl EndorsementPool {
                 removed.insert(c_id);
             }
         }
-
+        massa_trace!("pool.endorsement_pool.prune", { "removed": removed });
         removed
     }
 }
