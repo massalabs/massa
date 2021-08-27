@@ -343,17 +343,39 @@ impl std::fmt::Display for WrappedBlockHeader {
         } else {
             &pk
         };
+        writeln!(f, "creator: {}", pk)?;
         writeln!(
             f,
-            "creator: {} period: {} thread: {} merkle_root: {} parents: {:?}",
-            pk,
-            self.0.content.slot.period,
-            self.0.content.slot.thread,
-            self.0.content.operation_merkle_root,
-            self.0.content.parents,
-        )
-        //        writeln!(f, "  parents:{:?}", self.parents)?;
-        //        writeln!(f, "  endorsements:{:?}", self.endorsements)
+            "period: {} thread: {}",
+            self.0.content.slot.period, self.0.content.slot.thread,
+        )?;
+        writeln!(f, "merkle_root: {}", self.0.content.operation_merkle_root,)?;
+        writeln!(f, "parents: ",)?;
+        for id in self.0.content.parents.iter() {
+            let str_id = id.to_string();
+            writeln!(
+                f,
+                "{}",
+                if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
+                    str_id[..4].to_string()
+                } else {
+                    str_id
+                }
+            )?;
+        }
+        if self.0.content.parents.is_empty() {
+            writeln!(f, "No parents found: This is a genesis header")?;
+        }
+        writeln!(f, "endorsements: ")?;
+
+        for ed in self.0.content.endorsements.iter() {
+            writeln!(f, "{:?}", ed)?;
+        }
+        if self.0.content.endorsements.is_empty() {
+            writeln!(f, "No endorsements found")?;
+        }
+
+        Ok(())
     }
 }
 
