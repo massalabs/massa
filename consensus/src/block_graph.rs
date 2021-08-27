@@ -1480,13 +1480,7 @@ impl BlockGraph {
             // accumulate roll updates
             for addr in deactivate_addrs {
                 let roll_count = accu.roll_counts.0.get(&addr).unwrap_or(&0);
-                if self
-                    .staking_keys
-                    .keys()
-                    .into_iter()
-                    .find(|a| **a == addr)
-                    .is_some()
-                {
+                if self.staking_keys.contains_key(&addr) {
                     info!(
                         "implicit sale of {} rolls for staking address {} in a block at slot {}",
                         roll_count, addr, header.content.slot
