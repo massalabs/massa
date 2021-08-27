@@ -8,6 +8,8 @@ use models::SerializeCompact;
 use models::Slot;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::time::Duration;
+use tokio::time::sleep;
 
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 
@@ -325,6 +327,7 @@ async fn test_pool_add_old_endorsements() {
                 .update_latest_final_periods(vec![50, 50])
                 .await
                 .unwrap();
+            sleep(Duration::from_millis(500)).await;
             protocol_controller
                 .received_endorsements(endorsements.clone())
                 .await;
