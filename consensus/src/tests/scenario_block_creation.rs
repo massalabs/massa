@@ -138,7 +138,7 @@ async fn test_block_creation_with_draw() {
                 .await
                 .unwrap()
                 .into_iter()
-                .map(|(s, (b, e))| (s, b))
+                .map(|(s, (b, _e))| (s, b))
                 .collect();
             let nb_address1_draws = draws.iter().filter(|(_, addr)| **addr == address_1).count();
             // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair

@@ -94,9 +94,9 @@ impl EndorsementPool {
             newly_added.insert(endorsement_id);
         }
 
-        // prune excess endorsements
+        // remove excess endorsements
         let removed = self.prune();
-        for id in removed {
+        for id in removed.into_iter() {
             newly_added.remove(&id);
         }
 
@@ -105,29 +105,41 @@ impl EndorsementPool {
 
     pub fn update_current_slot(&mut self, slot: Slot) {
         self.current_slot = Some(slot);
-        self.prune();
     }
 
-    fn prune(&mut self) -> Vec<EndorsementId> {
-        let mut removed = Vec::new();
+    fn prune(&mut self) -> HashSet<EndorsementId> {
+        let mut removed = HashSet::new();
+
         if self.endorsements.len() > self.cfg.max_endorsement_count as usize {
             let excess = self.endorsements.len() - self.cfg.max_endorsement_count as usize;
-            let candidates = self.endorsements.clone();
-            let mut candidates: Vec<_> = candidates.into_iter().collect();
-            candidates.sort_unstable_by_key(|(_, e)| {
-                let slot = e.content.slot;
-                let thread_count = self.latest_final_periods.len();
-                let current_slot = self.current_slot.unwrap_or_else(|| Slot::new(0, 0));
-                num::abs_sub(
-                    slot.thread as i64 / thread_count as i64 + slot.period as i64,
-                    current_slot.thread as i64 / thread_count as i64 + current_slot.period as i64,
-                )
+            let mut candidates: Vec<_> = self.endorsements.clone().into_iter().collect();
+            let thread_count = self.latest_final_periods.len() as u8;
+            let current_slot_index = self.current_slot.map_or(0u64, |s| {
+                s.period
+                    .saturating_mul(thread_count as u64)
+                    .saturating_add(s.thread as u64)
             });
-            for (id, _) in candidates[0..excess].into_iter() {
-                self.endorsements.remove(id);
-                removed.push(*id);
+            candidates.sort_unstable_by_key(|(_, e)| {
+                let slot_index = e
+                    .content
+                    .slot
+                    .period
+                    .saturating_mul(thread_count as u64)
+                    .saturating_add(e.content.slot.thread as u64);
+                let abs_diff = if slot_index >= current_slot_index {
+                    slot_index - current_slot_index
+                } else {
+                    current_slot_index - slot_index
+                };
+                std::cmp::Reverse(abs_diff)
+            });
+            candidates.truncate(excess);
+            for (c_id, _) in candidates.into_iter() {
+                self.endorsements.remove(&c_id);
+                removed.insert(c_id);
             }
         }
+
         removed
     }
 }
