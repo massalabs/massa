@@ -17,7 +17,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
-use std::{cmp::max, collections::VecDeque, convert::TryFrom, path::Path};
+use std::{cmp::max, collections::VecDeque, convert::TryFrom};
 use std::{
     collections::{HashMap, HashSet},
     usize,
