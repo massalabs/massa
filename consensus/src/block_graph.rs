@@ -1487,7 +1487,10 @@ impl BlockGraph {
                     .find(|a| **a == addr)
                     .is_some()
                 {
-                    info!("Staking address {} was deactivated", addr)
+                    info!(
+                        "implicit sale of {} rolls for staking address {} in a block at slot {}",
+                        roll_count, addr, header.content.slot
+                    );
                 }
                 roll_updates.apply(
                     &addr,
