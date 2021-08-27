@@ -17,7 +17,7 @@ use crypto::{
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
+// pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);

@@ -389,6 +389,7 @@ mod tests {
             PoolConfig {
                 max_pool_size_per_thread: 100000,
                 max_operation_future_validity_start_periods: 200,
+                max_endorsement_count: 1000,
             },
             thread_count,
             operation_validity_periods,
