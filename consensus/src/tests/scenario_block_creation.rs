@@ -158,7 +158,7 @@ async fn test_block_creation_with_draw() {
             for _ in 0..10 {
                 // wait block propagation
                 let block_creator = protocol_controller
-                    .wait_command(3500.into(), |cmd| match cmd {
+                    .wait_command(5000.into(), |cmd| match cmd {
                         ProtocolCommand::IntegratedBlock { block, .. } => {
                             if block.header.content.slot == cur_slot {
                                 Some(block.header.content.creator)
