@@ -17,6 +17,7 @@
 
 * Open Windows Power Shell
  ** If the massa folder does not exist type: `git clone https://gitlab.com/massalabs/massa.git`
+ ** Type: `cd massa`
  ** Type: `git stash`
  ** Type: `git checkout testnet`
  ** Type: `git pull`
