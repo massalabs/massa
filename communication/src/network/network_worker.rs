@@ -1053,16 +1053,28 @@ impl NetworkWorker {
             }
 
             NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::BlockNotFound",
+                    { "id": block_id }
+                );
                 let _ = self
                     .send_network_event(NetworkEvent::BlockNotFound { node, block_id })
                     .await;
             }
             NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
+                    { "operations": operations }
+                );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedOperations { node, operations })
                     .await;
             }
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements",
+                    { "endorsements": endorsements }
+                );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedEndorsements { node, endorsements })
                     .await;
