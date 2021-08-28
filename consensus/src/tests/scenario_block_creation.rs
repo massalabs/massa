@@ -72,7 +72,7 @@ async fn test_block_creation_with_draw() {
         staking_file.path(),
     );
     cfg.roll_price = Amount::from_str("1000").unwrap();
-    cfg.periods_per_cycle = 10_000;
+    cfg.periods_per_cycle = 1_000;
     cfg.t0 = 1000.into();
     cfg.pos_lookback_cycles = 2;
     cfg.thread_count = thread_count;
@@ -158,7 +158,7 @@ async fn test_block_creation_with_draw() {
             for _ in 0..10 {
                 // wait block propagation
                 let block_creator = protocol_controller
-                    .wait_command(5000.into(), |cmd| match cmd {
+                    .wait_command(3500.into(), |cmd| match cmd {
                         ProtocolCommand::IntegratedBlock { block, .. } => {
                             if block.header.content.slot == cur_slot {
                                 Some(block.header.content.creator)
