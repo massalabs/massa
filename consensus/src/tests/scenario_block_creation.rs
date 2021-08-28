@@ -3,7 +3,9 @@
 use crate::{
     ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
-    tests::tools::{self, create_roll_transaction, create_transaction, generate_ledger_file},
+    tests::tools::{
+        self, create_endorsement, create_roll_transaction, create_transaction, generate_ledger_file,
+    },
 };
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
@@ -371,16 +373,13 @@ async fn test_block_filling() {
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(0, address_a.get_thread(thread_count));
-
     let mut ledger = HashMap::new();
     ledger.insert(
         address_a,
         LedgerData::new(Amount::from_str("1000000000").unwrap()),
     );
     let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys = vec![priv_a];
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -396,6 +395,7 @@ async fn test_block_filling() {
     cfg.operation_batch_size = 500;
     cfg.max_operations_per_block = 5000;
     cfg.max_block_size = 500;
+    cfg.endorsement_count = 1;
     let mut ops = Vec::new();
     for _ in 0..500 {
         ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
@@ -413,6 +413,14 @@ async fn test_block_filling() {
                     consensus_command_sender,
                     consensus_event_receiver| {
             let op_size = 10;
+
+            let genesis = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .unwrap()
+                .best_parents;
+
+            let ed = create_endorsement(priv_a, Slot::new(0, 0), genesis[0]);
 
             //wait for first slot
             pool_controller
@@ -432,7 +440,7 @@ async fn test_block_filling() {
             pool_controller
                 .wait_command(300.into(), |cmd| match cmd {
                     PoolCommand::GetEndorsements { response_tx, .. } => {
-                        response_tx.send(Vec::new()).unwrap();
+                        response_tx.send(vec![ed.clone()]).unwrap();
                         Some(())
                     }
                     _ => None,
@@ -493,7 +501,7 @@ async fn test_block_filling() {
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
                     operation_merkle_root: Hash::hash(&Vec::new()[..]),
-                    endorsements: Vec::new(),
+                    endorsements: vec![ed],
                 },
             )
             .unwrap();

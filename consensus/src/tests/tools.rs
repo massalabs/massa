@@ -18,8 +18,8 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
-    OperationType, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use pool::PoolCommand;
@@ -453,6 +453,28 @@ pub fn create_block_with_merkle_root(
     };
 
     (hash, block, creator)
+}
+
+/// Creates an endorsement for use in consensus tests.
+pub fn create_endorsement(
+    sender_priv: PrivateKey,
+    slot: Slot,
+    endorsed_block: BlockId,
+) -> Endorsement {
+    let sender_public_key = crypto::derive_public_key(&sender_priv);
+
+    let content = EndorsementContent {
+        sender_public_key,
+        slot,
+        index: 0,
+        endorsed_block,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    Endorsement {
+        content: content.clone(),
+        signature,
+    }
 }
 
 pub fn get_export_active_test_block(
