@@ -16,7 +16,11 @@
 ## Clone the Massa Git Repository 
 
 * Open Windows Power Shell
- ** Type: `git clone https://gitlab.com/massalabs/massa.git`
+ ** If the massa folder does not exist type: `git clone https://gitlab.com/massalabs/massa.git`
+ ** Type: `git stash`
+ ** Type: `git checkout testnet`
+ ** Type: `git pull`
+ 
 * Change default Rust to nightly
  ** Type: `rustup default nightly`
 
