@@ -302,6 +302,8 @@ pub struct ProofOfStake {
     // the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed
     // the seeds are indexed from -1 to -N
     initial_seeds: Vec<Vec<u8>>,
+    // watched addresses
+    watched_addresses: HashSet<Address>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -608,7 +610,12 @@ impl ProofOfStake {
             draw_cache,
             cfg,
             draw_cache_counter,
+            watched_addresses: HashSet::new(),
         })
+    }
+
+    pub fn set_watched_addresses(&mut self, addrs: HashSet<Address>) {
+        self.watched_addresses = addrs;
     }
 
     async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {
@@ -894,6 +901,12 @@ impl ProofOfStake {
                     for (evt_period, evt_addr, evt_ok) in a_block.production_events.iter() {
                         let evt_slot = Slot::new(*evt_period, thread);
                         let evt_cycle = evt_slot.get_cycle(self.cfg.periods_per_cycle);
+                        if !evt_ok && self.watched_addresses.contains(evt_addr) {
+                            warn!(
+                                "address {} missed a production opportunity at slot {} (cycle {})",
+                                evt_addr, evt_slot, evt_cycle
+                            );
+                        }
                         if let Some(neg_relative_cycle) =
                             last_final_block_cycle.checked_sub(evt_cycle)
                         {
@@ -1090,7 +1103,7 @@ impl ProofOfStake {
             }
         }
         // list addresses with bad stats
-        Ok(addr_stats
+        let res: HashSet<Address> = addr_stats
             .into_iter()
             .filter_map(|(addr, (ok_count, nok_count))| {
                 if ok_count + nok_count == 0 {
@@ -1102,7 +1115,13 @@ impl ProofOfStake {
                 }
                 None
             })
-            .collect())
+            .collect();
+
+        for alert_addr in res.intersection(&self.watched_addresses) {
+            warn!("address {} is subject to an implicit roll sale at cycle {}. Check the stability of your node/connection to avoid further misses, then buy rolls again.", alert_addr, cycle);
+        }
+
+        Ok(res)
     }
 
     /// gets the number of locked rolls at a given slot for a set of addresses

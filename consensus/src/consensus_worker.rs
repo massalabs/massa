@@ -864,7 +864,8 @@ impl ConsensusWorker {
                     info!("Staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));
                 }
-                self.block_db.update_staking_keys(self.staking_keys.clone());
+                self.pos
+                    .set_watched_addresses(self.staking_keys.keys().copied().collect());
                 self.dump_staking_keys().await;
                 Ok(())
             }
@@ -872,8 +873,8 @@ impl ConsensusWorker {
                 for address in addresses.into_iter() {
                     self.staking_keys.remove(&address);
                 }
-
-                self.block_db.update_staking_keys(self.staking_keys.clone());
+                self.pos
+                    .set_watched_addresses(self.staking_keys.keys().copied().collect());
                 self.dump_staking_keys().await;
                 Ok(())
             }

@@ -80,8 +80,10 @@ pub async fn start_consensus_controller(
     let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
 
     // start worker
-    let block_db = BlockGraph::new(cfg.clone(), boot_graph, staking_keys.clone()).await?;
-    let pos = ProofOfStake::new(cfg.clone(), block_db.get_genesis_block_ids(), boot_pos).await?;
+    let block_db = BlockGraph::new(cfg.clone(), boot_graph).await?;
+    let mut pos =
+        ProofOfStake::new(cfg.clone(), block_db.get_genesis_block_ids(), boot_pos).await?;
+    pos.set_watched_addresses(staking_keys.keys().copied().collect());
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
