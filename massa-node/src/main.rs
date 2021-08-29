@@ -41,7 +41,7 @@ async fn launch(
 ) {
     if let Some(end) = cfg.consensus.end_timestamp {
         if UTime::now(0).expect("could not get now time") > end {
-            panic!("This episode has already ended, you can download the next one https://gitlab.com/massalabs/massa");
+            panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
 

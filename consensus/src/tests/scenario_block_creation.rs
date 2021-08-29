@@ -420,7 +420,7 @@ async fn test_block_filling() {
                 .unwrap()
                 .best_parents;
 
-            let ed = create_endorsement(priv_a, Slot::new(0, 0), genesis[0]);
+            let ed = create_endorsement(priv_a, Slot::new(0, 0), genesis[0].0);
 
             //wait for first slot
             pool_controller

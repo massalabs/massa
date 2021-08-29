@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crypto::hash::Hash;
-use models::{Address, Amount, Endorsement, EndorsementContent, SerializeCompact, Slot};
+use models::{Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -97,11 +97,14 @@ async fn test_endorsement_check() {
                 (pubkey_2, priv_2)
             };
 
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .unwrap()
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
 

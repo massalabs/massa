@@ -675,7 +675,7 @@ pub struct BlockGraphExport {
     /// Finite cache of discarded blocks, in exported version.
     pub discarded_blocks: ExportDiscardedBlocks,
     /// Best parents hashe in each thread.
-    pub best_parents: Vec<BlockId>,
+    pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// Head of the incompatibility graph.
@@ -697,7 +697,7 @@ pub struct BootstrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Vec<(BlockId, ExportActiveBlock)>,
     /// Best parents hashe in each thread.
-    pub best_parents: Vec<BlockId>,
+    pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// Head of the incompatibility graph.
@@ -768,8 +768,9 @@ impl SerializeCompact for BootstrapableGraph {
         }
 
         //best_parents
-        for parent_h in self.best_parents.iter() {
+        for (parent_h, parent_period) in self.best_parents.iter() {
             res.extend(&parent_h.to_bytes());
+            res.extend(&parent_period.to_varint_bytes());
         }
 
         //latest_final_blocks_periods
@@ -854,11 +855,13 @@ impl DeserializeCompact for BootstrapableGraph {
         }
 
         //best_parents
-        let mut best_parents: Vec<BlockId> = Vec::with_capacity(parent_count as usize);
+        let mut best_parents: Vec<(BlockId, u64)> = Vec::with_capacity(parent_count as usize);
         for _ in 0..parent_count {
             let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
-            best_parents.push(parent_h);
+            let (parent_period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+            cursor += delta;
+            best_parents.push((parent_h, parent_period));
         }
 
         //latest_final_blocks_periods
@@ -943,7 +946,7 @@ pub struct BlockGraph {
     sequence_counter: u64,
     block_statuses: HashMap<BlockId, BlockStatus>,
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
-    best_parents: Vec<BlockId>,
+    best_parents: Vec<(BlockId, u64)>,
     gi_head: HashMap<BlockId, HashSet<BlockId>>,
     max_cliques: Vec<Clique>,
     to_propagate: HashMap<BlockId, Block>,
@@ -1150,7 +1153,7 @@ impl BlockGraph {
                 genesis_hashes: block_hashes.clone(),
                 block_statuses,
                 latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0)).collect(),
-                best_parents: block_hashes,
+                best_parents: block_hashes.iter().map(|v| (*v, 0)).collect(),
                 gi_head: HashMap::new(),
                 max_cliques: vec![Clique {
                     block_ids: HashSet::new(),
@@ -1529,7 +1532,7 @@ impl BlockGraph {
     }
 
     /// Gets best parents.
-    pub fn get_best_parents(&self) -> &Vec<BlockId> {
+    pub fn get_best_parents(&self) -> &Vec<(BlockId, u64)> {
         &self.best_parents
     }
 
@@ -1698,7 +1701,13 @@ impl BlockGraph {
     ) -> Result<LedgerDataExport, ConsensusError> {
         let best_parents = self.get_best_parents();
         Ok(LedgerDataExport {
-            candidate_data: self.get_ledger_at_parents(best_parents, addresses)?,
+            candidate_data: self.get_ledger_at_parents(
+                &best_parents
+                    .iter()
+                    .map(|(b, _p)| *b)
+                    .collect::<Vec<BlockId>>(),
+                addresses,
+            )?,
             final_data: self.ledger.get_final_ledger_subset(addresses)?,
         })
     }
@@ -3213,7 +3222,8 @@ impl BlockGraph {
                         .copied()
                         .collect(),
                 ) {
-                    self.best_parents[block_a.block.header.content.slot.thread as usize] = *block_h;
+                    self.best_parents[block_a.block.header.content.slot.thread as usize] =
+                        (*block_h, block_a.block.header.content.slot.period);
                     parents_updated += 1;
                     if parents_updated == self.cfg.thread_count {
                         break;
@@ -3568,7 +3578,7 @@ impl BlockGraph {
             }) = block_status
             {
                 if !*is_final
-                    || self.best_parents.contains(hash)
+                    || self.best_parents.iter().find(|(b, _p)| b == hash).is_some()
                     || latest_final_blocks.contains(hash)
                 {
                     retain_active.extend(dependencies);
@@ -3578,7 +3588,7 @@ impl BlockGraph {
         }
 
         // retain best parents
-        retain_active.extend(&self.best_parents);
+        retain_active.extend(self.best_parents.iter().map(|(b, _p)| *b));
 
         // retain last final blocks
         retain_active.extend(self.latest_final_blocks_periods.iter().map(|(h, _)| *h));
@@ -4390,8 +4400,8 @@ mod tests {
             ],
             /// Best parents hash in each thread.
             best_parents: vec![
-                get_dummy_block_id("blockp3t0"),
-                get_dummy_block_id("blockp3t1"),
+                (get_dummy_block_id("blockp3t0"), 3),
+                (get_dummy_block_id("blockp3t1"), 3),
             ],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![
@@ -4528,8 +4538,8 @@ mod tests {
             .collect(),
             /// Best parents hash in each thread.
             best_parents: vec![
-                get_dummy_block_id("parent11"),
-                get_dummy_block_id("parent12"),
+                (get_dummy_block_id("parent11"), 2),
+                (get_dummy_block_id("parent12"), 3),
             ],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![

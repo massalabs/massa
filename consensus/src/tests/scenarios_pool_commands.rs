@@ -512,7 +512,7 @@ fn get_bootgraph(
             .into_iter()
             .collect(),
             /// Best parents hash in each thread.
-            best_parents: vec![p1t0_id, g1_id],
+            best_parents: vec![(p1t0_id, 1), (g1_id, 0)],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],
             /// Head of the incompatibility graph.

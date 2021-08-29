@@ -477,7 +477,7 @@ async fn test_current_parents() {
 
     //add default parents
     let mut graph = get_test_block_graph();
-    graph.best_parents = vec![get_test_block_id(), get_test_block_id()];
+    graph.best_parents = vec![(get_test_block_id(), 0), (get_test_block_id(), 0)];
     let mut active_blocks = HashMap::new();
     active_blocks.insert(
         get_test_block_id(),
@@ -1072,7 +1072,7 @@ async fn test_get_block_interval() {
     initialize_context();
 
     let mut graph = get_test_block_graph();
-    graph.best_parents = vec![get_test_block_id(), get_test_block_id()];
+    graph.best_parents = vec![(get_test_block_id(), 0), (get_test_block_id(), 0)];
 
     let mut active_blocks = HashMap::new();
     active_blocks.insert(

@@ -27,11 +27,14 @@ async fn test_thread_incompatibility() {
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             let hash_1 = tools::create_and_test_block(
                 &mut protocol_controller,
@@ -72,11 +75,11 @@ async fn test_thread_incompatibility() {
                 .expect("could not get block graph status");
 
             if hash_1 > hash_3 {
-                assert_eq!(status.best_parents[0], hash_3);
+                assert_eq!(status.best_parents[0].0, hash_3);
             } else {
-                assert_eq!(status.best_parents[0], hash_1);
+                assert_eq!(status.best_parents[0].0, hash_1);
             }
-            assert_eq!(status.best_parents[1], hash_2);
+            assert_eq!(status.best_parents[1].0, hash_2);
 
             assert!(if let Some(h) = status.gi_head.get(&hash_3) {
                 h.contains(&hash_1)
@@ -115,12 +118,12 @@ async fn test_thread_incompatibility() {
                 .expect("could not get block graph status");
 
             assert!(if let Some(h) = status.gi_head.get(&hash_3) {
-                h.contains(&status.best_parents[0])
+                h.contains(&status.best_parents[0].0)
             } else {
                 panic!("missing block in clique")
             });
 
-            let mut parents = vec![status.best_parents[0].clone(), hash_2];
+            let mut parents = vec![status.best_parents[0].0.clone(), hash_2];
             let mut current_period = 8;
             for _ in 0..30 as usize {
                 let (hash, b, _) = tools::create_block(
@@ -263,7 +266,7 @@ async fn test_grandpa_incompatibility() {
                 }
             }
 
-            let parents = status.best_parents.clone();
+            let parents: Vec<BlockId> = status.best_parents.iter().map(|(b, _p)| *b).collect();
             if hash_4 > hash_3 {
                 assert_eq!(parents[0], hash_3)
             } else {
@@ -280,7 +283,7 @@ async fn test_grandpa_incompatibility() {
                     &mut protocol_controller,
                     &cfg,
                     Slot::new(3 + extend_i, 0),
-                    status.best_parents,
+                    status.best_parents.iter().map(|(b, _p)| *b).collect(),
                     true,
                     false,
                     staking_keys[0].clone(),

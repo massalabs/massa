@@ -230,7 +230,7 @@ pub async fn get_state(
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
                 if UTime::now(0).expect("could not get now time") > end {
-                    panic!("This episode has already ended, you can download the next one https://gitlab.com/massalabs/massa");
+                    panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
 

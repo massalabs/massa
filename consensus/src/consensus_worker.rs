@@ -440,11 +440,12 @@ impl ConsensusWorker {
         // get parents
         let parents = self.block_db.get_best_parents();
 
+        let (thread_parent, thread_parent_period) = parents[cur_slot.thread as usize];
         let endorsements = self
             .pool_command_sender
             .get_endorsements(
-                cur_slot,
-                parents[cur_slot.thread as usize],
+                Slot::new(thread_parent_period, cur_slot.thread),
+                thread_parent,
                 endorsement_draws,
             )
             .await?;
@@ -455,7 +456,7 @@ impl ConsensusWorker {
             BlockHeaderContent {
                 creator: *creator_public_key,
                 slot: cur_slot,
-                parents: parents.clone(),
+                parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::hash(&Vec::new()[..]),
                 endorsements: endorsements.clone(),
             },
@@ -575,7 +576,7 @@ impl ConsensusWorker {
             BlockHeaderContent {
                 creator: *creator_public_key,
                 slot: cur_slot,
-                parents: parents.clone(),
+                parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::hash(&total_hash),
                 endorsements,
             },
@@ -1010,7 +1011,7 @@ impl ConsensusWorker {
                     ConsensusError::PosCycleUnavailable("final cycle unavailable".to_string())
                 })?;
             let candidate_data = self.block_db.get_roll_data_at_parent(
-                self.block_db.get_best_parents()[thread as usize],
+                self.block_db.get_best_parents()[thread as usize].0,
                 Some(&addresses_by_thread[thread as usize]),
                 &self.pos,
             )?;

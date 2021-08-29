@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
-use models::Slot;
+use models::{BlockId, Slot};
 use serial_test::serial;
 
 #[tokio::test]
@@ -51,11 +51,14 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         .await
         .expect("could not start consensus controller");
 
-    let parents = consensus_command_sender
+    let parents: Vec<BlockId> = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
-        .best_parents;
+        .best_parents
+        .iter()
+        .map(|(b, _p)| *b)
+        .collect();
 
     // Block for a non-existent thread.
     let (hash, block, _) = tools::create_block_with_merkle_root(
@@ -118,11 +121,14 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         .await
         .expect("could not start consensus controller");
 
-    let parents = consensus_command_sender
+    let parents: Vec<BlockId> = consensus_command_sender
         .get_block_graph_status()
         .await
         .expect("could not get block graph status")
-        .best_parents;
+        .best_parents
+        .iter()
+        .map(|(b, _p)| *b)
+        .collect();
 
     // Block for a non-existent thread.
     let (hash, block, _) = tools::create_block_with_merkle_root(

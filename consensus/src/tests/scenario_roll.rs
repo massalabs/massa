@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::protocol::ProtocolCommand;
-use models::{Address, Amount, Slot};
+use models::{Address, Amount, BlockId, Slot};
 use num::rational::Ratio;
 use pool::PoolCommand;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
@@ -92,11 +92,14 @@ async fn test_roll() {
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver| {
-            let mut parents = consensus_command_sender
+            let mut parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             // operations
             let rb_a1_r1_err = create_roll_buy(priv_1, 1, 90, 0);

@@ -968,7 +968,7 @@ async fn get_current_parents(
 
     let parents = graph.best_parents;
     let mut best = Vec::new();
-    for hash in parents {
+    for (hash, _) in parents {
         match graph.active_blocks.get_key_value(&hash) {
             Some((_, block)) => best.push((hash, block.block.content.slot)),
             None => {

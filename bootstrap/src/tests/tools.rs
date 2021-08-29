@@ -312,7 +312,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
 
     let boot_graph = BootstrapableGraph {
         active_blocks: vec![(get_dummy_block_id("block1"), block1)],
-        best_parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+        best_parents: vec![
+            (get_dummy_block_id("parent1"), 2),
+            (get_dummy_block_id("parent2"), 3),
+        ],
         latest_final_blocks_periods: vec![
             (get_dummy_block_id("parent1"), 10),
             (get_dummy_block_id("parent2"), 10),
