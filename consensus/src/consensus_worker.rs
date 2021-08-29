@@ -449,6 +449,9 @@ impl ConsensusWorker {
                 endorsement_draws,
             )
             .await?;
+        massa_trace!("consensus.create_block.get_endorsements.result", {
+            "endorsements": endorsements
+        });
 
         // create empty block
         let (_block_id, header) = BlockHeader::new_signed(

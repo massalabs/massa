@@ -112,7 +112,7 @@ impl PoolCommandSender {
         periods: Vec<u64>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.update_latest_final_periods", {
-            "ops": periods
+            "periods": periods
         });
         let res = self
             .0

@@ -23,13 +23,12 @@ impl EndorsementPool {
 
     /// Removes endorsements that are too old
     pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {
-        self.latest_final_periods = periods.clone();
         self.endorsements.retain(
             |_,
              Endorsement {
                  content: EndorsementContent { slot, .. },
                  ..
-             }| periods[slot.thread as usize] >= slot.period,
+             }| slot.period >= periods[slot.thread as usize],
         );
         self.latest_final_periods = periods;
     }
