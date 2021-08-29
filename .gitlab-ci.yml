@@ -26,3 +26,21 @@ test:
     - cargo update
     - cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests
   coverage: /\d+.\d+% coverage/
+
+build-linux:
+  stage: build
+  image: "qdrn/mas"
+  artifacts:
+    name: "build-linux"
+    when: on_success
+    expire_in: 1 mos
+    paths:
+      - artifacts/
+  script:
+    - cargo update
+    - cargo build --release --target x86_64-unknown-linux-musl
+    - rm -rf artifacts/*
+    - mkdir -p artifacts/x86_64-unknown-linux-musl
+    - cd artifacts/x86_64-unknown-linux-musl
+    - cp -v ../../target/x86_64-unknown-linux-musl/release/massa-node ./massa-node
+    - cp -v ../../target/x86_64-unknown-linux-musl/release/massa-client ./massa-client
