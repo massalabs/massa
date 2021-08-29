@@ -66,7 +66,7 @@ build-darwin:
       - artifacts/
   script:
     - cargo update
-    - cargo build --release --target x86_64-apple-darwin
+    - CC=o64-clang CXX=o64-clang++ cargo build --release --target x86_64-apple-darwin
     - rm -rf artifacts/*
     - mkdir -p artifacts/x86_64-apple-darwin/massa-node/
     - cd artifacts/x86_64-apple-darwin
