@@ -488,10 +488,10 @@ async fn test_block_filling() {
                         response_tx,
                         ..
                     } => {
+                        assert_eq!(Slot::new(1, 0), target_slot);
+                        assert_eq!(parent, prev_blocks[0]);
                         let mut eds: Vec<Endorsement> = Vec::new();
                         for (index, creator) in creators.iter().enumerate() {
-                            assert_eq!(Slot::new(1, 0), target_slot);
-                            assert_eq!(parent, prev_blocks[0]);
                             let ed = if *creator == address_a {
                                 create_endorsement(priv_a, target_slot, parent, index as u32)
                             } else if *creator == address_b {
