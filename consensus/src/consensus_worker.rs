@@ -441,14 +441,18 @@ impl ConsensusWorker {
         let parents = self.block_db.get_best_parents();
 
         let (thread_parent, thread_parent_period) = parents[cur_slot.thread as usize];
-        let endorsements = self
-            .pool_command_sender
-            .get_endorsements(
-                Slot::new(thread_parent_period, cur_slot.thread),
-                thread_parent,
-                endorsement_draws,
-            )
-            .await?;
+        let endorsements = if thread_parent_period > 0 {
+            self.pool_command_sender
+                .get_endorsements(
+                    Slot::new(thread_parent_period, cur_slot.thread),
+                    thread_parent,
+                    endorsement_draws,
+                )
+                .await?
+        } else {
+            Vec::new()
+        };
+
         massa_trace!("consensus.create_block.get_endorsements.result", {
             "endorsements": endorsements
         });
@@ -475,9 +479,11 @@ impl ConsensusWorker {
         let mut remaining_block_space = (self.cfg.max_block_size as u64)
             .checked_sub(serialized_block.len() as u64)
             .ok_or_else(|| {
-                ConsensusError::BlockCreationError(
-                    "consensus config max_block_size is smaller than an ampty block".into(),
-                )
+                ConsensusError::BlockCreationError(format!(
+                    "consensus config max_block_size ({}) is smaller than an empty block ({})",
+                    self.cfg.max_block_size,
+                    serialized_block.len()
+                ))
             })?;
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
