@@ -2398,7 +2398,7 @@ impl BlockGraph {
         // (step 1 in consensus/pos.md)
         // note: do this AFTER TooMuchInTheFuture checks
         //       to avoid doing too many draws to check blocks in the distant future
-        let (slot_draw_address, endorsement_draws) = match pos.draw(header.content.slot) {
+        let (slot_draw_address, _endorsement_draws) = match pos.draw(header.content.slot) {
             Ok(draws) => draws,
             Err(ConsensusError::PosCycleUnavailable(_)) => {
                 // slot is not available yet
@@ -2558,6 +2558,15 @@ impl BlockGraph {
         })?;
 
         // check endorsements
+        let (_slot_draw_address, endorsement_draws) =
+            match pos.draw(parent_in_own_thread.block.header.content.slot) {
+                Ok(draws) => draws,
+                Err(ConsensusError::PosCycleUnavailable(_)) => {
+                    // slot is not available yet
+                    return Ok(HeaderCheckOutcome::WaitForSlot);
+                }
+                Err(err) => return Err(err),
+            };
         for endorsement in header.content.endorsements.iter() {
             // check that the draw is correct
             if Address::from_public_key(&endorsement.content.sender_public_key)?
