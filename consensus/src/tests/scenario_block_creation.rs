@@ -356,11 +356,11 @@ async fn test_order_of_inclusion() {
 #[serial]
 async fn test_block_filling() {
     // setup logging
-    /*stderrlog::new()
-    .verbosity(2)
-    .timestamp(stderrlog::Timestamp::Millisecond)
-    .init()
-    .unwrap();*/
+    // stderrlog::new()
+    // .verbosity(2)
+    // .timestamp(stderrlog::Timestamp::Millisecond)
+    // .init()
+    // .unwrap();
 
     let thread_count = 2;
     //define addresses use for the test
@@ -489,13 +489,13 @@ async fn test_block_filling() {
                         ..
                     } => {
                         let mut eds: Vec<Endorsement> = Vec::new();
-                        for creator in creators {
+                        for (index, creator) in creators.iter().enumerate() {
                             assert_eq!(Slot::new(1, 0), target_slot);
                             assert_eq!(parent, prev_blocks[0]);
-                            let ed = if creator == address_a {
-                                create_endorsement(priv_a, target_slot, parent)
-                            } else if creator == address_b {
-                                create_endorsement(priv_b, target_slot, parent)
+                            let ed = if *creator == address_a {
+                                create_endorsement(priv_a, target_slot, parent, index as u32)
+                            } else if *creator == address_b {
+                                create_endorsement(priv_b, target_slot, parent, index as u32)
                             } else {
                                 panic!("invalid endorser choice");
                             };

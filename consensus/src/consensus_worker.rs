@@ -360,7 +360,7 @@ impl ConsensusWorker {
 
         // create blocks
         if !self.cfg.disable_block_creation && cur_slot.period > 0 {
-            let (block_draw, endorsement_draws) = match self.pos.draw(cur_slot) {
+            let (block_draw, _) = match self.pos.draw(cur_slot) {
                 Ok((b_draw, e_draws)) => (Some(b_draw), e_draws),
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     massa_trace!(
@@ -373,7 +373,23 @@ impl ConsensusWorker {
                 }
                 Err(err) => return Err(err),
             };
-
+            let (_, endorsement_draws) = match self
+                .pos
+                .draw(Slot::new(cur_slot.period - 1, cur_slot.thread))
+            {
+                Ok((b_draw, e_draws)) => (Some(b_draw), e_draws),
+                Err(ConsensusError::PosCycleUnavailable(_)) => {
+                    massa_trace!(
+                        "consensus.consensus_worker.slot_tick.block_creatorunavailable",
+                        {}
+                    );
+                    warn!("desynchronization detected because the lookback cycle is not final at the current time");
+                    let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
+                    (None, Vec::new())
+                }
+                Err(err) => return Err(err),
+            };
+            println!("{:?}", endorsement_draws);
             if let Some(addr) = block_draw {
                 if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
                     massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
