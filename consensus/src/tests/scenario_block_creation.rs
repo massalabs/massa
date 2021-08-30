@@ -361,6 +361,7 @@ async fn test_block_filling() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
+
     let thread_count = 2;
     //define addresses use for the test
     // addresses a and b both in thread 0
