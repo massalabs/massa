@@ -460,13 +460,14 @@ pub fn create_endorsement(
     sender_priv: PrivateKey,
     slot: Slot,
     endorsed_block: BlockId,
+    index: u32,
 ) -> Endorsement {
     let sender_public_key = crypto::derive_public_key(&sender_priv);
 
     let content = EndorsementContent {
         sender_public_key,
         slot,
-        index: 0,
+        index,
         endorsed_block,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());

@@ -360,7 +360,7 @@ impl ConsensusWorker {
 
         // create blocks
         if !self.cfg.disable_block_creation && cur_slot.period > 0 {
-            let (block_draw, endorsement_draws) = match self.pos.draw(cur_slot) {
+            let (block_draw, _endorsement_draws) = match self.pos.draw(cur_slot) {
                 Ok((b_draw, e_draws)) => (Some(b_draw), e_draws),
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     massa_trace!(
@@ -373,12 +373,10 @@ impl ConsensusWorker {
                 }
                 Err(err) => return Err(err),
             };
-
             if let Some(addr) = block_draw {
                 if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
                     massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                    self.create_block(cur_slot, &addr, &pub_k, &priv_k, endorsement_draws)
-                        .await?;
+                    self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
                     if let Some(next_addr_slot) =
                         self.pos.get_next_selected_slot(self.next_slot, addr)
                     {
@@ -435,20 +433,22 @@ impl ConsensusWorker {
         creator_addr: &Address,
         creator_public_key: &PublicKey,
         creator_private_key: &PrivateKey,
-        endorsement_draws: Vec<Address>,
     ) -> Result<(), ConsensusError> {
         // get parents
         let parents = self.block_db.get_best_parents();
-
         let (thread_parent, thread_parent_period) = parents[cur_slot.thread as usize];
-        let endorsements = self
-            .pool_command_sender
-            .get_endorsements(
-                Slot::new(thread_parent_period, cur_slot.thread),
-                thread_parent,
-                endorsement_draws,
-            )
-            .await?;
+
+        // get endorsements
+        let endorsements = if thread_parent_period > 0 {
+            let thread_parent_slot = Slot::new(thread_parent_period, cur_slot.thread);
+            let (_block_draw, endorsement_draws) = self.pos.draw(thread_parent_slot)?;
+            self.pool_command_sender
+                .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
+                .await?
+        } else {
+            Vec::new()
+        };
+
         massa_trace!("consensus.create_block.get_endorsements.result", {
             "endorsements": endorsements
         });
@@ -475,9 +475,11 @@ impl ConsensusWorker {
         let mut remaining_block_space = (self.cfg.max_block_size as u64)
             .checked_sub(serialized_block.len() as u64)
             .ok_or_else(|| {
-                ConsensusError::BlockCreationError(
-                    "consensus config max_block_size is smaller than an ampty block".into(),
-                )
+                ConsensusError::BlockCreationError(format!(
+                    "consensus config max_block_size ({}) is smaller than an empty block ({})",
+                    self.cfg.max_block_size,
+                    serialized_block.len()
+                ))
             })?;
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
