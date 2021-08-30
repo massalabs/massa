@@ -828,7 +828,18 @@ impl ProofOfStake {
             .1)
     }
 
-    pub fn draw(&mut self, slot: Slot) -> Result<(Address, Vec<Address>), ConsensusError> {
+    pub fn draw_endorsement_producers(
+        &mut self,
+        slot: Slot,
+    ) -> Result<Vec<Address>, ConsensusError> {
+        Ok(self.draw(slot)?.1)
+    }
+
+    pub fn draw_block_producer(&mut self, slot: Slot) -> Result<Address, ConsensusError> {
+        Ok(self.draw(slot)?.0)
+    }
+
+    fn draw(&mut self, slot: Slot) -> Result<(Address, Vec<Address>), ConsensusError> {
         let cycle = slot.get_cycle(self.cfg.periods_per_cycle);
         let cycle_draws = self.get_cycle_draws(cycle)?;
         Ok(cycle_draws
