@@ -439,6 +439,7 @@ impl ConsensusWorker {
         let (thread_parent, thread_parent_period) = parents[cur_slot.thread as usize];
 
         // get endorsements
+        // it is assumed that only valid endorsements in that context are selected by pool
         let endorsements = if thread_parent_period > 0 {
             let thread_parent_slot = Slot::new(thread_parent_period, cur_slot.thread);
             let endorsement_draws = self.pos.draw_endorsement_producers(thread_parent_slot)?;
@@ -1313,6 +1314,8 @@ impl ConsensusWorker {
                         Vec::new()
                     }
                 };
+
+                // actually create endorsements
                 let mut endorsements = HashMap::new();
                 for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
                     if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {

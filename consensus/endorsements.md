@@ -35,7 +35,7 @@ The endorser is selected to create an endorsement at a specific (slot, endorseme
 
 ## Endorsement production
 
-Endorsements are automatically produced at every slot tick if a staking address of the node has been selected.
+Endorsements are automatically produced every time block db changed, if the slot hasn't already been endorsed, if it is at most one period before the last slot, and  if a staking address of the node has been selected. Created endorsements are sent to the endorsement pool.
 
 ## Endorsement propagation
 
