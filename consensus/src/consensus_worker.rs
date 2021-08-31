@@ -360,8 +360,8 @@ impl ConsensusWorker {
 
         // create blocks
         if !self.cfg.disable_block_creation && cur_slot.period > 0 {
-            let (block_draw, _endorsement_draws) = match self.pos.draw(cur_slot) {
-                Ok((b_draw, e_draws)) => (Some(b_draw), e_draws),
+            let block_draw = match self.pos.draw_block_producer(cur_slot) {
+                Ok(b_draw) => Some(b_draw),
                 Err(ConsensusError::PosCycleUnavailable(_)) => {
                     massa_trace!(
                         "consensus.consensus_worker.slot_tick.block_creatorunavailable",
@@ -369,7 +369,7 @@ impl ConsensusWorker {
                     );
                     warn!("desynchronization detected because the lookback cycle is not final at the current time");
                     let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
-                    (None, Vec::new())
+                    None
                 }
                 Err(err) => return Err(err),
             };
@@ -441,7 +441,7 @@ impl ConsensusWorker {
         // get endorsements
         let endorsements = if thread_parent_period > 0 {
             let thread_parent_slot = Slot::new(thread_parent_period, cur_slot.thread);
-            let (_block_draw, endorsement_draws) = self.pos.draw(thread_parent_slot)?;
+            let endorsement_draws = self.pos.draw_endorsement_producers(thread_parent_slot)?;
             self.pool_command_sender
                 .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
                 .await?
@@ -726,10 +726,16 @@ impl ConsensusWorker {
                                 Err(err) => break Err(err.into()),
                             }
                         } else {
-                            match self.pos.draw(cur_slot) {
-                                Err(err) => break Err(err),
-                                Ok((block_addr, endo_addrs)) => (block_addr, endo_addrs),
-                            }
+                            (
+                                match self.pos.draw_block_producer(cur_slot) {
+                                    Err(err) => break Err(err),
+                                    Ok(block_addr) => block_addr,
+                                },
+                                match self.pos.draw_endorsement_producers(cur_slot) {
+                                    Err(err) => break Err(err),
+                                    Ok(endo_addrs) => endo_addrs,
+                                },
+                            )
                         },
                     ));
                     cur_slot = match cur_slot.get_next_slot(self.cfg.thread_count) {
@@ -1297,8 +1303,8 @@ impl ConsensusWorker {
                     continue;
                 }
                 // check endorsement draws
-                let endorsement_draws = match self.pos.draw(block_slot) {
-                    Ok((_b_draw, e_draws)) => e_draws,
+                let endorsement_draws = match self.pos.draw_endorsement_producers(block_slot) {
+                    Ok(e_draws) => e_draws,
                     Err(err) => {
                         warn!(
                             "could not draw endorsements at slot {}: {}",
