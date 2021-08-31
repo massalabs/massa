@@ -39,6 +39,7 @@ build-linux:
     paths:
       - artifacts/
   script:
+    - rustup update
     - cargo update
     - cargo build --release --target x86_64-unknown-linux-musl
     - rm -rf artifacts/*
@@ -65,6 +66,7 @@ build-darwin:
     paths:
       - artifacts/
   script:
+    - rustup update
     - cargo update
     - CC=o64-clang CXX=o64-clang++ cargo build --release --target x86_64-apple-darwin
     - rm -rf artifacts/*
@@ -76,5 +78,32 @@ build-darwin:
     - cp -rv ../../massa-node/base_config ./massa-node/base_config
     - cp -rv ../../massa-node/storage ./massa-node/storage
     - cp -v ../../target/x86_64-apple-darwin/release/massa-client ./massa-client/massa-client
+    - cp -rv ../../massa-client/config ./massa-client/config
+    - cp -rv ../../massa-client/base_config ./massa-client/base_config
+
+build-windows:
+  stage: build
+  image: "massalabs/linux-ci"
+  # rules:
+  #   - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
+  artifacts:
+    name: "${CI_JOB_NAME}_${CI_COMMIT_REF_NAME}"
+    when: on_success
+    expire_in: 1 mos
+    paths:
+      - artifacts/
+  script:
+    - rustup update
+    - cargo update
+    - cargo build --release --target x86_64-pc-windows-gnu
+    - rm -rf artifacts/*
+    - mkdir -p artifacts/x86_64-pc-windows-gnu/massa-node/
+    - cd artifacts/x86_64-pc-windows-gnu
+    - mkdir massa-client
+    - cp -v ../../target/x86_64-pc-windows-gnu/release/massa-node.exe ./massa-node/massa-node.exe
+    - cp -rv ../../massa-node/config ./massa-node/config
+    - cp -rv ../../massa-node/base_config ./massa-node/base_config
+    - cp -rv ../../massa-node/storage ./massa-node/storage
+    - cp -v ../../target/x86_64-pc-windows-gnu/release/massa-client.exe ./massa-client/massa-client.exe
     - cp -rv ../../massa-client/config ./massa-client/config
     - cp -rv ../../massa-client/base_config ./massa-client/base_config
