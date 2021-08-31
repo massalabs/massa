@@ -91,19 +91,19 @@ build-windows:
     when: on_success
     expire_in: 1 mos
     paths:
-      - artifacts/
+      - massa/
   script:
     - rustup update
     - cargo update
     - cargo build --release --target x86_64-pc-windows-gnu
-    - rm -rf artifacts/*
-    - mkdir -p artifacts/x86_64-pc-windows-gnu/massa-node/
-    - cd artifacts/x86_64-pc-windows-gnu
+    - rm -rf massa/*
+    - mkdir -p massa/massa-node/
+    - cd massa/
     - mkdir massa-client
-    - cp -v ../../target/x86_64-pc-windows-gnu/release/massa-node.exe ./massa-node/massa-node.exe
-    - cp -rv ../../massa-node/config ./massa-node/config
-    - cp -rv ../../massa-node/base_config ./massa-node/base_config
-    - cp -rv ../../massa-node/storage ./massa-node/storage
-    - cp -v ../../target/x86_64-pc-windows-gnu/release/massa-client.exe ./massa-client/massa-client.exe
-    - cp -rv ../../massa-client/config ./massa-client/config
-    - cp -rv ../../massa-client/base_config ./massa-client/base_config
+    - cp -v ../target/x86_64-pc-windows-gnu/release/massa-node.exe ./massa-node/massa-node.exe
+    - cp -rv ../massa-node/config ./massa-node/config
+    - cp -rv ../massa-node/base_config ./massa-node/base_config
+    - cp -rv ../massa-node/storage ./massa-node/storage
+    - cp -v ../target/x86_64-pc-windows-gnu/release/massa-client.exe ./massa-client/massa-client.exe
+    - cp -rv ../massa-client/config ./massa-client/config
+    - cp -rv ../massa-client/base_config ./massa-client/base_config
