@@ -2586,6 +2586,14 @@ impl BlockGraph {
                             parent_in_own_thread.block.header.content.slot, endorsement.content.slot),
                 )));
             }
+
+            // note that the following aspects are checked in protocol
+            // * signature
+            // * intra block endorsement reuse
+            // * intra block index reuse
+            // * slot in the same thread as block's slot
+            // * slot is before the block's slot
+            // * the endorsed block is the parent in the same thread
         }
 
         // thread incompatibility test
