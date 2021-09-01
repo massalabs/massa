@@ -33,6 +33,8 @@ impl EndorsementPool {
         self.latest_final_periods = periods;
     }
 
+    /// gets ok endorsements for a given slot, with given endorsed block and endorsement creators at index
+    /// returns sorted and dedupped endorsements
     pub fn get_endorsements(
         &self,
         target_slot: Slot,
@@ -63,7 +65,8 @@ impl EndorsementPool {
         Ok(candidates)
     }
 
-    /// Incoming endorsements. Returns newly added
+    /// Incoming endorsements. Returns newly added.
+    /// Prunes the pool if there are too many endorsements
     pub fn add_endorsements(
         &mut self,
         endorsements: HashMap<EndorsementId, Endorsement>,
@@ -106,6 +109,8 @@ impl EndorsementPool {
         self.current_slot = Some(slot);
     }
 
+    /// Prune the pool while there are more endorsements than set max
+    /// Kept endorsements are the one that are absolutely closer to the current slot
     fn prune(&mut self) -> HashSet<EndorsementId> {
         let mut removed = HashSet::new();
 
