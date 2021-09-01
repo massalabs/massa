@@ -17,9 +17,9 @@ use crypto::signature::{derive_public_key, sign, PrivateKey, PublicKey, Signatur
 use futures::{stream::FuturesUnordered, StreamExt};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+    SerializeCompact, SerializeVarInt, Version,
 };
-use models::{Block, BlockHeader, BlockId, Operation};
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -29,7 +29,6 @@ use std::{
 use tokio::sync::mpsc::error::SendTimeoutError;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
-use tokio::time::Duration;
 
 /// Commands that the worker can execute
 #[derive(Debug)]
@@ -48,9 +47,11 @@ pub enum NetworkCommand {
         node: NodeId,
         header: BlockHeader,
     },
-    GetPeers(oneshot::Sender<(HashMap<IpAddr, PeerInfo>, NodeId)>),
+    //(PeerInfo, Vec<(NodeId, bool)>) peer info + liste des nodes Id associés en connexoin out (true)
+    GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
+    Unban(IpAddr),
     BlockNotFound {
         node: NodeId,
         block_id: BlockId,
@@ -59,10 +60,26 @@ pub enum NetworkCommand {
         node: NodeId,
         operations: Vec<Operation>,
     },
+    SendEndorsements {
+        node: NodeId,
+        endorsements: Vec<Endorsement>,
+    },
     NodeSignMessage {
         msg: Vec<u8>,
         response_tx: oneshot::Sender<(PublicKey, Signature)>,
     },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Peer {
+    pub peer_info: PeerInfo,
+    pub active_nodes: Vec<(NodeId, bool)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Peers {
+    pub our_node_id: NodeId,
+    pub peers: HashMap<IpAddr, Peer>,
 }
 
 #[derive(Debug)]
@@ -92,6 +109,10 @@ pub enum NetworkEvent {
     ReceivedOperations {
         node: NodeId,
         operations: Vec<Operation>,
+    },
+    ReceivedEndorsements {
+        node: NodeId,
+        endorsements: Vec<Endorsement>,
     },
 }
 
@@ -134,7 +155,7 @@ impl DeserializeCompact for BootstrapPeers {
         let mut cursor = 0usize;
 
         //peers
-        let (peers_count, delta) = u32::from_varint_bytes(buffer)?;
+        let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         let max_peer_list_length =
             with_serialization_context(|context| context.max_peer_list_length);
         if peers_count > max_peer_list_length {
@@ -190,6 +211,7 @@ pub struct NetworkWorker {
         FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, CommunicationError>)>>,
     /// Map of connection to ip, is_outgoing.
     active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
+    version: Version,
 }
 
 impl NetworkWorker {
@@ -213,6 +235,7 @@ impl NetworkWorker {
         controller_command_rx: mpsc::Receiver<NetworkCommand>,
         controller_event_tx: mpsc::Sender<NetworkEvent>,
         controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
+        version: Version,
     ) -> NetworkWorker {
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         NetworkWorker {
@@ -232,16 +255,14 @@ impl NetworkWorker {
             active_nodes: HashMap::new(),
             node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
+            version,
         }
     }
 
     async fn send_network_event(&self, event: NetworkEvent) -> Result<(), CommunicationError> {
         let result = self
             .controller_event_tx
-            .send_timeout(
-                event,
-                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
-            )
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => return Ok(()),
@@ -301,7 +322,7 @@ impl NetworkWorker {
                     },
 
                 // wake up interval
-                _ = wakeup_interval.tick() => (),
+                _ = wakeup_interval.tick() => { self.peer_info_db.tick()?; }
 
                 // wait for a handshake future to complete
                 Some(res) = self.handshake_futures.next() => {
@@ -345,7 +366,7 @@ impl NetworkWorker {
                     if let Some((connection_id, _)) = self
                         .active_nodes
                         .remove(&node_id) {
-                        info!("protocol channel closed node_id={:?}", node_id);
+                        massa_trace!("protocol channel closed", {"node_id": node_id});
                         self.connection_closed(connection_id, reason).await?;
                     }
                 },
@@ -578,12 +599,20 @@ impl NetworkWorker {
         let private_key = self.private_key;
         let message_timeout = self.cfg.message_timeout;
         let connection_id_copy = connection_id;
+        let version = self.version;
         let handshake_fn_handle = tokio::spawn(async move {
             (
                 connection_id_copy,
-                HandshakeWorker::new(reader, writer, self_node_id, private_key, message_timeout)
-                    .run()
-                    .await,
+                HandshakeWorker::new(
+                    reader,
+                    writer,
+                    self_node_id,
+                    private_key,
+                    message_timeout,
+                    version,
+                )
+                .run()
+                .await,
             )
         });
         self.handshake_futures.push(handshake_fn_handle);
@@ -715,8 +744,47 @@ impl NetworkWorker {
                     "network_worker.manage_network_command receive NetworkCommand::GetPeers",
                     {}
                 );
+
+                //for each peer get all node id associated to this peer ip.
+                let peers: HashMap<IpAddr, Peer> = self
+                    .peer_info_db
+                    .get_peers()
+                    .iter()
+                    .map(|(peer_ip_addr, peer)| {
+                        (
+                            *peer_ip_addr,
+                            Peer {
+                                peer_info: peer.clone(),
+                                active_nodes: self
+                                    .active_connections
+                                    .iter()
+                                    .filter(|(_, (ip_addr, _))| &peer.ip == ip_addr)
+                                    .map(|(out_conn_id, (_, out_going))| {
+                                        self.active_nodes
+                                            .iter()
+                                            .filter_map(|(node_id, (conn_id, _))| {
+                                                if out_conn_id == conn_id {
+                                                    Some(node_id)
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .next()
+                                            .map(|node_id| (*node_id, *out_going))
+                                    })
+                                    .flatten()
+                                    .collect(),
+                            },
+                        )
+                    })
+                    .collect();
+
+                //HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>)
                 response_tx
-                    .send((self.peer_info_db.get_peers().clone(), self.self_node_id))
+                    .send(Peers {
+                        peers,
+                        our_node_id: self.self_node_id,
+                    })
                     .map_err(|_| {
                         CommunicationError::ChannelError(
                             "could not send GetPeersChannelError upstream".into(),
@@ -757,6 +825,17 @@ impl NetworkWorker {
                 )
                 .await;
             }
+            NetworkCommand::SendEndorsements { node, endorsements } => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::SendEndorsements",
+                    { "node": node, "endorsements": endorsements }
+                );
+                self.forward_message_to_node_or_resend_close_event(
+                    &node,
+                    NodeCommand::SendEndorsements(endorsements),
+                )
+                .await;
+            }
             NetworkCommand::NodeSignMessage { msg, response_tx } => {
                 massa_trace!(
                     "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
@@ -770,6 +849,7 @@ impl NetworkWorker {
                     )
                 })?;
             }
+            NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
         }
         Ok(())
     }
@@ -973,13 +1053,30 @@ impl NetworkWorker {
             }
 
             NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::BlockNotFound",
+                    { "id": block_id }
+                );
                 let _ = self
                     .send_network_event(NetworkEvent::BlockNotFound { node, block_id })
                     .await;
             }
             NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
+                    { "operations": operations }
+                );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedOperations { node, operations })
+                    .await;
+            }
+            NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
+                massa_trace!(
+                    "network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements",
+                    { "endorsements": endorsements }
+                );
+                let _ = self
+                    .send_network_event(NetworkEvent::ReceivedEndorsements { node, endorsements })
                     .await;
             }
         }

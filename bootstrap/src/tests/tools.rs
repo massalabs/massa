@@ -2,26 +2,26 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
+use crate::config::BootstrapConfig;
 use bitvec::prelude::*;
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
-    BootsrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake,
+    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportClique, ExportProofOfStake,
     ExportThreadCycleState, LedgerChange, LedgerData, LedgerExport, RollUpdate,
 };
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, Operation,
-    OperationContent, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
+    Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
+use std::str::FromStr;
 use time::UTime;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::mpsc::Receiver,
     time::sleep,
 };
-
-use crate::config::BootstrapConfig;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -60,13 +60,15 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     BootstrapConfig {
-        bind: Some("0.0.0.0:31234".parse().unwrap()),
+        bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
         max_bootstrap_blocks: 100,
@@ -132,13 +134,18 @@ where
     }
 }
 
-pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
+pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
 
     let mut ledger_subset = Vec::new();
-    ledger_subset.push((address, LedgerData { balance: 10 }));
+    ledger_subset.push((
+        address,
+        LedgerData {
+            balance: Amount::from_str("10").unwrap(),
+        },
+    ));
 
     let cycle_state = ExportThreadCycleState {
         cycle: 1,
@@ -161,6 +168,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             ),
         ],
         rng_seed: bitvec![Lsb0, u8 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+        production_stats: vec![(get_random_address(), 1, 2), (get_random_address(), 3, 4)],
     };
     let boot_pos = ExportProofOfStake {
         cycle_states: vec![
@@ -177,6 +185,26 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                     slot: Slot::new(1, 1),
                     parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
                     operation_merkle_root: Hash::hash("op_hash".as_bytes()),
+                    endorsements: vec![
+                        Endorsement {
+                            content: EndorsementContent {
+                                sender_public_key: get_random_public_key(),
+                                slot: Slot::new(1, 0),
+                                index: 1,
+                                endorsed_block: get_dummy_block_id("p1"),
+                            },
+                            signature: get_dummy_signature("dummy_sig_0"),
+                        },
+                        Endorsement {
+                            content: EndorsementContent {
+                                sender_public_key: get_random_public_key(),
+                                slot: Slot::new(4, 1),
+                                index: 3,
+                                endorsed_block: get_dummy_block_id("p1"),
+                            },
+                            signature: get_dummy_signature("dummy_sig_00"),
+                        },
+                    ],
                 },
                 signature: get_dummy_signature("dummy_sig_1"),
             },
@@ -184,11 +212,11 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: 1524878,
+                        fee: Amount::from_str("1524878").unwrap(),
                         expire_period: 5787899,
                         op: models::OperationType::Transaction {
                             recipient_address: get_random_address(),
-                            amount: 1259787,
+                            amount: Amount::from_str("1259787").unwrap(),
                         },
                     },
                     signature: get_dummy_signature("dummy_sig_2"),
@@ -196,7 +224,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: 878763222,
+                        fee: Amount::from_str("878763222").unwrap(),
                         expire_period: 4557887,
                         op: models::OperationType::RollBuy { roll_count: 45544 },
                     },
@@ -205,7 +233,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 Operation {
                     content: OperationContent {
                         sender_public_key: get_random_public_key(),
-                        fee: 4545,
+                        fee: Amount::from_str("4545").unwrap(),
                         expire_period: 452524,
                         op: models::OperationType::RollSell {
                             roll_count: 4888787,
@@ -233,21 +261,21 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 get_random_address(),
                 LedgerChange {
                     balance_increment: true,
-                    balance_delta: 157,
+                    balance_delta: Amount::from_str("157").unwrap(),
                 },
             ),
             (
                 get_random_address(),
                 LedgerChange {
                     balance_increment: false,
-                    balance_delta: 44,
+                    balance_delta: Amount::from_str("44").unwrap(),
                 },
             ),
             (
                 get_random_address(),
                 LedgerChange {
                     balance_increment: false,
-                    balance_delta: 878,
+                    balance_delta: Amount::from_str("878").unwrap(),
                 },
             ),
         ],
@@ -267,6 +295,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
                 },
             ),
         ],
+        production_events: vec![
+            (12, get_random_address(), true),
+            (31, get_random_address(), false),
+        ],
     };
     assert_eq!(
         ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
@@ -278,9 +310,12 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
         "ExportProofOfStake serialization inconsistent"
     );
 
-    let boot_graph = BootsrapableGraph {
+    let boot_graph = BootstrapableGraph {
         active_blocks: vec![(get_dummy_block_id("block1"), block1)],
-        best_parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+        best_parents: vec![
+            (get_dummy_block_id("parent1"), 2),
+            (get_dummy_block_id("parent2"), 3),
+        ],
         latest_final_blocks_periods: vec![
             (get_dummy_block_id("parent1"), 10),
             (get_dummy_block_id("parent2"), 10),
@@ -289,20 +324,21 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootsrapableGraph) {
             (get_dummy_block_id("parent1"), vec![]),
             (get_dummy_block_id("parent2"), vec![]),
         ],
-        max_cliques: vec![vec![
-            get_dummy_block_id("parent1"),
-            get_dummy_block_id("parent2"),
-        ]],
+        max_cliques: vec![ExportClique {
+            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+            fitness: 123,
+            is_blockclique: true,
+        }],
         ledger: LedgerExport { ledger_subset },
     };
     assert_eq!(
-        BootsrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
+        BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
             .unwrap()
             .0
             .to_bytes_compact()
             .unwrap(),
         boot_graph.to_bytes_compact().unwrap(),
-        "BootsrapableGraph serialization inconsistent"
+        "BootstrapableGraph serialization inconsistent"
     );
 
     (boot_pos, boot_graph)

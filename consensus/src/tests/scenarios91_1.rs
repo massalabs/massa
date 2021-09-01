@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::tests::tools::{self, generate_ledger_file};
 use crypto::hash::Hash;
-use models::Slot;
+use models::{BlockId, Slot};
 use serial_test::serial;
 use time::UTime;
 
@@ -283,7 +283,7 @@ async fn test_gpi() {
             // * after processing the block in t1s2, there are 2 cliques, one with block of t0s2 and one with block of t1s2, and the parent vector uses the clique of minimum hash sum so the block of minimum hash between t0s2 and t1s2
             assert_eq!(1, blockt1s2_clic.len());
             assert_eq!(1, blockt0s2_clic.len());
-            let parents = block_graph.best_parents.clone();
+            let parents: Vec<BlockId> = block_graph.best_parents.iter().map(|(b, _p)| *b).collect();
             if valid_hasht1s2 > valid_hasht0s2 {
                 assert_eq!(parents[0], valid_hasht0s2)
             } else {

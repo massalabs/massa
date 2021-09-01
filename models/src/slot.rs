@@ -130,9 +130,11 @@ impl SerializeCompact for Slot {
     /// #    max_bootstrap_children: 100,
     /// #    max_ask_blocks_per_message: 10,
     /// #    max_operations_per_message: 1024,
+    /// #    max_endorsements_per_message: 1024,
     /// #    max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
@@ -166,10 +168,12 @@ impl DeserializeCompact for Slot {
     /// #     max_bootstrap_deps: 100,
     /// #     max_bootstrap_children: 100,
     /// #     max_ask_blocks_per_message: 10,
+    /// #     max_endorsements_per_message: 1024,
     /// #     max_operations_per_message: 1024,
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
@@ -180,7 +184,7 @@ impl DeserializeCompact for Slot {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let parent_count = with_serialization_context(|context| context.parent_count);
         let mut cursor = 0usize;
-        let (period, delta) = u64::from_varint_bytes(buffer)?;
+        let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
         let thread = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;

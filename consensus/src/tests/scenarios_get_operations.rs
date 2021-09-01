@@ -1,19 +1,19 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::{HashMap, HashSet};
-
+use crate::{
+    block_graph::ExportClique,
+    tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
+    BootstrapableGraph, LedgerData, LedgerExport,
+};
 use crypto::{hash::Hash, signature::PublicKey};
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
     OperationSearchResult, OperationSearchResultStatus, Slot,
 };
 use serial_test::serial;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use time::UTime;
-
-use crate::{
-    tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
-    BootsrapableGraph, LedgerData, LedgerExport,
-};
 
 #[tokio::test]
 #[serial]
@@ -84,7 +84,7 @@ async fn test_storage() {
     ];
 
     let boot_ledger = LedgerExport {
-        ledger_subset: vec![(address_a, LedgerData { balance: 100 })],
+        ledger_subset: vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))],
     };
 
     let (boot_graph, b1, b2) = get_bootgraph(
@@ -114,6 +114,7 @@ async fn test_storage() {
                     .map(|idx| BlockId(Hash::hash(format!("parent {:?}", idx).as_bytes())))
                     .collect(),
                 slot: Slot::new(1,1),
+                endorsements: Vec::new(),
             },
             signature: crypto::signature::Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -329,8 +330,14 @@ async fn test_consensus_and_storage() {
 
     let boot_ledger = LedgerExport {
         ledger_subset: vec![
-            (address_a, LedgerData { balance: 1000 }),
-            (address_b, LedgerData { balance: 1000 }),
+            (
+                address_a,
+                LedgerData::new(Amount::from_str("1000").unwrap()),
+            ),
+            (
+                address_b,
+                LedgerData::new(Amount::from_str("1000").unwrap()),
+            ),
         ],
     };
 
@@ -351,6 +358,7 @@ async fn test_consensus_and_storage() {
                     .map(|idx| BlockId(Hash::hash(format!("parent {:?}", idx).as_bytes())))
                     .collect(),
                 slot: Slot::new(1,1),
+                endorsements: Vec::new(),
             },
             signature: crypto::signature::Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -507,7 +515,7 @@ fn get_bootgraph(
     creator: PublicKey,
     operations: Vec<Operation>,
     ledger: LedgerExport,
-) -> (BootsrapableGraph, BlockId, BlockId) {
+) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =
         get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
     let (genesis_1, g1_id) =
@@ -534,7 +542,7 @@ fn get_bootgraph(
         false,
     );
     (
-        BootsrapableGraph {
+        BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
             active_blocks: vec![
                 (g0_id, genesis_0.clone()),
@@ -546,7 +554,7 @@ fn get_bootgraph(
             .into_iter()
             .collect(),
             /// Best parents hashe in each thread.
-            best_parents: vec![p2t0_id, p1t1_id],
+            best_parents: vec![(p2t0_id, 2), (p1t1_id, 1)],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],
             /// Head of the incompatibility graph.
@@ -562,7 +570,11 @@ fn get_bootgraph(
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![vec![g0_id, p1t0_id, g1_id, p1t1_id, p2t0_id]],
+            max_cliques: vec![ExportClique {
+                block_ids: vec![g0_id, p1t0_id, g1_id, p1t1_id, p2t0_id],
+                fitness: 123,
+                is_blockclique: true,
+            }],
             ledger,
         },
         p1t0_id,

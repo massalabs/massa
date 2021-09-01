@@ -1,15 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::hash::Hash;
-use models::{get_serialization_context, Address, Block, BlockHeader, BlockHeaderContent, Slot};
-
+use super::tools::protocol_test;
 use crate::protocol::tests::tools::{
     create_and_connect_nodes, create_block_with_operations, create_operation_with_expire_period,
     create_protocol_config, send_and_propagate_block,
 };
+use crypto::hash::Hash;
+use models::{
+    get_serialization_context, Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot,
+};
 use serial_test::serial;
-
-use super::tools::protocol_test;
+use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
@@ -124,6 +125,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                             slot: slot_a,
                             parents: Vec::new(),
                             operation_merkle_root,
+                            endorsements: Vec::new(),
                         },
                     )
                     .unwrap();
@@ -147,7 +149,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with operation with wrong signature
             {
                 let mut op = create_operation_with_expire_period(private_key, public_key, 5);
-                op.content.fee = 10;
+                op.content.fee = Amount::from_str("10").unwrap();
                 let block = create_block_with_operations(
                     &creator_node.private_key,
                     &creator_node.id.0,
@@ -168,7 +170,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with operation in wrong thread
             {
                 let mut op = create_operation_with_expire_period(private_key, public_key, 5);
-                op.content.fee = 10;
+                op.content.fee = Amount::from_str("10").unwrap();
                 let block = create_block_with_operations(
                     &creator_node.private_key,
                     &creator_node.id.0,

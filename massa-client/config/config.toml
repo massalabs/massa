@@ -1,2 +1,3 @@
+# this is the user config file. It overrides the one in massa-client/base_config
 
-default_node = "127.0.0.1:33033"
+# default_node = "127.0.0.1:33033"

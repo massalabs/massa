@@ -12,7 +12,6 @@ pub struct RollUpdate {
 
 impl RollUpdate {
 	pub fn chain(&mut self, change: &Self) -> Result<RollCompensation, ConsensusError>;  // fuses Change into self and compensates + returns the number of matching purchases/sales
-	pub fn compensate(&mut self) -> RollCompensation;  // compensates matching purchases/sales and returns their count
 }
 
 pub struct RollUpdates(pub HashMap<Address, RollUpdate>);
@@ -36,6 +35,7 @@ struct ThreadCycleState {
     roll_count: RollCounts,  // number of rolls addresses have
     cycle_updates: RollUpdates,  // compensated number of rolls addresses have bought/sold in the cycle
     rng_seed: BitVec // https://docs.rs/bitvec/0.22.3/bitvec/
+    production_stats: HashMap<Address, (u64, u64)> // associates addresses to their (n_final_blocks, n_final_misses) in the cycle 
 }
 
 pub struct RollCounts(pub BTreeMap<Address, u64>);
@@ -52,7 +52,7 @@ impl RollCounts {
 }
 ```
 
-* `cycle_states: Vec<VecDeque<ThreadCycleState> >` indices: [thread][cycle] -> ThreadCycleState
+* `cycle_states: Vec<VecDeque<ThreadCycleState>>` indices: [thread][cycle] -> ThreadCycleState
 where the index "cycle" is relative cycle number with respect to the latest one stored. 
 
 Those values are either bootstrapped, or set to their genesis values:
@@ -65,7 +65,7 @@ Those values are either bootstrapped, or set to their genesis values:
 Add a field:
 
 * `roll_updates: RollUpdates`  for the block's thread
-
+* `production_history: Vec<(u64, Address, bool)>`  block/endorsement production events (period, creator_address, true if produces or false if missed)
 
 ## Draws
 
@@ -122,6 +122,7 @@ If the Option is None, all addresses are taken into account.
 4. set `B.roll_updates = new()`
 5. if the block is the first of a new cycle N for thread Tau:
 	1. credit `roll_price * cycle_states[Tau][1 + lookback_cycles + lock_cycles].roll_updates[addr].roll_delta` for every addr for which `roll_increment == false`
+    2. deactivate all candidate rolls for all addresses for which cycle_states[Tau][1 + lookback_cycles].production_stats[address].(.0 / (.0 + .1)) > cfg.pos_miss_rate_deactivation_threshold
 6. parse the operations of the block in order:
 	1. Apply roll updates to cur_rolls. If the new roll count under/over-flows u64 => block invalid
 	2. try chain roll updates to `B.roll_updates`. If the new roll delta under/over-flows u64 => block invalid
@@ -136,7 +137,8 @@ If the Option is None, all addresses are taken into account.
 		1. inherit ThreadCycleState.roll_count from cycle N-1
 		2. empty ThreadCycleState.cycle_updates, ThreadCycleState.rng_seed
 	2. pop back for cycle_states[thread] to keep it the right size
-2. if there were misses between B and its parent, for each of them in order:
+2. accumulate production statistics
+3. if there were misses between B and its parent, for each of them in order:
 	1. push the 1st bit of Sha256( miss.slot.to_bytes_key() ) in cycle_states[thread].rng_seed
-3. update the ThreadCycleState roll counts at cycle N with by applying ActiveBlock.roll_updates
-4. push the 1st bit of BlockId in cycle_states[thread].rng_seed
+4. update the ThreadCycleState roll counts at cycle N with by applying ActiveBlock.roll_updates
+5. push the 1st bit of BlockId in cycle_states[thread].rng_seed

@@ -9,7 +9,10 @@ use super::{
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
-use models::{Address, Operation, OperationId, OperationSearchResult, Slot};
+use models::{
+    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
+    Slot,
+};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -109,7 +112,7 @@ impl PoolCommandSender {
         periods: Vec<u64>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.update_latest_final_periods", {
-            "ops": periods
+            "periods": periods
         });
         let res = self
             .0
@@ -151,6 +154,35 @@ impl PoolCommandSender {
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
                 "pool command response read error in get_operation_batch {:?}",
+                e
+            ))
+        })
+    }
+
+    pub async fn get_endorsements(
+        &mut self,
+        target_slot: Slot,
+        parent: BlockId,
+        creators: Vec<Address>,
+    ) -> Result<Vec<Endorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements", {
+            "target_slot": target_slot
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsements {
+                target_slot,
+                response_tx,
+                parent,
+                creators,
+            })
+            .await
+            .map_err(|_| PoolError::ChannelError("get_endorsements command send error".into()))?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements {:?}",
                 e
             ))
         })
@@ -208,6 +240,21 @@ impl PoolCommandSender {
                 e
             ))
         })
+    }
+
+    pub async fn add_endorsements(
+        &mut self,
+        endorsements: HashMap<EndorsementId, Endorsement>,
+    ) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.add_endorsements", {
+            "endorsements": endorsements
+        });
+        let res = self
+            .0
+            .send(PoolCommand::AddEndorsements(endorsements))
+            .await
+            .map_err(|_| PoolError::ChannelError("add_endorsements command send error".into()));
+        res
     }
 }
 

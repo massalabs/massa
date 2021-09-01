@@ -6,7 +6,8 @@ use crypto::{
 };
 use models::{
     array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
-    DeserializeVarInt, ModelsError, Operation, SerializeCompact, SerializeVarInt,
+    DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt,
+    Version,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,7 @@ pub enum Message {
         /// They should send us their handshake initiation message to
         /// let us know their public key.
         random_bytes: [u8; HANDSHAKE_RANDOMNES_SIZE_BYTES],
+        version: Version,
     },
     /// Reply to a handshake initiation message.
     HandshakeReply {
@@ -49,6 +51,8 @@ pub enum Message {
     BlockNotFound(BlockId),
     /// Operations
     Operations(Vec<Operation>),
+    /// Endorsements
+    Endorsements(Vec<Endorsement>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -63,6 +67,7 @@ enum MessageTypeId {
     PeerList = 6,
     BlockNotFound = 7,
     Operations = 8,
+    Endorsements = 9,
 }
 
 impl SerializeCompact for Message {
@@ -72,10 +77,12 @@ impl SerializeCompact for Message {
             Message::HandshakeInitiation {
                 public_key,
                 random_bytes,
+                version,
             } => {
                 res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
                 res.extend(&public_key.to_bytes());
                 res.extend(random_bytes);
+                res.extend(version.to_bytes_compact()?);
             }
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
@@ -122,6 +129,13 @@ impl SerializeCompact for Message {
                     res.extend(op.to_bytes_compact()?);
                 }
             }
+            Message::Endorsements(endorsements) => {
+                res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
+                res.extend((endorsements.len() as u32).to_varint_bytes());
+                for endorsement in endorsements.iter() {
+                    res.extend(endorsement.to_bytes_compact()?);
+                }
+            }
         }
         Ok(res)
     }
@@ -131,14 +145,19 @@ impl DeserializeCompact for Message {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
-        let (max_ask_blocks_per_message, max_peer_list_length, max_operations_per_message) =
-            with_serialization_context(|context| {
-                (
-                    context.max_ask_blocks_per_message,
-                    context.max_peer_list_length,
-                    context.max_operations_per_message,
-                )
-            });
+        let (
+            max_ask_blocks_per_message,
+            max_peer_list_length,
+            max_operations_per_message,
+            max_endorsements_per_message,
+        ) = with_serialization_context(|context| {
+            (
+                context.max_ask_blocks_per_message,
+                context.max_peer_list_length,
+                context.max_operations_per_message,
+                context.max_endorsements_per_message,
+            )
+        });
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -156,10 +175,16 @@ impl DeserializeCompact for Message {
                 let random_bytes: [u8; HANDSHAKE_RANDOMNES_SIZE_BYTES] =
                     array_from_slice(&buffer[cursor..])?;
                 cursor += HANDSHAKE_RANDOMNES_SIZE_BYTES;
+
+                //version
+                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
                 // return message
                 Message::HandshakeInitiation {
                     public_key,
                     random_bytes,
+                    version,
                 }
             }
             MessageTypeId::HandshakeReply => {
@@ -224,7 +249,94 @@ impl DeserializeCompact for Message {
                 }
                 Message::Operations(ops)
             }
+            MessageTypeId::Endorsements => {
+                // length
+                let (length, delta) = u32::from_varint_bytes_bounded(
+                    &buffer[cursor..],
+                    max_endorsements_per_message,
+                )?;
+                cursor += delta;
+                // operations
+                let mut endorsements: Vec<Endorsement> = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let (endorsement, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
+                    cursor += delta;
+                    endorsements.push(endorsement);
+                }
+                Message::Endorsements(endorsements)
+            }
         };
         Ok((res, cursor))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use rand::{prelude::StdRng, RngCore, SeedableRng};
+    use serial_test::serial;
+
+    use super::*;
+
+    fn initialize_context() -> models::SerializationContext {
+        // Init the serialization context with a default,
+        // can be overwritten with a more specific one in the test.
+        let ctx = models::SerializationContext {
+            max_block_operations: 1024,
+            parent_count: 2,
+            max_peer_list_length: 128,
+            max_message_size: 3 * 1024 * 1024,
+            max_block_size: 3 * 1024 * 1024,
+            max_bootstrap_blocks: 100,
+            max_bootstrap_cliques: 100,
+            max_bootstrap_deps: 100,
+            max_bootstrap_children: 100,
+            max_ask_blocks_per_message: 10,
+            max_operations_per_message: 1024,
+            max_endorsements_per_message: 1024,
+            max_bootstrap_message_size: 100000000,
+            max_bootstrap_pos_entries: 1000,
+            max_bootstrap_pos_cycles: 5,
+            max_block_endorsments: 8,
+        };
+        models::init_serialization_context(ctx.clone());
+        ctx
+    }
+
+    #[test]
+    #[serial]
+    fn test_ser_deser() {
+        initialize_context();
+        let mut random_bytes = [0u8; 32];
+        StdRng::from_entropy().fill_bytes(&mut random_bytes);
+        let priv_key = crypto::generate_random_private_key();
+        let public_key = crypto::derive_public_key(&priv_key);
+        let msg = Message::HandshakeInitiation {
+            public_key,
+            random_bytes,
+            version: Version::from_str("TEST.1.2").unwrap(),
+        };
+        let ser = msg.to_bytes_compact().unwrap();
+        let (deser, _) = Message::from_bytes_compact(&ser).unwrap();
+        match (msg, deser) {
+            (
+                Message::HandshakeInitiation {
+                    public_key: pk1,
+                    random_bytes: rb1,
+                    version: v1,
+                },
+                Message::HandshakeInitiation {
+                    public_key,
+                    random_bytes,
+                    version,
+                },
+            ) => {
+                assert_eq!(pk1, public_key);
+                assert_eq!(rb1, random_bytes);
+                assert_eq!(v1, version);
+            }
+            _ => panic!("unexpected message"),
+        }
     }
 }

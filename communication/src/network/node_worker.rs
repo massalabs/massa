@@ -7,13 +7,9 @@ use super::{
 };
 use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
-use models::{Block, BlockHeader, BlockId, Operation};
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use std::net::IpAddr;
-use tokio::{
-    sync::mpsc,
-    sync::mpsc::error::SendTimeoutError,
-    time::{timeout, Duration},
-};
+use tokio::{sync::mpsc, sync::mpsc::error::SendTimeoutError, time::timeout};
 
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
@@ -31,6 +27,8 @@ pub enum NodeCommand {
     BlockNotFound(BlockId),
     /// Operation
     SendOperations(Vec<Operation>),
+    /// Endorsements
+    SendEndorsements(Vec<Endorsement>),
 }
 
 /// Event types that node worker can emit
@@ -50,6 +48,8 @@ pub enum NodeEventType {
     BlockNotFound(BlockId),
     /// Operation
     ReceivedOperations(Vec<Operation>),
+    /// Operation
+    ReceivedEndorsements(Vec<Endorsement>),
 }
 
 /// Events node worker can emit.
@@ -106,10 +106,7 @@ impl NodeWorker {
     async fn send_node_event(&self, event: NodeEvent) {
         let result = self
             .node_event_tx
-            .send_timeout(
-                event,
-                Duration::from_millis(self.cfg.max_send_wait.to_millis()),
-            )
+            .send_timeout(event, self.cfg.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}
@@ -218,19 +215,23 @@ impl NodeWorker {
                                 massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operations});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
+                            Message::Endorsements(endorsements) => {
+                                massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedEndorsements(endorsements))).await;
+                            }
                             _ => {  // wrong message
-                                warn!("node_worker.run_loop.self.socket_reader.next(). other message Error");
+                                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Error", {});
                                 exit_reason = ConnectionClosureReason::Failed;
                                 break;
                             },
                         }
                     },
                     Ok(None)=> {
-                        warn!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error");
+                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error", {});
                         break
                     }, // peer closed cleanly
                     Err(err) => {  //stream error
-                        warn!("node_worker.run_loop.self.socket_reader.next(). receive Error:{}", err);
+                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{:?}", err)});
                         exit_reason = ConnectionClosureReason::Failed;
                         break;
                     },
@@ -282,6 +283,15 @@ impl NodeWorker {
                             //cut operation list if it exceed max_operations_per_message
                             for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
                                 if writer_command_tx.send(Message::Operations(to_send_list.to_vec())).await.is_err() {
+                                    break 'select_loop;
+                                }
+                            }
+                        },
+                        Some(NodeCommand::SendEndorsements(endorsements)) => {
+                            massa_trace!("node_worker.run_loop. send Message::SendEndorsements", {"node": self.node_id, "endorsements": endorsements});
+                            //cut endorsement list if it exceed max_endorsements_per_message
+                            for to_send_list in endorsements.chunks(self.cfg.max_endorsements_per_message as usize) {
+                                if writer_command_tx.send(Message::Endorsements(to_send_list.to_vec())).await.is_err() {
                                     break 'select_loop;
                                 }
                             }

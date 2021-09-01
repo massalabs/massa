@@ -1,14 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::{BTreeSet, HashMap, HashSet};
-
+use crate::{PoolConfig, PoolError};
 use models::{
     Address, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
     SerializeCompact, Slot,
 };
 use num::rational::Ratio;
-
-use crate::{PoolConfig, PoolError};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 struct OperationIndex(HashMap<Address, HashSet<OperationId>>);
 
@@ -55,7 +53,7 @@ impl WrappedOperation {
 
     /// Used to compare operations
     fn get_fee_density(&self) -> Ratio<u64> {
-        Ratio::new(self.op.content.fee, self.byte_count)
+        Ratio::new(self.op.content.fee.to_raw(), self.byte_count)
     }
 }
 
@@ -112,7 +110,7 @@ impl OperationPool {
 
             // Already present
             if self.ops.contains_key(&op_id) {
-                massa_trace!("pool add_operations  op already present.)", {});
+                massa_trace!("pool add_operations op already present", {});
                 continue;
             }
 
@@ -350,8 +348,9 @@ impl OperationPool {
 mod tests {
     use super::*;
     use crypto::hash::Hash;
-    use models::{Operation, OperationContent, OperationType};
+    use models::{Amount, Operation, OperationContent, OperationType};
     use serial_test::serial;
+    use std::str::FromStr;
 
     fn example_pool_config() -> (PoolConfig, u8, u64) {
         let mut nodes = Vec::new();
@@ -379,15 +378,18 @@ mod tests {
             max_bootstrap_children: 100,
             max_ask_blocks_per_message: 10,
             max_operations_per_message: 1024,
+            max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
+            max_block_endorsments: 8,
         });
 
         (
             PoolConfig {
                 max_pool_size_per_thread: 100000,
                 max_operation_future_validity_start_periods: 200,
+                max_endorsement_count: 1000,
             },
             thread_count,
             operation_validity_periods,
@@ -403,10 +405,10 @@ mod tests {
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-            amount: 0,
+            amount: Amount::default(),
         };
         let content = OperationContent {
-            fee,
+            fee: Amount::from_str(&fee.to_string()).unwrap(),
             op,
             sender_public_key: sender_pub,
             expire_period,

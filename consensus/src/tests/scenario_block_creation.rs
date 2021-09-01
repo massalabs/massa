@@ -1,20 +1,21 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use serial_test::serial;
-use std::collections::HashMap;
-
-use communication::protocol::ProtocolCommand;
-use crypto::hash::Hash;
-use models::SerializeCompact;
-use models::{Address, Block, BlockHeader, BlockHeaderContent, Slot};
-use pool::PoolCommand;
-use time::UTime;
-
 use crate::{
     ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
-    tests::tools::{self, create_roll_transaction, create_transaction, generate_ledger_file},
+    tests::tools::{
+        self, create_endorsement, create_roll_transaction, create_transaction, generate_ledger_file,
+    },
 };
+use communication::protocol::ProtocolCommand;
+use crypto::hash::Hash;
+use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
+use models::{Endorsement, SerializeCompact};
+use pool::PoolCommand;
+use serial_test::serial;
+use std::collections::HashMap;
+use std::str::FromStr;
+use time::UTime;
 
 // implement test of issue !424.
 #[tokio::test]
@@ -46,7 +47,10 @@ async fn test_block_creation_with_draw() {
     assert_eq!(0, address_2.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData { balance: 1000 });
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("1000").unwrap()),
+    );
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
 
@@ -67,8 +71,8 @@ async fn test_block_creation_with_draw() {
         roll_counts_file.path(),
         staking_file.path(),
     );
-    cfg.roll_price = 1000;
-    cfg.periods_per_cycle = 10_000;
+    cfg.roll_price = Amount::from_str("1000").unwrap();
+    cfg.periods_per_cycle = 1_000;
     cfg.t0 = 1000.into();
     cfg.pos_lookback_cycles = 2;
     cfg.thread_count = thread_count;
@@ -79,7 +83,7 @@ async fn test_block_creation_with_draw() {
         .unwrap()
         .checked_add(2000.into())
         .unwrap();
-    cfg.block_reward = 0;
+    cfg.block_reward = Amount::default();
     cfg.disable_block_creation = false;
     cfg.operation_validity_periods = 100;
     cfg.operation_batch_size = 3;
@@ -128,14 +132,17 @@ async fn test_block_creation_with_draw() {
             }
 
             // get draws for cycle 3 (lookback = cycle 0)
-            let draws = consensus_command_sender
+            let draws: HashMap<_, _> = consensus_command_sender
                 .get_selection_draws(
                     Slot::new(3 * cfg.periods_per_cycle, 0),
                     Slot::new(4 * cfg.periods_per_cycle, 0),
                 )
                 .await
-                .unwrap();
-            let nb_address1_draws = draws.iter().filter(|(_, addr)| *addr == address_1).count();
+                .unwrap()
+                .into_iter()
+                .map(|(s, (b, _e))| (s, b))
+                .collect();
+            let nb_address1_draws = draws.iter().filter(|(_, addr)| **addr == address_1).count();
             // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
             // note: this is a statistical test. It may fail in rare occasions.
             assert!(
@@ -151,7 +158,7 @@ async fn test_block_creation_with_draw() {
             for _ in 0..10 {
                 // wait block propagation
                 let block_creator = protocol_controller
-                    .wait_command(3000.into(), |cmd| match cmd {
+                    .wait_command(3500.into(), |cmd| match cmd {
                         ProtocolCommand::IntegratedBlock { block, .. } => {
                             if block.header.content.slot == cur_slot {
                                 Some(block.header.content.creator)
@@ -214,7 +221,7 @@ async fn test_order_of_inclusion() {
     assert_eq!(0, address_b.get_thread(thread_count));
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_a, LedgerData { balance: 100 });
+    ledger.insert(address_a, LedgerData::new(Amount::from_str("100").unwrap()));
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
         .map(|_| crypto::generate_random_private_key())
@@ -262,6 +269,10 @@ async fn test_order_of_inclusion() {
                             None
                         }
                     }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 })
                 .await
@@ -280,6 +291,10 @@ async fn test_order_of_inclusion() {
                             .unwrap();
                         Some(())
                     }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
+                    }
                     _ => None,
                 })
                 .await
@@ -296,6 +311,10 @@ async fn test_order_of_inclusion() {
                         assert!(!exclude.is_empty());
                         response_tx.send(vec![]).unwrap();
                         Some(())
+                    }
+                    PoolCommand::GetEndorsements { response_tx, .. } => {
+                        response_tx.send(Vec::new()).unwrap();
+                        None
                     }
                     _ => None,
                 })
@@ -336,12 +355,13 @@ async fn test_order_of_inclusion() {
 #[tokio::test]
 #[serial]
 async fn test_block_filling() {
-    // // setup logging
+    // setup logging
     // stderrlog::new()
-    //     .verbosity(2)
-    //     .timestamp(stderrlog::Timestamp::Millisecond)
-    //     .init()
-    //     .unwrap();
+    // .verbosity(2)
+    // .timestamp(stderrlog::Timestamp::Millisecond)
+    // .init()
+    // .unwrap();
+
     let thread_count = 2;
     //define addresses use for the test
     // addresses a and b both in thread 0
@@ -353,19 +373,21 @@ async fn test_block_filling() {
         pubkey_a = crypto::derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
-    assert_eq!(0, address_a.get_thread(thread_count));
-
+    let mut priv_b = crypto::generate_random_private_key();
+    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
+    while 1 != address_b.get_thread(thread_count) {
+        priv_b = crypto::generate_random_private_key();
+        pubkey_b = crypto::derive_public_key(&priv_b);
+        address_b = Address::from_public_key(&pubkey_b).unwrap();
+    }
     let mut ledger = HashMap::new();
     ledger.insert(
         address_a,
-        LedgerData {
-            balance: 1_000_000_000,
-        },
+        LedgerData::new(Amount::from_str("1000000000").unwrap()),
     );
     let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys = vec![priv_a, priv_b];
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -379,14 +401,14 @@ async fn test_block_filling() {
     cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 500;
+    cfg.periods_per_cycle = 3;
     cfg.max_operations_per_block = 5000;
-    cfg.max_block_size = 500;
+    cfg.max_block_size = 2000;
+    cfg.endorsement_count = 10;
     let mut ops = Vec::new();
     for _ in 0..500 {
         ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
     }
-
-    // there is only one node so it should be drawn at every slot
 
     tools::consensus_pool_test(
         cfg.clone(),
@@ -399,11 +421,53 @@ async fn test_block_filling() {
                     consensus_event_receiver| {
             let op_size = 10;
 
-            //wait for first slot
+            // wait for slot
+            let mut prev_blocks = Vec::new();
+            for cur_slot in [Slot::new(1, 0), Slot::new(1, 1)] {
+                let cur_slot_clone = cur_slot.clone();
+                pool_controller
+                    .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
+                        PoolCommand::UpdateCurrentSlot(s) => {
+                            if s == cur_slot_clone {
+                                Some(())
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    })
+                    .await
+                    .expect("timeout while waiting for slot");
+                // respond to pool batch command
+                pool_controller
+                    .wait_command(300.into(), |cmd| match cmd {
+                        PoolCommand::GetOperationBatch { response_tx, .. } => {
+                            response_tx.send(Default::default()).unwrap();
+                            Some(())
+                        }
+                        _ => None,
+                    })
+                    .await
+                    .expect("timeout while waiting for operation batch request");
+                // wait for block
+                let (block_id, block) = protocol_controller
+                    .wait_command(500.into(), |cmd| match cmd {
+                        ProtocolCommand::IntegratedBlock { block_id, block } => {
+                            Some((block_id, block))
+                        }
+                        _ => None,
+                    })
+                    .await
+                    .expect("timeout while waiting for block");
+                assert_eq!(block.header.content.slot, cur_slot);
+                prev_blocks.push(block_id);
+            }
+
+            //wait for slot p2t0
             pool_controller
-                .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
+                .wait_command(cfg.t0, |cmd| match cmd {
                     PoolCommand::UpdateCurrentSlot(s) => {
-                        if s == Slot::new(1, 0) {
+                        if s == Slot::new(2, 0) {
                             Some(())
                         } else {
                             None
@@ -413,6 +477,38 @@ async fn test_block_filling() {
                 })
                 .await
                 .expect("timeout while waiting for slot");
+
+            // respond to endorsement command
+            let eds = pool_controller
+                .wait_command(300.into(), |cmd| match cmd {
+                    PoolCommand::GetEndorsements {
+                        target_slot,
+                        parent,
+                        creators,
+                        response_tx,
+                        ..
+                    } => {
+                        assert_eq!(Slot::new(1, 0), target_slot);
+                        assert_eq!(parent, prev_blocks[0]);
+                        let mut eds: Vec<Endorsement> = Vec::new();
+                        for (index, creator) in creators.iter().enumerate() {
+                            let ed = if *creator == address_a {
+                                create_endorsement(priv_a, target_slot, parent, index as u32)
+                            } else if *creator == address_b {
+                                create_endorsement(priv_b, target_slot, parent, index as u32)
+                            } else {
+                                panic!("invalid endorser choice");
+                            };
+                            eds.push(ed);
+                        }
+                        response_tx.send(eds.clone()).unwrap();
+                        Some(eds)
+                    }
+                    _ => None,
+                })
+                .await
+                .expect("timeout while waiting for endorsement request");
+            assert_eq!(eds.len() as u32, cfg.endorsement_count);
 
             // respond to first pool batch command
             pool_controller
@@ -459,7 +555,17 @@ async fn test_block_filling() {
                 .expect("timeout while waiting for block");
 
             // assert it's the expected block
-            assert_eq!(block.header.content.slot, Slot::new(1, 0));
+            assert_eq!(block.header.content.slot, Slot::new(2, 0));
+
+            // assert it includes the sent endorsements
+            assert_eq!(block.header.content.endorsements.len(), eds.len());
+            for (e_found, e_expected) in block.header.content.endorsements.iter().zip(eds.iter()) {
+                assert_eq!(
+                    e_found.verify_integrity().unwrap(),
+                    e_expected.verify_integrity().unwrap()
+                );
+            }
+
             // create empty block
             let (_block_id, header) = BlockHeader::new_signed(
                 &priv_a,
@@ -468,6 +574,7 @@ async fn test_block_filling() {
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
                     operation_merkle_root: Hash::hash(&Vec::new()[..]),
+                    endorsements: eds.clone(),
                 },
             )
             .unwrap();

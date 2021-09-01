@@ -9,7 +9,7 @@ use crate::{
     ConsensusConfig,
 };
 use crate::{
-    start_consensus_controller, BootsrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
+    start_consensus_controller, BootstrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
     ExportProofOfStake,
 };
 use communication::protocol::ProtocolCommand;
@@ -18,10 +18,12 @@ use crypto::{
     signature::{PrivateKey, PublicKey},
 };
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
-    OperationType, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
+use num::rational::Ratio;
 use pool::PoolCommand;
+use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
@@ -316,7 +318,7 @@ pub fn create_roll_transaction(
 
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -356,12 +358,12 @@ pub fn create_transaction(
 ) -> Operation {
     let op = OperationType::Transaction {
         recipient_address,
-        amount,
+        amount: Amount::from_str(&amount.to_string()).unwrap(),
     };
 
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -380,7 +382,7 @@ pub fn create_roll_buy(
     let sender_public_key = crypto::derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -399,7 +401,7 @@ pub fn create_roll_sell(
     let sender_public_key = crypto::derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
@@ -440,6 +442,7 @@ pub fn create_block_with_merkle_root(
             slot,
             parents: best_parents,
             operation_merkle_root,
+            endorsements: Vec::new(),
         },
     )
     .unwrap();
@@ -450,6 +453,29 @@ pub fn create_block_with_merkle_root(
     };
 
     (hash, block, creator)
+}
+
+/// Creates an endorsement for use in consensus tests.
+pub fn create_endorsement(
+    sender_priv: PrivateKey,
+    slot: Slot,
+    endorsed_block: BlockId,
+    index: u32,
+) -> Endorsement {
+    let sender_public_key = crypto::derive_public_key(&sender_priv);
+
+    let content = EndorsementContent {
+        sender_public_key,
+        slot,
+        index,
+        endorsed_block,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    Endorsement {
+        content: content.clone(),
+        signature,
+    }
 }
 
 pub fn get_export_active_test_block(
@@ -476,6 +502,7 @@ pub fn get_export_active_test_block(
                     .map(|(id,_)| *id)
                     .collect(),
                 slot,
+                endorsements: Vec::new(),
             },
             signature: crypto::signature::Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -493,6 +520,7 @@ pub fn get_export_active_test_block(
             is_final,
             block_ledger_changes: vec![],
             roll_updates: vec![],
+            production_events: vec![],
         },
         id,
     )
@@ -521,6 +549,7 @@ pub fn create_block_with_operations(
             slot,
             parents: best_parents.clone(),
             operation_merkle_root,
+            endorsements: Vec::new(),
         },
     )
     .unwrap();
@@ -622,9 +651,11 @@ pub fn default_consensus_config(
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     ConsensusConfig {
@@ -640,12 +671,13 @@ pub fn default_consensus_config(
         disable_block_creation: true,
         max_block_size,
         max_operations_per_block,
+        max_operations_fill_attempts: 6,
         operation_validity_periods: 1,
         ledger_path: tempdir.path().to_path_buf(),
         ledger_cache_capacity: 1000000,
         ledger_flush_interval: Some(200.into()),
         ledger_reset_at_startup: true,
-        block_reward: 1,
+        block_reward: Amount::from_str("1").unwrap(),
         initial_ledger_path: initial_ledger_path.to_path_buf(),
         operation_batch_size: 100,
         initial_rolls_path: roll_counts_path.to_path_buf(),
@@ -654,9 +686,13 @@ pub fn default_consensus_config(
         pos_lookback_cycles: 2,
         pos_lock_cycles: 1,
         pos_draw_cached_cycles: 0,
-        roll_price: 0,
+        pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
+        roll_price: Amount::default(),
         stats_timespan: 60000.into(),
         staking_keys_path: staking_keys_path.to_path_buf(),
+        end_timestamp: None,
+        max_send_wait: 500.into(),
+        endorsement_count: 0,
     }
 }
 
@@ -665,7 +701,7 @@ pub async fn consensus_pool_test<F, V>(
     cfg: ConsensusConfig,
     opt_storage_command_sender: Option<StorageAccess>,
     boot_pos: Option<ExportProofOfStake>,
-    boot_graph: Option<BootsrapableGraph>,
+    boot_graph: Option<BootstrapableGraph>,
     test: F,
 ) where
     F: FnOnce(
@@ -785,7 +821,7 @@ pub async fn consensus_without_pool_test<F, V>(
 pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
     let mut res = HashSet::new();
     for (i, clique) in graph.max_cliques.iter().enumerate() {
-        if clique.contains(&hash) {
+        if clique.block_ids.contains(&hash) {
             res.insert(i);
         }
     }

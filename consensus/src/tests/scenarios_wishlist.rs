@@ -43,7 +43,8 @@ async fn test_wishlist_delta_with_empty_remove() {
                 .get_selection_draws(slot.clone(), Slot::new(2, 0))
                 .await
                 .expect("could not get selection draws.")[0]
-                .1;
+                .1
+                 .0;
             let creator = tools::get_creator_for_draw(&draw, &staking_keys.clone());
             let (hasht0s1, t0s1, _) =
                 tools::create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone(), creator);

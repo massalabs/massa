@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use super::tools;
 use crate::tests::tools::generate_ledger_file;
 use crypto::hash::Hash;
-use models::Slot;
+use models::{BlockId, Slot};
 use serial_test::serial;
 
 #[tokio::test]
@@ -30,11 +30,14 @@ async fn test_old_stale_not_propagated_and_discarded() {
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             let hash_1 = tools::create_and_test_block(
                 &mut protocol_controller,
@@ -109,11 +112,14 @@ async fn test_block_not_processed_multiple_times() {
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             let (hash_1, block_1, _) = tools::create_block(
                 &cfg,
@@ -185,11 +191,14 @@ async fn test_queuing() {
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             // create a block that will be a missing dependency
             let hash_1 = tools::create_and_test_block(
@@ -253,11 +262,14 @@ async fn test_double_staking_does_not_propagate() {
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             let _ = tools::create_and_test_block(
                 &mut protocol_controller,

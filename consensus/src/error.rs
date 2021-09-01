@@ -2,6 +2,7 @@
 
 use std::array::TryFromSliceError;
 
+use crate::consensus_worker::ConsensusEvent;
 use communication::CommunicationError;
 use models::ModelsError;
 use rand::distributions::WeightedError;
@@ -11,8 +12,8 @@ use thiserror::Error;
 pub enum ConsensusError {
     #[error("Our key is missing")]
     KeyError,
-    #[error("Could not hash block header: {0}")]
-    HeaderHashError(#[from] ModelsError),
+    #[error("models error: {0}")]
+    ModelsError(#[from] ModelsError),
     #[error("Could not create genesis block {0}")]
     GenesisCreationError(String),
     #[error("Could not propagate block: {0}")]
@@ -83,6 +84,12 @@ pub enum ConsensusError {
     BlockCreationError(String),
     #[error("Proof of stake cycle unavailable {0}")]
     PosCycleUnavailable(String),
+    #[error("error sending consensus event: {0}")]
+    TokioSendError(#[from] tokio::sync::mpsc::error::SendError<ConsensusEvent>),
+    #[error("channel error: {0}")]
+    ChannelError(String),
+    #[error("amount overflow")]
+    AmountOverflowError,
 }
 
 #[derive(Error, Debug)]

@@ -1,15 +1,17 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use super::mock_protocol_controller::MockProtocolController;
+use crate::{pool_controller, PoolCommandSender, PoolConfig, PoolManager};
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
 use futures::Future;
-use models::{Address, Operation, OperationContent, OperationType, SerializeCompact};
-
-use crate::{pool_controller, PoolCommandSender, PoolConfig, PoolManager};
-
-use super::mock_protocol_controller::MockProtocolController;
+use models::{
+    Address, Amount, BlockId, Endorsement, EndorsementContent, Operation, OperationContent,
+    OperationType, SerializeCompact, Slot,
+};
+use std::str::FromStr;
 
 pub async fn pool_test<F, V>(
     cfg: PoolConfig,
@@ -65,15 +67,18 @@ pub fn example_pool_config() -> (PoolConfig, u8, u64) {
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     });
 
     (
         PoolConfig {
             max_pool_size_per_thread: 100000,
             max_operation_future_validity_start_periods: 200,
+            max_endorsement_count: 1000,
         },
         thread_count,
         operation_validity_periods,
@@ -89,10 +94,10 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,
@@ -106,6 +111,25 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
     )
 }
 
+/// Creates an endorsement for use in pool tests.
+pub fn create_endorsement(slot: Slot) -> Endorsement {
+    let sender_priv = crypto::generate_random_private_key();
+    let sender_public_key = crypto::derive_public_key(&sender_priv);
+
+    let content = EndorsementContent {
+        sender_public_key,
+        slot,
+        index: 0,
+        endorsed_block: BlockId(Hash::hash("blabla".as_bytes())),
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    Endorsement {
+        content: content.clone(),
+        signature,
+    }
+}
+
 pub fn get_transaction_with_addresses(
     expire_period: u64,
     fee: u64,
@@ -115,10 +139,10 @@ pub fn get_transaction_with_addresses(
 ) -> (Operation, u8) {
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,

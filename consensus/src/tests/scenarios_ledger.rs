@@ -1,7 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
@@ -12,8 +10,10 @@ use crate::{
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
-use models::{Address, Slot};
+use models::{Address, Amount, Slot};
 use serial_test::serial;
+use std::collections::HashMap;
+use std::str::FromStr;
 use time::UTime;
 
 #[tokio::test]
@@ -83,7 +83,7 @@ async fn test_ledger_final_balance_increment_new_address() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
             },
         )]
@@ -101,7 +101,10 @@ async fn test_ledger_final_balance_increment_new_address() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 1);
+    assert_eq!(
+        final_data_for_address.balance,
+        Amount::from_str("1").unwrap()
+    );
 }
 
 #[tokio::test]
@@ -129,7 +132,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
             },
         )]
@@ -147,13 +150,16 @@ async fn test_ledger_final_balance_increment_address_above_max() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 1);
+    assert_eq!(
+        final_data_for_address.balance,
+        Amount::from_str("1").unwrap()
+    );
 
     let changes = LedgerChanges(
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: u64::MAX,
+                balance_delta: Amount::from_raw(u64::MAX),
                 balance_increment: true,
             },
         )]
@@ -189,7 +195,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
             },
         )]
@@ -207,14 +213,17 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 1);
+    assert_eq!(
+        final_data_for_address.balance,
+        Amount::from_str("1").unwrap()
+    );
 
     // Decrement.
     let changes = LedgerChanges(
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
             },
         )]
@@ -232,7 +241,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 0);
+    assert_eq!(final_data_for_address.balance, Amount::default());
 }
 
 #[tokio::test]
@@ -261,7 +270,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
             },
         )]
@@ -279,14 +288,17 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 1);
+    assert_eq!(
+        final_data_for_address.balance,
+        Amount::from_str("1").unwrap()
+    );
 
     // Decrement.
     let changes = LedgerChanges(
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
             },
         )]
@@ -304,14 +316,14 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 0);
+    assert_eq!(final_data_for_address.balance, Amount::default());
 
     // Try to decrement again.
     let changes = LedgerChanges(
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
             },
         )]
@@ -347,7 +359,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
             },
         )]
@@ -384,7 +396,7 @@ async fn test_ledger_final_balance_non_existing_address() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 0);
+    assert_eq!(final_data_for_address.balance, Amount::default());
 }
 
 #[tokio::test]
@@ -415,7 +427,7 @@ async fn test_ledger_final_balance_duplicate_address() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 0);
+    assert_eq!(final_data_for_address.balance, Amount::default());
 
     // Should have returned a single result.
     assert_eq!(final_datas.0.len(), 1);
@@ -456,7 +468,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
             .0
             .get(&address)
             .expect("Couldn't get data for address.");
-        assert_eq!(final_data_for_address.balance, 0);
+        assert_eq!(final_data_for_address.balance, Amount::default());
     }
 }
 
@@ -485,7 +497,7 @@ async fn test_ledger_clear() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
             },
         )]
@@ -503,7 +515,10 @@ async fn test_ledger_clear() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 1);
+    assert_eq!(
+        final_data_for_address.balance,
+        Amount::from_str("1").unwrap()
+    );
 
     ledger.clear().expect("Couldn't clear the ledger.");
 
@@ -514,7 +529,7 @@ async fn test_ledger_clear() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 0);
+    assert_eq!(final_data_for_address.balance, Amount::default());
 }
 
 #[tokio::test]
@@ -542,7 +557,7 @@ async fn test_ledger_read_whole() {
         vec![(
             address.clone(),
             LedgerChange {
-                balance_delta: 1,
+                balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
             },
         )]
@@ -560,7 +575,10 @@ async fn test_ledger_read_whole() {
         .0
         .get(&address)
         .expect("Couldn't get data for address.");
-    assert_eq!(final_data_for_address.balance, 1);
+    assert_eq!(
+        final_data_for_address.balance,
+        Amount::from_str("1").unwrap()
+    );
 
     let whole_ledger = ledger.read_whole().expect("Couldn't read whole ledger.");
     let address_data = whole_ledger
@@ -572,7 +590,7 @@ async fn test_ledger_read_whole() {
         .expect("Couldn't find ledger data for address.")
         .1
         .clone();
-    assert_eq!(address_data.balance, 1);
+    assert_eq!(address_data.balance, Amount::from_str("1").unwrap());
 }
 
 #[tokio::test]
@@ -629,8 +647,14 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // Thread 1:
     // address B balance = 3000
     let mut ledger = HashMap::new();
-    ledger.insert(address_1, LedgerData { balance: 1000 });
-    ledger.insert(address_2, LedgerData { balance: 3000 });
+    ledger.insert(
+        address_1,
+        LedgerData::new(Amount::from_str("1000").unwrap()),
+    );
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("3000").unwrap()),
+    );
 
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
@@ -646,7 +670,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(10).unwrap());
     cfg.delta_f0 = 4;
-    cfg.block_reward = 1;
+    cfg.block_reward = Amount::from_str("1").unwrap();
     cfg.operation_validity_periods = 20;
 
     // mock protocol & pool
@@ -781,8 +805,16 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             .iter()
             .cloned()
             .collect();
-        assert_eq!(ledger[&address_1].balance, 991, "wrong address balance");
-        assert_eq!(ledger[&address_2].balance, 2985, "wrong address balance");
+        assert_eq!(
+            ledger[&address_1].balance,
+            Amount::from_str("991").unwrap(),
+            "wrong address balance"
+        ); // TODO update balance with endorsement rewards
+        assert_eq!(
+            ledger[&address_2].balance,
+            Amount::from_str("2985").unwrap(),
+            "wrong address balance"
+        );
         assert!(
             !ledger.contains_key(&address_3),
             "address shouldn't be present"
@@ -823,9 +855,21 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             .iter()
             .cloned()
             .collect();
-        assert_eq!(ledger[&address_1].balance, 1002, "wrong address balance");
-        assert_eq!(ledger[&address_2].balance, 2985, "wrong address balance");
-        assert_eq!(ledger[&address_3].balance, 6, "wrong address balance");
+        assert_eq!(
+            ledger[&address_1].balance,
+            Amount::from_str("1002").unwrap(),
+            "wrong address balance"
+        );
+        assert_eq!(
+            ledger[&address_2].balance,
+            Amount::from_str("2985").unwrap(),
+            "wrong address balance"
+        );
+        assert_eq!(
+            ledger[&address_3].balance,
+            Amount::from_str("6").unwrap(),
+            "wrong address balance"
+        );
     }
 
     // Add block B12
@@ -851,9 +895,21 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             .iter()
             .cloned()
             .collect();
-        assert_eq!(ledger[&address_1].balance, 1002, "wrong address balance");
-        assert_eq!(ledger[&address_2].balance, 2995, "wrong address balance");
-        assert_eq!(ledger[&address_3].balance, 6, "wrong address balance");
+        assert_eq!(
+            ledger[&address_1].balance,
+            Amount::from_str("1002").unwrap(),
+            "wrong address balance"
+        );
+        assert_eq!(
+            ledger[&address_2].balance,
+            Amount::from_str("2995").unwrap(),
+            "wrong address balance"
+        );
+        assert_eq!(
+            ledger[&address_3].balance,
+            Amount::from_str("6").unwrap(),
+            "wrong address balance"
+        );
     }
 
     // Add block B13
@@ -879,9 +935,21 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             .iter()
             .cloned()
             .collect();
-        assert_eq!(ledger[&address_1].balance, 992, "wrong address balance");
-        assert_eq!(ledger[&address_2].balance, 2974, "wrong address balance");
-        assert_eq!(ledger[&address_3].balance, 6, "wrong address balance");
+        assert_eq!(
+            ledger[&address_1].balance,
+            Amount::from_str("992").unwrap(),
+            "wrong address balance"
+        );
+        assert_eq!(
+            ledger[&address_2].balance,
+            Amount::from_str("2974").unwrap(),
+            "wrong address balance"
+        );
+        assert_eq!(
+            ledger[&address_3].balance,
+            Amount::from_str("6").unwrap(),
+            "wrong address balance"
+        );
     }
 
     // stop controller while ignoring all commands

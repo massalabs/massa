@@ -20,7 +20,7 @@ We are now releasing the **Massa testnet** in this Gitlab repository, with its e
 As decentralization is our core value, we would like to help you start and run a Massa node. 
 Running a node during the testnet phase also helps us finding bugs and improving usability, so it will be rewarded with real Massa on mainnet launch. 
 
-The mechanics and amounts of those rewards are currently in discussion, the main idea is that the more block rewards you receive, the more Massa you will get at launch, with a per-person cap.
+The mechanics of those rewards are described in the link:docs/testnet_rules.adoc[Testnet rules].
  
 
 ## Testnet Discussions
@@ -40,7 +40,7 @@ On Windows, please go to the link:docs/windows_install.adoc[Install and Run on W
 * install link:https://doc.rust-lang.org/edition-guide/rust-2018/rustup-for-managing-rust-versions.html[nigthly]: `rustup toolchain install nightly`
 * set it as default: `rustup default nightly`
 * check rust version: `rustc --version`
-* clone this repo: `git clone https://gitlab.com/massalabs/massa.git`
+* clone this repo: `git clone --branch testnet https://gitlab.com/massalabs/massa.git`
 
 ## Run
 
@@ -73,6 +73,8 @@ cargo run --release
 ## Update
 ----
 cd massa/
+git stash
+git checkout testnet
 git pull
 ----
 
@@ -85,11 +87,9 @@ Here is a set of tutorials:
 * link:docs/transaction.adoc[Sending transactions]
 * Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
 * link:docs/windows_install.adoc[Install and Run on Windows]
+* link:docs/routability.adoc[Routability tutorial]
 
 
-## Troubleshooting
+## FAQ and Troubleshooting
 
-* If your API can't start, e.g. with `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`, it's probably because the default API port 33033 is already in use on your computer. You should change the port in the config files, both in the API and Client:
- ** in file `massa/massa-node/config/config.toml`, in section [API], in bind, put a new port,
- ** in file `massa/massa-client/config/config.toml`, put that same port. 
-
+You'll find answer to common issues and questions regarding the Massa protocol in the link:docs/faq.adoc[FAQ].

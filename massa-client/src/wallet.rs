@@ -1,11 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::data::ConsensusConfig;
 use crate::ReplData;
 use crate::ReplError;
 use crate::WrappedAddressState;
+use api::Addresses;
+use api::PubkeySig;
+use consensus::AddressState;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, PrivateKey};
 use models::Address;
+use models::Amount;
 use models::Operation;
 use models::OperationContent;
 use models::OperationType;
@@ -26,7 +31,7 @@ impl Wallet {
     /// Generates a new wallet initialized with the provided json file content
     pub fn new(json_file: &str) -> Result<Wallet, ReplError> {
         let path = std::path::Path::new(json_file);
-        let keys = if path.exists() {
+        let keys = if path.is_file() {
             serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(path)?)?
         } else {
             Vec::new()
@@ -35,6 +40,22 @@ impl Wallet {
             keys,
             wallet_path: json_file.to_string(),
         })
+    }
+
+    pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
+        if let Some(key) = self.find_associated_private_key(address) {
+            let public_key = crypto::derive_public_key(key);
+            if let Ok(signature) = crypto::sign(&Hash::hash(&msg), key) {
+                Some(PubkeySig {
+                    public_key,
+                    signature,
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     /// Adds a new private key to wallet, if it was missing
@@ -81,7 +102,7 @@ impl Wallet {
         &self,
         operation_type: OperationType,
         from_address: Address,
-        fee: u64,
+        fee: Amount,
         data: &ReplData,
     ) -> Result<Operation, ReplError> {
         //get node serialisation context
@@ -149,6 +170,9 @@ impl Wallet {
             expire_period += 1;
         }
 
+        //we don't care if that fails
+        let _ = check_if_valid(data, &operation_type, from_address, fee, consensus_cfg);
+
         let operation_content = OperationContent {
             fee,
             expire_period,
@@ -164,6 +188,60 @@ impl Wallet {
             signature,
         })
     }
+}
+
+fn check_if_valid(
+    data: &ReplData,
+    operation_type: &OperationType,
+    from_address: Address,
+    fee: Amount,
+    consensus_cfg: ConsensusConfig,
+) -> Result<(), ReplError> {
+    // get address info
+    let addrs = serde_qs::to_string(&Addresses {
+        addrs: vec![from_address].into_iter().collect(),
+    })?;
+    let url = format!("http://{}/api/v1/addresses_info?{}", data.node_ip, addrs);
+    let resp = reqwest::blocking::get(&url)?;
+    if resp.status() == StatusCode::OK {
+        let map_info = resp.json::<HashMap<Address, AddressState>>()?;
+
+        if let Some(info) = map_info.get(&from_address) {
+            match operation_type {
+                OperationType::Transaction { amount, .. } => {
+                    if info.candidate_ledger_data.balance < fee.saturating_add(*amount) {
+                        println!("Warning : currently address {} has not enough coins for that transaction. It may be rejected", from_address);
+                    }
+                }
+                OperationType::RollBuy { roll_count } => {
+                    if info.candidate_ledger_data.balance
+                        < consensus_cfg
+                            .roll_price
+                            .checked_mul_u64(*roll_count)
+                            .ok_or(ReplError::GeneralError("".to_string()))?
+                            .saturating_add(fee)
+                    // it's just to print a warning
+                    {
+                        println!("Warning : currently address {} has not enough coins for that roll buy. It may be rejected", from_address);
+                        println!(
+                            "Info : current roll price is {} coins",
+                            consensus_cfg.roll_price
+                        );
+                    }
+                }
+                OperationType::RollSell { roll_count } => {
+                    if info.candidate_rolls < *roll_count
+                        || info.candidate_ledger_data.balance < fee
+                    {
+                        println!("Warning : currently address {} has not enough rolls or coins for that roll sell. It may be rejected", from_address);
+                    }
+                }
+            }
+        } else {
+            println!("Warning : currently address {} is not known by consensus. That operation may be rejected", from_address);
+        }
+    }
+    Ok(())
 }
 
 /*impl std::fmt::Display for Wallet {
@@ -190,6 +268,7 @@ pub struct WalletInfo<'a> {
 
 impl<'a> std::fmt::Display for WalletInfo<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "WARNING : do not share your private keys")?;
         for key in &self.wallet.keys {
             let public_key = derive_public_key(key);
             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;

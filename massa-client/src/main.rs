@@ -7,7 +7,8 @@
 //! or as CLI using the API command has a parameter.
 //!
 //! Parameters:
-//! * -n (--node): the node IP
+//! * -c (--cli): The format of the displayed command output. Set to false display user-friendly output.
+//! * -n (--node): the node IP.
 //! * -s (--short) The format of the displayed hash. Set to true display sort hash (default).
 //! * -w (--wallet) activate the wallet command, using the file specified.
 //!
@@ -15,7 +16,6 @@
 //!
 //! The help command display all available commands.
 
-use crate::data::parse_amount;
 use crate::data::AddressStates;
 use crate::data::GetOperationContent;
 use crate::data::WrappedAddressState;
@@ -24,31 +24,37 @@ use crate::repl::error::ReplError;
 use crate::repl::ReplData;
 use crate::wallet::Wallet;
 use crate::wallet::WalletInfo;
+use api::PubkeySig;
 use api::{Addresses, OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
-use communication::network::PeerInfo;
+use communication::network::Peer;
+use communication::network::Peers;
 use consensus::ExportBlockStatus;
+use consensus::Status;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
 use models::Address;
+use models::Amount;
+use models::BlockId;
 use models::Operation;
 use models::OperationId;
 use models::OperationType;
 use models::Slot;
+use models::StakersCycleProductionStats;
+use models::Version;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Write;
-use std::fs::read_to_string;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::Ordering;
-mod config;
+mod client_config;
 mod data;
 mod repl;
 mod wallet;
@@ -63,6 +69,15 @@ fn main() {
         .version("0.3")
         .author("Massa Labs <info@massa.net>")
         .about("Massa")
+        .arg(
+            Arg::with_name("cli")
+                .short("c")
+                .long("cli")
+                .value_name("true, false")
+                .help("false: set user-friendly output")
+                .required(false)
+                .takes_value(true),
+        )
         .arg(
             Arg::with_name("nodeip")
                 .short("n")
@@ -92,8 +107,18 @@ fn main() {
         );
 
     // load config
-    let config_path = "config/config.toml";
-    let cfg = config::Config::from_toml(&read_to_string(config_path).unwrap()).unwrap();
+    let config_path = "base_config/config.toml";
+    let override_config_path = "config/config.toml";
+    let mut cfg = config::Config::default();
+    cfg.merge(config::File::with_name(config_path))
+        .expect("could not load main config file");
+    if std::path::Path::new(override_config_path).is_file() {
+        cfg.merge(config::File::with_name(override_config_path))
+            .expect("could not load override config file");
+    }
+    let cfg = cfg
+        .try_into::<client_config::Config>()
+        .expect("error structuring config");
 
     //add client commands that can be executed.
     // The Repl struct manage command registration for cli mode with clap and REPL mode with rustyline
@@ -149,6 +174,12 @@ fn main() {
         true,
         cmd_network_info,
     )
+    .new_command_noargs(
+        "version",
+        "current node version",
+        true,
+        cmd_version,
+    )
     .new_command_noargs("state", "summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count", true, cmd_state)
     .new_command_noargs(
         "last_stale",
@@ -177,12 +208,28 @@ fn main() {
     )
     .new_command_noargs("stop_node", "Gracefully stop the node", true, cmd_stop_node)
     .new_command(
+        "unban",
+        "unban <ip address>",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_unban,
+    )
+    .new_command(
         "staker_info",
         "staker info from staker address -> (blocks created, next slots in which the address will be selected)",
         1,
         1, //max nb parameters
         true,
         cmd_staker_info,
+    )
+    .new_command(
+        "staker_stats",
+        "production stats from staker address. Parameters: list of addresses separated by , (no space).",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_staker_stats,
     )
     .new_command(
         "register_staking_keys",
@@ -215,6 +262,13 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_operations_involving_address,
+    ).new_command(
+        "block_ids_by_creator",
+        "list blocks created by the provided address. Note that old blocks are forgotten.",
+        1,
+        1, //max nb parameters
+        true,
+        cmd_block_ids_by_creator,
     )
     .new_command(
         "addresses_info",
@@ -223,6 +277,14 @@ fn main() {
         1, //max nb parameters
         true,
         cmd_addresses_info,
+    )
+    .new_command(
+        "cmd_testnet_rewards_program",
+        "Returns rewards id. Parameter: <staking_address> <discord_ID> ",
+        2,
+        2, //max nb parameters
+        false,
+        cmd_testnet_rewards_program,
     )
     .new_command_noargs(
         "get_active_stakers",
@@ -271,6 +333,22 @@ fn main() {
 
     let matches = app.get_matches();
 
+    //cli or not cli output.
+    let cli = matches
+        .value_of("cli")
+        .and_then(|val| {
+            FromStr::from_str(val)
+                .map_err(|err| {
+                    println!("bad cli value, using default");
+                    err
+                })
+                .ok()
+        })
+        .unwrap_or(false);
+    if cli {
+        repl.data.cli = true;
+    }
+
     //ip address of the node to connect.
     let node_ip = matches
         .value_of("nodeip")
@@ -304,23 +382,26 @@ fn main() {
 
     //filename of the wallet file. There's no security around the wallet file.
     let wallet_file_param = matches.value_of("wallet");
-    if let Some(file_name) = wallet_file_param {
-        match Wallet::new(file_name) {
-            Ok(wallet) => {
-                repl.data.wallet = Some(wallet);
-                repl.activate_command("wallet_info");
-                repl.activate_command("wallet_new_privkey");
-                repl.activate_command("send_transaction");
-                repl.activate_command("buy_rolls");
-                repl.activate_command("sell_rolls");
-                repl.activate_command("wallet_add_privkey");
-            }
-            Err(err) => {
-                println!(
-                    "Error while loading wallet file:{}. No wallet was loaded.",
-                    err
-                );
-            }
+    let file_name = match wallet_file_param {
+        Some(file_name) => file_name,
+        None => "wallet.dat",
+    };
+    match Wallet::new(file_name) {
+        Ok(wallet) => {
+            repl.data.wallet = Some(wallet);
+            repl.activate_command("wallet_info");
+            repl.activate_command("wallet_new_privkey");
+            repl.activate_command("send_transaction");
+            repl.activate_command("buy_rolls");
+            repl.activate_command("sell_rolls");
+            repl.activate_command("wallet_add_privkey");
+            repl.activate_command("cmd_testnet_rewards_program");
+        }
+        Err(err) => {
+            println!(
+                "Error while loading wallet file:{}. No wallet was loaded.",
+                err
+            );
         }
     }
 
@@ -334,7 +415,6 @@ fn main() {
                 .values_of("")
                 .map(|list| list.collect())
                 .unwrap_or_default();
-            repl.data.cli = true;
             repl.run_cmd(cmd, &args);
         }
     }
@@ -371,7 +451,7 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let roll_count: u64 = FromStr::from_str(params[1])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect roll buy count: {}", err)))?;
-        let fee: u64 = parse_amount(params[2])
+        let fee = Amount::from_str(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
 
@@ -388,7 +468,7 @@ fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         let roll_count: u64 = FromStr::from_str(params[1]).map_err(|err| {
             ReplError::GeneralError(format!("Incorrect roll sell count: {}", err))
         })?;
-        let fee: u64 = parse_amount(params[2])
+        let fee = Amount::from_str(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollSell { roll_count };
 
@@ -557,8 +637,9 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let recipient_address = Address::from_bs58_check(params[1])
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
-        let amount = parse_amount(params[2]).map_err(ReplError::GeneralError)?;
-        let fee: u64 = parse_amount(params[3])
+        let amount = Amount::from_str(params[2])
+            .map_err(|err| ReplError::GeneralError(format!("Incorrect amount: {}", err)))?;
+        let fee = Amount::from_str(params[3])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::Transaction {
             recipient_address,
@@ -633,6 +714,60 @@ fn cmd_staker_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError
     Ok(())
 }
 
+fn cmd_staker_stats(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let addr_list = params[0]
+        .split(',')
+        .map(|str| Address::from_bs58_check(str.trim()))
+        .collect::<Result<HashSet<Address>, _>>();
+    let addrs = match addr_list {
+        Ok(addrs) => addrs,
+        Err(err) => {
+            println!("Error during addresses parsing: {}", err);
+            return Ok(());
+        }
+    };
+    let url = format!(
+        "http://{}/api/v1/staker_stats?{}",
+        data.node_ip,
+        serde_qs::to_string(&Addresses {
+            addrs: addrs.clone()
+        })?
+    );
+    if let Some(resp) = request_data(data, &url)? {
+        let mut stakers_prods = resp.json::<Vec<StakersCycleProductionStats>>()?;
+        if stakers_prods.is_empty() {
+            println!("no available cycle stats");
+        }
+        stakers_prods.sort_unstable_by_key(|p| p.cycle);
+        for cycle_stats in stakers_prods.into_iter() {
+            println!(
+                "cycle {} ({}) stats:",
+                cycle_stats.cycle,
+                if cycle_stats.is_final {
+                    "final"
+                } else {
+                    "active"
+                }
+            );
+
+            for (addr, (n_ok, n_nok)) in cycle_stats.ok_nok_counts.into_iter() {
+                if n_ok + n_nok == 0 {
+                    println!("\t{}: not selected during cycle", addr);
+                } else {
+                    println!(
+                        "\t{}: {}/{} produced ({}% miss)",
+                        addr,
+                        n_ok,
+                        n_ok + n_nok,
+                        n_nok * 100 / (n_ok + n_nok)
+                    )
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
     let resp = reqwest::blocking::get(&url)?;
@@ -659,28 +794,36 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
     let url = format!(
         "http://{}/api/v1/next_draws?{}",
         data.node_ip,
-        serde_qs::to_string(&Addresses { addrs })?
+        serde_qs::to_string(&Addresses {
+            addrs: addrs.clone()
+        })?
     );
 
     if let Some(resp) = request_data(data, &url)? {
         let resp = resp.json::<data::NextDraws>()?;
-        let addr_map = resp
-            .content()
-            .iter()
-            .fold(HashMap::new(), |mut map, (addr, slot)| {
+        let addr_map = resp.content().iter().fold(
+            addrs
+                .iter()
+                .map(|addr| (addr, Vec::new()))
+                .collect::<HashMap<_, _>>(),
+            |mut map, (addr, slot)| {
                 let entry = map.entry(addr).or_insert_with(Vec::new);
                 entry.push(slot);
                 map
-            });
+            },
+        );
         for (addr, slots) in addr_map {
             println!("Next selected slots of address: {}:", addr);
-            for slot in slots {
+            for slot in slots.iter() {
                 println!(
                     "   Cycle {}, period {}, thread {}",
                     slot.get_cycle(consensus_cfg.periods_per_cycle),
                     slot.period,
                     slot.thread,
                 );
+            }
+            if slots.is_empty() {
+                println!("No known selected slots of address: {}", addr);
             }
             println!();
         }
@@ -703,11 +846,47 @@ fn cmd_operations_involving_address(data: &mut ReplData, params: &[&str]) -> Res
     Ok(())
 }
 
+fn cmd_block_ids_by_creator(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let url = format!(
+        "http://{}/api/v1/block_ids_by_creator/{}",
+        data.node_ip, params[0]
+    );
+    if let Some(resp) = request_data(data, &url)? {
+        let resp = resp.json::<HashMap<BlockId, Status>>()?;
+        println!("block_ids_by_creator:");
+
+        if resp.is_empty() {
+            println!("No blocks found.")
+        }
+        for (block_id, status) in resp {
+            println!(
+                "block {} status: {}",
+                block_id,
+                match status {
+                    Status::Active => "active",
+                    Status::Final => "final",
+                }
+            );
+        }
+    }
+    Ok(())
+}
+
 fn cmd_network_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/network_info", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
         let info = resp.json::<data::NetworkInfo>()?;
         println!("network_info:");
+        println!("{}", info);
+    }
+    Ok(())
+}
+
+fn cmd_version(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
+    let url = format!("http://{}/api/v1/version", data.node_ip);
+    if let Some(resp) = request_data(data, &url)? {
+        let info = resp.json::<Version>()?;
+        println!("version:");
         println!("{}", info);
     }
     Ok(())
@@ -721,6 +900,22 @@ fn cmd_stop_node(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError>
         .send()?;
     trace!("after sending request to client in cmd_stop_node in massa-client main");
     println!("Stopping node");
+    Ok(())
+}
+
+fn cmd_unban(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let ip = match IpAddr::from_str(params[0]) {
+        Ok(ip) => ip,
+        Err(e) => {
+            println!("Error during ip parsing: {}", e);
+            return Ok(());
+        }
+    };
+    let client = reqwest::blocking::Client::new();
+    client
+        .post(&format!("http://{}/api/v1/unban/{}", data.node_ip, ip))
+        .send()?;
+    println!("Unbanning {}", ip);
     Ok(())
 }
 
@@ -748,6 +943,53 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
         ))
         .send()?;
     trace!("after sending request to client in cmd_register_staking_keys in massa-client main");
+    Ok(())
+}
+
+fn cmd_testnet_rewards_program(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
+    let address = Address::from_bs58_check(params[0].trim())
+        .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
+    let msg = params[1].as_bytes().to_vec();
+
+    // get address signature
+    let addr_sig = if let Some(wallet) = &data.wallet {
+        match wallet.sign_message(address, msg.clone()) {
+            Some(sig) => sig,
+            None => {
+                return Err(ReplError::GeneralError(
+                    "address not found in wallet".into(),
+                ));
+            }
+        }
+    } else {
+        return Err(ReplError::GeneralError("wallet unavailable".into()));
+    };
+
+    // get node signature
+    let client = reqwest::blocking::Client::new();
+    let resp = client
+        .post(&format!("http://{}/api/v1/node_sign_message", data.node_ip,))
+        .body(msg)
+        .send()?;
+    let node_sig = if resp.status() == StatusCode::OK {
+        resp.json::<PubkeySig>()?
+    } else {
+        let status = resp.status();
+        let message = resp
+            .json::<data::ErrorMessage>()
+            .map(|message| message.message)
+            .or_else::<ReplError, _>(|err| Ok(format!("{}", err)))?;
+        return Err(ReplError::GeneralError(format!(
+            "Server error response status: {} - {}",
+            status, message
+        )));
+    };
+
+    // print concatenation
+    println!(
+        "Enter the following in discord: {}/{}/{}/{}",
+        node_sig.public_key, node_sig.signature, addr_sig.public_key, addr_sig.signature
+    );
     Ok(())
 }
 
@@ -880,9 +1122,22 @@ fn cmd_our_ip(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_peers(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/peers", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<std::collections::HashMap<IpAddr, PeerInfo>>()?;
-        for peer in resp.values() {
-            println!("    {}", data::WrappedPeerInfo::from(peer));
+        let Peers { peers, .. } = resp.json::<Peers>()?;
+        for (
+            _,
+            Peer {
+                peer_info,
+                active_nodes,
+            },
+        ) in peers.into_iter()
+        {
+            println!(
+                "    {}",
+                data::WrappedPeerInfo {
+                    peer_info,
+                    active_nodes
+                }
+            );
         }
     }
     Ok(())

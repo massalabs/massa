@@ -17,10 +17,10 @@ mod ledger;
 mod pos;
 mod timeslots;
 
-pub use block_graph::BootsrapableGraph;
+pub use block_graph::BootstrapableGraph;
 pub use block_graph::{
-    BlockGraphExport, DiscardReason, ExportActiveBlock, ExportBlockStatus, ExportCompiledBlock,
-    ExportDiscardedBlocks, LedgerDataExport, Status,
+    BlockGraphExport, Clique, DiscardReason, ExportActiveBlock, ExportBlockStatus, ExportClique,
+    ExportCompiledBlock, ExportDiscardedBlocks, LedgerDataExport, Status,
 };
 pub use config::ConsensusConfig;
 pub use consensus_controller::{

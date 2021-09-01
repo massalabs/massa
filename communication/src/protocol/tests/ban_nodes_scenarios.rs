@@ -97,6 +97,7 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
                 1000.into(),
                 |evt| match evt {
                     evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    _ => None,
                 },
             )
             .await
@@ -441,13 +442,17 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                     1000.into(),
                     |evt| match evt {
                         evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                        _ => None,
+                        evt => {
+                            println!("{:?}", evt);
+                            None
+                        }
                     },
                 )
                 .await
                 {
                     Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                    _ => panic!("Unexpected or no protocol event."),
+                    Some(evt) => panic!("Unexpected protocol event {:?}", evt),
+                    None => panic!("no protocol event"),
                 };
 
                 // Check that protocol sent the right header to consensus.

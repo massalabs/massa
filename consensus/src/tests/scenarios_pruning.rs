@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::tests::tools::{self, generate_ledger_file};
-use models::Slot;
+use models::{BlockId, Slot};
 use serial_test::serial;
 
 #[tokio::test]
@@ -28,11 +28,14 @@ async fn test_pruning_of_discarded_blocks() {
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             // Send more bad blocks than the max number of cached discarded.
             for i in 0..(cfg.max_discarded_blocks + 5) as u64 {
@@ -87,11 +90,14 @@ async fn test_pruning_of_awaiting_slot_blocks() {
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             // Send more blocks in the future than the max number of future processing blocks.
             for i in 0..(cfg.max_future_processing_blocks + 5) as u64 {
@@ -146,11 +152,14 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
         cfg.clone(),
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let parents = consensus_command_sender
+            let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
-                .best_parents;
+                .best_parents
+                .iter()
+                .map(|(b, _p)| *b)
+                .collect();
 
             // Too far into the future.
             let (bad_parent, bad_block, _) = tools::create_block(

@@ -3,7 +3,9 @@
 use super::{
     config::{NetworkConfig, CHANNEL_SIZE},
     establisher::Establisher,
-    network_worker::{NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker},
+    network_worker::{
+        NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker, Peers,
+    },
     peer_info_database::*,
     BootstrapPeers,
 };
@@ -12,7 +14,7 @@ use crate::error::CommunicationError;
 use crypto::signature::{
     derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
 };
-use models::{Block, BlockHeader, BlockId, Operation};
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
@@ -31,6 +33,7 @@ pub async fn start_network_controller(
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
+    version: Version,
 ) -> Result<
     (
         NetworkCommandSender,
@@ -107,6 +110,7 @@ pub async fn start_network_controller(
             command_rx,
             event_tx,
             manager_rx,
+            version,
         )
         .run_loop()
         .await;
@@ -144,6 +148,14 @@ impl NetworkCommandSender {
             .send(NetworkCommand::Ban(node_id))
             .await
             .map_err(|_| CommunicationError::ChannelError("could not send Ban command".into()))?;
+        Ok(())
+    }
+
+    pub async fn unban(&self, ip: IpAddr) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::Unban(ip))
+            .await
+            .map_err(|_| CommunicationError::ChannelError("could not send Unban command".into()))?;
         Ok(())
     }
 
@@ -188,10 +200,8 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to get peers.
-    pub async fn get_peers(
-        &self,
-    ) -> Result<(HashMap<IpAddr, PeerInfo>, NodeId), CommunicationError> {
-        let (response_tx, response_rx) = oneshot::channel::<(HashMap<IpAddr, PeerInfo>, NodeId)>();
+    pub async fn get_peers(&self) -> Result<Peers, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
             .await
@@ -245,6 +255,20 @@ impl NetworkCommandSender {
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("could not send SendOperations command".into())
+            })?;
+        Ok(())
+    }
+
+    pub async fn send_endorsements(
+        &self,
+        node: NodeId,
+        endorsements: Vec<Endorsement>,
+    ) -> Result<(), CommunicationError> {
+        self.0
+            .send(NetworkCommand::SendEndorsements { node, endorsements })
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("could not send send_endorsement command".into())
             })?;
         Ok(())
     }

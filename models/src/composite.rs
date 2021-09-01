@@ -2,6 +2,7 @@
 
 use super::block::BlockId;
 use super::operation::Operation;
+use super::Address;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -35,4 +36,11 @@ impl OperationSearchResult {
         self.in_pool = self.in_pool || other.in_pool;
         self.in_blocks.extend(other.in_blocks.iter());
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StakersCycleProductionStats {
+    pub cycle: u64,
+    pub is_final: bool,
+    pub ok_nok_counts: HashMap<Address, (u64, u64)>,
 }

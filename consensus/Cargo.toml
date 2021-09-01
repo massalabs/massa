@@ -20,7 +20,7 @@ models = {path = "../models"}
 serde_json = { version = "1.0" }
 log = { version = "0.4" }
 thiserror = "1.0"
-num = "0.4"
+num = { version = "0.4", features = ["serde"] }
 time= { path = "../time"}
 storage= { path = "../storage"}
 pool= { path = "../pool"}

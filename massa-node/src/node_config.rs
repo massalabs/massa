@@ -5,6 +5,7 @@ use bootstrap::config::BootstrapConfig;
 use communication::network::NetworkConfig;
 use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
+use models::Version;
 use pool::PoolConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
@@ -24,11 +25,5 @@ pub struct Config {
     pub storage: StorageConfig,
     pub bootstrap: BootstrapConfig,
     pub pool: PoolConfig,
-}
-
-impl Config {
-    /// Deserializes config.
-    pub fn from_toml(toml_str: &str) -> Result<Config, toml::de::Error> {
-        toml::de::from_str(toml_str)
-    }
+    pub version: Version,
 }

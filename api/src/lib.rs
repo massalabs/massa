@@ -15,13 +15,16 @@ use config::CHANNEL_SIZE;
 use consensus::ConsensusConfig;
 use filters::get_filter;
 use logging::massa_trace;
+use models::Version;
 use pool::PoolConfig;
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::sync::mpsc;
 
 pub use error::ApiError;
-pub use filters::{Addresses, ApiEvent, ApiManagementCommand, OperationIds, PrivateKeys};
+pub use filters::{
+    Addresses, ApiEvent, ApiManagementCommand, OperationIds, PrivateKeys, PubkeySig,
+};
 
 pub struct ApiEventReceiver(mpsc::Receiver<ApiEvent>);
 
@@ -33,6 +36,7 @@ pub struct ApiManager {
 /// Spawn API server.
 ///
 pub async fn start_api_controller(
+    version: Version,
     cfg: ApiConfig,
     consensus_config: ConsensusConfig,
     protocol_config: ProtocolConfig,
@@ -46,6 +50,7 @@ pub async fn start_api_controller(
     massa_trace!("api.lib.start_api_controller", {});
     let bind = cfg.bind;
     let (_, server) = warp::serve(get_filter(
+        version,
         cfg,
         consensus_config,
         protocol_config,

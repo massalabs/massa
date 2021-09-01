@@ -4,7 +4,7 @@ use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    Address, ModelsError, ADDRESS_SIZE_BYTES,
+    Address, Amount, ModelsError, ADDRESS_SIZE_BYTES,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -72,7 +72,7 @@ pub struct Operation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OperationContent {
     pub sender_public_key: PublicKey,
-    pub fee: u64,
+    pub fee: Amount,
     pub expire_period: u64,
     pub op: OperationType,
 }
@@ -81,7 +81,7 @@ pub struct OperationContent {
 pub enum OperationType {
     Transaction {
         recipient_address: Address,
-        amount: u64,
+        amount: Amount,
     },
     RollBuy {
         roll_count: u64,
@@ -106,7 +106,7 @@ impl SerializeCompact for OperationType {
                 res.extend(&recipient_address.to_bytes());
 
                 // amount
-                res.extend(&amount.to_varint_bytes());
+                res.extend(&amount.to_bytes_compact()?);
             }
             OperationType::RollBuy { roll_count } => {
                 // type id
@@ -146,7 +146,7 @@ impl DeserializeCompact for OperationType {
                 cursor += ADDRESS_SIZE_BYTES;
 
                 // amount
-                let (amount, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                let (amount, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 OperationType::Transaction {
@@ -178,7 +178,7 @@ impl SerializeCompact for OperationContent {
         let mut res: Vec<u8> = Vec::new();
 
         // fee
-        res.extend(self.fee.to_varint_bytes());
+        res.extend(&self.fee.to_bytes_compact()?);
 
         // expire period
         res.extend(self.expire_period.to_varint_bytes());
@@ -198,7 +198,7 @@ impl DeserializeCompact for OperationContent {
         let mut cursor = 0usize;
 
         // fee
-        let (fee, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        let (fee, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         // expire period
@@ -334,14 +334,14 @@ mod tests {
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-            amount: 0,
+            amount: Amount::default(),
         };
         let ser_type = op.to_bytes_compact().unwrap();
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
         assert_eq!(format!("{:?}", res_type), format!("{:?}", op));
 
         let content = OperationContent {
-            fee: 20,
+            fee: Amount::from_str("20").unwrap(),
             sender_public_key: sender_pub,
             op,
             expire_period: 50,

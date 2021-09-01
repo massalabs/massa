@@ -9,8 +9,8 @@ use crate::network::ConnectionClosureReason;
 use crate::network::NetworkEvent;
 use crate::network::PeerInfo;
 use crate::NodeId;
-use crypto::signature;
-use models::BlockId;
+use crypto::{self, hash::Hash, signature};
+use models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
@@ -94,7 +94,7 @@ async fn test_multiple_connections_to_controller() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.max_in_connections = 2;
+    network_conf.max_in_nonbootstrap_connections = 2;
     network_conf.max_in_connections_per_ip = 1;
 
     let mock1_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
@@ -182,12 +182,12 @@ async fn test_multiple_connections_to_controller() {
 #[tokio::test]
 #[serial]
 async fn test_peer_ban() {
-    // setup logging
-    /*stderrlog::new()
-    .verbosity(4)
-    .timestamp(stderrlog::Timestamp::Millisecond)
-    .init()
-    .unwrap();*/
+    /*//setup logging
+    stderrlog::new()
+        .verbosity(4)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();*/
 
     //test config
     let bind_port: u16 = 50_000;
@@ -197,7 +197,7 @@ async fn test_peer_ban() {
     let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
-        bootstrap: true,
+        bootstrap: false,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -207,7 +207,7 @@ async fn test_peer_ban() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.target_out_connections = 10;
+    network_conf.wakeup_interval = 1000.into();
 
     tools::network_test(
         network_conf.clone(),
@@ -217,7 +217,7 @@ async fn test_peer_ban() {
                     network_manager,
                     mut mock_interface| {
             // accept connection from controller to peer
-            let (conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+            let (conn1_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock_addr,
@@ -226,12 +226,12 @@ async fn test_peer_ban() {
                 1_000u64,
             )
             .await;
-            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await; // drained l220
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
 
             trace!("test_peer_ban first connection done");
 
             // connect peer to controller
-            let (_conn2_id, conn2_r, _conn2_w) = tools::full_connection_to_controller(
+            let (_conn2_id, conn2_r, conn2_w) = tools::full_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock_addr,
@@ -240,7 +240,7 @@ async fn test_peer_ban() {
                 1_000u64,
             )
             .await;
-            let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l221
+            let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
             trace!("test_peer_ban second connection done");
 
             //ban connection1.
@@ -249,23 +249,60 @@ async fn test_peer_ban() {
                 .await
                 .expect("error during send ban command.");
 
-            // todo in #18
-            // // attempt a new connection from peer to controller: should be rejected
-            // tools::rejected_connection_to_controller(
-            //     &mut network_event_receiver,
-            //     &mut mock_interface,
-            //     mock_addr,
-            //     1_000u64,
-            //     1_000u64,
-            //     1_000u64,
-            // )
-            // .await;
+            // make sure the ban message was processed
+            sleep(Duration::from_millis(200)).await;
 
+            // stop conn1 and conn2
+            tools::incoming_message_drain_stop(conn1_drain).await;
+            drop(conn1_w);
+            tools::incoming_message_drain_stop(conn2_drain).await;
+            drop(conn2_w);
+            sleep(Duration::from_millis(200)).await;
+
+            // drain all messages
+            let _ = tools::wait_network_event(&mut network_event_receiver, 500.into(), |_msg| {
+                Option::<()>::None
+            })
+            .await;
+
+            // attempt a new connection from peer to controller: should be rejected
+            tools::rejected_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+
+            //unban connection1.
+            network_command_sender
+                .unban(mock_addr.ip())
+                .await
+                .expect("error during send unban command.");
+
+            // wait for new connection attempt
+            sleep(network_conf.wakeup_interval.to_duration()).await;
+
+            // accept connection from controller to peer after unban
+            let (_conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn1_drain_bis = tools::incoming_message_drain_start(conn1_r).await;
+
+            trace!("test_peer_ban unbanned connection done");
             (
                 network_event_receiver,
                 network_manager,
                 mock_interface,
-                vec![conn1_drain, conn2_drain],
+                vec![conn1_drain_bis],
             )
         },
     )
@@ -435,7 +472,7 @@ async fn test_block_not_found() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.target_out_connections = 10;
+    network_conf.target_bootstrap_connections = 1;
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
@@ -613,7 +650,8 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
     }]);
 
-    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    network_conf.target_bootstrap_connections = 1;
 
     tools::network_test(
         network_conf.clone(),
@@ -710,7 +748,7 @@ async fn test_operation_messages() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
-    network_conf.target_out_connections = 10;
+    network_conf.target_bootstrap_connections = 1;
     network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
@@ -786,6 +824,153 @@ async fn test_operation_messages() {
                             assert_eq!(op.len(), 1);
                             let res_id = op[0].verify_integrity().unwrap();
                             assert_eq!(ref_id2, res_id);
+                            break;}
+                        _ => {}
+                    }},
+                    _ = &mut timer => panic!("timeout reached waiting for message")
+                }
+            }
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![conn1_drain],
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_endorsements_messages() {
+    // setup logging
+    /*stderrlog::new()
+    .verbosity(4)
+    .timestamp(stderrlog::Timestamp::Millisecond)
+    .init()
+    .unwrap();*/
+
+    //test config
+    let bind_port: u16 = 50_000;
+
+    let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
+    //add advertised peer to controller
+    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+        ip: mock_addr.ip(),
+        banned: false,
+        bootstrap: true,
+        last_alive: None,
+        last_failure: None,
+        advertised: true,
+        active_out_connection_attempts: 0,
+        active_out_connections: 0,
+        active_in_connections: 0,
+    }]);
+
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    network_conf.target_bootstrap_connections = 1;
+    network_conf.max_ask_blocks_per_message = 3;
+
+    // Overwrite the context.
+    let mut serialization_context = models::get_serialization_context();
+    serialization_context.max_ask_blocks_per_message = 3;
+    models::init_serialization_context(serialization_context);
+
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            // accept connection from controller to peer
+            let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
+
+            let sender_priv = crypto::generate_random_private_key();
+            let sender_public_key = crypto::derive_public_key(&sender_priv);
+
+            let content = EndorsementContent {
+                sender_public_key,
+                slot: Slot::new(10, 1),
+                index: 0,
+                endorsed_block: BlockId(Hash::hash(&[])),
+            };
+            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let signature = crypto::sign(&hash, &sender_priv).unwrap();
+            let endorsement = Endorsement {
+                content: content.clone(),
+                signature,
+            };
+            let ref_id = endorsement.verify_integrity().unwrap();
+            conn1_w
+                .send(&Message::Endorsements(vec![endorsement]))
+                .await
+                .unwrap();
+
+            // assert it is sent to protocol
+            if let Some((endorsements, node)) =
+                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+                {
+                    NetworkEvent::ReceivedEndorsements { endorsements, node } => {
+                        Some((endorsements, node))
+                    }
+                    _ => None,
+                })
+                .await
+            {
+                assert_eq!(endorsements.len(), 1);
+                let res_id = endorsements[0].verify_integrity().unwrap();
+                assert_eq!(ref_id, res_id);
+                assert_eq!(node, conn1_id);
+            } else {
+                panic!("Timeout while waiting for endorsement event.");
+            }
+
+            let sender_priv = crypto::generate_random_private_key();
+            let sender_public_key = crypto::derive_public_key(&sender_priv);
+
+            let content = EndorsementContent {
+                sender_public_key,
+                slot: Slot::new(11, 1),
+                index: 0,
+                endorsed_block: BlockId(Hash::hash(&[])),
+            };
+            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let signature = crypto::sign(&hash, &sender_priv).unwrap();
+            let endorsement = Endorsement {
+                content: content.clone(),
+                signature,
+            };
+            let ref_id = endorsement.verify_integrity().unwrap();
+
+            // reply with another endorsement
+            network_command_sender
+                .send_endorsements(conn1_id, vec![endorsement])
+                .await
+                .unwrap();
+
+            let timer = sleep(Duration::from_millis(500));
+            tokio::pin!(timer);
+            loop {
+                tokio::select! {
+                    evt = conn1_r.next() => {
+                        let evt = evt.unwrap().unwrap().1;
+                        match evt {
+                        Message::Endorsements(endorsements) => {
+                            assert_eq!(endorsements.len(), 1);
+                            let res_id = endorsements[0].verify_integrity().unwrap();
+                            assert_eq!(ref_id, res_id);
                             break;}
                         _ => {}
                     }},

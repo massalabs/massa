@@ -4,7 +4,7 @@ use crate::{start_storage, StorageAccess, StorageConfig};
 use crypto::hash::Hash;
 use models::SerializeCompact;
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationId, OperationType, SerializationContext, Slot,
 };
 use std::future::Future;
@@ -38,6 +38,7 @@ pub fn get_test_block() -> Block {
 						get_dummy_block_id("parent2"),
                     ],
                     slot: Slot::new(1, 0),
+                    endorsements: Vec::new(),
                 },
                 signature: crypto::signature::Signature::from_bs58_check(
                     "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -56,10 +57,10 @@ pub fn create_operation() -> Operation {
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
-        amount: 0,
+        amount: Amount::default(),
     };
     let content = OperationContent {
-        fee: 0,
+        fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period: 0,
@@ -82,6 +83,7 @@ pub fn get_block_with_op() -> (Block, BlockId, OperationId) {
                     get_dummy_block_id("parent2"),
                 ],
                 slot: Slot::new(1, 0),
+                endorsements: Vec::new(),
             },
             signature: crypto::signature::Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
@@ -107,9 +109,11 @@ pub fn get_test_config() -> StorageConfig {
         max_bootstrap_children: 100,
         max_ask_blocks_per_message: 10,
         max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
+        max_block_endorsments: 8,
     };
     models::init_serialization_context(context.clone());
     StorageConfig {

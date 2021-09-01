@@ -41,8 +41,8 @@ pub enum CommunicationError {
     TimeError(#[from] time::TimeError),
     #[error("missing peers")]
     MissingPeersError,
-    #[error("Could not hash block header: {0}")]
-    HeaderHashError(#[from] ModelsError),
+    #[error("models error: {0}")]
+    ModelsError(#[from] ModelsError),
     #[error("container inconsistency error: {0}")]
     ContainerInconsistencyError(String),
 }
@@ -55,6 +55,7 @@ pub enum HandshakeErrorType {
     HandshakeWrongMessageError,
     HandshakeKeyError,
     HandshakeInvalidSignatureError,
+    IncompatibleVersionError,
 }
 
 #[derive(Debug)]

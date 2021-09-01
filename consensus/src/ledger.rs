@@ -10,10 +10,9 @@ use std::{
 
 use crate::{ConsensusConfig, ConsensusError};
 use models::{
-    array_from_slice, u8_from_slice, Address, DeserializeCompact, ModelsError, SerializeCompact,
-    SerializeVarInt, ADDRESS_SIZE_BYTES,
+    array_from_slice, u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt,
+    ModelsError, Operation, SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
 };
-use models::{DeserializeVarInt, Operation};
 use serde::{Deserialize, Serialize};
 
 pub struct Ledger {
@@ -24,19 +23,21 @@ pub struct Ledger {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LedgerData {
-    pub balance: u64,
+    pub balance: Amount,
 }
 
 impl Default for LedgerData {
     fn default() -> Self {
-        LedgerData { balance: 0 }
+        LedgerData {
+            balance: Amount::default(),
+        }
     }
 }
 
 impl SerializeCompact for LedgerData {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
-        res.extend(self.balance.to_varint_bytes());
+        res.extend(&self.balance.to_bytes_compact()?);
         Ok(res)
     }
 }
@@ -44,52 +45,52 @@ impl SerializeCompact for LedgerData {
 impl DeserializeCompact for LedgerData {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
-        let (balance, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        let (balance, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
         Ok((LedgerData { balance }, cursor))
     }
 }
 
 impl LedgerData {
+    pub fn new(starting_balance: Amount) -> LedgerData {
+        LedgerData {
+            balance: starting_balance,
+        }
+    }
+
     fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if change.balance_increment {
-            self.balance = self
-                .balance
-                .checked_add(change.balance_delta)
-                .ok_or_else(|| {
-                    ConsensusError::InvalidLedgerChange(
-                        "balance overflow in LedgerData::apply_change".into(),
-                    )
-                })?;
+            self.balance = self.balance.checked_add(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange(
+                    "balance overflow in LedgerData::apply_change".into(),
+                ),
+            )?;
         } else {
-            self.balance = self
-                .balance
-                .checked_sub(change.balance_delta)
-                .ok_or_else(|| {
-                    ConsensusError::InvalidLedgerChange(
-                        "balance underflow in LedgerData::apply_change".into(),
-                    )
-                })?;
+            self.balance = self.balance.checked_sub(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange(
+                    "balance underflow in LedgerData::apply_change".into(),
+                ),
+            )?;
         }
         Ok(())
     }
 
     /// returns true if the balance is zero
     fn is_nil(&self) -> bool {
-        self.balance == 0
+        self.balance == Amount::default()
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerChange {
-    pub balance_delta: u64,
+    pub balance_delta: Amount,
     pub balance_increment: bool, // wether to increment or decrement balance of delta
 }
 
 impl Default for LedgerChange {
     fn default() -> Self {
         LedgerChange {
-            balance_delta: 0,
+            balance_delta: Amount::default(),
             balance_increment: true,
         }
     }
@@ -99,36 +100,27 @@ impl LedgerChange {
     /// Applies another ledger change on top of self
     pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
         if self.balance_increment == change.balance_increment {
-            self.balance_delta = self
-                .balance_delta
-                .checked_add(change.balance_delta)
-                .ok_or_else(|| {
-                    ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into())
-                })?;
+            self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into()),
+            )?;
         } else if change.balance_delta > self.balance_delta {
-            self.balance_delta = change
-                .balance_delta
-                .checked_sub(self.balance_delta)
-                .ok_or_else(|| {
-                    ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into())
-                })?;
+            self.balance_delta = change.balance_delta.checked_sub(self.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
+            )?;
             self.balance_increment = !self.balance_increment;
         } else {
-            self.balance_delta = self
-                .balance_delta
-                .checked_sub(change.balance_delta)
-                .ok_or_else(|| {
-                    ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into())
-                })?;
+            self.balance_delta = self.balance_delta.checked_sub(change.balance_delta).ok_or(
+                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
+            )?;
         }
-        if self.balance_delta == 0 {
+        if self.balance_delta == Amount::default() {
             self.balance_increment = true;
         }
         Ok(())
     }
 
     pub fn is_nil(&self) -> bool {
-        self.balance_delta == 0
+        self.balance_delta == Amount::default()
     }
 }
 
@@ -136,7 +128,7 @@ impl SerializeCompact for LedgerChange {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         res.push(if self.balance_increment { 1u8 } else { 0u8 });
-        res.extend(self.balance_delta.to_varint_bytes());
+        res.extend(&self.balance_delta.to_bytes_compact()?);
         Ok(res)
     }
 }
@@ -157,7 +149,7 @@ impl DeserializeCompact for LedgerChange {
         };
         cursor += 1;
 
-        let (balance_delta, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        let (balance_delta, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         Ok((
@@ -233,23 +225,80 @@ impl LedgerChanges {
                 .collect(),
         )
     }
+
+    /// add reward related changes
+    pub fn add_reward(
+        &mut self,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
+        reward: Amount,
+        endorsement_count: u32,
+    ) -> Result<(), ConsensusError> {
+        let endorsers_count = endorsers.len() as u64;
+        let third = reward
+            .checked_div_u64(3 * (1 + (endorsement_count as u64)))
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        for ed in endorsers {
+            self.apply(
+                &parent_creator,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
+            self.apply(
+                &ed,
+                &LedgerChange {
+                    balance_delta: third,
+                    balance_increment: true,
+                },
+            )?;
+        }
+        let total_credited = third
+            .checked_mul_u64(2 * endorsers_count)
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        // here we credited only parent_creator and ed for every endorsement
+        // total_credited now contains the total amount already credited
+
+        let expected_credit = reward
+            .checked_mul_u64(1 + endorsers_count)
+            .ok_or(ConsensusError::AmountOverflowError)?
+            .checked_div_u64(1 + (endorsement_count as u64))
+            .ok_or(ConsensusError::AmountOverflowError)?;
+        // here expected_credit contains the expected amount that should be credited in total
+        // the difference between expected_credit and total_credited is sent to the block creator
+        self.apply(
+            &creator,
+            &LedgerChange {
+                balance_delta: expected_credit.saturating_sub(total_credited),
+                balance_increment: true,
+            },
+        )
+    }
 }
 
 pub trait OperationLedgerInterface {
     fn get_ledger_changes(
         &self,
-        fee_target: &Address,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
         thread_count: u8,
-        roll_price: u64,
+        roll_price: Amount,
+        endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError>;
 }
 
 impl OperationLedgerInterface for Operation {
     fn get_ledger_changes(
         &self,
-        fee_target: &Address,
+        creator: Address,
+        endorsers: Vec<Address>,
+        parent_creator: Address,
         _thread_count: u8,
-        roll_price: u64,
+        roll_price: Amount,
+        endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {
         let mut res = LedgerChanges::default();
 
@@ -258,22 +307,22 @@ impl OperationLedgerInterface for Operation {
         res.apply(
             &sender_address,
             &LedgerChange {
-                balance_delta: self.content.fee,
+                balance_delta: self.content.fee.clone().into(),
                 balance_increment: false,
             },
         )?;
 
         // fee target
-        res.apply(
-            &fee_target,
-            &LedgerChange {
-                balance_delta: self.content.fee,
-                balance_increment: true,
-            },
+        res.add_reward(
+            creator,
+            endorsers,
+            parent_creator,
+            self.content.fee,
+            endorsement_count,
         )?;
 
         // operation type specific
-        match self.content.op {
+        match &self.content.op {
             models::OperationType::Transaction {
                 recipient_address,
                 amount,
@@ -281,14 +330,14 @@ impl OperationLedgerInterface for Operation {
                 res.apply(
                     &sender_address,
                     &LedgerChange {
-                        balance_delta: amount,
+                        balance_delta: amount.clone().into(),
                         balance_increment: false,
                     },
                 )?;
                 res.apply(
                     &recipient_address,
                     &LedgerChange {
-                        balance_delta: amount,
+                        balance_delta: amount.clone().into(),
                         balance_increment: true,
                     },
                 )?;
@@ -297,8 +346,8 @@ impl OperationLedgerInterface for Operation {
                 res.apply(
                     &sender_address,
                     &LedgerChange {
-                        balance_delta: roll_count
-                            .checked_mul(roll_price)
+                        balance_delta: roll_price
+                            .checked_mul_u64(*roll_count)
                             .ok_or(ConsensusError::RollOverflowError)?,
                         balance_increment: false,
                     },
@@ -446,12 +495,12 @@ impl Ledger {
     }
 
     /// Returns the final balance of an address. 0 if the address does not exist.
-    pub fn get_final_balance(&self, address: &Address) -> Result<u64, ConsensusError> {
+    pub fn get_final_balance(&self, address: &Address) -> Result<Amount, ConsensusError> {
         let thread = address.get_thread(self.cfg.thread_count);
         if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
             Ok(LedgerData::from_bytes_compact(&res)?.0.balance)
         } else {
-            Ok(0)
+            Ok(Amount::default())
         }
     }
 
@@ -636,8 +685,10 @@ impl LedgerSubset {
     }
 
     /// Get the data for given address
-    pub fn get_data(&self, address: &Address) -> &LedgerData {
-        self.0.get(address).unwrap_or(&LedgerData { balance: 0 })
+    pub fn get_data(&self, address: &Address) -> LedgerData {
+        self.0.get(address).cloned().unwrap_or(LedgerData {
+            balance: Amount::default(),
+        })
     }
 
     /// List involved addresses
@@ -740,12 +791,13 @@ impl<'a> TryFrom<&'a Ledger> for LedgerExport {
 impl SerializeCompact for LedgerExport {
     /// ## Example
     /// ```rust
-    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address};
+    /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
+    /// # use std::str::FromStr;
     /// # use consensus::{LedgerExport, LedgerData};
     /// # let mut ledger = LedgerExport::default();
     /// # ledger.ledger_subset = vec![
-    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData{balance: 1022}),
-    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData{balance: 1020}),
+    /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
+    /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(Amount::from_str("1020").unwrap())),
     /// # ];
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
@@ -759,9 +811,11 @@ impl SerializeCompact for LedgerExport {
     /// #     max_bootstrap_children: 100,
     /// #     max_ask_blocks_per_message: 10,
     /// #     max_operations_per_message: 1024,
+    /// #     max_endorsements_per_message: 1024,
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
-    /// #     max_bootstrap_pos_entries:10000,
+    /// #     max_bootstrap_pos_entries: 10000,
+    /// #     max_block_endorsments: 8,
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
@@ -816,6 +870,7 @@ impl DeserializeCompact for LedgerExport {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use std::str::FromStr;
 
     #[test]
     #[serial]
@@ -824,16 +879,19 @@ mod tests {
             for &v2 in &[-100i32, -10, 0, 10, 100] {
                 let mut res = LedgerChange {
                     balance_increment: (v1 >= 0),
-                    balance_delta: v1.abs() as u64,
+                    balance_delta: Amount::from_str(&v1.abs().to_string()).unwrap(),
                 };
                 res.chain(&LedgerChange {
                     balance_increment: (v2 >= 0),
-                    balance_delta: v2.abs() as u64,
+                    balance_delta: Amount::from_str(&v2.abs().to_string()).unwrap(),
                 })
                 .unwrap();
                 let expect: i32 = v1 + v2;
                 assert_eq!(res.balance_increment, (expect >= 0));
-                assert_eq!(res.balance_delta, expect.abs() as u64);
+                assert_eq!(
+                    res.balance_delta,
+                    Amount::from_str(&expect.abs().to_string()).unwrap()
+                );
             }
         }
     }

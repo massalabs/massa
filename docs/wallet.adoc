@@ -19,10 +19,10 @@ cd massa/massa-client/
 Start the interactive client and load a wallet file:
 
 ----
-cargo run -- --wallet wallet.dat
+cargo run
 ----
 
-If the wallet file `wallet.dat` does not exist, it is created.
+It loads the wallet file `wallet.dat`. If it does not exist, it is created.
 
 Now generate a new private key (and associated public key / address):
 

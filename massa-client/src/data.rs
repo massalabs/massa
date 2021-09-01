@@ -21,10 +21,9 @@ use consensus::{ExportBlockStatus, LedgerData};
 use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::{
-    Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
+    Address, Amount, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, OperationType, Slot,
 };
-use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -52,8 +51,7 @@ impl<'a> std::fmt::Display for WrapperOperationType<'a> {
             } => write!(
                 f,
                 "Transaction: recipient:{} amount:{}",
-                recipient_address,
-                format_amount(*amount)
+                recipient_address, amount
             ),
             OperationType::RollBuy { roll_count } => {
                 write!(f, "RollBuy: roll_count:{}", roll_count)
@@ -79,13 +77,11 @@ impl std::fmt::Display for WrapperOperation {
         let op_type = WrapperOperationType::from(&self.0.content.op);
         let addr = Address::from_public_key(&self.0.content.sender_public_key)
             .map_err(|_| std::fmt::Error)?;
+        let amount: String = self.0.content.fee.to_string();
         write!(
             f,
             "sender:{} fee:{} expire_period:{} {}",
-            addr,
-            format_amount(self.0.content.fee),
-            self.0.content.expire_period,
-            op_type
+            addr, amount, self.0.content.expire_period, op_type
         )
     }
 }
@@ -156,6 +152,7 @@ pub struct ConsensusConfig {
     pub max_block_size: u32,
     pub operation_validity_periods: u64,
     pub periods_per_cycle: u64,
+    pub roll_price: Amount,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
@@ -193,7 +190,7 @@ pub struct WrappedAddressState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,
     pub candidate_rolls: u64,
-    pub locked_balance: u64,
+    pub locked_balance: Amount,
     pub candidate_ledger_data: LedgerData,
     pub final_ledger_data: LedgerData,
 }
@@ -208,21 +205,13 @@ pub struct WrappedAddressState {
 */
 impl<'a> std::fmt::Display for WrappedAddressState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(
-            f,
-            "    final balance: {}",
-            format_amount(self.final_ledger_data.balance)
-        )?;
+        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
         writeln!(
             f,
             "    candidate balance: {}",
-            format_amount(self.candidate_ledger_data.balance)
+            self.candidate_ledger_data.balance
         )?;
-        writeln!(
-            f,
-            "    locked balance: {}",
-            format_amount(self.locked_balance)
-        )?;
+        writeln!(f, "    locked balance: {}", self.locked_balance)?;
         writeln!(f, "    final rolls: {}", self.final_rolls)?;
         writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
 
@@ -354,17 +343,39 @@ impl std::fmt::Display for WrappedBlockHeader {
         } else {
             &pk
         };
+        writeln!(f, "creator: {}", pk)?;
         writeln!(
             f,
-            "creator: {} period: {} thread: {} merkle_root: {} parents: {:?}",
-            pk,
-            self.0.content.slot.period,
-            self.0.content.slot.thread,
-            self.0.content.operation_merkle_root,
-            self.0.content.parents,
-        )
-        //        writeln!(f, "  parents:{:?}", self.parents)?;
-        //        writeln!(f, "  endorsements:{:?}", self.endorsements)
+            "period: {} thread: {}",
+            self.0.content.slot.period, self.0.content.slot.thread,
+        )?;
+        writeln!(f, "merkle_root: {}", self.0.content.operation_merkle_root,)?;
+        writeln!(f, "parents: ",)?;
+        for id in self.0.content.parents.iter() {
+            let str_id = id.to_string();
+            writeln!(
+                f,
+                "{}",
+                if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {
+                    str_id[..4].to_string()
+                } else {
+                    str_id
+                }
+            )?;
+        }
+        if self.0.content.parents.is_empty() {
+            writeln!(f, "No parents found: This is a genesis header")?;
+        }
+        writeln!(f, "endorsements: ")?;
+
+        for ed in self.0.content.endorsements.iter() {
+            writeln!(f, "{:?}", ed)?;
+        }
+        if self.0.content.endorsements.is_empty() {
+            writeln!(f, "No endorsements found")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -474,9 +485,44 @@ impl std::fmt::Display for StakerInfo {
 }
 
 #[derive(Clone, Deserialize)]
+pub struct WrappedPeerInfo {
+    pub active_nodes: Vec<(NodeId, bool)>,
+    pub peer_info: PeerInfo,
+}
+
+impl std::fmt::Display for WrappedPeerInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "{}:", self.peer_info.ip)?;
+        writeln!(f, "      Peer: bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
+            , self.peer_info.bootstrap
+            , self.peer_info.banned
+            , self.peer_info.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.active_out_connection_attempts
+            , self.peer_info.active_out_connections
+            , self.peer_info.active_in_connections
+            , self.peer_info.advertised)?;
+        if !self.active_nodes.is_empty() {
+            writeln!(f, "      active_nodes: [")?;
+            for (node_id, outgoing) in &self.active_nodes {
+                writeln!(
+                    f,
+                    "        node_id: {} ({})",
+                    node_id,
+                    if *outgoing { "outgoing" } else { "incoming" }
+                )?;
+            }
+            writeln!(f, "      ]")
+        } else {
+            writeln!(f, "No active nodes")
+        }
+    }
+}
+
+#[derive(Clone, Deserialize)]
 pub struct NetworkInfo {
     our_ip: Option<IpAddr>,
-    peers: HashMap<IpAddr, PeerInfo>,
+    peers: HashMap<IpAddr, WrappedPeerInfo>,
     node_id: NodeId,
 }
 impl std::fmt::Display for NetworkInfo {
@@ -491,37 +537,9 @@ impl std::fmt::Display for NetworkInfo {
         )?;
         writeln!(f, "  Peers:")?;
         for peer in self.peers.values() {
-            write!(f, "    {}", WrappedPeerInfo::from(peer))?;
+            write!(f, "    {}", peer)?;
         }
         Ok(())
-    }
-}
-
-#[derive(Clone, Deserialize)]
-pub struct WrappedPeerInfo(PeerInfo);
-
-impl From<PeerInfo> for WrappedPeerInfo {
-    fn from(peer: PeerInfo) -> Self {
-        WrappedPeerInfo(peer)
-    }
-}
-impl From<&'_ PeerInfo> for WrappedPeerInfo {
-    fn from(peer: &PeerInfo) -> Self {
-        WrappedPeerInfo(*peer)
-    }
-}
-impl std::fmt::Display for WrappedPeerInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Peer: Ip: {} bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
-            ,self.0.ip
-            , self.0.bootstrap
-            , self.0.banned
-            , self.0.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.0.active_out_connection_attempts
-            , self.0.active_out_connections
-            , self.0.active_in_connections
-            , self.0.advertised)
     }
 }
 
@@ -556,34 +574,4 @@ impl std::fmt::Debug for WrappedHash {
             write!(f, "{}", &self.0.to_bs58_check())
         }
     }
-}
-
-const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
-
-pub fn parse_amount(str_amount: &str) -> Result<u64, String> {
-    let res = Decimal::from_str(str_amount)
-        .map_err(|err| err.to_string())?
-        .checked_mul(AMOUNT_DECIMAL_FACTOR.into())
-        .ok_or_else(|| "amount is too large".to_string())?;
-    if res.is_sign_negative() {
-        return Err("amounts should be positive".to_string());
-    }
-    if !res.fract().is_zero() {
-        return Err(format!(
-            "amounts should have a precision down to 1/{}",
-            AMOUNT_DECIMAL_FACTOR
-        ));
-    }
-    let res = res
-        .to_u64()
-        .ok_or_else(|| "amount is too large".to_string())?;
-    Ok(res)
-}
-
-fn format_amount(amount: u64) -> String {
-    Decimal::from_u64(amount)
-        .unwrap() // will never panic
-        .checked_div(AMOUNT_DECIMAL_FACTOR.into()) // will never panic
-        .unwrap() // will never panic
-        .to_string()
 }

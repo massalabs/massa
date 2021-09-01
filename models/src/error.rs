@@ -6,9 +6,9 @@ use thiserror::Error;
 pub enum ModelsError {
     #[error("hashing error")]
     HashError,
-    #[error("Serialization error:{0}")]
+    #[error("Serialization error: {0}")]
     SerializeError(String),
-    #[error("Deserialization error:{0}")]
+    #[error("Deserialization error: {0}")]
     DeserializeError(String),
     #[error("buffer error: {0}")]
     BufferError(String),
@@ -18,4 +18,10 @@ pub enum ModelsError {
     ThreadOverflowError,
     #[error("period overflow error")]
     PeriodOverflowError,
+    #[error("amount parse error")]
+    AmountParseError(String),
+    #[error("checked operation error")]
+    CheckedOperationError(String),
+    #[error("invalid version identifier: {0}")]
+    InavalidVersionError(String),
 }

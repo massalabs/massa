@@ -25,14 +25,18 @@ pub struct NetworkConfig {
     pub peers_file: std::path::PathBuf,
     /// Path to the file containing our private_key
     pub private_key_file: std::path::PathBuf,
-    /// Number of available slots for out connections.
-    pub target_out_connections: usize,
+    /// Target number of bootstrap connections.
+    pub target_bootstrap_connections: usize,
+    /// Limit on the number of simultaneout outgoing bootstrap connection attempts.
+    pub max_out_bootstrap_connection_attempts: usize,
+    /// Target number of outgoing nonbootstrap connections.
+    pub target_out_nonbootstrap_connections: usize,
     /// Limit on the number of in connections.
-    pub max_in_connections: usize,
+    pub max_in_nonbootstrap_connections: usize,
     /// Limit on the number of in connections per ip.
     pub max_in_connections_per_ip: usize,
-    /// Limit on the total current number of out connection attempts.
-    pub max_out_connection_attempts: usize,
+    /// Limit on the total current number of outgoing non-bootstrap connection attempts.
+    pub max_out_nonbootstrap_connection_attempts: usize,
     /// Limit on the number of idle peers we remember.
     pub max_idle_peers: usize,
     /// Limit on the number of banned peers we remember.
@@ -51,6 +55,10 @@ pub struct NetworkConfig {
     pub max_ask_blocks_per_message: u32,
     /// Max number of operations per message
     pub max_operations_per_message: u32,
+    /// Max number of endorsements per message
+    pub max_endorsements_per_message: u32,
     /// Max wait time for sending a Network or Node event.
     pub max_send_wait: UTime,
+    /// Time after which we forget a node
+    pub ban_timeout: UTime,
 }

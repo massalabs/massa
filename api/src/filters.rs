@@ -2,6 +2,7 @@
 
 use super::config::ApiConfig;
 use crate::ApiError;
+use communication::network::Peers;
 use communication::NodeId;
 use communication::{
     network::{NetworkConfig, PeerInfo},
@@ -21,7 +22,8 @@ use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
-use models::{BlockHeader, BlockId, Slot};
+use models::StakersCycleProductionStats;
+use models::{BlockHeader, BlockId, Slot, Version};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -45,11 +47,11 @@ pub enum ApiEvent {
         block_id: BlockId,
         response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
     },
-    GetPeers(oneshot::Sender<(HashMap<IpAddr, PeerInfo>, NodeId)>),
+    GetPeers(oneshot::Sender<Peers>),
     GetSelectionDraw {
         start: Slot,
         end: Slot,
-        response_tx: oneshot::Sender<Result<Vec<(Slot, Address)>, ConsensusError>>,
+        response_tx: oneshot::Sender<Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError>>,
     },
     AddOperations(HashMap<OperationId, Operation>),
     GetAddressesInfo {
@@ -73,6 +75,15 @@ pub enum ApiEvent {
     NodeSignMessage {
         message: Vec<u8>,
         response_tx: oneshot::Sender<(PublicKey, Signature)>,
+    },
+    GetStakersProductionStats {
+        addrs: HashSet<Address>,
+        response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,
+    },
+    Unban(IpAddr),
+    GetBlockIdsByCreator {
+        address: Address,
+        response_tx: oneshot::Sender<HashMap<BlockId, Status>>,
     },
 }
 
@@ -102,6 +113,7 @@ pub struct Addresses {
 /// and combines them into one filter
 ///
 pub fn get_filter(
+    node_version: Version,
     api_config: ApiConfig,
     consensus_config: ConsensusConfig,
     _protocol_config: ProtocolConfig,
@@ -171,7 +183,7 @@ pub fn get_filter(
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
-    let storage = opt_storage_command_sender;
+    let storage = opt_storage_command_sender.clone();
     let graph_interval = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -187,6 +199,16 @@ pub fn get_filter(
                 storage.clone(),
             ))
         });
+
+    let evt_tx = event_tx.clone();
+    let storage = opt_storage_command_sender;
+    let block_ids_by_creator = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("block_ids_by_creator"))
+        .and(warp::path::param::<Address>())
+        .and(warp::path::end())
+        .and_then(move |addr| get_block_ids_by_creator(evt_tx.clone(), addr, storage.clone()));
 
     let evt_tx = event_tx.clone();
     let cliques = warp::get()
@@ -226,6 +248,13 @@ pub fn get_filter(
         .and(warp::path("node_config"))
         .and(warp::path::end())
         .and_then(get_node_config);
+
+    let version = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("version"))
+        .and(warp::path::end())
+        .and_then(move || get_version(node_version));
 
     let pool_cfg = pool_config;
     let pool_config = warp::get()
@@ -298,6 +327,15 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
+    let staker_stats = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("staker_stats"))
+        .and(warp::path::end())
+        .and(serde_qs::warp::query(serde_qs::Config::default()))
+        .and_then(move |Addresses { addrs }| get_stakers_stats(evt_tx.clone(), addrs));
+
+    let evt_tx = event_tx.clone();
     let api_cfg = api_config;
     let consensus_cfg = consensus_config;
     let next_draws = warp::get()
@@ -345,6 +383,15 @@ pub fn get_filter(
         .and(warp::path("stop_node"))
         .and(warp::path::end())
         .and_then(move || stop_node(evt_tx.clone()));
+
+    let evt_tx = event_tx.clone();
+    let unban = warp::post()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("unban"))
+        .and(warp::path::param::<IpAddr>())
+        .and(warp::path::end())
+        .and_then(move |ip| unban(evt_tx.clone(), ip));
 
     let evt_tx = event_tx.clone();
     let register_staking_private_keys = warp::post()
@@ -413,12 +460,14 @@ pub fn get_filter(
         .or(graph_interval)
         .or(cliques)
         .or(peers)
+        .or(unban)
         .or(our_ip)
         .or(network_info)
         .or(state)
         .or(last_stale)
         .or(last_invalid)
         .or(staker_info)
+        .or(staker_stats)
         .or(addresses_info)
         .or(stop_node)
         .or(send_operations)
@@ -434,6 +483,8 @@ pub fn get_filter(
         .or(register_staking_private_keys)
         .or(remove_staking_addresses)
         .or(node_sign_message)
+        .or(block_ids_by_creator)
+        .or(version)
         .boxed()
 }
 
@@ -485,6 +536,11 @@ async fn get_node_config() -> Result<impl warp::Reply, warp::Rejection> {
     Ok(warp::reply::json(&context))
 }
 
+async fn get_version(version: Version) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_version", {});
+    Ok(warp::reply::json(&version))
+}
+
 async fn get_consensus_config(
     consensus_cfg: ConsensusConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -497,6 +553,7 @@ async fn get_consensus_config(
         "max_block_size": consensus_cfg.max_block_size,
         "operation_validity_periods": consensus_cfg.operation_validity_periods,
         "periods_per_cycle": consensus_cfg.periods_per_cycle,
+        "roll_price": consensus_cfg.roll_price,
     })))
 }
 
@@ -512,6 +569,20 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejecti
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
                 "message": format!("error stopping node : {:?}", err)
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response()),
+    }
+}
+
+async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.unban", {});
+    match evt_tx.send(ApiEvent::Unban(ip)).await {
+        Ok(_) => Ok(warp::reply().into_response()),
+        Err(err) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({
+                "message": format!("error unbanning : {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -624,6 +695,45 @@ async fn get_block(
     }
 }
 
+async fn get_block_ids_by_creator(
+    event_tx: mpsc::Sender<ApiEvent>,
+    address: Address,
+    opt_storage_command_sender: Option<StorageAccess>,
+) -> Result<impl Reply, Rejection> {
+    massa_trace!("api.filters.get_block_ids_by_creator", {
+        "address": address
+    });
+    let res = match retrieve_block_ids_by_creator_from_consensus(address, &event_tx).await {
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error retrieving active blocks : {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+        Ok(mut res) => {
+            if let Some(cmd_tx) = opt_storage_command_sender {
+                match retrieve_block_ids_by_creator_from_storage(address, &cmd_tx).await {
+                    Ok(res2) => res.extend(res2),
+                    Err(e) => {
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&json!({
+                                "message": format!("error retrieving active blocks : {:?}", e)
+                            })),
+                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        )
+                        .into_response())
+                    }
+                }
+            }
+            res
+        }
+    };
+    Ok(warp::reply::json(&res).into_response())
+}
+
 async fn get_operations(
     event_tx: mpsc::Sender<ApiEvent>,
     operation_ids: HashSet<OperationId>,
@@ -661,7 +771,12 @@ async fn do_node_sign_msg(
     })
 }
 
-async fn node_sign_msg(
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PubkeySig {
+    pub public_key: PublicKey,
+    pub signature: Signature,
+}
+pub async fn node_sign_msg(
     msg: Vec<u8>,
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl Reply, Rejection> {
@@ -674,9 +789,9 @@ async fn node_sign_msg(
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
-        Ok((public_key, signature)) => Ok(warp::reply::json(&json!({
-            "public_key": public_key,
-            "signature": signature
+        Ok((public_key, signature)) => Ok(warp::reply::json(&json!(PubkeySig {
+            public_key,
+            signature
         }))
         .into_response()),
     }
@@ -728,6 +843,43 @@ async fn retrieve_block(
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
 }
 
+async fn retrieve_block_ids_by_creator_from_consensus(
+    address: Address,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<HashMap<BlockId, Status>, ApiError> {
+    massa_trace!("api.filters.retrieve_block_ids_by_creator", {
+        "address": address
+    });
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetBlockIdsByCreator {
+            address,
+            response_tx,
+        })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event GetBlockIdsByCreator : {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve GetBlockIdsByCreator : {0}", e))
+    })
+}
+
+async fn retrieve_block_ids_by_creator_from_storage(
+    address: Address,
+    storage_access: &StorageAccess,
+) -> Result<HashMap<BlockId, Status>, ApiError> {
+    Ok(storage_access
+        .get_block_ids_by_creator(&address)
+        .await?
+        .into_iter()
+        .map(|id| (id, Status::Final))
+        .collect())
+}
+
 async fn retrieve_operations(
     operation_ids: HashSet<OperationId>,
     event_tx: &mpsc::Sender<ApiEvent>,
@@ -750,9 +902,7 @@ async fn retrieve_operations(
     })
 }
 
-async fn retrieve_peers_and_nodeid(
-    event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<(HashMap<IpAddr, PeerInfo>, NodeId), ApiError> {
+async fn retrieve_peers(event_tx: &mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
     massa_trace!("api.filters.retrieve_peers", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -770,7 +920,7 @@ async fn retrieve_selection_draw(
     start: Slot,
     end: Slot,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Vec<(Slot, Address)>, ApiError> {
+) -> Result<Vec<(Slot, (Address, Vec<Address>))>, ApiError> {
     massa_trace!("api.filters.retrieve_selection_draw", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -807,7 +957,7 @@ async fn get_current_parents(
 
     let parents = graph.best_parents;
     let mut best = Vec::new();
-    for hash in parents {
+    for (hash, _) in parents {
         match graph.active_blocks.get_key_value(&hash) {
             Some((_, block)) => best.push((hash, block.block.content.slot)),
             None => {
@@ -983,7 +1133,7 @@ async fn get_cliques(
 
     let mut hashes = HashSet::new();
     for clique in graph.max_cliques.iter() {
-        hashes.extend(clique)
+        hashes.extend(&clique.block_ids)
     }
 
     let mut hashes_map = HashMap::new();
@@ -1000,7 +1150,7 @@ async fn get_cliques(
     let mut res = Vec::new();
     for clique in graph.max_cliques.iter() {
         let mut set = HashSet::new();
-        for hash in clique.iter() {
+        for hash in clique.block_ids.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
                     set.insert((**k, *v));
@@ -1034,15 +1184,11 @@ struct NetworkInfo {
 async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<NetworkInfo, ApiError> {
+) -> Result<Peers, ApiError> {
     massa_trace!("api.filters.get_network_info", {});
-    let (peers, node_id) = retrieve_peers_and_nodeid(&event_tx).await?;
-    let our_ip = network_cfg.routable_ip;
-    Ok(NetworkInfo {
-        our_ip: our_ip,
-        peers: peers,
-        node_id: node_id,
-    })
+    let peers = retrieve_peers(&event_tx).await?;
+    let _our_ip = network_cfg.routable_ip; // FIX ME: return NetworkInfo
+    Ok(peers)
 }
 
 /// Returns state info for a set of addresses
@@ -1077,11 +1223,9 @@ async fn get_addresses_info(
 /// - ip address
 /// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
 ///
-async fn get_peers(
-    event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<HashMap<IpAddr, PeerInfo>, ApiError> {
+async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
     massa_trace!("api.filters.get_peers", {});
-    let (peers, _) = retrieve_peers_and_nodeid(&event_tx).await?;
+    let peers = retrieve_peers(&event_tx).await?;
     Ok(peers)
 }
 
@@ -1150,15 +1294,7 @@ async fn get_state(
         cur_time,
     )?;
 
-    let (peers, _) = retrieve_peers_and_nodeid(&event_tx).await?;
-
-    let connected_peers: HashSet<IpAddr> = peers
-        .iter()
-        .filter(|(_ip, peer_info)| {
-            peer_info.active_out_connections > 0 || peer_info.active_in_connections > 0
-        })
-        .map(|(ip, _peer_info)| *ip)
-        .collect();
+    let _peers = retrieve_peers(&event_tx).await?;
 
     let graph = retrieve_graph_export(&event_tx).await?;
 
@@ -1189,7 +1325,7 @@ async fn get_state(
         our_ip: network_cfg.routable_ip,
         last_final: finals,
         nb_cliques: graph.max_cliques.len(),
-        nb_peers: connected_peers.len(),
+        nb_peers: 0, // FIXME: connected_peers.len(),
     })
 }
 
@@ -1300,7 +1436,8 @@ async fn get_staker_info(
     let next_slots_by_creator: Vec<Slot> = retrieve_selection_draw(start_slot, end_slot, &event_tx)
         .await?
         .into_iter()
-        .filter_map(|(slt, sel)| {
+        .filter_map(|(slt, (sel, _))| {
+            // todo retrieve next endorsment by staker ?
             if sel == creator {
                 return Some(slt);
             }
@@ -1313,6 +1450,29 @@ async fn get_staker_info(
         staker_discarded_blocks: discarded,
         staker_next_draws: next_slots_by_creator,
     })
+}
+
+/// Returns staker production stats
+async fn get_stakers_stats(
+    event_tx: mpsc::Sender<ApiEvent>,
+    addrs: HashSet<Address>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    massa_trace!("api.filters.get_stakers_stats", { "addrs": addrs });
+
+    let stakers_production_stats = match retrieve_stakers_production_stats(addrs, &event_tx).await {
+        Ok(stats) => stats,
+        Err(err) => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&json!({
+                    "message": format!("error getting staker production stats: {:?}", err)
+                })),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .into_response())
+        }
+    };
+
+    Ok(warp::reply::json(&json!(stakers_production_stats)).into_response())
 }
 
 async fn get_next_draws(
@@ -1341,8 +1501,9 @@ async fn get_next_draws(
     let next_slots: Vec<(Address, Slot)> = retrieve_selection_draw(start_slot, end_slot, &event_tx)
         .await?
         .into_iter()
-        .filter_map(|(slt, sel)| {
+        .filter_map(|(slt, (sel, _))| {
             if addresses.contains(&sel) {
+                // todo retrive endorsements by addressess ?
                 return Some((sel, slt));
             }
             None
@@ -1350,6 +1511,31 @@ async fn get_next_draws(
         .collect();
 
     Ok(next_slots)
+}
+
+async fn retrieve_stakers_production_stats(
+    addrs: HashSet<Address>,
+    event_tx: &mpsc::Sender<ApiEvent>,
+) -> Result<Vec<StakersCycleProductionStats>, ApiError> {
+    massa_trace!("api.filters.retrieve_stakers_production_stats", {
+        "addrs": addrs
+    });
+    let (response_tx, response_rx) = oneshot::channel();
+    event_tx
+        .send(ApiEvent::GetStakersProductionStats { addrs, response_tx })
+        .await
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get staker production stats: {0}",
+                e
+            ))
+        })?;
+    response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!(
+            "Could not retrieve stakers produciton stats: {0}",
+            e
+        ))
+    })
 }
 
 async fn retrieve_stats(event_tx: &mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, ApiError> {

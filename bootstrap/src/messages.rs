@@ -1,11 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::network::BootstrapPeers;
-use consensus::{BootsrapableGraph, ExportProofOfStake};
+use consensus::{BootstrapableGraph, ExportProofOfStake};
 use crypto::signature::{Signature, SIGNATURE_SIZE_BYTES};
 use models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
-    SerializeVarInt,
+    SerializeVarInt, Version,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -21,11 +21,13 @@ pub enum BootstrapMessage {
     BootstrapInitiation {
         /// Random data we expect the bootstrap node to sign with its private_key.
         random_bytes: [u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES],
+        version: Version,
     },
     /// Sync clocks,
     BootstrapTime {
         /// The current time on the bootstrap server.
         server_time: UTime,
+        version: Version,
         /// Signature of [BootstrapInitiation.random_bytes + server_time].
         signature: Signature,
     },
@@ -41,7 +43,7 @@ pub enum BootstrapMessage {
         /// PoS
         pos: ExportProofOfStake,
         /// block graph
-        graph: BootsrapableGraph,
+        graph: BootstrapableGraph,
         /// Signature of [BootstrapPeers.signature + peers]
         signature: Signature,
     },
@@ -60,17 +62,23 @@ impl SerializeCompact for BootstrapMessage {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         match self {
-            BootstrapMessage::BootstrapInitiation { random_bytes } => {
+            BootstrapMessage::BootstrapInitiation {
+                random_bytes,
+                version,
+            } => {
                 res.extend(u32::from(MessageTypeId::BootstrapInitiation).to_varint_bytes());
                 res.extend(random_bytes);
+                res.extend(&version.to_bytes_compact()?)
             }
             BootstrapMessage::BootstrapTime {
                 server_time,
+                version,
                 signature,
             } => {
                 res.extend(u32::from(MessageTypeId::BootstrapTime).to_varint_bytes());
                 res.extend(&signature.to_bytes());
                 res.extend(server_time.to_bytes_compact()?);
+                res.extend(&version.to_bytes_compact()?)
             }
             BootstrapMessage::BootstrapPeers { peers, signature } => {
                 res.extend(u32::from(MessageTypeId::Peers).to_varint_bytes());
@@ -109,17 +117,28 @@ impl DeserializeCompact for BootstrapMessage {
                 let random_bytes: [u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES] =
                     array_from_slice(&buffer[cursor..])?;
                 cursor += BOOTSTRAP_RANDOMNES_SIZE_BYTES;
+
+                //version
+                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
                 // return message
-                BootstrapMessage::BootstrapInitiation { random_bytes }
+                BootstrapMessage::BootstrapInitiation {
+                    random_bytes,
+                    version,
+                }
             }
             MessageTypeId::BootstrapTime => {
                 let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += SIGNATURE_SIZE_BYTES;
                 let (server_time, delta) = UTime::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
+
+                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
                 BootstrapMessage::BootstrapTime {
                     server_time,
                     signature,
+                    version,
                 }
             }
             MessageTypeId::Peers => {
@@ -135,7 +154,7 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += SIGNATURE_SIZE_BYTES;
                 let (pos, delta) = ExportProofOfStake::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                let (graph, delta) = BootsrapableGraph::from_bytes_compact(&buffer[cursor..])?;
+                let (graph, delta) = BootstrapableGraph::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState {

@@ -15,6 +15,7 @@ use crypto::{
     signature::{sign, verify_signature, PrivateKey},
 };
 use futures::future::try_join;
+use models::Version;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use time::UTime;
 use tokio::time::timeout;
@@ -34,6 +35,7 @@ pub struct HandshakeWorker {
     private_key: PrivateKey,
     /// After timeout_duration millis, the handshake attempt is dropped.
     timeout_duration: UTime,
+    version: Version,
 }
 
 impl HandshakeWorker {
@@ -51,6 +53,7 @@ impl HandshakeWorker {
         self_node_id: NodeId,
         private_key: PrivateKey,
         timeout_duration: UTime,
+        version: Version,
     ) -> HandshakeWorker {
         HandshakeWorker {
             reader: ReadBinder::new(socket_reader),
@@ -58,6 +61,7 @@ impl HandshakeWorker {
             self_node_id,
             private_key,
             timeout_duration,
+            version,
         }
     }
 
@@ -74,6 +78,7 @@ impl HandshakeWorker {
         let send_init_msg = Message::HandshakeInitiation {
             public_key: self.self_node_id.0,
             random_bytes: self_random_bytes,
+            version: self.version,
         };
         let send_init_fut = self.writer.send(&send_init_msg);
 
@@ -81,7 +86,7 @@ impl HandshakeWorker {
         let recv_init_fut = self.reader.next();
 
         // join send_init_fut and recv_init_fut with a timeout, and match result
-        let (other_node_id, other_random_bytes) = match timeout(
+        let (other_node_id, other_random_bytes, other_version) = match timeout(
             self.timeout_duration.to_duration(),
             try_join(send_init_fut, recv_init_fut),
         )
@@ -102,7 +107,8 @@ impl HandshakeWorker {
                 Message::HandshakeInitiation {
                     public_key: pk,
                     random_bytes: rb,
-                } => (NodeId(pk), rb),
+                    version,
+                } => (NodeId(pk), rb, version),
                 _ => {
                     return Err(CommunicationError::HandshakeError(
                         HandshakeErrorType::HandshakeWrongMessageError,
@@ -115,6 +121,13 @@ impl HandshakeWorker {
         if other_node_id == self.self_node_id {
             return Err(CommunicationError::HandshakeError(
                 HandshakeErrorType::HandshakeKeyError,
+            ));
+        }
+
+        // check if version is compatible with ours
+        if !self.version.is_compatible(&other_version) {
+            return Err(CommunicationError::HandshakeError(
+                HandshakeErrorType::IncompatibleVersionError,
             ));
         }
 
