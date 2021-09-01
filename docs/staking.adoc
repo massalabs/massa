@@ -1,13 +1,13 @@
 # Staking
 
-In Massa, the minimal number of coins required to be able to stake is 500 MAS (which is called one "roll").
+In Massa, the minimal number of coins required to be able to stake is 100 MAS (which is called one "roll").
 The total initial supply is 500m MAS, so in theory, there could be 1 million people staking.
 
 Addresses are randomly selected to stake (create blocks) in all threads, based on the number of rolls they possess.
 The list of stakers and their rolls can be seen link:https://test.massa.net/#staking[there].
 
 Rolls can be bought with Massa coins or sold to get the coins back.
-If you already have more than 500 Massa, you can continue this tutorial, otherwise you can ask coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
+If you already have more than 100 Massa, you can continue this tutorial, otherwise you can ask coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
 
 
 ## Buying rolls
