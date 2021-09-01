@@ -29,9 +29,19 @@ Please come to our link:https://discord.com/invite/TnsJQzXkRN[Discord] for testn
 
 For project announcements we mainly use link:https://t.me/massanetwork[Telegram]. 
 
-## Install on Ubuntu / MacOS
+## Install
 
-On Windows, please go to the link:docs/windows_install.adoc[Install and Run on Windows] page.
+If you just wish to run a Massa node without compiling it yourself, you can run the latest binary:
+
+- link:https://gitlab.com/massalabs/massa/-/jobs/artifacts/testnet/download?job=build-windows[Windows executable]
+- link:https://gitlab.com/massalabs/massa/-/jobs/artifacts/testnet/download?job=build-linux[Linux binary]
+- link:https://gitlab.com/massalabs/massa/-/jobs/artifacts/testnet/download?job=build-darwin[MacOS binary]
+
+### On Windows
+
+Please go to the link:docs/windows_install.adoc[Install and Run on Windows] page.
+
+### On Ubuntu / MacOS
 
 * On Ubuntu, these libs must be installed: `sudo apt install pkg-config curl git build-essential libssl-dev`
 * install link:https://www.rust-lang.org/tools/install[rustup] : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
