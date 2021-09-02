@@ -252,7 +252,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("version"))
         .and(warp::path::end())
-        .and_then(move || get_version(node_version));
+        .and_then(move || wrap_api_call(get_version(node_version)));
 
     let pool_cfg = pool_config;
     let pool_config = warp::get()
@@ -531,9 +531,9 @@ async fn get_node_config() -> Result<impl warp::Reply, warp::Rejection> {
     Ok(warp::reply::json(&context))
 }
 
-async fn get_version(version: Version) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_version(version: Version) -> Result<Version, ApiError> {
     massa_trace!("api.filters.get_version", {});
-    Ok(warp::reply::json(&version))
+    Ok(version)
 }
 
 async fn get_consensus_config(
