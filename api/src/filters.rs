@@ -20,6 +20,7 @@ use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
+use models::SerializationContext;
 use models::StakersCycleProductionStats;
 use models::{BlockHeader, BlockId, Slot, Version};
 use pool::PoolConfig;
@@ -245,7 +246,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("node_config"))
         .and(warp::path::end())
-        .and_then(get_node_config);
+        .and_then(|| wrap_api_call(get_node_config()));
 
     let version = warp::get()
         .and(warp::path("api"))
@@ -525,10 +526,10 @@ async fn get_pool_config(config: PoolConfig) -> Result<PoolConfig, ApiError> {
 /// Note: as our ip address is in the config,
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
-async fn get_node_config() -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_node_config() -> Result<SerializationContext, ApiError> {
     massa_trace!("api.filters.get_node_config", {});
     let context = models::with_serialization_context(|context| context.clone());
-    Ok(warp::reply::json(&context))
+    Ok(context)
 }
 
 async fn get_version(version: Version) -> Result<Version, ApiError> {
