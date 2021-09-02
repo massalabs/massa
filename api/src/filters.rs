@@ -381,7 +381,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("stop_node"))
         .and(warp::path::end())
-        .and_then(move || stop_node(evt_tx.clone()));
+        .and_then(move || wrap_api_call(stop_node(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let unban = warp::post()
@@ -568,18 +568,12 @@ async fn get_consensus_config(
 ///
 /// # Argument
 /// * event_tx : Sender used to send the event out
-async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
+async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<(), ApiError> {
     massa_trace!("api.filters.stop_node", {});
-    match evt_tx.send(ApiEvent::AskStop).await {
-        Ok(_) => Ok(warp::reply().into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error stopping node : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    Ok(evt_tx
+        .send(ApiEvent::AskStop)
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
 
 async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<impl Reply, Rejection> {
