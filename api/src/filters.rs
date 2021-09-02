@@ -390,7 +390,7 @@ pub fn get_filter(
         .and(warp::path("unban"))
         .and(warp::path::param::<IpAddr>())
         .and(warp::path::end())
-        .and_then(move |ip| unban(evt_tx.clone(), ip));
+        .and_then(move |ip| wrap_api_call(unban(evt_tx.clone(), ip)));
 
     let evt_tx = event_tx.clone();
     let register_staking_private_keys = warp::post()
@@ -576,18 +576,12 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<(), ApiError> {
         .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
 
-async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<impl Reply, Rejection> {
+async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<(), ApiError> {
     massa_trace!("api.filters.unban", {});
-    match evt_tx.send(ApiEvent::Unban(ip)).await {
-        Ok(_) => Ok(warp::reply().into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error unbanning : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    Ok(evt_tx
+        .send(ApiEvent::Unban(ip))
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
 
 async fn register_staking_private_keys(
