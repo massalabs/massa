@@ -2,12 +2,10 @@
 
 use super::config::ApiConfig;
 use crate::ApiError;
+use communication::network::Peer;
 use communication::network::Peers;
 use communication::NodeId;
-use communication::{
-    network::{NetworkConfig, PeerInfo},
-    protocol::ProtocolConfig,
-};
+use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 use consensus::ExportBlockStatus;
 use consensus::Status;
 use consensus::{
@@ -1171,7 +1169,7 @@ async fn get_cliques(
 #[derive(Clone, Serialize)]
 struct NetworkInfo {
     our_ip: Option<IpAddr>,
-    peers: HashMap<IpAddr, PeerInfo>,
+    peers: HashMap<IpAddr, Peer>,
     node_id: NodeId,
 }
 
@@ -1184,11 +1182,15 @@ struct NetworkInfo {
 async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<Peers, ApiError> {
+) -> Result<NetworkInfo, ApiError> {
     massa_trace!("api.filters.get_network_info", {});
     let peers = retrieve_peers(&event_tx).await?;
-    let _our_ip = network_cfg.routable_ip; // FIX ME: return NetworkInfo
-    Ok(peers)
+    let our_ip = network_cfg.routable_ip;
+    Ok(NetworkInfo {
+        our_ip,
+        peers: peers.peers,
+        node_id: peers.our_node_id,
+    })
 }
 
 /// Returns state info for a set of addresses
@@ -1294,7 +1296,16 @@ async fn get_state(
         cur_time,
     )?;
 
-    let _peers = retrieve_peers(&event_tx).await?;
+    let peers = retrieve_peers(&event_tx).await?;
+
+    let connected_peers: HashSet<IpAddr> = peers
+        .peers
+        .iter()
+        .filter(|(_ip, Peer { peer_info, .. })| {
+            peer_info.active_out_connections > 0 || peer_info.active_in_connections > 0
+        })
+        .map(|(ip, _peer_info)| *ip)
+        .collect();
 
     let graph = retrieve_graph_export(&event_tx).await?;
 
@@ -1325,7 +1336,7 @@ async fn get_state(
         our_ip: network_cfg.routable_ip,
         last_final: finals,
         nb_cliques: graph.max_cliques.len(),
-        nb_peers: 0, // FIXME: connected_peers.len(),
+        nb_peers: connected_peers.len(),
     })
 }
 
