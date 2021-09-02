@@ -260,7 +260,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("pool_config"))
         .and(warp::path::end())
-        .and_then(move || get_pool_config(pool_cfg.clone()));
+        .and_then(move || wrap_api_call(get_pool_config(pool_cfg.clone())));
 
     let consensus_cfg = consensus_config.clone();
     let get_consensus_cfg = warp::get()
@@ -515,12 +515,9 @@ where
     })
 }
 
-async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_pool_config(config: PoolConfig) -> Result<PoolConfig, ApiError> {
     massa_trace!("api.filters.get_pool_config", {});
-    Ok(warp::reply::json(&json!({
-        "max_pool_size_per_thread": config.max_pool_size_per_thread,
-        "max_operation_future_validity_start_periods": config.max_operation_future_validity_start_periods,
-    })))
+    Ok(config)
 }
 
 /// Returns our ip address
