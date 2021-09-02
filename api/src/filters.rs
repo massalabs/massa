@@ -22,7 +22,7 @@ use models::OperationId;
 use models::OperationSearchResult;
 use models::SerializationContext;
 use models::StakersCycleProductionStats;
-use models::{BlockHeader, BlockId, Slot, Version};
+use models::{Amount, BlockHeader, BlockId, Slot, Version};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -269,7 +269,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("consensus_config"))
         .and(warp::path::end())
-        .and_then(move || get_consensus_config(consensus_cfg.clone()));
+        .and_then(move || wrap_api_call(get_consensus_config(consensus_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let network_cfg = network_config;
@@ -536,21 +536,31 @@ async fn get_version(version: Version) -> Result<Version, ApiError> {
     massa_trace!("api.filters.get_version", {});
     Ok(version)
 }
-
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DataConsensusConfig {
+    pub t0: UTime,
+    pub thread_count: u8,
+    pub genesis_timestamp: UTime,
+    pub delta_f0: u64,
+    pub max_block_size: u32,
+    pub operation_validity_periods: u64,
+    pub periods_per_cycle: u64,
+    pub roll_price: Amount,
+}
 async fn get_consensus_config(
     consensus_cfg: ConsensusConfig,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<DataConsensusConfig, ApiError> {
     massa_trace!("api.filters.get_consensus_config", {});
-    Ok(warp::reply::json(&json!({
-        "t0": consensus_cfg.t0,
-        "thread_count": consensus_cfg.thread_count,
-        "genesis_timestamp": consensus_cfg.genesis_timestamp,
-        "delta_f0": consensus_cfg.delta_f0,
-        "max_block_size": consensus_cfg.max_block_size,
-        "operation_validity_periods": consensus_cfg.operation_validity_periods,
-        "periods_per_cycle": consensus_cfg.periods_per_cycle,
-        "roll_price": consensus_cfg.roll_price,
-    })))
+    Ok(DataConsensusConfig {
+        t0: consensus_cfg.t0,
+        thread_count: consensus_cfg.thread_count,
+        genesis_timestamp: consensus_cfg.genesis_timestamp,
+        delta_f0: consensus_cfg.delta_f0,
+        max_block_size: consensus_cfg.max_block_size,
+        operation_validity_periods: consensus_cfg.operation_validity_periods,
+        periods_per_cycle: consensus_cfg.periods_per_cycle,
+        roll_price: consensus_cfg.roll_price,
+    })
 }
 
 /// This function sends AskStop outside the Api and
