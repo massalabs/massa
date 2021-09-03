@@ -427,7 +427,7 @@ pub fn get_filter(
         .and(warp::path("send_operations"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and_then(move |operations| send_operations(operations, evt_tx.clone()));
+        .and_then(move |operations| wrap_api_call(send_operations(operations, evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let get_stats = warp::get()
@@ -616,6 +616,7 @@ async fn remove_staking_addresses(
         .await
         .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
+
 /// This function sends the new transaction outside the Api and
 /// return the result as a warp reply.
 ///
@@ -625,40 +626,23 @@ async fn remove_staking_addresses(
 async fn send_operations(
     operations: Vec<Operation>,
     evt_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<Vec<OperationId>, ApiError> {
     massa_trace!("api.filters.send_operations ", { "operations": operations });
-    let to_send: Result<HashMap<OperationId, Operation>, ModelsError> = operations
+    let to_send = operations
         .into_iter()
         .map(|op| Ok((op.verify_integrity()?, op)))
-        .collect();
-    let to_send = match to_send {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error during operation verification : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(to_send) => to_send,
-    };
+        .collect::<Result<HashMap<OperationId, Operation>, ApiError>>()?;
 
     let opid_list = to_send
         .iter()
         .map(|(opid, _)| *opid)
         .collect::<Vec<OperationId>>();
 
-    match evt_tx.send(ApiEvent::AddOperations(to_send)).await {
-        Ok(_) => Ok(warp::reply::json(&opid_list).into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error during sending operation : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    evt_tx
+        .send(ApiEvent::AddOperations(to_send))
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?;
+    Ok(opid_list)
 }
 
 /// Returns block with given hash as a reply
