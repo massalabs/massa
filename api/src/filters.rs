@@ -452,7 +452,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("staking_addresses"))
         .and(warp::path::end())
-        .and_then(move || get_staking_addresses(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_staking_addresses(evt_tx.clone())));
 
     let evt_tx = event_tx;
     let node_sign_message = warp::post()
@@ -1523,21 +1523,9 @@ async fn retrieve_staking_addresses(
 
 async fn get_staking_addresses(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<HashSet<Address>, ApiError> {
     massa_trace!("api.filters.get_staking_addresses", {});
-    let addresses = match retrieve_staking_addresses(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving staking_addresses: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(addresses) => addresses,
-    };
-    Ok(warp::reply::json(&json!(addresses)).into_response())
+    retrieve_staking_addresses(&event_tx).await
 }
 
 async fn retrieve_active_stakers(
