@@ -241,6 +241,8 @@ pub struct ProtocolWorker {
     block_wishlist: HashSet<BlockId>,
     /// List of processed endorsements
     checked_endorsements: HashMap<EndorsementId, Instant>,
+    /// List of processed headers
+    checked_headers: HashMap<BlockId, (Vec<EndorsementId>, Instant)>,
 }
 
 impl ProtocolWorker {
@@ -276,6 +278,7 @@ impl ProtocolWorker {
             active_nodes: HashMap::new(),
             block_wishlist: HashSet::new(),
             checked_endorsements: HashMap::new(),
+            checked_headers: HashMap::new(),
         }
     }
 
@@ -791,15 +794,16 @@ impl ProtocolWorker {
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
+    /// boolean whether the header is new
     async fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<BlockId>, CommunicationError> {
+    ) -> Result<Option<(BlockId, bool)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-        let (block_id, endorsement_ids_isnew) = match self.check_header(&header) {
+        let (block_id, is_new, endorsement_ids_isnew) = match self.check_header(&header) {
             Ok(Some(v)) => v,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
@@ -828,29 +832,33 @@ impl ProtocolWorker {
             drop(node_info);
 
             // send endorsements to pool
-            let prop_eds: HashMap<EndorsementId, Endorsement> = header
-                .content
-                .endorsements
-                .iter()
-                .zip(endorsement_ids_isnew.iter())
-                .filter_map(|(e, (id, isnew))| if *isnew { Some((*id, e.clone())) } else { None })
-                .collect();
-            self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
-                endorsements: prop_eds,
-                propagate: false,
-            })
-            .await;
+            if is_new {
+                let prop_eds: HashMap<EndorsementId, Endorsement> = header
+                    .content
+                    .endorsements
+                    .iter()
+                    .zip(endorsement_ids_isnew.iter())
+                    .filter_map(
+                        |(e, (id, isnew))| if *isnew { Some((*id, e.clone())) } else { None },
+                    )
+                    .collect();
+                self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
+                    endorsements: prop_eds,
+                    propagate: false,
+                })
+                .await;
+            }
 
-            return Ok(Some(block_id));
+            return Ok(Some((block_id, is_new)));
         }
         Ok(None)
     }
 
-    /// BlockId, Vec<(endorsementId, is_new)>
+    /// BlockId, is_new, Vec<(endorsementId, is_new)>
     fn check_header(
         &mut self,
         header: &BlockHeader,
-    ) -> Result<Option<(BlockId, Vec<(EndorsementId, bool)>)>, CommunicationError> {
+    ) -> Result<Option<(BlockId, bool, Vec<(EndorsementId, bool)>)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.check_header.start", {
             "header": header
         });
@@ -864,13 +872,36 @@ impl ProtocolWorker {
             return Ok(None);
         }
 
-        // check header integrity
-        let block_id = match header.verify_integrity() {
-            Ok(block_id) => block_id,
+        // compute ID
+        let block_id = match header.compute_block_id() {
+            Ok(id) => id,
             Err(err) => {
-                massa_trace!("protocol.protocol_worker.check_header.err_integrity", { "header": header, "err": format!("{:?}", err)});
+                massa_trace!("protocol.protocol_worker.check_header.err_id", { "header": header, "err": format!("{:?}", err)});
                 return Ok(None);
             }
+        };
+
+        // check if this header was already verified
+        let now = Instant::now();
+        match self.checked_headers.entry(block_id) {
+            hash_map::Entry::Occupied(mut occ) => {
+                let (e_ids, inst) = occ.get_mut();
+                *inst = now;
+                return Ok(Some((
+                    block_id,
+                    false,
+                    e_ids.iter().map(|e_id| (*e_id, false)).collect(),
+                )));
+            }
+            _ => {
+                // do nothing, will be added after checks
+            }
+        }
+
+        // check header signature
+        if let Err(err) = header.check_signature() {
+            massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{:?}", err)});
+            return Ok(None);
         };
 
         // check endorsement intrinsic integrity
@@ -880,7 +911,6 @@ impl ProtocolWorker {
             Vec::with_capacity(header.content.endorsements.len());
         let mut used_endorsement_indices: HashSet<u32> =
             HashSet::with_capacity(header.content.endorsements.len());
-        let now = Instant::now();
         for endorsement in header.content.endorsements.iter() {
             let endorsement_id = match endorsement.compute_endorsement_id() {
                 Ok(id) => id,
@@ -933,8 +963,17 @@ impl ProtocolWorker {
         }
         self.prune_checked_endorsements();
 
+        if self
+            .checked_headers
+            .insert(block_id, (endorsement_ids.clone(), now))
+            .is_none()
+        {
+            self.prune_checked_headers();
+        }
+
         Ok(Some((
             block_id,
+            true,
             endorsement_ids
                 .into_iter()
                 .zip(is_endorsement_new.into_iter())
@@ -955,6 +994,19 @@ impl ProtocolWorker {
         }
     }
 
+    /// Prune checked_headers if it is too large
+    fn prune_checked_headers(&mut self) {
+        while self.checked_headers.len() > self.cfg.max_node_known_blocks_size {
+            let b_id = *self
+                .checked_headers
+                .iter()
+                .min_by_key(|(_k, (_v1, v2))| *v2)
+                .unwrap()
+                .0; // will not panic (checked above)
+            self.checked_headers.remove(&b_id);
+        }
+    }
+
     /// Check a header's signature, and if valid note the node knows the block.
     async fn note_block_from_node(
         &mut self,
@@ -964,11 +1016,12 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
-        let (block_id, endorsement_ids_isnew) = match self.check_header(&block.header) {
-            Ok(Some(v)) => v,
-            Ok(None) => return Ok(None),
-            Err(err) => return Err(err),
-        };
+        let (block_id, _is_header_new, endorsement_ids_isnew) =
+            match self.check_header(&block.header) {
+                Ok(Some(v)) => v,
+                Ok(None) => return Ok(None),
+                Err(err) => return Err(err),
+            };
 
         // check operations (period, reuse, signatures, thread)
         let mut op_ids: Vec<OperationId> = Vec::with_capacity(block.operations.len());
@@ -1250,13 +1303,16 @@ impl ProtocolWorker {
                 header,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block_header", { "node": source_node_id, "header": header});
-                if let Some(block_id) = self.note_header_from_node(&header, &source_node_id).await?
+                if let Some((block_id, is_new)) =
+                    self.note_header_from_node(&header, &source_node_id).await?
                 {
-                    self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
-                        block_id,
-                        header,
-                    })
-                    .await;
+                    if is_new {
+                        self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
+                            block_id,
+                            header,
+                        })
+                        .await;
+                    }
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
