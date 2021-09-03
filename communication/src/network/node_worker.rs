@@ -11,6 +11,7 @@ use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use std::net::IpAddr;
 use tokio::{sync::mpsc, sync::mpsc::error::SendTimeoutError, time::timeout};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
     /// Send given peer list to node.
@@ -32,6 +33,7 @@ pub enum NodeCommand {
 }
 
 /// Event types that node worker can emit
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
     /// Node we are connected to asked for advertised peers

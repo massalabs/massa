@@ -31,6 +31,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
 /// Commands that the worker can execute
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum NetworkCommand {
     /// Ask for a block from a node.
@@ -82,6 +83,7 @@ pub struct Peers {
     pub peers: HashMap<IpAddr, Peer>,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum NetworkEvent {
     NewConnection(NodeId),

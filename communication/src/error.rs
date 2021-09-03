@@ -5,6 +5,7 @@ use models::ModelsError;
 use std::net::IpAddr;
 use thiserror::Error;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum CommunicationError {
     #[error("wrong signature")]
