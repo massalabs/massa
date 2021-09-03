@@ -207,7 +207,13 @@ pub fn get_filter(
         .and(warp::path("block_ids_by_creator"))
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
-        .and_then(move |addr| get_block_ids_by_creator(evt_tx.clone(), addr, storage.clone()));
+        .and_then(move |addr| {
+            wrap_api_call(get_block_ids_by_creator(
+                evt_tx.clone(),
+                addr,
+                storage.clone(),
+            ))
+        });
 
     let evt_tx = event_tx.clone();
     let cliques = warp::get()
@@ -684,39 +690,17 @@ async fn get_block_ids_by_creator(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<HashMap<BlockId, Status>, ApiError> {
     massa_trace!("api.filters.get_block_ids_by_creator", {
         "address": address
     });
-    let res = match retrieve_block_ids_by_creator_from_consensus(address, &event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving active blocks : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(mut res) => {
-            if let Some(cmd_tx) = opt_storage_command_sender {
-                match retrieve_block_ids_by_creator_from_storage(address, &cmd_tx).await {
-                    Ok(res2) => res.extend(res2),
-                    Err(e) => {
-                        return Ok(warp::reply::with_status(
-                            warp::reply::json(&json!({
-                                "message": format!("error retrieving active blocks : {:?}", e)
-                            })),
-                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .into_response())
-                    }
-                }
-            }
-            res
-        }
-    };
-    Ok(warp::reply::json(&res).into_response())
+    let mut res = retrieve_block_ids_by_creator_from_consensus(address, &event_tx).await?;
+
+    if let Some(cmd_tx) = opt_storage_command_sender {
+        res.extend(retrieve_block_ids_by_creator_from_storage(address, &cmd_tx).await?)
+    }
+
+    Ok(res)
 }
 
 async fn get_operations(
