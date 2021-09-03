@@ -108,7 +108,6 @@ pub struct Addresses {
 }
 /// This function sets up all the routes that can be used
 /// and combines them into one filter
-///
 pub fn get_filter(
     node_version: Version,
     api_config: ApiConfig,
@@ -525,14 +524,14 @@ async fn get_consensus_config(
 /// return the result as a warp reply.
 ///
 /// # Argument
-/// * event_tx : Sender used to send the event out
+/// * `event_tx`: Sender used to send the event out
 async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
     massa_trace!("api.filters.stop_node", {});
     match evt_tx.send(ApiEvent::AskStop).await {
         Ok(_) => Ok(warp::reply().into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error stopping node : {:?}", err)
+                "message": format!("error stopping node: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -545,9 +544,7 @@ async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<impl Reply,
     match evt_tx.send(ApiEvent::Unban(ip)).await {
         Ok(_) => Ok(warp::reply().into_response()),
         Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error unbanning : {:?}", err)
-            })),
+            warp::reply::json(&json!({ "message": format!("error unbanning: {:?}", err) })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
         .into_response()),
@@ -567,7 +564,7 @@ async fn register_staking_private_keys(
         Ok(_) => Ok(warp::reply().into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error registering _staking_private_keys : {:?}", err)
+                "message": format!("error registering _staking_private_keys: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -584,7 +581,7 @@ async fn remove_staking_addresses(
         Ok(_) => Ok(warp::reply().into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error removing _staking_addresses : {:?}", err)
+                "message": format!("error removing _staking_addresses: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -596,7 +593,7 @@ async fn remove_staking_addresses(
 ///
 /// The transaction is verified before been propagated.
 /// # Argument
-/// * event_tx : Sender used to send the event out
+/// * `event_tx`: Sender used to send the event out
 async fn send_operations(
     operations: Vec<Operation>,
     evt_tx: mpsc::Sender<ApiEvent>,
@@ -610,7 +607,7 @@ async fn send_operations(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error during operation verification : {:?}", err)
+                    "message": format!("error during operation verification: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -628,7 +625,7 @@ async fn send_operations(
         Ok(_) => Ok(warp::reply::json(&opid_list).into_response()),
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error during sending operation : {:?}", err)
+                "message": format!("error during sending operation: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -637,7 +634,6 @@ async fn send_operations(
 }
 
 /// Returns block with given hash as a reply
-///
 async fn get_block(
     event_tx: mpsc::Sender<ApiEvent>,
     block_id: BlockId,
@@ -647,7 +643,7 @@ async fn get_block(
     match retrieve_block(block_id, &event_tx).await {
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error retrieving active blocks : {:?}", err)
+                "message": format!("error retrieving active blocks: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -658,14 +654,14 @@ async fn get_block(
                     Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
                     Ok(None) => Ok(warp::reply::with_status(
                         warp::reply::json(&json!({
-                            "message": format!("active block not found : {:?}", block_id)
+                            "message": format!("active block not found: {:?}", block_id)
                         })),
                         warp::http::StatusCode::NOT_FOUND,
                     )
                     .into_response()),
                     Err(e) => Ok(warp::reply::with_status(
                         warp::reply::json(&json!({
-                            "message": format!("error retrieving active blocks : {:?}", e)
+                            "message": format!("error retrieving active blocks: {:?}", e)
                         })),
                         warp::http::StatusCode::INTERNAL_SERVER_ERROR,
                     )
@@ -674,7 +670,7 @@ async fn get_block(
             } else {
                 Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
-                        "message": format!("active block not found : {:?}", block_id)
+                        "message": format!("active block not found: {:?}", block_id)
                     })),
                     warp::http::StatusCode::NOT_FOUND,
                 )
@@ -697,7 +693,7 @@ async fn get_block_ids_by_creator(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error retrieving active blocks : {:?}", err)
+                    "message": format!("error retrieving active blocks: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -710,7 +706,7 @@ async fn get_block_ids_by_creator(
                     Err(e) => {
                         return Ok(warp::reply::with_status(
                             warp::reply::json(&json!({
-                                "message": format!("error retrieving active blocks : {:?}", e)
+                                "message": format!("error retrieving active blocks: {:?}", e)
                             })),
                             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
                         )
@@ -734,7 +730,7 @@ async fn get_operations(
     match retrieve_operations(operation_ids, &event_tx).await {
         Err(err) => Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error retrieving operation : {:?}", err)
+                "message": format!("error retrieving operation: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -759,15 +755,12 @@ async fn do_node_sign_msg(
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!(
-                "Could not send api event node sign message : {0}",
+                "Could not send api event node sign message: {0}",
                 e
             ))
         })?;
     response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!(
-            "Could not retrieve node message signature : {0}",
-            e
-        ))
+        ApiError::ReceiveChannelError(format!("Could not retrieve node message signature: {0}", e))
     })
 }
 
@@ -816,7 +809,7 @@ async fn retrieve_graph_export(
         .send(ApiEvent::GetBlockGraphStatus(response_tx))
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("could not send api event get block graph : {0}", e))
+            ApiError::SendChannelError(format!("could not send api event get block graph: {0}", e))
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("could not retrieve block graph: {0}", e))
@@ -836,11 +829,11 @@ async fn retrieve_block(
         })
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get block : {0}", e))
+            ApiError::SendChannelError(format!("Could not send api event get block: {0}", e))
         })?;
     response_rx
         .await
-        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block: {0}", e)))
 }
 
 async fn retrieve_block_ids_by_creator_from_consensus(
@@ -864,7 +857,7 @@ async fn retrieve_block_ids_by_creator_from_consensus(
             ))
         })?;
     response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!("Could not retrieve GetBlockIdsByCreator : {0}", e))
+        ApiError::ReceiveChannelError(format!("Could not retrieve GetBlockIdsByCreator: {0}", e))
     })
 }
 
@@ -895,11 +888,11 @@ async fn retrieve_operations(
         })
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get operation : {0}", e))
+            ApiError::SendChannelError(format!("Could not send api event get operation: {0}", e))
         })?;
-    response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!("Could not retrieve operation : {0}", e))
-    })
+    response_rx
+        .await
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve operation: {0}", e)))
 }
 
 async fn retrieve_peers_and_nodeid(event_tx: &mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
@@ -909,7 +902,7 @@ async fn retrieve_peers_and_nodeid(event_tx: &mpsc::Sender<ApiEvent>) -> Result<
         .send(ApiEvent::GetPeers(response_tx))
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get peers : {0}", e))
+            ApiError::SendChannelError(format!("Could not send api event get peers: {0}", e))
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve block peers: {0}", e))
@@ -948,7 +941,6 @@ async fn retrieve_selection_draw(
 
 /// Returns best parents wrapped in a reply.
 /// The Slot represents the parent's slot.
-///
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -957,7 +949,7 @@ async fn get_current_parents(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
+                    "message": format!("error retrieving graph: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -988,7 +980,6 @@ async fn get_current_parents(
 }
 
 /// Returns last final blocks wrapped in a reply.
-///
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -1055,7 +1046,7 @@ async fn get_block_from_graph(
     massa_trace!("api.filters.get_block_from_graph", {});
     retrieve_graph_export(&event_tx)
         .await
-        .map_err(|err| (format!("error retrieving graph : {:?}", err)))
+        .map_err(|err| (format!("error retrieving graph: {:?}", err)))
         .and_then(|graph| {
             let start = start_opt.unwrap_or_else(|| UTime::from(0));
             let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
@@ -1070,7 +1061,7 @@ async fn get_block_from_graph(
                         consensus_cfg.genesis_timestamp,
                         exported_block.block.content.slot,
                     )
-                    .map_err(|err| (format!("error getting time : {:?}", err)))
+                    .map_err(|err| (format!("error getting time: {:?}", err)))
                     .map(|time| {
                         if start <= time && time < end {
                             Some((hash, exported_block.block.content.slot))
@@ -1186,178 +1177,6 @@ async fn get_block_interval_process(
     }
 
     Ok(res)
-
-    //old version
-    /*    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
-    for (hash, exported_block) in graph.active_blocks {
-        let header = exported_block.block;
-        let time = match get_block_slot_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            header.slot,
-        ) {
-            Ok(time) => time,
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error getting time : {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        };
-        if start <= time && time < end {
-            res.insert(hash, header.slot);
-        }
-    }
-    if let Some(storage) = opt_storage_command_sender {
-        let start_slot = match get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            start,
-        ) {
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving slot from time: {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-            Ok(Some(slot)) => {
-                if match get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                ) {
-                    Ok(start_time) => start_time,
-                    Err(e) => {
-                        return Ok(warp::reply::with_status(
-                            warp::reply::json(&json!({
-                                "message": format!("error retrieving next slot: {:?}", e)
-                            })),
-                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .into_response())
-                    }
-                } == start
-                {
-                    slot
-                } else {
-                    match slot.get_next_slot(consensus_cfg.thread_count) {
-                        Ok(next) => next,
-                        Err(e) => {
-                            return Ok(warp::reply::with_status(
-                                warp::reply::json(&json!({
-                                    "message": format!("error retrieving next slot: {:?}", e)
-                                })),
-                                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                            )
-                            .into_response())
-                        }
-                    }
-                }
-            }
-            Ok(None) => Slot::new(0, 0),
-        };
-        let end_slot = match get_latest_block_slot_at_timestamp(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            end,
-        ) {
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving slot from time: {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-            Ok(Some(slot)) => {
-                if match get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                ) {
-                    Ok(end_time) => end_time,
-                    Err(e) => {
-                        return Ok(warp::reply::with_status(
-                            warp::reply::json(&json!({
-                                "message": format!("error retrieving next slot: {:?}", e)
-                            })),
-                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .into_response())
-                    }
-                } == end
-                {
-                    slot
-                } else {
-                    match slot.get_next_slot(consensus_cfg.thread_count) {
-                        Ok(next) => next,
-                        Err(e) => {
-                            return Ok(warp::reply::with_status(
-                                warp::reply::json(&json!({
-                                    "message": format!("error retrieving next slot: {:?}", e)
-                                })),
-                                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                            )
-                            .into_response())
-                        }
-                    }
-                }
-            }
-            Ok(None) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving end slot from time : no slot found")
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        };
-
-        let blocks = match storage
-            .get_slot_range(Some(start_slot), Some(end_slot))
-            .await
-        {
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error retrieving slot range: {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-            Ok(blocks) => blocks,
-        };
-        for (hash, block) in blocks {
-            res.insert(hash, block.header.slot);
-        }
-    }
-
-    Ok(res)*/
 }
 
 /// Returns all block info needed to reconstruct the graph found in the time interval.
@@ -1365,7 +1184,7 @@ async fn get_block_interval_process(
 ///
 /// Note:
 /// * both start time is included and end time is excluded
-/// * status is in ["active", "final", "stale"]
+/// * status is in `["active", "final", "stale"]`
 async fn get_graph_interval(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
@@ -1403,7 +1222,7 @@ async fn get_graph_interval_process(
     //filter block from graph_export
     let mut res = retrieve_graph_export(&event_tx)
         .await
-        .map_err(|err| (format!("error retrieving graph : {:?}", err)))
+        .map_err(|err| (format!("error retrieving graph: {:?}", err)))
         .and_then(|graph| {
             let start = start_opt.unwrap_or_else(|| UTime::from(0));
             let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
@@ -1420,7 +1239,7 @@ async fn get_graph_interval_process(
                         consensus_cfg.genesis_timestamp,
                         header.content.slot,
                     )
-                    .map_err(|err| (format!("error getting time : {:?}", err)))
+                    .map_err(|err| (format!("error getting time: {:?}", err)))
                     .map(|time| {
                         if start <= time && time < end {
                             Some((hash, (header.content.slot, status, header.content.parents)))
@@ -1441,7 +1260,7 @@ async fn get_graph_interval_process(
                 consensus_cfg.genesis_timestamp,
                 start,
             )
-            .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
+            .map_err(|err| (format!("error retrieving time: {:?}", err)))?;
 
             let start_slot = if let Some(slot) = start_slot {
                 // if there is a slot at start timestamp
@@ -1451,13 +1270,13 @@ async fn get_graph_interval_process(
                     consensus_cfg.genesis_timestamp,
                     slot,
                 )
-                .map_err(|err| (format!("error retrieving time : {:?}", err)))?
+                .map_err(|err| (format!("error retrieving time: {:?}", err)))?
                     == start
                 {
                     slot
                 } else {
                     slot.get_next_slot(consensus_cfg.thread_count)
-                        .map_err(|err| (format!("error retrieving graph : {:?}", err)))?
+                        .map_err(|err| (format!("error retrieving graph: {:?}", err)))?
                 }
             } else {
                 // no slot found
@@ -1475,7 +1294,7 @@ async fn get_graph_interval_process(
                 consensus_cfg.genesis_timestamp,
                 end,
             )
-            .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
+            .map_err(|err| (format!("error retrieving time: {:?}", err)))?;
 
             let end_slot = if let Some(slot) = end_slot {
                 if get_block_slot_timestamp(
@@ -1484,13 +1303,13 @@ async fn get_graph_interval_process(
                     consensus_cfg.genesis_timestamp,
                     slot,
                 )
-                .map_err(|err| (format!("error retrieving time : {:?}", err)))?
+                .map_err(|err| (format!("error retrieving time: {:?}", err)))?
                     == end
                 {
                     slot
                 } else {
                     slot.get_next_slot(consensus_cfg.thread_count)
-                        .map_err(|err| (format!("error retrieving time : {:?}", err)))?
+                        .map_err(|err| (format!("error retrieving time: {:?}", err)))?
                 }
             } else {
                 return Err("No end timestamp".to_string());
@@ -1502,7 +1321,7 @@ async fn get_graph_interval_process(
         let blocks = storage
             .get_slot_range(start_slot, end_slot)
             .await
-            .map_err(|err| (format!("error retrieving time : {:?}", err)))?;
+            .map_err(|err| (format!("error retrieving time: {:?}", err)))?;
         for (hash, block) in blocks {
             res.push((
                 hash,
@@ -1520,9 +1339,8 @@ async fn get_graph_interval_process(
         .collect())
 }
 
-/// Returns number of cliques and current cliques as Vec<HashSet<(hash, (period, thread))>>
-/// The result is a tuple (number_of_cliques, current_cliques) wrapped in a reply.
-///
+/// Returns number of cliques and current cliques as `Vec<HashSet<(hash, (period, thread))>>`
+/// The result is a tuple `(number_of_cliques, current_cliques)` wrapped in a reply.
 async fn get_cliques(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -1531,7 +1349,7 @@ async fn get_cliques(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
+                    "message": format!("error retrieving graph: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1589,8 +1407,7 @@ async fn get_cliques(
 /// * own IP address
 /// * connected peers :
 ///      - ip address
-///      - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
-///
+///      - peer info (see `struct PeerInfo` in `communication::network::PeerInfoDatabase`)
 async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
@@ -1618,7 +1435,6 @@ async fn get_network_info(
 }
 
 /// Returns state info for a set of addresses
-///
 async fn get_addresses_info(
     addresses: HashSet<Address>,
     event_tx: mpsc::Sender<ApiEvent>,
@@ -1634,7 +1450,7 @@ async fn get_addresses_info(
     {
         return Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error during sending ledger data : {:?}", err)
+                "message": format!("error during sending ledger data: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -1668,8 +1484,7 @@ async fn get_addresses_info(
 
 /// Returns connected peers :
 /// - ip address
-/// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
-///
+/// - peer info (see `struct PeerInfo` in `communication::network::PeerInfoDatabase`)
 async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
     massa_trace!("api.filters.get_peers", {});
     let peers = match retrieve_peers_and_nodeid(&event_tx).await {
@@ -1704,7 +1519,7 @@ async fn get_operations_involving_address(
     {
         return Ok(warp::reply::with_status(
             warp::reply::json(&json!({
-                "message": format!("error during sending ledger data : {:?}", err)
+                "message": format!("error during sending ledger data: {:?}", err)
             })),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
         )
@@ -1717,7 +1532,7 @@ async fn get_operations_involving_address(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error get ledger data : {:?}", err)
+                    "message": format!("error get ledger data: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1729,12 +1544,11 @@ async fn get_operations_involving_address(
 }
 
 /// Returns a summary of the current state:
-/// * time in UTime
+/// * time in `UTime`
 /// * latest slot (optional)
 /// * last final block
 /// * number of cliques
 /// * number of connected peers
-///
 async fn get_state(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
@@ -1849,8 +1663,7 @@ async fn get_state(
     .into_response())
 }
 
-/// Returns a number of last stale blocks as a Vec<(Hash, Slot)> wrapped in a reply.
-///
+/// Returns a number of last stale blocks as a `Vec<(Hash, Slot)>` wrapped in a reply.
 async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
     api_config: ApiConfig,
@@ -1884,8 +1697,7 @@ async fn get_last_stale(
     Ok(warp::reply::json(&json!(discarded)).into_response())
 }
 
-/// Returns a number of last invalid blocks as a Vec<(Hash, Slot)> wrapped in a reply.
-///
+/// Returns a number of last invalid blocks as a `Vec<(Hash, Slot)>` wrapped in a reply.
 async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
@@ -1920,10 +1732,9 @@ async fn get_last_invalid(
 }
 
 /// Returns
-/// * a number of discarded blocks by the staker as a Vec<(&Hash, DiscardReason, BlockHeader)>
-/// * a number of active blocks by the staker as a Vec<(&Hash, BlockHeader)>
-/// * next slots that are for the staker as a Vec<Slot>
-///
+/// * a number of discarded blocks by the staker as a `Vec<(&Hash, DiscardReason, BlockHeader)>`
+/// * a number of active blocks by the staker as a `Vec<(&Hash, BlockHeader)>`
+/// * next slots that are for the staker as a `Vec<Slot>`
 async fn get_staker_info(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
@@ -1968,7 +1779,7 @@ async fn get_staker_info(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error getting current time : {:?}", err)
+                    "message": format!("error getting current time: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -1986,7 +1797,7 @@ async fn get_staker_info(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error getting slot at timestamp : {:?}", err)
+                    "message": format!("error getting slot at timestamp: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -2007,7 +1818,7 @@ async fn get_staker_info(
             Err(err) => {
                 return Ok(warp::reply::with_status(
                     warp::reply::json(&json!({
-                        "message": format!("error selecting draw : {:?}", err)
+                        "message": format!("error selecting draw: {:?}", err)
                     })),
                     warp::http::StatusCode::INTERNAL_SERVER_ERROR,
                 )
@@ -2016,7 +1827,7 @@ async fn get_staker_info(
         }
         .into_iter()
         .filter_map(|(slt, (sel, _))| {
-            // todo retrieve next endorsment by staker ?
+            // TODO: retrieve next endorsement by staker?
             if sel == creator {
                 return Some(slt);
             }
@@ -2067,7 +1878,7 @@ async fn get_next_draws(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error getting current time : {:?}", err)
+                    "message": format!("error getting current time: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -2085,7 +1896,7 @@ async fn get_next_draws(
         Err(err) => {
             return Ok(warp::reply::with_status(
                 warp::reply::json(&json!({
-                    "message": format!("error getting slot at timestamp : {:?}", err)
+                    "message": format!("error getting slot at timestamp: {:?}", err)
                 })),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
@@ -2116,7 +1927,7 @@ async fn get_next_draws(
         .into_iter()
         .filter_map(|(slt, (sel, _))| {
             if addresses.contains(&sel) {
-                // todo retrive endorsements by addressess ?
+                // TODO: retrieve endorsements by addresses?
                 return Some((sel, slt));
             }
             None
@@ -2145,7 +1956,7 @@ async fn retrieve_stakers_production_stats(
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!(
-            "Could not retrieve stakers produciton stats: {0}",
+            "Could not retrieve stakers production stats: {0}",
             e
         ))
     })

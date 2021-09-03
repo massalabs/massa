@@ -151,7 +151,7 @@ impl SerializeCompact for Slot {
 }
 
 impl DeserializeCompact for Slot {
-    /// deserializes from a compact representation
+    /// Deserializes from a compact representation
     ///
     /// ## Example
     /// ```rust
@@ -173,7 +173,7 @@ impl DeserializeCompact for Slot {
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsments: 8,
+    /// #     max_block_endorsments: 8, // FIXME `max_block_endorsements` ?!
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);

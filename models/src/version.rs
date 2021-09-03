@@ -59,7 +59,7 @@ impl SerializeCompact for Version {
 }
 
 impl DeserializeCompact for Version {
-    /// ```
+    /// ```rust
     /// # use models::*;
     /// # use std::str::FromStr;
     /// let v: Version = Version::from_str("TEST.1.2").unwrap();
@@ -115,7 +115,7 @@ impl Version {
 }
 
 impl fmt::Display for Version {
-    /// ```
+    /// ```rust
     /// # use models::*;
     /// # use std::str::FromStr;
     /// let v: Version = Version::from_str("TEST.1.2").unwrap();
