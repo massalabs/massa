@@ -338,7 +338,9 @@ pub fn get_filter(
         .and(warp::path("staker_stats"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| get_stakers_stats(evt_tx.clone(), addrs));
+        .and_then(move |Addresses { addrs }| {
+            wrap_api_call(get_stakers_stats(evt_tx.clone(), addrs))
+        });
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config;
@@ -1414,23 +1416,9 @@ async fn get_staker_info(
 async fn get_stakers_stats(
     event_tx: mpsc::Sender<ApiEvent>,
     addrs: HashSet<Address>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<StakersCycleProductionStats>, ApiError> {
     massa_trace!("api.filters.get_stakers_stats", { "addrs": addrs });
-
-    let stakers_production_stats = match retrieve_stakers_production_stats(addrs, &event_tx).await {
-        Ok(stats) => stats,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting staker production stats: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-
-    Ok(warp::reply::json(&json!(stakers_production_stats)).into_response())
+    retrieve_stakers_production_stats(addrs, &event_tx).await
 }
 
 async fn get_next_draws(
