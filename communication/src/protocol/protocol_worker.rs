@@ -9,7 +9,7 @@ use itertools::Itertools;
 use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId};
 use models::{Endorsement, EndorsementId};
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map, HashMap, HashSet};
 use time::TimeError;
 use tokio::{
     sync::mpsc,
@@ -239,6 +239,8 @@ pub struct ProtocolWorker {
     active_nodes: HashMap<NodeId, nodeinfo::NodeInfo>,
     /// List of wanted blocks.
     block_wishlist: HashSet<BlockId>,
+    /// List of processed endorsements
+    checked_endorsements: HashMap<EndorsementId, Instant>,
 }
 
 impl ProtocolWorker {
@@ -273,6 +275,7 @@ impl ProtocolWorker {
             controller_manager_rx,
             active_nodes: HashMap::new(),
             block_wishlist: HashSet::new(),
+            checked_endorsements: HashMap::new(),
         }
     }
 
@@ -796,8 +799,8 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-        let (block_id, endorsement_ids) = match self.check_header(&header) {
-            Ok(Some(block_id)) => block_id,
+        let (block_id, endorsement_ids_isnew) = match self.check_header(&header) {
+            Ok(Some(v)) => v,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
         };
@@ -814,7 +817,10 @@ impl ProtocolWorker {
             // add endorsements to known endorsements
             let now = Instant::now();
             node_info.insert_known_endorsements(
-                endorsement_ids.iter().map(|v| (*v, now)).collect(),
+                endorsement_ids_isnew
+                    .iter()
+                    .map(|(v, _)| (*v, now))
+                    .collect(),
                 self.cfg.max_known_endorsements_size,
             );
 
@@ -822,25 +828,15 @@ impl ProtocolWorker {
             drop(node_info);
 
             // send endorsements to pool
-            let ed_ids = match header
+            let prop_eds: HashMap<EndorsementId, Endorsement> = header
                 .content
                 .endorsements
                 .iter()
-                .map(|ed| ed.compute_endorsement_id())
-                .collect::<Result<Vec<_>, _>>()
-            {
-                Ok(ids) => ids,
-                Err(_) => {
-                    massa_trace!("protocol.protocol_worker.note_block_from_node.err_computing_endorsement_ids",
-                        { "node": source_node_id,"block_id":block_id});
-                    return Ok(None);
-                }
-            };
+                .zip(endorsement_ids_isnew.iter())
+                .filter_map(|(e, (id, isnew))| if *isnew { Some((*id, e.clone())) } else { None })
+                .collect();
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
-                endorsements: ed_ids
-                    .into_iter()
-                    .zip(header.content.endorsements.clone())
-                    .collect(),
+                endorsements: prop_eds,
                 propagate: false,
             })
             .await;
@@ -850,10 +846,11 @@ impl ProtocolWorker {
         Ok(None)
     }
 
+    /// BlockId, Vec<(endorsementId, is_new)>
     fn check_header(
-        &self,
+        &mut self,
         header: &BlockHeader,
-    ) -> Result<Option<(BlockId, Vec<EndorsementId>)>, CommunicationError> {
+    ) -> Result<Option<(BlockId, Vec<(EndorsementId, bool)>)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.check_header.start", {
             "header": header
         });
@@ -879,14 +876,16 @@ impl ProtocolWorker {
         // check endorsement intrinsic integrity
         let mut endorsement_ids: Vec<EndorsementId> =
             Vec::with_capacity(header.content.endorsements.len());
+        let mut is_endorsement_new: Vec<bool> =
+            Vec::with_capacity(header.content.endorsements.len());
         let mut used_endorsement_indices: HashSet<u32> =
             HashSet::with_capacity(header.content.endorsements.len());
+        let now = Instant::now();
         for endorsement in header.content.endorsements.iter() {
-            // check signature
-            let endorsement_id = match endorsement.verify_integrity() {
-                Ok(endorsement_id) => endorsement_id,
+            let endorsement_id = match endorsement.compute_endorsement_id() {
+                Ok(id) => id,
                 Err(err) => {
-                    massa_trace!("protocol.protocol_worker.check_header.err_endorsement_integrity", { "header": header, "edorsement": endorsement, "err": format!("{:?}", err)});
+                    massa_trace!("protocol.protocol_worker.check_header.err_endorsement_id", { "header": header, "edorsement": endorsement, "err": format!("{:?}", err)});
                     return Ok(None);
                 }
             };
@@ -915,9 +914,45 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "edorsement": endorsement});
                 return Ok(None);
             }
+            // if the signature was not already checked, check it
+            match self.checked_endorsements.entry(endorsement_id) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    *occ.get_mut() = now;
+                    is_endorsement_new.push(false);
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    // check signature
+                    if let Err(err) = endorsement.verify_signature() {
+                        massa_trace!("protocol.protocol_worker.check_header.err_endorsement_signature", { "header": header, "edorsement": endorsement, "err": format!("{:?}", err)});
+                        return Ok(None);
+                    };
+                    vac.insert(now);
+                    is_endorsement_new.push(true);
+                }
+            };
         }
+        self.prune_checked_endorsements();
 
-        Ok(Some((block_id, endorsement_ids)))
+        Ok(Some((
+            block_id,
+            endorsement_ids
+                .into_iter()
+                .zip(is_endorsement_new.into_iter())
+                .collect(),
+        )))
+    }
+
+    /// Prune checked_endorsements if it is too large
+    fn prune_checked_endorsements(&mut self) {
+        while self.checked_endorsements.len() > self.cfg.max_known_endorsements_size {
+            let e_id = *self
+                .checked_endorsements
+                .iter()
+                .min_by_key(|(_k, v)| *v)
+                .unwrap()
+                .0; // will not panic (checked above)
+            self.checked_endorsements.remove(&e_id);
+        }
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
@@ -929,8 +964,8 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
-        let (block_id, endorsement_ids) = match self.check_header(&block.header) {
-            Ok(Some(block_id)) => block_id,
+        let (block_id, endorsement_ids_isnew) = match self.check_header(&block.header) {
+            Ok(Some(v)) => v,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
         };
@@ -1017,26 +1052,16 @@ impl ProtocolWorker {
         }
 
         // send endorsements to pool, but do not repropagate them
-        let ed_ids = match block
+        let prop_eds: HashMap<EndorsementId, Endorsement> = block
             .header
             .content
             .endorsements
             .iter()
-            .map(|ed| ed.compute_endorsement_id())
-            .collect::<Result<Vec<_>, _>>()
-        {
-            Ok(ids) => ids,
-            Err(_) => {
-                massa_trace!("protocol.protocol_worker.note_block_from_node.err_computing_endorsement_ids",
-            { "node": source_node_id,"block_id":block_id, "block": block });
-                return Ok(None);
-            }
-        };
+            .zip(endorsement_ids_isnew.iter())
+            .filter_map(|(e, (id, isnew))| if *isnew { Some((*id, e.clone())) } else { None })
+            .collect();
         self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
-            endorsements: ed_ids
-                .into_iter()
-                .zip(block.header.content.endorsements.clone())
-                .collect(),
+            endorsements: prop_eds,
             propagate: false,
         })
         .await;
@@ -1054,7 +1079,10 @@ impl ProtocolWorker {
                 self.cfg.max_known_ops_size,
             );
             node_info.insert_known_endorsements(
-                endorsement_ids.iter().map(|v| (*v, now)).collect(),
+                endorsement_ids_isnew
+                    .iter()
+                    .map(|(v, _)| (*v, now))
+                    .collect(),
                 self.cfg.max_known_endorsements_size,
             );
             massa_trace!("protocol.protocol_worker.note_block_from_node.ok", { "node": source_node_id,"block_id":block_id, "block": block});
@@ -1098,6 +1126,7 @@ impl ProtocolWorker {
     }
 
     /// Check endorsements
+    /// Return endorsements that need to be sent (new ones)
     fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<Endorsement>,
@@ -1106,20 +1135,39 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let mut result = HashMap::with_capacity(endorsements.len());
         for endorsement in endorsements.into_iter() {
-            match endorsement.verify_integrity() {
-                Ok(endorsement_id) => {
-                    result.insert(endorsement_id, endorsement);
-                }
+            let endorsement_id = match endorsement.compute_endorsement_id() {
+                Ok(id) => id,
                 Err(err) => {
-                    massa_trace!("protocol.protocol_worker.note_endorsements_from_node.invalid", { "node": source_node_id, "endorsement": endorsement, "err": format!("{:?}", err) });
+                    massa_trace!("protocol.protocol_worker.note_endorsements_from_node.invalid.err_computing_id", { "node": source_node_id, "endorsement": endorsement, "err": format!("{:?}", err) });
                     warn!(
-                        "node {:?} sent an invalid endorsement: {:?}",
+                        "node {:?} sent an invalid endorsement (cannot compute EndorsementId): {:?}",
                         source_node_id, err
                     );
                     return None;
                 }
-            }
+            };
+
+            // check endorsement signature if not already checked
+            match self.checked_endorsements.entry(endorsement_id) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    *occ.get_mut() = Instant::now();
+                }
+                hash_map::Entry::Vacant(vac) => {
+                    // check signature
+                    if let Err(err) = endorsement.verify_signature() {
+                        massa_trace!("protocol.protocol_worker.note_endorsements_from_node.invalid.signature", { "node": source_node_id, "endorsement": endorsement, "err": format!("{:?}", err) });
+                        warn!(
+                            "node {:?} sent an invalid endorsement (invalid signature): {:?}",
+                            source_node_id, err
+                        );
+                        return None;
+                    };
+                    vac.insert(Instant::now());
+                    result.insert(endorsement_id, endorsement);
+                }
+            };
         }
+        self.prune_checked_endorsements();
         // add to known endorsements
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_endorsements(
