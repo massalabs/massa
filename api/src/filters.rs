@@ -416,7 +416,9 @@ pub fn get_filter(
         .and(warp::path("remove_staking_addresses"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| remove_staking_addresses(evt_tx.clone(), addrs));
+        .and_then(move |Addresses { addrs }| {
+            wrap_api_call(remove_staking_addresses(evt_tx.clone(), addrs))
+        });
 
     let evt_tx = event_tx.clone();
     let send_operations = warp::post()
@@ -607,18 +609,12 @@ async fn register_staking_private_keys(
 async fn remove_staking_addresses(
     evt_tx: mpsc::Sender<ApiEvent>,
     addrs: HashSet<Address>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<(), ApiError> {
     massa_trace!("api.filters.remove_staking_addresses", {});
-    match evt_tx.send(ApiEvent::RemoveStakingAddresses(addrs)).await {
-        Ok(_) => Ok(warp::reply().into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error removing _staking_addresses : {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    Ok(evt_tx
+        .send(ApiEvent::RemoveStakingAddresses(addrs))
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
 /// This function sends the new transaction outside the Api and
 /// return the result as a warp reply.
