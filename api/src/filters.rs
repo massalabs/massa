@@ -460,7 +460,9 @@ pub fn get_filter(
         .and(warp::path("node_sign_message"))
         .and(warp::path::end())
         .and(warp::body::bytes())
-        .and_then(move |msg: warp::hyper::body::Bytes| node_sign_msg(msg.to_vec(), evt_tx.clone()));
+        .and_then(move |msg: warp::hyper::body::Bytes| {
+            wrap_api_call(node_sign_msg(msg.to_vec(), evt_tx.clone()))
+        });
 
     block
         .or(blockinterval)
@@ -730,22 +732,14 @@ pub struct PubkeySig {
 pub async fn node_sign_msg(
     msg: Vec<u8>,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<PubkeySig, ApiError> {
     massa_trace!("api.filters.node_sign_msg", { "msg": msg });
-    match do_node_sign_msg(msg, &event_tx).await {
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error while making node sign message: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-        Ok((public_key, signature)) => Ok(warp::reply::json(&json!(PubkeySig {
-            public_key,
-            signature
-        }))
-        .into_response()),
-    }
+    let (public_key, signature) = do_node_sign_msg(msg, &event_tx).await?;
+
+    Ok(PubkeySig {
+        public_key,
+        signature,
+    })
 }
 
 /// Returns our ip address
