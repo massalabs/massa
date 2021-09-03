@@ -444,7 +444,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("active_stakers"))
         .and(warp::path::end())
-        .and_then(move || get_active_stakers(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_active_stakers(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let staking_addresses = warp::get()
@@ -1561,28 +1561,7 @@ async fn retrieve_active_stakers(
 
 async fn get_active_stakers(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Option<HashMap<Address, u64>>, ApiError> {
     massa_trace!("api.filters.get_active_stakers", {});
-    let stats = match retrieve_active_stakers(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving active stakers: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(None) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": "active staking cycle not available/complete"
-                })),
-                warp::http::StatusCode::NOT_FOUND,
-            )
-            .into_response())
-        }
-        Ok(Some(stats)) => stats,
-    };
-    Ok(warp::reply::json(&json!(stats)).into_response())
+    retrieve_active_stakers(&event_tx).await
 }
