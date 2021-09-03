@@ -405,7 +405,9 @@ pub fn get_filter(
         .and(warp::path("register_staking_keys"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |PrivateKeys { keys }| wrap_api_call(register_staking_private_keys(evt_tx.clone(), keys)));
+        .and_then(move |PrivateKeys { keys }| {
+            wrap_api_call(register_staking_private_keys(evt_tx.clone(), keys))
+        });
 
     let evt_tx = event_tx.clone();
     let remove_staking_addresses = warp::delete()
@@ -593,10 +595,10 @@ async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<(), ApiErro
 async fn register_staking_private_keys(
     evt_tx: mpsc::Sender<ApiEvent>,
     keys: Vec<PrivateKey>,
-) -> Result<(), ApiError>  {
+) -> Result<(), ApiError> {
     massa_trace!("api.filters.register_staking_private_keys", {});
 
-    Ok( evt_tx
+    Ok(evt_tx
         .send(ApiEvent::RegisterStakingPrivateKeys(keys))
         .await
         .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
