@@ -16,7 +16,6 @@ use consensus::{time_range_to_slot_range, ConsensusStats};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use logging::massa_trace;
 use models::Address;
-use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
@@ -437,7 +436,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("get_stats"))
         .and(warp::path::end())
-        .and_then(move || get_stats(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_stats(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let get_active_stakers = warp::get()
@@ -1498,21 +1497,9 @@ async fn retrieve_stats(event_tx: &mpsc::Sender<ApiEvent>) -> Result<ConsensusSt
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve stats: {0}", e)))
 }
 
-async fn get_stats(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_stats(event_tx: mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, ApiError> {
     massa_trace!("api.filters.get_stats", {});
-    let stats = match retrieve_stats(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving stats: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(stats) => stats,
-    };
-    Ok(warp::reply::json(&json!(stats)).into_response())
+    retrieve_stats(&event_tx).await
 }
 
 async fn retrieve_staking_addresses(
