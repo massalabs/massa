@@ -13,4 +13,4 @@ serde_json = { version = "1.0" }
 [dev-dependencies]
 stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
-serial_test = "0.5.1"
+serial_test = "0.5"
