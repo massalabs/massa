@@ -912,7 +912,7 @@ async fn test_endorsements_messages() {
                 content: content.clone(),
                 signature,
             };
-            let ref_id = endorsement.verify_integrity().unwrap();
+            let ref_id = endorsement.compute_endorsement_id().unwrap();
             conn1_w
                 .send(&Message::Endorsements(vec![endorsement]))
                 .await
@@ -930,7 +930,7 @@ async fn test_endorsements_messages() {
                 .await
             {
                 assert_eq!(endorsements.len(), 1);
-                let res_id = endorsements[0].verify_integrity().unwrap();
+                let res_id = endorsements[0].compute_endorsement_id().unwrap();
                 assert_eq!(ref_id, res_id);
                 assert_eq!(node, conn1_id);
             } else {
@@ -952,7 +952,7 @@ async fn test_endorsements_messages() {
                 content: content.clone(),
                 signature,
             };
-            let ref_id = endorsement.verify_integrity().unwrap();
+            let ref_id = endorsement.compute_endorsement_id().unwrap();
 
             // reply with another endorsement
             network_command_sender
@@ -969,7 +969,7 @@ async fn test_endorsements_messages() {
                         match evt {
                         Message::Endorsements(endorsements) => {
                             assert_eq!(endorsements.len(), 1);
-                            let res_id = endorsements[0].verify_integrity().unwrap();
+                            let res_id = endorsements[0].compute_endorsement_id().unwrap();
                             assert_eq!(ref_id, res_id);
                             break;}
                         _ => {}
