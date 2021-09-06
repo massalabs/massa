@@ -29,7 +29,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
             // 1. Create an endorsement
             let endorsement = tools::create_endorsement();
 
-            let expected_endorsement_id = endorsement.verify_integrity().unwrap();
+            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
 
             // 3. Send endorsement to protocol.
             network_controller
@@ -156,7 +156,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                 _ => panic!("Unexpected or no protocol pool event."),
             };
 
-            let expected_endorsement_id = endorsement.verify_integrity().unwrap();
+            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
 
             let mut ops = HashMap::new();
             ops.insert(expected_endorsement_id.clone(), endorsement);
@@ -174,7 +174,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                     .await
                 {
                     Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                        let id = endorsements[0].verify_integrity().unwrap();
+                        let id = endorsements[0].compute_endorsement_id().unwrap();
                         assert_eq!(id, expected_endorsement_id);
                         assert_eq!(nodes[1].id, node);
                         break;

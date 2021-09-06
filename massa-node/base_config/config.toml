@@ -52,8 +52,8 @@ version = "DEVE.0.0"
     max_node_wanted_blocks_size = 1024
     max_simultaneous_ask_blocks_per_node = 2048
     max_send_wait = 500
-    max_known_ops_size = 100000
-    max_known_endorsements_size = 100000
+    max_known_ops_size = 1024
+    max_known_endorsements_size = 1024
 
 [network]
     bind = "0.0.0.0:31244"

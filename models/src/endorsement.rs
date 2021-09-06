@@ -70,14 +70,14 @@ impl EndorsementContent {
 
 impl Endorsement {
     /// Verify the signature and integrity of the endorsement and computes ID
-    pub fn verify_integrity(&self) -> Result<EndorsementId, ModelsError> {
+    pub fn verify_signature(&self) -> Result<(), ModelsError> {
         let content_hash = Hash::hash(&self.content.to_bytes_compact()?);
         verify_signature(
             &content_hash,
             &self.signature,
             &self.content.sender_public_key,
         )?;
-        self.compute_endorsement_id()
+        Ok(())
     }
 
     pub fn new_signed(

@@ -7,6 +7,7 @@ use crate::{network::NetworkCommand, protocol::ProtocolPoolEvent};
 use models::Slot;
 use serial_test::serial;
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 #[tokio::test]
 #[serial]
@@ -430,33 +431,45 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 .expect("Failed to compute hash.");
 
             // Propagate the block via 4 nodes.
-            for creator_node in nodes.iter() {
+            for (idx, creator_node) in nodes.iter().enumerate() {
                 // Send block to protocol.
                 network_controller
                     .send_header(creator_node.id, block.header.clone())
                     .await;
 
-                // Check protocol sends header to consensus.
-                let received_hash = match tools::wait_protocol_event(
-                    &mut protocol_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                        evt => {
-                            println!("{:?}", evt);
-                            None
-                        }
-                    },
-                )
-                .await
-                {
-                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                    Some(evt) => panic!("Unexpected protocol event {:?}", evt),
-                    None => panic!("no protocol event"),
-                };
-
-                // Check that protocol sent the right header to consensus.
-                assert_eq!(expected_hash, received_hash);
+                // Check protocol sends header to consensus (only the 1st time: later, there is caching).
+                if idx == 0 {
+                    let received_hash = match tools::wait_protocol_event(
+                        &mut protocol_event_receiver,
+                        1000.into(),
+                        |evt| match evt {
+                            evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                            evt => None,
+                        },
+                    )
+                    .await
+                    {
+                        Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
+                        Some(evt) => panic!("Unexpected protocol event {:?}", evt),
+                        None => panic!("no protocol event"),
+                    };
+                    // Check that protocol sent the right header to consensus.
+                    assert_eq!(expected_hash, received_hash);
+                } else {
+                    assert!(
+                        !tools::wait_protocol_event(
+                            &mut protocol_event_receiver,
+                            150.into(),
+                            |evt| match evt {
+                                evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                                evt => None,
+                            },
+                        )
+                        .await
+                        .is_some(),
+                        "caching was ignored"
+                    );
+                }
             }
 
             // Have one node send that they don't know about the block.
@@ -465,6 +478,9 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             network_controller
                 .send_block_not_found(not_banned_nodes[0].id, expected_hash)
                 .await;
+
+            // wait for things to settle
+            tokio::time::sleep(Duration::from_millis(250)).await;
 
             // Simulate consensus notifying an attack attempt.
             protocol_command_sender

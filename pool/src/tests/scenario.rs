@@ -251,7 +251,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
             let target_slot = Slot::new(10, 0);
             let endorsement = tools::create_endorsement(target_slot);
             let mut endorsements = HashMap::new();
-            let id = endorsement.verify_integrity().unwrap();
+            let id = endorsement.compute_endorsement_id().unwrap();
             endorsements.insert(id.clone(), endorsement.clone());
 
             protocol_controller
@@ -320,7 +320,7 @@ async fn test_pool_add_old_endorsements() {
 
             let endorsement = tools::create_endorsement(Slot::new(1, 0));
             let mut endorsements = HashMap::new();
-            let id = endorsement.verify_integrity().unwrap();
+            let id = endorsement.compute_endorsement_id().unwrap();
             endorsements.insert(id.clone(), endorsement.clone());
 
             pool_command_sender
