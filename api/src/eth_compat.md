@@ -44,7 +44,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
   - `sign`
 
 - Debug (specific information)
-    - `node_info`: We should fuse `our_ip`, `peers`, `get_network_info`, `get_config` into a single node_info command:
+    - `get_node_info`: We should fuse `our_ip`, `peers`, `get_network_info`, `get_config` into a single node_info command:
         - inputs (None)
         - output NodeInfo with fields:
             - node_id: NodeId
@@ -147,7 +147,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
                 - known_peer_count: u64
                 - banned_peer_count: u64
                 - active_node_count: u64
-    - `cliques_stats`: `clique_stats -> CliqueStats { block count: u64, fitness: u64, is_blockclique: bool }`
+    - `get_cliques_stats`: `clique_stats -> CliqueStats { block count: u64, fitness: u64, is_blockclique: bool }`
         - input: (none)
         - output:
             - list of Clique stats:
@@ -163,7 +163,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
             - in_blocks: [BlockId] list
             - is_final: bool
             - operation: full Operation object
-    - `get_addresses`: `addresses_info -> HashMap<Address, AddressState>`
+    - `get_addresses_info_by_addresses`: `addresses_info -> HashMap<Address, AddressState>`
         - input: [Address] list
         - output: [AddressInfo] list where AddressInfo is:
             - address: Address
@@ -191,7 +191,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
     - `get_next_draw` (block and endorsement creation)
         - input [Address] list
         - output : [slot] list
-    - `get_operations`:
+    - `get_operations_by_ids`:
         - input: [OperationId] list
         - output: [OperationInfo] list where OperationInfo is:
             - id: OperationId
@@ -199,7 +199,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
             - in_blocks: [BlockId] list
             - is_final: bool
             - operation: full Operation object
-    - `get_balance`:
+    - `get_balances_by_address`:
         - input [Address] list
         - output : for each address
             - candidate balance : 64
@@ -207,7 +207,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
             - locked balance : u64
             - candidate roll count : u64
             - final roll count : u64
-    - `state`: summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count `state -> State { time: UTime, latest_slot: Option, current_cycle: u64, our_ip: Option, last_final: Vec<(BlockId, Slot, UTime)>, nb_cliques: usize, nb_peers: usize }`
+    - `get_state`: summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count `state -> State { time: UTime, latest_slot: Option, current_cycle: u64, our_ip: Option, last_final: Vec<(BlockId, Slot, UTime)>, nb_cliques: usize, nb_peers: usize }`
     - TODO `send_operations Vec`
 
 - TODO: Stats?
@@ -215,6 +215,10 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
   * `operations_involving_address`: list operations involving the provided address. Note that old operations are forgotten. `operations_involving_address -> HashMap<OperationId, OperationSearchResult>`
   * `block_ids_by_creator`: list blocks created by the provided address. Note that old blocks are forgotten.
   * `staker_stats`: production stats from staker address. Parameters: list of addresses separated by , (no space).
+  * `consensus_config -> get_consensus_config`
+  * `block -> get_block_by_id`
+  * `block_ids_by_creator, operations_involving_address -> get_operations by addresses`
+  * `active_stakers -> get_active_stakers `
 
 ### Private
 
