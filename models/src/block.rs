@@ -198,12 +198,11 @@ impl DeserializeCompact for Block {
 }
 
 impl BlockHeader {
-    /// Verify the integrity of the block,
-    /// and generate a block id if ok.
-    pub fn verify_integrity(&self) -> Result<BlockId, ModelsError> {
+    /// Verify the signature of the header
+    pub fn check_signature(&self) -> Result<(), ModelsError> {
         let hash = self.content.compute_hash()?;
         self.verify_signature(&hash)?;
-        Ok(BlockId(Hash::hash(&self.to_bytes_compact()?)))
+        Ok(())
     }
 
     /// Generate the block id without verifying the integrity of the it,
@@ -478,7 +477,7 @@ mod test {
         assert_eq!(orig_bytes.len(), res_size);
 
         // check equality
-        let res_id = res_block.header.verify_integrity().unwrap();
+        let res_id = res_block.header.compute_block_id().unwrap();
         let generated_res_id = res_block.header.compute_block_id().unwrap();
         assert_eq!(orig_id, res_id);
         assert_eq!(orig_id, generated_res_id);
