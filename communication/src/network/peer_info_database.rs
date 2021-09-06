@@ -492,12 +492,10 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
                 ));
             }
-        } else {
-            if available_nonbootstrap_conns == 0 {
-                return Err(CommunicationError::PeerConnectionError(
-                    NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
-                ));
-            }
+        } else if available_nonbootstrap_conns == 0 {
+            return Err(CommunicationError::PeerConnectionError(
+                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
+            ));
         }
         peer.active_out_connection_attempts += 1;
         if peer.bootstrap {
