@@ -40,7 +40,7 @@ register_staking_keys <your_private_key>
 ----
 
 
-Now you should wait some time so that your rolls become active: about 3 cycles of 10 periods (one period is 32 blocks - 16 sec), so about 8 minutes.
+Now you should wait some time so that your rolls become active: 3 cycles of 128 periods (one period is 32 blocks - 16 sec), so about 1h40 minutes.
 
 You can check if your rolls are active with the same command:
 ----
