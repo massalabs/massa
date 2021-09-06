@@ -500,45 +500,38 @@ Current **client CLI interface** (given by `--help`):
 
 ### Private endpoints
 
-stop_node
-register_staking_keys
-remove_staking_addresses
-staking_addresses -> HashSet
-ban (ip addr/node id)
-start node
+* stop_node();
+* register_staking_keys(Vec<PrivateKey>);
+* remove_staking_addresses(Vec<Address>);
+* staking_addresses() -> HashSet<Address>;
+* ban(NodeId);
+* unban(IpAddr);
+* start_node();
 
 
 ### Public endpoints
 
 #### Specific information
 
-block -> Block
-get_operations -> Vec<(OperationId, OperationSearchResult)>
+* get_block(BlockId) -> Block;
+* get_operations(Vec<OperationId)>) -> Vec<(OperationId, OperationSearchResult)>
 <!-- blockinterval <start: Option> <end: Option> -> Vec<(BlockId, Slot)> -->
-graph_interval <start: Option> <end: Option> -> Vec<(BlockId, Slot, Status, Vec)>
-cliques -> (usize, Vec<HashSet<(BlockId, Slot)>>
-peers -> HashMap<IpAddr, PeerInfo>
-our_ip -> Option ip
-network_info -> Option, HashMap<IpAddr, PeerInfo>
-node_config -> SerializationContext
-pool_config -> PoolConfig
-consensus_config -> ConsensusConfig
-staker_info -> StakerInfo {
+* graph_interval(start: Option<UTime>, end: Option<UTime>) -> Vec<BlockSummary>
+* cliques -> Vec<Clique>
+* peers -> HashMap<IpAddr, PeerInfo>;
+* our_ip -> Option<IpAddr>;
+* network_info() -> (Option<IpAddr>, NodeId, HashMap<IpAddr, NodeId, PeerInfo>)
+* get_config() -> ConfigDto;
+* staker_info -> StakerInfo {
     staker_active_blocks: Vec<(BlockId, BlockHeader)>,
     staker_discarded_blocks: Vec<(BlockId, DiscardReason, BlockHeader)>,
     staker_next_draws: Vec,
 }
-next_draws -> Vec<(Address, Slot)>
-operations_involving_address -> HashMap<OperationId, OperationSearchResult>
-addresses_info -> HashMap<Address, AddressState>
-get endorsement by id -> endorsement state{
-    id: EndorsementId
-    in_pool: bool
-    in_blocks: [BlockId] list
-    is_final: bool
-    endorsement: full Endorsement object
-}
-get_time/slot diff ->  i64 or signed slot : relative distance to genesis timestamp
+* next_draws(Vec<Address>) -> Vec<(Address, Slot)>
+* operations_involving_address -> HashMap<OperationId, OperationSearchResult>
+* addresses_info( Vec<Address>) -> HashMap<Address, AddressState>
+* get endorsements(Vec<EndorsementId>) -> Vec<EndorsementInfo>
+* time_since_to_genesis() -> i64
 
 
 
@@ -573,3 +566,67 @@ clique_stats -> CliqueStats {
 
 #### Interaction with the node
 send_operations Vec
+
+
+## Needed Structures
+```rust
+pub struct OperationSearchResult {
+    pub op: Operation,
+    pub in_pool: bool,
+    pub in_blocks: HashMap<BlockId, (usize, bool)>, // index, is_final
+    pub status: OperationSearchResultStatus,
+}
+```
+
+```rust
+pub struct BlockSummary {
+    pub id: BlockId,
+    pub is_final: bool,
+    pub is_stale: bool,
+    pub is_in_blockclique: bool,
+    pub slot: Slot,
+    pub creator: Address,
+    pub parents: Vec<BlockId>,
+}
+```
+
+```rust
+pub struct Clique {
+    pub block_ids: HashSet<BlockId>,
+    pub fitness: u64,
+    pub is_blockclique: bool,
+}
+```
+
+```rust
+pub ConfigDto {
+    pub t0: UTime
+    pub delta_f0: u64
+    pub version: Version
+    pub genesis_timestamp: UTime
+    pub roll_price: Amount
+     TODO architecture params
+ }
+
+```
+
+```rust
+pub struct AddressState {
+    pub final_rolls: u64,
+    pub active_rolls: Option<u64>,
+    pub candidate_rolls: u64,
+    pub locked_balance: Amount,
+    pub candidate_ledger_data: LedgerData,
+    pub final_ledger_data: LedgerData,
+}
+```
+
+```rust
+pub struct EndorsementInfo{
+    id: EndorsementId,
+    in_pool: bool,
+    in_blocks: Vec<BlockId>,
+    is_final: bool,
+    endorsement: Endorsement
+}
+```
