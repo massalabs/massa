@@ -42,7 +42,6 @@ impl DefaultListener {
     /// Accepts a new incoming connection from this listener.
     pub async fn accept(&mut self) -> io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
         let (sock, remote_addr) = self.0.accept().await?;
-        sock.set_nodelay(true)?;
         let (read_half, write_half) = sock.into_split();
         Ok((read_half, write_half, remote_addr))
     }
@@ -62,7 +61,6 @@ impl DefaultConnector {
     pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<(ReadHalf, WriteHalf)> {
         match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
             Ok(Ok(sock)) => {
-                sock.set_nodelay(true)?;
                 let (reader, writer) = sock.into_split();
                 Ok((reader, writer))
             }
