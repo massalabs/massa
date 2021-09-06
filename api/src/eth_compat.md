@@ -36,7 +36,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
 
 ### Public
 
-- MetaMasx
+- MetaMask
   - `Call`
   - `accounts`
   - `getBalance`
@@ -78,40 +78,40 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
             - slot: Slot
             - creator: Address
             - parents: [BlockId] list
-        - `get_network_info`: network information: own IP address, connected peers `network_info() -> (Option<IpAddr>, NodeId, HashMap<IpAddr, NodeId, PeerInfo>)`
-            - input: (None)
-            - output:
-                - node_ip
-                - node_id
-                - connected_nodes: [NodeInfo] where NodeInfo is:
-                    - id: NodeId
-                    - ip: IPAddress
-                    - is_outgoing: bool
-                    - last_success: UTime
-                    - last_failure: UTime
-        - `get_config`: `get_config() -> ConfigDto;`
-            - input: (None)
-            - output ApiGetConfigDto:
-                - t0
-                - delta_f0
-                - version
-                - genesis_timestamp
-                - roll_price
-                - TODO architecture params
-        - `get_endorsements`: `get endorsements(Vec<EndorsementId>) -> Vec<EndorsementInfo>`
-            - input: [EndorsementId] list
-            - output: [EndorsementInfo] list where EndorsementInfo is:
-                - id: EndorsementId
-                - in_pool: bool
-                - in_blocks: [BlockId] list
-                - is_final: bool
-                - endorsement: full Endorsement object
-        - TODO `get endorsement by id -> endorsement state { id: EndorsementId, in_pool: bool, in_blocks: [BlockId] list, is_final: bool, endorsement: full Endorsement object }`
-        - TODO `operations_involving_address -> HashMap<OperationId, OperationSearchResult>`
-        - TODO `addresses_info`: returns the final and candidate balances for a list of addresses. Parameters: list of addresses separated by, (no space). `addresses_info(Vec<Address>) -> HashMap<Address, AddressState>`
-        - TODO `next_draws`: next draws for given addresses (list of addresses separated by, (no space)) -> vec (address, slot for which address is selected) `next_draws(Vec<Address>) -> Vec<(Address, Slot)>`
-        - TODO `staker_info`: staker info from staker address -> (blocks created, next slots in which the address will be selected) `staker_info -> StakerInfo { staker_active_blocks: Vec<(BlockId, BlockHeader)>, staker_discarded_blocks: Vec<(BlockId, DiscardReason, BlockHeader)>, staker_next_draws: Vec }`
-        - DEPRECIATED `blockinterval`: get blocks within the specified time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp `blockinterval <start: Option> <end: Option> -> Vec<(BlockId, Slot)>`
+    - `get_network_info`: network information: own IP address, connected peers `network_info() -> (Option<IpAddr>, NodeId, HashMap<IpAddr, NodeId, PeerInfo>)`
+        - input: (None)
+        - output:
+            - node_ip
+            - node_id
+            - connected_nodes: [NodeInfo] where NodeInfo is:
+                - id: NodeId
+                - ip: IPAddress
+                - is_outgoing: bool
+                - last_success: UTime
+                - last_failure: UTime
+    - `get_config`: `get_config() -> ConfigDto;`
+        - input: (None)
+        - output ApiGetConfigDto:
+            - t0
+            - delta_f0
+            - version
+            - genesis_timestamp
+            - roll_price
+            - TODO architecture params
+    - `get_endorsements`: `get endorsements(Vec<EndorsementId>) -> Vec<EndorsementInfo>`
+        - input: [EndorsementId] list
+        - output: [EndorsementInfo] list where EndorsementInfo is:
+            - id: EndorsementId
+            - in_pool: bool
+            - in_blocks: [BlockId] list
+            - is_final: bool
+            - endorsement: full Endorsement object
+    - TODO `get endorsement by id -> endorsement state { id: EndorsementId, in_pool: bool, in_blocks: [BlockId] list, is_final: bool, endorsement: full Endorsement object }`
+    - TODO `operations_involving_address -> HashMap<OperationId, OperationSearchResult>`
+    - TODO `addresses_info`: returns the final and candidate balances for a list of addresses. Parameters: list of addresses separated by, (no space). `addresses_info(Vec<Address>) -> HashMap<Address, AddressState>`
+    - TODO `next_draws`: next draws for given addresses (list of addresses separated by, (no space)) -> vec (address, slot for which address is selected) `next_draws(Vec<Address>) -> Vec<(Address, Slot)>`
+    - TODO `staker_info`: staker info from staker address -> (blocks created, next slots in which the address will be selected) `staker_info -> StakerInfo { staker_active_blocks: Vec<(BlockId, BlockHeader)>, staker_discarded_blocks: Vec<(BlockId, DiscardReason, BlockHeader)>, staker_next_draws: Vec }`
+    - DEPRECIATED `blockinterval`: get blocks within the specified time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp `blockinterval <start: Option> <end: Option> -> Vec<(BlockId, Slot)>`
 
 - Explorer (aggregated stats)
     - `get_stats`: `get_stats -> ConsensusStats { timespan: UTime, final_block_count: u64, final_operation_count: u64, stale_block_count: u64, clique_count: u64 }`
@@ -232,6 +232,7 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
         - `list`: hashset of staking addresses `staking_addresses() -> HashSet<Address>`
             - input none
             - output adresses
+
 - TODO: Wallet?
   * `wallet_info`: Shows wallet info
   * `wallet_new_privkey`: Generates a new private key and adds it to the wallet. Returns the associated address.
