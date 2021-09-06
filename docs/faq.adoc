@@ -65,6 +65,7 @@ In the massa-client directory.
 === My rolls disappeared/were sold automatically.
 
 The most likely reason it that you did not produce some blocks! Most frequent reasons:
+
 * Node not running
 * Node not being connected to the network
 * Node being desynchronized (which can be caused by temporary overload if the specs are unsufficient or if other programs are using resources on the computer or because of internet connection problems)
