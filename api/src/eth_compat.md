@@ -170,7 +170,6 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
             - is_stale: bool
             - is_in_blockclique: bool
             - block: full Block object
-    - TODO
     - DEPRECIATED `current_parents`: get current parents `current_parents -> Vec<(BlockId, Slot)>`
     - DEPRECIATED `last_final`: get latest finals blocks `last_final -> Vec<(BlockId, Slot)>`
     - DEPRECIATED `last_stale`: (hash, thread, slot) for recent stale blocks `last_stale -> Vec<(BlockId, Slot)>`
