@@ -411,12 +411,6 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
-    stderrlog::new()
-        .verbosity(4)
-        .timestamp(stderrlog::Timestamp::Millisecond)
-        .init()
-        .unwrap();
-
     let protocol_config = tools::create_protocol_config();
     protocol_test(
         protocol_config,
@@ -450,10 +444,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                         1000.into(),
                         |evt| match evt {
                             evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                            evt => {
-                                println!("{:?}", evt);
-                                None
-                            }
+                            evt => None,
                         },
                     )
                     .await
@@ -464,6 +455,20 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                     };
                     // Check that protocol sent the right header to consensus.
                     assert_eq!(expected_hash, received_hash);
+                } else {
+                    assert!(
+                        !tools::wait_protocol_event(
+                            &mut protocol_event_receiver,
+                            150.into(),
+                            |evt| match evt {
+                                evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                                evt => None,
+                            },
+                        )
+                        .await
+                        .is_some(),
+                        "caching was ignored"
+                    );
                 }
             }
 
