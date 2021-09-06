@@ -19,6 +19,7 @@ mod scenarios_operations_check;
 mod scenarios_parents;
 mod scenarios_pool_commands;
 mod scenarios_pruning;
+mod scenarios_reward_split;
 mod scenarios_send_block;
 mod scenarios_wishlist;
 mod storage_scenarios;
