@@ -44,12 +44,44 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
   - `sign`
 
 - Debug (specific information)
-    - `our_ip`: get node ip `our_ip -> Option<IpAddr>`
+    - `node_info`: We should fuse `our_ip`, `peers`, `get_network_info`, `get_config` into a single node_info command:
+        - inputs (None)
+        - output NodeInfo with fields:
+            - node_id: NodeId
+            - node_ip: Option<IpAddress>
+            - version: Version
+            - genesis_timestamp: UTime
+            - t0
+            - delta_f0
+            - roll_price
+            - thread_count
+            - connected_nodes: HashMap<NodeId, IpAddress>
+    - DEPRECIATED `our_ip`: get node ip `our_ip -> Option<IpAddr>`
         - input: none
         - output: ipaddr
-    - `peers`: get node peers `peers -> HashMap<IpAddr, PeerInfo>`
+    - DEPRECIATED `peers`: get node peers `peers -> HashMap<IpAddr, PeerInfo>`
         - input none
         - output peer info list + node id
+    - DEPRECIATED `get_network_info`: network information: own IP address, connected peers `network_info() -> (Option<IpAddr>, NodeId, HashMap<IpAddr, NodeId, PeerInfo>)`
+        - input: (None)
+        - output:
+            - node_ip
+            - node_id
+            - connected_nodes: [NodeInfo] where NodeInfo is:
+                - id: NodeId
+                - ip: IPAddress
+                - is_outgoing: bool
+                - last_success: UTime
+                - last_failure: UTime
+    - DEPRECIATED `get_config`: `get_config() -> ConfigDto;`
+        - input: (None)
+        - output ApiGetConfigDto:
+            - t0
+            - delta_f0
+            - version
+            - genesis_timestamp
+            - roll_price
+            - TODO architecture params
     - `get_cliques`: get cliques: `cliques -> Vec<Clique>`
         - input: (none)
         - output:
@@ -78,26 +110,6 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
             - slot: Slot
             - creator: Address
             - parents: [BlockId] list
-    - `get_network_info`: network information: own IP address, connected peers `network_info() -> (Option<IpAddr>, NodeId, HashMap<IpAddr, NodeId, PeerInfo>)`
-        - input: (None)
-        - output:
-            - node_ip
-            - node_id
-            - connected_nodes: [NodeInfo] where NodeInfo is:
-                - id: NodeId
-                - ip: IPAddress
-                - is_outgoing: bool
-                - last_success: UTime
-                - last_failure: UTime
-    - `get_config`: `get_config() -> ConfigDto;`
-        - input: (None)
-        - output ApiGetConfigDto:
-            - t0
-            - delta_f0
-            - version
-            - genesis_timestamp
-            - roll_price
-            - TODO architecture params
     - `get_endorsements`: `get endorsements(Vec<EndorsementId>) -> Vec<EndorsementInfo>`
         - input: [EndorsementId] list
         - output: [EndorsementInfo] list where EndorsementInfo is:
