@@ -146,7 +146,7 @@ defined as having the following properties:
 
 # API Endpoints
 
-## Needs : 
+## Needs :
 
 - Debug
     - cliques:
@@ -172,7 +172,7 @@ defined as having the following properties:
     - get genesis diff
         - input none
         - relative time since/to genesis timestamp (in slots ?)
-- Explorer 
+- Explorer
     - get_config:
         - input: (None)
         - output ApiGetConfigDto:
@@ -185,7 +185,7 @@ defined as having the following properties:
     - get_stats:
         - input: (None)
         - output:
-            - server_timestamp: UTime 
+            - server_timestamp: UTime
             - last_slot: Slot (optional)
             - next_slot: Slot
             - time_stats:
@@ -283,7 +283,7 @@ defined as having the following properties:
             - candidate roll count : u64
             - final roll count : u64
 - Admin
-    - ban 
+    - ban
         - input : ipaddr or Node Id ?
         - output : none
     - unban
@@ -295,11 +295,11 @@ defined as having the following properties:
     - stop node
         - input : none
         - output : none
-    - sign message 
+    - sign message
         - input : [u8]
         - output : (signature, puclic key)
     - staking keys
-        - add 
+        - add
             - input Private keys
             - output None
         - remove
@@ -396,14 +396,14 @@ pool_config -> PoolConfig
 consensus_config -> ConsensusConfig
 ```
 ```rust
-state -> State { 
-    time: UTime, 
-    latest_slot: Option, 
-    current_cycle: u64, 
-    our_ip: Option, 
-    last_final: Vec<(BlockId, Slot, UTime)>, 
-    nb_cliques: usize, 
-    nb_peers: usize, 
+state -> State {
+    time: UTime,
+    latest_slot: Option,
+    current_cycle: u64,
+    our_ip: Option,
+    last_final: Vec<(BlockId, Slot, UTime)>,
+    nb_cliques: usize,
+    nb_peers: usize,
 }
 ```
 ```rust
@@ -413,10 +413,10 @@ last_stale -> Vec<(BlockId, Slot)>
 last_invalid -> Vec<(BlockId, Slot)>
 ```
 ```rust
-staker_info -> StakerInfo { 
-    staker_active_blocks: Vec<(BlockId, BlockHeader)>, 
+staker_info -> StakerInfo {
+    staker_active_blocks: Vec<(BlockId, BlockHeader)>,
     staker_discarded_blocks: Vec<(BlockId, DiscardReason, BlockHeader)>,
-    staker_next_draws: Vec, 
+    staker_next_draws: Vec,
 }
 ```
 ```rust
@@ -441,12 +441,12 @@ remove_staking_addresses
 send_operations Vec
 ```
 ```rust
-get_stats -> ConsensusStats { 
-    timespan: UTime, 
-    final_block_count: u64, 
-    final_operation_count: u64, 
-    stale_block_count: u64, 
-    clique_count: u64, 
+get_stats -> ConsensusStats {
+    timespan: UTime,
+    final_block_count: u64,
+    final_operation_count: u64,
+    stale_block_count: u64,
+    clique_count: u64,
 }
 ```
 ```rust
@@ -486,7 +486,7 @@ Current **client CLI interface** (given by `--help`):
 *  `operations_involving_address`: list operations involving the provided address. Note that old operations are forgotten.
 *  `block_ids_by_creator`: list blocks created by the provided address. Note that old blocks are forgotten.
 *  `addresses_info`: returns the final and candidate balances for a list of addresses. Parameters: list of addresses separated by ,  (no space).
-*  `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID> 
+*  `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID>
 *  `get_active_stakers`: returns the active stakers and their roll counts for the current cycle.
 *  `wallet_info`: Shows wallet info
 *  `wallet_new_privkey`: Generates a new private key and adds it to the wallet. Returns the associated address.
@@ -494,3 +494,82 @@ Current **client CLI interface** (given by `--help`):
 *  `wallet_add_privkey`: Adds a list of private keys to the wallet. Returns the associated addresses. Parameters: list of private keys separated by ,  (no space).
 *  `buy_rolls`: buy roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
 *  `sell_rolls`: sell roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
+
+
+## New API proposition
+
+### Private endpoints
+
+stop_node
+register_staking_keys
+remove_staking_addresses
+staking_addresses -> HashSet
+ban (ip addr/node id)
+start node
+
+
+### Public endpoints
+
+#### Specific information
+
+block -> Block
+get_operations -> Vec<(OperationId, OperationSearchResult)>
+<!-- blockinterval <start: Option> <end: Option> -> Vec<(BlockId, Slot)> -->
+graph_interval <start: Option> <end: Option> -> Vec<(BlockId, Slot, Status, Vec)>
+cliques -> (usize, Vec<HashSet<(BlockId, Slot)>>
+peers -> HashMap<IpAddr, PeerInfo>
+our_ip -> Option ip
+network_info -> Option, HashMap<IpAddr, PeerInfo>
+node_config -> SerializationContext
+pool_config -> PoolConfig
+consensus_config -> ConsensusConfig
+staker_info -> StakerInfo {
+    staker_active_blocks: Vec<(BlockId, BlockHeader)>,
+    staker_discarded_blocks: Vec<(BlockId, DiscardReason, BlockHeader)>,
+    staker_next_draws: Vec,
+}
+next_draws -> Vec<(Address, Slot)>
+operations_involving_address -> HashMap<OperationId, OperationSearchResult>
+addresses_info -> HashMap<Address, AddressState>
+get endorsement by id -> endorsement state{
+    id: EndorsementId
+    in_pool: bool
+    in_blocks: [BlockId] list
+    is_final: bool
+    endorsement: full Endorsement object
+}
+get_time/slot diff ->  i64 or signed slot : relative distance to genesis timestamp
+
+
+
+#### Aggregated stats
+state -> State {
+    time: UTime,
+    latest_slot: Option,
+    current_cycle: u64,
+    our_ip: Option,
+    last_final: Vec<(BlockId, Slot, UTime)>,
+    nb_cliques: usize,
+    nb_peers: usize,
+}
+<!-- last_stale -> Vec<(BlockId, Slot)>
+last_invalid -> Vec<(BlockId, Slot)>
+current_parents -> Vec<(BlockId, Slot)>
+last_final -> Vec<(BlockId, Slot)> -->
+get_stats -> ConsensusStats {
+    timespan: UTime,
+    final_block_count: u64,
+    final_operation_count: u64,
+    stale_block_count: u64,
+    clique_count: u64,
+}
+active_stakers -> Option<HashMap<Address, u64>>
+clique_stats -> CliqueStats {
+    block count : u64
+    fitness: u64
+    is_blockclique: bool
+}
+
+
+#### Interaction with the node
+send_operations Vec
