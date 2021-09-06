@@ -754,7 +754,7 @@ impl NetworkWorker {
                         (
                             *peer_ip_addr,
                             Peer {
-                                peer_info: peer.clone(),
+                                peer_info: *peer,
                                 active_nodes: self
                                     .active_connections
                                     .iter()

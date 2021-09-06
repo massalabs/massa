@@ -561,8 +561,8 @@ async fn test_block_filling() {
             assert_eq!(block.header.content.endorsements.len(), eds.len());
             for (e_found, e_expected) in block.header.content.endorsements.iter().zip(eds.iter()) {
                 assert_eq!(
-                    e_found.verify_integrity().unwrap(),
-                    e_expected.verify_integrity().unwrap()
+                    e_found.compute_endorsement_id().unwrap(),
+                    e_expected.compute_endorsement_id().unwrap()
                 );
             }
 

@@ -2752,7 +2752,8 @@ impl BlockGraph {
                     roll_updates,
                 } => (dependencies, block_ledger_changes, roll_updates),
                 BlockOperationsCheckOutcome::Discard(reason) => {
-                    return Ok(BlockCheckOutcome::Discard(reason))
+                    println!("Discarding ops: {:?}", reason);
+                    return Ok(BlockCheckOutcome::Discard(reason));
                 }
                 BlockOperationsCheckOutcome::WaitForDependencies(deps) => {
                     return Ok(BlockCheckOutcome::WaitForDependencies(deps))

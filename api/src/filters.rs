@@ -109,7 +109,6 @@ pub struct Addresses {
 }
 /// This function sets up all the routes that can be used
 /// and combines them into one filter
-///
 pub fn get_filter(
     node_version: Version,
     api_config: ApiConfig,
@@ -580,7 +579,7 @@ async fn get_consensus_config(
 /// return the result as a warp reply.
 ///
 /// # Argument
-/// * event_tx : Sender used to send the event out
+/// * `event_tx`: Sender used to send the event out
 async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<(), ApiError> {
     massa_trace!("api.filters.stop_node", {});
     Ok(evt_tx
@@ -625,7 +624,7 @@ async fn remove_staking_addresses(
 ///
 /// The transaction is verified before been propagated.
 /// # Argument
-/// * event_tx : Sender used to send the event out
+/// * `event_tx`: Sender used to send the event out
 async fn send_operations(
     operations: Vec<Operation>,
     evt_tx: mpsc::Sender<ApiEvent>,
@@ -649,7 +648,6 @@ async fn send_operations(
 }
 
 /// Returns block with given hash as a reply
-///
 async fn get_block(
     event_tx: mpsc::Sender<ApiEvent>,
     block_id: BlockId,
@@ -713,15 +711,12 @@ async fn do_node_sign_msg(
         .await
         .map_err(|e| {
             ApiError::SendChannelError(format!(
-                "Could not send api event node sign message : {0}",
+                "Could not send api event node sign message: {0}",
                 e
             ))
         })?;
     response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!(
-            "Could not retrieve node message signature : {0}",
-            e
-        ))
+        ApiError::ReceiveChannelError(format!("Could not retrieve node message signature: {0}", e))
     })
 }
 
@@ -762,7 +757,7 @@ async fn retrieve_graph_export(
         .send(ApiEvent::GetBlockGraphStatus(response_tx))
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("could not send api event get block graph : {0}", e))
+            ApiError::SendChannelError(format!("could not send api event get block graph: {0}", e))
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("could not retrieve block graph: {0}", e))
@@ -782,11 +777,11 @@ async fn retrieve_block(
         })
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get block : {0}", e))
+            ApiError::SendChannelError(format!("Could not send api event get block: {0}", e))
         })?;
     response_rx
         .await
-        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block : {0}", e)))
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve block: {0}", e)))
 }
 
 async fn retrieve_block_ids_by_creator_from_consensus(
@@ -810,7 +805,7 @@ async fn retrieve_block_ids_by_creator_from_consensus(
             ))
         })?;
     response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!("Could not retrieve GetBlockIdsByCreator : {0}", e))
+        ApiError::ReceiveChannelError(format!("Could not retrieve GetBlockIdsByCreator: {0}", e))
     })
 }
 
@@ -841,11 +836,11 @@ async fn retrieve_operations(
         })
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get operation : {0}", e))
+            ApiError::SendChannelError(format!("Could not send api event get operation: {0}", e))
         })?;
-    response_rx.await.map_err(|e| {
-        ApiError::ReceiveChannelError(format!("Could not retrieve operation : {0}", e))
-    })
+    response_rx
+        .await
+        .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve operation: {0}", e)))
 }
 
 async fn retrieve_peers(event_tx: &mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
@@ -855,7 +850,7 @@ async fn retrieve_peers(event_tx: &mpsc::Sender<ApiEvent>) -> Result<Peers, ApiE
         .send(ApiEvent::GetPeers(response_tx))
         .await
         .map_err(|e| {
-            ApiError::SendChannelError(format!("Could not send api event get peers : {0}", e))
+            ApiError::SendChannelError(format!("Could not send api event get peers: {0}", e))
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!("Could not retrieve block peers: {0}", e))
@@ -894,7 +889,6 @@ async fn retrieve_selection_draw(
 
 /// Returns best parents wrapped in a reply.
 /// The Slot represents the parent's slot.
-///
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<Vec<(BlockId, Slot)>, ApiError> {
@@ -918,7 +912,6 @@ async fn get_current_parents(
 }
 
 /// Returns last final blocks wrapped in a reply.
-///
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<Vec<(BlockId, Slot)>, ApiError> {
@@ -1017,7 +1010,7 @@ async fn get_block_interval(
 ///
 /// Note:
 /// * both start time is included and end time is excluded
-/// * status is in ["active", "final", "stale"]
+/// * status is in `["active", "final", "stale"]`
 async fn get_graph_interval(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
@@ -1068,9 +1061,8 @@ async fn get_graph_interval(
     Ok(res)
 }
 
-/// Returns number of cliques and current cliques as Vec<HashSet<(hash, (period, thread))>>
-/// The result is a tuple (number_of_cliques, current_cliques) wrapped in a reply.
-///
+/// Returns number of cliques and current cliques as `Vec<HashSet<(hash, (period, thread))>>`
+/// The result is a tuple `(number_of_cliques, current_cliques)` wrapped in a reply.
 async fn get_cliques(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<(usize, Vec<HashSet<(BlockId, Slot)>>), ApiError> {
@@ -1125,8 +1117,7 @@ struct NetworkInfo {
 /// * own IP address
 /// * connected peers :
 ///      - ip address
-///      - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
-///
+///      - peer info (see `struct PeerInfo` in `communication::network::PeerInfoDatabase`)
 async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
@@ -1142,7 +1133,6 @@ async fn get_network_info(
 }
 
 /// Returns state info for a set of addresses
-///
 async fn get_addresses_info(
     addresses: HashSet<Address>,
     event_tx: mpsc::Sender<ApiEvent>,
@@ -1171,8 +1161,7 @@ async fn get_addresses_info(
 
 /// Returns connected peers :
 /// - ip address
-/// - peer info (see PeerInfo struct in communication::network::PeerInfoDatabase)
-///
+/// - peer info (see `struct PeerInfo` in `communication::network::PeerInfoDatabase`)
 async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
     massa_trace!("api.filters.get_peers", {});
     let peers = retrieve_peers(&event_tx).await?;
@@ -1222,12 +1211,11 @@ pub struct State {
 }
 
 /// Returns a summary of the current state:
-/// * time in UTime
+/// * time in `UTime`
 /// * latest slot (optional)
 /// * last final block
 /// * number of cliques
 /// * number of connected peers
-///
 async fn get_state(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
@@ -1288,8 +1276,7 @@ async fn get_state(
     })
 }
 
-/// Returns a number of last stale blocks as a Vec<(Hash, Slot)> wrapped in a reply.
-///
+/// Returns a number of last stale blocks as a `Vec<(Hash, Slot)>` wrapped in a reply.
 async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
     api_config: ApiConfig,
@@ -1312,8 +1299,7 @@ async fn get_last_stale(
     Ok(discarded)
 }
 
-/// Returns a number of last invalid blocks as a Vec<(Hash, Slot)> wrapped in a reply.
-///
+/// Returns a number of last invalid blocks as a `Vec<(Hash, Slot)>` wrapped in a reply.
 async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
@@ -1344,10 +1330,9 @@ pub struct StakerInfo {
 }
 
 /// Returns
-/// * a number of discarded blocks by the staker as a Vec<(&Hash, DiscardReason, BlockHeader)>
-/// * a number of active blocks by the staker as a Vec<(&Hash, BlockHeader)>
-/// * next slots that are for the staker as a Vec<Slot>
-///
+/// * a number of discarded blocks by the staker as a `Vec<(&Hash, DiscardReason, BlockHeader)>`
+/// * a number of active blocks by the staker as a `Vec<(&Hash, BlockHeader)>`
+/// * next slots that are for the staker as a `Vec<Slot>`
 async fn get_staker_info(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
@@ -1396,7 +1381,7 @@ async fn get_staker_info(
         .await?
         .into_iter()
         .filter_map(|(slt, (sel, _))| {
-            // todo retrieve next endorsment by staker ?
+            // TODO: retrieve next endorsement by staker?
             if sel == creator {
                 return Some(slt);
             }
@@ -1448,7 +1433,7 @@ async fn get_next_draws(
         .into_iter()
         .filter_map(|(slt, (sel, _))| {
             if addresses.contains(&sel) {
-                // todo retrive endorsements by addressess ?
+                // TODO: retrieve endorsements by addresses?
                 return Some((sel, slt));
             }
             None
@@ -1477,7 +1462,7 @@ async fn retrieve_stakers_production_stats(
         })?;
     response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!(
-            "Could not retrieve stakers produciton stats: {0}",
+            "Could not retrieve stakers production stats: {0}",
             e
         ))
     })
