@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1.6", features = ["full"] }
+tokio = { version = "1.11", features = ["full"] }
 warp = "0.3"
 logging = { path = "../logging" }
 serde = { version = "1.0", features = ["derive"] }
@@ -21,11 +21,11 @@ time = {path = "../time"}
 communication = {path = "../communication"}
 storage = {path = "../storage"}
 pool = {path = "../pool"}
-serde_qs = {version= "0.8.3", features = ["warp"]}
+serde_qs = {version= "0.8", features = ["warp"]}
 
 [dev-dependencies]
 num = "0.4"
 stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
 tempfile = "3.2"
-serial_test = "0.5.1"
+serial_test = "0.5"

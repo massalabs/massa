@@ -9,11 +9,11 @@ edition = "2018"
 [dependencies]
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.6", features = ["full"] }
+tokio = { version = "1.11", features = ["full"] }
 log = { version = "0.4" }
 logging = { path = "../logging" }
 serde_json = { version = "1.0" }
-sled = "0.34.6"
+sled = "0.34"
 models = { path = "../models" }
 crypto = { path = "../crypto" }
 time = { path = "../time" }
@@ -22,4 +22,4 @@ time = { path = "../time" }
 stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
 tempfile = "3.2"
-serial_test = "0.5.1"
+serial_test = "0.5"

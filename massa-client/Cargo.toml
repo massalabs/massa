@@ -11,15 +11,15 @@ reqwest = { version = "0.11", features = ["blocking", "json"] }
 rustyline = "7.1.0"
 serde = { version = "1.0", features = ["derive"] }
 config = { version = "0.11" }
-clap = "2.33.3"
+clap = "2.33"
 thiserror = "1.0"
 crypto = {path = "../crypto"}
 bs58 = { version = "0.4", features = ["check"] }
 bitcoin_hashes = "0.10"
 serde_json = { version = "1.0" }
-chrono = "0.4.19"
+chrono = "0.4"
 log = { version = "0.4" }
-serde_qs = {version= "0.8.3"}
+serde_qs = {version= "0.8"}
 
 time = { path = "../time" }
 api = { path = "../api" }
@@ -27,7 +27,7 @@ models = {path = "../models"}
 consensus = {path = "../consensus"}
 communication = {path = "../communication"}
 pool = {path = "../pool"}
-serial_test = "0.5.1"
+serial_test = "0.5"
 
 
 

@@ -444,7 +444,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                         1000.into(),
                         |evt| match evt {
                             evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                            evt => None,
+                            _ => None,
                         },
                     )
                     .await
@@ -462,7 +462,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                             150.into(),
                             |evt| match evt {
                                 evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                                evt => None,
+                                _ => None,
                             },
                         )
                         .await
