@@ -34,14 +34,143 @@ API info at https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercon
 
 ## API endpoints list (I/O action and `eth_` mapping with our client)
 
-### Public
+
+### Public ETH-RPC
 
 - MetaMask
-  - `Call`
-  - `accounts`
+  - `Call` (later, when smart contracts are added)
   - `getBalance`
   - `sendTransaction`
-  - `sign`
+
+### Public Massa-RPC
+
+- `get_status`
+    - input: (None)
+    - output: NodeStatus struct with fields:
+        - node_id: NodeId
+        - node_ip:: `Option<IpAddress>`
+        - version: Version,
+        - genesis_timestamp: UTime
+        - t0
+        - delta_f0
+        - roll_price
+        - thread_count
+        - current_time: UTime
+        - connected_nodes: HashMap<NodeId, IpAddress>
+        - last_slot: Slot (optional)
+        - next_slot: Slot
+        - time_stats:
+            - time_start: UTime
+            - time_end: UTime
+            - final_block_count: u64
+            - stale_block_count: u64
+            - final_operation_count: u64
+        - pool_stats:
+            - operation_count: u64
+            - endorsement_count: u64
+        - network_stats:
+            - in_connection_count: u64
+            - out_connection_count: u64
+            - known_peer_count: u64
+            - banned_peer_count: u64
+            - active_node_count: u64
+
+- `get_cliques`:
+    - input: (none)
+    - output:
+        - list of [Clique] objects
+
+- `get_staker_list`: returns the active stakers and their roll counts for the current cycle. `active_stakers -> Option<HashMap<Address, u64>>`
+
+- `get_operations`:
+    - input: [OperationId] list
+    - output: [OperationInfo] list where OperationInfo is:
+        - id: OperationId
+        - in_pool: bool
+        - in_blocks: [BlockId] list
+        - is_final: bool
+        - operation: full Operation object
+
+- `get_addresses`:
+    - input: [Address] list
+    - output: [AddressInfo] list where AddressInfo is:
+        - address: Address
+        - thread: u8
+        - balance:
+            - final: Amount
+            - candidate: Amount
+            - locked: Amount
+        - rolls:
+            - active: u64
+            - final: u64
+            - candidate: u64
+        - block_draws: [Slot]
+        - endorsement_draws: `HashMap<Slot, u64>` (u64 is the index)
+        - blocks_created: [BlockId] list
+        - involved_in_endorsements: [EndorsementId] list
+        - involved_in_operations: [OperationId] list
+
+- `get_endorsements`:
+    - input: [EndorsementId] list
+    - output: [EndorsementInfo] list where EndorsementInfo is:
+        - id: EndorsementId
+        - in_pool: bool
+        - in_blocks: [BlockId] list
+        - is_final: bool
+        - endorsement: full Endorsement object
+
+- `get_block`:
+    - input BlockId
+    - output: BlockInfo where BlockInfo is:
+        - id: BlockId
+        - is_final: bool
+        - is_stale: bool
+        - is_in_blockclique: bool
+        - block: full Block object
+
+- `get_graph_interval`: get the block graph within the specified time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp
+    - input:
+        - (optional time_start: UTime)
+        - (optional time_end: UTime)
+    - output: [BlockSummary] list where BlockSummary is:
+        - id: BlockId
+        - is_final: bool
+        - is_stale: bool
+        - is_in_blockclique: bool
+        - slot: Slot
+        - creator: Address
+        - parents: [BlockId] list
+
+- `send_operations`:
+    - input [Operation] list
+    - output: [OperationId] list of all those that were sent
+
+### Private
+
+- `start_node`: `start_node()` : starts the node and waits for node to start. Signals if the node is already running
+    - input : none
+    - output : none
+- `stop_node`: Gracefully stop the node 
+    - input : none
+    - output : none
+- `node_sign_message`
+    - input : [u8]
+    - output : (signature, puclic key)
+- `staking_keys`:
+    - `add`: add a new private key for the node to use to stake `register_staking_keys(Vec<PrivateKey>)`
+        - input Private keys
+        - output None
+    - `remove`: removes an address used to stake `remove_staking_addresses(Vec<Address>)`
+        - input : private keys
+        - output : none
+    - `list`: hashset of staking addresses `staking_addresses() -> HashSet<Address>`
+        - input none
+        - output adresses
+
+
+---
+
+### Public
 
 - Debug (specific information)
     - `get_node_info`: We should fuse `our_ip`, `peers`, `get_network_info`, `get_config` into a single node_info command:
