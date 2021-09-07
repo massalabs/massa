@@ -26,22 +26,52 @@ At the end of the episode, all nodes will stop by themselves and become useless/
 
 The score of a node for a given episode is the following:
 ```
-Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 50 * (routable_samples / routability_trials)
+Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 50 * (routable_samples / routability_trials) + 20 * average_maxim_factor
 
 ```
 
-* Half of the score is based on staking:
+* 50 points of the score are based on staking:
 ** (`active_cycles` / `nb_cycles` ) * (`produced_blocks` / `selected_slots`)
 *** `active_cycles` is the number of cycles in the episode during which the address had active rolls.
 *** `nb_cycles` is the total number of cycles in the episode.
 *** `produced_blocks` is the number of final blocks produced by the staker during the episode.
 *** `selected_slots` is the number of final slots for which the staker was selected to create blocks during the episode. If `selected_slots` = 0, the staking score is set to 0.
 *** The maximum score is supposed to be reached if during the whole episode, the node has rolls and produces all blocks when it is selected to.
-* The other half of the score is based on the routability of the node: how often the node can be reached by other nodes.
+* 50 points of the score are based on the routability of the node: how often the node can be reached by other nodes.
 ** `routable_samples` / `random_routability_trials`
 *** `routability_trials` is the total number of random connection trials that we performed towards the node during the episode.
 *** `routable_samples` is the number of random connection trials that resulted in a successful connection.
 *** Maximum score is achieved if the node can always be reached by other nodes.
+* 20 points of the score incentivize node diversity: the network is more decentralized if nodes are spread across countries and providers than if they are all hosted at the same location/provider
+** `average_maxim_factor` is the average `maxim_factor` value across routability samples. The following simplified pseudocode describes the computation of maxim factors for a set of IPV4s:
++
+```python
+def maxim_factors(ipv4s):
+    if not ipv4s:
+        return []
+
+    binary_ips = []
+    for ip in ipv4s:
+        binary_ips.append("".join(["{0:b}".format(int(part)).rjust(8,"0") for part in ip.split(".")]))
+
+    scores = []
+    for bin_ip in binary_ips:
+        cnt = 0.0
+        for pow2 in range(1, 32):
+            cnt = cnt - (sum([1.0 for v in binary_ips if v.startswith(bin_ip[:(32-pow2)])])-1) / (4**(pow2 * 0.01))
+        scores.append(cnt)
+
+    min_score = min(scores)
+    span = (max(scores) - min_score)
+    if span != 0:
+        scores = [(s - min_score)/span for s in scores]
+    else
+        scores = [1 for _ in scores]
+    
+    return scores
+```
++
+note that IPV6s are for now given max score
 
 We encourage every person to run only one node.
 Running multiple nodes with the same staking keys will result in roll slashing in the future.
