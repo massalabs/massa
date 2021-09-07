@@ -5,18 +5,22 @@ use crypto::{
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, Operation, Slot};
 
 struct BlockFactory {
-    thread_count: u8,
     best_parents: Vec<BlockId>,
     creator_priv_key: PrivateKey,
     slot: Slot,
-    operation_merkle_root: Hash,
     endorsements: Vec<Endorsement>,
     operations: Vec<Operation>,
 }
 
 impl BlockFactory {
-    fn start_block_factory() -> BlockFactory {
-        todo!()
+    fn start_block_factory(genesis: Vec<BlockId>) -> BlockFactory {
+        BlockFactory {
+            best_parents: genesis,
+            creator_priv_key: crypto::generate_random_private_key(),
+            slot: Slot::new(1, 0),
+            endorsements: Vec::new(),
+            operations: Vec::new(),
+        }
     }
 
     fn create_block(&self) -> (BlockId, Block) {
@@ -27,7 +31,14 @@ impl BlockFactory {
                 creator: public_key,
                 slot: self.slot,
                 parents: self.best_parents.clone(),
-                operation_merkle_root: self.operation_merkle_root,
+                operation_merkle_root: Hash::hash(
+                    &self
+                        .operations
+                        .iter()
+                        .map(|op| op.get_operation_id().unwrap().to_bytes().clone())
+                        .flatten()
+                        .collect::<Vec<_>>()[..],
+                ),
                 endorsements: self.endorsements.clone(),
             },
         )
@@ -42,20 +53,25 @@ impl BlockFactory {
     }
 
     fn set_slot(mut self, slot: Slot) -> BlockFactory {
-        todo!()
+        self.slot = slot;
+        self
     }
 
     fn set_parents(mut self, parents: Vec<BlockId>) -> BlockFactory {
-        todo!()
+        self.best_parents = parents;
+        self
     }
 
-    fn set_creator(mut self, creator: PublicKey) -> BlockFactory {
-        todo!()
+    fn set_creator(mut self, creator: PrivateKey) -> BlockFactory {
+        self.creator_priv_key = creator;
+        self
     }
     fn set_endorsements(mut self, endorsements: Vec<Endorsement>) -> BlockFactory {
-        todo!()
+        self.endorsements = endorsements;
+        self
     }
     fn set_operations(mut self, operations: Vec<Operation>) -> BlockFactory {
-        todo!()
+        self.operations = operations;
+        self
     }
 }
