@@ -67,15 +67,15 @@ pub struct OperationInfo {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceInfo {
     final_balance: Amount,
-    candidate: Amount,
-    locked: Amount,
+    candidate_balance: Amount,
+    locked_balance: Amount,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RollsInfo {
-    active: u64,
+    active_rolls: u64,
     final_rolls: u64,
-    candidate: u64,
+    candidate_rolls: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
