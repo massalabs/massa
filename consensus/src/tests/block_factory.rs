@@ -1,29 +1,36 @@
-use crypto::{
-    hash::Hash,
-    signature::{PrivateKey, PublicKey},
-};
+use crypto::{hash::Hash, signature::PrivateKey};
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, Operation, Slot};
 
-struct BlockFactory {
+use super::{
+    mock_protocol_controller::MockProtocolController,
+    tools::{validate_notpropagate_block, validate_propagate_block},
+};
+
+pub struct BlockFactory {
     best_parents: Vec<BlockId>,
     creator_priv_key: PrivateKey,
     slot: Slot,
     endorsements: Vec<Endorsement>,
     operations: Vec<Operation>,
+    protocol_controller: MockProtocolController,
 }
 
 impl BlockFactory {
-    fn start_block_factory(genesis: Vec<BlockId>) -> BlockFactory {
+    pub fn start_block_factory(
+        genesis: Vec<BlockId>,
+        protocol_controller: MockProtocolController,
+    ) -> BlockFactory {
         BlockFactory {
             best_parents: genesis,
             creator_priv_key: crypto::generate_random_private_key(),
             slot: Slot::new(1, 0),
             endorsements: Vec::new(),
             operations: Vec::new(),
+            protocol_controller,
         }
     }
 
-    fn create_block(&self) -> (BlockId, Block) {
+    pub async fn create_block(&mut self, valid: bool) -> (BlockId, Block) {
         let public_key = crypto::derive_public_key(&self.creator_priv_key);
         let (hash, header) = BlockHeader::new_signed(
             &self.creator_priv_key,
@@ -49,29 +56,36 @@ impl BlockFactory {
             operations: self.operations.clone(),
         };
 
+        self.protocol_controller.receive_block(block.clone()).await;
+        if valid {
+            // Assert that the block is propagated.
+            validate_propagate_block(&mut self.protocol_controller, hash, 2000).await;
+        } else {
+            // Assert that the the block is not propagated.
+            validate_notpropagate_block(&mut self.protocol_controller, hash, 500).await;
+        }
         (hash, block)
     }
 
-    fn set_slot(mut self, slot: Slot) -> BlockFactory {
-        self.slot = slot;
-        self
+    pub fn set_slot(&mut self, slot: Slot) {
+        self.slot = slot
     }
 
-    fn set_parents(mut self, parents: Vec<BlockId>) -> BlockFactory {
-        self.best_parents = parents;
-        self
+    pub fn set_parents(&mut self, parents: Vec<BlockId>) {
+        self.best_parents = parents
     }
 
-    fn set_creator(mut self, creator: PrivateKey) -> BlockFactory {
-        self.creator_priv_key = creator;
-        self
+    pub fn set_creator(&mut self, creator: PrivateKey) {
+        self.creator_priv_key = creator
     }
-    fn set_endorsements(mut self, endorsements: Vec<Endorsement>) -> BlockFactory {
-        self.endorsements = endorsements;
-        self
+    pub fn set_endorsements(&mut self, endorsements: Vec<Endorsement>) {
+        self.endorsements = endorsements
     }
-    fn set_operations(mut self, operations: Vec<Operation>) -> BlockFactory {
-        self.operations = operations;
-        self
+    pub fn set_operations(&mut self, operations: Vec<Operation>) {
+        self.operations = operations
+    }
+
+    pub fn give_protocol_controller(self) -> MockProtocolController {
+        self.protocol_controller
     }
 }
