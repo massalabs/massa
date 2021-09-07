@@ -8,4 +8,5 @@ edition = "2018"
 [dependencies]
 jsonrpc-core = "18.0.0"
 jsonrpc-http-server = "18.0.0"
+# custom modules
 jsonrpc-dto = { path = "../jsonrpc-dto" }

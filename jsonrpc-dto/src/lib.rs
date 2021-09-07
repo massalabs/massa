@@ -136,6 +136,9 @@ pub trait EthRpc {
 
     #[rpc(name = "sendTransaction")]
     fn send_transaction(&self) -> Result<()>;
+
+    #[rpc(name = "HelloWorld")]
+    fn hello_world(&self) -> Result<String>;
 }
 
 /// Public Massa JSON-RPC endpoints
@@ -239,6 +242,10 @@ impl EthRpc for API {
 
     fn send_transaction(&self) -> Result<()> {
         todo!()
+    }
+
+    fn hello_world(&self) -> Result<String> {
+        Ok(String::from("Hello, World!"))
     }
 }
 

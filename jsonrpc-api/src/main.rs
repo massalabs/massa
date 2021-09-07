@@ -4,7 +4,7 @@ use jsonrpc_core::IoHandler;
 use jsonrpc_dto::{EthRpc, API};
 use jsonrpc_http_server::ServerBuilder;
 
-const URL: &str = "127.0.0.1:31242";
+const URL: &str = "127.0.0.1:33035";
 
 fn main() {
     let mut io = IoHandler::new();
