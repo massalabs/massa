@@ -828,9 +828,6 @@ impl ProtocolWorker {
                 self.cfg.max_known_endorsements_size,
             );
 
-            // end node mutable borrow
-            drop(node_info);
-
             // send endorsements to pool
             if is_new {
                 let prop_eds: HashMap<EndorsementId, Endorsement> = header
