@@ -803,7 +803,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-        let (block_id, is_new, endorsement_ids_isnew) = match self.check_header(&header) {
+        let (block_id, is_new, endorsement_ids_isnew) = match self.check_header(header) {
             Ok(Some(v)) => v,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
