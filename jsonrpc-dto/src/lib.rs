@@ -84,11 +84,11 @@ pub struct AddressInfo {
     thread: u8,
     balance: BalanceInfo,
     rolls: RollsInfo,
-    block_draws: Vec<Slot>,
+    block_draws: HashSet<Slot>,
     endorsement_draws: HashMap<Slot, u64>, // u64 is the index
-    blocks_created: Vec<BlockId>,
-    involved_in_endorsements: Vec<EndorsementId>,
-    involved_in_operations: Vec<OperationId>,
+    blocks_created: HashSet<BlockId>,
+    involved_in_endorsements: HashSet<EndorsementId>,
+    involved_in_operations: HashSet<OperationId>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
