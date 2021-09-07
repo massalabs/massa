@@ -883,19 +883,13 @@ impl ProtocolWorker {
 
         // check if this header was already verified
         let now = Instant::now();
-        match self.checked_headers.entry(block_id) {
-            hash_map::Entry::Occupied(mut occ) => {
-                let (e_ids, inst) = occ.get_mut();
-                *inst = now;
-                return Ok(Some((
-                    block_id,
-                    false,
-                    e_ids.iter().map(|e_id| (*e_id, false)).collect(),
-                )));
-            }
-            _ => {
-                // do nothing, will be added after checks
-            }
+        if let Some((e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
+            *inst = now;
+            return Ok(Some((
+                block_id,
+                false,
+                e_ids.iter().map(|e_id| (*e_id, false)).collect(),
+            )));
         }
 
         // check header signature
