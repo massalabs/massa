@@ -12,20 +12,6 @@ use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use time::UTime;
 
-// TODO:
-// * `get_node_config -> SerializationContext`
-// * `get_pool_config -> PoolConfig`
-// * `get_consensus_config -> ConsensusConfig`
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
-    // FIXME: Duplicated?
-    pub t0: UTime,
-    pub delta_f0: u64,
-    pub version: Version,
-    pub genesis_timestamp: UTime,
-    pub roll_price: Amount, // TODO: architecture params
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TimeStats {
     time_start: UTime,
