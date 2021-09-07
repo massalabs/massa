@@ -30,7 +30,7 @@ impl BlockFactory {
         }
     }
 
-    pub async fn create_block(&mut self, valid: bool) -> (BlockId, Block) {
+    pub async fn create_and_receive_block(&mut self, valid: bool) -> (BlockId, Block) {
         let public_key = crypto::derive_public_key(&self.creator_priv_key);
         let (hash, header) = BlockHeader::new_signed(
             &self.creator_priv_key,
@@ -65,6 +65,28 @@ impl BlockFactory {
             validate_notpropagate_block(&mut self.protocol_controller, hash, 500).await;
         }
         (hash, block)
+    }
+
+    pub fn sign_header(&self, header: BlockHeaderContent) -> Block {
+        let public_key = crypto::derive_public_key(&self.creator_priv_key);
+        let (hash, header) = BlockHeader::new_signed(&self.creator_priv_key, header).unwrap();
+
+        Block {
+            header,
+            operations: self.operations.clone(),
+        }
+    }
+
+    pub async fn receieve_block(&mut self, valid: bool, block: Block) {
+        let hash = block.header.compute_block_id().unwrap();
+        self.protocol_controller.receive_block(block.clone()).await;
+        if valid {
+            // Assert that the block is propagated.
+            validate_propagate_block(&mut self.protocol_controller, hash, 2000).await;
+        } else {
+            // Assert that the the block is not propagated.
+            validate_notpropagate_block(&mut self.protocol_controller, hash, 500).await;
+        }
     }
 
     pub fn set_slot(&mut self, slot: Slot) {

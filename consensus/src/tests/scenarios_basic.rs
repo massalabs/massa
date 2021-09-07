@@ -3,7 +3,10 @@
 use std::collections::HashMap;
 
 use super::tools;
-use crate::tests::{block_factory::BlockFactory, tools::generate_ledger_file};
+use crate::tests::{
+    block_factory::BlockFactory,
+    tools::{create_endorsement, generate_ledger_file},
+};
 use crypto::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
@@ -44,14 +47,14 @@ async fn test_old_stale_not_propagated_and_discarded() {
             block_factory.set_creator(staking_keys[0]);
             block_factory.set_slot(Slot::new(1, 0));
 
-            let (hash_1, _) = block_factory.create_block(true).await;
+            let (hash_1, _) = block_factory.create_and_receive_block(true).await;
 
             block_factory.set_slot(Slot::new(1, 1));
-            block_factory.create_block(true).await;
+            block_factory.create_and_receive_block(true).await;
 
             block_factory.set_slot(Slot::new(1, 0));
             block_factory.set_parents(vec![hash_1, parents[0]]);
-            let (hash_3, _) = block_factory.create_block(false).await;
+            let (hash_3, _) = block_factory.create_and_receive_block(false).await;
 
             // Old stale block was discarded.
             let status = consensus_command_sender
@@ -91,7 +94,7 @@ async fn test_block_not_processed_multiple_times() {
     tools::consensus_without_pool_test(
         cfg.clone(),
         None,
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -101,37 +104,17 @@ async fn test_block_not_processed_multiple_times() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            let (hash_1, block_1, _) = tools::create_block(
-                &cfg,
-                Slot::new(1, 0),
-                parents.clone(),
-                staking_keys[0].clone(),
-            );
-            protocol_controller.receive_block(block_1.clone()).await;
-            tools::validate_propagate_block_in_list(
-                &mut protocol_controller,
-                &vec![hash_1.clone()],
-                1000,
-            )
-            .await;
+            let mut block_factory =
+                BlockFactory::start_block_factory(parents.clone(), protocol_controller);
+            block_factory.set_creator(staking_keys[0]);
+            block_factory.set_slot(Slot::new(1, 0));
+            let (_, block_1) = block_factory.create_and_receive_block(true).await;
 
             // Send it again, it should not be propagated.
-            protocol_controller.receive_block(block_1.clone()).await;
-            tools::validate_notpropagate_block_in_list(
-                &mut protocol_controller,
-                &vec![hash_1],
-                1000,
-            )
-            .await;
+            block_factory.receieve_block(false, block_1.clone()).await;
 
             // Send it again, it should not be propagated.
-            protocol_controller.receive_block(block_1).await;
-            tools::validate_notpropagate_block_in_list(
-                &mut protocol_controller,
-                &vec![hash_1],
-                1000,
-            )
-            .await;
+            block_factory.receieve_block(false, block_1.clone()).await;
 
             // Block was not discarded.
             let status = consensus_command_sender
@@ -140,7 +123,7 @@ async fn test_block_not_processed_multiple_times() {
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.map.len(), 0);
             (
-                protocol_controller,
+                block_factory.give_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
@@ -170,7 +153,7 @@ async fn test_queuing() {
     tools::consensus_without_pool_test(
         cfg.clone(),
         None,
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -180,29 +163,17 @@ async fn test_queuing() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            // create a block that will be a missing dependency
-            let hash_1 = tools::create_and_test_block(
-                &mut protocol_controller,
-                &cfg,
-                Slot::new(3, 0),
-                parents.clone(),
-                false,
-                false,
-                staking_keys[0].clone(),
-            )
-            .await;
+            let mut block_factory =
+                BlockFactory::start_block_factory(parents.clone(), protocol_controller);
+            block_factory.set_creator(staking_keys[0]);
+            block_factory.set_slot(Slot::new(3, 0));
 
-            // create a block that depends on the missing dep
-            let _ = tools::create_and_test_block(
-                &mut protocol_controller,
-                &cfg,
-                Slot::new(4, 0),
-                vec![hash_1.clone(), parents[1]],
-                false,
-                false,
-                staking_keys[0].clone(),
-            )
-            .await;
+            let (hash_1, _) = block_factory.create_and_receive_block(false).await;
+
+            block_factory.set_slot(Slot::new(4, 0));
+            block_factory.set_parents(vec![hash_1.clone(), parents[1]]);
+
+            block_factory.create_and_receive_block(false).await;
 
             // Blocks were queued, not discarded.
             let status = consensus_command_sender
@@ -211,7 +182,7 @@ async fn test_queuing() {
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.map.len(), 0);
             (
-                protocol_controller,
+                block_factory.give_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
@@ -241,7 +212,7 @@ async fn test_double_staking_does_not_propagate() {
     tools::consensus_without_pool_test(
         cfg.clone(),
         None,
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -251,29 +222,18 @@ async fn test_double_staking_does_not_propagate() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            let _ = tools::create_and_test_block(
-                &mut protocol_controller,
-                &cfg,
-                Slot::new(1, 0),
-                parents.clone(),
-                true,
-                false,
-                staking_keys[0].clone(),
-            )
-            .await;
+            let mut block_factory =
+                BlockFactory::start_block_factory(parents.clone(), protocol_controller);
+            block_factory.set_creator(staking_keys[0]);
+            block_factory.set_slot(Slot::new(1, 0));
+            let (_, mut block_1) = block_factory.create_and_receive_block(true).await;
 
             // Same creator, same slot, different block
-            let (hash_2, block_2, _) = tools::create_block_with_merkle_root(
-                &cfg,
-                Hash::hash("different".as_bytes()),
-                Slot::new(1, 0),
-                parents.clone(),
-                staking_keys[0].clone(),
-            );
-            protocol_controller.receive_block(block_2).await;
+            block_1.header.content.operation_merkle_root = Hash::hash(&"hello world".as_bytes());
+            let block = block_factory.sign_header(block_1.header.content);
 
             // Note: currently does propagate, see #190.
-            tools::validate_propagate_block(&mut protocol_controller, hash_2, 1000).await;
+            block_factory.receieve_block(true, block).await;
 
             // Block was not discarded.
             let status = consensus_command_sender
@@ -282,7 +242,7 @@ async fn test_double_staking_does_not_propagate() {
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.map.len(), 0);
             (
-                protocol_controller,
+                block_factory.give_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
