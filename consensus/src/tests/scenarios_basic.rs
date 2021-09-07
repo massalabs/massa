@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use super::tools;
-use crate::tests::tools::generate_ledger_file;
+use crate::tests::{block_factory::BlockFactory, tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
@@ -29,7 +29,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
     tools::consensus_without_pool_test(
         cfg.clone(),
         None,
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -39,39 +39,19 @@ async fn test_old_stale_not_propagated_and_discarded() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            let hash_1 = tools::create_and_test_block(
-                &mut protocol_controller,
-                &cfg,
-                Slot::new(1, 0),
-                parents.clone(),
-                true,
-                false,
-                staking_keys[0].clone(),
-            )
-            .await;
+            let mut block_factory =
+                BlockFactory::start_block_factory(parents.clone(), protocol_controller);
+            block_factory.set_creator(staking_keys[0]);
+            block_factory.set_slot(Slot::new(1, 0));
 
-            let _ = tools::create_and_test_block(
-                &mut protocol_controller,
-                &cfg,
-                Slot::new(1, 1),
-                parents.clone(),
-                true,
-                false,
-                staking_keys[0].clone(),
-            )
-            .await;
+            let (hash_1, _) = block_factory.create_block(true).await;
 
-            // Old stale block is not propagated.
-            let hash_3 = tools::create_and_test_block(
-                &mut protocol_controller,
-                &cfg,
-                Slot::new(1, 0),
-                vec![hash_1, parents[0]],
-                false,
-                false,
-                staking_keys[0].clone(),
-            )
-            .await;
+            block_factory.set_slot(Slot::new(1, 1));
+            block_factory.create_block(true).await;
+
+            block_factory.set_slot(Slot::new(1, 0));
+            block_factory.set_parents(vec![hash_1, parents[0]]);
+            let (hash_3, _) = block_factory.create_block(false).await;
 
             // Old stale block was discarded.
             let status = consensus_command_sender
@@ -81,7 +61,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
             assert_eq!(status.discarded_blocks.map.len(), 1);
             assert!(status.discarded_blocks.map.get(&hash_3).is_some());
             (
-                protocol_controller,
+                block_factory.give_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
