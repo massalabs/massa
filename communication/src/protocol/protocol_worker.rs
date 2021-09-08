@@ -803,7 +803,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-        let (block_id, is_new, endorsement_ids_isnew) = match self.check_header(&header) {
+        let (block_id, is_new, endorsement_ids_isnew) = match self.check_header(header) {
             Ok(Some(v)) => v,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
@@ -827,9 +827,6 @@ impl ProtocolWorker {
                     .collect(),
                 self.cfg.max_known_endorsements_size,
             );
-
-            // end node mutable borrow
-            drop(node_info);
 
             // send endorsements to pool
             if is_new {
@@ -883,19 +880,13 @@ impl ProtocolWorker {
 
         // check if this header was already verified
         let now = Instant::now();
-        match self.checked_headers.entry(block_id) {
-            hash_map::Entry::Occupied(mut occ) => {
-                let (e_ids, inst) = occ.get_mut();
-                *inst = now;
-                return Ok(Some((
-                    block_id,
-                    false,
-                    e_ids.iter().map(|e_id| (*e_id, false)).collect(),
-                )));
-            }
-            _ => {
-                // do nothing, will be added after checks
-            }
+        if let Some((e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
+            *inst = now;
+            return Ok(Some((
+                block_id,
+                false,
+                e_ids.iter().map(|e_id| (*e_id, false)).collect(),
+            )));
         }
 
         // check header signature
