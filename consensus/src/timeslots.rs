@@ -3,6 +3,7 @@
 //! warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 use crate::error::ConsensusError;
 use models::Slot;
+use std::convert::TryInto;
 use time::UTime;
 
 /// Gets timestamp in millis for given slot.
@@ -78,77 +79,76 @@ pub fn get_current_latest_block_slot(
     )
 }
 
+/// Turns an UTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end
+///
+/// # Arguments
+/// * thread_count: number of threads.
+/// * t0: time in millis between two periods in the same thread.
+/// * genesis_timestamp: when the blockclique first started, in millis
+/// * start_time: optional start time
+/// * end_time: optional end time
+/// # Returns
+/// (Option<Slot>, Option<Slot>) pair of options representing the start (included) and end (excluded) slots
+/// or ConsensusError on error
+pub fn time_range_to_slot_range(
+    thread_count: u8,
+    t0: UTime,
+    genesis_timestamp: UTime,
+    start_time: Option<UTime>,
+    end_time: Option<UTime>,
+) -> Result<(Option<Slot>, Option<Slot>), ConsensusError> {
+    let start_slot = match start_time {
+        None => None,
+        Some(t) => {
+            let inter_slot = t0.checked_div_u64(thread_count as u64)?;
+            let slot_number: u64 = t
+                .saturating_sub(genesis_timestamp)
+                .checked_add(inter_slot)?
+                .saturating_sub(UTime::EPSILON)
+                .checked_div_time(inter_slot)?;
+            Some(Slot::new(
+                slot_number
+                    .checked_div(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?,
+                slot_number
+                    .checked_rem(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?
+                    .try_into()
+                    .map_err(|_| ConsensusError::ThreadOverflowError)?,
+            ))
+        }
+    };
+
+    let end_slot = match end_time {
+        None => None,
+        Some(t) => {
+            let inter_slot = t0.checked_div_u64(thread_count as u64)?;
+            let slot_number: u64 = t
+                .saturating_sub(genesis_timestamp)
+                .checked_add(inter_slot)?
+                .saturating_sub(UTime::EPSILON)
+                .checked_div_time(inter_slot)?;
+            Some(Slot::new(
+                slot_number
+                    .checked_div(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?,
+                slot_number
+                    .checked_rem(thread_count as u64)
+                    .ok_or(ConsensusError::TimeOverflowError)?
+                    .try_into()
+                    .map_err(|_| ConsensusError::ThreadOverflowError)?,
+            ))
+        }
+    };
+
+    Ok((start_slot, end_slot))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serial_test::serial;
-    use std::convert::TryInto;
     use time::UTime;
-
-    /// Turns an UTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end
-    ///
-    /// # Arguments
-    /// * thread_count: number of threads.
-    /// * t0: time in millis between two periods in the same thread.
-    /// * genesis_timestamp: when the blockclique first started, in millis
-    /// * start_time: optional start time
-    /// * end_time: optional end time
-    /// # Returns
-    /// (Option<Slot>, Option<Slot>) pair of options representing the start (included) and end (excluded) slots
-    /// or ConsensusError on error
-    pub fn time_range_to_slot_range(
-        thread_count: u8,
-        t0: UTime,
-        genesis_timestamp: UTime,
-        start_time: Option<UTime>,
-        end_time: Option<UTime>,
-    ) -> Result<(Option<Slot>, Option<Slot>), ConsensusError> {
-        let start_slot = match start_time {
-            None => None,
-            Some(t) => {
-                let inter_slot = t0.checked_div_u64(thread_count as u64)?;
-                let slot_number: u64 = t
-                    .saturating_sub(genesis_timestamp)
-                    .checked_add(inter_slot)?
-                    .saturating_sub(UTime::EPSILON)
-                    .checked_div_time(inter_slot)?;
-                Some(Slot::new(
-                    slot_number
-                        .checked_div(thread_count as u64)
-                        .ok_or(ConsensusError::TimeOverflowError)?,
-                    slot_number
-                        .checked_rem(thread_count as u64)
-                        .ok_or(ConsensusError::TimeOverflowError)?
-                        .try_into()
-                        .map_err(|_| ConsensusError::ThreadOverflowError)?,
-                ))
-            }
-        };
-
-        let end_slot = match end_time {
-            None => None,
-            Some(t) => {
-                let inter_slot = t0.checked_div_u64(thread_count as u64)?;
-                let slot_number: u64 = t
-                    .saturating_sub(genesis_timestamp)
-                    .checked_add(inter_slot)?
-                    .saturating_sub(UTime::EPSILON)
-                    .checked_div_time(inter_slot)?;
-                Some(Slot::new(
-                    slot_number
-                        .checked_div(thread_count as u64)
-                        .ok_or(ConsensusError::TimeOverflowError)?,
-                    slot_number
-                        .checked_rem(thread_count as u64)
-                        .ok_or(ConsensusError::TimeOverflowError)?
-                        .try_into()
-                        .map_err(|_| ConsensusError::ThreadOverflowError)?,
-                ))
-            }
-        };
-
-        Ok((start_slot, end_slot))
-    }
 
     #[test]
     #[serial]

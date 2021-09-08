@@ -4,23 +4,24 @@ use super::config::ApiConfig;
 use crate::ApiError;
 use communication::network::Peer;
 use communication::network::Peers;
+use communication::NodeId;
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-use consensus::ConsensusStats;
 use consensus::ExportBlockStatus;
 use consensus::Status;
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, AddressState, BlockGraphExport,
     ConsensusConfig, ConsensusError, DiscardReason,
 };
+use consensus::{time_range_to_slot_range, ConsensusStats};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use logging::massa_trace;
 use models::Address;
-use models::ModelsError;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
+use models::SerializationContext;
 use models::StakersCycleProductionStats;
-use models::{BlockHeader, BlockId, Slot, Version};
+use models::{Amount, BlockHeader, BlockId, Slot, Version};
 use pool::PoolConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -128,7 +129,7 @@ pub fn get_filter(
         .and(warp::path("block"))
         .and(warp::path::param::<BlockId>()) //block id
         .and(warp::path::end())
-        .and_then(move |hash| get_block(evt_tx.clone(), hash, storage.clone()));
+        .and_then(move |hash| wrap_api_call(get_block(evt_tx.clone(), hash, storage.clone())));
 
     let evt_tx = event_tx.clone();
     let operations = warp::get()
@@ -138,7 +139,7 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |OperationIds { operation_ids }| {
-            get_operations(evt_tx.clone(), operation_ids)
+            wrap_api_call(get_operations(evt_tx.clone(), operation_ids))
         });
 
     let evt_tx = event_tx.clone();
@@ -152,13 +153,13 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(warp::query::<TimeInterval>()) //start, end
         .and_then(move |TimeInterval { start, end }| {
-            get_block_interval(
+            wrap_api_call(get_block_interval(
                 evt_tx.clone(),
                 consensus_cfg.clone(),
                 start,
                 end,
                 storage.clone(),
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -167,7 +168,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("current_parents"))
         .and(warp::path::end())
-        .and_then(move || get_current_parents(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_current_parents(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let last_final = warp::get()
@@ -175,7 +176,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("last_final"))
         .and(warp::path::end())
-        .and_then(move || get_last_final(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_last_final(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
@@ -187,13 +188,13 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(warp::query::<TimeInterval>()) //start, end //end
         .and_then(move |TimeInterval { start, end }| {
-            get_graph_interval(
+            wrap_api_call(get_graph_interval(
                 evt_tx.clone(),
                 consensus_cfg.clone(),
                 start,
                 end,
                 storage.clone(),
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -204,7 +205,13 @@ pub fn get_filter(
         .and(warp::path("block_ids_by_creator"))
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
-        .and_then(move |addr| get_block_ids_by_creator(evt_tx.clone(), addr, storage.clone()));
+        .and_then(move |addr| {
+            wrap_api_call(get_block_ids_by_creator(
+                evt_tx.clone(),
+                addr,
+                storage.clone(),
+            ))
+        });
 
     let evt_tx = event_tx.clone();
     let cliques = warp::get()
@@ -212,7 +219,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("cliques"))
         .and(warp::path::end())
-        .and_then(move || get_cliques(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_cliques(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let peers = warp::get()
@@ -220,14 +227,14 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("peers"))
         .and(warp::path::end())
-        .and_then(move || get_peers(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_peers(evt_tx.clone())));
 
     let network_cfg = network_config.clone();
     let our_ip = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("our_ip"))
-        .and_then(move || get_our_ip(network_cfg.clone()));
+        .and_then(move || wrap_api_call(get_our_ip(network_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let network_cfg = network_config.clone();
@@ -236,21 +243,21 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("network_info"))
         .and(warp::path::end())
-        .and_then(move || get_network_info(network_cfg.clone(), evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_network_info(network_cfg.clone(), evt_tx.clone())));
 
     let node_config = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("node_config"))
         .and(warp::path::end())
-        .and_then(get_node_config);
+        .and_then(|| wrap_api_call(get_node_config()));
 
     let version = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("version"))
         .and(warp::path::end())
-        .and_then(move || get_version(node_version));
+        .and_then(move || wrap_api_call(get_version(node_version)));
 
     let pool_cfg = pool_config;
     let pool_config = warp::get()
@@ -258,7 +265,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("pool_config"))
         .and(warp::path::end())
-        .and_then(move || get_pool_config(pool_cfg.clone()));
+        .and_then(move || wrap_api_call(get_pool_config(pool_cfg.clone())));
 
     let consensus_cfg = consensus_config.clone();
     let get_consensus_cfg = warp::get()
@@ -266,7 +273,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("consensus_config"))
         .and(warp::path::end())
-        .and_then(move || get_consensus_config(consensus_cfg.clone()));
+        .and_then(move || wrap_api_call(get_consensus_config(consensus_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let network_cfg = network_config;
@@ -277,12 +284,12 @@ pub fn get_filter(
         .and(warp::path("state"))
         .and(warp::path::end())
         .and_then(move || {
-            get_state(
+            wrap_api_call(get_state(
                 evt_tx.clone(),
                 consensus_cfg.clone(),
                 network_cfg.clone(),
                 clock_compensation,
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -292,7 +299,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("last_stale"))
         .and(warp::path::end())
-        .and_then(move || get_last_stale(evt_tx.clone(), api_cfg.clone()));
+        .and_then(move || wrap_api_call(get_last_stale(evt_tx.clone(), api_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config.clone();
@@ -301,7 +308,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("last_invalid"))
         .and(warp::path::end())
-        .and_then(move || get_last_invalid(evt_tx.clone(), api_cfg.clone()));
+        .and_then(move || wrap_api_call(get_last_invalid(evt_tx.clone(), api_cfg.clone())));
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config.clone();
@@ -313,13 +320,13 @@ pub fn get_filter(
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
         .and_then(move |creator| {
-            get_staker_info(
+            wrap_api_call(get_staker_info(
                 evt_tx.clone(),
                 api_cfg.clone(),
                 consensus_cfg.clone(),
                 creator,
                 clock_compensation,
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -329,7 +336,9 @@ pub fn get_filter(
         .and(warp::path("staker_stats"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| get_stakers_stats(evt_tx.clone(), addrs));
+        .and_then(move |Addresses { addrs }| {
+            wrap_api_call(get_stakers_stats(evt_tx.clone(), addrs))
+        });
 
     let evt_tx = event_tx.clone();
     let api_cfg = api_config;
@@ -341,13 +350,13 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |Addresses { addrs }| {
-            get_next_draws(
+            wrap_api_call(get_next_draws(
                 evt_tx.clone(),
                 api_cfg.clone(),
                 consensus_cfg.clone(),
                 addrs,
                 clock_compensation,
-            )
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -357,7 +366,9 @@ pub fn get_filter(
         .and(warp::path("operations_involving_address"))
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
-        .and_then(move |address| get_operations_involving_address(evt_tx.clone(), address));
+        .and_then(move |address| {
+            wrap_api_call(get_operations_involving_address(evt_tx.clone(), address))
+        });
 
     let evt_tx = event_tx.clone();
     let addresses_info = warp::get()
@@ -366,7 +377,9 @@ pub fn get_filter(
         .and(warp::path("addresses_info"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| get_addresses_info(addrs, evt_tx.clone()));
+        .and_then(move |Addresses { addrs }| {
+            wrap_api_call(get_addresses_info(addrs, evt_tx.clone()))
+        });
 
     let evt_tx = event_tx.clone();
     let stop_node = warp::post()
@@ -374,7 +387,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("stop_node"))
         .and(warp::path::end())
-        .and_then(move || stop_node(evt_tx.clone()));
+        .and_then(move || wrap_api_call(stop_node(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let unban = warp::post()
@@ -383,7 +396,7 @@ pub fn get_filter(
         .and(warp::path("unban"))
         .and(warp::path::param::<IpAddr>())
         .and(warp::path::end())
-        .and_then(move |ip| unban(evt_tx.clone(), ip));
+        .and_then(move |ip| wrap_api_call(unban(evt_tx.clone(), ip)));
 
     let evt_tx = event_tx.clone();
     let register_staking_private_keys = warp::post()
@@ -392,7 +405,9 @@ pub fn get_filter(
         .and(warp::path("register_staking_keys"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |PrivateKeys { keys }| register_staking_private_keys(evt_tx.clone(), keys));
+        .and_then(move |PrivateKeys { keys }| {
+            wrap_api_call(register_staking_private_keys(evt_tx.clone(), keys))
+        });
 
     let evt_tx = event_tx.clone();
     let remove_staking_addresses = warp::delete()
@@ -401,7 +416,9 @@ pub fn get_filter(
         .and(warp::path("remove_staking_addresses"))
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
-        .and_then(move |Addresses { addrs }| remove_staking_addresses(evt_tx.clone(), addrs));
+        .and_then(move |Addresses { addrs }| {
+            wrap_api_call(remove_staking_addresses(evt_tx.clone(), addrs))
+        });
 
     let evt_tx = event_tx.clone();
     let send_operations = warp::post()
@@ -410,7 +427,7 @@ pub fn get_filter(
         .and(warp::path("send_operations"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and_then(move |operations| send_operations(operations, evt_tx.clone()));
+        .and_then(move |operations| wrap_api_call(send_operations(operations, evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let get_stats = warp::get()
@@ -418,7 +435,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("get_stats"))
         .and(warp::path::end())
-        .and_then(move || get_stats(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_stats(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let get_active_stakers = warp::get()
@@ -426,7 +443,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("active_stakers"))
         .and(warp::path::end())
-        .and_then(move || get_active_stakers(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_active_stakers(evt_tx.clone())));
 
     let evt_tx = event_tx.clone();
     let staking_addresses = warp::get()
@@ -434,7 +451,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("staking_addresses"))
         .and(warp::path::end())
-        .and_then(move || get_staking_addresses(evt_tx.clone()));
+        .and_then(move || wrap_api_call(get_staking_addresses(evt_tx.clone())));
 
     let evt_tx = event_tx;
     let node_sign_message = warp::post()
@@ -443,7 +460,9 @@ pub fn get_filter(
         .and(warp::path("node_sign_message"))
         .and(warp::path::end())
         .and(warp::body::bytes())
-        .and_then(move |msg: warp::hyper::body::Bytes| node_sign_msg(msg.to_vec(), evt_tx.clone()));
+        .and_then(move |msg: warp::hyper::body::Bytes| {
+            wrap_api_call(node_sign_msg(msg.to_vec(), evt_tx.clone()))
+        });
 
     block
         .or(blockinterval)
@@ -480,12 +499,38 @@ pub fn get_filter(
         .boxed()
 }
 
-async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::Rejection> {
+async fn wrap_api_call<F, T>(fut: F) -> Result<impl Reply, Rejection>
+where
+    F: std::future::Future<Output = Result<T, ApiError>>,
+    T: Serialize,
+{
+    Ok(match fut.await {
+        Ok(output) => {
+            warp::reply::with_status(warp::reply::json(&output), warp::http::StatusCode::OK)
+                .into_response()
+        }
+        Err(ApiError::NotFound) => warp::reply::with_status(
+            warp::reply::json(&json!({
+                "code": warp::http::StatusCode::NOT_FOUND.as_u16(),
+                "message": "not found"
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        )
+        .into_response(),
+        Err(e) => warp::reply::with_status(
+            warp::reply::json(&json!({
+                "code": warp::http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                "message": e.to_string()
+            })),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response(),
+    })
+}
+
+async fn get_pool_config(config: PoolConfig) -> Result<PoolConfig, ApiError> {
     massa_trace!("api.filters.get_pool_config", {});
-    Ok(warp::reply::json(&json!({
-        "max_pool_size_per_thread": config.max_pool_size_per_thread,
-        "max_operation_future_validity_start_periods": config.max_operation_future_validity_start_periods,
-    })))
+    Ok(config)
 }
 
 /// Returns our ip address
@@ -493,31 +538,41 @@ async fn get_pool_config(config: PoolConfig) -> Result<impl warp::Reply, warp::R
 /// Note: as our ip address is in the config,
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
-async fn get_node_config() -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_node_config() -> Result<SerializationContext, ApiError> {
     massa_trace!("api.filters.get_node_config", {});
     let context = models::with_serialization_context(|context| context.clone());
-    Ok(warp::reply::json(&context))
+    Ok(context)
 }
 
-async fn get_version(version: Version) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_version(version: Version) -> Result<Version, ApiError> {
     massa_trace!("api.filters.get_version", {});
-    Ok(warp::reply::json(&version))
+    Ok(version)
 }
-
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DataConsensusConfig {
+    pub t0: UTime,
+    pub thread_count: u8,
+    pub genesis_timestamp: UTime,
+    pub delta_f0: u64,
+    pub max_block_size: u32,
+    pub operation_validity_periods: u64,
+    pub periods_per_cycle: u64,
+    pub roll_price: Amount,
+}
 async fn get_consensus_config(
     consensus_cfg: ConsensusConfig,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<DataConsensusConfig, ApiError> {
     massa_trace!("api.filters.get_consensus_config", {});
-    Ok(warp::reply::json(&json!({
-        "t0": consensus_cfg.t0,
-        "thread_count": consensus_cfg.thread_count,
-        "genesis_timestamp": consensus_cfg.genesis_timestamp,
-        "delta_f0": consensus_cfg.delta_f0,
-        "max_block_size": consensus_cfg.max_block_size,
-        "operation_validity_periods": consensus_cfg.operation_validity_periods,
-        "periods_per_cycle": consensus_cfg.periods_per_cycle,
-        "roll_price": consensus_cfg.roll_price,
-    })))
+    Ok(DataConsensusConfig {
+        t0: consensus_cfg.t0,
+        thread_count: consensus_cfg.thread_count,
+        genesis_timestamp: consensus_cfg.genesis_timestamp,
+        delta_f0: consensus_cfg.delta_f0,
+        max_block_size: consensus_cfg.max_block_size,
+        operation_validity_periods: consensus_cfg.operation_validity_periods,
+        periods_per_cycle: consensus_cfg.periods_per_cycle,
+        roll_price: consensus_cfg.roll_price,
+    })
 }
 
 /// This function sends AskStop outside the Api and
@@ -525,69 +580,45 @@ async fn get_consensus_config(
 ///
 /// # Argument
 /// * `event_tx`: Sender used to send the event out
-async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<impl Reply, Rejection> {
+async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<(), ApiError> {
     massa_trace!("api.filters.stop_node", {});
-    match evt_tx.send(ApiEvent::AskStop).await {
-        Ok(_) => Ok(warp::reply().into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error stopping node: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    Ok(evt_tx
+        .send(ApiEvent::AskStop)
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
 
-async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<impl Reply, Rejection> {
+async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<(), ApiError> {
     massa_trace!("api.filters.unban", {});
-    match evt_tx.send(ApiEvent::Unban(ip)).await {
-        Ok(_) => Ok(warp::reply().into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({ "message": format!("error unbanning: {:?}", err) })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    Ok(evt_tx
+        .send(ApiEvent::Unban(ip))
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
 
 async fn register_staking_private_keys(
     evt_tx: mpsc::Sender<ApiEvent>,
     keys: Vec<PrivateKey>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<(), ApiError> {
     massa_trace!("api.filters.register_staking_private_keys", {});
 
-    match evt_tx
+    Ok(evt_tx
         .send(ApiEvent::RegisterStakingPrivateKeys(keys))
         .await
-    {
-        Ok(_) => Ok(warp::reply().into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error registering _staking_private_keys: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
 
 async fn remove_staking_addresses(
     evt_tx: mpsc::Sender<ApiEvent>,
     addrs: HashSet<Address>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<(), ApiError> {
     massa_trace!("api.filters.remove_staking_addresses", {});
-    match evt_tx.send(ApiEvent::RemoveStakingAddresses(addrs)).await {
-        Ok(_) => Ok(warp::reply().into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error removing _staking_addresses: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    Ok(evt_tx
+        .send(ApiEvent::RemoveStakingAddresses(addrs))
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
 }
+
 /// This function sends the new transaction outside the Api and
 /// return the result as a warp reply.
 ///
@@ -597,40 +628,23 @@ async fn remove_staking_addresses(
 async fn send_operations(
     operations: Vec<Operation>,
     evt_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<Vec<OperationId>, ApiError> {
     massa_trace!("api.filters.send_operations ", { "operations": operations });
-    let to_send: Result<HashMap<OperationId, Operation>, ModelsError> = operations
+    let to_send = operations
         .into_iter()
         .map(|op| Ok((op.verify_integrity()?, op)))
-        .collect();
-    let to_send = match to_send {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error during operation verification: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(to_send) => to_send,
-    };
+        .collect::<Result<HashMap<OperationId, Operation>, ApiError>>()?;
 
     let opid_list = to_send
         .iter()
         .map(|(opid, _)| *opid)
         .collect::<Vec<OperationId>>();
 
-    match evt_tx.send(ApiEvent::AddOperations(to_send)).await {
-        Ok(_) => Ok(warp::reply::json(&opid_list).into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error during sending operation: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
+    evt_tx
+        .send(ApiEvent::AddOperations(to_send))
+        .await
+        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?;
+    Ok(opid_list)
 }
 
 /// Returns block with given hash as a reply
@@ -638,46 +652,20 @@ async fn get_block(
     event_tx: mpsc::Sender<ApiEvent>,
     block_id: BlockId,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<Option<ExportBlockStatus>, ApiError> {
     massa_trace!("api.filters.get_block", { "block_id": block_id });
-    match retrieve_block(block_id, &event_tx).await {
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error retrieving active blocks: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-        Ok(None) => {
-            if let Some(cmd_tx) = opt_storage_command_sender {
-                match cmd_tx.get_block(block_id).await {
-                    Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
-                    Ok(None) => Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message": format!("active block not found: {:?}", block_id)
-                        })),
-                        warp::http::StatusCode::NOT_FOUND,
-                    )
-                    .into_response()),
-                    Err(e) => Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message": format!("error retrieving active blocks: {:?}", e)
-                        })),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                    .into_response()),
-                }
-            } else {
-                Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("active block not found: {:?}", block_id)
-                    })),
-                    warp::http::StatusCode::NOT_FOUND,
-                )
-                .into_response())
+    if let Some(block) = retrieve_block(block_id, &event_tx).await? {
+        Ok(Some(block))
+    } else {
+        if let Some(cmd_tx) = opt_storage_command_sender {
+            match cmd_tx.get_block(block_id).await {
+                Ok(Some(block)) => Ok(Some(ExportBlockStatus::Stored(block))),
+                Ok(None) => Err(ApiError::NotFound),
+                Err(e) => Err(e.into()),
             }
+        } else {
+            Err(ApiError::NotFound)
         }
-        Ok(Some(block)) => Ok(warp::reply::json(&block).into_response()),
     }
 }
 
@@ -685,61 +673,29 @@ async fn get_block_ids_by_creator(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<HashMap<BlockId, Status>, ApiError> {
     massa_trace!("api.filters.get_block_ids_by_creator", {
         "address": address
     });
-    let res = match retrieve_block_ids_by_creator_from_consensus(address, &event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving active blocks: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(mut res) => {
-            if let Some(cmd_tx) = opt_storage_command_sender {
-                match retrieve_block_ids_by_creator_from_storage(address, &cmd_tx).await {
-                    Ok(res2) => res.extend(res2),
-                    Err(e) => {
-                        return Ok(warp::reply::with_status(
-                            warp::reply::json(&json!({
-                                "message": format!("error retrieving active blocks: {:?}", e)
-                            })),
-                            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .into_response())
-                    }
-                }
-            }
-            res
-        }
-    };
-    Ok(warp::reply::json(&res).into_response())
+    let mut res = retrieve_block_ids_by_creator_from_consensus(address, &event_tx).await?;
+
+    if let Some(cmd_tx) = opt_storage_command_sender {
+        res.extend(retrieve_block_ids_by_creator_from_storage(address, &cmd_tx).await?)
+    }
+
+    Ok(res)
 }
 
 async fn get_operations(
     event_tx: mpsc::Sender<ApiEvent>,
     operation_ids: HashSet<OperationId>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<Vec<(OperationId, OperationSearchResult)>, ApiError> {
     massa_trace!("api.filters.get_operations", {
         "operation_ids": operation_ids
     });
-    match retrieve_operations(operation_ids, &event_tx).await {
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error retrieving operation: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-        Ok(ops) => Ok(warp::reply::json(&json!(ops
-            .into_iter()
-            .collect::<Vec<(OperationId, OperationSearchResult)>>()))
-        .into_response()),
-    }
+    retrieve_operations(operation_ids, &event_tx)
+        .await
+        .map(|map| map.into_iter().collect())
 }
 
 async fn do_node_sign_msg(
@@ -772,22 +728,14 @@ pub struct PubkeySig {
 pub async fn node_sign_msg(
     msg: Vec<u8>,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl Reply, Rejection> {
+) -> Result<PubkeySig, ApiError> {
     massa_trace!("api.filters.node_sign_msg", { "msg": msg });
-    match do_node_sign_msg(msg, &event_tx).await {
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error while making node sign message: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-        Ok((public_key, signature)) => Ok(warp::reply::json(&json!(PubkeySig {
-            public_key,
-            signature
-        }))
-        .into_response()),
-    }
+    let (public_key, signature) = do_node_sign_msg(msg, &event_tx).await?;
+
+    Ok(PubkeySig {
+        public_key,
+        signature,
+    })
 }
 
 /// Returns our ip address
@@ -795,9 +743,9 @@ pub async fn node_sign_msg(
 /// Note: as our ip address is in the config,
 /// this function is more about getting every bit of
 /// information we want exactly in the same way
-async fn get_our_ip(network_cfg: NetworkConfig) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_our_ip(network_cfg: NetworkConfig) -> Result<Option<IpAddr>, ApiError> {
     massa_trace!("api.filters.get_our_ip", {});
-    Ok(warp::reply::json(&network_cfg.routable_ip))
+    Ok(network_cfg.routable_ip)
 }
 
 async fn retrieve_graph_export(
@@ -895,7 +843,7 @@ async fn retrieve_operations(
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve operation: {0}", e)))
 }
 
-async fn retrieve_peers_and_nodeid(event_tx: &mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
+async fn retrieve_peers(event_tx: &mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
     massa_trace!("api.filters.retrieve_peers", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -943,20 +891,9 @@ async fn retrieve_selection_draw(
 /// The Slot represents the parent's slot.
 async fn get_current_parents(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_current_parents", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let parents = graph.best_parents;
     let mut best = Vec::new();
@@ -964,77 +901,30 @@ async fn get_current_parents(
         match graph.active_blocks.get_key_value(&hash) {
             Some((_, block)) => best.push((hash, block.block.content.slot)),
             None => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message":
-                            "inconsistency error between best_parents and active_blocks"
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
+                return Err(ApiError::InconsistencyError(
+                    "inconsistency error between best_parents and active_blocks".to_string(),
+                ))
             }
         }
     }
 
-    Ok(warp::reply::json(&best).into_response())
+    Ok(best)
 }
 
 /// Returns last final blocks wrapped in a reply.
 async fn get_last_final(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_last_final", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
+
     let finals = graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
-        .map(|(i, (hash, period))| (hash, Slot::new(*period, i as u8)))
-        .collect::<Vec<(&BlockId, Slot)>>();
-    Ok(warp::reply::json(&finals).into_response())
-}
-
-/// Returns all blocks in a time interval wrapped in a reply.
-///
-/// Note: both start time is included and end time is excluded
-async fn get_block_interval(
-    event_tx: mpsc::Sender<ApiEvent>,
-    consensus_cfg: ConsensusConfig,
-    start: Option<UTime>,
-    end: Option<UTime>,
-    opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_block_interval", {});
-    match get_block_interval_process(
-        event_tx,
-        consensus_cfg,
-        start,
-        end,
-        opt_storage_command_sender,
-    )
-    .await
-    {
-        Ok(map) => Ok(warp::reply::json(&map).into_response()),
-        Err(err) => {
-            println!("get_block_interval error:{:?}", err);
-            Ok(warp::reply::with_status(
-                warp::reply::json(&json!({ "message": err })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    }
+        .map(|(i, (hash, period))| (*hash, Slot::new(*period, i as u8)))
+        .collect();
+    Ok(finals)
 }
 
 async fn get_block_from_graph(
@@ -1042,47 +932,44 @@ async fn get_block_from_graph(
     consensus_cfg: &ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
-) -> Result<Vec<(BlockId, Slot)>, String> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_block_from_graph", {});
-    retrieve_graph_export(&event_tx)
-        .await
-        .map_err(|err| (format!("error retrieving graph: {:?}", err)))
-        .and_then(|graph| {
-            let start = start_opt.unwrap_or_else(|| UTime::from(0));
-            let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
+    let graph = retrieve_graph_export(&event_tx).await?;
 
-            graph
-                .active_blocks
-                .into_iter()
-                .filter_map(|(hash, exported_block)| {
-                    get_block_slot_timestamp(
-                        consensus_cfg.thread_count,
-                        consensus_cfg.t0,
-                        consensus_cfg.genesis_timestamp,
-                        exported_block.block.content.slot,
-                    )
-                    .map_err(|err| (format!("error getting time: {:?}", err)))
-                    .map(|time| {
-                        if start <= time && time < end {
-                            Some((hash, exported_block.block.content.slot))
-                        } else {
-                            None
-                        }
-                    })
-                    .transpose()
-                })
-                .collect::<Result<Vec<(BlockId, Slot)>, String>>()
+    let start = start_opt.unwrap_or_else(|| UTime::from(0));
+    let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
+
+    graph
+        .active_blocks
+        .into_iter()
+        .filter_map(|(hash, exported_block)| {
+            get_block_slot_timestamp(
+                consensus_cfg.thread_count,
+                consensus_cfg.t0,
+                consensus_cfg.genesis_timestamp,
+                exported_block.block.content.slot,
+            )
+            .map_err(|e| ApiError::from(e))
+            .map(|time| {
+                if start <= time && time < end {
+                    Some((hash, exported_block.block.content.slot))
+                } else {
+                    None
+                }
+            })
+            .transpose()
         })
+        .collect::<Result<Vec<(BlockId, Slot)>, ApiError>>()
 }
 
-async fn get_block_interval_process(
+async fn get_block_interval(
     event_tx: mpsc::Sender<ApiEvent>,
     consensus_cfg: ConsensusConfig,
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(BlockId, Slot)>, String> {
-    massa_trace!("api.filters.get_block_interval_process", {});
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
+    massa_trace!("api.filters.get_block_interval", {});
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
         .is_some()
@@ -1094,76 +981,16 @@ async fn get_block_interval_process(
     let mut res = get_block_from_graph(event_tx, &consensus_cfg, start_opt, end_opt).await?;
 
     if let Some(ref storage) = opt_storage_command_sender {
-        let start_slot = if let Some(start) = start_opt {
-            let slot = get_latest_block_slot_at_timestamp(
-                consensus_cfg.thread_count,
-                consensus_cfg.t0,
-                consensus_cfg.genesis_timestamp,
-                start,
-            )
-            .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
-            .and_then(|opt_slot| {
-                opt_slot
-                    .map(|slot| {
-                        get_block_slot_timestamp(
-                            consensus_cfg.thread_count,
-                            consensus_cfg.t0,
-                            consensus_cfg.genesis_timestamp,
-                            slot,
-                        )
-                        .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                        .and_then(|start_time| {
-                            if start_time == start {
-                                Ok(slot)
-                            } else {
-                                slot.get_next_slot(consensus_cfg.thread_count)
-                                    .map_err(|err| format!("error retrieving next slot: {:?}", err))
-                            }
-                        })
-                    })
-                    .unwrap_or_else(|| Ok(Slot::new(0, 0)))
-            })?;
-            Some(slot)
-        } else {
-            None
-        };
-
-        //get end slot
-        let end_slot_opt = if let Some(end) = end_opt {
-            get_latest_block_slot_at_timestamp(
-                consensus_cfg.thread_count,
-                consensus_cfg.t0,
-                consensus_cfg.genesis_timestamp,
-                end,
-            )
-            .map_err(|err| (format!("error retrieving slot from time: {:?}", err)))
-            .and_then(|opt_slot| {
-                opt_slot
-                    .map(|slot| {
-                        get_block_slot_timestamp(
-                            consensus_cfg.thread_count,
-                            consensus_cfg.t0,
-                            consensus_cfg.genesis_timestamp,
-                            slot,
-                        )
-                        .map_err(|err| (format!("error retrieving next slot: {:?}", err)))
-                        .and_then(|end_time| {
-                            if end_time == end {
-                                Ok(slot)
-                            } else {
-                                slot.get_next_slot(consensus_cfg.thread_count)
-                                    .map_err(|err| format!("error retrieving next slot: {:?}", err))
-                            }
-                        })
-                    })
-                    .transpose()
-            })?
-        } else {
-            None
-        };
+        let (start_slot, end_slot) = time_range_to_slot_range(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            start_opt,
+            end_opt,
+        )?;
 
         storage
-            .get_slot_range(start_slot, end_slot_opt)
+            .get_slot_range(start_slot, end_slot)
             .await
             .map(|blocks| {
                 res.append(
@@ -1172,8 +999,7 @@ async fn get_block_interval_process(
                         .map(|(hash, block)| (hash, block.header.content.slot))
                         .collect(),
                 )
-            })
-            .map_err(|err| (format!("error retrieving slot range: {:?}", err)))?;
+            })?;
     }
 
     Ok(res)
@@ -1191,172 +1017,57 @@ async fn get_graph_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    massa_trace!("api.filters.get_graph_interval", {});
-    match get_graph_interval_process(
-        event_tx,
-        consensus_cfg,
-        start_opt,
-        end_opt,
-        opt_storage_command_sender,
-    )
-    .await
-    {
-        Ok(map) => Ok(warp::reply::json(&map).into_response()),
-        Err(err) => Ok(warp::reply::with_status(
-            warp::reply::json(&json!({ "message": err })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response()),
-    }
-}
-
-async fn get_graph_interval_process(
-    event_tx: mpsc::Sender<ApiEvent>,
-    consensus_cfg: ConsensusConfig,
-    start_opt: Option<UTime>,
-    end_opt: Option<UTime>,
-    opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(BlockId, Slot, Status, Vec<BlockId>)>, String> {
+) -> Result<Vec<(BlockId, Slot, Status, Vec<BlockId>)>, ApiError> {
     massa_trace!("api.filters.get_graph_interval_process", {});
     //filter block from graph_export
-    let mut res = retrieve_graph_export(&event_tx)
-        .await
-        .map_err(|err| (format!("error retrieving graph: {:?}", err)))
-        .and_then(|graph| {
-            let start = start_opt.unwrap_or_else(|| UTime::from(0));
-            let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
+    let graph = retrieve_graph_export(&event_tx).await?;
+    let start = start_opt.unwrap_or_else(|| UTime::from(0));
+    let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));
+    let mut res = Vec::new();
+    for (hash, exported_block) in graph.active_blocks.into_iter() {
+        let header = exported_block.block;
+        let status = exported_block.status;
+        let time = get_block_slot_timestamp(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            header.content.slot,
+        )?;
 
-            graph
-                .active_blocks
-                .into_iter()
-                .filter_map(|(hash, exported_block)| {
-                    let header = exported_block.block;
-                    let status = exported_block.status;
-                    get_block_slot_timestamp(
-                        consensus_cfg.thread_count,
-                        consensus_cfg.t0,
-                        consensus_cfg.genesis_timestamp,
-                        header.content.slot,
-                    )
-                    .map_err(|err| (format!("error getting time: {:?}", err)))
-                    .map(|time| {
-                        if start <= time && time < end {
-                            Some((hash, (header.content.slot, status, header.content.parents)))
-                        } else {
-                            None
-                        }
-                    })
-                    .transpose()
-                })
-                .collect::<Result<Vec<(BlockId, (Slot, Status, Vec<BlockId>))>, String>>()
-        })?;
+        if start <= time && time < end {
+            res.push((hash, header.content.slot, status, header.content.parents))
+        }
+    }
 
     if let Some(storage) = opt_storage_command_sender {
-        let start_slot = if let Some(start) = start_opt {
-            let start_slot = get_latest_block_slot_at_timestamp(
-                consensus_cfg.thread_count,
-                consensus_cfg.t0,
-                consensus_cfg.genesis_timestamp,
-                start,
-            )
-            .map_err(|err| (format!("error retrieving time: {:?}", err)))?;
+        let (start_slot, end_slot) = time_range_to_slot_range(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            start_opt,
+            end_opt,
+        )?;
 
-            let start_slot = if let Some(slot) = start_slot {
-                // if there is a slot at start timestamp
-                if get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                )
-                .map_err(|err| (format!("error retrieving time: {:?}", err)))?
-                    == start
-                {
-                    slot
-                } else {
-                    slot.get_next_slot(consensus_cfg.thread_count)
-                        .map_err(|err| (format!("error retrieving graph: {:?}", err)))?
-                }
-            } else {
-                // no slot found
-                Slot::new(0, 0)
-            };
-            Some(start_slot)
-        } else {
-            None
-        };
-
-        let end_slot = if let Some(end) = end_opt {
-            let end_slot = get_latest_block_slot_at_timestamp(
-                consensus_cfg.thread_count,
-                consensus_cfg.t0,
-                consensus_cfg.genesis_timestamp,
-                end,
-            )
-            .map_err(|err| (format!("error retrieving time: {:?}", err)))?;
-
-            let end_slot = if let Some(slot) = end_slot {
-                if get_block_slot_timestamp(
-                    consensus_cfg.thread_count,
-                    consensus_cfg.t0,
-                    consensus_cfg.genesis_timestamp,
-                    slot,
-                )
-                .map_err(|err| (format!("error retrieving time: {:?}", err)))?
-                    == end
-                {
-                    slot
-                } else {
-                    slot.get_next_slot(consensus_cfg.thread_count)
-                        .map_err(|err| (format!("error retrieving time: {:?}", err)))?
-                }
-            } else {
-                return Err("No end timestamp".to_string());
-            };
-            Some(end_slot)
-        } else {
-            None
-        };
-        let blocks = storage
-            .get_slot_range(start_slot, end_slot)
-            .await
-            .map_err(|err| (format!("error retrieving time: {:?}", err)))?;
+        let blocks = storage.get_slot_range(start_slot, end_slot).await?;
         for (hash, block) in blocks {
             res.push((
                 hash,
-                (
-                    block.header.content.slot,
-                    Status::Final,
-                    block.header.content.parents.clone(),
-                ),
+                block.header.content.slot,
+                Status::Final,
+                block.header.content.parents.clone(),
             ));
         }
     }
-    Ok(res
-        .into_iter()
-        .map(|(hash, (slot, status, parents))| (hash, slot, status, parents))
-        .collect())
+    Ok(res)
 }
 
 /// Returns number of cliques and current cliques as `Vec<HashSet<(hash, (period, thread))>>`
 /// The result is a tuple `(number_of_cliques, current_cliques)` wrapped in a reply.
 async fn get_cliques(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<(usize, Vec<HashSet<(BlockId, Slot)>>), ApiError> {
     massa_trace!("api.filters.get_cliques", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let mut hashes = HashSet::new();
     for clique in graph.max_cliques.iter() {
@@ -1368,13 +1079,9 @@ async fn get_cliques(
         if let Some((_, block)) = graph.active_blocks.get_key_value(hash) {
             hashes_map.insert(hash, block.block.content.slot);
         } else {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": "inconstancy error between cliques and active_blocks"
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response());
+            return Err(ApiError::InconsistencyError(
+                "inconstancy error between cliques and active_blocks".to_string(),
+            ));
         }
     }
 
@@ -1384,23 +1091,26 @@ async fn get_cliques(
         for hash in clique.block_ids.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
-                    set.insert((k, *v));
+                    set.insert((**k, *v));
                 }
                 None => {
-                    return Ok(warp::reply::with_status(
-                        warp::reply::json(&json!({
-                            "message":"inconsistency error between clique and active blocks"
-                        })),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                    .into_response())
+                    return Err(ApiError::InconsistencyError(
+                        "inconstancy error between cliques and active_blocks".to_string(),
+                    ));
                 }
             }
         }
         res.push(set)
     }
 
-    Ok(warp::reply::json(&(graph.max_cliques.len(), res)).into_response())
+    Ok((graph.max_cliques.len(), res))
+}
+
+#[derive(Clone, Serialize)]
+struct NetworkInfo {
+    our_ip: Option<IpAddr>,
+    peers: HashMap<IpAddr, Peer>,
+    node_id: NodeId,
 }
 
 /// Returns network information:
@@ -1411,136 +1121,93 @@ async fn get_cliques(
 async fn get_network_info(
     network_cfg: NetworkConfig,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<NetworkInfo, ApiError> {
     massa_trace!("api.filters.get_network_info", {});
-    let (peers, node_id) = match retrieve_peers_and_nodeid(&event_tx).await {
-        Ok(Peers { our_node_id, peers }) => (peers, our_node_id),
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving peers : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    let peers = retrieve_peers(&event_tx).await?;
     let our_ip = network_cfg.routable_ip;
-    Ok(warp::reply::json(&json!({
-        "our_ip": our_ip,
-        "peers": peers,
-        "node_id": node_id,
-    }))
-    .into_response())
+    Ok(NetworkInfo {
+        our_ip,
+        peers: peers.peers,
+        node_id: peers.our_node_id,
+    })
 }
 
 /// Returns state info for a set of addresses
 async fn get_addresses_info(
     addresses: HashSet<Address>,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<HashMap<Address, AddressState>, ApiError> {
     massa_trace!("api.filters.get_addresses_info", { "addresses": addresses });
     let (response_tx, response_rx) = oneshot::channel();
-    if let Err(err) = event_tx
+    event_tx
         .send(ApiEvent::GetAddressesInfo {
             addresses,
             response_tx,
         })
         .await
-    {
-        return Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error during sending ledger data: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response());
-    }
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "Could not send api event get address info : {0}",
+                e
+            ))
+        })?;
 
-    let addrs_info = match response_rx.await {
-        Ok(Ok(addrs_info)) => addrs_info,
-        Ok(Err(err)) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error during exporting addrs info: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error get addrs info: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    let addrs_info = response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!("Could not retrieve address info : {0}", e))
+    })??;
 
-    Ok(warp::reply::json(&addrs_info).into_response())
+    Ok(addrs_info)
 }
 
 /// Returns connected peers :
 /// - ip address
 /// - peer info (see `struct PeerInfo` in `communication::network::PeerInfoDatabase`)
-async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> {
     massa_trace!("api.filters.get_peers", {});
-    let peers = match retrieve_peers_and_nodeid(&event_tx).await {
-        Ok(peers) => peers,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving peers : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-    Ok(warp::reply::json(&peers).into_response())
+    let peers = retrieve_peers(&event_tx).await?;
+    Ok(peers)
 }
 
 async fn get_operations_involving_address(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<HashMap<OperationId, OperationSearchResult>, ApiError> {
     massa_trace!("api.filters.get_operations_involving_address", {
         "address": address
     });
     let (response_tx, response_rx) = oneshot::channel();
-    if let Err(err) = event_tx
+    event_tx
         .send(ApiEvent::GetRecentOperations {
             address,
             response_tx,
         })
         .await
-    {
-        return Ok(warp::reply::with_status(
-            warp::reply::json(&json!({
-                "message": format!("error during sending ledger data: {:?}", err)
-            })),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )
-        .into_response());
-    }
+        .map_err(|e| {
+            ApiError::SendChannelError(format!(
+                "could not send api event get operation involving address : {0}",
+                e
+            ))
+        })?;
 
-    let res = match response_rx.await {
-        Ok(res) => res,
+    let res = response_rx.await.map_err(|e| {
+        ApiError::ReceiveChannelError(format!(
+            "could not retrieve operation involving address: {0}",
+            e
+        ))
+    })?;
 
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error get ledger data: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    Ok(res)
+}
 
-    Ok(warp::reply::json(&res).into_response())
+#[derive(Clone, Serialize)]
+pub struct State {
+    time: UTime,
+    latest_slot: Option<Slot>,
+    current_cycle: u64,
+    our_ip: Option<IpAddr>,
+    last_final: Vec<(BlockId, Slot, UTime)>,
+    nb_cliques: usize,
+    nb_peers: usize,
 }
 
 /// Returns a summary of the current state:
@@ -1554,53 +1221,21 @@ async fn get_state(
     consensus_cfg: ConsensusConfig,
     network_cfg: NetworkConfig,
     clock_compensation: i64,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<State, ApiError> {
     massa_trace!("api.filters.get_state", {});
-    let cur_time = match UTime::now(clock_compensation) {
-        Ok(time) => time,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting current time : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    let cur_time = UTime::now(clock_compensation)?;
 
-    let latest_slot_opt = match get_latest_block_slot_at_timestamp(
+    let latest_slot_opt = get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    ) {
-        Ok(slot) => slot,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting latest slot : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    )?;
 
-    let peers = match retrieve_peers_and_nodeid(&event_tx).await {
-        Ok(peers) => peers.peers,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving peers : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+    let peers = retrieve_peers(&event_tx).await?;
 
     let connected_peers: HashSet<IpAddr> = peers
+        .peers
         .iter()
         .filter(|(_ip, Peer { peer_info, .. })| {
             peer_info.active_out_connections > 0 || peer_info.active_in_connections > 0
@@ -1608,26 +1243,15 @@ async fn get_state(
         .map(|(ip, _peer_info)| *ip)
         .collect();
 
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
 
-    let finals = match graph
+    let finals = graph
         .latest_final_blocks_periods
         .iter()
         .enumerate()
         .map(|(thread, (hash, period))| {
             Ok((
-                hash,
+                *hash,
                 Slot::new(*period, thread as u8),
                 get_block_slot_timestamp(
                     consensus_cfg.thread_count,
@@ -1637,98 +1261,72 @@ async fn get_state(
                 )?,
             ))
         })
-        .collect::<Result<Vec<(&BlockId, Slot, UTime)>, consensus::ConsensusError>>()
-    {
-        Ok(finals) => finals,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting final blocks : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+        .collect::<Result<Vec<(BlockId, Slot, UTime)>, consensus::ConsensusError>>()?;
 
-    Ok(warp::reply::json(&json!({
-        "time": cur_time,
-        "latest_slot": latest_slot_opt,
-        "current_cycle": latest_slot_opt.unwrap_or_else(|| Slot::new(0,0)).get_cycle(consensus_cfg.periods_per_cycle),
-        "our_ip": network_cfg.routable_ip,
-        "last_final": finals,
-        "nb_cliques": graph.max_cliques.len(),
-        "nb_peers": connected_peers.len(),
-    }))
-    .into_response())
+    Ok(State {
+        time: cur_time,
+        latest_slot: latest_slot_opt,
+        current_cycle: latest_slot_opt
+            .unwrap_or_else(|| Slot::new(0, 0))
+            .get_cycle(consensus_cfg.periods_per_cycle),
+        our_ip: network_cfg.routable_ip,
+        last_final: finals,
+        nb_cliques: graph.max_cliques.len(),
+        nb_peers: connected_peers.len(),
+    })
 }
 
 /// Returns a number of last stale blocks as a `Vec<(Hash, Slot)>` wrapped in a reply.
 async fn get_last_stale(
     event_tx: mpsc::Sender<ApiEvent>,
     api_config: ApiConfig,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_last_stale", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let discarded = graph.discarded_blocks;
     let mut discarded = discarded
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
-        .map(|(hash, (_reason, header))| (hash, header.content.slot))
-        .collect::<Vec<(&BlockId, Slot)>>();
+        .map(|(hash, (_reason, header))| (*hash, header.content.slot))
+        .collect::<Vec<(BlockId, Slot)>>();
     if !discarded.is_empty() {
         let min = min(discarded.len(), api_config.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
 
-    Ok(warp::reply::json(&json!(discarded)).into_response())
+    Ok(discarded)
 }
 
 /// Returns a number of last invalid blocks as a `Vec<(Hash, Slot)>` wrapped in a reply.
 async fn get_last_invalid(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<(BlockId, Slot)>, ApiError> {
     massa_trace!("api.filters.get_last_invalid", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
-    let discarded = graph.discarded_blocks;
 
+    let graph = retrieve_graph_export(&event_tx).await?;
+    let discarded = graph.discarded_blocks;
     let mut discarded = discarded
         .map
         .iter()
         .filter(|(_hash, (reason, _header))| matches!(reason, DiscardReason::Invalid(_)))
-        .map(|(hash, (_reason, header))| (hash, header.content.slot))
-        .collect::<Vec<(&BlockId, Slot)>>();
+        .map(|(hash, (_reason, header))| (*hash, header.content.slot))
+        .collect::<Vec<(BlockId, Slot)>>();
     if !discarded.is_empty() {
         let min = min(discarded.len(), api_cfg.max_return_invalid_blocks);
         discarded = discarded.drain(0..min).collect();
     }
 
-    Ok(warp::reply::json(&json!(discarded)).into_response())
+    Ok(discarded)
+}
+
+#[derive(Clone, Serialize)]
+pub struct StakerInfo {
+    staker_active_blocks: Vec<(BlockId, BlockHeader)>,
+    staker_discarded_blocks: Vec<(BlockId, DiscardReason, BlockHeader)>,
+    staker_next_draws: Vec<Slot>,
 }
 
 /// Returns
@@ -1741,20 +1339,9 @@ async fn get_staker_info(
     consensus_cfg: ConsensusConfig,
     creator: Address,
     clock_compensation: i64,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<StakerInfo, ApiError> {
     massa_trace!("api.filters.get_staker_info", {});
-    let graph = match retrieve_graph_export(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving graph : {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(graph) => graph,
-    };
+    let graph = retrieve_graph_export(&event_tx).await?;
 
     let blocks = graph
         .active_blocks
@@ -1762,8 +1349,8 @@ async fn get_staker_info(
         .filter(|(_hash, block)| {
             Address::from_public_key(&block.block.content.creator).unwrap() == creator
         })
-        .map(|(hash, block)| (hash, block.block.clone()))
-        .collect::<Vec<(&BlockId, BlockHeader)>>();
+        .map(|(hash, block)| (*hash, block.block.clone()))
+        .collect::<Vec<(BlockId, BlockHeader)>>();
 
     let discarded = graph
         .discarded_blocks
@@ -1772,38 +1359,16 @@ async fn get_staker_info(
         .filter(|(_hash, (_reason, header))| {
             Address::from_public_key(&header.content.creator).unwrap() == creator
         })
-        .map(|(hash, (reason, header))| (hash, reason.clone(), header.clone()))
-        .collect::<Vec<(&BlockId, DiscardReason, BlockHeader)>>();
-    let cur_time = match UTime::now(clock_compensation) {
-        Ok(time) => time,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting current time: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+        .map(|(hash, (reason, header))| (*hash, reason.clone(), header.clone()))
+        .collect::<Vec<(BlockId, DiscardReason, BlockHeader)>>();
+    let cur_time = UTime::now(clock_compensation)?;
 
-    let start_slot = match consensus::get_latest_block_slot_at_timestamp(
+    let start_slot = consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    ) {
-        Ok(slot) => slot,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting slot at timestamp: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    }
+    )?
     .unwrap_or_else(|| Slot::new(0, 0));
     let end_slot = Slot::new(
         start_slot
@@ -1812,19 +1377,8 @@ async fn get_staker_info(
         start_slot.thread,
     );
 
-    let next_slots_by_creator: Vec<Slot> =
-        match retrieve_selection_draw(start_slot, end_slot, &event_tx).await {
-            Ok(slot) => slot,
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error selecting draw: {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        }
+    let next_slots_by_creator: Vec<Slot> = retrieve_selection_draw(start_slot, end_slot, &event_tx)
+        .await?
         .into_iter()
         .filter_map(|(slt, (sel, _))| {
             // TODO: retrieve next endorsement by staker?
@@ -1835,35 +1389,20 @@ async fn get_staker_info(
         })
         .collect();
 
-    Ok(warp::reply::json(&json!({
-        "staker_active_blocks": blocks,
-        "staker_discarded_blocks": discarded,
-        "staker_next_draws": next_slots_by_creator
-    }))
-    .into_response())
+    Ok(StakerInfo {
+        staker_active_blocks: blocks,
+        staker_discarded_blocks: discarded,
+        staker_next_draws: next_slots_by_creator,
+    })
 }
 
 /// Returns staker production stats
 async fn get_stakers_stats(
     event_tx: mpsc::Sender<ApiEvent>,
     addrs: HashSet<Address>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Vec<StakersCycleProductionStats>, ApiError> {
     massa_trace!("api.filters.get_stakers_stats", { "addrs": addrs });
-
-    let stakers_production_stats = match retrieve_stakers_production_stats(addrs, &event_tx).await {
-        Ok(stats) => stats,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting staker production stats: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
-
-    Ok(warp::reply::json(&json!(stakers_production_stats)).into_response())
+    retrieve_stakers_production_stats(addrs, &event_tx).await
 }
 
 async fn get_next_draws(
@@ -1872,37 +1411,15 @@ async fn get_next_draws(
     consensus_cfg: ConsensusConfig,
     addresses: HashSet<Address>,
     clock_compensation: i64,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let cur_time = match UTime::now(clock_compensation) {
-        Ok(time) => time,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting current time: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    };
+) -> Result<Vec<(Address, Slot)>, ApiError> {
+    let cur_time = UTime::now(clock_compensation)?;
 
-    let start_slot = match consensus::get_latest_block_slot_at_timestamp(
+    let start_slot = consensus::get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
         cur_time,
-    ) {
-        Ok(slot) => slot,
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error getting slot at timestamp: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-    }
+    )?
     .unwrap_or_else(|| Slot::new(0, 0));
     let end_slot = Slot::new(
         start_slot
@@ -1911,19 +1428,8 @@ async fn get_next_draws(
         start_slot.thread,
     );
 
-    let next_slots: Vec<(Address, Slot)> =
-        match retrieve_selection_draw(start_slot, end_slot, &event_tx).await {
-            Ok(slot) => slot,
-            Err(err) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&json!({
-                        "message": format!("error selecting draw : {:?}", err)
-                    })),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response())
-            }
-        }
+    let next_slots: Vec<(Address, Slot)> = retrieve_selection_draw(start_slot, end_slot, &event_tx)
+        .await?
         .into_iter()
         .filter_map(|(slt, (sel, _))| {
             if addresses.contains(&sel) {
@@ -1934,7 +1440,7 @@ async fn get_next_draws(
         })
         .collect();
 
-    Ok(warp::reply::json(&next_slots).into_response())
+    Ok(next_slots)
 }
 
 async fn retrieve_stakers_production_stats(
@@ -1976,21 +1482,9 @@ async fn retrieve_stats(event_tx: &mpsc::Sender<ApiEvent>) -> Result<ConsensusSt
         .map_err(|e| ApiError::ReceiveChannelError(format!("Could not retrieve stats: {0}", e)))
 }
 
-async fn get_stats(event_tx: mpsc::Sender<ApiEvent>) -> Result<impl warp::Reply, warp::Rejection> {
+async fn get_stats(event_tx: mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, ApiError> {
     massa_trace!("api.filters.get_stats", {});
-    let stats = match retrieve_stats(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving stats: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(stats) => stats,
-    };
-    Ok(warp::reply::json(&json!(stats)).into_response())
+    retrieve_stats(&event_tx).await
 }
 
 async fn retrieve_staking_addresses(
@@ -2014,21 +1508,9 @@ async fn retrieve_staking_addresses(
 
 async fn get_staking_addresses(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<HashSet<Address>, ApiError> {
     massa_trace!("api.filters.get_staking_addresses", {});
-    let addresses = match retrieve_staking_addresses(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving staking_addresses: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(addresses) => addresses,
-    };
-    Ok(warp::reply::json(&json!(addresses)).into_response())
+    retrieve_staking_addresses(&event_tx).await
 }
 
 async fn retrieve_active_stakers(
@@ -2052,28 +1534,7 @@ async fn retrieve_active_stakers(
 
 async fn get_active_stakers(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<Option<HashMap<Address, u64>>, ApiError> {
     massa_trace!("api.filters.get_active_stakers", {});
-    let stats = match retrieve_active_stakers(&event_tx).await {
-        Err(err) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": format!("error retrieving active stakers: {:?}", err)
-                })),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-            .into_response())
-        }
-        Ok(None) => {
-            return Ok(warp::reply::with_status(
-                warp::reply::json(&json!({
-                    "message": "active staking cycle not available/complete"
-                })),
-                warp::http::StatusCode::NOT_FOUND,
-            )
-            .into_response())
-        }
-        Ok(Some(stats)) => stats,
-    };
-    Ok(warp::reply::json(&json!(stats)).into_response())
+    retrieve_active_stakers(&event_tx).await
 }
