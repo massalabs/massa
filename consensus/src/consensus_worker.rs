@@ -346,8 +346,9 @@ impl ConsensusWorker {
             }
         }
 
-        if self.next_slot == Slot::new(0, 1) {
-            info!("It's genesis time !")
+        if self.next_slot == Slot::new(1, 0) {
+            // first block that can be created
+            info!("Masa network has started ! 🎉")
         }
 
         // check if there are any final blocks not produced by us
