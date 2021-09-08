@@ -380,7 +380,7 @@ impl PeerInfoDatabase {
                 .peers
                 .values()
                 .filter(|&p| {
-                    if !(p.bootstrap && p.advertised && !p.banned && !p.is_active()) {
+                    if !p.bootstrap || !p.advertised || p.banned || p.is_active() {
                         return false;
                     }
                     if let Some(last_failure) = p.last_failure {
