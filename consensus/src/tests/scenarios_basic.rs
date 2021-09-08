@@ -44,16 +44,16 @@ async fn test_old_stale_not_propagated_and_discarded() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.set_creator(staking_keys[0]);
-            block_factory.set_slot(Slot::new(1, 0));
+            block_factory.creator_priv_key = staking_keys[0];
+            block_factory.slot = Slot::new(1, 0);
 
             let (hash_1, _) = block_factory.create_and_receive_block(true).await;
 
-            block_factory.set_slot(Slot::new(1, 1));
+            block_factory.slot = Slot::new(1, 1);
             block_factory.create_and_receive_block(true).await;
 
-            block_factory.set_slot(Slot::new(1, 0));
-            block_factory.set_parents(vec![hash_1, parents[0]]);
+            block_factory.slot = Slot::new(1, 0);
+            block_factory.best_parents = vec![hash_1, parents[0]];
             let (hash_3, _) = block_factory.create_and_receive_block(false).await;
 
             // Old stale block was discarded.
@@ -106,8 +106,8 @@ async fn test_block_not_processed_multiple_times() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.set_creator(staking_keys[0]);
-            block_factory.set_slot(Slot::new(1, 0));
+            block_factory.creator_priv_key = staking_keys[0];
+            block_factory.slot = Slot::new(1, 0);
             let (_, block_1) = block_factory.create_and_receive_block(true).await;
 
             // Send it again, it should not be propagated.
@@ -165,13 +165,13 @@ async fn test_queuing() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.set_creator(staking_keys[0]);
-            block_factory.set_slot(Slot::new(3, 0));
+            block_factory.creator_priv_key = staking_keys[0];
+            block_factory.slot = Slot::new(3, 0);
 
             let (hash_1, _) = block_factory.create_and_receive_block(false).await;
 
-            block_factory.set_slot(Slot::new(4, 0));
-            block_factory.set_parents(vec![hash_1.clone(), parents[1]]);
+            block_factory.slot = Slot::new(4, 0);
+            block_factory.best_parents = vec![hash_1.clone(), parents[1]];
 
             block_factory.create_and_receive_block(false).await;
 
@@ -224,8 +224,8 @@ async fn test_double_staking_does_not_propagate() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.set_creator(staking_keys[0]);
-            block_factory.set_slot(Slot::new(1, 0));
+            block_factory.creator_priv_key = staking_keys[0];
+            block_factory.slot = Slot::new(1, 0);
             let (_, mut block_1) = block_factory.create_and_receive_block(true).await;
 
             // Same creator, same slot, different block

@@ -7,12 +7,12 @@ use super::{
 };
 
 pub struct BlockFactory {
-    best_parents: Vec<BlockId>,
-    creator_priv_key: PrivateKey,
-    slot: Slot,
-    endorsements: Vec<Endorsement>,
-    operations: Vec<Operation>,
-    protocol_controller: MockProtocolController,
+    pub best_parents: Vec<BlockId>,
+    pub creator_priv_key: PrivateKey,
+    pub slot: Slot,
+    pub endorsements: Vec<Endorsement>,
+    pub operations: Vec<Operation>,
+    pub protocol_controller: MockProtocolController,
 }
 
 impl BlockFactory {
@@ -87,24 +87,6 @@ impl BlockFactory {
             // Assert that the the block is not propagated.
             validate_notpropagate_block(&mut self.protocol_controller, hash, 500).await;
         }
-    }
-
-    pub fn set_slot(&mut self, slot: Slot) {
-        self.slot = slot
-    }
-
-    pub fn set_parents(&mut self, parents: Vec<BlockId>) {
-        self.best_parents = parents
-    }
-
-    pub fn set_creator(&mut self, creator: PrivateKey) {
-        self.creator_priv_key = creator
-    }
-    pub fn set_endorsements(&mut self, endorsements: Vec<Endorsement>) {
-        self.endorsements = endorsements
-    }
-    pub fn set_operations(&mut self, operations: Vec<Operation>) {
-        self.operations = operations
     }
 
     pub fn take_protocol_controller(self) -> MockProtocolController {
