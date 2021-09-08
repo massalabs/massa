@@ -802,21 +802,8 @@ impl ProtocolWorker {
     ) -> Result<Option<(BlockId, bool)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
-        if self
-            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id)
-            .await
-            .is_err()
-        {
-            warn!(
-                "node {:?} sent us critically incorrect endorsements",
-                source_node_id
-            );
-            let _ = self.ban_node(source_node_id).await;
-            return Ok(None);
-        }
-
         // check header integrity
-        let (block_id, is_new) = match self.check_header(header) {
+        let (block_id, is_new) = match self.check_header(&header, source_node_id).await {
             Ok(Some(v)) => v,
             Ok(None) => return Ok(None),
             Err(err) => return Err(err),
@@ -836,9 +823,10 @@ impl ProtocolWorker {
     }
 
     /// BlockId, is_new
-    fn check_header(
+    async fn check_header(
         &mut self,
         header: &BlockHeader,
+        source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, bool)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.check_header.start", {
             "header": header
@@ -867,6 +855,20 @@ impl ProtocolWorker {
         if let Some((_e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
             *inst = now;
             return Ok(Some((block_id, false)));
+        }
+
+        // TODO: return id's for use below?
+        if self
+            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id)
+            .await
+            .is_err()
+        {
+            warn!(
+                "node {:?} sent us critically incorrect endorsements",
+                source_node_id
+            );
+            let _ = self.ban_node(source_node_id).await;
+            return Ok(None);
         }
 
         // check header signature
@@ -960,25 +962,13 @@ impl ProtocolWorker {
     ) -> Result<Option<(BlockId, HashMap<OperationId, (usize, u64)>)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
-        if self
-            .note_endorsements_from_node(block.header.content.endorsements.clone(), source_node_id)
-            .await
-            .is_err()
-        {
-            warn!(
-                "node {:?} sent us critically incorrect endorsements",
-                source_node_id
-            );
-            let _ = self.ban_node(source_node_id).await;
-            return Ok(None);
-        }
-
         // check header
-        let (block_id, _is_header_new) = match self.check_header(&block.header) {
-            Ok(Some(v)) => v,
-            Ok(None) => return Ok(None),
-            Err(err) => return Err(err),
-        };
+        let (block_id, _is_header_new) =
+            match self.check_header(&block.header, source_node_id).await {
+                Ok(Some(v)) => v,
+                Ok(None) => return Ok(None),
+                Err(err) => return Err(err),
+            };
 
         // check operations (period, reuse, signatures, thread)
         let mut op_ids: Vec<OperationId> = Vec::with_capacity(block.operations.len());
