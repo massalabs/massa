@@ -5,16 +5,17 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2018"
 
 [dependencies]
-lazy_static = "1.4"
-serde = { version = "1.0", features = ["derive"] }
-crypto = {path = "../crypto"}
-time = {path = "../time"}
-thiserror = "1.0"
 integer-encoding = "3.0"
+lazy_static = "1.4"
 num_enum = "0.5"
 rust_decimal = "1.15"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+# custom modules
+crypto = {path = "../crypto"}
+time = {path = "../time"}
 
 [dev-dependencies]
-stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
 serial_test = "0.5"
+stderrlog = { version = "0.5" }
