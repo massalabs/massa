@@ -864,7 +864,7 @@ impl ProtocolWorker {
             .is_err()
         {
             warn!(
-                "node {:?} sent us critically incorrect endorsements",
+                "node {:?} sent us a header, containing critically incorrect endorsements",
                 source_node_id
             );
             let _ = self.ban_node(source_node_id).await;
