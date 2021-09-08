@@ -217,7 +217,7 @@ fn main() {
     )
     .new_command(
         "staker_info",
-        "staker info from staker address -> (blocks created, next slots in which the address will be selected)",
+        "staker info from staker address -> (blocks created, next slots in which the address will be selected). Parameter <Address>",
         1,
         1, //max nb parameters
         true,
@@ -233,7 +233,7 @@ fn main() {
     )
     .new_command(
         "register_staking_keys",
-        "add a new private key for the node to use to stake",
+        "add a new private key for the node to use to stake: Parameter: <PrivateKey>",
         1,
         1, //max nb parameters
         true,
@@ -241,7 +241,7 @@ fn main() {
     )
     .new_command(
         "remove_staking_addresses",
-        "removes an address used to stake",
+        "removes an address used to stake. Parameter : <Address>",
         1,
         1, //max nb parameters
         true,
@@ -257,14 +257,14 @@ fn main() {
     )
     .new_command(
         "operations_involving_address",
-        "list operations involving the provided address. Note that old operations are forgotten.",
+        "list operations involving the provided address. Note that old operations are forgotten. Parameter: <Address>",
         1,
         1, //max nb parameters
         true,
         cmd_operations_involving_address,
     ).new_command(
         "block_ids_by_creator",
-        "list blocks created by the provided address. Note that old blocks are forgotten.",
+        "list blocks created by the provided address. Note that old blocks are forgotten. Parameter : <Address>",
         1,
         1, //max nb parameters
         true,
