@@ -859,7 +859,7 @@ impl ProtocolWorker {
 
         // TODO: return id's for use below?
         if self
-            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id)
+            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
             .await
             .is_err()
         {
@@ -1103,11 +1103,13 @@ impl ProtocolWorker {
         Some(result)
     }
 
-    /// Check endorsements.
+    /// Note endorsements coming from a given node,
+    /// and propagate them when they were received outside of a header.
     async fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<Endorsement>,
         source_node_id: &NodeId,
+        propagate: bool,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
@@ -1139,10 +1141,10 @@ impl ProtocolWorker {
         if !new_endorsements.is_empty() {
             self.prune_checked_endorsements();
 
-            // Add to pool, and propagate since these are new.
+            // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
                 endorsements: new_endorsements,
-                propagate: true,
+                propagate,
             })
             .await;
         }
@@ -1270,7 +1272,7 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
                 if self
-                    .note_endorsements_from_node(endorsements, &node)
+                    .note_endorsements_from_node(endorsements, &node, true)
                     .await
                     .is_err()
                 {
