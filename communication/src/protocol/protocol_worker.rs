@@ -1120,9 +1120,12 @@ impl ProtocolWorker {
         source_node_id: &NodeId,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
-        let mut new_endorsements = HashMap::with_capacity(endorsements.len());
+        let length = endorsements.len();
+        let mut received_ids = HashMap::with_capacity(length);
+        let mut new_endorsements = HashMap::with_capacity(length);
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.compute_endorsement_id()?;
+            received_ids.insert(endorsement_id.clone(), Instant::now());
 
             // check endorsement signature if not already checked
             match self.checked_endorsements.entry(endorsement_id) {
@@ -1137,17 +1140,13 @@ impl ProtocolWorker {
                 }
             };
         }
+
+        // add to known endorsements for source node.
+        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            node_info.insert_known_endorsements(received_ids, self.cfg.max_known_endorsements_size);
+        }
+
         if !new_endorsements.is_empty() {
-            // add to known endorsements
-            if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-                node_info.insert_known_endorsements(
-                    new_endorsements
-                        .iter()
-                        .map(|(id, _)| (*id, Instant::now()))
-                        .collect(),
-                    self.cfg.max_known_endorsements_size,
-                );
-            }
             self.prune_checked_endorsements();
 
             // Add to pool, and propagate since these are new.
