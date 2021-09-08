@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+mod block_factory;
 mod mock_pool_controller;
 mod mock_protocol_controller;
 mod scenario_block_creation;
