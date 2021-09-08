@@ -32,6 +32,7 @@ pub use ledger::{LedgerChange, LedgerData, LedgerExport};
 pub use pos::{ExportProofOfStake, ExportThreadCycleState, RollCounts, RollUpdate, RollUpdates};
 pub use timeslots::{
     get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp,
+    time_range_to_slot_range,
 };
 
 #[cfg(test)]
