@@ -107,7 +107,7 @@ impl BlockFactory {
         self.operations = operations
     }
 
-    pub fn give_protocol_controller(self) -> MockProtocolController {
+    pub fn take_protocol_controller(self) -> MockProtocolController {
         self.protocol_controller
     }
 }

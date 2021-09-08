@@ -64,7 +64,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
             assert_eq!(status.discarded_blocks.map.len(), 1);
             assert!(status.discarded_blocks.map.get(&hash_3).is_some());
             (
-                block_factory.give_protocol_controller(),
+                block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
@@ -123,7 +123,7 @@ async fn test_block_not_processed_multiple_times() {
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.map.len(), 0);
             (
-                block_factory.give_protocol_controller(),
+                block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
@@ -182,7 +182,7 @@ async fn test_queuing() {
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.map.len(), 0);
             (
-                block_factory.give_protocol_controller(),
+                block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
@@ -242,7 +242,7 @@ async fn test_double_staking_does_not_propagate() {
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.map.len(), 0);
             (
-                block_factory.give_protocol_controller(),
+                block_factory.take_protocol_controller(),
                 consensus_command_sender,
                 consensus_event_receiver,
             )
