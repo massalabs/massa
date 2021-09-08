@@ -943,6 +943,7 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
         ))
         .send()?;
     trace!("after sending request to client in cmd_register_staking_keys in massa-client main");
+    println!("Sent register staking keys command to node");
     Ok(())
 }
 
@@ -1017,6 +1018,7 @@ fn cmd_remove_staking_addresses(data: &mut ReplData, params: &[&str]) -> Result<
         ))
         .send()?;
     trace!("after sending request to client in cmd_remove_staking_addresses in massa-client main");
+    println!("Sent remove staking keys commande to node");
     Ok(())
 }
 
