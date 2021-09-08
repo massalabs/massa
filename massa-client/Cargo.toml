@@ -28,3 +28,4 @@ crypto = {path = "../crypto"}
 models = {path = "../models"}
 pool = {path = "../pool"}
 time = { path = "../time" }
+wallet = { path = "../wallet" }

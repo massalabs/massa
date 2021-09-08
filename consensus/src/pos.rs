@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{block_graph::ActiveBlock, ConsensusConfig, ConsensusError};
+use crate::error::ConsensusError;
+use crate::{block_graph::ActiveBlock, ConsensusConfig};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
 use models::{

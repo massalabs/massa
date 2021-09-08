@@ -4,7 +4,6 @@ use super::mock_pool_controller::{MockPoolController, PoolCommandSink};
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
-    ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
     ConsensusConfig,
 };
@@ -17,6 +16,7 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
+use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,

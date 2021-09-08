@@ -6,10 +6,12 @@ use super::{
     tools,
 };
 use crate::{
-    ledger::{Ledger, LedgerChange, LedgerChanges, LedgerData},
+    ledger::{Ledger, LedgerChanges},
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
+use models::ledger::LedgerChange;
+use models::ledger::LedgerData;
 use models::{Address, Amount, Slot};
 use serial_test::serial;
 use std::collections::HashMap;

@@ -1,13 +1,4 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
-use communication::network::{NetworkCommand, NetworkCommandSender};
-use consensus::{ConsensusCommand, ConsensusCommandSender};
-use models::{SerializeCompact, Version};
-use serial_test::serial;
-use std::str::FromStr;
-use time::UTime;
-use tokio::sync::mpsc;
-
-use crate::{get_state, start_bootstrap_server};
 
 use super::{
     mock_establisher,
@@ -16,6 +7,14 @@ use super::{
         wait_consensus_command, wait_network_command,
     },
 };
+use crate::{get_state, start_bootstrap_server};
+use communication::network::{NetworkCommand, NetworkCommandSender};
+use consensus::{ConsensusCommand, ConsensusCommandSender};
+use models::{SerializeCompact, Version};
+use serial_test::serial;
+use std::str::FromStr;
+use time::UTime;
+use tokio::sync::mpsc;
 
 #[tokio::test]
 #[serial]

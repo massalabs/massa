@@ -1,7 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
     tests::tools::{
         self, create_endorsement, create_roll_transaction, create_transaction, generate_ledger_file,
@@ -9,6 +8,7 @@ use crate::{
 };
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
+use models::ledger::LedgerData;
 use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use models::{Endorsement, SerializeCompact};
 use pool::PoolCommand;

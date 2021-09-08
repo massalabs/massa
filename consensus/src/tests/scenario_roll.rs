@@ -20,8 +20,8 @@ use crate::{
             generate_ledger_file, get_creator_for_draw, propagate_block, wait_pool_slot,
         },
     },
-    LedgerData,
 };
+use models::ledger::LedgerData;
 
 #[tokio::test]
 #[serial]

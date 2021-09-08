@@ -2,15 +2,14 @@
 
 //! All information concerning blocks, the block graph and cliques is managed here.
 use super::config::ConsensusConfig;
+use crate::error::ConsensusError;
 use crate::{
-    error::ConsensusError,
-    ledger::{
-        Ledger, LedgerChange, LedgerChanges, LedgerExport, LedgerSubset, OperationLedgerInterface,
-    },
+    ledger::{Ledger, LedgerChanges, LedgerExport, LedgerSubset, OperationLedgerInterface},
     pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
 use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
+use models::ledger::LedgerChange;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHeader,
     BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, Operation,
@@ -288,7 +287,8 @@ impl DeserializeCompact for ExportActiveBlock {
 
         //children
         let (children_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if children_count > parent_count.into() {
+        let parent_count_u32: u32 = parent_count.into();
+        if children_count > parent_count_u32 {
             return Err(ModelsError::DeserializeError(
                 "too many threads with children to deserialize".to_string(),
             ));
@@ -4059,9 +4059,9 @@ impl BlockGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::LedgerData;
     use crate::tests::tools::get_dummy_block_id;
     use crypto::signature::{PrivateKey, PublicKey};
+    use models::ledger::LedgerData;
     use models::{Amount, Endorsement, EndorsementContent};
     use num::rational::Ratio;
     use serial_test::serial;
