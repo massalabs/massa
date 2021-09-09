@@ -194,13 +194,20 @@ impl ConsensusWorker {
             .iter()
             .map(|(_block_id, period)| *period)
             .collect();
+        let now = UTime::now(clock_compensation)?;
         info!(
             "Started node at time {}, cycle {}, period {}, thread {}",
-            UTime::now(clock_compensation)?.to_utc_string(),
+            now.to_utc_string(),
             next_slot.get_cycle(cfg.periods_per_cycle),
             next_slot.period,
             next_slot.thread,
         );
+        if cfg.genesis_timestamp > now {
+            info!(
+                "{:?} remaining to genesis",
+                cfg.genesis_timestamp.saturating_sub(now).to_duration()
+            )
+        }
         for addr in staking_keys.keys() {
             info!("Staking enabled for address: {}", addr);
         }
@@ -337,6 +344,11 @@ impl ConsensusWorker {
             if slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
                 info!("Started cycle {}", cur_cycle);
             }
+        }
+
+        if self.next_slot == Slot::new(1, 0) {
+            // first block that can be created
+            info!("Masa network has started ! 🎉")
         }
 
         // check if there are any final blocks not produced by us
