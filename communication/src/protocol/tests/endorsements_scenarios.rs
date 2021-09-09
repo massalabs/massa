@@ -193,3 +193,68 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
     )
     .await;
 }
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_inside_a_header() {
+    let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 2 nodes.
+            let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
+
+            // 1. Create an endorsement
+            let endorsement = tools::create_endorsement();
+
+            let creator_node = nodes.pop().expect("Failed to get node info.");
+
+            // 2. Create a block coming from node creator_node.
+            let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+
+            // 3. Add endorsement to block
+            block.header.content.endorsements = vec![endorsement.clone()];
+
+            // 4. Send header to protocol.
+            network_controller
+                .send_header(creator_node.id, block.header.clone())
+                .await;
+
+            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
+
+            // 5. Check that the endorsements included in the header are not propagated.
+            loop {
+                match network_controller
+                    .wait_command(1000.into(), |cmd| match cmd {
+                        cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
+                        _ => None,
+                    })
+                    .await
+                {
+                    Some(NetworkCommand::SendEndorsements {
+                        node: _node,
+                        endorsements,
+                    }) => {
+                        let id = endorsements[0].compute_endorsement_id().unwrap();
+                        assert_eq!(id, expected_endorsement_id);
+                        panic!("Unexpected propagation of endorsement received inside header.")
+                    }
+                    Some(_) => panic!("Unpexted network command."),
+                    None => break,
+                };
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
