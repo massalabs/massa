@@ -546,11 +546,10 @@ impl NetworkWorker {
                                 .send(NodeCommand::Close(ConnectionClosureReason::Normal))
                                 .await;
                             if res.is_err() {
-                                warn!(
-                                    "{}",
-                                    CommunicationError::ChannelError(
+                                massa_trace!(
+                                    "network.network_worker.on_handshake_finished", {"err": CommunicationError::ChannelError(
                                         "close node command send failed".into(),
-                                    )
+                                    ).to_string()}
                                 );
                             }
                         }
@@ -697,11 +696,10 @@ impl NetworkWorker {
                             .send(NodeCommand::Close(ConnectionClosureReason::Banned))
                             .await;
                         if res.is_err() {
-                            warn!(
-                                "{}",
-                                CommunicationError::ChannelError(
+                            massa_trace!(
+                                "network.network_worker.manage_network_command", {"err": CommunicationError::ChannelError(
                                     "close node command send failed".into(),
-                                )
+                                ).to_string()}
                             );
                         }
                     };
@@ -865,7 +863,7 @@ impl NetworkWorker {
                 warn!(
                     "{}",
                     CommunicationError::ChannelError(
-                        "send block not found node command send failed".into(),
+                        "error forwarding message to node worker".into(),
                     )
                 )
             };
@@ -1045,10 +1043,9 @@ impl NetworkWorker {
                         );
                     }
                 } else {
-                    warn!(
-                        "node_id={:?} asked us for peer list and disappeared",
-                        from_node_id
-                    )
+                    massa_trace!("node asked us for peer list and disappeared", {
+                        "node_id": from_node_id
+                    })
                 }
             }
 
