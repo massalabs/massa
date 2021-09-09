@@ -454,20 +454,7 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
         let fee = Amount::from_str(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
-        println!("Warning: If you don't produce enough blocks, your rolls will be sold automatically and you will be refunded.");
-
-        let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server response code: {}",
-                resp.status()
-            )));
-        }
-
-        let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
-        // todo add lookback cycle to consensus
-        println!("Rolls should be activated in (lookback_cycles+1)* periods_per_cycle + 1 periods");
+        println!("Warning: If you don't produce enough blocks, your rolls will be sold automatically and you will be refunded");
         let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
         send_operation(operation, data)?;
     }
