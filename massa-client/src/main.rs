@@ -454,7 +454,7 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
         let fee = Amount::from_str(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
-
+        println!("Warning: If you don't produce blocks when you are selected to do so, your rolls will be sold automatically and refunded.");
         let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
         send_operation(operation, data)?;
     }
