@@ -549,7 +549,7 @@ impl NetworkWorker {
                                 massa_trace!(
                                     "network.network_worker.on_handshake_finished", {"err": CommunicationError::ChannelError(
                                         "close node command send failed".into(),
-                                    )}
+                                    ).to_string()}
                                 );
                             }
                         }
@@ -699,7 +699,7 @@ impl NetworkWorker {
                             massa_trace!(
                                 "network.network_worker.manage_network_command", {"err": CommunicationError::ChannelError(
                                     "close node command send failed".into(),
-                                )}
+                                ).to_string()}
                             );
                         }
                     };
