@@ -830,6 +830,14 @@ impl ProtocolWorker {
         let now = Instant::now();
         if let Some((_e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
             *inst = now;
+            if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+                node_info.insert_known_block(
+                    block_id,
+                    true,
+                    Instant::now(),
+                    self.cfg.max_node_known_blocks_size,
+                );
+            }
             return Ok(Some((block_id, false)));
         }
 
