@@ -782,7 +782,7 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    // Ban a node.
+    /// Ban a node.
     async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), CommunicationError> {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
@@ -795,6 +795,7 @@ impl ProtocolWorker {
 
     /// Check a header's signature, and if valid note the node knows the block.
     /// boolean whether the header is new
+    /// Does not ban if the header is invalid
     async fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
@@ -851,7 +852,6 @@ impl ProtocolWorker {
                 "node {:?} sent us a header, containing critically incorrect endorsements",
                 source_node_id
             );
-            let _ = self.ban_node(source_node_id).await;
             return Ok(None);
         }
 
@@ -949,6 +949,7 @@ impl ProtocolWorker {
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
+    /// Does not ban if the block is invalid
     async fn note_block_from_node(
         &mut self,
         block: &Block,
@@ -1067,6 +1068,7 @@ impl ProtocolWorker {
     }
 
     /// Check operations
+    /// Does not ban if the operation is invalid
     fn note_operations_from_node(
         &mut self,
         operations: Vec<Operation>,
@@ -1101,6 +1103,7 @@ impl ProtocolWorker {
 
     /// Note endorsements coming from a given node,
     /// and propagate them when they were received outside of a header.
+    /// Does not ban if the endorsement is invalid
     async fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<Endorsement>,
