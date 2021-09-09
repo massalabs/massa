@@ -1,8 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-#![feature(ip)]
-#![feature(destructuring_assignment)]
-
 extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};

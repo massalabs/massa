@@ -1,8 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-#![feature(map_first_last)]
-#![feature(async_closure)]
-
 #[macro_use]
 extern crate logging;
 

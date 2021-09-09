@@ -6,6 +6,7 @@ mod common;
 mod config;
 mod establisher;
 mod handshake_worker;
+mod ip;
 mod messages;
 mod network_controller;
 mod network_worker;
