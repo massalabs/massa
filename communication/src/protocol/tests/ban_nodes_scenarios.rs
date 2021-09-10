@@ -475,9 +475,9 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             // Have one node send that they don't know about the block.
             let not_banned_nodes =
                 tools::create_and_connect_nodes(1, &mut network_controller).await;
-            network_controller
-                .send_block_not_found(not_banned_nodes[0].id, expected_hash)
-                .await;
+            // network_controller
+            //     .send_block_not_found(not_banned_nodes[0].id, expected_hash)
+            //     .await;
 
             // wait for things to settle
             tokio::time::sleep(Duration::from_millis(250)).await;
