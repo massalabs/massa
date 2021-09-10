@@ -9,8 +9,8 @@
 extern crate logging;
 pub use block_graph::BootstrapableGraph;
 pub use block_graph::{
-    BlockGraphExport, Clique, DiscardReason, ExportActiveBlock, ExportBlockStatus, ExportClique,
-    ExportCompiledBlock, ExportDiscardedBlocks, LedgerDataExport, Status,
+    BlockGraphExport, DiscardReason, ExportActiveBlock, ExportBlockStatus, ExportCompiledBlock,
+    ExportDiscardedBlocks, LedgerDataExport, Status,
 };
 pub use config::ConsensusConfig;
 pub use consensus_controller::{
@@ -20,6 +20,8 @@ pub use consensus_worker::{ConsensusCommand, ConsensusEvent, ConsensusStats};
 pub use error::ConsensusError;
 pub use ledger::LedgerExport;
 pub use models::address::AddressState;
+pub use models::clique::Clique;
+pub use models::clique::ExportClique;
 pub use models::ledger::LedgerChange;
 pub use pos::{ExportProofOfStake, ExportThreadCycleState, RollCounts, RollUpdate, RollUpdates};
 pub use timeslots::{

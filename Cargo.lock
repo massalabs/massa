@@ -917,8 +917,6 @@ dependencies = [
 name = "jsonrpc-dto"
 version = "0.1.0"
 dependencies = [
- "communication",
- "consensus",
  "crypto",
  "futures",
  "jsonrpc-core",

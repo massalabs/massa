@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use jsonrpc_core::IoHandler;
 use jsonrpc_dto::{MetaMask, API};
 use jsonrpc_http_server::ServerBuilder;

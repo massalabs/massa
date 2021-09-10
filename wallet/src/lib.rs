@@ -21,9 +21,10 @@ use models::address::{Address, AddressState, Addresses};
 use models::amount::Amount;
 use models::error::ReplError;
 use models::ledger::LedgerData;
+use models::node::PubkeySig;
 use models::operation::{Operation, OperationContent, OperationType};
 use models::slot::Slot;
-use models::{PubkeySig, SerializeCompact};
+use models::SerializeCompact;
 use time::UTime;
 
 /// contains the private keys created in the wallet.

@@ -13,7 +13,6 @@ use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
 
 use communication::network::Peer;
 use communication::network::Peers;
-use communication::NodeId;
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 use consensus::error::ConsensusError;
 use consensus::time_range_to_slot_range;
@@ -27,13 +26,14 @@ use consensus::{
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use logging::massa_trace;
 use models::address::{AddressState, Addresses};
+use models::node::{NodeId, PubkeySig};
+use models::Address;
 use models::Amount;
 use models::Operation;
 use models::OperationId;
 use models::OperationSearchResult;
 use models::SerializationContext;
 use models::StakersCycleProductionStats;
-use models::{Address, PubkeySig};
 use models::{BlockHeader, BlockId, Slot, Version};
 use pool::PoolConfig;
 use storage::StorageAccess;

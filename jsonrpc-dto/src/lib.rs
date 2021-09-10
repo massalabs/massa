@@ -1,8 +1,10 @@
-use communication::NodeId;
-use consensus::Clique;
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
+use models::clique::Clique;
+use models::node::NodeId;
 use models::{
     Address, Amount, Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, Slot,
     Version,
