@@ -242,6 +242,16 @@ impl Operation {
         self.get_operation_id()
     }
 
+    pub fn verify_signature(&self) -> Result<(), ModelsError> {
+        let content_hash = Hash::hash(&self.content.to_bytes_compact()?);
+        verify_signature(
+            &content_hash,
+            &self.signature,
+            &self.content.sender_public_key,
+        )?;
+        Ok(())
+    }
+
     pub fn get_operation_id(&self) -> Result<OperationId, ModelsError> {
         Ok(OperationId(Hash::hash(&self.to_bytes_compact()?)))
     }

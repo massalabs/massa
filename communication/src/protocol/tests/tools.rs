@@ -151,7 +151,30 @@ pub fn create_operation() -> Operation {
         fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
-        expire_period: 0,
+        expire_period: 1,
+    };
+    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+
+    Operation { content, signature }
+}
+
+/// Creates an operation created by a specific address.
+pub fn create_operation_with_keys(sender_priv: &PrivateKey) -> Operation {
+    let sender_pub = crypto::derive_public_key(&sender_priv);
+
+    let recv_priv = crypto::generate_random_private_key();
+    let recv_pub = crypto::derive_public_key(&recv_priv);
+
+    let op = OperationType::Transaction {
+        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        amount: Amount::default(),
+    };
+    let content = OperationContent {
+        fee: Amount::default(),
+        op,
+        sender_public_key: sender_pub,
+        expire_period: 1,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = crypto::sign(&hash, &sender_priv).unwrap();
