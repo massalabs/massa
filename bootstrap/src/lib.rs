@@ -2,31 +2,30 @@
 
 use binders::{ReadBinder, WriteBinder};
 use communication::network::{BootstrapPeers, NetworkCommandSender};
-use consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
-use establisher::{ReadHalf, WriteHalf};
-use log::{debug, info, warn};
-use std::net::SocketAddr;
-
-use logging::massa_trace;
-mod binders;
-pub mod config;
-mod error;
-pub mod establisher;
-mod messages;
-
 use config::BootstrapConfig;
+use consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use crypto::{
     hash::Hash,
     signature::{sign, verify_signature, PrivateKey, PublicKey},
 };
 use error::BootstrapError;
 pub use establisher::Establisher;
+use establisher::{ReadHalf, WriteHalf};
+use log::{debug, info, warn};
+use logging::massa_trace;
 use messages::BootstrapMessage;
 use models::{SerializeCompact, Version};
 use rand::{prelude::SliceRandom, rngs::StdRng, RngCore, SeedableRng};
 use std::convert::TryInto;
+use std::net::SocketAddr;
 use time::UTime;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
+
+mod binders;
+pub mod config;
+mod error;
+pub mod establisher;
+mod messages;
 
 async fn get_state_internal(
     cfg: &BootstrapConfig,

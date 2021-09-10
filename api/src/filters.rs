@@ -1,39 +1,47 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>.
 
-use super::config::ApiConfig;
-use crate::ApiError;
-use communication::network::Peer;
-use communication::network::Peers;
-use communication::NodeId;
-use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-use consensus::ExportBlockStatus;
-use consensus::Status;
-use consensus::{
-    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, AddressState, BlockGraphExport,
-    ConsensusConfig, ConsensusError, DiscardReason,
-};
-use consensus::{time_range_to_slot_range, ConsensusStats};
-use crypto::signature::{PrivateKey, PublicKey, Signature};
-use logging::massa_trace;
-use models::Address;
-use models::Operation;
-use models::OperationId;
-use models::OperationSearchResult;
-use models::SerializationContext;
-use models::StakersCycleProductionStats;
-use models::{Amount, BlockHeader, BlockId, Slot, Version};
-use pool::PoolConfig;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::{
     cmp::min,
     collections::{HashMap, HashSet},
     net::IpAddr,
 };
-use storage::StorageAccess;
-use time::UTime;
+
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
+
+use communication::network::Peer;
+use communication::network::Peers;
+use communication::NodeId;
+use communication::{network::NetworkConfig, protocol::ProtocolConfig};
+use consensus::error::ConsensusError;
+use consensus::time_range_to_slot_range;
+use consensus::ConsensusStats;
+use consensus::ExportBlockStatus;
+use consensus::Status;
+use consensus::{
+    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
+    ConsensusConfig, DiscardReason,
+};
+use crypto::signature::{PrivateKey, PublicKey, Signature};
+use logging::massa_trace;
+use models::address::{AddressState, Addresses};
+use models::Amount;
+use models::Operation;
+use models::OperationId;
+use models::OperationSearchResult;
+use models::SerializationContext;
+use models::StakersCycleProductionStats;
+use models::{Address, PubkeySig};
+use models::{BlockHeader, BlockId, Slot, Version};
+use pool::PoolConfig;
+use storage::StorageAccess;
+use time::UTime;
+
+use crate::ApiError;
+
+use super::config::ApiConfig;
 
 /// Events that are transmitted outside the API
 #[derive(Debug)]
@@ -103,10 +111,6 @@ pub struct PrivateKeys {
     pub keys: Vec<PrivateKey>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Addresses {
-    pub addrs: HashSet<Address>,
-}
 /// This function sets up all the routes that can be used
 /// and combines them into one filter
 pub fn get_filter(
@@ -720,11 +724,6 @@ async fn do_node_sign_msg(
     })
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PubkeySig {
-    pub public_key: PublicKey,
-    pub signature: Signature,
-}
 pub async fn node_sign_msg(
     msg: Vec<u8>,
     event_tx: mpsc::Sender<ApiEvent>,

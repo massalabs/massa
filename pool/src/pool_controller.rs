@@ -1,7 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::{HashMap, HashSet};
-
 use super::{
     config::{PoolConfig, CHANNEL_SIZE},
     error::PoolError,
@@ -13,6 +11,7 @@ use models::{
     Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
     Slot,
 };
+use std::collections::{HashMap, HashSet};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,

@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::{array_from_slice, serialization::DeserializeVarInt};
 use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
 use serde::de::Unexpected;

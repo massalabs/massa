@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
-use consensus::ConsensusError;
+
+use consensus::error::ConsensusError;
 use crypto::CryptoError;
 use models::ModelsError;
 use storage::StorageError;

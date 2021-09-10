@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::CommunicationError;
-use consensus::ConsensusError;
+use consensus::error::ConsensusError;
 use crypto::CryptoError;
 use thiserror::Error;
 use time::TimeError;

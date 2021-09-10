@@ -7,16 +7,6 @@
 
 #[macro_use]
 extern crate logging;
-
-mod block_graph;
-mod config;
-mod consensus_controller;
-mod consensus_worker;
-mod error;
-mod ledger;
-mod pos;
-mod timeslots;
-
 pub use block_graph::BootstrapableGraph;
 pub use block_graph::{
     BlockGraphExport, Clique, DiscardReason, ExportActiveBlock, ExportBlockStatus, ExportClique,
@@ -26,14 +16,25 @@ pub use config::ConsensusConfig;
 pub use consensus_controller::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
 };
-pub use consensus_worker::{AddressState, ConsensusCommand, ConsensusEvent, ConsensusStats};
+pub use consensus_worker::{ConsensusCommand, ConsensusEvent, ConsensusStats};
 pub use error::ConsensusError;
-pub use ledger::{LedgerChange, LedgerData, LedgerExport};
+pub use ledger::LedgerExport;
+pub use models::address::AddressState;
+pub use models::ledger::LedgerChange;
 pub use pos::{ExportProofOfStake, ExportThreadCycleState, RollCounts, RollUpdate, RollUpdates};
 pub use timeslots::{
     get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp,
     time_range_to_slot_range,
 };
+
+mod block_graph;
+mod config;
+mod consensus_controller;
+mod consensus_worker;
+pub mod error;
+pub mod ledger;
+mod pos;
+mod timeslots;
 
 #[cfg(test)]
 mod tests;

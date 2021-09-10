@@ -1,23 +1,23 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::pos::ExportProofOfStake;
-
 use super::{
     block_graph::*,
     config::{ConsensusConfig, CHANNEL_SIZE},
     consensus_worker::{
-        AddressState, ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusStats,
+        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusStats,
         ConsensusWorker,
     },
-    error::ConsensusError,
     pos::ProofOfStake,
 };
+use crate::error::ConsensusError;
+use crate::pos::ExportProofOfStake;
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::{
     derive_public_key,
     signature::{PrivateKey, PublicKey},
 };
 use logging::debug;
+use models::address::AddressState;
 use models::{
     Address, Block, BlockId, OperationId, OperationSearchResult, Slot, StakersCycleProductionStats,
 };

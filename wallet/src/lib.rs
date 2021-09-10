@@ -1,24 +1,30 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::data::ConsensusConfig;
-use crate::ReplData;
-use crate::ReplError;
-use crate::WrappedAddressState;
-use api::Addresses;
-use api::PubkeySig;
-use consensus::AddressState;
-use crypto::hash::Hash;
-use crypto::signature::{derive_public_key, PrivateKey};
-use models::Address;
-use models::Amount;
-use models::Operation;
-use models::OperationContent;
-use models::OperationType;
-use models::SerializeCompact;
-use models::Slot;
+// TODO:
+//   * `wallet_info`: Shows wallet info
+//   * `wallet_new_privkey`: Generates a new private key and adds it to the wallet. Returns the associated address.
+//   * `send_transaction`: sends a transaction from <from_address> to <to_address> (from_address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <from_address> <to_address> <amount> <fee>
+//   * `wallet_add_privkey`: Adds a list of private keys to the wallet. Returns the associated addresses. Parameters: list of private keys separated by ,  (no space).
+//   * `buy_rolls`: buy roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
+//   * `sell_rolls`: sell roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
+//   * `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID>
+
+use std::collections::HashMap;
+use std::net::SocketAddr;
+
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+use crypto::hash::Hash;
+use crypto::signature::{derive_public_key, PrivateKey};
+use models::address::{Address, AddressState, Addresses};
+use models::amount::Amount;
+use models::error::ReplError;
+use models::ledger::LedgerData;
+use models::operation::{Operation, OperationContent, OperationType};
+use models::slot::Slot;
+use models::{PubkeySig, SerializeCompact};
+use time::UTime;
 
 /// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
@@ -82,12 +88,12 @@ impl Wallet {
             .iter()
             .map(|key| {
                 let public_key = derive_public_key(key);
-                Address::from_public_key(&public_key).unwrap() //private key has been tested: should never panic
+                Address::from_public_key(&public_key).unwrap() // private key has been tested: should never panic
             })
             .collect()
     }
 
-    //save the wallet in json format in a file
+    /// Save the wallet in json format in a file
     fn save(&self) -> Result<(), ReplError> {
         std::fs::write(&self.wallet_path, self.to_json_string()?)?;
         Ok(())
@@ -119,17 +125,18 @@ impl Wallet {
         // Set the context for the client process.
         models::init_serialization_context(context);
 
-        //get pool config
-        /*        let url = format!("http://{}/api/v1/pool_config", data.node_ip);
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server answer code :{}",
-                resp.status()
-            )));
-        }
-        let pool_cfg = resp.json::<pool::PoolConfig>()?;*/
-        //get consensus config
+        // Get pool config
+        // let url = format!("http://{}/api/v1/pool_config", data.node_ip);
+        // let resp = reqwest::blocking::get(&url)?;
+        // if resp.status() != StatusCode::OK {
+        //     return Err(ReplError::GeneralError(format!(
+        //         "Error during node connection. Server answer code: {}",
+        //         resp.status()
+        //     )));
+        // }
+        // let pool_cfg = resp.json::<pool::PoolConfig>()?;
+
+        // Get consensus config
         let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
         let resp = reqwest::blocking::get(&url)?;
         if resp.status() != StatusCode::OK {
@@ -138,9 +145,9 @@ impl Wallet {
                 resp.status()
             )));
         }
-        let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
+        let consensus_cfg = resp.json::<ConsensusConfigData>()?;
 
-        //get from address private key
+        // Get from address private key
         let private_key = self
             .find_associated_private_key(from_address)
             .ok_or_else(|| {
@@ -159,7 +166,7 @@ impl Wallet {
         )
         .map_err(|err| {
             ReplError::GeneralError(format!(
-                "Error during current time slot computation: {}",
+                "Error during current time slot computation: {:?}",
                 err
             ))
         })?
@@ -170,7 +177,7 @@ impl Wallet {
             expire_period += 1;
         }
 
-        //we don't care if that fails
+        // We don't care if that fails
         let _ = check_if_valid(data, &operation_type, from_address, fee, consensus_cfg);
 
         let operation_content = OperationContent {
@@ -195,9 +202,9 @@ fn check_if_valid(
     operation_type: &OperationType,
     from_address: Address,
     fee: Amount,
-    consensus_cfg: ConsensusConfig,
+    consensus_cfg: ConsensusConfigData,
 ) -> Result<(), ReplError> {
-    // get address info
+    // Get address info
     let addrs = serde_qs::to_string(&Addresses {
         addrs: vec![from_address].into_iter().collect(),
     })?;
@@ -220,7 +227,7 @@ fn check_if_valid(
                             .checked_mul_u64(*roll_count)
                             .ok_or(ReplError::GeneralError("".to_string()))?
                             .saturating_add(fee)
-                    // it's just to print a warning
+                    // It's just to print a warning
                     {
                         println!("Warning : currently address {} has not enough coins for that roll buy. It may be rejected", from_address);
                         println!(
@@ -244,21 +251,6 @@ fn check_if_valid(
     Ok(())
 }
 
-/*impl std::fmt::Display for Wallet {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f)?;
-        for key in &self.keys {
-            let public_key = derive_public_key(key);
-            let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
-            writeln!(f)?;
-            writeln!(f, "Private key: {}", key)?;
-            writeln!(f, "Public key: {}", public_key)?;
-            writeln!(f, "Address: {}", addr)?;
-        }
-        Ok(())
-    }
-}*/
-
 /// contains the private keys created in the wallet.
 #[derive(Debug)]
 pub struct WalletInfo<'a> {
@@ -268,7 +260,7 @@ pub struct WalletInfo<'a> {
 
 impl<'a> std::fmt::Display for WalletInfo<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "WARNING : do not share your private keys")?;
+        writeln!(f, "WARNING: do not share your private keys")?;
         for key in &self.wallet.keys {
             let public_key = derive_public_key(key);
             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
@@ -280,9 +272,84 @@ impl<'a> std::fmt::Display for WalletInfo<'a> {
                 Some(balance) => {
                     write!(f, "State: \n{}", balance)?;
                 }
-                None => writeln!(f, "No balance info available. Is your node running ?")?,
+                None => writeln!(f, "No balance info available. Is your node running?")?,
             }
         }
         Ok(())
     }
+}
+
+pub struct ReplData {
+    pub node_ip: SocketAddr,
+    pub cli: bool,
+    pub wallet: Option<Wallet>,
+}
+
+impl Default for ReplData {
+    fn default() -> Self {
+        ReplData {
+            node_ip: "0.0.0.0:3030".parse().unwrap(),
+            cli: false,
+            wallet: None,
+        }
+    }
+}
+
+// impl std::fmt::Display for Wallet {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         writeln!(f)?;
+//         for key in &self.keys {
+//             let public_key = derive_public_key(key);
+//             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
+//             writeln!(f)?;
+//             writeln!(f, "Private key: {}", key)?;
+//             writeln!(f, "Public key: {}", public_key)?;
+//             writeln!(f, "Address: {}", addr)?;
+//         }
+//         Ok(())
+//     }
+// }
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ConsensusConfigData {
+    pub t0: UTime,
+    pub thread_count: u8,
+    pub genesis_timestamp: UTime,
+    pub delta_f0: u64,
+    pub max_block_size: u32,
+    pub operation_validity_periods: u64,
+    pub periods_per_cycle: u64,
+    pub roll_price: Amount,
+}
+
+impl<'a> std::fmt::Display for WrappedAddressState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
+        writeln!(
+            f,
+            "    candidate balance: {}",
+            self.candidate_ledger_data.balance
+        )?;
+        writeln!(f, "    locked balance: {}", self.locked_balance)?;
+        writeln!(f, "    final rolls: {}", self.final_rolls)?;
+        writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
+
+        if let Some(active) = self.active_rolls {
+            writeln!(f, "    active rolls: {}", active)?;
+        } else {
+            writeln!(f, "    No active roll")?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct WrappedAddressState {
+    pub final_rolls: u64,
+    pub active_rolls: Option<u64>,
+    pub candidate_rolls: u64,
+    pub locked_balance: Amount,
+    pub candidate_ledger_data: LedgerData,
+    pub final_ledger_data: LedgerData,
 }

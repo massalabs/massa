@@ -1,7 +1,6 @@
 [package]
-name = "massa-client"
+name = "wallet"
 version = "0.1.0"
-authors = ["Massa Labs <info@massa.net>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -21,11 +20,9 @@ serde_qs = {version= "0.8"}
 serial_test = "0.5"
 thiserror = "1.0"
 # custom modules
-api = { path = "../api" }
-communication = {path = "../communication"}
+api = {path = "../api"}
 consensus = {path = "../consensus"}
+##
 crypto = {path = "../crypto"}
 models = {path = "../models"}
-pool = {path = "../pool"}
 time = { path = "../time" }
-wallet = { path = "../wallet" }

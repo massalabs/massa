@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use super::tools::*;
-use crate::Addresses;
 use crate::ApiEvent;
 use crate::OperationIds;
 use communication::network::Peer;
@@ -8,9 +8,10 @@ use communication::network::PeerInfo;
 use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use consensus::ExportClique;
-use consensus::{AddressState, LedgerData};
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
+use models::address::{AddressState, Addresses};
+use models::ledger::LedgerData;
 use models::SerializeCompact;
 use models::StakersCycleProductionStats;
 use models::{Address, Amount, Block, BlockHeader, BlockId, Slot};

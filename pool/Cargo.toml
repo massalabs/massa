@@ -5,20 +5,21 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2018"
 
 [dependencies]
-communication = {path = "../communication"}
-logging = { path = "../logging" }
-crypto = { path = "../crypto" }
-models = {path = "../models"}
-log = { version = "0.4" }
-thiserror = "1.0"
-num = "0.4"
-time= { path = "../time"}
-serde_json = { version = "1.0" }
-serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.11", features = ["full"] }
 futures = { version = "0.3" }
+log = { version = "0.4" }
+num = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+thiserror = "1.0"
+tokio = { version = "1.11", features = ["full"] }
+# custom modules
+communication = {path = "../communication"}
+crypto = { path = "../crypto" }
+logging = { path = "../logging" }
+models = {path = "../models"}
+time= { path = "../time"}
 
 [dev-dependencies]
-stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
 serial_test = "0.5"
+stderrlog = { version = "0.5" }

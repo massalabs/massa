@@ -7,28 +7,29 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bitvec = { version = "0.22", features = ["serde"] }
+futures = { version = "0.3" }
+log = { version = "0.4" }
+num = { version = "0.4", features = ["serde"] }
+rand = { version = "0.8"}
+rand_xoshiro = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+sled = "0.34"
+thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
-futures = { version = "0.3" }
-rand_xoshiro = "0.6"
-crypto = {path = "../crypto"}
+# custom modules
 communication = {path = "../communication"}
+crypto = {path = "../crypto"}
 logging = { path = "../logging" }
-rand = { version = "0.8"}
-serde = { version = "1.0", features = ["derive"] }
 models = {path = "../models"}
-serde_json = { version = "1.0" }
-log = { version = "0.4" }
-thiserror = "1.0"
-num = { version = "0.4", features = ["serde"] }
-time= { path = "../time"}
-storage= { path = "../storage"}
-pool= { path = "../pool"}
-sled = "0.34"
-bitvec = { version = "0.22", features = ["serde"] }
+pool = { path = "../pool"}
+storage = { path = "../storage"}
+time = { path = "../time"}
 
 [dev-dependencies]
-stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
-tempfile = "3.2"
 serial_test = "0.5"
+stderrlog = { version = "0.5" }
+tempfile = "3.2"

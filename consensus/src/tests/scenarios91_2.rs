@@ -1,11 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use crate::tests::tools::{self, generate_ledger_file};
 use crypto::hash::Hash;
 use models::Slot;
 use serial_test::serial;
+use std::collections::HashMap;
 use time::UTime;
 
 #[tokio::test]

@@ -1,12 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-//RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
-
-use std::collections::HashMap;
+// RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
 use crate::tests::tools::{self, generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
+use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]

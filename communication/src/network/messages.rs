@@ -11,7 +11,6 @@ use models::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-
 use std::{convert::TryInto, net::IpAddr};
 
 pub const HANDSHAKE_RANDOMNES_SIZE_BYTES: usize = 32;

@@ -1,5 +1,4 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use super::mock_establisher::{ReadHalf, WriteHalf};
 use crate::config::BootstrapConfig;
@@ -7,14 +6,17 @@ use bitvec::prelude::*;
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
     BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportClique, ExportProofOfStake,
-    ExportThreadCycleState, LedgerChange, LedgerData, LedgerExport, RollUpdate,
+    ExportThreadCycleState, LedgerExport, RollUpdate,
 };
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use models::ledger::LedgerChange;
+use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use time::UTime;
 use tokio::{

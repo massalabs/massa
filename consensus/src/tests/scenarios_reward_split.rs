@@ -1,10 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{
-    ledger::LedgerData,
-    tests::tools::{self, generate_ledger_file},
-};
+use crate::tests::tools::{self, generate_ledger_file};
 use crypto::hash::Hash;
+use models::ledger::LedgerData;
 use models::{Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
 use std::collections::HashMap;
