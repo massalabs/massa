@@ -189,7 +189,6 @@ pub trait MassaPublic {
     //////////////////////////////////////
 
     /// Return list of all those that were sent
-    /// TODO: did this create an operation?
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> Result<Vec<OperationId>>;
 
