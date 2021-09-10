@@ -1,6 +1,6 @@
-# Testnet Staking Reward Program
+# Testnet Staking Rewards Program
 
-In order to help achieve our goal of a fully decentralized and scaled blockchain, we designed a staking reward program during the testnet phase.
+In order to help achieve our goal of a fully decentralized and scaled blockchain, we designed a staking rewards program during the testnet phase.
 
 People that consistently run a node (with a publicly routable IP) and stake (produce blocks) will be rewarded mainnet Massa tokens when mainnet launches.
 
