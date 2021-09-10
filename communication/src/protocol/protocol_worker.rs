@@ -782,7 +782,7 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    // Ban a node.
+    /// Ban a node.
     async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), CommunicationError> {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
@@ -795,6 +795,7 @@ impl ProtocolWorker {
 
     /// Check a header's signature, and if valid note the node knows the block.
     /// boolean whether the header is new
+    /// Does not ban if the header is invalid
     async fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
@@ -803,31 +804,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-        let (block_id, is_new) = match self.check_header(&header, source_node_id).await {
-            Ok(Some(v)) => v,
-            Ok(None) => return Ok(None),
-            Err(err) => return Err(err),
-        };
 
-        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_block(
-                block_id,
-                true,
-                Instant::now(),
-                self.cfg.max_node_known_blocks_size,
-            );
-            massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
-            return Ok(Some((block_id, is_new)));
-        }
-        Ok(None)
-    }
-
-    /// BlockId, is_new
-    async fn check_header(
-        &mut self,
-        header: &BlockHeader,
-        source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, bool)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.check_header.start", {
             "header": header
         });
@@ -854,6 +831,14 @@ impl ProtocolWorker {
         let now = Instant::now();
         if let Some((_e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
             *inst = now;
+            if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+                node_info.insert_known_block(
+                    block_id,
+                    true,
+                    Instant::now(),
+                    self.cfg.max_node_known_blocks_size,
+                );
+            }
             return Ok(Some((block_id, false)));
         }
 
@@ -867,7 +852,6 @@ impl ProtocolWorker {
                 "node {:?} sent us a header, containing critically incorrect endorsements",
                 source_node_id
             );
-            let _ = self.ban_node(source_node_id).await;
             return Ok(None);
         }
 
@@ -925,7 +909,17 @@ impl ProtocolWorker {
             self.prune_checked_headers();
         }
 
-        Ok(Some((block_id, true)))
+        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            node_info.insert_known_block(
+                block_id,
+                true,
+                Instant::now(),
+                self.cfg.max_node_known_blocks_size,
+            );
+            massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
+            return Ok(Some((block_id, true)));
+        }
+        Ok(None)
     }
 
     /// Prune checked_endorsements if it is too large
@@ -955,6 +949,7 @@ impl ProtocolWorker {
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
+    /// Does not ban if the block is invalid
     async fn note_block_from_node(
         &mut self,
         block: &Block,
@@ -963,12 +958,14 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
-        let (block_id, _is_header_new) =
-            match self.check_header(&block.header, source_node_id).await {
-                Ok(Some(v)) => v,
-                Ok(None) => return Ok(None),
-                Err(err) => return Err(err),
-            };
+        let (block_id, _is_header_new) = match self
+            .note_header_from_node(&block.header, source_node_id)
+            .await
+        {
+            Ok(Some(v)) => v,
+            Ok(None) => return Ok(None),
+            Err(err) => return Err(err),
+        };
 
         // check operations (period, reuse, signatures, thread)
         let mut op_ids: Vec<OperationId> = Vec::with_capacity(block.operations.len());
@@ -1054,7 +1051,7 @@ impl ProtocolWorker {
         // add to known blocks, operations, endorsements
         let now = Instant::now();
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_block(block_id, true, now, self.cfg.max_node_known_blocks_size);
+            // node_info.insert_known_block(block_id, true, now, self.cfg.max_node_known_blocks_size); // alredy done in note header from node
             node_info.insert_known_ops(
                 block
                     .operations
@@ -1071,6 +1068,7 @@ impl ProtocolWorker {
     }
 
     /// Check operations
+    /// Does not ban if the operation is invalid
     fn note_operations_from_node(
         &mut self,
         operations: Vec<Operation>,
@@ -1105,6 +1103,7 @@ impl ProtocolWorker {
 
     /// Note endorsements coming from a given node,
     /// and propagate them when they were received outside of a header.
+    /// Does not ban if the endorsement is invalid
     async fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<Endorsement>,
