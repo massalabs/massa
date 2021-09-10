@@ -9,22 +9,20 @@
 //   * `sell_rolls`: sell roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
 //   * `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID>
 
-use std::collections::HashMap;
-use std::net::SocketAddr;
-
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, PrivateKey};
-use models::address::{Address, AddressState, Addresses};
+use models::address::Address;
 use models::amount::Amount;
-use models::error::ReplError;
 use models::ledger::LedgerData;
-use models::operation::{Operation, OperationContent, OperationType};
-use models::slot::Slot;
-use models::{PubkeySig, SerializeCompact};
+use models::PubkeySig;
 use time::UTime;
+
+mod error;
+
+pub use error::WalletError;
 
 /// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,7 +33,7 @@ pub struct Wallet {
 
 impl Wallet {
     /// Generates a new wallet initialized with the provided json file content
-    pub fn new(json_file: &str) -> Result<Wallet, ReplError> {
+    pub fn new(json_file: &str) -> Result<Wallet, WalletError> {
         let path = std::path::Path::new(json_file);
         let keys = if path.is_file() {
             serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(path)?)?
@@ -65,7 +63,7 @@ impl Wallet {
     }
 
     /// Adds a new private key to wallet, if it was missing
-    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), ReplError> {
+    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), WalletError> {
         if !self.keys.iter().any(|file_key| file_key == &key) {
             self.keys.push(key);
             self.save()?;
@@ -94,161 +92,15 @@ impl Wallet {
     }
 
     /// Save the wallet in json format in a file
-    fn save(&self) -> Result<(), ReplError> {
+    fn save(&self) -> Result<(), WalletError> {
         std::fs::write(&self.wallet_path, self.to_json_string()?)?;
         Ok(())
     }
 
     /// Export keys to json string
-    pub fn to_json_string(&self) -> Result<String, ReplError> {
+    pub fn to_json_string(&self) -> Result<String, WalletError> {
         serde_json::to_string_pretty(&self.keys).map_err(|err| err.into())
     }
-
-    pub fn create_operation(
-        &self,
-        operation_type: OperationType,
-        from_address: Address,
-        fee: Amount,
-        data: &ReplData,
-    ) -> Result<Operation, ReplError> {
-        //get node serialisation context
-        let url = format!("http://{}/api/v1/node_config", data.node_ip);
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server response code: {}",
-                resp.status()
-            )));
-        }
-        let context = resp.json::<models::SerializationContext>()?;
-
-        // Set the context for the client process.
-        models::init_serialization_context(context);
-
-        // Get pool config
-        // let url = format!("http://{}/api/v1/pool_config", data.node_ip);
-        // let resp = reqwest::blocking::get(&url)?;
-        // if resp.status() != StatusCode::OK {
-        //     return Err(ReplError::GeneralError(format!(
-        //         "Error during node connection. Server answer code: {}",
-        //         resp.status()
-        //     )));
-        // }
-        // let pool_cfg = resp.json::<pool::PoolConfig>()?;
-
-        // Get consensus config
-        let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
-        let resp = reqwest::blocking::get(&url)?;
-        if resp.status() != StatusCode::OK {
-            return Err(ReplError::GeneralError(format!(
-                "Error during node connection. Server response code: {}",
-                resp.status()
-            )));
-        }
-        let consensus_cfg = resp.json::<ConsensusConfigData>()?;
-
-        // Get from address private key
-        let private_key = self
-            .find_associated_private_key(from_address)
-            .ok_or_else(|| {
-                ReplError::GeneralError(format!(
-                    "No private key found in the wallet for the specified FROM address: {}",
-                    from_address.to_string()
-                ))
-            })?;
-        let public_key = derive_public_key(private_key);
-
-        let slot = consensus::get_current_latest_block_slot(
-            consensus_cfg.thread_count,
-            consensus_cfg.t0,
-            consensus_cfg.genesis_timestamp,
-            0,
-        )
-        .map_err(|err| {
-            ReplError::GeneralError(format!(
-                "Error during current time slot computation: {:?}",
-                err
-            ))
-        })?
-        .unwrap_or_else(|| Slot::new(0, 0));
-
-        let mut expire_period = slot.period + consensus_cfg.operation_validity_periods;
-        if slot.thread >= from_address.get_thread(consensus_cfg.thread_count) {
-            expire_period += 1;
-        }
-
-        // We don't care if that fails
-        let _ = check_if_valid(data, &operation_type, from_address, fee, consensus_cfg);
-
-        let operation_content = OperationContent {
-            fee,
-            expire_period,
-            sender_public_key: public_key,
-            op: operation_type,
-        };
-
-        let hash = Hash::hash(&operation_content.to_bytes_compact().unwrap());
-        let signature = crypto::sign(&hash, private_key).unwrap();
-
-        Ok(Operation {
-            content: operation_content,
-            signature,
-        })
-    }
-}
-
-fn check_if_valid(
-    data: &ReplData,
-    operation_type: &OperationType,
-    from_address: Address,
-    fee: Amount,
-    consensus_cfg: ConsensusConfigData,
-) -> Result<(), ReplError> {
-    // Get address info
-    let addrs = serde_qs::to_string(&Addresses {
-        addrs: vec![from_address].into_iter().collect(),
-    })?;
-    let url = format!("http://{}/api/v1/addresses_info?{}", data.node_ip, addrs);
-    let resp = reqwest::blocking::get(&url)?;
-    if resp.status() == StatusCode::OK {
-        let map_info = resp.json::<HashMap<Address, AddressState>>()?;
-
-        if let Some(info) = map_info.get(&from_address) {
-            match operation_type {
-                OperationType::Transaction { amount, .. } => {
-                    if info.candidate_ledger_data.balance < fee.saturating_add(*amount) {
-                        println!("Warning : currently address {} has not enough coins for that transaction. It may be rejected", from_address);
-                    }
-                }
-                OperationType::RollBuy { roll_count } => {
-                    if info.candidate_ledger_data.balance
-                        < consensus_cfg
-                            .roll_price
-                            .checked_mul_u64(*roll_count)
-                            .ok_or(ReplError::GeneralError("".to_string()))?
-                            .saturating_add(fee)
-                    // It's just to print a warning
-                    {
-                        println!("Warning : currently address {} has not enough coins for that roll buy. It may be rejected", from_address);
-                        println!(
-                            "Info : current roll price is {} coins",
-                            consensus_cfg.roll_price
-                        );
-                    }
-                }
-                OperationType::RollSell { roll_count } => {
-                    if info.candidate_rolls < *roll_count
-                        || info.candidate_ledger_data.balance < fee
-                    {
-                        println!("Warning : currently address {} has not enough rolls or coins for that roll sell. It may be rejected", from_address);
-                    }
-                }
-            }
-        } else {
-            println!("Warning : currently address {} is not known by consensus. That operation may be rejected", from_address);
-        }
-    }
-    Ok(())
 }
 
 /// contains the private keys created in the wallet.
@@ -276,22 +128,6 @@ impl<'a> std::fmt::Display for WalletInfo<'a> {
             }
         }
         Ok(())
-    }
-}
-
-pub struct ReplData {
-    pub node_ip: SocketAddr,
-    pub cli: bool,
-    pub wallet: Option<Wallet>,
-}
-
-impl Default for ReplData {
-    fn default() -> Self {
-        ReplData {
-            node_ip: "0.0.0.0:3030".parse().unwrap(),
-            cli: false,
-            wallet: None,
-        }
     }
 }
 
