@@ -2,15 +2,16 @@
 
 members = [
 	"api",
-    "crypto",
-    "logging",
-    "models",
+    "bootstrap",
     "communication",
     "consensus",
-    "massa-node",
+    "crypto",
+    "logging",
     "massa-client",
-    "time",
+    "massa-node",
+    "models",
+    "pool",
     "storage",
-    "bootstrap",
-    "pool"
+    "time",
+    "wallet"
 ]

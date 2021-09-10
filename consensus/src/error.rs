@@ -1,12 +1,17 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::array::TryFromSliceError;
-
 use crate::consensus_worker::ConsensusEvent;
 use communication::CommunicationError;
 use models::ModelsError;
 use rand::distributions::WeightedError;
+use std::array::TryFromSliceError;
 use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum InternalError {
+    #[error("transaction error {0}")]
+    TransactionError(String),
+}
 
 #[derive(Error, Debug)]
 pub enum ConsensusError {
@@ -90,10 +95,4 @@ pub enum ConsensusError {
     ChannelError(String),
     #[error("amount overflow")]
     AmountOverflowError,
-}
-
-#[derive(Error, Debug)]
-pub enum InternalError {
-    #[error("transaction error {0}")]
-    TransactionError(String),
 }

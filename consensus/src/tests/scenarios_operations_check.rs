@@ -1,7 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    ledger::LedgerData,
     start_consensus_controller,
     tests::{
         mock_pool_controller::{MockPoolController, PoolCommandSink},
@@ -12,6 +11,7 @@ use crate::{
         },
     },
 };
+use models::ledger::LedgerData;
 use models::{Address, Amount, Slot};
 use serial_test::serial;
 use std::collections::{HashMap, HashSet};

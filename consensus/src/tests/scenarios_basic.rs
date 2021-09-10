@@ -1,15 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use super::tools;
-use crate::tests::{
-    block_factory::BlockFactory,
-    tools::{create_endorsement, generate_ledger_file},
-};
+use crate::tests::{block_factory::BlockFactory, tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
+use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]

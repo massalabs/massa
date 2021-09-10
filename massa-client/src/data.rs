@@ -9,27 +9,29 @@
 //!
 //! They're only deserialized when received from the REST call.
 
-//massa type are wrapped to define a client specific display behaviour.
-//The display method is only use to show the data REPL mode.
-
-use chrono::Local;
-use chrono::TimeZone;
-use communication::network::PeerInfo;
-use communication::NodeId;
-use consensus::DiscardReason;
-use consensus::{ExportBlockStatus, LedgerData};
-use crypto::hash::Hash;
-use crypto::signature::Signature;
-use models::{
-    Address, Amount, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus, OperationType, Slot,
-};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+
+// Massa type ares wrapped to define a client specific display behaviour.
+// The display method is only use to show the data REPL mode.
+use chrono::Local;
+use chrono::TimeZone;
+use serde::Deserialize;
+
+use communication::network::PeerInfo;
+use communication::NodeId;
+use consensus::DiscardReason;
+use consensus::ExportBlockStatus;
+use crypto::hash::Hash;
+use crypto::signature::Signature;
+use models::{
+    Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
+    OperationSearchResultStatus, OperationType, Slot,
+};
 use time::UTime;
+use wallet::WrappedAddressState;
 
 pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true); //never set to zero.
 
@@ -143,18 +145,6 @@ pub struct ErrorMessage {
     pub message: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct ConsensusConfig {
-    pub t0: UTime,
-    pub thread_count: u8,
-    pub genesis_timestamp: UTime,
-    pub delta_f0: u64,
-    pub max_block_size: u32,
-    pub operation_validity_periods: u64,
-    pub periods_per_cycle: u64,
-    pub roll_price: Amount,
-}
-
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct WrappedSlot(Slot);
 
@@ -185,16 +175,6 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
     list.iter().map(|v| from_hash_slot(*v)).collect()
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WrappedAddressState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-    pub locked_balance: Amount,
-    pub candidate_ledger_data: LedgerData,
-    pub final_ledger_data: LedgerData,
-}
-
 /*
     final balance: 2000
     candidate balance: 2000
@@ -203,27 +183,6 @@ pub struct WrappedAddressState {
     candidate rolls: 0
     active rolls: 0
 */
-impl<'a> std::fmt::Display for WrappedAddressState {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
-        writeln!(
-            f,
-            "    candidate balance: {}",
-            self.candidate_ledger_data.balance
-        )?;
-        writeln!(f, "    locked balance: {}", self.locked_balance)?;
-        writeln!(f, "    final rolls: {}", self.final_rolls)?;
-        writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
-
-        if let Some(active) = self.active_rolls {
-            writeln!(f, "    active rolls: {}", active)?;
-        } else {
-            writeln!(f, "    No active roll")?;
-        }
-
-        Ok(())
-    }
-}
 
 pub struct AddressStates {
     pub map: HashMap<Address, WrappedAddressState>,

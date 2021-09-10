@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-//to start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
+// To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
 use crate::network::binders::{ReadBinder, WriteBinder};
 use crate::network::messages::Message;

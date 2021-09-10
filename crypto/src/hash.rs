@@ -3,6 +3,7 @@
 use crate::error::CryptoError;
 use bitcoin_hashes;
 use std::{convert::TryInto, str::FromStr};
+
 pub const HASH_SIZE_BYTES: usize = 32;
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]

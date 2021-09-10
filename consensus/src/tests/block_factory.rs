@@ -1,10 +1,11 @@
-use crypto::{hash::Hash, signature::PrivateKey};
-use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, Operation, Slot};
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::{
     mock_protocol_controller::MockProtocolController,
     tools::{validate_notpropagate_block, validate_propagate_block},
 };
+use crypto::{hash::Hash, signature::PrivateKey};
+use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, Operation, Slot};
 
 pub struct BlockFactory {
     pub best_parents: Vec<BlockId>,
@@ -68,8 +69,8 @@ impl BlockFactory {
     }
 
     pub fn sign_header(&self, header: BlockHeaderContent) -> Block {
-        let public_key = crypto::derive_public_key(&self.creator_priv_key);
-        let (hash, header) = BlockHeader::new_signed(&self.creator_priv_key, header).unwrap();
+        let _public_key = crypto::derive_public_key(&self.creator_priv_key);
+        let (_hash, header) = BlockHeader::new_signed(&self.creator_priv_key, header).unwrap();
 
         Block {
             header,
