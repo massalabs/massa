@@ -5,7 +5,8 @@
 
 extern crate logging;
 mod node_config;
-use api::{start_api_controller, ApiEvent, ApiEventReceiver, ApiManager};
+pub use api::ApiEvent;
+use api::{start_api_controller, ApiEventReceiver, ApiManager};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
     network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},

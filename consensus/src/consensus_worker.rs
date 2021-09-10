@@ -1,43 +1,37 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{ledger::LedgerData, pos::ExportProofOfStake};
-
-use super::{
-    block_graph::*, config::ConsensusConfig, error::ConsensusError, pos::ProofOfStake, timeslots::*,
-};
-use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
-use crypto::{
-    hash::Hash,
-    signature::{derive_public_key, PrivateKey, PublicKey},
-};
-use models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, EndorsementId, Operation, OperationId, OperationSearchResult,
-    OperationSearchResultStatus, SerializeCompact, Slot, StakersCycleProductionStats,
-};
-use pool::PoolCommandSender;
-use serde::{Deserialize, Serialize};
 use std::{cmp::max, collections::VecDeque, convert::TryFrom};
 use std::{
     collections::{HashMap, HashSet},
     usize,
 };
-use storage::StorageAccess;
-use time::UTime;
+
+use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
     time::{sleep_until, Sleep},
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AddressState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-    pub locked_balance: Amount,
-    pub candidate_ledger_data: LedgerData,
-    pub final_ledger_data: LedgerData,
-}
+use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
+use crypto::{
+    hash::Hash,
+    signature::{derive_public_key, PrivateKey, PublicKey},
+};
+use models::address::AddressState;
+use models::{
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, EndorsementContent,
+    EndorsementId, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
+    SerializeCompact, Slot, StakersCycleProductionStats,
+};
+use pool::PoolCommandSender;
+use storage::StorageAccess;
+use time::UTime;
+
+use crate::error::ConsensusError;
+use crate::pos::ExportProofOfStake;
+use models::ledger::LedgerData;
+
+use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake, timeslots::*};
 
 /// Commands that can be proccessed by consensus.
 #[derive(Debug)]

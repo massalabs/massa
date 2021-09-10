@@ -1,11 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use communication::protocol::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use models::{Endorsement, EndorsementId, Operation, OperationId};
+use std::collections::HashMap;
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 

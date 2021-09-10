@@ -2,29 +2,29 @@
 
 #![recursion_limit = "256"]
 
-mod config;
-mod error;
-mod filters;
-
-#[cfg(test)]
-mod tests;
-
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 pub use config::ApiConfig;
 use config::CHANNEL_SIZE;
 use consensus::ConsensusConfig;
+pub use error::ApiError;
 use filters::get_filter;
+use filters::ApiManagementCommand;
+pub use filters::{ApiEvent, OperationIds, PrivateKeys};
 use logging::massa_trace;
+pub use models::address::Addresses;
+pub use models::PubkeySig;
 use models::Version;
 use pool::PoolConfig;
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::sync::mpsc;
 
-pub use error::ApiError;
-pub use filters::{
-    Addresses, ApiEvent, ApiManagementCommand, OperationIds, PrivateKeys, PubkeySig,
-};
+mod config;
+mod error;
+mod filters;
+
+#[cfg(test)]
+mod tests;
 
 pub struct ApiEventReceiver(mpsc::Receiver<ApiEvent>);
 

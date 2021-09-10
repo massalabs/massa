@@ -1,20 +1,18 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::{
-    collections::{HashMap, HashSet},
-    u64,
-};
-
+use super::{config::PoolConfig, error::PoolError};
 use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
-
-use super::{config::PoolConfig, error::PoolError};
 use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use models::{
     Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
     Slot,
+};
+use std::{
+    collections::{HashMap, HashSet},
+    u64,
 };
 use tokio::sync::{mpsc, oneshot};
 

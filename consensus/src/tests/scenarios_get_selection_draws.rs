@@ -1,15 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::tests::tools::{self, generate_ledger_file};
+use models::ledger::LedgerData;
 use models::{Address, Amount, Slot};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
-
-use crate::{
-    tests::tools::{self, generate_ledger_file},
-    LedgerData,
-};
 
 #[tokio::test]
 #[serial]

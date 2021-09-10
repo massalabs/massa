@@ -18,14 +18,8 @@
 
 use crate::data::AddressStates;
 use crate::data::GetOperationContent;
-use crate::data::WrappedAddressState;
 use crate::data::WrappedHash;
-use crate::repl::error::ReplError;
-use crate::repl::ReplData;
-use crate::wallet::Wallet;
-use crate::wallet::WalletInfo;
-use api::PubkeySig;
-use api::{Addresses, OperationIds, PrivateKeys};
+use api::{OperationIds, PrivateKeys};
 use clap::App;
 use clap::Arg;
 use communication::network::Peer;
@@ -35,7 +29,8 @@ use consensus::Status;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use log::trace;
-use models::Address;
+use models::address::Addresses;
+use models::error::ReplError;
 use models::Amount;
 use models::BlockId;
 use models::Operation;
@@ -44,6 +39,7 @@ use models::OperationType;
 use models::Slot;
 use models::StakersCycleProductionStats;
 use models::Version;
+use models::{Address, PubkeySig};
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -54,10 +50,13 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::Ordering;
+use wallet::ConsensusConfigData;
+use wallet::{ReplData, WrappedAddressState};
+use wallet::{Wallet, WalletInfo};
+
 mod client_config;
 mod data;
 mod repl;
-mod wallet;
 
 ///Start the massa-client.
 fn main() {
@@ -778,7 +777,7 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         )));
     }
 
-    let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
+    let consensus_cfg = resp.json::<ConsensusConfigData>()?;
 
     let addr_list = params[0]
         .split(',')

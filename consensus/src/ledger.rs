@@ -1,6 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::error::InternalError;
+use crate::{ConsensusConfig, ConsensusError};
+use models::ledger::{LedgerChange, LedgerData};
+use models::{
+    array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
+    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
+};
+use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -8,158 +15,10 @@ use std::{
     usize,
 };
 
-use crate::{ConsensusConfig, ConsensusError};
-use models::{
-    array_from_slice, u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt,
-    ModelsError, Operation, SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
-};
-use serde::{Deserialize, Serialize};
-
 pub struct Ledger {
     ledger_per_thread: Vec<Tree>, // containing (Address, LedgerData)
     latest_final_periods: Tree,   // containing (thread_number: u8, latest_final_period: u64)
     cfg: ConsensusConfig,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct LedgerData {
-    pub balance: Amount,
-}
-
-impl Default for LedgerData {
-    fn default() -> Self {
-        LedgerData {
-            balance: Amount::default(),
-        }
-    }
-}
-
-impl SerializeCompact for LedgerData {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        res.extend(&self.balance.to_bytes_compact()?);
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for LedgerData {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
-        let mut cursor = 0usize;
-        let (balance, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-        Ok((LedgerData { balance }, cursor))
-    }
-}
-
-impl LedgerData {
-    pub fn new(starting_balance: Amount) -> LedgerData {
-        LedgerData {
-            balance: starting_balance,
-        }
-    }
-
-    fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
-        if change.balance_increment {
-            self.balance = self.balance.checked_add(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange(
-                    "balance overflow in LedgerData::apply_change".into(),
-                ),
-            )?;
-        } else {
-            self.balance = self.balance.checked_sub(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange(
-                    "balance underflow in LedgerData::apply_change".into(),
-                ),
-            )?;
-        }
-        Ok(())
-    }
-
-    /// returns true if the balance is zero
-    fn is_nil(&self) -> bool {
-        self.balance == Amount::default()
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LedgerChange {
-    pub balance_delta: Amount,
-    pub balance_increment: bool, // wether to increment or decrement balance of delta
-}
-
-impl Default for LedgerChange {
-    fn default() -> Self {
-        LedgerChange {
-            balance_delta: Amount::default(),
-            balance_increment: true,
-        }
-    }
-}
-
-impl LedgerChange {
-    /// Applies another ledger change on top of self
-    pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ConsensusError> {
-        if self.balance_increment == change.balance_increment {
-            self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange("overflow in LedgerChange::chain".into()),
-            )?;
-        } else if change.balance_delta > self.balance_delta {
-            self.balance_delta = change.balance_delta.checked_sub(self.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
-            )?;
-            self.balance_increment = !self.balance_increment;
-        } else {
-            self.balance_delta = self.balance_delta.checked_sub(change.balance_delta).ok_or(
-                ConsensusError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
-            )?;
-        }
-        if self.balance_delta == Amount::default() {
-            self.balance_increment = true;
-        }
-        Ok(())
-    }
-
-    pub fn is_nil(&self) -> bool {
-        self.balance_delta == Amount::default()
-    }
-}
-
-impl SerializeCompact for LedgerChange {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        res.push(if self.balance_increment { 1u8 } else { 0u8 });
-        res.extend(&self.balance_delta.to_bytes_compact()?);
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for LedgerChange {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
-        let mut cursor = 0usize;
-
-        let balance_increment = match u8_from_slice(&buffer[cursor..])? {
-            0u8 => false,
-            1u8 => true,
-            _ => {
-                return Err(ModelsError::DeserializeError(
-                    "wrong boolean balance_increment encoding in LedgerChange deserialization"
-                        .into(),
-                ))
-            }
-        };
-        cursor += 1;
-
-        let (balance_delta, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        Ok((
-            LedgerChange {
-                balance_increment,
-                balance_delta,
-            },
-            cursor,
-        ))
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -793,7 +652,8 @@ impl SerializeCompact for LedgerExport {
     /// ```rust
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
     /// # use std::str::FromStr;
-    /// # use consensus::{LedgerExport, LedgerData};
+    /// # use models::ledger::LedgerData;
+    /// # use consensus::LedgerExport;
     /// # let mut ledger = LedgerExport::default();
     /// # ledger.ledger_subset = vec![
     /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
@@ -868,9 +728,11 @@ impl DeserializeCompact for LedgerExport {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use serial_test::serial;
     use std::str::FromStr;
+
+    use serial_test::serial;
+
+    use super::*;
 
     #[test]
     #[serial]
