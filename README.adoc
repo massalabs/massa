@@ -95,11 +95,14 @@ Here is a set of tutorials:
 * link:docs/wallet.adoc[Creating a wallet]
 * link:docs/staking.adoc[Staking]
 * link:docs/transaction.adoc[Sending transactions]
-* Don't hesitate to ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
 * link:docs/windows_install.adoc[Install and Run on Windows]
 * link:docs/routability.adoc[Routability tutorial]
+* link:docs/testnet_rules.adoc[Testnet rewards program]
+* To get testnet coins, send your address to the faucet bot in the "testnet-token-request" channel of our link:https://discord.com/invite/TnsJQzXkRN[Discord].
 
 
 ## FAQ and Troubleshooting
 
 You'll find answer to common issues and questions regarding the Massa protocol in the link:docs/faq.adoc[FAQ].
+
+Don't hesitate to ask questions in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
