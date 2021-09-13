@@ -10,7 +10,7 @@
 //   * `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID>
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crypto::hash::Hash;
 use crypto::signature::{PrivateKey, PublicKey};
@@ -88,19 +88,19 @@ impl Wallet {
         self.keys.get(&address).map(|(_pub_key, priv_key)| priv_key)
     }
 
-    pub fn get_wallet_address_list(&self) -> Vec<Address> {
+    pub fn get_wallet_address_list(&self) -> HashSet<Address> {
         self.keys.keys().copied().collect()
     }
 
     /// Save the wallet in json format in a file
     fn save(&self) -> Result<(), WalletError> {
-        std::fs::write(&self.wallet_path, self.to_json_string()?)?;
+        std::fs::write(&self.wallet_path, serde_json::to_string_pretty(&self.keys)?)?;
         Ok(())
     }
 
     /// Export keys to json string
-    pub fn to_json_string(&self) -> Result<String, WalletError> {
-        serde_json::to_string_pretty(&self.keys).map_err(|err| err.into())
+    pub fn get_full_wallet(&self) -> &HashMap<Address, (PublicKey, PrivateKey)> {
+        &self.keys
     }
 }
 

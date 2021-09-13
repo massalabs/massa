@@ -618,13 +618,8 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
             .unwrap();
         if data.cli {
             println!(
-                "{{\"wallet\":{}, \"balances\":{}}}",
-                wallet
-                    .to_json_string()
-                    .map_err(|err| ReplError::GeneralError(format!(
-                        "Internal error during wallet json conversion: {}",
-                        err
-                    )))?,
+                "{{\"wallet\":{:#?}, \"balances\":{}}}",
+                wallet.get_full_wallet(),
                 display_wallet_info
             );
         } else {
