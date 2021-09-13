@@ -79,7 +79,7 @@ The point is the following: for the network to be healthy, everyone with active 
 
 === I have bought rolls but the command `next_draws` doesn't show anything.
 
-Our Proof-of-Stake implementation is made of cycles. Each cycle last for 10 periods, which correspond to 320 blocks, or 160 seconds.
+Our Proof-of-Stake implementation is made of cycles. Each cycle last for 128 periods, which correspond to 4096 blocks, or 2048 seconds.
 The `next_draws` command in the client outputs the next block creation opportunity for the provided address.
 Currently, if the address is not selected for a block creation in this cycle the command does not output anything.
 Try again in a few minutes and this time you might be selected for block creation in the current cycle!
