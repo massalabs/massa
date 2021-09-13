@@ -842,15 +842,25 @@ impl ProtocolWorker {
             return Ok(Some((block_id, false)));
         }
 
-        // TODO: return id's for use below?
-        if self
+        let endorsement_ids = match self
             .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
             .await
-            .is_err()
         {
-            warn!(
-                "node {:?} sent us a header, containing critically incorrect endorsements",
-                source_node_id
+            Err(_) => {
+                warn!(
+                    "node {:?} sent us a header, containing critically incorrect endorsements",
+                    source_node_id
+                );
+                return Ok(None);
+            }
+            Ok(id) => id,
+        };
+
+        // check if duplicate endorsement
+        if endorsement_ids.len() != header.content.endorsements.len() {
+            massa_trace!(
+                "protocol.protocol_worker.check_header.err_endorsement_reused",
+                { "header": header }
             );
             return Ok(None);
         }
@@ -862,24 +872,9 @@ impl ProtocolWorker {
         };
 
         // check endorsement intrinsic integrity
-        let mut endorsement_ids: Vec<EndorsementId> =
-            Vec::with_capacity(header.content.endorsements.len());
         let mut used_endorsement_indices: HashSet<u32> =
             HashSet::with_capacity(header.content.endorsements.len());
         for endorsement in header.content.endorsements.iter() {
-            let endorsement_id = match endorsement.compute_endorsement_id() {
-                Ok(id) => id,
-                Err(err) => {
-                    massa_trace!("protocol.protocol_worker.check_header.err_endorsement_id", { "header": header, "edorsement": endorsement, "err": format!("{:?}", err)});
-                    return Ok(None);
-                }
-            };
-            // check reuse
-            if endorsement_ids.contains(&endorsement_id) {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_reused", { "header": header, "edorsement": endorsement});
-                return Ok(None);
-            }
-            endorsement_ids.push(endorsement_id);
             // check index reuse
             if !used_endorsement_indices.insert(endorsement.content.index) {
                 massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "edorsement": endorsement});
@@ -1109,7 +1104,7 @@ impl ProtocolWorker {
         endorsements: Vec<Endorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<Vec<EndorsementId>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut received_ids = HashMap::with_capacity(length);
@@ -1142,12 +1137,12 @@ impl ProtocolWorker {
 
             // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
-                endorsements: new_endorsements,
+                endorsements: new_endorsements.clone(),
                 propagate,
             })
             .await;
         }
-        Ok(())
+        Ok(new_endorsements.into_keys().collect())
     }
 
     /// Manages network event
