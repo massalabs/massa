@@ -9,12 +9,12 @@ use super::{
     node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
     peer_info_database::*,
 };
-use crate::common::NodeId;
 use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, sign, PrivateKey, PublicKey, Signature};
 use futures::{stream::FuturesUnordered, StreamExt};
+use models::node::NodeId;
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,

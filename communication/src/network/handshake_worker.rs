@@ -6,7 +6,6 @@ use super::{
     messages::Message,
 };
 use crate::{
-    common::NodeId,
     error::{CommunicationError, HandshakeErrorType},
     network::{ReadHalf, WriteHalf},
 };
@@ -15,6 +14,7 @@ use crypto::{
     signature::{sign, verify_signature, PrivateKey},
 };
 use futures::future::try_join;
+use models::node::NodeId;
 use models::Version;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use time::UTime;

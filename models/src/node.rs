@@ -1,7 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::signature::PublicKey;
+use crypto::signature::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PubkeySig {
+    pub public_key: PublicKey,
+    pub signature: Signature,
+}
+
 /// NodeId wraps a public key to uniquely identify a node.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct NodeId(pub PublicKey);

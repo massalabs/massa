@@ -9,11 +9,11 @@ use super::{
     peer_info_database::*,
     BootstrapPeers,
 };
-use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crypto::signature::{
     derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
 };
+use models::node::NodeId;
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use std::{
     collections::{HashMap, VecDeque},

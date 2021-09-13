@@ -16,32 +16,6 @@
 //!
 //! The help command display all available commands.
 
-use crate::data::AddressStates;
-use crate::data::GetOperationContent;
-use crate::data::WrappedHash;
-use api::{OperationIds, PrivateKeys};
-use clap::App;
-use clap::Arg;
-use communication::network::Peer;
-use communication::network::Peers;
-use consensus::ExportBlockStatus;
-use consensus::Status;
-use crypto::signature::PrivateKey;
-use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
-use log::trace;
-use models::address::Addresses;
-use models::error::ReplError;
-use models::Amount;
-use models::BlockId;
-use models::Operation;
-use models::OperationId;
-use models::OperationType;
-use models::Slot;
-use models::StakersCycleProductionStats;
-use models::Version;
-use models::{Address, PubkeySig};
-use reqwest::blocking::Response;
-use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Write;
@@ -50,9 +24,39 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::Ordering;
+
+use clap::App;
+use clap::Arg;
+use log::trace;
+use reqwest::blocking::Response;
+use reqwest::StatusCode;
+
+use api::{OperationIds, PrivateKeys};
+use communication::network::Peer;
+use communication::network::Peers;
+use consensus::ExportBlockStatus;
+use consensus::Status;
+use crypto::signature::PrivateKey;
+use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
+use models::address::Addresses;
+use models::error::ReplError;
+use models::node::PubkeySig;
+use models::Address;
+use models::Amount;
+use models::BlockId;
+use models::Operation;
+use models::OperationId;
+use models::OperationType;
+use models::Slot;
+use models::StakersCycleProductionStats;
+use models::Version;
 use wallet::ConsensusConfigData;
 use wallet::{ReplData, WrappedAddressState};
 use wallet::{Wallet, WalletInfo};
+
+use crate::data::AddressStates;
+use crate::data::GetOperationContent;
+use crate::data::WrappedHash;
 
 mod client_config;
 mod data;
