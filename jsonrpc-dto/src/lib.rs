@@ -91,6 +91,7 @@ pub struct AddressInfo {
     blocks_created: HashSet<BlockId>,
     involved_in_endorsements: HashSet<EndorsementId>,
     involved_in_operations: HashSet<OperationId>,
+    is_staking: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -122,21 +123,18 @@ pub struct BlockSummary {
     pub parents: Vec<BlockId>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct StatusCode(u8); // TODO
-
 /// Public Ethereum JSON-RPC endpoints (in intend to be compatible with MetaMask.io)
 #[rpc(server)]
 pub trait MetaMask {
     /// Will be implemented later, when smart contracts are added.
     #[rpc(name = "Call")]
-    fn call(&self) -> Result<StatusCode>;
+    fn call(&self) -> Result<()>;
 
     #[rpc(name = "getBalance")]
     fn get_balance(&self) -> Result<Amount>;
 
     #[rpc(name = "sendTransaction")]
-    fn send_transaction(&self) -> Result<StatusCode>;
+    fn send_transaction(&self) -> Result<()>;
 }
 
 /// Public Massa JSON-RPC endpoints
@@ -165,9 +163,6 @@ pub trait MassaPublic {
     #[rpc(name = "get_operations")]
     fn get_operations(&self, _: Vec<OperationId>) -> Result<Vec<OperationInfo>>;
 
-    #[rpc(name = "get_addresses")]
-    fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>>;
-
     #[rpc(name = "get_endorsements")]
     fn get_endorsements(&self, _: Vec<EndorsementId>) -> Result<Vec<EndorsementInfo>>;
 
@@ -191,41 +186,6 @@ pub trait MassaPublic {
     /// Return list of all those that were sent
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> Result<Vec<OperationId>>;
-
-    // TODO:
-    //     - `get_node_info`: We should fuse `our_ip`, `peers`, `get_network_info`, `get_config` into a single node_info command:
-    //         - inputs (None)
-    //         - output NodeInfo with fields:
-    //             - node_id: NodeId
-    //             - node_ip: Option<IpAddress>
-    //             - version: Version
-    //             - genesis_timestamp: UTime
-    //             - t0
-    //             - delta_f0
-    //             - roll_price
-    //             - thread_count
-    //             - connected_nodes: HashMap<NodeId, IpAddress>
-    //     - `version`: current node version
-    //     - `operations_involving_address`: list operations involving the provided address. Note that old operations are forgotten. `operations_involving_address -> HashMap<OperationId, OperationSearchResult>`
-    //     - `block_ids_by_creator`: list blocks created by the provided address. Note that old blocks are forgotten.
-    //     - `staker_stats`: production stats from staker address. Parameters: list of addresses.
-    //     - `get_endorsement_by_id` -> endorsement state { id: EndorsementId, in_pool: bool, in_blocks: [BlockId] list, is_final: bool, endorsement: full Endorsement object }`
-    //     - `addresses_info`: returns the final and candidate balances for a list of addresses. Parameters: list of addresses separated by, (no space). `addresses_info(Vec<Address>) -> HashMap<Address, AddressState>`
-    //     - `staker_info`: staker info from staker address -> (blocks created, next slots in which the address will be selected) `staker_info -> StakerInfo { staker_active_blocks: Vec<(BlockId, BlockHeader)>, staker_discarded_blocks: Vec<(BlockId, DiscardReason, BlockHeader)>, staker_next_draws: Vec }`
-    //     - `get_next_draw` (block and endorsement creation) next draws for given addresses (list of addresses separated by, (no space)) -> vec (address, slot for which address is selected) `next_draws(Vec<Address>) -> Vec<(Address, Slot)>`
-    //         - input [Address] list
-    //         - output : [slot] list
-    //     - `get_balances_by_address`:
-    //         - input [Address] list
-    //         - output : for each address
-    //             - candidate balance : 64
-    //             - final balance : u64
-    //             - locked balance : u64
-    //             - candidate roll count : u64
-    //             - final roll count : u64
-    //     - `get_genesis`: `time_since_to_genesis() -> i64`
-    //         - input none
-    //         - relative time since/to genesis timestamp (in slots ?)
 }
 
 /// Private Massa-RPC "manager mode" endpoints
@@ -234,38 +194,41 @@ pub trait MassaPrivate {
     /// Starts the node and waits for node to start.
     /// Signals if the node is already running.
     #[rpc(name = "start_node")]
-    fn start_node(&self) -> Result<StatusCode>;
+    fn start_node(&self) -> Result<()>;
 
     /// Gracefully stop the node.
     #[rpc(name = "stop_node")]
-    fn stop_node(&self) -> Result<StatusCode>;
+    fn stop_node(&self) -> Result<()>;
 
     #[rpc(name = "sign_message")]
     fn sign_message(&self, _: Vec<u8>) -> Result<(Signature, PublicKey)>;
 
     /// Add a new private key for the node to use to stake.
     #[rpc(name = "add_staking_keys")]
-    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> Result<StatusCode>;
+    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> Result<()>;
 
     /// Remove an address used to stake.
     #[rpc(name = "remove_staking_keys")]
-    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<StatusCode>;
+    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<()>;
 
     /// Return hashset of staking addresses.
     #[rpc(name = "list_staking_keys")]
     fn list_staking_keys(&self) -> Result<HashSet<Address>>;
 
     #[rpc(name = "ban")]
-    fn ban(&self, _: NodeId) -> Result<StatusCode>;
+    fn ban(&self, _: NodeId) -> Result<()>;
 
     #[rpc(name = "unban")]
-    fn unban(&self, _: IpAddr) -> Result<StatusCode>;
+    fn unban(&self, _: IpAddr) -> Result<()>;
+
+    #[rpc(name = "get_addresses")]
+    fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>>;
 }
 
 pub struct API;
 
 impl MetaMask for API {
-    fn call(&self) -> Result<StatusCode> {
+    fn call(&self) -> Result<()> {
         todo!()
     }
 
@@ -273,7 +236,7 @@ impl MetaMask for API {
         todo!()
     }
 
-    fn send_transaction(&self) -> Result<StatusCode> {
+    fn send_transaction(&self) -> Result<()> {
         todo!()
     }
 }
@@ -292,10 +255,6 @@ impl MassaPublic for API {
     }
 
     fn get_operations(&self, _: Vec<OperationId>) -> Result<Vec<OperationInfo>> {
-        todo!()
-    }
-
-    fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>> {
         todo!()
     }
 
@@ -321,11 +280,11 @@ impl MassaPublic for API {
 }
 
 impl MassaPrivate for API {
-    fn start_node(&self) -> Result<StatusCode> {
+    fn start_node(&self) -> Result<()> {
         todo!()
     }
 
-    fn stop_node(&self) -> Result<StatusCode> {
+    fn stop_node(&self) -> Result<()> {
         todo!()
     }
 
@@ -333,11 +292,11 @@ impl MassaPrivate for API {
         todo!()
     }
 
-    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> Result<StatusCode> {
+    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> Result<()> {
         todo!()
     }
 
-    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<StatusCode> {
+    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<()> {
         todo!()
     }
 
@@ -345,11 +304,15 @@ impl MassaPrivate for API {
         todo!()
     }
 
-    fn ban(&self, _: NodeId) -> Result<StatusCode> {
+    fn ban(&self, _: NodeId) -> Result<()> {
         todo!()
     }
 
-    fn unban(&self, _: IpAddr) -> Result<StatusCode> {
+    fn unban(&self, _: IpAddr) -> Result<()> {
+        todo!()
+    }
+
+    fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>> {
         todo!()
     }
 }
