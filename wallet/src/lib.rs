@@ -79,6 +79,10 @@ impl Wallet {
         Ok(())
     }
 
+    pub fn remove_address(&mut self, address: Address) -> Option<(PublicKey, PrivateKey)> {
+        self.keys.remove(&address)
+    }
+
     /// Finds the private key associated with given address
     pub fn find_associated_private_key(&self, address: Address) -> Option<&PrivateKey> {
         self.keys.get(&address).map(|(_pub_key, priv_key)| priv_key)
