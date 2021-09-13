@@ -38,7 +38,6 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
     let notify = Arc::new(Notify::new());
     let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>(1);
     let db = BlockStorage::open(
-        cfg.clone(),
         hash_to_block.clone(),
         slot_to_hash.clone(),
         op_to_block.clone(),
