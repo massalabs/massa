@@ -5,8 +5,8 @@ use super::{
     config::{NetworkConfig, CHANNEL_SIZE},
     messages::Message,
 };
-use crate::common::NodeId;
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
+use models::node::NodeId;
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use std::net::IpAddr;
 use tokio::{sync::mpsc, sync::mpsc::error::SendTimeoutError, time::timeout};

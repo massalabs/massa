@@ -21,11 +21,11 @@ use chrono::TimeZone;
 use serde::Deserialize;
 
 use communication::network::PeerInfo;
-use communication::NodeId;
 use consensus::DiscardReason;
 use consensus::ExportBlockStatus;
 use crypto::hash::Hash;
 use crypto::signature::Signature;
+use models::node::NodeId;
 use models::{
     Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, OperationType, Slot,
