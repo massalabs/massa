@@ -1,29 +1,34 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::mock_establisher::{ReadHalf, WriteHalf};
-use crate::config::BootstrapConfig;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::FromStr;
+
 use bitvec::prelude::*;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    sync::mpsc::Receiver,
+    time::sleep,
+};
+
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
-    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportClique, ExportProofOfStake,
+    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake,
     ExportThreadCycleState, LedgerExport, RollUpdate,
 };
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use models::clique::ExportClique;
 use models::ledger::LedgerChange;
 use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::str::FromStr;
 use time::UTime;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    sync::mpsc::Receiver,
-    time::sleep,
-};
+
+use crate::config::BootstrapConfig;
+
+use super::mock_establisher::{ReadHalf, WriteHalf};
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 

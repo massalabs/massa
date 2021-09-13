@@ -1,7 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::mock_network_controller::MockNetworkController;
-use crate::common::NodeId;
 use crate::network::NetworkCommand;
 use crate::protocol::{
     start_protocol_controller, ProtocolCommandSender, ProtocolConfig, ProtocolEvent,
@@ -12,6 +11,7 @@ use crypto::{
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
 use futures::Future;
+use models::node::NodeId;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
 };
