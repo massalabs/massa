@@ -241,6 +241,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_avbout
 
             let mut ops = HashMap::new();
             ops.insert(expected_operation_id.clone(), operation);
+
+            // send endorsement to protocol
+            // it should be propagated only to the node that doesn't know about it
             protocol_command_sender
                 .propagate_operations(ops)
                 .await

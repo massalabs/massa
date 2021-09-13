@@ -239,6 +239,8 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
 
+            // send the endorsement to protocol
+            // it should propagate it to nodes that don't know about it
             let mut ops = HashMap::new();
             ops.insert(expected_endorsement_id.clone(), endorsement);
             protocol_command_sender
