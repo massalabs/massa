@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::hhasher::{HHashMap, HHashSet};
 use crate::ledger::LedgerData;
 use crate::{Amount, ModelsError};
 use crypto::{
@@ -7,13 +8,15 @@ use crypto::{
     signature::PublicKey,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::str::FromStr;
 
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Address(Hash);
+
+pub type AddressHashMap<T> = HHashMap<Address, T>;
+pub type AddressHashSet = HHashSet<Address>;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -133,7 +136,7 @@ impl Address {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Addresses {
-    pub addrs: HashSet<Address>,
+    pub addrs: AddressHashSet,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

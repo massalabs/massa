@@ -18,6 +18,7 @@ use std::time::Duration;
 // The display method is only use to show the data REPL mode.
 use chrono::Local;
 use chrono::TimeZone;
+use models::address::AddressHashMap;
 use serde::Deserialize;
 
 use communication::network::PeerInfo;
@@ -27,7 +28,7 @@ use crypto::hash::Hash;
 use crypto::signature::Signature;
 use models::node::NodeId;
 use models::{
-    Address, Block, BlockHeader, BlockId, Operation, OperationSearchResultBlockStatus,
+    Address, Block, BlockHashMap, BlockHeader, Operation, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, OperationType, Slot,
 };
 use time::UTime;
@@ -115,7 +116,7 @@ impl<'a> std::fmt::Display for OperationSearchResultStatusWrapper<'a> {
 pub struct GetOperationContent {
     pub op: WrapperOperation,
     pub in_pool: bool,
-    pub in_blocks: HashMap<BlockId, (usize, bool)>,
+    pub in_blocks: BlockHashMap<(usize, bool)>,
     pub status: OperationSearchResultStatus,
 }
 
@@ -185,7 +186,7 @@ pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlo
 */
 
 pub struct AddressStates {
-    pub map: HashMap<Address, WrappedAddressState>,
+    pub map: AddressHashMap<WrappedAddressState>,
     pub order: Vec<Address>,
 }
 

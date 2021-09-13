@@ -18,7 +18,7 @@ use crypto::{
 };
 use models::ledger::LedgerData;
 use models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
@@ -116,8 +116,8 @@ pub async fn validate_ask_for_block(
 
 pub async fn validate_wishlist(
     protocol_controller: &mut MockProtocolController,
-    new: HashSet<BlockId>,
-    remove: HashSet<BlockId>,
+    new: BlockHashSet,
+    remove: BlockHashSet,
     timeout_ms: u64,
 ) {
     let param = protocol_controller

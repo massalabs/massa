@@ -2,6 +2,7 @@
 
 use crate::error::InternalError;
 use crate::{ConsensusConfig, ConsensusError};
+use models::address::{AddressHashMap, AddressHashSet};
 use models::ledger::{LedgerChange, LedgerData};
 use models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
@@ -10,7 +11,7 @@ use models::{
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
 use std::{
-    collections::{hash_map, HashMap, HashSet},
+    collections::hash_map,
     convert::{TryFrom, TryInto},
     usize,
 };
@@ -22,10 +23,10 @@ pub struct Ledger {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub HashMap<Address, LedgerChange>);
+pub struct LedgerChanges(pub AddressHashMap<LedgerChange>);
 
 impl LedgerChanges {
-    pub fn get_involved_addresses(&self) -> HashSet<Address> {
+    pub fn get_involved_addresses(&self) -> AddressHashSet {
         self.0.keys().copied().collect()
     }
 
@@ -59,7 +60,7 @@ impl LedgerChanges {
 
     /// merge another ledger changes into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: LedgerChanges) {
+    pub fn sync_from(&mut self, addrs: &AddressHashSet, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -70,7 +71,7 @@ impl LedgerChanges {
     }
 
     /// clone subset
-    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         LedgerChanges(
             self.0
                 .iter()
@@ -277,7 +278,7 @@ impl Ledger {
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
     pub fn get_final_data(
         &self,
-        addresses: HashSet<&Address>,
+        addresses: AddressHashSet,
     ) -> Result<LedgerSubset, ConsensusError> {
         self.ledger_per_thread
             .transaction(|ledger_per_thread| {
@@ -308,7 +309,7 @@ impl Ledger {
                     };
 
                     // Should never panic since we are operating on a set of addresses.
-                    assert!(result.0.insert(**address, data).is_none());
+                    assert!(result.0.insert(*address, data).is_none());
                 }
                 Ok(result)
             })
@@ -507,7 +508,7 @@ impl Ledger {
     /// Gets ledger at latest final blocks for query_addrs
     pub fn get_final_ledger_subset(
         &self,
-        query_addrs: &HashSet<Address>,
+        query_addrs: &AddressHashSet,
     ) -> Result<LedgerSubset, ConsensusError> {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
             let mut data = LedgerSubset::default();
@@ -535,7 +536,7 @@ impl Ledger {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct LedgerSubset(pub HashMap<Address, LedgerData>);
+pub struct LedgerSubset(pub AddressHashMap<LedgerData>);
 
 impl LedgerSubset {
     /// If subset contains given address
@@ -551,7 +552,7 @@ impl LedgerSubset {
     }
 
     /// List involved addresses
-    pub fn get_involved_addresses(&self) -> HashSet<Address> {
+    pub fn get_involved_addresses(&self) -> AddressHashSet {
         self.0.keys().copied().collect()
     }
 
@@ -600,7 +601,7 @@ impl LedgerSubset {
 
     /// merge another ledger subset into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: LedgerSubset) {
+    pub fn sync_from(&mut self, addrs: &AddressHashSet, mut other: LedgerSubset) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -611,7 +612,7 @@ impl LedgerSubset {
     }
 
     /// clone subset
-    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         LedgerSubset(
             self.0
                 .iter()

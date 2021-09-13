@@ -182,7 +182,7 @@ async fn test_storage() {
                     status: OperationSearchResultStatus::Pending,
                     op: op1,
                     in_pool: true,
-                    in_blocks: HashMap::new(),
+                    in_blocks: Default::default(),
                 },
             );
             expected.insert(
@@ -417,7 +417,7 @@ async fn test_consensus_and_storage() {
                                                     status: OperationSearchResultStatus::Pending,
                                                     op,
                                                     in_pool: true,
-                                                    in_blocks: HashMap::new(),
+                                                    in_blocks: Default::default(),
                                                 },
                                             )
                                         })
@@ -471,7 +471,7 @@ async fn test_consensus_and_storage() {
                                                     status: OperationSearchResultStatus::Pending,
                                                     op,
                                                     in_pool: true,
-                                                    in_blocks: HashMap::new(),
+                                                    in_blocks: Default::default(),
                                                 },
                                             )
                                         })

@@ -3,11 +3,12 @@
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
+use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
 use models::node::NodeId;
 use models::{
-    Address, Amount, Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, Slot,
-    Version,
+    Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
+    Operation, OperationHashSet, OperationId, Slot, Version,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -88,9 +89,9 @@ pub struct AddressInfo {
     rolls: RollsInfo,
     block_draws: HashSet<Slot>,
     endorsement_draws: HashMap<Slot, u64>, // u64 is the index
-    blocks_created: HashSet<BlockId>,
-    involved_in_endorsements: HashSet<EndorsementId>,
-    involved_in_operations: HashSet<OperationId>,
+    blocks_created: BlockHashSet,
+    involved_in_endorsements: EndorsementHashSet,
+    involved_in_operations: OperationHashSet,
     is_staking: bool,
 }
 
@@ -157,7 +158,7 @@ pub trait MassaPublic {
 
     /// Returns the active stakers and their roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> Result<HashMap<Address, u64>>;
+    fn get_stakers(&self) -> Result<AddressHashMap<u64>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]
@@ -213,7 +214,7 @@ pub trait MassaPrivate {
 
     /// Return hashset of staking addresses.
     #[rpc(name = "list_staking_keys")]
-    fn list_staking_keys(&self) -> Result<HashSet<Address>>;
+    fn list_staking_keys(&self) -> Result<AddressHashSet>;
 
     #[rpc(name = "ban")]
     fn ban(&self, _: NodeId) -> Result<()>;
@@ -250,7 +251,7 @@ impl MassaPublic for API {
         todo!()
     }
 
-    fn get_stakers(&self) -> Result<HashMap<Address, u64>> {
+    fn get_stakers(&self) -> Result<AddressHashMap<u64>> {
         todo!()
     }
 
@@ -300,7 +301,7 @@ impl MassaPrivate for API {
         todo!()
     }
 
-    fn list_staking_keys(&self) -> Result<HashSet<Address>> {
+    fn list_staking_keys(&self) -> Result<AddressHashSet> {
         todo!()
     }
 

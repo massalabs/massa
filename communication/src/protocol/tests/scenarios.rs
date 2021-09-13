@@ -6,8 +6,9 @@ use super::tools;
 use crate::network::NetworkCommand;
 use crate::protocol::tests::tools::protocol_test;
 use crate::protocol::ProtocolEvent;
+use models::{BlockHashMap, BlockHashSet};
 use serial_test::serial;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[tokio::test]
 #[serial]
@@ -60,7 +61,10 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
             // 5. Ask for block.
             protocol_command_sender
-                .send_wishlist_delta(vec![expected_hash].into_iter().collect(), HashSet::new())
+                .send_wishlist_delta(
+                    vec![expected_hash].into_iter().collect(),
+                    BlockHashSet::default(),
+                )
                 .await
                 .expect("Failed to ask for block.");
 
@@ -154,7 +158,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             }
 
             // 4. Simulate consensus sending block.
-            let mut results = HashMap::new();
+            let mut results = BlockHashMap::default();
             results.insert(expected_hash.clone(), Some(block));
             protocol_command_sender
                 .send_get_blocks_results(results)
@@ -427,7 +431,7 @@ async fn test_protocol_block_not_found() {
             assert_eq!(expected_hash, hash);
 
             // consensus didn't found block
-            let mut results = HashMap::new();
+            let mut results = BlockHashMap::default();
             results.insert(expected_hash, None);
             protocol_command_sender
                 .send_get_blocks_results(results)
