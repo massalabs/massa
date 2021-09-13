@@ -9,4 +9,6 @@ pub enum WalletError {
     JSONError(#[from] serde_json::Error),
     #[error("Serde Sq error: {0}")]
     SerdeqsError(#[from] serde_qs::Error),
+    #[error("Models error: {0}")]
+    ModelsError(#[from] models::ModelsError),
 }

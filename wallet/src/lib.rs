@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crypto::hash::Hash;
-use crypto::signature::{derive_public_key, PrivateKey};
+use crypto::signature::{PrivateKey, PublicKey};
 use models::address::Address;
 use models::amount::Amount;
 use models::ledger::LedgerData;
@@ -27,7 +27,7 @@ pub use error::WalletError;
 /// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wallet {
-    keys: Vec<PrivateKey>,
+    keys: HashMap<Address, (PublicKey, PrivateKey)>,
     wallet_path: String,
 }
 
@@ -40,6 +40,13 @@ impl Wallet {
         } else {
             Vec::new()
         };
+        let keys = keys
+            .iter()
+            .map(|key| {
+                let pub_key = crypto::derive_public_key(key);
+                Ok((Address::from_public_key(&pub_key)?, (pub_key, *key)))
+            })
+            .collect::<Result<HashMap<_, _>, WalletError>>()?;
         Ok(Wallet {
             keys,
             wallet_path: json_file.to_string(),
@@ -47,11 +54,10 @@ impl Wallet {
     }
 
     pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
-        if let Some(key) = self.find_associated_private_key(address) {
-            let public_key = crypto::derive_public_key(key);
+        if let Some((public_key, key)) = self.keys.get(&address) {
             if let Ok(signature) = crypto::sign(&Hash::hash(&msg), key) {
                 Some(PubkeySig {
-                    public_key,
+                    public_key: *public_key,
                     signature,
                 })
             } else {
@@ -64,8 +70,10 @@ impl Wallet {
 
     /// Adds a new private key to wallet, if it was missing
     pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), WalletError> {
-        if !self.keys.iter().any(|file_key| file_key == &key) {
-            self.keys.push(key);
+        if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
+            let pub_key = crypto::derive_public_key(&key);
+            self.keys
+                .insert(Address::from_public_key(&pub_key)?, (pub_key, key));
             self.save()?;
         }
         Ok(())
@@ -73,22 +81,11 @@ impl Wallet {
 
     /// Finds the private key associated with given address
     pub fn find_associated_private_key(&self, address: Address) -> Option<&PrivateKey> {
-        self.keys.iter().find(|priv_key| {
-            let pub_key = crypto::derive_public_key(priv_key);
-            Address::from_public_key(&pub_key)
-                .map(|addr| addr == address)
-                .unwrap_or(false)
-        })
+        self.keys.get(&address).map(|(_pub_key, priv_key)| priv_key)
     }
 
     pub fn get_wallet_address_list(&self) -> Vec<Address> {
-        self.keys
-            .iter()
-            .map(|key| {
-                let public_key = derive_public_key(key);
-                Address::from_public_key(&public_key).unwrap() // private key has been tested: should never panic
-            })
-            .collect()
+        self.keys.keys().copied().collect()
     }
 
     /// Save the wallet in json format in a file
@@ -113,9 +110,7 @@ pub struct WalletInfo<'a> {
 impl<'a> std::fmt::Display for WalletInfo<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "WARNING: do not share your private keys")?;
-        for key in &self.wallet.keys {
-            let public_key = derive_public_key(key);
-            let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
+        for (addr, (public_key, key)) in &self.wallet.keys {
             writeln!(f)?;
             writeln!(f, "Private key: {}", key)?;
             writeln!(f, "Public key: {}", public_key)?;

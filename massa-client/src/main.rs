@@ -447,7 +447,7 @@ fn cmd_get_active_stakers(data: &mut ReplData, _params: &[&str]) -> Result<(), R
 }
 
 fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Some(wallet) = &data.wallet {
+    if let Some(_) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let roll_count: u64 = FromStr::from_str(params[1])
@@ -463,7 +463,7 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
 }
 
 fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Some(wallet) = &data.wallet {
+    if let Some(_) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let roll_count: u64 = FromStr::from_str(params[1]).map_err(|err| {
@@ -633,7 +633,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 }
 
 fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Some(wallet) = &data.wallet {
+    if let Some(_) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let recipient_address = Address::from_bs58_check(params[1])
