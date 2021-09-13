@@ -1,4 +1,5 @@
 use atty::Stream;
+use interact_prompt::Settings;
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use structopt::StructOpt;
@@ -29,10 +30,10 @@ struct Args {
 
 #[paw::main]
 fn main(args: Args) {
-    if atty::is(Stream::Stdout) {
-        // TODO: non-interactive mode
+    if !atty::is(Stream::Stdout) {
+        // non-interactive mode
     } else {
-        // TODO: interactive mode
+        interact_prompt::direct(Settings::default(), ()).unwrap();
     }
     let url = format!("http://{}:{}", args.address, args.port);
     let res = tokio::runtime::Builder::new_multi_thread()
