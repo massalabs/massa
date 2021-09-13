@@ -333,9 +333,7 @@ impl Repl {
         );
         if let Err(err) = self.readline(line, &mut rl) {
             match err {
-                ReplError::CommandNotFoundError(name) => {
-                    println!("Command:{} not found.", name)
-                }
+                ReplError::CommandNotFoundError(name) => println!("Command:{} not found.", name),
                 _ => println!("Cmd exec error:{}", err),
             }
         }
