@@ -3043,7 +3043,7 @@ impl BlockGraph {
                     { "cliques": self.max_cliques, "gi_head": self.gi_head }
                 );
                 //gi_head
-                warn!(
+                debug!(
                     "clique number went from {:?} to {:?} after adding {:?}",
                     before, after, add_block_id
                 );
@@ -3846,7 +3846,7 @@ impl BlockGraph {
 
         let after = self.max_cliques.len();
         if before != after {
-            warn!(
+            debug!(
                 "clique number went from {:?} to {:?} after pruning",
                 before, after
             );
