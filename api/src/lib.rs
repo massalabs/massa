@@ -12,7 +12,7 @@ use filters::ApiManagementCommand;
 pub use filters::{ApiEvent, OperationIds, PrivateKeys};
 use logging::massa_trace;
 pub use models::address::Addresses;
-pub use models::node::PubkeySig;
+pub use models::crypto::PubkeySig;
 use models::Version;
 use pool::PoolConfig;
 use std::collections::VecDeque;

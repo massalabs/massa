@@ -6,9 +6,8 @@ use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
 use crate::protocol::ProtocolPoolEvent;
-use models::Slot;
+use models::{EndorsementHashMap, Slot};
 use serial_test::serial;
-use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
@@ -158,10 +157,10 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
 
             let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
 
-            let mut ops = HashMap::new();
-            ops.insert(expected_endorsement_id.clone(), endorsement);
+            let mut ends = EndorsementHashMap::default();
+            ends.insert(expected_endorsement_id.clone(), endorsement);
             protocol_command_sender
-                .propagate_endorsements(ops)
+                .propagate_endorsements(ends)
                 .await
                 .unwrap();
 

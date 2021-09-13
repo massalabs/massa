@@ -10,12 +10,13 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
-use models::{Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Slot, Version};
+use models::{
+    Amount, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Slot, Version,
+};
 use num::rational::Ratio;
 use pool::PoolConfig;
 use std::str::FromStr;
 use std::{
-    collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     vec,
 };
@@ -224,14 +225,14 @@ pub fn mock_filter(
 pub fn get_test_block_graph() -> BlockGraphExport {
     BlockGraphExport {
         genesis_blocks: vec![get_test_block_id(), get_another_test_block_id()],
-        active_blocks: HashMap::new(),
+        active_blocks: Default::default(),
         discarded_blocks: ExportDiscardedBlocks {
-            map: HashMap::new(),
+            map: Default::default(),
         },
-        best_parents: Vec::new(),
-        latest_final_blocks_periods: Vec::new(),
-        gi_head: HashMap::new(),
-        max_cliques: Vec::new(),
+        best_parents: Default::default(),
+        latest_final_blocks_periods: Default::default(),
+        gi_head: Default::default(),
+        max_cliques: Default::default(),
     }
 }
 
@@ -254,7 +255,7 @@ pub async fn get_test_storage(cfg: ConsensusConfig) -> (StorageAccess, (Block, B
     };
     let (storage_command_tx, _storage_manager) = start_storage(storage_config).unwrap();
 
-    let mut blocks = HashMap::new();
+    let mut blocks = BlockHashMap::default();
 
     let mut block_a = get_test_block();
     block_a.header.content.slot = Slot::new(1, 0);

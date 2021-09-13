@@ -2,13 +2,14 @@
 
 use crate::error::{InternalError, StorageError};
 use models::{
-    array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
+    address::AddressHashMap, array_from_slice, hhasher::BuildHHasher, Address, Block, BlockHashMap,
+    BlockHashSet, BlockId, DeserializeCompact, OperationHashMap, OperationHashSet, OperationId,
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
 };
 use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{
-    collections::{hash_map, HashMap, HashSet},
+    collections::hash_map,
     convert::TryInto,
     sync::atomic::{AtomicUsize, Ordering},
     sync::Arc,
@@ -97,7 +98,7 @@ impl StorageCleaner {
                                     )),
                                 )
                             })?;
-                            let mut addr_to_op_cache: HashMap<Address, HashSet<OperationId>> = HashMap::new();
+                            let mut addr_to_op_cache: AddressHashMap<OperationHashSet> = AddressHashMap::default();
                             for op in block.operations.into_iter() {
                                 // remove operation from op_id => block index
                                 let op_id = op.get_operation_id().map_err(
@@ -231,9 +232,12 @@ impl StorageCleaner {
     }
 }
 
-fn ops_from_ivec(buffer: IVec) -> Result<HashSet<OperationId>, StorageError> {
+fn ops_from_ivec(buffer: IVec) -> Result<OperationHashSet, StorageError> {
     let operation_count = buffer.len() / OPERATION_ID_SIZE_BYTES;
-    let mut operations: HashSet<OperationId> = HashSet::with_capacity(operation_count as usize);
+    let mut operations: OperationHashSet = OperationHashSet::with_capacity_and_hasher(
+        operation_count as usize,
+        BuildHHasher::default(),
+    );
     for op_i in 0..operation_count {
         let cursor = OPERATION_ID_SIZE_BYTES * op_i;
         let operation_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
@@ -242,7 +246,7 @@ fn ops_from_ivec(buffer: IVec) -> Result<HashSet<OperationId>, StorageError> {
     Ok(operations)
 }
 
-fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
+fn ops_to_ivec(op_ids: &OperationHashSet) -> Result<IVec, StorageError> {
     let mut res: Vec<u8> = Vec::with_capacity(OPERATION_ID_SIZE_BYTES * op_ids.len());
     for op_id in op_ids.iter() {
         res.extend(op_id.to_bytes());
@@ -250,9 +254,10 @@ fn ops_to_ivec(op_ids: &HashSet<OperationId>) -> Result<IVec, StorageError> {
     Ok(res[..].into())
 }
 
-fn block_ids_from_ivec(buffer: IVec) -> Result<HashSet<BlockId>, StorageError> {
+fn block_ids_from_ivec(buffer: IVec) -> Result<BlockHashSet, StorageError> {
     let block_count = buffer.len() / BLOCK_ID_SIZE_BYTES;
-    let mut blocks: HashSet<BlockId> = HashSet::with_capacity(block_count as usize);
+    let mut blocks: BlockHashSet =
+        BlockHashSet::with_capacity_and_hasher(block_count as usize, BuildHHasher::default());
     for id_i in 0..block_count {
         let cursor = BLOCK_ID_SIZE_BYTES * id_i;
         let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
@@ -261,7 +266,7 @@ fn block_ids_from_ivec(buffer: IVec) -> Result<HashSet<BlockId>, StorageError> {
     Ok(blocks)
 }
 
-fn block_id_to_ivec(block_ids: &HashSet<BlockId>) -> Result<IVec, StorageError> {
+fn block_id_to_ivec(block_ids: &BlockHashSet) -> Result<IVec, StorageError> {
     let mut res: Vec<u8> = Vec::with_capacity(BLOCK_ID_SIZE_BYTES * block_ids.len());
     for block_id in block_ids.iter() {
         res.extend(block_id.to_bytes());
@@ -277,9 +282,9 @@ pub struct BlockStorage {
     slot_to_hash: sled::Tree,
     /// OperationId -> (BlockId, index_in_block: usize)
     op_to_block: sled::Tree,
-    /// Address -> HashSet<OperationId>
+    /// Address -> OperationHashSet
     addr_to_op: sled::Tree,
-    /// Address -> HashSet<BlockId>
+    /// Address -> BlockHashset
     addr_to_block: sled::Tree,
     notify: Arc<Notify>,
 }
@@ -320,10 +325,7 @@ impl BlockStorage {
         Ok(())
     }
 
-    pub async fn add_block_batch(
-        &self,
-        blocks: HashMap<BlockId, Block>,
-    ) -> Result<(), StorageError> {
+    pub async fn add_block_batch(&self, blocks: BlockHashMap<Block>) -> Result<(), StorageError> {
         let mut newly_added = 0;
 
         //add the new blocks
@@ -388,7 +390,7 @@ impl BlockStorage {
                 slot_tx.insert(&block.header.content.slot.to_bytes_key(), &s_block_id)?;
 
                 // operations
-                let mut addr_to_ops: HashMap<Address, HashSet<OperationId>> = HashMap::new();
+                let mut addr_to_ops: AddressHashMap<OperationHashSet> = AddressHashMap::default();
                 for (idx, op) in block.operations.iter().enumerate() {
                     let op_id = op.get_operation_id().map_err(|err| {
                         sled::transaction::ConflictableTransactionError::Abort(
@@ -433,7 +435,7 @@ impl BlockStorage {
                                             )
                                         })?
                                     } else {
-                                        HashSet::new()
+                                        OperationHashSet::default()
                                     };
                                 cur_ops.insert(op_id);
                                 vac.insert(cur_ops);
@@ -475,7 +477,7 @@ impl BlockStorage {
                             )
                         })?
                     } else {
-                        HashSet::new()
+                        BlockHashSet::default()
                     };
 
                 ids.insert(block.header.compute_block_id().map_err(|err| {
@@ -527,7 +529,7 @@ impl BlockStorage {
         &self,
         start: Option<Slot>,
         end: Option<Slot>,
-    ) -> Result<HashMap<BlockId, Block>, StorageError> {
+    ) -> Result<BlockHashMap<Block>, StorageError> {
         let start_key = start.map(|v| v.to_bytes_key());
         let end_key = end.map(|v| v.to_bytes_key());
 
@@ -559,57 +561,55 @@ impl BlockStorage {
                 _ => None,
             }
         })
-        .collect::<Result<HashMap<BlockId, Block>, StorageError>>()
+        .collect::<Result<BlockHashMap<Block>, StorageError>>()
     }
 
     pub async fn get_operations(
         &self,
-        operation_ids: HashSet<OperationId>,
-    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
-        let tx_func =
-            |op_tx: &TransactionalTree,
-             hash_tx: &TransactionalTree|
-             -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
-                let mut res: HashMap<OperationId, OperationSearchResult> = HashMap::new();
+        operation_ids: OperationHashSet,
+    ) -> Result<OperationHashMap<OperationSearchResult>, StorageError> {
+        let tx_func = |op_tx: &TransactionalTree,
+                       hash_tx: &TransactionalTree|
+         -> Result<OperationHashMap<OperationSearchResult>, StorageError> {
+            let mut res: OperationHashMap<OperationSearchResult> = OperationHashMap::default();
 
-                for id in operation_ids.iter() {
-                    let ser_op_id = id.to_bytes();
-                    let (block_id, idx) = if let Some(buf) = op_tx.get(&ser_op_id)? {
-                        let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
-                        let idx: usize =
-                            u64::from_be_bytes(array_from_slice(&buf[BLOCK_ID_SIZE_BYTES..])?)
-                                as usize;
-                        (block_id, idx)
-                    } else {
-                        continue;
-                    };
-                    if let Some(s_block) = hash_tx.get(&block_id.to_bytes())? {
-                        let (mut block, _size) = Block::from_bytes_compact(s_block.as_ref())?;
-                        if idx >= block.operations.len() {
-                            return Err(StorageError::DatabaseInconsistency(
-                                "operation index overflows block operations length".into(),
-                            ));
-                        }
-                        res.insert(
-                            *id,
-                            OperationSearchResult {
-                                op: block.operations.swap_remove(idx),
-                                in_pool: false,
-                                in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
-                                status: OperationSearchResultStatus::InBlock(
-                                    OperationSearchResultBlockStatus::Stored,
-                                ),
-                            },
-                        );
-                    } else {
+            for id in operation_ids.iter() {
+                let ser_op_id = id.to_bytes();
+                let (block_id, idx) = if let Some(buf) = op_tx.get(&ser_op_id)? {
+                    let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
+                    let idx: usize =
+                        u64::from_be_bytes(array_from_slice(&buf[BLOCK_ID_SIZE_BYTES..])?) as usize;
+                    (block_id, idx)
+                } else {
+                    continue;
+                };
+                if let Some(s_block) = hash_tx.get(&block_id.to_bytes())? {
+                    let (mut block, _size) = Block::from_bytes_compact(s_block.as_ref())?;
+                    if idx >= block.operations.len() {
                         return Err(StorageError::DatabaseInconsistency(
-                            "could not find a block referenced by operation index".into(),
+                            "operation index overflows block operations length".into(),
                         ));
                     }
+                    res.insert(
+                        *id,
+                        OperationSearchResult {
+                            op: block.operations.swap_remove(idx),
+                            in_pool: false,
+                            in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
+                            status: OperationSearchResultStatus::InBlock(
+                                OperationSearchResultBlockStatus::Stored,
+                            ),
+                        },
+                    );
+                } else {
+                    return Err(StorageError::DatabaseInconsistency(
+                        "could not find a block referenced by operation index".into(),
+                    ));
                 }
+            }
 
-                Ok(res)
-            };
+            Ok(res)
+        };
 
         (&self.op_to_block, &self.hash_to_block)
             .transaction(|(op_tx, hash_tx)| {
@@ -627,55 +627,53 @@ impl BlockStorage {
     pub async fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
-        let tx_func =
-            |addr_to_op: &TransactionalTree,
-             op_to_block: &TransactionalTree,
-             hash_to_block: &TransactionalTree|
-             -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
-                if let Some(ops) = addr_to_op.get(address.to_bytes())? {
-                    Ok(ops_from_ivec(ops)?
-                        .into_iter()
-                        .map(|id| {
-                            let ser_op_id = id.to_bytes();
-                            let (block_id, idx) = if let Some(buf) = op_to_block.get(&ser_op_id)? {
-                                let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
-                                let idx: usize = u64::from_be_bytes(array_from_slice(
-                                    &buf[BLOCK_ID_SIZE_BYTES..],
-                                )?) as usize;
-                                (block_id, idx)
-                            } else {
-                                return Err(StorageError::DatabaseInconsistency(
-                                    "inconsistency between addr to op and op to block".to_string(),
-                                ));
-                            };
-                            let ser_block_id = block_id.to_bytes();
-                            let block = if let Some(s_block) = hash_to_block.get(ser_block_id)? {
-                                Block::from_bytes_compact(s_block.as_ref())?.0
-                            } else {
-                                return Err(StorageError::DatabaseInconsistency(
-                                    "Inconsistency between op to block and hash to block"
-                                        .to_string(),
-                                ));
-                            };
+    ) -> Result<OperationHashMap<OperationSearchResult>, StorageError> {
+        let tx_func = |addr_to_op: &TransactionalTree,
+                       op_to_block: &TransactionalTree,
+                       hash_to_block: &TransactionalTree|
+         -> Result<OperationHashMap<OperationSearchResult>, StorageError> {
+            if let Some(ops) = addr_to_op.get(address.to_bytes())? {
+                Ok(ops_from_ivec(ops)?
+                    .into_iter()
+                    .map(|id| {
+                        let ser_op_id = id.to_bytes();
+                        let (block_id, idx) = if let Some(buf) = op_to_block.get(&ser_op_id)? {
+                            let block_id = BlockId::from_bytes(&array_from_slice(&buf[0..])?)?;
+                            let idx: usize =
+                                u64::from_be_bytes(array_from_slice(&buf[BLOCK_ID_SIZE_BYTES..])?)
+                                    as usize;
+                            (block_id, idx)
+                        } else {
+                            return Err(StorageError::DatabaseInconsistency(
+                                "inconsistency between addr to op and op to block".to_string(),
+                            ));
+                        };
+                        let ser_block_id = block_id.to_bytes();
+                        let block = if let Some(s_block) = hash_to_block.get(ser_block_id)? {
+                            Block::from_bytes_compact(s_block.as_ref())?.0
+                        } else {
+                            return Err(StorageError::DatabaseInconsistency(
+                                "Inconsistency between op to block and hash to block".to_string(),
+                            ));
+                        };
 
-                            Ok((
-                                id,
-                                OperationSearchResult {
-                                    op: block.operations[idx].clone(),
-                                    in_pool: false,
-                                    in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
-                                    status: OperationSearchResultStatus::InBlock(
-                                        OperationSearchResultBlockStatus::Stored,
-                                    ),
-                                },
-                            ))
-                        })
-                        .collect::<Result<_, _>>()?)
-                } else {
-                    Ok(HashMap::new())
-                }
-            };
+                        Ok((
+                            id,
+                            OperationSearchResult {
+                                op: block.operations[idx].clone(),
+                                in_pool: false,
+                                in_blocks: vec![(block_id, (idx, true))].into_iter().collect(),
+                                status: OperationSearchResultStatus::InBlock(
+                                    OperationSearchResultBlockStatus::Stored,
+                                ),
+                            },
+                        ))
+                    })
+                    .collect::<Result<_, _>>()?)
+            } else {
+                Ok(OperationHashMap::default())
+            }
+        };
 
         (&self.addr_to_op, &self.op_to_block, &self.hash_to_block)
             .transaction(|(addr_tx, op_tx, hash_tx)| {
@@ -693,7 +691,7 @@ impl BlockStorage {
     pub async fn get_block_ids_by_creator(
         &self,
         address: &Address,
-    ) -> Result<HashSet<BlockId>, StorageError> {
+    ) -> Result<BlockHashSet, StorageError> {
         Ok(self.addr_to_block.transaction(|addr_to_block| {
             if let Some(ivec_blocks) = addr_to_block.get(&address.to_bytes())? {
                 Ok(block_ids_from_ivec(ivec_blocks).map_err(|err| {
@@ -705,7 +703,7 @@ impl BlockStorage {
                     )
                 })?)
             } else {
-                Ok(HashSet::with_capacity(0))
+                Ok(BlockHashSet::default())
             }
         })?)
     }

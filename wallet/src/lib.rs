@@ -14,10 +14,10 @@ use std::collections::{HashMap, HashSet};
 
 use crypto::hash::Hash;
 use crypto::signature::{PrivateKey, PublicKey};
-use models::address::Address;
+use models::address::{Address, AddressHashMap};
 use models::amount::Amount;
+use models::crypto::PubkeySig;
 use models::ledger::LedgerData;
-use models::node::PubkeySig;
 use time::UTime;
 
 mod error;
@@ -108,7 +108,7 @@ impl Wallet {
 #[derive(Debug)]
 pub struct WalletInfo<'a> {
     pub wallet: &'a Wallet,
-    pub balances: HashMap<Address, WrappedAddressState>,
+    pub balances: AddressHashMap<WrappedAddressState>,
 }
 
 impl<'a> std::fmt::Display for WalletInfo<'a> {

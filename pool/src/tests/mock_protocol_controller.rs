@@ -3,8 +3,7 @@
 use communication::protocol::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
-use models::{Endorsement, EndorsementId, Operation, OperationId};
-use std::collections::HashMap;
+use models::{Endorsement, EndorsementHashMap, Operation, OperationHashMap};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -47,7 +46,7 @@ impl MockProtocolController {
         }
     }
 
-    pub async fn received_operations(&mut self, operations: HashMap<OperationId, Operation>) {
+    pub async fn received_operations(&mut self, operations: OperationHashMap<Operation>) {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedOperations {
                 operations,
@@ -57,10 +56,7 @@ impl MockProtocolController {
             .expect("could not send protocol pool event");
     }
 
-    pub async fn received_endorsements(
-        &mut self,
-        endorsements: HashMap<EndorsementId, Endorsement>,
-    ) {
+    pub async fn received_endorsements(&mut self, endorsements: EndorsementHashMap<Endorsement>) {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedEndorsements {
                 endorsements,
