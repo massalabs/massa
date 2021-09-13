@@ -920,7 +920,7 @@ dependencies = [
 name = "jsonrpc-client"
 version = "0.1.0"
 dependencies = [
- "jsonrpc-core",
+ "atty",
  "jsonrpc-core-client",
  "jsonrpc-dto",
  "tokio",

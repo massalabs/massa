@@ -1,3 +1,4 @@
+use atty::Stream;
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 
@@ -19,6 +20,11 @@ impl RpcClient {
 
 #[tokio::main]
 async fn main() {
+    if atty::is(Stream::Stdout) {
+        // TODO: non-interactive mode
+    } else {
+        // TODO: interactive mode
+    }
     let client = http::connect::<RpcClient>(URL).await.unwrap();
     println!("{}", client.hello_world().await.unwrap());
 }
