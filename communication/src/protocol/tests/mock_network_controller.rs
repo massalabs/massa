@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::common::NodeId;
 use crate::network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+use models::node::NodeId;
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};

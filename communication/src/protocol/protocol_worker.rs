@@ -1,11 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::config::ProtocolConfig;
-use crate::common::NodeId;
 use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use itertools::Itertools;
+use models::node::NodeId;
 use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId};
 use models::{Endorsement, EndorsementId};
 use serde::Serialize;

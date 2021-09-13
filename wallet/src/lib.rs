@@ -17,7 +17,7 @@ use crypto::signature::{PrivateKey, PublicKey};
 use models::address::Address;
 use models::amount::Amount;
 use models::ledger::LedgerData;
-use models::PubkeySig;
+use models::node::PubkeySig;
 use time::UTime;
 
 mod error;

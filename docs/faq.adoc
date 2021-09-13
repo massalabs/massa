@@ -23,11 +23,11 @@ To kill the app you'll have to use `pkill -f massa-node`.
 You can also use link:https://help.ubuntu.com/community/Screen[screen] or link:http://manpages.ubuntu.com/manpages/cosmic/man1/tmux.1.html[tmux] for example.
 
 === Will Massa support smart contracts?
-We will try to support both the EVM for retro compatibility, and a specific WASM engine that fully leverages the Massa protocol, allows developing in many usual languages, and introduces several innovations (e.g. autonomous contracts).
+We will try to support both the EVM for retro compatibility, and a specific smart contract engine that fully leverages the Massa protocol, allows developing in more usual languages, and introduces several innovations.
 
 We are currently finishing the specification of the smart contract engine.
 
-We are planning to use a WASM interpreter and there will be some exciting features, such as self-wakeup, a bit like what is introduced here: https://arxiv.org/pdf/2102.10784.pdf
+We are planning some exciting features, such as self-wakeup, a bit like what is introduced here: https://arxiv.org/pdf/2102.10784.pdf
 
 === What ports does the MASSA use?
 
@@ -58,18 +58,18 @@ No, it loads the wallet if it exists, otherwise it creates it.
 
 === Where is the wallet.dat located?
 
-In the massa-client directory.
+By default, in the massa-client directory.
 
 == Rolls and staking
 
 === My rolls disappeared/were sold automatically.
 
-The most likely reason it that you did not produce some blocks! Most frequent reasons:
+The most likely reason it that you did not produce some blocks when selected to do so. Most frequent reasons:
 
-* Node not running
-* Node not being connected to the network
-* Node being desynchronized (which can be caused by temporary overload if the specs are unsufficient or if other programs are using resources on the computer or because of internet connection problems)
-* The node not having registered staking keys
+* Node not running 100% of the time during which you had active_rolls > 0
+* Node not being properly connected to the network 100% of the time during which you had active_rolls > 0
+* Node being desynchronized (which can be caused by temporary overload if the specs are unsufficient or if other programs are using resources on the computer or because of internet connection problems) at some point while you had active_rolls > 0
+* The node not having the right registered staking keys (type staking_addresses in the client to verify that they match the addresses in your wallet_info that have active rolls) 100% of the time during which you had active_rolls > 0
 
 === Why are rolls automatically sold? Is it some kind of penalty/slashing?
 
@@ -99,8 +99,7 @@ We will communicate if you need to increase the fee.
 
 === I am staking ROLLs but my wallet info doesn't change. When do I get my first staking rewards?
 
-You need to wait for your rolls becomes active (around 8 minutes →  3 cycles of 10 periods (one period is 32 blocks = 16 sec).
-This delay will increase in the future.
+You need to wait for your rolls becomes active (around 1h45), then depending on the number of rolls you have, you might want to wait more to be selected for block/endorsement production.
 
 == Testnet and rewards
 
@@ -119,10 +118,7 @@ The tokens are worthless, you won't have any advantage on the others by doing th
 
 === Will the amount of staked Rolls affect Testnet rewards?
 
-We are still figuring out the right way to reward participation in the testnet.
-However, the general idea will be to reward the stability of the node rather than the amount at stake.
-Trying to buy more rolls for example by gaming the faucet is thus useless.
-We will communicate information later on how we will rank the node stability.
+No, as long as you have at least 1 roll, further roll purchases won't change your score.
 
 == Common issues
 

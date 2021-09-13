@@ -473,7 +473,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             }
 
             // Have one node send that they don't know about the block.
-            let not_banned_nodes =
+            let _not_banned_nodes =
                 tools::create_and_connect_nodes(1, &mut network_controller).await;
             // network_controller
             //     .send_block_not_found(not_banned_nodes[0].id, expected_hash)
@@ -488,7 +488,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 .await
                 .expect("Failed to ask for block.");
 
-            // Make sure all nodes are banned.
+            // Make sure all initial nodes are banned.
             let node_ids = nodes.into_iter().map(|node_info| node_info.id).collect();
             tools::assert_banned_nodes(node_ids, &mut network_controller).await;
 

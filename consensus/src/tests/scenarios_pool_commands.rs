@@ -1,11 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    block_graph::ExportClique,
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     BootstrapableGraph, LedgerExport,
 };
 use crypto::signature::PublicKey;
+use models::clique::ExportClique;
 use models::ledger::LedgerData;
 use models::{Address, Amount, BlockId, Operation, Slot};
 use pool::PoolCommand;
