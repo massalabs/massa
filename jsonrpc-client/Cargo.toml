@@ -8,6 +8,6 @@ edition = "2018"
 [dependencies]
 jsonrpc-core = "18.0.0"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
+tokio = { version = "1", features = ["full"] }
 # custom modules
 jsonrpc-dto = { path = "../jsonrpc-dto" }
-
