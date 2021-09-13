@@ -488,7 +488,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 .await
                 .expect("Failed to ask for block.");
 
-            // Make sure all nodes are banned.
+            // Make sure all initial nodes are banned.
             let node_ids = nodes.into_iter().map(|node_info| node_info.id).collect();
             tools::assert_banned_nodes(node_ids, &mut network_controller).await;
 

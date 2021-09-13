@@ -1,9 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{
-    config::StorageConfig,
-    error::{InternalError, StorageError},
-};
+use crate::error::{InternalError, StorageError};
 use models::{
     array_from_slice, Address, Block, BlockId, DeserializeCompact, OperationId,
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
@@ -273,7 +270,6 @@ fn block_id_to_ivec(block_ids: &HashSet<BlockId>) -> Result<IVec, StorageError> 
 }
 #[derive(Clone)]
 pub struct BlockStorage {
-    cfg: StorageConfig,
     block_count: Arc<AtomicUsize>,
     /// BlockId -> Block
     hash_to_block: sled::Tree,
@@ -290,7 +286,6 @@ pub struct BlockStorage {
 
 impl BlockStorage {
     pub fn open(
-        cfg: StorageConfig,
         hash_to_block: sled::Tree,
         slot_to_hash: sled::Tree,
         op_to_block: sled::Tree,
@@ -300,7 +295,6 @@ impl BlockStorage {
         notify: Arc<Notify>,
     ) -> Result<BlockStorage, StorageError> {
         let res = BlockStorage {
-            cfg,
             block_count,
             hash_to_block,
             slot_to_hash,
