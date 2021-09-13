@@ -123,9 +123,9 @@ pub struct BlockSummary {
     pub parents: Vec<BlockId>,
 }
 
-/// Public Ethereum JSON-RPC endpoints (in intend to be compatible with MetaMask.io)
+/// Public Ethereum JSON-RPC endpoints (in intend to be compatible with EthRpc.io)
 #[rpc(server)]
-pub trait MetaMask {
+pub trait EthRpc {
     /// Will be implemented later, when smart contracts are added.
     #[rpc(name = "Call")]
     fn call(&self) -> Result<()>;
@@ -227,7 +227,7 @@ pub trait MassaPrivate {
 
 pub struct API;
 
-impl MetaMask for API {
+impl EthRpc for API {
     fn call(&self) -> Result<()> {
         todo!()
     }
