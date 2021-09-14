@@ -324,6 +324,16 @@ impl ConsensusWorker {
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
         let now = UTime::now(self.clock_compensation)?;
+        let expected_slot = get_latest_block_slot_at_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            now,
+        )?;
+
+        if expected_slot <= self.previous_slot {
+            return Ok(());
+        }
         let cur_slot = self.next_slot;
         self.previous_slot = Some(cur_slot);
         self.next_slot = self.next_slot.get_next_slot(self.cfg.thread_count)?;
