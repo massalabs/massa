@@ -4,9 +4,9 @@ use super::tools;
 use super::tools::protocol_test;
 use crate::protocol::ProtocolEvent;
 use crate::{network::NetworkCommand, protocol::ProtocolPoolEvent};
-use models::Slot;
+use models::{BlockHashMap, BlockHashSet, Slot};
 use serial_test::serial;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::time::Duration;
 
 #[tokio::test]
@@ -260,7 +260,10 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 
             // 5. Ask for block.
             protocol_command_sender
-                .send_wishlist_delta(vec![expected_hash].into_iter().collect(), HashSet::new())
+                .send_wishlist_delta(
+                    vec![expected_hash].into_iter().collect(),
+                    BlockHashSet::default(),
+                )
                 .await
                 .expect("Failed to ask for block.");
 
@@ -353,7 +356,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
             tools::assert_banned_node(nodes[1].id, &mut network_controller).await;
 
             // 4. Simulate consensus sending block.
-            let mut results = HashMap::new();
+            let mut results = BlockHashMap::default();
             results.insert(expected_hash.clone(), Some(block));
             protocol_command_sender
                 .send_get_blocks_results(results)

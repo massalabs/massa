@@ -10,14 +10,13 @@
 //   * `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID>
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 
 use crypto::hash::Hash;
 use crypto::signature::{PrivateKey, PublicKey};
-use models::address::Address;
+use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
+use models::crypto::PubkeySig;
 use models::ledger::LedgerData;
-use models::node::PubkeySig;
 use time::UTime;
 
 mod error;
@@ -27,7 +26,7 @@ pub use error::WalletError;
 /// contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wallet {
-    keys: HashMap<Address, (PublicKey, PrivateKey)>,
+    keys: AddressHashMap<(PublicKey, PrivateKey)>,
     wallet_path: String,
 }
 
@@ -46,7 +45,7 @@ impl Wallet {
                 let pub_key = crypto::derive_public_key(key);
                 Ok((Address::from_public_key(&pub_key)?, (pub_key, *key)))
             })
-            .collect::<Result<HashMap<_, _>, WalletError>>()?;
+            .collect::<Result<AddressHashMap<_>, WalletError>>()?;
         Ok(Wallet {
             keys,
             wallet_path: json_file.to_string(),
@@ -88,7 +87,7 @@ impl Wallet {
         self.keys.get(&address).map(|(_pub_key, priv_key)| priv_key)
     }
 
-    pub fn get_wallet_address_list(&self) -> HashSet<Address> {
+    pub fn get_wallet_address_list(&self) -> AddressHashSet {
         self.keys.keys().copied().collect()
     }
 
@@ -99,7 +98,7 @@ impl Wallet {
     }
 
     /// Export keys to json string
-    pub fn get_full_wallet(&self) -> &HashMap<Address, (PublicKey, PrivateKey)> {
+    pub fn get_full_wallet(&self) -> &AddressHashMap<(PublicKey, PrivateKey)> {
         &self.keys
     }
 }
@@ -108,7 +107,7 @@ impl Wallet {
 #[derive(Debug)]
 pub struct WalletInfo<'a> {
     pub wallet: &'a Wallet,
-    pub balances: HashMap<Address, WrappedAddressState>,
+    pub balances: AddressHashMap<WrappedAddressState>,
 }
 
 impl<'a> std::fmt::Display for WalletInfo<'a> {

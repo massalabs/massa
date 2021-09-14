@@ -1,37 +1,33 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::{cmp::max, collections::VecDeque, convert::TryFrom};
-use std::{
-    collections::{HashMap, HashSet},
-    usize,
-};
-
-use serde::{Deserialize, Serialize};
-use tokio::{
-    sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
-    time::{sleep_until, Sleep},
-};
-
+use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake, timeslots::*};
+use crate::error::ConsensusError;
+use crate::pos::ExportProofOfStake;
 use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
-use models::address::AddressState;
 use models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, EndorsementContent,
-    EndorsementId, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
-    SerializeCompact, Slot, StakersCycleProductionStats,
+    address::{AddressHashMap, AddressHashSet, AddressState},
+    BlockHashSet,
+};
+use models::{hhasher::BuildHHasher, ledger::LedgerData};
+use models::{
+    Address, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    EndorsementContent, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
+    OperationHashSet, OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
+    StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
+use serde::{Deserialize, Serialize};
+use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
 use storage::StorageAccess;
 use time::UTime;
-
-use crate::error::ConsensusError;
-use crate::pos::ExportProofOfStake;
-use models::ledger::LedgerData;
-
-use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake, timeslots::*};
+use tokio::{
+    sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
+    time::{sleep_until, Sleep},
+};
 
 /// Commands that can be proccessed by consensus.
 #[derive(Debug)]
@@ -58,29 +54,29 @@ pub enum ConsensusCommand {
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootstrapableGraph)>),
     /// Returns info for a set of addresses (rolls and balance)
     GetAddressesInfo {
-        addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<HashMap<Address, AddressState>>,
+        addresses: AddressHashSet,
+        response_tx: oneshot::Sender<AddressHashMap<AddressState>>,
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
     },
     GetOperations {
-        operation_ids: HashSet<OperationId>,
-        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+        operation_ids: OperationHashSet,
+        response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, u64>>>),
+    GetActiveStakers(oneshot::Sender<Option<AddressHashMap<u64>>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
-    RemoveStakingAddresses(HashSet<Address>),
-    GetStakingAddressses(oneshot::Sender<HashSet<Address>>),
+    RemoveStakingAddresses(AddressHashSet),
+    GetStakingAddressses(oneshot::Sender<AddressHashSet>),
     GetStakersProductionStats {
-        addrs: HashSet<Address>,
+        addrs: AddressHashSet,
         response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,
     },
     GetBlockIdsByCreator {
         address: Address,
-        response_tx: oneshot::Sender<HashMap<BlockId, Status>>,
+        response_tx: oneshot::Sender<BlockHashMap<Status>>,
     },
 }
 
@@ -132,13 +128,13 @@ pub struct ConsensusWorker {
     /// Next slot
     next_slot: Slot,
     /// blocks we want
-    wishlist: HashSet<BlockId>,
+    wishlist: BlockHashSet,
     // latest final periods
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
     // staking keys
-    staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
+    staking_keys: AddressHashMap<(PublicKey, PrivateKey)>,
     // stats (block -> tx_count, creator)
     final_block_stats: VecDeque<(UTime, u64, Address)>,
     stale_block_stats: VecDeque<UTime>,
@@ -172,7 +168,7 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
-        staking_keys: HashMap<Address, (PublicKey, PrivateKey)>,
+        staking_keys: AddressHashMap<(PublicKey, PrivateKey)>,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let previous_slot = get_current_latest_block_slot(
             cfg.thread_count,
@@ -241,7 +237,7 @@ impl ConsensusWorker {
             pos,
             previous_slot,
             next_slot,
-            wishlist: HashSet::new(),
+            wishlist: BlockHashSet::default(),
             latest_final_periods,
             clock_compensation,
             pool_command_sender,
@@ -491,7 +487,7 @@ impl ConsensusWorker {
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
         // exclude operations that were used in block ancestry
-        let mut exclude_operations: HashSet<OperationId> = HashSet::new();
+        let mut exclude_operations = OperationHashSet::default();
         let mut ancestor_id = block.header.content.parents[cur_slot.thread as usize];
         let stop_period = cur_slot
             .period
@@ -524,7 +520,7 @@ impl ConsensusWorker {
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
-        let mut operation_set: HashMap<OperationId, (usize, u64)> = HashMap::new(); // (index, validity end period)
+        let mut operation_set: OperationHashMap<(usize, u64)> = OperationHashMap::default(); // (index, validity end period)
         let mut finished = remaining_block_space == 0
             || remaining_operation_count == 0
             || self.cfg.max_operations_fill_attempts == 0;
@@ -801,7 +797,7 @@ impl ConsensusWorker {
                     { "address": address }
                 );
 
-                let mut res: HashMap<_, _> = self
+                let mut res: OperationHashMap<_> = self
                     .pool_command_sender
                     .get_operations_involving_address(address)
                     .await?;
@@ -989,9 +985,9 @@ impl ConsensusWorker {
         })
     }
 
-    fn get_active_stakers(&self) -> Result<Option<HashMap<Address, u64>>, ConsensusError> {
+    fn get_active_stakers(&self) -> Result<Option<AddressHashMap<u64>>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
-        let mut res: HashMap<Address, u64> = HashMap::new();
+        let mut res: AddressHashMap<u64> = AddressHashMap::default();
         for thread in 0..self.cfg.thread_count {
             match self.pos.get_lookback_roll_count(cur_cycle, thread) {
                 Ok(rolls) => {
@@ -1006,14 +1002,14 @@ impl ConsensusWorker {
 
     fn get_addresses_info(
         &self,
-        addresses: &HashSet<Address>,
-    ) -> Result<HashMap<Address, AddressState>, ConsensusError> {
+        addresses: &AddressHashSet,
+    ) -> Result<AddressHashMap<AddressState>, ConsensusError> {
         let thread_count = self.cfg.thread_count;
-        let mut addresses_by_thread = vec![HashSet::new(); thread_count as usize];
+        let mut addresses_by_thread = vec![AddressHashSet::default(); thread_count as usize];
         for addr in addresses.iter() {
             addresses_by_thread[addr.get_thread(thread_count) as usize].insert(*addr);
         }
-        let mut states = HashMap::new();
+        let mut states = AddressHashMap::default();
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
         for thread in 0..thread_count {
@@ -1070,10 +1066,10 @@ impl ConsensusWorker {
 
     async fn get_operations(
         &mut self,
-        operation_ids: &HashSet<OperationId>,
-    ) -> Result<HashMap<OperationId, OperationSearchResult>, ConsensusError> {
+        operation_ids: &OperationHashSet,
+    ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
         // get from pool
-        let mut res: HashMap<OperationId, OperationSearchResult> = self
+        let mut res: OperationHashMap<OperationSearchResult> = self
             .pool_command_sender
             .get_operations(operation_ids.clone())
             .await?
@@ -1084,7 +1080,7 @@ impl ConsensusWorker {
                     OperationSearchResult {
                         op,
                         in_pool: true,
-                        in_blocks: HashMap::new(),
+                        in_blocks: BlockHashMap::default(),
                         status: OperationSearchResultStatus::Pending,
                     },
                 )
@@ -1103,7 +1099,7 @@ impl ConsensusWorker {
 
         // for those that have not been found in consensus, extend with storage
         if let Some(storage) = &mut self.opt_storage_command_sender {
-            let to_gather: HashSet<OperationId> = operation_ids
+            let to_gather: OperationHashSet = operation_ids
                 .iter()
                 .filter(|op_id| {
                     if let Some(cur_search) = res.get(op_id) {
@@ -1165,7 +1161,7 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.get_blocks",
                     { "list": list }
                 );
-                let mut results = HashMap::new();
+                let mut results = BlockHashMap::default();
                 for block_hash in list {
                     if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
@@ -1225,8 +1221,11 @@ impl ConsensusWorker {
 
         // Process new final blocks
         let new_final_block_ids = self.block_db.get_new_final_blocks();
-        let mut new_final_ops: HashMap<OperationId, (u64, u8)> = HashMap::new();
-        let mut new_final_blocks = HashMap::with_capacity(new_final_block_ids.len());
+        let mut new_final_ops: OperationHashMap<(u64, u8)> = OperationHashMap::default();
+        let mut new_final_blocks = BlockHashMap::with_capacity_and_hasher(
+            new_final_block_ids.len(),
+            BuildHHasher::default(),
+        );
         let timestamp = UTime::now(self.clock_compensation)?;
         for b_id in new_final_block_ids.into_iter() {
             if let Some(a_block) = self.block_db.get_active_block(&b_id) {
@@ -1322,7 +1321,7 @@ impl ConsensusWorker {
                 };
 
                 // actually create endorsements
-                let mut endorsements = HashMap::new();
+                let mut endorsements = EndorsementHashMap::default();
                 for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
                     if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
                         massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",

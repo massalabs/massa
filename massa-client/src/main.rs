@@ -21,8 +21,12 @@ use crate::data::GetOperationContent;
 use crate::data::WrappedHash;
 use crate::repl::ReplError;
 use api::{OperationIds, PrivateKeys};
+use models::address::AddressHashMap;
+use models::address::AddressHashSet;
+use models::BlockHashMap;
+use models::OperationHashSet;
 use std::collections::HashMap;
-use std::collections::HashSet;
+
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -42,10 +46,9 @@ use consensus::Status;
 use crypto::signature::PrivateKey;
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
 use models::address::Addresses;
-use models::node::PubkeySig;
+use models::crypto::PubkeySig;
 use models::Address;
 use models::Amount;
-use models::BlockId;
 use models::Operation;
 use models::OperationContent;
 use models::OperationId;
@@ -436,7 +439,7 @@ fn cmd_get_active_stakers(data: &mut ReplData, _params: &[&str]) -> Result<(), R
 
     if let Some(resp) = request_data(data, &url)? {
         if resp.status() == StatusCode::OK {
-            let rolls = resp.json::<HashMap<Address, u64>>()?;
+            let rolls = resp.json::<AddressHashMap<u64>>()?;
             println!("Staking addresses (roll count):");
             for (addr, roll_count) in rolls.into_iter() {
                 println!("\t{}: {}", addr, roll_count);
@@ -486,7 +489,7 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
     let op_list = params[0]
         .split(',')
         .map(|str| OperationId::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<OperationId>, _>>();
+        .collect::<Result<OperationHashSet, _>>();
     let search_op = match op_list {
         Ok(operation_ids) => OperationIds { operation_ids },
         Err(err) => {
@@ -594,14 +597,14 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
         let display_wallet_info = query_addresses(data, wallet.get_wallet_address_list())
             .and_then(|resp| {
                 if resp.status() != StatusCode::OK {
-                    Ok(HashMap::new())
+                    Ok(AddressHashMap::default())
                 } else {
-                    resp.json::<HashMap<Address, WrappedAddressState>>()
+                    resp.json::<AddressHashMap<WrappedAddressState>>()
                         .map_err(|err| err.into())
                 }
             })
             //            .or_else::<ReplError, _>(|_| Ok("balance not available.".to_string()))
-            .or_else::<ReplError, _>(|_| Ok(HashMap::new()))
+            .or_else::<ReplError, _>(|_| Ok(AddressHashMap::default()))
             .and_then(|balances| {
                 if data.cli {
                     serde_json::to_string_pretty(&balances).map_err(|err| err.into())
@@ -692,7 +695,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
     } else if data.cli {
         println!("{}", resp.text().unwrap());
     } else {
-        let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
+        let ledger = resp.json::<AddressHashMap<WrappedAddressState>>()?;
         println!(
             "{}",
             AddressStates {
@@ -719,7 +722,7 @@ fn cmd_staker_stats(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
+        .collect::<Result<AddressHashSet, _>>();
     let addrs = match addr_list {
         Ok(addrs) => addrs,
         Err(err) => {
@@ -784,7 +787,7 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
+        .collect::<Result<AddressHashSet, _>>();
     let addrs = match addr_list {
         Ok(addrs) => addrs,
         Err(err) => {
@@ -805,10 +808,10 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         let addr_map = resp.content().iter().fold(
             addrs
                 .iter()
-                .map(|addr| (addr, Vec::new()))
-                .collect::<HashMap<_, _>>(),
+                .map(|addr| (*addr, Vec::new()))
+                .collect::<AddressHashMap<_>>(),
             |mut map, (addr, slot)| {
-                let entry = map.entry(addr).or_insert_with(Vec::new);
+                let entry = map.entry(*addr).or_insert_with(Vec::new);
                 entry.push(slot);
                 map
             },
@@ -853,7 +856,7 @@ fn cmd_block_ids_by_creator(data: &mut ReplData, params: &[&str]) -> Result<(), 
         data.node_ip, params[0]
     );
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<HashMap<BlockId, Status>>()?;
+        let resp = resp.json::<BlockHashMap<Status>>()?;
         println!("block_ids_by_creator:");
 
         if resp.is_empty() {
@@ -999,7 +1002,7 @@ fn cmd_remove_staking_addresses(data: &mut ReplData, params: &[&str]) -> Result<
     let addrs_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
+        .collect::<Result<AddressHashSet, _>>();
 
     let addrs = match addrs_list {
         Ok(addrs) => addrs,
@@ -1036,7 +1039,7 @@ fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_staking_addresses(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/staking_addresses", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<HashSet<Address>>()?;
+        let resp = resp.json::<AddressHashSet>()?;
         println!("Staking Addresses");
         for ad in resp.into_iter() {
             println!("{}\n", ad);
@@ -1248,7 +1251,7 @@ fn send_operation(operation: Operation, data: &ReplData) -> Result<(), ReplError
     Ok(())
 }
 
-fn query_addresses(data: &ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
+fn query_addresses(data: &ReplData, addrs: AddressHashSet) -> Result<Response, ReplError> {
     let url = format!(
         "http://{}/api/v1/addresses_info?{}",
         data.node_ip,
@@ -1356,7 +1359,7 @@ impl ReplData {
         let url = format!("http://{}/api/v1/addresses_info?{}", self.node_ip, addrs);
         let resp = reqwest::blocking::get(&url)?;
         if resp.status() == StatusCode::OK {
-            let map_info = resp.json::<HashMap<Address, WrappedAddressState>>()?;
+            let map_info = resp.json::<AddressHashMap<WrappedAddressState>>()?;
 
             if let Some(info) = map_info.get(&from_address) {
                 match operation_type {

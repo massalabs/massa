@@ -11,10 +11,10 @@ use crate::{
         },
     },
 };
-use models::ledger::LedgerData;
+use models::{address::AddressHashSet, ledger::LedgerData};
 use models::{Address, Amount, Slot};
 use serial_test::serial;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 #[tokio::test]
@@ -116,7 +116,7 @@ async fn test_operations_check() {
     propagate_block(&mut protocol_controller, block_a, true, 150).await;
 
     // assert address 1 has 1 coin at blocks (A, genesis_ids[1]) (see #269)
-    let mut set = HashSet::new();
+    let mut set = AddressHashSet::default();
     set.insert(address_1);
     let res = consensus_command_sender
         .get_addresses_info(set)
@@ -150,7 +150,7 @@ async fn test_operations_check() {
     propagate_block(&mut protocol_controller, block_b, true, 150).await;
 
     // assert address 2 has 5 coins at block B
-    let mut set = HashSet::new();
+    let mut set = AddressHashSet::default();
     set.insert(address_2);
     let res = consensus_command_sender
         .get_addresses_info(set)
