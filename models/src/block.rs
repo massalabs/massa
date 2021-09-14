@@ -1,9 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    DeserializeMinBEInt, DeserializeVarInt, Endorsement, ModelsError, Operation, OperationId,
-    SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
+    address::{AddressHashMap, AddressHashSet},
+    array_from_slice,
+    hhasher::{HHashMap, HHashSet},
+    u8_from_slice, with_serialization_context, Address, DeserializeCompact, DeserializeMinBEInt,
+    DeserializeVarInt, Endorsement, ModelsError, Operation, OperationHashSet, SerializeCompact,
+    SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -13,11 +16,8 @@ use crypto::{
     },
 };
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 use std::str::FromStr;
-use std::{
-    collections::{HashMap, HashSet},
-    convert::TryInto,
-};
 
 pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
@@ -62,6 +62,9 @@ impl BlockId {
     }
 }
 
+pub type BlockHashMap<T> = HHashMap<BlockId, T>;
+pub type BlockHashSet = HHashSet<BlockId>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     pub header: BlockHeader,
@@ -82,18 +85,17 @@ impl Block {
     }
 
     /// Retrieve roll involving addresses
-    pub fn get_roll_involved_addresses(&self) -> Result<HashSet<Address>, ModelsError> {
-        let mut roll_involved_addrs = HashSet::new();
+    pub fn get_roll_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
+        let mut roll_involved_addrs = AddressHashSet::default();
         for op in self.operations.iter() {
             roll_involved_addrs.extend(op.get_roll_involved_addresses()?);
         }
         Ok(roll_involved_addrs)
     }
 
-    pub fn involved_addresses(
-        &self,
-    ) -> Result<HashMap<Address, HashSet<OperationId>>, ModelsError> {
-        let mut addresses_to_operations: HashMap<Address, HashSet<OperationId>> = HashMap::new();
+    pub fn involved_addresses(&self) -> Result<AddressHashMap<OperationHashSet>, ModelsError> {
+        let mut addresses_to_operations: AddressHashMap<OperationHashSet> =
+            AddressHashMap::default();
         self.operations
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|op| {
@@ -112,7 +114,7 @@ impl Block {
                     if let Some(entry) = addresses_to_operations.get_mut(ad) {
                         entry.insert(id);
                     } else {
-                        let mut set = HashSet::new();
+                        let mut set = OperationHashSet::default();
                         set.insert(id);
                         addresses_to_operations.insert(*ad, set);
                     }

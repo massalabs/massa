@@ -5,8 +5,12 @@ use crate::error::CommunicationError;
 use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use crypto::hash::Hash;
 use itertools::Itertools;
+use models::hhasher::BuildHHasher;
 use models::node::NodeId;
-use models::{Address, Block, BlockHeader, BlockId, Operation, OperationId};
+use models::{
+    Address, Block, BlockHashMap, BlockHashSet, BlockHeader, BlockId, EndorsementHashMap,
+    Operation, OperationHashMap, OperationId,
+};
 use models::{Endorsement, EndorsementId};
 use serde::Serialize;
 use std::collections::{hash_map, HashMap, HashSet};
@@ -24,7 +28,7 @@ pub enum ProtocolEvent {
     ReceivedBlock {
         block_id: BlockId,
         block: Block,
-        operation_set: HashMap<OperationId, (usize, u64)>, // (index, validity end period)
+        operation_set: OperationHashMap<(usize, u64)>, // (index, validity end period)
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
@@ -39,12 +43,12 @@ pub enum ProtocolEvent {
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
-        operations: HashMap<OperationId, Operation>,
+        operations: OperationHashMap<Operation>,
         propagate: bool, // whether or not to propagate operations
     },
     /// Endorsements were received
     ReceivedEndorsements {
-        endorsements: HashMap<EndorsementId, Endorsement>,
+        endorsements: EndorsementHashMap<Endorsement>,
         propagate: bool, // whether or not to propagate endorsements
     },
 }
@@ -58,15 +62,15 @@ pub enum ProtocolCommand {
     AttackBlockDetected(BlockId),
     /// Wishlist delta
     WishlistDelta {
-        new: HashSet<BlockId>,
-        remove: HashSet<BlockId>,
+        new: BlockHashSet,
+        remove: BlockHashSet,
     },
     /// The response to a ProtocolEvent::GetBlocks.
-    GetBlocksResults(HashMap<BlockId, Option<Block>>),
+    GetBlocksResults(BlockHashMap<Option<Block>>),
     /// Propagate operations
-    PropagateOperations(HashMap<OperationId, Operation>),
+    PropagateOperations(OperationHashMap<Operation>),
     /// Propagate endorsements
-    PropagateEndorsements(HashMap<EndorsementId, Endorsement>),
+    PropagateEndorsements(EndorsementHashMap<Endorsement>),
 }
 
 #[derive(Debug, Serialize)]
@@ -74,8 +78,9 @@ pub enum ProtocolManagementCommand {}
 
 //put in a module to block private access from Protocol_worker.
 mod nodeinfo {
-    use models::{BlockId, EndorsementId, OperationId};
-    use std::collections::HashMap;
+    use models::{
+        BlockHashMap, BlockId, EndorsementHashMap, EndorsementId, OperationHashMap, OperationId,
+    };
     use tokio::time::Instant;
 
     /// Information about a node we are connected to,
@@ -87,29 +92,29 @@ mod nodeinfo {
     pub struct NodeInfo {
         /// The blocks the node "knows about",
         /// defined as the one the node propagated headers to us for.
-        known_blocks: HashMap<BlockId, (bool, Instant)>,
+        known_blocks: BlockHashMap<(bool, Instant)>,
         /// The blocks the node asked for.
-        wanted_blocks: HashMap<BlockId, Instant>,
+        wanted_blocks: BlockHashMap<Instant>,
         /// Blocks we asked that node for
-        pub asked_blocks: HashMap<BlockId, Instant>,
+        pub asked_blocks: BlockHashMap<Instant>,
         /// Instant when the node was added
         pub connection_instant: Instant,
         /// all known operation with instant of that info
-        pub known_operations: HashMap<OperationId, Instant>,
+        pub known_operations: OperationHashMap<Instant>,
         /// all known endorsements with instant of that info
-        pub known_endorsements: HashMap<EndorsementId, Instant>,
+        pub known_endorsements: EndorsementHashMap<Instant>,
     }
 
     impl NodeInfo {
         /// Creates empty node info
         pub fn new() -> NodeInfo {
             NodeInfo {
-                known_blocks: HashMap::new(),
-                wanted_blocks: HashMap::new(),
-                asked_blocks: HashMap::new(),
+                known_blocks: Default::default(),
+                wanted_blocks: Default::default(),
+                asked_blocks: Default::default(),
                 connection_instant: Instant::now(),
-                known_operations: HashMap::new(),
-                known_endorsements: HashMap::new(),
+                known_operations: Default::default(),
+                known_endorsements: Default::default(),
             }
         }
 
@@ -148,7 +153,7 @@ mod nodeinfo {
 
         pub fn insert_known_endorsements(
             &mut self,
-            endorsements: HashMap<EndorsementId, Instant>,
+            endorsements: EndorsementHashMap<Instant>,
             max_endorsements_nb: usize,
         ) {
             self.known_endorsements.extend(endorsements);
@@ -167,7 +172,7 @@ mod nodeinfo {
             self.known_endorsements.contains_key(endorsement_id)
         }
 
-        pub fn insert_known_ops(&mut self, ops: HashMap<OperationId, Instant>, max_ops_nb: usize) {
+        pub fn insert_known_ops(&mut self, ops: OperationHashMap<Instant>, max_ops_nb: usize) {
             self.known_operations.extend(ops);
             while self.known_operations.len() > max_ops_nb {
                 //remove oldest item
@@ -238,11 +243,11 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     active_nodes: HashMap<NodeId, nodeinfo::NodeInfo>,
     /// List of wanted blocks.
-    block_wishlist: HashSet<BlockId>,
+    block_wishlist: BlockHashSet,
     /// List of processed endorsements
-    checked_endorsements: HashMap<EndorsementId, Instant>,
+    checked_endorsements: EndorsementHashMap<Instant>,
     /// List of processed headers
-    checked_headers: HashMap<BlockId, (Vec<EndorsementId>, Instant)>,
+    checked_headers: BlockHashMap<(Vec<EndorsementId>, Instant)>,
 }
 
 impl ProtocolWorker {
@@ -275,10 +280,10 @@ impl ProtocolWorker {
             controller_pool_event_tx,
             controller_command_rx,
             controller_manager_rx,
-            active_nodes: HashMap::new(),
-            block_wishlist: HashSet::new(),
-            checked_endorsements: HashMap::new(),
-            checked_headers: HashMap::new(),
+            active_nodes: Default::default(),
+            block_wishlist: Default::default(),
+            checked_endorsements: Default::default(),
+            checked_headers: Default::default(),
         }
     }
 
@@ -525,7 +530,7 @@ impl ProtocolWorker {
                 );
                 let cur_instant = Instant::now();
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: HashMap<OperationId, Operation> = ops
+                    let new_ops: OperationHashMap<Operation> = ops
                         .iter()
                         .filter(|(id, _)| !node_info.knows_op(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -549,7 +554,7 @@ impl ProtocolWorker {
                 );
                 let cur_instant = Instant::now();
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: HashMap<EndorsementId, Endorsement> = endorsements
+                    let new_endorsements: EndorsementHashMap<Endorsement> = endorsements
                         .iter()
                         .filter(|(id, _)| !node_info.knows_endorsement(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -579,7 +584,7 @@ impl ProtocolWorker {
 
     fn stop_asking_blocks(
         &mut self,
-        remove_hashes: HashSet<BlockId>,
+        remove_hashes: BlockHashSet,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
             "remove": remove_hashes
@@ -607,8 +612,8 @@ impl ProtocolWorker {
             .ok_or(TimeError::TimeOverflowError)?;
 
         // list blocks to re-ask and gather candidate nodes to ask from
-        let mut candidate_nodes: HashMap<BlockId, Vec<_>> = HashMap::new();
-        let mut ask_block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
+        let mut candidate_nodes: BlockHashMap<Vec<_>> = Default::default();
+        let mut ask_block_list: HashMap<NodeId, Vec<BlockId>> = Default::default();
 
         // list blocks to re-ask and from whom
         for hash in self.block_wishlist.iter() {
@@ -954,7 +959,7 @@ impl ProtocolWorker {
         &mut self,
         block: &Block,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, HashMap<OperationId, (usize, u64)>)>, CommunicationError> {
+    ) -> Result<Option<(BlockId, OperationHashMap<(usize, u64)>)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
@@ -969,8 +974,11 @@ impl ProtocolWorker {
 
         // check operations (period, reuse, signatures, thread)
         let mut op_ids: Vec<OperationId> = Vec::with_capacity(block.operations.len());
-        let mut seen_ops: HashMap<OperationId, (usize, u64)> =
-            HashMap::with_capacity(block.operations.len());
+        let mut seen_ops: OperationHashMap<(usize, u64)> =
+            OperationHashMap::with_capacity_and_hasher(
+                block.operations.len(),
+                BuildHHasher::default(),
+            );
         let serialization_context = models::with_serialization_context(|context| context.clone());
         for (idx, op) in block.operations.iter().enumerate() {
             // check validity period
@@ -1073,9 +1081,11 @@ impl ProtocolWorker {
         &mut self,
         operations: Vec<Operation>,
         source_node_id: &NodeId,
-    ) -> Option<HashMap<OperationId, Operation>> {
+    ) -> Option<OperationHashMap<Operation>> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
-        let mut result = HashMap::with_capacity(operations.len());
+        let mut result =
+            OperationHashMap::with_capacity_and_hasher(operations.len(), BuildHHasher::default());
+
         for op in operations.into_iter() {
             match op.verify_integrity() {
                 Ok(operation_id) => {
@@ -1112,8 +1122,10 @@ impl ProtocolWorker {
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
-        let mut received_ids = HashMap::with_capacity(length);
-        let mut new_endorsements = HashMap::with_capacity(length);
+        let mut received_ids =
+            EndorsementHashMap::with_capacity_and_hasher(length, BuildHHasher::default());
+        let mut new_endorsements =
+            EndorsementHashMap::with_capacity_and_hasher(length, BuildHHasher::default());
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.compute_endorsement_id()?;
             received_ids.insert(endorsement_id.clone(), Instant::now());
@@ -1187,7 +1199,8 @@ impl ProtocolWorker {
                 if let Some((block_id, operation_set)) =
                     self.note_block_from_node(&block, &from_node_id).await?
                 {
-                    let mut set = HashSet::with_capacity(1);
+                    let mut set =
+                        BlockHashSet::with_capacity_and_hasher(1, BuildHHasher::default());
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock {
