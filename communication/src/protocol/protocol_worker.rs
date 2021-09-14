@@ -846,8 +846,13 @@ impl ProtocolWorker {
             return Ok(Some((block_id, false)));
         }
 
-        let endorsement_ids = match self
-            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
+        let (endorsement_ids, dups) = match self
+            .note_endorsements_from_node(
+                header.content.endorsements.clone(),
+                source_node_id,
+                false,
+                true,
+            )
             .await
         {
             Err(_) => {
@@ -861,7 +866,7 @@ impl ProtocolWorker {
         };
 
         // check if duplicate endorsement
-        if endorsement_ids.len() != header.content.endorsements.len() {
+        if Some(true) == dups {
             massa_trace!(
                 "protocol.protocol_worker.check_header.err_endorsement_reused",
                 { "header": header }
@@ -1108,13 +1113,18 @@ impl ProtocolWorker {
         endorsements: Vec<Endorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<HashSet<EndorsementId>, CommunicationError> {
+        check_dups: bool,
+    ) -> Result<(Vec<EndorsementId>, Option<bool>), CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut received_ids = HashMap::with_capacity(length);
         let mut new_endorsements = HashMap::with_capacity(length);
+        let mut dups = if check_dups { Some(false) } else { None };
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.compute_endorsement_id()?;
+            if check_dups && received_ids.contains_key(&endorsement_id) {
+                dups = Some(true);
+            }
             received_ids.insert(endorsement_id.clone(), Instant::now());
 
             // check endorsement signature if not already checked
@@ -1147,7 +1157,7 @@ impl ProtocolWorker {
             })
             .await;
         }
-        Ok(keys)
+        Ok((keys, dups))
     }
 
     /// Manages network event
@@ -1271,7 +1281,7 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
                 if self
-                    .note_endorsements_from_node(endorsements, &node, true)
+                    .note_endorsements_from_node(endorsements, &node, true, false)
                     .await
                     .is_err()
                 {
