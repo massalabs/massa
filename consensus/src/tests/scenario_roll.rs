@@ -1,12 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::protocol::ProtocolCommand;
+use models::address::AddressHashSet;
 use models::{Address, Amount, BlockId, Slot};
 use num::rational::Ratio;
 use pool::PoolCommand;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
 
@@ -109,7 +110,7 @@ async fn test_roll() {
             let rb_a2_r2 = create_roll_buy(priv_2, 2, 90, 0);
             let rs_a2_r2 = create_roll_sell(priv_2, 2, 90, 0);
 
-            let mut addresses = HashSet::new();
+            let mut addresses = AddressHashSet::default();
             addresses.insert(address_2);
             let addresses = addresses;
 
@@ -535,7 +536,7 @@ async fn test_roll_block_creation() {
     let rb_a2_r1 = create_roll_buy(priv_2, 1, 90, 0);
     let rs_a2_r1 = create_roll_sell(priv_2, 1, 90, 0);
 
-    let mut addresses = HashSet::new();
+    let mut addresses = AddressHashSet::default();
     addresses.insert(address_2);
     let addresses = addresses;
 

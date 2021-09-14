@@ -56,7 +56,7 @@ version = "DEVE.0.0"
     max_known_endorsements_size = 1024
 
 [network]
-    bind = "0.0.0.0:31244"
+    bind = "[::]:31244"
     # routable_ip = "200.200.200.200" # Your ip
     protocol_port = 31244
     connect_timeout = 5000
@@ -96,7 +96,7 @@ version = "DEVE.0.0"
         ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
         ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
     ]
-    bind = "0.0.0.0:31245"
+    bind = "[::]:31245"
     connect_timeout = 1000
     retry_delay = 5000
     max_bootstrap_blocks = 1000000

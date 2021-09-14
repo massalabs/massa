@@ -7,44 +7,40 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use models::{
-    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
-    Slot,
-};
-use std::{
-    collections::{HashMap, HashSet},
-    u64,
+    Address, BlockId, Endorsement, EndorsementHashMap, Operation, OperationHashMap,
+    OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
-    AddOperations(HashMap<OperationId, Operation>),
+    AddOperations(OperationHashMap<Operation>),
     UpdateCurrentSlot(Slot),
     UpdateLatestFinalPeriods(Vec<u64>),
     GetOperationBatch {
         target_slot: Slot,
-        exclude: HashSet<OperationId>,
+        exclude: OperationHashSet,
         batch_size: usize,
         max_size: u64,
         response_tx: oneshot::Sender<Vec<(OperationId, Operation, u64)>>,
     },
     GetOperations {
-        operation_ids: HashSet<OperationId>,
-        response_tx: oneshot::Sender<HashMap<OperationId, Operation>>,
+        operation_ids: OperationHashSet,
+        response_tx: oneshot::Sender<OperationHashMap<Operation>>,
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
     },
-    FinalOperations(HashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
+    FinalOperations(OperationHashMap<(u64, u8)>), // (end of validity period, thread)
     GetEndorsements {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
         response_tx: oneshot::Sender<Vec<Endorsement>>,
     },
-    AddEndorsements(HashMap<EndorsementId, Endorsement>),
+    AddEndorsements(EndorsementHashMap<Endorsement>),
 }
 
 /// Events that are emitted by pool.

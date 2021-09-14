@@ -6,8 +6,10 @@ use crate::{
     error::StorageError,
 };
 use logging::debug;
-use models::{Address, Block, BlockId, OperationId, OperationSearchResult, Slot};
-use std::collections::{HashMap, HashSet};
+use models::{
+    Address, Block, BlockHashMap, BlockHashSet, BlockId, OperationHashMap, OperationHashSet,
+    OperationSearchResult, Slot,
+};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Notify};
@@ -90,17 +92,14 @@ impl StorageAccess {
     pub async fn add_block(&self, hash: BlockId, block: Block) -> Result<(), StorageError> {
         self.0.add_block(hash, block).await
     }
-    pub async fn add_block_batch(
-        &self,
-        blocks: HashMap<BlockId, Block>,
-    ) -> Result<(), StorageError> {
+    pub async fn add_block_batch(&self, blocks: BlockHashMap<Block>) -> Result<(), StorageError> {
         self.0.add_block_batch(blocks).await
     }
 
     pub async fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
+    ) -> Result<OperationHashMap<OperationSearchResult>, StorageError> {
         self.0.get_operations_involving_address(address).await
     }
 
@@ -116,7 +115,7 @@ impl StorageAccess {
         &self,
         start: Option<Slot>,
         end: Option<Slot>,
-    ) -> Result<HashMap<BlockId, Block>, StorageError> {
+    ) -> Result<BlockHashMap<Block>, StorageError> {
         self.0.get_slot_range(start, end).await
     }
 
@@ -126,15 +125,15 @@ impl StorageAccess {
     ///  * the operation itself
     pub async fn get_operations(
         &self,
-        operation_ids: HashSet<OperationId>,
-    ) -> Result<HashMap<OperationId, OperationSearchResult>, StorageError> {
+        operation_ids: OperationHashSet,
+    ) -> Result<OperationHashMap<OperationSearchResult>, StorageError> {
         self.0.get_operations(operation_ids).await
     }
 
     pub async fn get_block_ids_by_creator(
         &self,
         address: &Address,
-    ) -> Result<HashSet<BlockId>, StorageError> {
+    ) -> Result<BlockHashSet, StorageError> {
         self.0.get_block_ids_by_creator(address).await
     }
 }

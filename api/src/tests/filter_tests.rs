@@ -9,9 +9,12 @@ use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
+use models::address::AddressHashMap;
 use models::address::{AddressState, Addresses};
 use models::clique::ExportClique;
 use models::ledger::LedgerData;
+use models::BlockHashMap;
+use models::OperationHashMap;
 use models::SerializeCompact;
 use models::StakersCycleProductionStats;
 use models::{Address, Amount, Block, BlockHeader, BlockId, Slot};
@@ -74,7 +77,7 @@ async fn test_get_operations() {
             match evt {
                 Some(ApiEvent::GetOperations { response_tx, .. }) => {
                     response_tx
-                        .send(HashMap::new())
+                        .send(OperationHashMap::default())
                         .expect("failed to send block");
                 }
 
@@ -212,7 +215,7 @@ async fn test_get_addresses_info() {
             match evt {
                 Some(ApiEvent::GetAddressesInfo { response_tx, .. }) => {
                     response_tx
-                        .send(Ok(HashMap::new()))
+                        .send(Ok(Default::default()))
                         .expect("failed to send data");
                 }
 
@@ -258,7 +261,7 @@ async fn test_get_addresses_info() {
 
     //test one operation found for several addresses
     {
-        let mut addrs_info: HashMap<Address, AddressState> = HashMap::new();
+        let mut addrs_info: AddressHashMap<AddressState> = Default::default();
         addrs_info.insert(
             search_address,
             AddressState {
@@ -385,7 +388,7 @@ async fn test_cliques() {
             fitness: 1,
         },
     ];
-    let mut active_blocks = HashMap::new();
+    let mut active_blocks = BlockHashMap::default();
     active_blocks.insert(
         get_test_block_id(),
         ExportCompiledBlock {
@@ -479,7 +482,7 @@ async fn test_current_parents() {
     //add default parents
     let mut graph = get_test_block_graph();
     graph.best_parents = vec![(get_test_block_id(), 0), (get_test_block_id(), 0)];
-    let mut active_blocks = HashMap::new();
+    let mut active_blocks = BlockHashMap::default();
     active_blocks.insert(
         get_test_block_id(),
         ExportCompiledBlock {
@@ -1075,7 +1078,7 @@ async fn test_get_block_interval() {
     let mut graph = get_test_block_graph();
     graph.best_parents = vec![(get_test_block_id(), 0), (get_test_block_id(), 0)];
 
-    let mut active_blocks = HashMap::new();
+    let mut active_blocks = BlockHashMap::default();
     active_blocks.insert(
         get_test_block_id(),
         ExportCompiledBlock {

@@ -11,8 +11,11 @@ use crate::{
     error::CommunicationError,
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
-use models::{Block, BlockId, Endorsement, EndorsementId, Operation, OperationId};
-use std::collections::{HashMap, HashSet, VecDeque};
+use models::{
+    Block, BlockHashMap, BlockHashSet, BlockId, Endorsement, EndorsementHashMap, Operation,
+    OperationHashMap,
+};
+use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 /// start a new ProtocolController from a ProtocolConfig
@@ -126,7 +129,7 @@ impl ProtocolCommandSender {
     /// Send the response to a ProtocolEvent::GetBlocks.
     pub async fn send_get_blocks_results(
         &mut self,
-        results: HashMap<BlockId, Option<Block>>,
+        results: BlockHashMap<Option<Block>>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
             "results": results
@@ -145,8 +148,8 @@ impl ProtocolCommandSender {
 
     pub async fn send_wishlist_delta(
         &mut self,
-        new: HashSet<BlockId>,
-        remove: HashSet<BlockId>,
+        new: BlockHashSet,
+        remove: BlockHashSet,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         let res = self
@@ -161,7 +164,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operations(
         &mut self,
-        operations: HashMap<OperationId, Operation>,
+        operations: OperationHashMap<Operation>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations
@@ -178,7 +181,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_endorsements(
         &mut self,
-        endorsements: HashMap<EndorsementId, Endorsement>,
+        endorsements: EndorsementHashMap<Endorsement>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements

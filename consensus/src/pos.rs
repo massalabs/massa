@@ -4,10 +4,11 @@ use crate::error::ConsensusError;
 use crate::{block_graph::ActiveBlock, ConsensusConfig};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
+use models::address::{AddressHashMap, AddressHashSet};
 use models::{
-    array_from_slice, with_serialization_context, Address, Amount, BlockId, DeserializeCompact,
-    DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact, SerializeVarInt,
-    Slot, StakersCycleProductionStats, ADDRESS_SIZE_BYTES,
+    array_from_slice, with_serialization_context, Address, Amount, BlockHashMap, BlockId,
+    DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact,
+    SerializeVarInt, Slot, StakersCycleProductionStats, ADDRESS_SIZE_BYTES,
 };
 use num::rational::Ratio;
 use rand::distributions::Uniform;
@@ -15,7 +16,7 @@ use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use serde::{Deserialize, Serialize};
-use std::collections::{btree_map, hash_map, BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{btree_map, hash_map, BTreeMap, HashMap, VecDeque};
 use std::convert::TryInto;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
@@ -103,10 +104,10 @@ impl RollUpdate {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct RollUpdates(pub HashMap<Address, RollUpdate>);
+pub struct RollUpdates(pub AddressHashMap<RollUpdate>);
 
 impl RollUpdates {
-    pub fn get_involved_addresses(&self) -> HashSet<Address> {
+    pub fn get_involved_addresses(&self) -> AddressHashSet {
         self.0.keys().copied().collect()
     }
 
@@ -114,8 +115,8 @@ impl RollUpdates {
     pub fn chain(
         &mut self,
         updates: &RollUpdates,
-    ) -> Result<HashMap<Address, RollCompensation>, ConsensusError> {
-        let mut res = HashMap::new();
+    ) -> Result<AddressHashMap<RollCompensation>, ConsensusError> {
+        let mut res = AddressHashMap::default();
         for (addr, update) in updates.0.iter() {
             res.insert(*addr, self.apply(addr, update)?);
             // remove if nil
@@ -148,7 +149,7 @@ impl RollUpdates {
         }
     }
 
-    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         Self(
             addrs
                 .iter()
@@ -159,7 +160,7 @@ impl RollUpdates {
 
     /// merge another roll updates into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: RollUpdates) {
+    pub fn sync_from(&mut self, addrs: &AddressHashSet, mut other: RollUpdates) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -219,7 +220,7 @@ impl RollCounts {
         Ok(())
     }
 
-    pub fn clone_subset(&self, addrs: &HashSet<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         Self(
             addrs
                 .iter()
@@ -230,7 +231,7 @@ impl RollCounts {
 
     /// merge another roll counts into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &HashSet<Address>, mut other: RollCounts) {
+    pub fn sync_from(&mut self, addrs: &AddressHashSet, mut other: RollCounts) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -286,7 +287,7 @@ pub struct ThreadCycleState {
     /// Used to seed the random selector at each cycle
     rng_seed: BitVec<Lsb0, u8>,
     /// Per-address production statistics (ok_count, nok_count)
-    pub production_stats: HashMap<Address, (u64, u64)>,
+    pub production_stats: AddressHashMap<(u64, u64)>,
 }
 
 pub struct ProofOfStake {
@@ -304,7 +305,7 @@ pub struct ProofOfStake {
     // the seeds are indexed from -1 to -N
     initial_seeds: Vec<Vec<u8>>,
     // watched addresses
-    watched_addresses: HashSet<Address>,
+    watched_addresses: AddressHashSet,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -611,17 +612,17 @@ impl ProofOfStake {
             draw_cache,
             cfg,
             draw_cache_counter,
-            watched_addresses: HashSet::new(),
+            watched_addresses: AddressHashSet::default(),
         })
     }
 
-    pub fn set_watched_addresses(&mut self, addrs: HashSet<Address>) {
+    pub fn set_watched_addresses(&mut self, addrs: AddressHashSet) {
         self.watched_addresses = addrs;
     }
 
     async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {
         let mut res = vec![BTreeMap::<Address, u64>::new(); cfg.thread_count as usize];
-        let addrs_map = serde_json::from_str::<HashMap<Address, u64>>(
+        let addrs_map = serde_json::from_str::<AddressHashMap<u64>>(
             &tokio::fs::read_to_string(&cfg.initial_rolls_path).await?,
         )?;
         for (addr, n_rolls) in addrs_map.into_iter() {
@@ -861,7 +862,7 @@ impl ProofOfStake {
     /// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final
     pub fn note_final_blocks(
         &mut self,
-        blocks: HashMap<BlockId, &ActiveBlock>,
+        blocks: BlockHashMap<&ActiveBlock>,
     ) -> Result<(), ConsensusError> {
         // Update internal states after a set of blocks become final.
 
@@ -986,7 +987,7 @@ impl ProofOfStake {
 
     pub fn get_stakers_production_stats(
         &self,
-        addrs: HashSet<Address>,
+        addrs: AddressHashSet,
     ) -> Vec<StakersCycleProductionStats> {
         let mut res: HashMap<u64, StakersCycleProductionStats> = HashMap::new();
         let mut completeness: HashMap<u64, u8> = HashMap::new();
@@ -1001,7 +1002,7 @@ impl ProofOfStake {
                     .or_insert_with(|| StakersCycleProductionStats {
                         cycle,
                         is_final: false,
-                        ok_nok_counts: HashMap::new(),
+                        ok_nok_counts: AddressHashMap::default(),
                     });
 
                 cycle_entry.is_final = if thread_cycle_complete {
@@ -1051,8 +1052,8 @@ impl ProofOfStake {
         &self,
         cycle: u64,
         thread: u8,
-    ) -> Result<HashMap<Address, Amount>, ConsensusError> {
-        let mut res = HashMap::new();
+    ) -> Result<AddressHashMap<Amount>, ConsensusError> {
+        let mut res = AddressHashMap::default();
         if let Some(target_cycle) =
             cycle.checked_sub(self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1)
         {
@@ -1083,16 +1084,16 @@ impl ProofOfStake {
         &self,
         cycle: u64,
         address_thread: u8,
-    ) -> Result<HashSet<Address>, ConsensusError> {
+    ) -> Result<AddressHashSet, ConsensusError> {
         // compute target cycle
         if cycle <= self.cfg.pos_lookback_cycles {
             // no lookback cycles yet: do not deactivate anyone
-            return Ok(HashSet::new());
+            return Ok(AddressHashSet::default());
         }
         let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
 
         // get roll data from all threads for addresses belonging to address_thread
-        let mut addr_stats: HashMap<Address, (u64, u64)> = HashMap::new();
+        let mut addr_stats: AddressHashMap<(u64, u64)> = AddressHashMap::default();
         for thread in 0..self.cfg.thread_count {
             // get roll data
             let roll_data = self
@@ -1118,7 +1119,7 @@ impl ProofOfStake {
             }
         }
         // list addresses with bad stats
-        let res: HashSet<Address> = addr_stats
+        let res: AddressHashSet = addr_stats
             .into_iter()
             .filter_map(|(addr, (ok_count, nok_count))| {
                 if ok_count + nok_count == 0 {
@@ -1144,16 +1145,16 @@ impl ProofOfStake {
         &self,
         cycle: u64,
         thread: u8,
-        addrs: &HashSet<Address>,
-    ) -> HashMap<Address, u64> {
+        addrs: &AddressHashSet,
+    ) -> AddressHashMap<u64> {
         if cycle < 1 + self.cfg.pos_lookback_cycles {
-            return HashMap::new();
+            return AddressHashMap::default();
         }
         let start_cycle = cycle
             .saturating_sub(self.cfg.pos_lookback_cycles)
             .saturating_sub(self.cfg.pos_lock_cycles);
         let end_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
-        let mut res: HashMap<Address, u64> = HashMap::new();
+        let mut res: AddressHashMap<u64> = AddressHashMap::default();
         for origin_cycle in start_cycle..=end_cycle {
             if let Some(origin_state) = self.get_final_roll_data(origin_cycle, thread) {
                 for addr in addrs.iter() {
