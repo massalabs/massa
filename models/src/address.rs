@@ -1,16 +1,22 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::ModelsError;
+use crate::hhasher::{HHashMap, HHashSet};
+use crate::ledger::LedgerData;
+use crate::{Amount, ModelsError};
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
     signature::PublicKey,
 };
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Address(Hash);
+
+pub type AddressHashMap<T> = HHashMap<Address, T>;
+pub type AddressHashSet = HHashSet<Address>;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -126,4 +132,19 @@ impl Address {
     pub fn to_bs58_check(&self) -> String {
         self.0.to_bs58_check()
     }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Addresses {
+    pub addrs: AddressHashSet,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AddressState {
+    pub final_rolls: u64,
+    pub active_rolls: Option<u64>,
+    pub candidate_rolls: u64,
+    pub locked_balance: Amount,
+    pub candidate_ledger_data: LedgerData,
+    pub final_ledger_data: LedgerData,
 }

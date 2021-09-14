@@ -6,32 +6,18 @@
 //! repl API register all elements in Rustyline and Claps.
 
 use crate::repl::helper::HISTORY_FILE;
-use crate::wallet::Wallet;
+use crate::ReplData;
 use core::convert::TryFrom;
 use rustyline::error::ReadlineError;
 use rustyline::Helper;
 use rustyline::{CompletionType, Config, Editor};
-use std::net::SocketAddr;
 
-pub mod error;
+pub use error::ReplError;
+
+mod error;
 mod helper;
 
-pub struct ReplData {
-    pub node_ip: SocketAddr,
-    pub cli: bool,
-    pub wallet: Option<Wallet>,
-}
-impl Default for ReplData {
-    fn default() -> Self {
-        ReplData {
-            node_ip: "0.0.0.0:3030".parse().unwrap(),
-            cli: false,
-            wallet: None,
-        }
-    }
-}
-
-pub type CmdFn = Box<dyn Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync>;
+pub type CmdFn = Box<dyn Fn(&mut ReplData, &[&str]) -> Result<(), ReplError> + Send + Sync>;
 
 ///Define a command that can be executed.
 ///
@@ -58,14 +44,11 @@ struct TypedCommand<'a> {
 }
 
 impl<'a> TryFrom<&'a str> for TypedCommand<'a> {
-    type Error = error::ReplError;
+    type Error = ReplError;
 
     fn try_from(line: &'a str) -> Result<Self, Self::Error> {
         let mut iter = line.split(' ');
-        let name = iter
-            .next()
-            .ok_or(error::ReplError::ParseCommandError)?
-            .to_string();
+        let name = iter.next().ok_or(ReplError::ParseCommandError)?.to_string();
         let params: Vec<&str> = iter.collect();
         Ok(TypedCommand { name, params })
     }
@@ -90,7 +73,7 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
     pub fn new_command_noargs<S, F>(self, name: S, help: S, active: bool, func: F) -> Self
     where
         S: ToString,
-        F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
+        F: Fn(&mut ReplData, &[&str]) -> Result<(), ReplError> + Send + Sync + 'static,
     {
         self.new_command(name, help, 0, 0, active, func)
     }
@@ -106,7 +89,7 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
     ) -> Self
     where
         S: ToString,
-        F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
+        F: Fn(&mut ReplData, &[&str]) -> Result<(), ReplError> + Send + Sync + 'static,
     {
         self.repl.cmd_list.push(Command {
             name: name.to_string(),
@@ -254,7 +237,7 @@ impl Repl {
     ) -> BuilderRepl<'a, 'b>
     where
         S: ToString,
-        F: Fn(&mut ReplData, &[&str]) -> Result<(), error::ReplError> + Send + Sync + 'static,
+        F: Fn(&mut ReplData, &[&str]) -> Result<(), ReplError> + Send + Sync + 'static,
     {
         BuilderRepl::new(self, app).new_command(
             name,
@@ -307,7 +290,7 @@ impl Repl {
                             break;
                         }
                     }
-                    Err(error::ReplError::CommandNotFoundError(name)) => {
+                    Err(ReplError::CommandNotFoundError(name)) => {
                         println!("Command:{} not found.", name)
                     }
                     Err(err) => println!("Cmd exec error:{}", err),
@@ -350,20 +333,14 @@ impl Repl {
         );
         if let Err(err) = self.readline(line, &mut rl) {
             match err {
-                error::ReplError::CommandNotFoundError(name) => {
-                    println!("Command:{} not found.", name)
-                }
+                ReplError::CommandNotFoundError(name) => println!("Command:{} not found.", name),
                 _ => println!("Cmd exec error:{}", err),
             }
         }
     }
 
     //execute a command using a taped line or client parameters.
-    fn readline<H: Helper>(
-        &mut self,
-        line: String,
-        rl: &mut Editor<H>,
-    ) -> Result<bool, error::ReplError> {
+    fn readline<H: Helper>(&mut self, line: String, rl: &mut Editor<H>) -> Result<bool, ReplError> {
         rl.add_history_entry(line.as_str());
         rl.save_history(HISTORY_FILE).unwrap();
         //println!("Line: {}", line);
@@ -372,9 +349,7 @@ impl Repl {
             .cmd_list
             .iter()
             .find(|cmd| cmd.name == typed_command.name)
-            .ok_or(error::ReplError::CommandNotFoundError(
-                typed_command.name.clone(),
-            ))?;
+            .ok_or(ReplError::CommandNotFoundError(typed_command.name.clone()))?;
         (command.func)(&mut self.data, &typed_command.params)?;
         if command.name == "quit" {
             return Ok(true);
@@ -384,7 +359,7 @@ impl Repl {
                     .cmd_list
                     .iter()
                     .find(|cmd| cmd.name == typed_command.params[0])
-                    .ok_or(error::ReplError::CommandNotFoundError(
+                    .ok_or(ReplError::CommandNotFoundError(
                         typed_command.params[0].to_string(),
                     ))?;
                 println!(" - {}  :  {}", command.name, command.help);
@@ -400,15 +375,15 @@ impl Repl {
     }
 }
 
-fn quit_func(_data: &mut ReplData, _params: &[&str]) -> Result<(), error::ReplError> {
+fn quit_func(_data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     println!("Bye...");
     Ok(())
 }
 
-fn help_func(_data: &mut ReplData, _params: &[&str]) -> Result<(), error::ReplError> {
+fn help_func(_data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     Ok(())
 }
 
-fn empty_cmd_func(_data: &mut ReplData, _params: &[&str]) -> Result<(), error::ReplError> {
+fn empty_cmd_func(_data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     Ok(())
 }

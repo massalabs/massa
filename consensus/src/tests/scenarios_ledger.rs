@@ -6,10 +6,12 @@ use super::{
     tools,
 };
 use crate::{
-    ledger::{Ledger, LedgerChange, LedgerChanges, LedgerData},
+    ledger::{Ledger, LedgerChanges},
     start_consensus_controller,
     tests::tools::{create_block_with_operations, create_transaction, generate_ledger_file},
 };
+use models::ledger::LedgerChange;
+use models::ledger::LedgerData;
 use models::{Address, Amount, Slot};
 use serial_test::serial;
 use std::collections::HashMap;
@@ -95,7 +97,7 @@ async fn test_ledger_final_balance_increment_new_address() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -144,7 +146,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -207,7 +209,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -235,7 +237,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -282,7 +284,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -310,7 +312,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -390,7 +392,7 @@ async fn test_ledger_final_balance_non_existing_address() {
     let address = Address::from_public_key(&public_key).unwrap();
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -421,7 +423,7 @@ async fn test_ledger_final_balance_duplicate_address() {
 
     // Same address twice.
     let final_datas = ledger
-        .get_final_data(vec![&address, &address].into_iter().collect())
+        .get_final_data(vec![address, address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -458,7 +460,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
     }
 
     let final_datas = ledger
-        .get_final_data(addresses.iter().collect())
+        .get_final_data(addresses.iter().copied().collect())
         .expect("Couldn't get final balance.");
 
     assert_eq!(final_datas.0.len(), addresses.len());
@@ -509,7 +511,7 @@ async fn test_ledger_clear() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -523,7 +525,7 @@ async fn test_ledger_clear() {
     ledger.clear().expect("Couldn't clear the ledger.");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0
@@ -569,7 +571,7 @@ async fn test_ledger_read_whole() {
         .expect("Couldn't apply final changes");
 
     let final_datas = ledger
-        .get_final_data(vec![&address].into_iter().collect())
+        .get_final_data(vec![address].into_iter().collect())
         .expect("Couldn't get final balance.");
     let final_data_for_address = final_datas
         .0

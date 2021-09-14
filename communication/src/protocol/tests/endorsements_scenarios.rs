@@ -1,15 +1,15 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-//RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
+// RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
+
+use std::time::Duration;
 
 use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
 use crate::protocol::ProtocolPoolEvent;
-use models::Slot;
+use models::{EndorsementHashMap, Slot};
 use serial_test::serial;
-use std::collections::HashMap;
-use std::time::Duration;
 
 #[tokio::test]
 #[serial]
@@ -159,10 +159,10 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
 
             let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
 
-            let mut ops = HashMap::new();
-            ops.insert(expected_endorsement_id.clone(), endorsement);
+            let mut ends = EndorsementHashMap::default();
+            ends.insert(expected_endorsement_id.clone(), endorsement);
             protocol_command_sender
-                .propagate_endorsements(ops)
+                .propagate_endorsements(ends)
                 .await
                 .unwrap();
 
@@ -241,7 +241,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // send the endorsement to protocol
             // it should propagate it to nodes that don't know about it
-            let mut ops = HashMap::new();
+            let mut ops = EndorsementHashMap::default();
             ops.insert(expected_endorsement_id.clone(), endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)

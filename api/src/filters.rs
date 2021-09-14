@@ -1,39 +1,51 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>.
 
-use super::config::ApiConfig;
-use crate::ApiError;
-use communication::network::Peer;
-use communication::network::Peers;
-use communication::NodeId;
-use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-use consensus::ExportBlockStatus;
-use consensus::Status;
-use consensus::{
-    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, AddressState, BlockGraphExport,
-    ConsensusConfig, ConsensusError, DiscardReason,
-};
-use consensus::{time_range_to_slot_range, ConsensusStats};
-use crypto::signature::{PrivateKey, PublicKey, Signature};
-use logging::massa_trace;
-use models::Address;
-use models::Operation;
-use models::OperationId;
-use models::OperationSearchResult;
-use models::SerializationContext;
-use models::StakersCycleProductionStats;
-use models::{Amount, BlockHeader, BlockId, Slot, Version};
-use pool::PoolConfig;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::{
     cmp::min,
     collections::{HashMap, HashSet},
     net::IpAddr,
 };
-use storage::StorageAccess;
-use time::UTime;
+
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
+
+use communication::network::Peer;
+use communication::network::Peers;
+use communication::{network::NetworkConfig, protocol::ProtocolConfig};
+use consensus::error::ConsensusError;
+use consensus::time_range_to_slot_range;
+use consensus::ConsensusStats;
+use consensus::ExportBlockStatus;
+use consensus::Status;
+use consensus::{
+    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
+    ConsensusConfig, DiscardReason,
+};
+use crypto::signature::{PrivateKey, PublicKey, Signature};
+use logging::massa_trace;
+use models::crypto::PubkeySig;
+use models::node::NodeId;
+use models::Address;
+use models::Amount;
+use models::Operation;
+use models::OperationId;
+use models::OperationSearchResult;
+use models::SerializationContext;
+use models::StakersCycleProductionStats;
+use models::{
+    address::{AddressHashMap, AddressHashSet, AddressState, Addresses},
+    BlockHashMap, BlockHashSet, OperationHashMap, OperationHashSet,
+};
+use models::{BlockHeader, BlockId, Slot, Version};
+use pool::PoolConfig;
+use storage::StorageAccess;
+use time::UTime;
+
+use crate::ApiError;
+
+use super::config::ApiConfig;
 
 /// Events that are transmitted outside the API
 #[derive(Debug)]
@@ -51,37 +63,37 @@ pub enum ApiEvent {
         end: Slot,
         response_tx: oneshot::Sender<Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError>>,
     },
-    AddOperations(HashMap<OperationId, Operation>),
+    AddOperations(OperationHashMap<Operation>),
     GetAddressesInfo {
-        addresses: HashSet<Address>,
-        response_tx: oneshot::Sender<Result<HashMap<Address, AddressState>, ConsensusError>>,
+        addresses: AddressHashSet,
+        response_tx: oneshot::Sender<Result<AddressHashMap<AddressState>, ConsensusError>>,
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
     },
     GetOperations {
-        operation_ids: HashSet<OperationId>,
+        operation_ids: OperationHashSet,
         /// if op was found: (operation, if it is in pool, map (blocks containing op and if they are final))
-        response_tx: oneshot::Sender<HashMap<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<Option<HashMap<Address, u64>>>),
+    GetActiveStakers(oneshot::Sender<Option<AddressHashMap<u64>>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
-    RemoveStakingAddresses(HashSet<Address>),
-    GetStakingAddresses(oneshot::Sender<HashSet<Address>>),
+    RemoveStakingAddresses(AddressHashSet),
+    GetStakingAddresses(oneshot::Sender<AddressHashSet>),
     NodeSignMessage {
         message: Vec<u8>,
         response_tx: oneshot::Sender<(PublicKey, Signature)>,
     },
     GetStakersProductionStats {
-        addrs: HashSet<Address>,
+        addrs: AddressHashSet,
         response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,
     },
     Unban(IpAddr),
     GetBlockIdsByCreator {
         address: Address,
-        response_tx: oneshot::Sender<HashMap<BlockId, Status>>,
+        response_tx: oneshot::Sender<BlockHashMap<Status>>,
     },
 }
 
@@ -95,7 +107,7 @@ struct TimeInterval {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct OperationIds {
-    pub operation_ids: HashSet<OperationId>,
+    pub operation_ids: OperationHashSet,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -103,10 +115,6 @@ pub struct PrivateKeys {
     pub keys: Vec<PrivateKey>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Addresses {
-    pub addrs: HashSet<Address>,
-}
 /// This function sets up all the routes that can be used
 /// and combines them into one filter
 pub fn get_filter(
@@ -610,7 +618,7 @@ async fn register_staking_private_keys(
 
 async fn remove_staking_addresses(
     evt_tx: mpsc::Sender<ApiEvent>,
-    addrs: HashSet<Address>,
+    addrs: AddressHashSet,
 ) -> Result<(), ApiError> {
     massa_trace!("api.filters.remove_staking_addresses", {});
     Ok(evt_tx
@@ -633,7 +641,7 @@ async fn send_operations(
     let to_send = operations
         .into_iter()
         .map(|op| Ok((op.verify_integrity()?, op)))
-        .collect::<Result<HashMap<OperationId, Operation>, ApiError>>()?;
+        .collect::<Result<OperationHashMap<Operation>, ApiError>>()?;
 
     let opid_list = to_send
         .iter()
@@ -673,7 +681,7 @@ async fn get_block_ids_by_creator(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<HashMap<BlockId, Status>, ApiError> {
+) -> Result<BlockHashMap<Status>, ApiError> {
     massa_trace!("api.filters.get_block_ids_by_creator", {
         "address": address
     });
@@ -688,7 +696,7 @@ async fn get_block_ids_by_creator(
 
 async fn get_operations(
     event_tx: mpsc::Sender<ApiEvent>,
-    operation_ids: HashSet<OperationId>,
+    operation_ids: OperationHashSet,
 ) -> Result<Vec<(OperationId, OperationSearchResult)>, ApiError> {
     massa_trace!("api.filters.get_operations", {
         "operation_ids": operation_ids
@@ -720,11 +728,6 @@ async fn do_node_sign_msg(
     })
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PubkeySig {
-    pub public_key: PublicKey,
-    pub signature: Signature,
-}
 pub async fn node_sign_msg(
     msg: Vec<u8>,
     event_tx: mpsc::Sender<ApiEvent>,
@@ -787,7 +790,7 @@ async fn retrieve_block(
 async fn retrieve_block_ids_by_creator_from_consensus(
     address: Address,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<HashMap<BlockId, Status>, ApiError> {
+) -> Result<BlockHashMap<Status>, ApiError> {
     massa_trace!("api.filters.retrieve_block_ids_by_creator", {
         "address": address
     });
@@ -812,7 +815,7 @@ async fn retrieve_block_ids_by_creator_from_consensus(
 async fn retrieve_block_ids_by_creator_from_storage(
     address: Address,
     storage_access: &StorageAccess,
-) -> Result<HashMap<BlockId, Status>, ApiError> {
+) -> Result<BlockHashMap<Status>, ApiError> {
     Ok(storage_access
         .get_block_ids_by_creator(&address)
         .await?
@@ -822,9 +825,9 @@ async fn retrieve_block_ids_by_creator_from_storage(
 }
 
 async fn retrieve_operations(
-    operation_ids: HashSet<OperationId>,
+    operation_ids: OperationHashSet,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<HashMap<OperationId, OperationSearchResult>, ApiError> {
+) -> Result<OperationHashMap<OperationSearchResult>, ApiError> {
     massa_trace!("api.filters.retrieve_operations", {
         "operation_ids": operation_ids
     });
@@ -1069,15 +1072,15 @@ async fn get_cliques(
     massa_trace!("api.filters.get_cliques", {});
     let graph = retrieve_graph_export(&event_tx).await?;
 
-    let mut hashes = HashSet::new();
+    let mut hashes = BlockHashSet::default();
     for clique in graph.max_cliques.iter() {
         hashes.extend(&clique.block_ids)
     }
 
-    let mut hashes_map = HashMap::new();
+    let mut hashes_map = BlockHashMap::default();
     for hash in hashes.iter() {
         if let Some((_, block)) = graph.active_blocks.get_key_value(hash) {
-            hashes_map.insert(hash, block.block.content.slot);
+            hashes_map.insert(*hash, block.block.content.slot);
         } else {
             return Err(ApiError::InconsistencyError(
                 "inconstancy error between cliques and active_blocks".to_string(),
@@ -1091,7 +1094,7 @@ async fn get_cliques(
         for hash in clique.block_ids.iter() {
             match hashes_map.get_key_value(hash) {
                 Some((k, v)) => {
-                    set.insert((**k, *v));
+                    set.insert((*k, *v));
                 }
                 None => {
                     return Err(ApiError::InconsistencyError(
@@ -1134,9 +1137,9 @@ async fn get_network_info(
 
 /// Returns state info for a set of addresses
 async fn get_addresses_info(
-    addresses: HashSet<Address>,
+    addresses: AddressHashSet,
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<HashMap<Address, AddressState>, ApiError> {
+) -> Result<AddressHashMap<AddressState>, ApiError> {
     massa_trace!("api.filters.get_addresses_info", { "addresses": addresses });
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1171,7 +1174,7 @@ async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> 
 async fn get_operations_involving_address(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
-) -> Result<HashMap<OperationId, OperationSearchResult>, ApiError> {
+) -> Result<OperationHashMap<OperationSearchResult>, ApiError> {
     massa_trace!("api.filters.get_operations_involving_address", {
         "address": address
     });
@@ -1399,7 +1402,7 @@ async fn get_staker_info(
 /// Returns staker production stats
 async fn get_stakers_stats(
     event_tx: mpsc::Sender<ApiEvent>,
-    addrs: HashSet<Address>,
+    addrs: AddressHashSet,
 ) -> Result<Vec<StakersCycleProductionStats>, ApiError> {
     massa_trace!("api.filters.get_stakers_stats", { "addrs": addrs });
     retrieve_stakers_production_stats(addrs, &event_tx).await
@@ -1409,7 +1412,7 @@ async fn get_next_draws(
     event_tx: mpsc::Sender<ApiEvent>,
     api_cfg: ApiConfig,
     consensus_cfg: ConsensusConfig,
-    addresses: HashSet<Address>,
+    addresses: AddressHashSet,
     clock_compensation: i64,
 ) -> Result<Vec<(Address, Slot)>, ApiError> {
     let cur_time = UTime::now(clock_compensation)?;
@@ -1444,7 +1447,7 @@ async fn get_next_draws(
 }
 
 async fn retrieve_stakers_production_stats(
-    addrs: HashSet<Address>,
+    addrs: AddressHashSet,
     event_tx: &mpsc::Sender<ApiEvent>,
 ) -> Result<Vec<StakersCycleProductionStats>, ApiError> {
     massa_trace!("api.filters.retrieve_stakers_production_stats", {
@@ -1489,7 +1492,7 @@ async fn get_stats(event_tx: mpsc::Sender<ApiEvent>) -> Result<ConsensusStats, A
 
 async fn retrieve_staking_addresses(
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<HashSet<Address>, ApiError> {
+) -> Result<AddressHashSet, ApiError> {
     massa_trace!("api.filters.retrieve_staking_addresses", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1508,14 +1511,14 @@ async fn retrieve_staking_addresses(
 
 async fn get_staking_addresses(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<HashSet<Address>, ApiError> {
+) -> Result<AddressHashSet, ApiError> {
     massa_trace!("api.filters.get_staking_addresses", {});
     retrieve_staking_addresses(&event_tx).await
 }
 
 async fn retrieve_active_stakers(
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<Option<HashMap<Address, u64>>, ApiError> {
+) -> Result<Option<AddressHashMap<u64>>, ApiError> {
     massa_trace!("api.filters.retrieve_active_stakers", {});
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
@@ -1534,7 +1537,7 @@ async fn retrieve_active_stakers(
 
 async fn get_active_stakers(
     event_tx: mpsc::Sender<ApiEvent>,
-) -> Result<Option<HashMap<Address, u64>>, ApiError> {
+) -> Result<Option<AddressHashMap<u64>>, ApiError> {
     massa_trace!("api.filters.get_active_stakers", {});
     retrieve_active_stakers(&event_tx).await
 }

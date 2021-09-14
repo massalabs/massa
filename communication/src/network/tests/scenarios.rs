@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-//to start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
+// To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
 use crate::network::binders::{ReadBinder, WriteBinder};
 use crate::network::messages::Message;
@@ -8,8 +8,8 @@ use crate::network::node_worker::{NodeCommand, NodeEvent, NodeWorker};
 use crate::network::ConnectionClosureReason;
 use crate::network::NetworkEvent;
 use crate::network::PeerInfo;
-use crate::NodeId;
 use crypto::{self, hash::Hash, signature};
+use models::node::NodeId;
 use models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
 use std::collections::HashMap;

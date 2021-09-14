@@ -1,11 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolConfig, PoolError};
-use models::{Address, BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
-use std::collections::{HashMap, HashSet};
+use models::{
+    Address, BlockId, Endorsement, EndorsementContent, EndorsementHashMap, EndorsementHashSet, Slot,
+};
 
 pub struct EndorsementPool {
-    endorsements: HashMap<EndorsementId, Endorsement>,
+    endorsements: EndorsementHashMap<Endorsement>,
     latest_final_periods: Vec<u64>,
     current_slot: Option<Slot>,
     cfg: PoolConfig,
@@ -69,9 +70,9 @@ impl EndorsementPool {
     /// Prunes the pool if there are too many endorsements
     pub fn add_endorsements(
         &mut self,
-        endorsements: HashMap<EndorsementId, Endorsement>,
-    ) -> Result<HashSet<EndorsementId>, PoolError> {
-        let mut newly_added = HashSet::new();
+        endorsements: EndorsementHashMap<Endorsement>,
+    ) -> Result<EndorsementHashSet, PoolError> {
+        let mut newly_added = EndorsementHashSet::default();
         for (endorsement_id, endorsement) in endorsements.into_iter() {
             massa_trace!("pool add_endorsements endorsement", {
                 "endorsement": endorsement
@@ -111,8 +112,8 @@ impl EndorsementPool {
 
     /// Prune the pool while there are more endorsements than set max
     /// Kept endorsements are the one that are absolutely closer to the current slot
-    fn prune(&mut self) -> HashSet<EndorsementId> {
-        let mut removed = HashSet::new();
+    fn prune(&mut self) -> EndorsementHashSet {
+        let mut removed = EndorsementHashSet::default();
 
         if self.endorsements.len() > self.cfg.max_endorsement_count as usize {
             let excess = self.endorsements.len() - self.cfg.max_endorsement_count as usize;

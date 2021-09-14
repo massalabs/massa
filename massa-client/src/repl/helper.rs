@@ -5,7 +5,6 @@
 //! See [Rustyline documentation](https://docs.rs/rustyline) for trait impl
 
 use rustyline::completion::{Completer, Pair};
-
 use rustyline::highlight::Highlighter;
 use rustyline::hint::Hinter;
 use rustyline::history::Direction;

@@ -1,11 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    block_graph::ExportClique,
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
-    BootstrapableGraph, LedgerData, LedgerExport,
+    BootstrapableGraph, LedgerExport,
 };
 use crypto::{hash::Hash, signature::PublicKey};
+use models::clique::ExportClique;
+use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
     OperationSearchResult, OperationSearchResultStatus, Slot,
@@ -181,7 +182,7 @@ async fn test_storage() {
                     status: OperationSearchResultStatus::Pending,
                     op: op1,
                     in_pool: true,
-                    in_blocks: HashMap::new(),
+                    in_blocks: Default::default(),
                 },
             );
             expected.insert(
@@ -416,7 +417,7 @@ async fn test_consensus_and_storage() {
                                                     status: OperationSearchResultStatus::Pending,
                                                     op,
                                                     in_pool: true,
-                                                    in_blocks: HashMap::new(),
+                                                    in_blocks: Default::default(),
                                                 },
                                             )
                                         })
@@ -470,7 +471,7 @@ async fn test_consensus_and_storage() {
                                                     status: OperationSearchResultStatus::Pending,
                                                     op,
                                                     in_pool: true,
-                                                    in_blocks: HashMap::new(),
+                                                    in_blocks: Default::default(),
                                                 },
                                             )
                                         })

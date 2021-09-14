@@ -2,6 +2,7 @@
 
 use crypto::signature::PublicKey;
 use serde::{Deserialize, Serialize};
+
 /// NodeId wraps a public key to uniquely identify a node.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct NodeId(pub PublicKey);

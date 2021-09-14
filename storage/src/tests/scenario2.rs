@@ -1,9 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::*;
-use models::Amount;
+use models::{Amount, BlockHashMap};
 use serial_test::serial;
-use std::collections::HashMap;
 use std::str::FromStr;
 
 #[tokio::test]
@@ -54,7 +53,7 @@ async fn test_add_multiple() {
     storage_test(cfg, async move |command_sender| {
         let hash = get_test_block_id();
         let block = get_test_block();
-        let mut map = HashMap::new();
+        let mut map = BlockHashMap::default();
         map.insert(hash, block);
         command_sender.add_block_batch(map).await.unwrap();
         assert!(command_sender.contains(hash).await.unwrap());

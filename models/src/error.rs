@@ -24,4 +24,6 @@ pub enum ModelsError {
     CheckedOperationError(String),
     #[error("invalid version identifier: {0}")]
     InavalidVersionError(String),
+    #[error("invalid ledger change: {0}")]
+    InvalidLedgerChange(String),
 }

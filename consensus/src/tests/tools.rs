@@ -4,7 +4,6 @@ use super::mock_pool_controller::{MockPoolController, PoolCommandSink};
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
-    ledger::LedgerData,
     pos::{RollCounts, RollUpdate, RollUpdates},
     ConsensusConfig,
 };
@@ -17,8 +16,9 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
+use models::ledger::LedgerData;
 use models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
@@ -116,8 +116,8 @@ pub async fn validate_ask_for_block(
 
 pub async fn validate_wishlist(
     protocol_controller: &mut MockProtocolController,
-    new: HashSet<BlockId>,
-    remove: HashSet<BlockId>,
+    new: BlockHashSet,
+    remove: BlockHashSet,
     timeout_ms: u64,
 ) {
     let param = protocol_controller

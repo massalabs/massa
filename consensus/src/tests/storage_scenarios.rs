@@ -1,10 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use crate::tests::tools::{self, generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
+use std::collections::HashMap;
 use time::UTime;
 
 //create 2 clique. Extend the first until the second is discarded.

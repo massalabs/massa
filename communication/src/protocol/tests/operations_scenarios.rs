@@ -1,14 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-//RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
+// RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
 use crate::protocol::ProtocolPoolEvent;
-use models::Amount;
+use models::{Amount, OperationHashMap};
 use serial_test::serial;
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -160,7 +159,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = HashMap::new();
+            let mut ops = OperationHashMap::default();
             ops.insert(expected_operation_id.clone(), operation);
             protocol_command_sender
                 .propagate_operations(ops)
@@ -239,7 +238,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_avbout
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = HashMap::new();
+            let mut ops = OperationHashMap::default();
             ops.insert(expected_operation_id.clone(), operation);
 
             // send endorsement to protocol

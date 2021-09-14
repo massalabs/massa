@@ -5,16 +5,23 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2018"
 
 [dependencies]
+integer-encoding = "3.0"
 lazy_static = "1.4"
+num_enum = "0.5"
+rand = { version = "0.8"}
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+rust_decimal = "1.15"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+serde_qs = {version= "0.8"}
+sled = "0.34"
+tokio = { version = "1.11", features = ["full"] }
+thiserror = "1.0"
+# custom modules
 crypto = {path = "../crypto"}
 time = {path = "../time"}
-thiserror = "1.0"
-integer-encoding = "3.0"
-num_enum = "0.5"
-rust_decimal = "1.15"
 
 [dev-dependencies]
-stderrlog = { version = "0.5" }
 pretty_assertions = "0.7"
 serial_test = "0.5"
+stderrlog = { version = "0.5" }

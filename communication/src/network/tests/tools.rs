@@ -3,7 +3,6 @@
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
-use crate::common::NodeId;
 use crate::network::handshake_worker::HandshakeWorker;
 use crate::network::messages::Message;
 use crate::network::start_network_controller;
@@ -12,6 +11,7 @@ use crate::network::{
     PeerInfo,
 };
 use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
+use models::node::NodeId;
 use models::{
     Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact, Version,
 };

@@ -1,6 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
+    address::AddressHashSet,
+    hhasher::{HHashMap, HHashSet},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -14,13 +16,16 @@ use crypto::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, convert::TryInto};
+use std::convert::TryInto;
 use std::{ops::RangeInclusive, str::FromStr};
 
 pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
+
+pub type OperationHashMap<T> = HHashMap<OperationId, T>;
+pub type OperationHashSet = HHashSet<OperationId>;
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -252,8 +257,8 @@ impl Operation {
     pub fn get_ledger_involved_addresses(
         &self,
         fee_target: Option<Address>,
-    ) -> Result<HashSet<Address>, ModelsError> {
-        let mut res = HashSet::new();
+    ) -> Result<AddressHashSet, ModelsError> {
+        let mut res = AddressHashSet::default();
         if let Some(target) = fee_target {
             res.insert(target);
         }
@@ -271,8 +276,8 @@ impl Operation {
         Ok(res)
     }
 
-    pub fn get_roll_involved_addresses(&self) -> Result<HashSet<Address>, ModelsError> {
-        let mut res = HashSet::new();
+    pub fn get_roll_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
+        let mut res = AddressHashSet::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {

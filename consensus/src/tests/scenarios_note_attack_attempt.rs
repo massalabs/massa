@@ -1,7 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
@@ -11,6 +9,7 @@ use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
+use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]

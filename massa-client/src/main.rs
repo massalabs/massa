@@ -18,46 +18,52 @@
 
 use crate::data::AddressStates;
 use crate::data::GetOperationContent;
-use crate::data::WrappedAddressState;
 use crate::data::WrappedHash;
-use crate::repl::error::ReplError;
-use crate::repl::ReplData;
-use crate::wallet::Wallet;
-use crate::wallet::WalletInfo;
-use api::PubkeySig;
-use api::{Addresses, OperationIds, PrivateKeys};
-use clap::App;
-use clap::Arg;
-use communication::network::Peer;
-use communication::network::Peers;
-use consensus::ExportBlockStatus;
-use consensus::Status;
-use crypto::signature::PrivateKey;
-use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
-use log::trace;
-use models::Address;
-use models::Amount;
-use models::BlockId;
-use models::Operation;
-use models::OperationId;
-use models::OperationType;
-use models::Slot;
-use models::StakersCycleProductionStats;
-use models::Version;
-use reqwest::blocking::Response;
-use reqwest::StatusCode;
+use crate::repl::ReplError;
+use api::{OperationIds, PrivateKeys};
+use models::address::AddressHashMap;
+use models::address::AddressHashSet;
+use models::BlockHashMap;
+use models::OperationHashSet;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fmt::Write;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::Ordering;
+
+use clap::App;
+use clap::Arg;
+use log::trace;
+use reqwest::blocking::Response;
+use reqwest::StatusCode;
+
+use communication::network::Peer;
+use communication::network::Peers;
+use consensus::ExportBlockStatus;
+use consensus::Status;
+use crypto::signature::PrivateKey;
+use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
+use models::address::Addresses;
+use models::crypto::PubkeySig;
+use models::Address;
+use models::Amount;
+use models::Operation;
+use models::OperationContent;
+use models::OperationId;
+use models::OperationType;
+use models::SerializeCompact;
+use models::Slot;
+use models::StakersCycleProductionStats;
+use models::Version;
+use wallet::ConsensusConfigData;
+use wallet::WrappedAddressState;
+use wallet::{Wallet, WalletInfo};
+
 mod client_config;
 mod data;
 mod repl;
-mod wallet;
 
 ///Start the massa-client.
 fn main() {
@@ -433,7 +439,7 @@ fn cmd_get_active_stakers(data: &mut ReplData, _params: &[&str]) -> Result<(), R
 
     if let Some(resp) = request_data(data, &url)? {
         if resp.status() == StatusCode::OK {
-            let rolls = resp.json::<HashMap<Address, u64>>()?;
+            let rolls = resp.json::<AddressHashMap<u64>>()?;
             println!("Staking addresses (roll count):");
             for (addr, roll_count) in rolls.into_iter() {
                 println!("\t{}: {}", addr, roll_count);
@@ -446,7 +452,7 @@ fn cmd_get_active_stakers(data: &mut ReplData, _params: &[&str]) -> Result<(), R
 }
 
 fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Some(wallet) = &data.wallet {
+    if let Some(_) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let roll_count: u64 = FromStr::from_str(params[1])
@@ -454,15 +460,15 @@ fn send_buy_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> 
         let fee = Amount::from_str(params[2])
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollBuy { roll_count };
-
-        let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
+        println!("Warning: If you don't produce blocks when you are selected to do so, your rolls will be sold automatically and refunded.");
+        let operation = data.create_operation(operation_type, from_address, fee, data)?;
         send_operation(operation, data)?;
     }
     Ok(())
 }
 
 fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Some(wallet) = &data.wallet {
+    if let Some(_) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let roll_count: u64 = FromStr::from_str(params[1]).map_err(|err| {
@@ -472,7 +478,7 @@ fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
             .map_err(|err| ReplError::GeneralError(format!("Incorrect fee: {}", err)))?;
         let operation_type = OperationType::RollSell { roll_count };
 
-        let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
+        let operation = data.create_operation(operation_type, from_address, fee, data)?;
         send_operation(operation, data)?;
     }
     Ok(())
@@ -483,7 +489,7 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
     let op_list = params[0]
         .split(',')
         .map(|str| OperationId::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<OperationId>, _>>();
+        .collect::<Result<OperationHashSet, _>>();
     let search_op = match op_list {
         Ok(operation_ids) => OperationIds { operation_ids },
         Err(err) => {
@@ -587,14 +593,14 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
         let display_wallet_info = query_addresses(data, ordered_addrs.iter().cloned().collect())
             .and_then(|resp| {
                 if resp.status() != StatusCode::OK {
-                    Ok(HashMap::new())
+                    Ok(AddressHashMap::default())
                 } else {
-                    resp.json::<HashMap<Address, WrappedAddressState>>()
+                    resp.json::<AddressHashMap<WrappedAddressState>>()
                         .map_err(|err| err.into())
                 }
             })
             //            .or_else::<ReplError, _>(|_| Ok("balance not available.".to_string()))
-            .or_else::<ReplError, _>(|_| Ok(HashMap::new()))
+            .or_else::<ReplError, _>(|_| Ok(AddressHashMap::default()))
             .and_then(|balances| {
                 if data.cli {
                     serde_json::to_string_pretty(&balances).map_err(|err| err.into())
@@ -614,13 +620,8 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
             .unwrap();
         if data.cli {
             println!(
-                "{{\"wallet\":{}, \"balances\":{}}}",
-                wallet
-                    .to_json_string()
-                    .map_err(|err| ReplError::GeneralError(format!(
-                        "Internal error during wallet json conversion: {}",
-                        err
-                    )))?,
+                "{{\"wallet\":{:#?}, \"balances\":{}}}",
+                wallet.get_full_wallet(),
                 display_wallet_info
             );
         } else {
@@ -632,7 +633,7 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 }
 
 fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    if let Some(wallet) = &data.wallet {
+    if let Some(_) = &data.wallet {
         let from_address = Address::from_bs58_check(params[0].trim())
             .map_err(|err| ReplError::AddressCreationError(err.to_string()))?;
         let recipient_address = Address::from_bs58_check(params[1])
@@ -646,7 +647,7 @@ fn send_transaction(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
             amount,
         };
 
-        let operation = wallet.create_operation(operation_type, from_address, fee, data)?;
+        let operation = data.create_operation(operation_type, from_address, fee, data)?;
 
         send_operation(operation, data)?;
     }
@@ -691,7 +692,7 @@ fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
     } else if data.cli {
         println!("{}", resp.text().unwrap());
     } else {
-        let ledger = resp.json::<HashMap<Address, WrappedAddressState>>()?;
+        let ledger = resp.json::<AddressHashMap<WrappedAddressState>>()?;
         println!(
             "{}",
             AddressStates {
@@ -718,7 +719,7 @@ fn cmd_staker_stats(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErro
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
+        .collect::<Result<AddressHashSet, _>>();
     let addrs = match addr_list {
         Ok(addrs) => addrs,
         Err(err) => {
@@ -778,12 +779,12 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         )));
     }
 
-    let consensus_cfg = resp.json::<crate::data::ConsensusConfig>()?;
+    let consensus_cfg = resp.json::<ConsensusConfigData>()?;
 
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
+        .collect::<Result<AddressHashSet, _>>();
     let addrs = match addr_list {
         Ok(addrs) => addrs,
         Err(err) => {
@@ -804,10 +805,10 @@ fn cmd_next_draws(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
         let addr_map = resp.content().iter().fold(
             addrs
                 .iter()
-                .map(|addr| (addr, Vec::new()))
-                .collect::<HashMap<_, _>>(),
+                .map(|addr| (*addr, Vec::new()))
+                .collect::<AddressHashMap<_>>(),
             |mut map, (addr, slot)| {
-                let entry = map.entry(addr).or_insert_with(Vec::new);
+                let entry = map.entry(*addr).or_insert_with(Vec::new);
                 entry.push(slot);
                 map
             },
@@ -852,7 +853,7 @@ fn cmd_block_ids_by_creator(data: &mut ReplData, params: &[&str]) -> Result<(), 
         data.node_ip, params[0]
     );
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<HashMap<BlockId, Status>>()?;
+        let resp = resp.json::<BlockHashMap<Status>>()?;
         println!("block_ids_by_creator:");
 
         if resp.is_empty() {
@@ -998,7 +999,7 @@ fn cmd_remove_staking_addresses(data: &mut ReplData, params: &[&str]) -> Result<
     let addrs_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
-        .collect::<Result<HashSet<Address>, _>>();
+        .collect::<Result<AddressHashSet, _>>();
 
     let addrs = match addrs_list {
         Ok(addrs) => addrs,
@@ -1035,7 +1036,7 @@ fn cmd_state(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
 fn cmd_staking_addresses(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     let url = format!("http://{}/api/v1/staking_addresses", data.node_ip);
     if let Some(resp) = request_data(data, &url)? {
-        let resp = resp.json::<HashSet<Address>>()?;
+        let resp = resp.json::<AddressHashSet>()?;
         println!("Staking Addresses");
         for ad in resp.into_iter() {
             println!("{}\n", ad);
@@ -1247,7 +1248,7 @@ fn send_operation(operation: Operation, data: &ReplData) -> Result<(), ReplError
     Ok(())
 }
 
-fn query_addresses(data: &ReplData, addrs: HashSet<Address>) -> Result<Response, ReplError> {
+fn query_addresses(data: &ReplData, addrs: AddressHashSet) -> Result<Response, ReplError> {
     let url = format!(
         "http://{}/api/v1/addresses_info?{}",
         data.node_ip,
@@ -1322,4 +1323,173 @@ fn format_node_hash(list: &mut [(data::WrappedHash, data::WrappedSlot)]) -> Vec<
     list.iter()
         .map(|(hash, slot)| format!("({} Slot:{})", hash, slot))
         .collect()
+}
+
+pub struct ReplData {
+    pub node_ip: SocketAddr,
+    pub cli: bool,
+    pub wallet: Option<Wallet>,
+}
+
+impl Default for ReplData {
+    fn default() -> Self {
+        ReplData {
+            node_ip: "0.0.0.0:3030".parse().unwrap(),
+            cli: false,
+            wallet: None,
+        }
+    }
+}
+
+impl ReplData {
+    fn check_if_valid(
+        &self,
+        operation_type: &OperationType,
+        from_address: Address,
+        fee: Amount,
+        consensus_cfg: ConsensusConfigData,
+    ) -> Result<(), ReplError> {
+        // Get address info
+        let addrs = serde_qs::to_string(&Addresses {
+            addrs: vec![from_address].into_iter().collect(),
+        })?;
+        let url = format!("http://{}/api/v1/addresses_info?{}", self.node_ip, addrs);
+        let resp = reqwest::blocking::get(&url)?;
+        if resp.status() == StatusCode::OK {
+            let map_info = resp.json::<AddressHashMap<WrappedAddressState>>()?;
+
+            if let Some(info) = map_info.get(&from_address) {
+                match operation_type {
+                    OperationType::Transaction { amount, .. } => {
+                        if info.candidate_ledger_data.balance < fee.saturating_add(*amount) {
+                            println!("Warning : currently address {} has not enough coins for that transaction. It may be rejected", from_address);
+                        }
+                    }
+                    OperationType::RollBuy { roll_count } => {
+                        if info.candidate_ledger_data.balance
+                            < consensus_cfg
+                                .roll_price
+                                .checked_mul_u64(*roll_count)
+                                .ok_or(ReplError::GeneralError("".to_string()))?
+                                .saturating_add(fee)
+                        // It's just to print a warning
+                        {
+                            println!("Warning : currently address {} has not enough coins for that roll buy. It may be rejected", from_address);
+                            println!(
+                                "Info : current roll price is {} coins",
+                                consensus_cfg.roll_price
+                            );
+                        }
+                    }
+                    OperationType::RollSell { roll_count } => {
+                        if info.candidate_rolls < *roll_count
+                            || info.candidate_ledger_data.balance < fee
+                        {
+                            println!("Warning : currently address {} has not enough rolls or coins for that roll sell. It may be rejected", from_address);
+                        }
+                    }
+                }
+            } else {
+                println!("Warning : currently address {} is not known by consensus. That operation may be rejected", from_address);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn create_operation(
+        &self,
+        operation_type: OperationType,
+        from_address: Address,
+        fee: Amount,
+        data: &ReplData,
+    ) -> Result<Operation, ReplError> {
+        //get node serialisation context
+        let url = format!("http://{}/api/v1/node_config", self.node_ip);
+        let resp = reqwest::blocking::get(&url)?;
+        if resp.status() != StatusCode::OK {
+            return Err(ReplError::GeneralError(format!(
+                "Error during node connection. Server response code: {}",
+                resp.status()
+            )));
+        }
+        let context = resp.json::<models::SerializationContext>()?;
+
+        // Set the context for the client process.
+        models::init_serialization_context(context);
+
+        // Get pool config
+        // let url = format!("http://{}/api/v1/pool_config", data.node_ip);
+        // let resp = reqwest::blocking::get(&url)?;
+        // if resp.status() != StatusCode::OK {
+        //     return Err(ReplError::GeneralError(format!(
+        //         "Error during node connection. Server answer code: {}",
+        //         resp.status()
+        //     )));
+        // }
+        // let pool_cfg = resp.json::<pool::PoolConfig>()?;
+
+        // Get consensus config
+        let url = format!("http://{}/api/v1/consensus_config", data.node_ip);
+        let resp = reqwest::blocking::get(&url)?;
+        if resp.status() != StatusCode::OK {
+            return Err(ReplError::GeneralError(format!(
+                "Error during node connection. Server response code: {}",
+                resp.status()
+            )));
+        }
+        let consensus_cfg = resp.json::<ConsensusConfigData>()?;
+
+        let wallet = if let Some(wallet) = &self.wallet {
+            wallet
+        } else {
+            return Err(ReplError::GeneralError("No wallet".to_string()));
+        };
+        // Get from address private key
+        let private_key = wallet
+            .find_associated_private_key(from_address)
+            .ok_or_else(|| {
+                ReplError::GeneralError(format!(
+                    "No private key found in the wallet for the specified FROM address: {}",
+                    from_address.to_string()
+                ))
+            })?;
+        let public_key = derive_public_key(private_key);
+
+        let slot = consensus::get_current_latest_block_slot(
+            consensus_cfg.thread_count,
+            consensus_cfg.t0,
+            consensus_cfg.genesis_timestamp,
+            0,
+        )
+        .map_err(|err| {
+            ReplError::GeneralError(format!(
+                "Error during current time slot computation: {:?}",
+                err
+            ))
+        })?
+        .unwrap_or_else(|| Slot::new(0, 0));
+
+        let mut expire_period = slot.period + consensus_cfg.operation_validity_periods;
+        if slot.thread >= from_address.get_thread(consensus_cfg.thread_count) {
+            expire_period += 1;
+        }
+
+        // We don't care if that fails
+        let _ = self.check_if_valid(&operation_type, from_address, fee, consensus_cfg);
+
+        let operation_content = OperationContent {
+            fee,
+            expire_period,
+            sender_public_key: public_key,
+            op: operation_type,
+        };
+
+        let hash = Hash::hash(&operation_content.to_bytes_compact().unwrap());
+        let signature = crypto::sign(&hash, private_key).unwrap();
+
+        Ok(Operation {
+            content: operation_content,
+            signature,
+        })
+    }
 }
