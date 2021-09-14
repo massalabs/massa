@@ -829,7 +829,7 @@ impl ProtocolWorker {
 
         // check if this header was already verified
         let now = Instant::now();
-        if let Some((_e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
+        if let Some((e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
             *inst = now;
             if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
                 node_info.insert_known_block(
@@ -838,6 +838,10 @@ impl ProtocolWorker {
                     Instant::now(),
                     self.cfg.max_node_known_blocks_size,
                 );
+                node_info.insert_known_endorsements(
+                    e_ids.into_iter().map(|id| (*id, Instant::now())).collect(),
+                    self.cfg.max_known_endorsements_size,
+                )
             }
             return Ok(Some((block_id, false)));
         }
@@ -871,7 +875,7 @@ impl ProtocolWorker {
             return Ok(None);
         };
 
-        // check endorsement intrinsic integrity
+        // check endorsement in header integrity
         let mut used_endorsement_indices: HashSet<u32> =
             HashSet::with_capacity(header.content.endorsements.len());
         for endorsement in header.content.endorsements.iter() {
@@ -898,7 +902,7 @@ impl ProtocolWorker {
 
         if self
             .checked_headers
-            .insert(block_id, (endorsement_ids.clone(), now))
+            .insert(block_id, (endorsement_ids.into_iter().collect(), now))
             .is_none()
         {
             self.prune_checked_headers();
@@ -1104,7 +1108,7 @@ impl ProtocolWorker {
         endorsements: Vec<Endorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<Vec<EndorsementId>, CommunicationError> {
+    ) -> Result<HashSet<EndorsementId>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut received_ids = HashMap::with_capacity(length);
@@ -1132,17 +1136,18 @@ impl ProtocolWorker {
             node_info.insert_known_endorsements(received_ids, self.cfg.max_known_endorsements_size);
         }
 
+        let keys = new_endorsements.keys().copied().collect();
         if !new_endorsements.is_empty() {
             self.prune_checked_endorsements();
 
             // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
-                endorsements: new_endorsements.clone(),
+                endorsements: new_endorsements,
                 propagate,
             })
             .await;
         }
-        Ok(new_endorsements.into_keys().collect())
+        Ok(keys)
     }
 
     /// Manages network event
