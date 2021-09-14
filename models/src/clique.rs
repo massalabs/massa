@@ -1,12 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    array_from_slice, u8_from_slice, with_serialization_context, BlockId, DeserializeCompact,
-    DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, BLOCK_ID_SIZE_BYTES,
+    array_from_slice, u8_from_slice, with_serialization_context, BlockHashSet, BlockId,
+    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    BLOCK_ID_SIZE_BYTES,
 };
 use core::usize;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::convert::TryInto;
 
 impl<'a> From<&'a ExportClique> for Clique {
@@ -21,7 +21,7 @@ impl<'a> From<&'a ExportClique> for Clique {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Clique {
-    pub block_ids: HashSet<BlockId>,
+    pub block_ids: BlockHashSet,
     pub fitness: u64,
     pub is_blockclique: bool,
 }
