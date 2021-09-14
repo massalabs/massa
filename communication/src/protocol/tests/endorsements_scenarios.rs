@@ -2,6 +2,8 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
+use std::time::Duration;
+
 use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
@@ -179,6 +181,89 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                         break;
                     }
                     _ => panic!("Unexpected or no network command."),
+                };
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it() {
+    let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    mut protocol_pool_event_receiver| {
+            // Create 1 node.
+            let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+            // 1. Create an endorsement
+            let endorsement = tools::create_endorsement();
+
+            // Send endorsement and wait for the protocol event,
+            // just to be sure the nodes are connected before sending the propagate command.
+            network_controller
+                .send_endorsements(nodes[0].id, vec![endorsement.clone()])
+                .await;
+            let _received_endorsements = match tools::wait_protocol_pool_event(
+                &mut protocol_pool_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                Some(ProtocolPoolEvent::ReceivedEndorsements { endorsements, .. }) => endorsements,
+                _ => panic!("Unexpected or no protocol pool event."),
+            };
+
+            // create and connect a node that does not know about the endorsement
+            let new_nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+            // wait for things to settle
+            tokio::time::sleep(Duration::from_millis(250)).await;
+
+            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
+
+            // send the endorsement to protocol
+            // it should propagate it to nodes that don't know about it
+            let mut ops = EndorsementHashMap::default();
+            ops.insert(expected_endorsement_id.clone(), endorsement);
+            protocol_command_sender
+                .propagate_endorsements(ops)
+                .await
+                .unwrap();
+
+            loop {
+                match network_controller
+                    .wait_command(1000.into(), |cmd| match cmd {
+                        cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
+                        _ => None,
+                    })
+                    .await
+                {
+                    Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
+                        let id = endorsements[0].compute_endorsement_id().unwrap();
+                        assert_eq!(id, expected_endorsement_id);
+                        assert_eq!(new_nodes[0].id, node);
+                        break;
+                    }
+                    None => panic!("no network command"),
+                    Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
                 };
             }
             (
