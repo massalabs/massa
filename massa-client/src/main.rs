@@ -26,7 +26,7 @@ use models::address::AddressHashSet;
 use models::BlockHashMap;
 use models::OperationHashSet;
 use std::collections::HashMap;
-use std::fmt::Write;
+
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -589,8 +589,12 @@ fn wallet_add_privkey(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
 fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &data.wallet {
         //get wallet addresses balances
-        let ordered_addrs = wallet.get_wallet_address_list();
-        let display_wallet_info = query_addresses(data, ordered_addrs.iter().cloned().collect())
+        let mut ordered_addrs = wallet
+            .get_wallet_address_list()
+            .into_iter()
+            .collect::<Vec<_>>();
+        ordered_addrs.sort_unstable();
+        let display_wallet_info = query_addresses(data, wallet.get_wallet_address_list())
             .and_then(|resp| {
                 if resp.status() != StatusCode::OK {
                     Ok(AddressHashMap::default())
@@ -605,23 +609,22 @@ fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
                 if data.cli {
                     serde_json::to_string_pretty(&balances).map_err(|err| err.into())
                 } else {
-                    let mut s = String::new();
-                    writeln!(
-                        s,
+                    Ok(format!(
                         "{}",
                         WalletInfo {
                             wallet: &wallet,
                             balances,
                         }
-                    )?;
-                    Ok(s)
+                    ))
                 }
             })
             .unwrap();
         if data.cli {
+            let mut full_wallet = wallet.get_full_wallet().into_iter().collect::<Vec<_>>();
+            full_wallet.sort_unstable();
             println!(
                 "{{\"wallet\":{:#?}, \"balances\":{}}}",
-                wallet.get_full_wallet(),
+                serde_json::to_string_pretty(&full_wallet)?,
                 display_wallet_info
             );
         } else {
