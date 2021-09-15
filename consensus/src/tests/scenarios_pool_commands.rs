@@ -28,10 +28,11 @@ async fn test_update_current_slot_cmd_notification() {
         roll_counts_file.path(),
         staking_file.path(),
     );
-    cfg.t0 = 2000.into();
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
+    cfg.t0 = 1000.into();
+    cfg.thread_count = 1;
+    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_add(1000.into()).unwrap();
 
-    let timeout = 300;
+    let timeout = 150;
 
     tools::consensus_pool_test(
         cfg.clone(),
@@ -49,7 +50,7 @@ async fn test_update_current_slot_cmd_notification() {
 
             //wait for UpdateCurrentSlot pool command
             if let Some((slot_cmd, rec_time)) = pool_controller
-                .wait_command(500.into(), slot_notification_filter)
+                .wait_command(1500.into(), slot_notification_filter)
                 .await
             {
                 assert_eq!(slot_cmd, Slot::new(0, 0));
