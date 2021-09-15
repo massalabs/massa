@@ -1183,13 +1183,15 @@ impl ProtocolWorker {
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
-                info!("Connection closed with {}", node_id);
                 massa_trace!(
                     "protocol.protocol_worker.on_network_event.connection_closed",
                     { "node": node_id }
                 );
-                self.active_nodes.remove(&node_id); // deletes all node info
-                self.update_ask_block(block_ask_timer).await?;
+                if self.active_nodes.remove(&node_id).is_some() {
+                    // deletes all node info
+                    info!("Connection closed with {}", node_id);
+                    self.update_ask_block(block_ask_timer).await?;
+                }
             }
             NetworkEvent::ReceivedBlock {
                 node: from_node_id,
