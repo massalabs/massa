@@ -375,6 +375,11 @@ impl ConsensusWorker {
             let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
         }
 
+        // signal tick to pool
+        self.pool_command_sender
+            .update_current_slot(observed_slot)
+            .await?;
+
         // create blocks
         if !self.cfg.disable_block_creation && observed_slot.period > 0 {
             let mut cur_slot = self.previous_slot.map_or_else(
@@ -430,11 +435,6 @@ impl ConsensusWorker {
 
         self.previous_slot = Some(observed_slot);
         self.next_slot = observed_slot.get_next_slot(self.cfg.thread_count)?;
-
-        // signal tick to pool
-        self.pool_command_sender
-            .update_current_slot(observed_slot)
-            .await?;
 
         // signal tick to block graph
         self.block_db
