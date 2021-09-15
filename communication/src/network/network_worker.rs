@@ -852,7 +852,7 @@ impl NetworkWorker {
         Ok(())
     }
 
-    /// Forward a message to a node worker, returning whether it was successful.
+    /// Forward a message to a node worker. If it fails, notify upstream about connection closure.
     async fn forward_message_to_node_or_resend_close_event(
         &mut self,
         node: &NodeId,
