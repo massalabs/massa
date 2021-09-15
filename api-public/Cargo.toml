@@ -1,5 +1,5 @@
 [package]
-name = "jsonrpc-api"
+name = "api-public"
 version = "0.1.0"
 edition = "2018"
 
@@ -7,6 +7,9 @@ edition = "2018"
 
 [dependencies]
 jsonrpc-core = "18.0.0"
+jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
 # custom modules
-jsonrpc-dto = { path = "../jsonrpc-dto" }
+api-dto = { path = "../api-dto" }
+models = {path = "../models"}
+time = {path = "../time"}

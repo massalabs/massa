@@ -33,12 +33,12 @@ pub use version::Version;
 
 pub mod address;
 pub mod amount;
-mod block;
+pub mod block;
 pub mod clique;
 mod composite;
 mod context;
 pub mod crypto;
-mod endorsement;
+pub mod endorsement;
 pub mod error;
 pub mod hhasher;
 pub mod ledger;

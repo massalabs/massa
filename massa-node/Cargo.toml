@@ -18,6 +18,9 @@ tokio-util = { version = "0.6", features = ["codec"] }
 # custom modules
 pool = { path = "../pool" }
 api = { path = "../api" }
+api-eth = { path = "../api-eth" }
+api-private = { path = "../api-private" }
+api-public = { path = "../api-public" }
 bootstrap = { path = "../bootstrap" }
 communication = { path = "../communication" }
 consensus = { path = "../consensus" }

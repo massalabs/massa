@@ -20,6 +20,7 @@ use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::{init_serialization_context, Address, SerializationContext};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
+use std::thread;
 use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
@@ -176,6 +177,7 @@ async fn launch(
     )
 }
 
+// FIXME: unreachable code?
 async fn run(cfg: node_config::Config) {
     loop {
         let (
@@ -643,6 +645,11 @@ async fn main() {
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
         .unwrap();
+
+    // spawn APIs
+    thread::spawn(|| api_eth::serve("127.0.0.1:33030"));
+    thread::spawn(|| api_private::serve("127.0.0.1:33031"));
+    thread::spawn(|| api_public::serve("127.0.0.1:33032"));
 
     run(cfg).await
 }
