@@ -148,7 +148,7 @@ impl PoolWorker {
                 }
             }
             PoolCommand::UpdateCurrentSlot(slot) => {
-                self.operation_pool.update_current_slot(slot)?;
+                self.operation_pool.update_current_slot(slot);
                 self.endorsement_pool.update_current_slot(slot)
             }
             PoolCommand::UpdateLatestFinalPeriods(periods) => {
