@@ -1,7 +1,8 @@
 use atty::Stream;
-use interact_prompt::Settings;
+// use interact_prompt::Settings;
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
+use std::net::IpAddr;
 use structopt::StructOpt;
 
 struct RpcClient(TypedClient);
@@ -15,6 +16,11 @@ impl From<RpcChannel> for RpcClient {
 impl RpcClient {
     async fn hello_world(&self) -> RpcResult<String> {
         self.0.call_method("HelloWorld", "String", ()).await
+    }
+
+    // End-to-end example with `unban` command:
+    async fn _unban(&self, ip: IpAddr) -> RpcResult<()> {
+        self.0.call_method("unban", "String", ip).await
     }
 }
 
@@ -33,7 +39,7 @@ fn main(args: Args) {
     if !atty::is(Stream::Stdout) {
         // non-interactive mode
     } else {
-        interact_prompt::direct(Settings::default(), ()).unwrap();
+        // TODO: interact_prompt::direct(Settings::default(), ()).unwrap();
     }
     let url = format!("http://{}:{}", args.address, args.port);
     let res = tokio::runtime::Builder::new_multi_thread()

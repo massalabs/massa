@@ -7,6 +7,7 @@ extern crate logging;
 mod node_config;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
+use api_private::API; // FIXME: Should be move in a new rpc-server crate
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
     network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},
@@ -177,8 +178,9 @@ async fn launch(
     )
 }
 
-// FIXME: unreachable code?
-async fn run(cfg: node_config::Config) {
+// FIXME: IDEA identify it unreachable code?
+// TODO: should take a Vec<API>
+async fn run(cfg: node_config::Config, mut api: API) {
     loop {
         let (
             pool_command_sender,
@@ -194,6 +196,8 @@ async fn run(cfg: node_config::Config) {
             storage_manager,
             network_manager,
         ) = launch(cfg.clone()).await;
+        // load command senders into API
+        api.set_network_command_sender(network_command_sender.clone());
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
         tokio::pin!(stop_signal);
@@ -647,9 +651,14 @@ async fn main() {
         .unwrap();
 
     // spawn APIs
-    thread::spawn(|| api_eth::serve("127.0.0.1:33030"));
-    thread::spawn(|| api_private::serve("127.0.0.1:33031"));
+    thread::spawn(|| api_eth::serve("127.0.0.1:33035"));
     thread::spawn(|| api_public::serve("127.0.0.1:33032"));
 
-    run(cfg).await
+    let api = API {
+        url: "127.0.0.1:33035".parse().unwrap(),
+        network_command_sender: None,
+    };
+    api.serve();
+
+    run(cfg, api).await
 }

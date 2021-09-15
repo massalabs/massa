@@ -1,13 +1,15 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use api_dto::AddressInfo;
+use communication::network::NetworkCommandSender;
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use jsonrpc_core::IoHandler;
 use jsonrpc_derive::rpc;
-use jsonrpc_http_server::ServerBuilder;
+use jsonrpc_http_server::{tokio, ServerBuilder};
 use models::address::{Address, AddressHashSet};
 use models::node::NodeId;
 use std::net::IpAddr;
+use std::thread;
 
 /// Private Massa-RPC "manager mode" endpoints
 #[rpc(server)]
@@ -50,7 +52,32 @@ pub trait MassaPrivate {
     fn get_addresses(&self, _: Vec<Address>) -> jsonrpc_core::Result<Vec<AddressInfo>>;
 }
 
-pub struct API;
+// TODO: share this structure between all api-* crates
+#[derive(Clone)]
+pub struct API {
+    pub url: String,
+    pub network_command_sender: Option<NetworkCommandSender>,
+}
+
+impl API {
+    pub fn set_network_command_sender(&mut self, network_command_sender: NetworkCommandSender) {
+        self.network_command_sender = Some(network_command_sender);
+        // TODO: write a way to update all command senders
+    }
+
+    // TODO: write a default constructor `new` that make all command senders fields to None
+
+    pub fn serve(&self) {
+        let mut io = IoHandler::new();
+        io.extend_with(self.clone().to_delegate());
+
+        let server = ServerBuilder::new(io)
+            .start_http(&self.url.parse().unwrap())
+            .expect("Unable to start RPC server");
+
+        thread::spawn(|| server.wait());
+    }
+}
 
 impl MassaPrivate for API {
     fn start_node(&self) -> jsonrpc_core::Result<()> {
@@ -85,22 +112,23 @@ impl MassaPrivate for API {
         todo!()
     }
 
-    fn unban(&self, _: IpAddr) -> jsonrpc_core::Result<()> {
-        todo!()
+    fn unban(&self, ip: IpAddr) -> jsonrpc_core::Result<()> {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                self.network_command_sender
+                    .as_ref()
+                    .unwrap() // FIXME: replace by ?
+                    .unban(ip)
+                    .await
+                    .unwrap(); // FIXME: replace by ?
+                Ok(())
+            })
     }
 
     fn get_addresses(&self, _: Vec<Address>) -> jsonrpc_core::Result<Vec<AddressInfo>> {
         todo!()
     }
-}
-
-pub fn serve(url: &str) {
-    let mut io = IoHandler::new();
-    io.extend_with(API.to_delegate());
-
-    let server = ServerBuilder::new(io)
-        .start_http(&url.parse().unwrap())
-        .expect("Unable to start RPC server");
-
-    server.wait();
 }
