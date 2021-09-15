@@ -1187,7 +1187,8 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.on_network_event.connection_closed",
                     { "node": node_id }
                 );
-                if self.active_nodes.remove(&node_id).is_some() { // deletes all node info
+                if self.active_nodes.remove(&node_id).is_some() {
+                    // deletes all node info
                     info!("Connection closed with {}", node_id);
                     self.update_ask_block(block_ask_timer).await?;
                 }
