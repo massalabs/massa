@@ -214,9 +214,8 @@ impl OperationPool {
         Ok(())
     }
 
-    pub fn update_current_slot(&mut self, slot: Slot) -> Result<(), PoolError> {
+    pub fn update_current_slot(&mut self, slot: Slot) {
         self.current_slot = Some(slot);
-        self.prune()
     }
 
     fn prune(&mut self) -> Result<(), PoolError> {
@@ -505,7 +504,7 @@ mod tests {
 
         // add transactions with a high fee but too much in the future: should be ignored
         {
-            pool.update_current_slot(Slot::new(10, 0)).unwrap();
+            pool.update_current_slot(Slot::new(10, 0));
             let fee = 1000;
             let expire_period: u64 = 300;
             let (op, thread) = get_transaction(expire_period, fee);

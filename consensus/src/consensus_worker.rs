@@ -324,19 +324,39 @@ impl ConsensusWorker {
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
         let now = UTime::now(self.clock_compensation)?;
-        let cur_slot = self.next_slot;
-        self.previous_slot = Some(cur_slot);
-        self.next_slot = self.next_slot.get_next_slot(self.cfg.thread_count)?;
-        massa_trace!("consensus.consensus_worker.slot_tick", { "slot": cur_slot });
-        let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
+        let observed_slot = get_latest_block_slot_at_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            now,
+        )?;
 
-        if let Some(slot) = self.previous_slot {
-            if slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
-                info!("Started cycle {}", cur_cycle);
-            }
+        if observed_slot <= self.previous_slot {
+            // reset timer for next slot
+            next_slot_timer.set(sleep_until(
+                get_block_slot_timestamp(
+                    self.cfg.thread_count,
+                    self.cfg.t0,
+                    self.cfg.genesis_timestamp,
+                    self.next_slot,
+                )?
+                .estimate_instant(self.clock_compensation)?,
+            ));
+            return Ok(());
         }
 
-        if self.next_slot == Slot::new(1, 0) {
+        let observed_slot = observed_slot.unwrap(); // does not panic, checked above
+
+        massa_trace!("consensus.consensus_worker.slot_tick", {
+            "slot": observed_slot
+        });
+        let cur_cycle = observed_slot.get_cycle(self.cfg.periods_per_cycle);
+
+        if observed_slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
+            info!("Started cycle {}", cur_cycle);
+        }
+
+        if observed_slot == Slot::new(1, 0) {
             // first block that can be created
             info!("Masa network has started ! 🎉")
         }
@@ -357,32 +377,37 @@ impl ConsensusWorker {
 
         // signal tick to pool
         self.pool_command_sender
-            .update_current_slot(cur_slot)
+            .update_current_slot(observed_slot)
             .await?;
 
         // create blocks
-        if !self.cfg.disable_block_creation && cur_slot.period > 0 {
-            let block_draw = match self.pos.draw_block_producer(cur_slot) {
-                Ok(b_draw) => Some(b_draw),
-                Err(ConsensusError::PosCycleUnavailable(_)) => {
-                    massa_trace!(
-                        "consensus.consensus_worker.slot_tick.block_creatorunavailable",
-                        {}
-                    );
-                    warn!("desynchronization detected because the lookback cycle is not final at the current time");
-                    let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
-                    None
-                }
-                Err(err) => return Err(err),
-            };
-            if let Some(addr) = block_draw {
-                if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
-                    massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                    self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
-                    if let Some(next_addr_slot) =
-                        self.pos.get_next_selected_slot(self.next_slot, addr)
-                    {
-                        info!(
+        if !self.cfg.disable_block_creation && observed_slot.period > 0 {
+            let mut cur_slot = self.previous_slot.map_or_else(
+                || Ok(Slot::new(0, 0)),
+                |v| v.get_next_slot(self.cfg.thread_count),
+            )?;
+            while cur_slot <= observed_slot {
+                let block_draw = match self.pos.draw_block_producer(cur_slot) {
+                    Ok(b_draw) => Some(b_draw),
+                    Err(ConsensusError::PosCycleUnavailable(_)) => {
+                        massa_trace!(
+                            "consensus.consensus_worker.slot_tick.block_creatorunavailable",
+                            {}
+                        );
+                        warn!("desynchronization detected because the lookback cycle is not final at the current time");
+                        let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
+                        None
+                    }
+                    Err(err) => return Err(err),
+                };
+                if let Some(addr) = block_draw {
+                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
+                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
+                        self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+                        if let Some(next_addr_slot) =
+                            self.pos.get_next_selected_slot(self.next_slot, addr)
+                        {
+                            info!(
                             "Next block creation slot for address {}: cycle {}, period {}, thread {}, at time {}",
                             addr,
                             next_addr_slot.get_cycle(self.cfg.periods_per_cycle),
@@ -399,15 +424,21 @@ impl ConsensusWorker {
                                     format!("(internal error during get_block_slot_timestamp: {})", err),
                             }
                         );
+                        }
+                    } else {
+                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
                     }
-                } else {
-                    massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
                 }
+                cur_slot = cur_slot.get_next_slot(self.cfg.thread_count)?;
             }
         }
 
+        self.previous_slot = Some(observed_slot);
+        self.next_slot = observed_slot.get_next_slot(self.cfg.thread_count)?;
+
         // signal tick to block graph
-        self.block_db.slot_tick(&mut self.pos, Some(cur_slot))?;
+        self.block_db
+            .slot_tick(&mut self.pos, Some(observed_slot))?;
 
         // take care of block db changes
         self.block_db_changed().await?;
