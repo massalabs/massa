@@ -840,24 +840,19 @@ impl ProtocolWorker {
                 node_info.insert_known_block(
                     block_id,
                     true,
-                    Instant::now(),
+                    now,
                     self.cfg.max_node_known_blocks_size,
                 );
                 node_info.insert_known_endorsements(
-                    e_ids.into_iter().map(|id| (*id, Instant::now())).collect(),
+                    e_ids.into_iter().map(|id| (*id, now)).collect(),
                     self.cfg.max_known_endorsements_size,
                 )
             }
             return Ok(Some((block_id, false)));
         }
 
-        let (endorsement_ids, dups) = match self
-            .note_endorsements_from_node(
-                header.content.endorsements.clone(),
-                source_node_id,
-                false,
-                true,
-            )
+        let (endorsement_ids, endorsements_reused) = match self
+            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
             .await
         {
             Err(_) => {
@@ -870,8 +865,8 @@ impl ProtocolWorker {
             Ok(id) => id,
         };
 
-        // check if duplicate endorsement
-        if Some(true) == dups {
+        // check if some endorsements are duplicated in the header
+        if endorsements_reused {
             massa_trace!(
                 "protocol.protocol_worker.check_header.err_endorsement_reused",
                 { "header": header }
@@ -919,12 +914,7 @@ impl ProtocolWorker {
         }
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_block(
-                block_id,
-                true,
-                Instant::now(),
-                self.cfg.max_node_known_blocks_size,
-            );
+            node_info.insert_known_block(block_id, true, now, self.cfg.max_node_known_blocks_size);
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, true)));
         }
@@ -1107,8 +1097,9 @@ impl ProtocolWorker {
         }
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            let now = Instant::now();
             node_info.insert_known_ops(
-                result.iter().map(|(id, _)| (*id, Instant::now())).collect(),
+                result.iter().map(|(id, _)| (*id, now)).collect(),
                 self.cfg.max_known_ops_size,
             );
         }
@@ -1123,32 +1114,32 @@ impl ProtocolWorker {
         endorsements: Vec<Endorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-        check_dups: bool,
-    ) -> Result<(Vec<EndorsementId>, Option<bool>), CommunicationError> {
+    ) -> Result<(Vec<EndorsementId>, bool), CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
+        let mut contains_duplicates = false;
+        let now = Instant::now();
 
-        let mut dups = if check_dups { Some(false) } else { None };
-        let mut received_ids =
+        let mut unique_ids =
             EndorsementHashMap::with_capacity_and_hasher(length, BuildHHasher::default());
         let mut new_endorsements =
             EndorsementHashMap::with_capacity_and_hasher(length, BuildHHasher::default());
+        let mut endorsement_ids: Vec<EndorsementId> = Vec::with_capacity(length);
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.compute_endorsement_id()?;
-            if check_dups && received_ids.contains_key(&endorsement_id) {
-                dups = Some(true);
+            endorsement_ids.push(endorsement_id);
+            if unique_ids.insert(endorsement_id.clone(), now).is_some() {
+                contains_duplicates = true;
             }
-            received_ids.insert(endorsement_id.clone(), Instant::now());
-
             // check endorsement signature if not already checked
             match self.checked_endorsements.entry(endorsement_id) {
                 hash_map::Entry::Occupied(mut occ) => {
-                    *occ.get_mut() = Instant::now();
+                    *occ.get_mut() = now;
                 }
                 hash_map::Entry::Vacant(vac) => {
                     // check signature
                     endorsement.verify_signature()?;
-                    vac.insert(Instant::now());
+                    vac.insert(now);
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             };
@@ -1156,21 +1147,21 @@ impl ProtocolWorker {
 
         // add to known endorsements for source node.
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_endorsements(received_ids, self.cfg.max_known_endorsements_size);
+            node_info.insert_known_endorsements(unique_ids, self.cfg.max_known_endorsements_size);
         }
 
-        let keys = new_endorsements.keys().copied().collect();
         if !new_endorsements.is_empty() {
             self.prune_checked_endorsements();
 
-            // Add to pool, propagate when received outside of a header.
+            // Add to pool, propagate if required
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
                 endorsements: new_endorsements,
                 propagate,
             })
             .await;
         }
-        Ok((keys, dups))
+
+        Ok((endorsement_ids, contains_duplicates))
     }
 
     /// Manages network event
@@ -1295,7 +1286,7 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
                 if self
-                    .note_endorsements_from_node(endorsements, &node, true, false)
+                    .note_endorsements_from_node(endorsements, &node, true)
                     .await
                     .is_err()
                 {
