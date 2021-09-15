@@ -31,6 +31,8 @@ async fn test_update_current_slot_cmd_notification() {
     cfg.t0 = 2000.into();
     cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
 
+    let timeout = 300;
+
     tools::consensus_pool_test(
         cfg.clone(),
         None,
@@ -41,21 +43,43 @@ async fn test_update_current_slot_cmd_notification() {
                     consensus_command_sender,
                     consensus_event_receiver| {
             let slot_notification_filter = |cmd| match cmd {
-                pool::PoolCommand::UpdateCurrentSlot(slot) => Some(slot),
+                pool::PoolCommand::UpdateCurrentSlot(slot) => Some((slot, UTime::now(0).unwrap())),
                 _ => None,
             };
 
             //wait for UpdateCurrentSlot pool command
-            let slot_cmd = pool_controller
+            if let Some((slot_cmd, rec_time)) = pool_controller
                 .wait_command(500.into(), slot_notification_filter)
-                .await;
-            assert_eq!(slot_cmd, Some(Slot::new(0, 0)));
+                .await
+            {
+                assert_eq!(slot_cmd, Slot::new(0, 0));
+                if rec_time > cfg.genesis_timestamp {
+                    assert!(rec_time.saturating_sub(cfg.genesis_timestamp) < UTime::from(timeout))
+                } else {
+                    assert!(cfg.genesis_timestamp.saturating_sub(rec_time) < UTime::from(timeout))
+                }
+            }
 
             //wait for next UpdateCurrentSlot pool command
-            let slot_cmd = pool_controller
-                .wait_command(2000.into(), slot_notification_filter)
-                .await;
-            assert_eq!(slot_cmd, Some(Slot::new(0, 1)));
+            if let Some((slot_cmd, rec_time)) = pool_controller
+                .wait_command(500.into(), slot_notification_filter)
+                .await
+            {
+                assert_eq!(slot_cmd, Slot::new(0, 1));
+                if rec_time > cfg.genesis_timestamp {
+                    assert!(
+                        rec_time.saturating_sub(cfg.genesis_timestamp.saturating_add(cfg.t0))
+                            < UTime::from(timeout)
+                    );
+                } else {
+                    assert!(
+                        cfg.genesis_timestamp
+                            .saturating_add(cfg.t0)
+                            .saturating_sub(rec_time)
+                            < UTime::from(timeout)
+                    );
+                }
+            }
             (
                 pool_controller,
                 protocol_controller,

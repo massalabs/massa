@@ -19,7 +19,7 @@ pub struct ConsensusConfig {
     pub end_timestamp: Option<UTime>,
     /// Number of threds
     pub thread_count: u8,
-    /// Time between the periods in the same slot.
+    /// Time between the periods in the same thread.
     pub t0: UTime,
     /// Private_key to sign genesis blocks.
     pub genesis_key: PrivateKey,
