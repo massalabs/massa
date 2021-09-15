@@ -324,14 +324,14 @@ impl ConsensusWorker {
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
         let now = UTime::now(self.clock_compensation)?;
-        let expected_slot = get_latest_block_slot_at_timestamp(
+        let observed_slot = get_latest_block_slot_at_timestamp(
             self.cfg.thread_count,
             self.cfg.t0,
             self.cfg.genesis_timestamp,
             now,
         )?;
 
-        if expected_slot <= self.previous_slot {
+        if observed_slot <= self.previous_slot {
             // reset timer for next slot
             next_slot_timer.set(sleep_until(
                 get_block_slot_timestamp(
@@ -345,18 +345,18 @@ impl ConsensusWorker {
             return Ok(());
         }
 
-        let expected_slot = expected_slot.unwrap_or(Slot::new(0, 0));
+        let observed_slot = observed_slot.unwrap(); // does not panic, checked above
 
         massa_trace!("consensus.consensus_worker.slot_tick", {
-            "slot": expected_slot
+            "slot": observed_slot
         });
-        let cur_cycle = expected_slot.get_cycle(self.cfg.periods_per_cycle);
+        let cur_cycle = observed_slot.get_cycle(self.cfg.periods_per_cycle);
 
-        if expected_slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
+        if observed_slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
             info!("Started cycle {}", cur_cycle);
         }
 
-        if expected_slot == Slot::new(1, 0) {
+        if observed_slot == Slot::new(1, 0) {
             // first block that can be created
             info!("Masa network has started ! 🎉")
         }
@@ -375,18 +375,13 @@ impl ConsensusWorker {
             let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
         }
 
-        // signal tick to pool
-        self.pool_command_sender
-            .update_current_slot(expected_slot)
-            .await?;
-
         // create blocks
-        if !self.cfg.disable_block_creation && expected_slot.period > 0 {
-            let mut cur_slot = self
-                .previous_slot
-                .unwrap_or(Slot::new(0, 0))
-                .get_next_slot(self.cfg.thread_count)?;
-            loop {
+        if !self.cfg.disable_block_creation && observed_slot.period > 0 {
+            let mut cur_slot = self.previous_slot.map_or_else(
+                || Ok(Slot::new(0, 0)),
+                |v| v.get_next_slot(self.cfg.thread_count),
+            )?;
+            while cur_slot <= observed_slot {
                 let block_draw = match self.pos.draw_block_producer(cur_slot) {
                     Ok(b_draw) => Some(b_draw),
                     Err(ConsensusError::PosCycleUnavailable(_)) => {
@@ -429,20 +424,21 @@ impl ConsensusWorker {
                         massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
                     }
                 }
-                if cur_slot == expected_slot {
-                    break;
-                } else {
-                    cur_slot = cur_slot.get_next_slot(self.cfg.thread_count)?;
-                }
+                cur_slot = cur_slot.get_next_slot(self.cfg.thread_count)?;
             }
         }
 
-        self.previous_slot = Some(expected_slot);
-        self.next_slot = expected_slot.get_next_slot(self.cfg.thread_count)?;
+        self.previous_slot = Some(observed_slot);
+        self.next_slot = observed_slot.get_next_slot(self.cfg.thread_count)?;
+
+        // signal tick to pool
+        self.pool_command_sender
+            .update_current_slot(observed_slot)
+            .await?;
 
         // signal tick to block graph
         self.block_db
-            .slot_tick(&mut self.pos, Some(expected_slot))?;
+            .slot_tick(&mut self.pos, Some(observed_slot))?;
 
         // take care of block db changes
         self.block_db_changed().await?;
