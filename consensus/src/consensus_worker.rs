@@ -26,7 +26,7 @@ use storage::StorageAccess;
 use time::UTime;
 use tokio::{
     sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
-    time::{sleep_until, Sleep},
+    time::{sleep, sleep_until, Sleep},
 };
 
 /// Commands that can be proccessed by consensus.
@@ -275,7 +275,12 @@ impl ConsensusWorker {
             )?
             .estimate_instant(self.clock_compensation)?,
         );
+
         tokio::pin!(next_slot_timer);
+
+        // set prune timer
+        let prune_timer = sleep(self.cfg.block_db_prune_timer.to_duration());
+        tokio::pin!(prune_timer);
 
         loop {
             massa_trace!("consensus.consensus_worker.run_loop.select", {});
@@ -292,10 +297,24 @@ impl ConsensusWorker {
                     self.slot_tick(&mut next_slot_timer).await?;
                 },
 
+                // prune timer
+                _ = &mut prune_timer=> {
+                    massa_trace!("consensus.consensus_worker.run_loop.prune_timer", {});
+                    // prune block db and send discarded final blocks to storage if present
+                    let discarded_final_blocks = self.block_db.prune()?;
+                    if let Some(storage_cmd) = &self.opt_storage_command_sender {
+                        storage_cmd.add_block_batch(discarded_final_blocks).await?;
+                    }
+
+                    // reset timer
+                    prune_timer.set(sleep( self.cfg.block_db_prune_timer.to_duration()))
+                }
+
                 // listen consensus commands
                 Some(cmd) = self.controller_command_rx.recv() => {
                     massa_trace!("consensus.consensus_worker.run_loop.consensus_command", {});
-                    self.process_consensus_command(cmd).await?},
+                    self.process_consensus_command(cmd).await?
+                },
 
                 // receive protocol controller events
                 evt = self.protocol_event_receiver.wait_event() =>{
@@ -1385,12 +1404,6 @@ impl ConsensusWorker {
         let timestamp = UTime::now(self.clock_compensation)?;
         for (_b_id, _b_slot) in new_stale_block_ids_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
-        }
-
-        // prune block db and send discarded final blocks to storage if present
-        let discarded_final_blocks = self.block_db.prune()?;
-        if let Some(storage_cmd) = &self.opt_storage_command_sender {
-            storage_cmd.add_block_batch(discarded_final_blocks).await?;
         }
 
         Ok(())

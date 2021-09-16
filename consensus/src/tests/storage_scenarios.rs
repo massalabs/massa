@@ -5,6 +5,7 @@ use models::Slot;
 use serial_test::serial;
 use std::collections::HashMap;
 use time::UTime;
+use tokio::time::sleep;
 
 //create 2 clique. Extend the first until the second is discarded.
 //verify the discarded block are in storage.
@@ -116,6 +117,14 @@ async fn test_storage() {
                 .await;
                 parentt1sn_hash = block_hash;
             }
+
+            // wait until consensus is pruned
+            sleep(
+                cfg.block_db_prune_timer
+                    .saturating_add(150.into())
+                    .to_duration(),
+            )
+            .await;
 
             assert!(!&storage_access.contains(fork_block_hash).await.unwrap());
             assert!(&storage_access.contains(genesis_hashes[0]).await.unwrap());
