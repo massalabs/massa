@@ -219,10 +219,9 @@ impl NodeWorker {
                                 massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedEndorsements(endorsements))).await;
                             }
-                            _ => {  // wrong message
-                                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Error", {});
-                                exit_reason = ConnectionClosureReason::Failed;
-                                break;
+                            _ => {
+                                // TODO: Write a more user-friendly warning / logout after several consecutive fails?
+                                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning", {});
                             },
                         }
                     },
