@@ -22,7 +22,11 @@ pub trait MassaPrivate {
     fn stop_node(&self) -> jsonrpc_core::Result<()>;
 
     #[rpc(name = "sign_message")]
-    fn sign_message(&self, _: Vec<u8>) -> jsonrpc_core::Result<(Signature, PublicKey)>;
+    fn sign_message(
+        &self,
+        _: PublicKey,
+        _: Vec<u8>,
+    ) -> jsonrpc_core::Result<(Signature, PublicKey)>;
 
     /// Add a new private key for the node to use to stake.
     #[rpc(name = "add_staking_keys")]
@@ -57,7 +61,11 @@ impl MassaPrivate for API {
         todo!()
     }
 
-    fn sign_message(&self, _: Vec<u8>) -> jsonrpc_core::Result<(Signature, PublicKey)> {
+    fn sign_message(
+        &self,
+        _: PublicKey,
+        _: Vec<u8>,
+    ) -> jsonrpc_core::Result<(Signature, PublicKey)> {
         todo!()
     }
 

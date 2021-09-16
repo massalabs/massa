@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use api_dto::{BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo};
+use api_dto::{BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo};
 use jsonrpc_core::IoHandler;
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::ServerBuilder;
@@ -31,7 +31,7 @@ pub trait MassaPublic {
 
     /// Returns the active stakers and their roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> jsonrpc_core::Result<AddressHashMap<u64>>;
+    fn get_stakers(&self) -> jsonrpc_core::Result<AddressHashMap<RollsInfo>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]
@@ -74,7 +74,7 @@ impl MassaPublic for API {
         todo!()
     }
 
-    fn get_stakers(&self) -> jsonrpc_core::Result<AddressHashMap<u64>> {
+    fn get_stakers(&self) -> jsonrpc_core::Result<AddressHashMap<RollsInfo>> {
         todo!()
     }
 
