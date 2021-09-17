@@ -6,9 +6,9 @@
 extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
-// use api_eth::{EthRpc, API as APIEth};
+use api_eth::{EthRpc, API as APIEth};
 use api_private::{MassaPrivate, API as APIPrivate};
-// use api_public::{MassaPublic, API as APIPublic};
+use api_public::{MassaPublic, API as APIPublic};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
     network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},
@@ -200,7 +200,11 @@ async fn run(cfg: node_config::Config, mut api: API) {
             network_manager,
         ) = launch(cfg.clone()).await;
         // load command senders into API
-        api.set_network_command_sender(network_command_sender.clone());
+        api.set_command_senders(
+            Some(pool_command_sender.clone()),
+            Some(consensus_command_sender.clone()),
+            Some(network_command_sender.clone()),
+        );
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
         tokio::pin!(stop_signal);
@@ -653,15 +657,13 @@ async fn main() {
         .init()
         .unwrap();
 
-    // TODO: spawn other APIs
-    // thread::spawn(|| api_eth::serve("127.0.0.1:33035"));
-    // thread::spawn(|| api_public::serve("127.0.0.1:33032"));
-
-    let api_private = APIPrivate {
-        url: "127.0.0.1:33035".parse().unwrap(),
-        network_command_sender: None,
-    };
+    // spawn apis
+    let api_eth = APIEth::from_url("127.0.0.1:33032");
+    let api_private = APIPrivate::from_url("127.0.0.1:33034");
+    let api_public = APIPublic::from_url("127.0.0.1:33035");
+    api_eth.serve_eth_rpc();
     api_private.serve_massa_private();
+    api_public.serve_massa_public();
 
     run(cfg, api_private).await
 }

@@ -2247,6 +2247,8 @@ name = "rpc-server"
 version = "0.1.0"
 dependencies = [
  "communication",
+ "consensus",
+ "pool",
 ]
 
 [[package]]
