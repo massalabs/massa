@@ -10,7 +10,7 @@ jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
 # custom modules
-communication = {path = "../communication"}
 crypto = {path = "../crypto"}
 api-dto = { path = "../api-dto" }
 models = {path = "../models"}
+rpc-server = {path = "../rpc-server"}

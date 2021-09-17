@@ -12,4 +12,5 @@ jsonrpc-http-server = "18.0.0"
 # custom modules
 api-dto = { path = "../api-dto" }
 models = {path = "../models"}
+rpc-server = {path = "../rpc-server"}
 time = {path = "../time"}

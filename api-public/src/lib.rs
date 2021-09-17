@@ -9,11 +9,16 @@ use models::block::BlockId;
 use models::clique::Clique;
 use models::endorsement::EndorsementId;
 use models::operation::{Operation, OperationId};
+use rpc_server::rpc_server;
+pub use rpc_server::API;
+use std::thread;
 use time::UTime;
 
 /// Public Massa JSON-RPC endpoints
 #[rpc(server)]
 pub trait MassaPublic {
+    fn serve_massa_public(&self);
+
     /////////////////////////////////
     // Explorer (aggregated stats) //
     /////////////////////////////////
@@ -63,9 +68,11 @@ pub trait MassaPublic {
     fn send_operations(&self, _: Vec<Operation>) -> jsonrpc_core::Result<Vec<OperationId>>;
 }
 
-pub struct API;
-
 impl MassaPublic for API {
+    fn serve_massa_public(&self) {
+        rpc_server!(self.clone());
+    }
+
     fn get_status(&self) -> jsonrpc_core::Result<NodeStatus> {
         todo!()
     }
@@ -104,15 +111,4 @@ impl MassaPublic for API {
     fn send_operations(&self, _: Vec<Operation>) -> jsonrpc_core::Result<Vec<OperationId>> {
         todo!()
     }
-}
-
-pub fn serve(url: &str) {
-    let mut io = IoHandler::new();
-    io.extend_with(API.to_delegate());
-
-    let server = ServerBuilder::new(io)
-        .start_http(&url.parse().unwrap())
-        .expect("Unable to start RPC server");
-
-    server.wait();
 }

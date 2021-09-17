@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use atty::Stream;
 // use interact_prompt::Settings;
 use jsonrpc_core_client::transports::http;

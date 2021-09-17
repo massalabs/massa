@@ -4,10 +4,11 @@
 #![feature(destructuring_assignment)]
 
 extern crate logging;
-mod node_config;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
-use api_private::API; // FIXME: Should be move in a new rpc-server crate
+// use api_eth::{EthRpc, API as APIEth};
+use api_private::{MassaPrivate, API as APIPrivate};
+// use api_public::{MassaPublic, API as APIPublic};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
     network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},
@@ -21,10 +22,12 @@ use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::{init_serialization_context, Address, SerializationContext};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
-use std::thread;
+use rpc_server::API;
 use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
+
+mod node_config;
 
 async fn launch(
     cfg: node_config::Config,
@@ -650,15 +653,15 @@ async fn main() {
         .init()
         .unwrap();
 
-    // spawn APIs
-    thread::spawn(|| api_eth::serve("127.0.0.1:33035"));
-    thread::spawn(|| api_public::serve("127.0.0.1:33032"));
+    // TODO: spawn other APIs
+    // thread::spawn(|| api_eth::serve("127.0.0.1:33035"));
+    // thread::spawn(|| api_public::serve("127.0.0.1:33032"));
 
-    let api = API {
+    let api_private = APIPrivate {
         url: "127.0.0.1:33035".parse().unwrap(),
         network_command_sender: None,
     };
-    api.serve();
+    api_private.serve_massa_private();
 
-    run(cfg, api).await
+    run(cfg, api_private).await
 }

@@ -4,10 +4,15 @@ use jsonrpc_core::IoHandler;
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::ServerBuilder;
 use models::amount::Amount;
+use rpc_server::rpc_server;
+pub use rpc_server::API;
+use std::thread;
 
 /// Public Ethereum JSON-RPC endpoints (in intend to be compatible with EthRpc.io)
 #[rpc(server)]
 pub trait EthRpc {
+    fn serve_eth_rpc(&self);
+
     /// Will be implemented later, when smart contracts are added.
     #[rpc(name = "Call")]
     fn call(&self) -> jsonrpc_core::Result<()>;
@@ -22,9 +27,11 @@ pub trait EthRpc {
     fn hello_world(&self) -> jsonrpc_core::Result<String>;
 }
 
-pub struct API;
-
 impl EthRpc for API {
+    fn serve_eth_rpc(&self) {
+        rpc_server!(self.clone());
+    }
+
     fn call(&self) -> jsonrpc_core::Result<()> {
         todo!()
     }
@@ -40,15 +47,4 @@ impl EthRpc for API {
     fn hello_world(&self) -> jsonrpc_core::Result<String> {
         Ok(String::from("Hello, World!"))
     }
-}
-
-pub fn serve(url: &str) {
-    let mut io = IoHandler::new();
-    io.extend_with(API.to_delegate());
-
-    let server = ServerBuilder::new(io)
-        .start_http(&url.parse().unwrap())
-        .expect("Unable to start RPC server");
-
-    server.wait();
 }

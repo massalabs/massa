@@ -72,6 +72,7 @@ dependencies = [
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "models",
+ "rpc-server",
 ]
 
 [[package]]
@@ -79,12 +80,12 @@ name = "api-private"
 version = "0.1.0"
 dependencies = [
  "api-dto",
- "communication",
  "crypto",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "models",
+ "rpc-server",
 ]
 
 [[package]]
@@ -96,6 +97,7 @@ dependencies = [
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "models",
+ "rpc-server",
  "time 0.1.0",
 ]
 
@@ -317,18 +319,6 @@ dependencies = [
  "textwrap",
  "unicode-width",
  "vec_map",
-]
-
-[[package]]
-name = "client"
-version = "0.1.0"
-dependencies = [
- "atty",
- "interact_prompt",
- "jsonrpc-core-client",
- "paw",
- "structopt",
- "tokio",
 ]
 
 [[package]]
@@ -1293,6 +1283,7 @@ dependencies = [
  "models",
  "pool",
  "pretty_assertions",
+ "rpc-server",
  "serde 1.0.130",
  "serde_json",
  "serial_test",
@@ -2237,6 +2228,25 @@ dependencies = [
  "base64 0.10.1",
  "bitflags",
  "serde 1.0.130",
+]
+
+[[package]]
+name = "rpc-client"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "interact_prompt",
+ "jsonrpc-core-client",
+ "paw",
+ "structopt",
+ "tokio",
+]
+
+[[package]]
+name = "rpc-server"
+version = "0.1.0"
+dependencies = [
+ "communication",
 ]
 
 [[package]]
