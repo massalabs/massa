@@ -6,7 +6,7 @@ use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
 use crate::protocol::ProtocolPoolEvent;
-use models::{Amount, OperationHashMap};
+use models::{self, Address, Amount, OperationHashMap, Slot};
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
@@ -264,6 +264,84 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_avbout
                     }
                     _ => panic!("Unexpected or no network command."),
                 };
+            }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_does_not_propagates_operations_when_receiving_those_inside_a_block() {
+    let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    mut protocol_pool_event_receiver| {
+            // Create 2 nodes.
+            let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
+
+            let creator_node = nodes.pop().expect("Failed to get node info.");
+
+            // 1. Create an operation
+            let operation = tools::create_operation_with_keys(&creator_node.private_key);
+
+            let address = Address::from_public_key(&creator_node.id.0).unwrap();
+            let serialization_context = models::get_serialization_context();
+            let thread = address.get_thread(serialization_context.parent_count);
+
+            // 2. Create a block coming from node creator_node, and including the operation.
+            let block = tools::create_block_with_operations(
+                &creator_node.private_key,
+                &creator_node.id.0,
+                Slot::new(1, thread),
+                vec![operation.clone()],
+            );
+
+            // 4. Send block to protocol.
+            network_controller
+                .send_block(creator_node.id, block.clone())
+                .await;
+
+            // 5. Check that the operation included in the block is not propagated.
+            match tools::wait_protocol_pool_event(
+                &mut protocol_pool_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                None => panic!("Protocol did not send operations to pool."),
+                Some(ProtocolPoolEvent::ReceivedOperations {
+                    propagate,
+                    operations,
+                }) => {
+                    let expected_id = operation.verify_integrity().unwrap();
+                    assert_eq!(propagate, false);
+                    assert_eq!(
+                        operations
+                            .get(&expected_id)
+                            .unwrap()
+                            .verify_integrity()
+                            .unwrap(),
+                        expected_id
+                    );
+                    assert_eq!(operations.len(), 1);
+                }
+                Some(_) => panic!("Unexpected protocol pool event."),
             }
             (
                 network_controller,
