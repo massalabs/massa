@@ -231,14 +231,9 @@ impl DeserializeCompact for OperationContent {
 }
 
 impl Operation {
-    /// Verify the signature and integrity of the operation and computes operation ID
+    /// Verifies the signature and integrity of the operation and computes operation ID
     pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
-        let content_hash = Hash::hash(&self.content.to_bytes_compact()?);
-        verify_signature(
-            &content_hash,
-            &self.signature,
-            &self.content.sender_public_key,
-        )?;
+        self.verify_signature()?;
         self.get_operation_id()
     }
 

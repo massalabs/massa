@@ -984,7 +984,18 @@ impl ProtocolWorker {
 
         let serialization_context = models::with_serialization_context(|context| context.clone());
 
+        // Perform general checks on the operations, note them into caches and send them to pool
+        // but do not propagate as they are already propagating within a block
+        let (seen_ops, received_operations_ids, has_duplicate_operations) = self
+            .note_operations_from_node(block.operations.clone(), source_node_id, false)
+            .await?;
+
         // Perform checks on the operations that relate to the block in which they have been included.
+        // We perform those checks AFTER note_operations_from_node to allow otherwise valid operations to be noted
+        if has_duplicate_operations {
+            // Block contains duplicate operations.
+            return Ok(None);
+        }
         for op in block.operations.iter() {
             // check validity period
             if !(op
@@ -1015,17 +1026,6 @@ impl ProtocolWorker {
             }
         }
 
-        // Perform general checks on the operations,
-        // and do not propagate them.
-        let (seen_ops, received_operations_ids, has_duplicate_operations) = self
-            .note_operations_from_node(block.operations.clone(), source_node_id, false)
-            .await?;
-
-        // Block contains duplicate operations.
-        if has_duplicate_operations {
-            return Ok(None);
-        }
-
         // check root hash
         {
             let concat_bytes = seen_ops
@@ -1048,7 +1048,7 @@ impl ProtocolWorker {
     /// Does not ban if the operation is invalid.
     /// Returns :
     /// - a list of seen operation ids, for use in checking the root hash of the block.
-    /// - a map of seen operations for use in consensus(for what? TODO: #235).
+    /// - a map of seen operations with indices and validity periods to avoid recomputing them later
     /// - a boolean indicating whether duplicate operations were noted.
     async fn note_operations_from_node(
         &mut self,
@@ -1057,6 +1057,7 @@ impl ProtocolWorker {
         propagate: bool,
     ) -> Result<(Vec<OperationId>, OperationHashMap<(usize, u64)>, bool), CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
+        let now = Instant::now();
         let length = operations.len();
         let mut has_duplicate_operations = false;
         let mut seen_ops = vec![];
@@ -1073,7 +1074,7 @@ impl ProtocolWorker {
             let was_present =
                 received_ids.insert(operation_id.clone(), (idx, operation.content.expire_period));
 
-            // Node sent redundant operations in this batch.
+            // There are duplicate operations in this batch.
             if was_present.is_some() {
                 has_duplicate_operations = true;
             }
@@ -1081,12 +1082,12 @@ impl ProtocolWorker {
             // Check operation signature only if not already checked.
             match self.checked_operations.entry(operation_id) {
                 hash_map::Entry::Occupied(mut occ) => {
-                    *occ.get_mut() = Instant::now();
+                    *occ.get_mut() = now;
                 }
                 hash_map::Entry::Vacant(vac) => {
                     // check signature
                     operation.verify_signature()?;
-                    vac.insert(Instant::now());
+                    vac.insert(now);
                     new_operations.insert(operation_id, operation);
                 }
             };
@@ -1094,7 +1095,6 @@ impl ProtocolWorker {
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            let now = Instant::now();
             node_info.insert_known_ops(
                 received_ids
                     .iter()
@@ -1111,9 +1111,10 @@ impl ProtocolWorker {
                 propagate,
             })
             .await;
-        }
 
-        self.prune_checked_operations();
+            // prune checked operations cache
+            self.prune_checked_operations();
+        }
 
         Ok((seen_ops, received_ids, has_duplicate_operations))
     }
