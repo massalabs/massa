@@ -322,7 +322,7 @@ impl NetworkWorker {
                     }
 
                     // notify tick to peer db
-                    self.peer_info_db.tick()?;
+                    self.peer_info_db.update()?;
                 }
 
                 // wait for a handshake future to complete
