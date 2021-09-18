@@ -287,7 +287,9 @@ impl PeerInfoDatabase {
         })
     }
 
-    pub fn tick(&mut self) -> Result<(), CommunicationError> {
+    /// Refreshes the peer list. Should be called at regular intervals.
+    /// Performs multiple cleanup tasks e.g. remove old banned peers
+    pub fn update(&mut self) -> Result<(), CommunicationError> {
         cleanup_peers(
             &self.cfg,
             &mut self.peers,
