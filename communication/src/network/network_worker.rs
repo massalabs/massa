@@ -291,27 +291,6 @@ impl NetworkWorker {
         let mut wakeup_interval = tokio::time::interval(self.cfg.wakeup_interval.to_duration());
 
         loop {
-            {
-                // try to connect to candidate IPs
-                let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips()?;
-                for ip in candidate_ips {
-                    debug!("starting outgoing connection attempt towards ip={:?}", ip);
-                    massa_trace!("out_connection_attempt_start", { "ip": ip });
-                    self.peer_info_db.new_out_connection_attempt(&ip)?;
-                    let mut connector = self
-                        .establisher
-                        .get_connector(self.cfg.connect_timeout)
-                        .await?;
-                    let addr = SocketAddr::new(ip, self.cfg.protocol_port);
-                    out_connecting_futures.push(async move {
-                        match connector.connect(addr).await {
-                            Ok((reader, writer)) => (addr.ip(), Ok((reader, writer))),
-                            Err(e) => (addr.ip(), Err(e)),
-                        }
-                    });
-                }
-            }
-
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
@@ -322,7 +301,29 @@ impl NetworkWorker {
                     },
 
                 // wake up interval
-                _ = wakeup_interval.tick() => { self.peer_info_db.tick()?; }
+                _ = wakeup_interval.tick() => {
+                    // try to connect to candidate IPs
+                    let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips()?;
+                    for ip in candidate_ips {
+                        debug!("starting outgoing connection attempt towards ip={:?}", ip);
+                        massa_trace!("out_connection_attempt_start", { "ip": ip });
+                        self.peer_info_db.new_out_connection_attempt(&ip)?;
+                        let mut connector = self
+                            .establisher
+                            .get_connector(self.cfg.connect_timeout)
+                            .await?;
+                        let addr = SocketAddr::new(ip, self.cfg.protocol_port);
+                        out_connecting_futures.push(async move {
+                            match connector.connect(addr).await {
+                                Ok((reader, writer)) => (addr.ip(), Ok((reader, writer))),
+                                Err(e) => (addr.ip(), Err(e)),
+                            }
+                        });
+                    }
+
+                    // notify tick to peer db
+                    self.peer_info_db.update()?;
+                }
 
                 // wait for a handshake future to complete
                 Some(res) = self.handshake_futures.next() => {
