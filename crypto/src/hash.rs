@@ -43,7 +43,7 @@ impl Hash {
     /// let serialized: String = hash.to_bs58_check();
     /// ```
     pub fn to_bs58_check(&self) -> String {
-        bs58::encode(self.to_bytes()).with_check().into_string()
+        bs58::encode(self.as_bytes()).with_check().into_string()
     }
 
     /// Serialize a Hash as bytes.
@@ -56,6 +56,10 @@ impl Hash {
     /// ```
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
         self.0.clone()
+    }
+
+    pub fn as_bytes(&self) -> &[u8; HASH_SIZE_BYTES] {
+        &self.0
     }
 
     /// Convert into bytes.
