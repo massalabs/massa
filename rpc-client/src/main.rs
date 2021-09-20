@@ -1,75 +1,68 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::rpc::RpcClient;
 use atty::Stream;
-// use interact_prompt::Settings;
-use jsonrpc_core_client::transports::http;
-use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-use std::net::IpAddr;
+use cmds::Command;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
-// TODO: This crate should at some point be renamed `client`, `massa` or `massa-client` and replace the previous one!
-
-// TODO: Did we crate 2 RpcClient structs? (to separate public/private calls in impl)
-struct RpcClient(TypedClient);
-
-impl From<RpcChannel> for RpcClient {
-    fn from(channel: RpcChannel) -> Self {
-        RpcClient(channel.into())
-    }
-}
-
-impl RpcClient {
-    // TODO: This is for test purpose only ond should be removed
-    // We should here implement all of our desired API calls
-    async fn hello_world(&self) -> RpcResult<String> {
-        self.0.call_method("HelloWorld", "String", ()).await
-    }
-
-    // End-to-end example with `unban` command:
-    async fn unban(&self, ip: IpAddr) -> RpcResult<()> {
-        self.0.call_method("unban", "String", ip).await
-    }
-}
+mod cmds;
+mod rpc;
 
 #[derive(StructOpt)]
 struct Args {
-    /// Port to listen on.
+    /// Port to listen on (Massa public API).
     #[structopt(short = "p", long = "port", env = "PORT", default_value = "33035")]
     port: u16,
+    /// Port to listen on (Massa private API).
+    #[structopt(
+        short = "pp",
+        long = "private-port",
+        env = "PRIVATE_PORT",
+        default_value = "33034"
+    )]
+    _private_port: u16,
     /// Address to listen on.
     #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
     address: String,
-    // TODO:
-    // - command: Option<Enum>, if it's None -> go to interactive mode
-    // - config: file path
-    // - ?
-}
-
-enum Command {
-    HelloWorld,
-    Unban,
-    // TODO: write the full list of command
+    /// Command that client would execute (non-interactive mode)
+    #[structopt(short = "cmd", long = "command", default_value = "InteractiveMode")]
+    command: Command,
+    /// Optional command parameter (as a JSON parsable string)
+    #[structopt(short = "p", long = "parameters", default_value = "{}")]
+    parameters: String,
+    /// Path of config file.
+    #[structopt(
+        short = "cfg",
+        long = "config",
+        parse(from_os_str),
+        default_value = "config/config.toml"
+    )]
+    _config: PathBuf,
+    // TODO: do we want to add more CLI args?!
 }
 
 #[paw::main]
 fn main(args: Args) {
-    if !atty::is(Stream::Stdout) {
-        // non-interactive mode
-    } else {
-        // TODO: fancy ASCII art that welcome user :)
-        // TODO: interact_prompt::direct(Settings::default(), ()).unwrap();
-    }
-
-    // TODO: this code snippet should be part of a `Command.run()` trait?
-    // Commands could also not be APIs calls (like Wallet ones)
-    let url = format!("http://{}:{}", args.address, args.port);
-    let res = tokio::runtime::Builder::new_multi_thread()
+    // `#[tokio::main]` macro expanded!
+    tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
         .block_on(async {
-            let client = http::connect::<RpcClient>(&url).await.unwrap();
-            client.hello_world().await.unwrap()
+            // TODO: We should handle 2 different ports
+            let url = format!("http://{}:{}", args.address, args.port);
+            let client = RpcClient::from_url(&url).await;
+            // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
+            if atty::is(Stream::Stdout) && args.command == Command::InteractiveMode {
+                //////////////////////
+                // Interactive mode //
+                //////////////////////
+            } else {
+                //////////////////////////
+                // Non-Interactive mode //
+                //////////////////////////
+                println!("{}", args.command.run(client, &args.parameters).await);
+            }
         });
-    println!("{}", res); // TODO: serialize output to JSON with serde in non-interactive mode
 }
