@@ -658,13 +658,15 @@ async fn main() {
         .init()
         .unwrap();
 
-    // spawn apis
-    let api_eth = APIEth::from_url("127.0.0.1:33032");
+    // spawn APIs
     let api_private = APIPrivate::from_url("127.0.0.1:33034");
-    let api_public = APIPublic::from_url("127.0.0.1:33035");
-    api_eth.serve_eth_rpc();
     api_private.serve_massa_private();
+
+    let api_public = APIPublic::from_url("127.0.0.1:33035");
     api_public.serve_massa_public();
+
+    let api_eth = APIEth::from_url("127.0.0.1:33036");
+    api_eth.serve_eth_rpc();
 
     run(cfg, vec![api_eth, api_private, api_public]).await
 }
