@@ -44,6 +44,7 @@ version = "DEVE.0.0"
     roll_price = "100"
     #stats
     stats_timespan = 60000
+    block_db_prune_interval = 1000
 
 [protocol]
     message_timeout = 5000
