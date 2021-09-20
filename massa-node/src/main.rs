@@ -182,8 +182,7 @@ async fn launch(
 }
 
 // FIXME: IDEA identify it unreachable code?
-// TODO: should take a Vec<API>
-async fn run(cfg: node_config::Config, mut api: API) {
+async fn run(cfg: node_config::Config, mut apis: Vec<API>) {
     loop {
         let (
             pool_command_sender,
@@ -200,11 +199,13 @@ async fn run(cfg: node_config::Config, mut api: API) {
             network_manager,
         ) = launch(cfg.clone()).await;
         // load command senders into API
-        api.set_command_senders(
-            Some(pool_command_sender.clone()),
-            Some(consensus_command_sender.clone()),
-            Some(network_command_sender.clone()),
-        );
+        for api in &mut apis {
+            api.set_command_senders(
+                Some(pool_command_sender.clone()),
+                Some(consensus_command_sender.clone()),
+                Some(network_command_sender.clone()),
+            );
+        }
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
         tokio::pin!(stop_signal);
@@ -665,5 +666,5 @@ async fn main() {
     api_private.serve_massa_private();
     api_public.serve_massa_public();
 
-    run(cfg, api_private).await
+    run(cfg, vec![api_eth, api_private, api_public]).await
 }
