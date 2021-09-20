@@ -69,7 +69,7 @@ pub struct ConsensusConfig {
     // max event send wait
     pub max_send_wait: UTime,
     pub endorsement_count: u32,
-    pub block_db_prune_timer: UTime,
+    pub block_db_prune_interval: UTime,
 
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.

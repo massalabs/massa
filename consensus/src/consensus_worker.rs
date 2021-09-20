@@ -279,7 +279,7 @@ impl ConsensusWorker {
         tokio::pin!(next_slot_timer);
 
         // set prune timer
-        let prune_timer = sleep(self.cfg.block_db_prune_timer.to_duration());
+        let prune_timer = sleep(self.cfg.block_db_prune_interval.to_duration());
         tokio::pin!(prune_timer);
 
         loop {
@@ -307,7 +307,7 @@ impl ConsensusWorker {
                     }
 
                     // reset timer
-                    prune_timer.set(sleep( self.cfg.block_db_prune_timer.to_duration()))
+                    prune_timer.set(sleep( self.cfg.block_db_prune_interval.to_duration()))
                 }
 
                 // listen consensus commands

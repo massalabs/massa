@@ -4633,7 +4633,7 @@ mod tests {
             end_timestamp: None,
             max_send_wait: 500.into(),
             endorsement_count: 8,
-            block_db_prune_timer: 1000.into(),
+            block_db_prune_interval: 1000.into(),
         }
     }
 }

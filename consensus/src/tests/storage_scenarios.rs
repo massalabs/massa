@@ -120,7 +120,7 @@ async fn test_storage() {
 
             // wait until consensus is pruned
             sleep(
-                cfg.block_db_prune_timer
+                cfg.block_db_prune_interval
                     .saturating_add(150.into())
                     .to_duration(),
             )
