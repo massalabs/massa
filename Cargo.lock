@@ -56,6 +56,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "api-dto"
+version = "0.1.0"
+dependencies = [
+ "models",
+ "serde 1.0.130",
+ "time 0.1.0",
+]
+
+[[package]]
+name = "api-eth"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "jsonrpc-http-server",
+ "models",
+ "rpc-server",
+]
+
+[[package]]
+name = "api-private"
+version = "0.1.0"
+dependencies = [
+ "api-dto",
+ "crypto",
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "jsonrpc-http-server",
+ "models",
+ "rpc-server",
+]
+
+[[package]]
+name = "api-public"
+version = "0.1.0"
+dependencies = [
+ "api-dto",
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "jsonrpc-http-server",
+ "models",
+ "rpc-server",
+ "time 0.1.0",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -870,23 +916,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jsonrpc-api"
-version = "0.1.0"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-dto",
- "jsonrpc-http-server",
-]
-
-[[package]]
-name = "jsonrpc-client"
-version = "0.1.0"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-dto",
-]
-
-[[package]]
 name = "jsonrpc-core"
 version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -911,19 +940,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "jsonrpc-dto"
-version = "0.1.0"
-dependencies = [
- "crypto",
- "futures",
- "jsonrpc-core",
- "jsonrpc-derive",
- "models",
- "serde 1.0.130",
- "time 0.1.0",
 ]
 
 [[package]]
@@ -1052,6 +1068,9 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "api",
+ "api-eth",
+ "api-private",
+ "api-public",
  "bootstrap",
  "communication",
  "config",
@@ -1062,6 +1081,7 @@ dependencies = [
  "models",
  "pool",
  "pretty_assertions",
+ "rpc-server",
  "serde 1.0.130",
  "serde_json",
  "serial_test",
@@ -1862,6 +1882,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rpc-server"
+version = "0.1.0"
+dependencies = [
+ "communication",
+ "consensus",
+ "pool",
+]
+
+[[package]]
 name = "rust-ini"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2087,9 +2116,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91e36fa7752016a6c4483706d634fd82c48860dd2df17a0cfaaebc714f23b2dd"
+checksum = "b69f9a4c9740d74c5baa3fd2e547f9525fa8088a8a958e0ca2409a514e33f5fa"
 dependencies = [
  "block-buffer",
  "cfg-if 1.0.0",
@@ -2115,9 +2144,9 @@ checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
 
 [[package]]
 name = "sled"
-version = "0.34.6"
+version = "0.34.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d0132f3e393bcb7390c60bb45769498cf4550bcb7a21d7f95c02b69f6362cdc"
+checksum = "7f96b4737c2ce5987354855aed3797279def4ebf734436c6aa4552cf8e169935"
 dependencies = [
  "crc32fast",
  "crossbeam-epoch",
@@ -2293,9 +2322,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.3.1"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "848a1e1181b9f6753b5e96a092749e29b11d19ede67dfbbd6c7dc7e0f49b5338"
+checksum = "5241dd6f21443a3606b432718b166d3cedc962fd4b8bea54a8bc7f514ebda986"
 dependencies = [
  "tinyvec_macros",
 ]
@@ -2415,9 +2444,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c42e6fa53307c8a17e4ccd4dc81cf5ec38db9209f59b222210375b54ee40d1e2"
+checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2426,9 +2455,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.19"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ca517f43f0fb96e0c3072ed5c275fe5eece87e8cb52f4a77b69226d3b1c9df8"
+checksum = "46125608c26121c81b0c6d693eab5a420e416da7e43c426d2e8f7df8da8a3acf"
 dependencies = [
  "lazy_static",
 ]
