@@ -3,7 +3,10 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use crypto::hash::Hash;
 use models::ledger::LedgerData;
-use models::{Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
+use models::{
+    amount::AMOUNT_DECIMAL_FACTOR, Address, Amount, BlockId, Endorsement, EndorsementContent,
+    SerializeCompact, Slot,
+};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -206,66 +209,48 @@ async fn test_reward_split() {
                 .await
                 .unwrap();
 
-            let expected_a =
-                10.0 + {
-                    if pubkey_a == slot_one_pub_key {
-                        7.0 / 18.0
-                    } else {
-                        0.0
+            let mult_factor = AMOUNT_DECIMAL_FACTOR;
+            let expected_a = Amount::from_raw(
+                10 * mult_factor
+                    + {
+                        if pubkey_a == slot_one_pub_key {
+                            7 * mult_factor / 18
+                        } else {
+                            0
+                        }
                     }
-                } + {
-                    if pubkey_a == slot_two_pub_key {
-                        8.0 / 18.0
-                    } else {
-                        0.0
-                    }
-                };
+                    + {
+                        if pubkey_a == slot_two_pub_key {
+                            8 * mult_factor / 18
+                        } else {
+                            0
+                        }
+                    },
+            );
 
-            let expected_b =
-                10.0 + {
-                    if pubkey_b == slot_one_pub_key {
-                        7.0 / 18.0
-                    } else {
-                        0.0
+            let expected_b = Amount::from_raw(
+                10 * mult_factor
+                    + {
+                        if pubkey_b == slot_one_pub_key {
+                            7 * mult_factor / 18
+                        } else {
+                            0
+                        }
                     }
-                } + {
-                    if pubkey_b == slot_two_pub_key {
-                        8.0 / 18.0
-                    } else {
-                        0.0
-                    }
-                };
+                    + {
+                        if pubkey_b == slot_two_pub_key {
+                            8 * mult_factor / 18
+                        } else {
+                            0
+                        }
+                    },
+            );
 
             let state_a = addresses_state.get(&address_a).unwrap();
-            let expected_a_str: String = expected_a
-                .to_string()
-                .chars()
-                .into_iter()
-                .take(12)
-                .collect();
-            assert!(
-                state_a
-                    .candidate_ledger_data
-                    .balance
-                    .abs(Amount::from_str(&expected_a_str).unwrap())
-                    <= Amount::from_raw(1),
-            );
+            assert_eq!(state_a.candidate_ledger_data.balance, expected_a);
 
             let state_b = addresses_state.get(&address_b).unwrap();
-
-            let expected_b_str: String = expected_b
-                .to_string()
-                .chars()
-                .into_iter()
-                .take(12)
-                .collect();
-            assert!(
-                state_b
-                    .candidate_ledger_data
-                    .balance
-                    .abs(Amount::from_str(&expected_b_str).unwrap())
-                    <= Amount::from_raw(1),
-            );
+            assert_eq!(state_b.candidate_ledger_data.balance, expected_b);
 
             (
                 protocol_controller,
