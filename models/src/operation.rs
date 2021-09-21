@@ -2,7 +2,7 @@
 
 use crate::{
     address::AddressHashSet,
-    hhasher::{HHashMap, HHashMap2, HHashSet},
+    hhasher::{HHashMap, HHashMap2, HHashSet, MassaHashable},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -38,6 +38,19 @@ impl FromStr for OperationId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(OperationId(Hash::from_str(s)?))
+    }
+}
+
+impl Default for OperationId {
+    fn default() -> Self {
+        OperationId::from_str("Default OperationId.")
+            .expect("Failed to create a default operation id.")
+    }
+}
+
+impl MassaHashable for OperationId {
+    fn can_be_hashed(&self) -> bool {
+        true
     }
 }
 
