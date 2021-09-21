@@ -42,13 +42,15 @@ impl FromStr for OperationId {
 }
 
 impl Default for OperationId {
+    /// Only useful to pass type check related to MassaHashable.
     fn default() -> Self {
-        OperationId::from_str("Default OperationId.")
-            .expect("Failed to create a default operation id.")
+        panic!("Default should never be used on OperationId.")
     }
 }
 
 impl MassaHashable for OperationId {
+    /// OperationId wraps a hash,
+    /// therefore is safe to be used in context of hashing.
     fn can_be_hashed(&self) -> bool {
         true
     }

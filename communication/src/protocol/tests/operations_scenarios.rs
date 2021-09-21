@@ -6,7 +6,7 @@ use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
 use crate::protocol::ProtocolPoolEvent;
-use models::{self, Address, Amount, OperationHashMap, Slot};
+use models::{self, Address, Amount, OperationHashMap2, Slot};
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
@@ -159,7 +159,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = OperationHashMap::default();
+            let mut ops = OperationHashMap2::default();
             ops.insert(expected_operation_id.clone(), operation);
             protocol_command_sender
                 .propagate_operations(ops)
@@ -238,7 +238,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_avbout
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = OperationHashMap::default();
+            let mut ops = OperationHashMap2::default();
             ops.insert(expected_operation_id.clone(), operation);
 
             // send endorsement to protocol

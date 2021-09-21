@@ -2,6 +2,7 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::hash::{BuildHasherDefault, Hasher};
+use std::marker::PhantomData;
 
 pub struct HHasher(u64);
 
@@ -30,25 +31,26 @@ impl Hasher for HHasher {
 }
 
 pub trait MassaHashable {
+    /// Implement this and return true,
+    /// only if you are sure that the type
+    /// can be safely used in the context of hashing.
     fn can_be_hashed(&self) -> bool;
 }
 
 #[derive(Default)]
 pub struct HHasher2<T: MassaHashable + Default> {
-    source: T,
+    source: PhantomData<T>,
     hash: u64,
 }
 
 impl<T: MassaHashable + Default> Hasher for HHasher2<T> {
     #[inline]
     fn finish(&self) -> u64 {
-        assert!(self.source.can_be_hashed());
         self.hash
     }
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        assert!(self.source.can_be_hashed());
         // assumes bytes.len() is at least 8, otherwise panics
         self.hash = u64::from_ne_bytes(
             bytes[bytes.len().checked_sub(8).unwrap()..]
