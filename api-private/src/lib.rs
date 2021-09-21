@@ -1,8 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
-
+#![feature(async_closure)]
 use api_dto::AddressInfo;
 use crypto::signature::{PrivateKey, PublicKey, Signature};
-use jsonrpc_core::IoHandler;
+use error::PrivateApiError;
+use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{tokio, ServerBuilder};
 use models::address::{Address, AddressHashSet};
@@ -12,6 +13,8 @@ pub use rpc_server::API;
 use std::net::IpAddr;
 use std::thread;
 
+mod error;
+
 /// Private Massa-RPC "manager mode" endpoints
 #[rpc(server)]
 pub trait MassaPrivate {
@@ -20,39 +23,39 @@ pub trait MassaPrivate {
     /// Starts the node and waits for node to start.
     /// Signals if the node is already running.
     #[rpc(name = "start_node")]
-    fn start_node(&self) -> jsonrpc_core::Result<()>;
+    fn start_node(&self) -> Result<(), PrivateApiError>;
 
     /// Gracefully stop the node.
     #[rpc(name = "stop_node")]
-    fn stop_node(&self) -> jsonrpc_core::Result<()>;
+    fn stop_node(&self) -> Result<(), PrivateApiError>;
 
     #[rpc(name = "sign_message")]
     fn sign_message(
         &self,
         _: PublicKey,
         _: Vec<u8>,
-    ) -> jsonrpc_core::Result<(Signature, PublicKey)>;
+    ) -> Result<(Signature, PublicKey), PrivateApiError>;
 
     /// Add a new private key for the node to use to stake.
     #[rpc(name = "add_staking_keys")]
-    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> jsonrpc_core::Result<()>;
+    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>>;
 
     /// Remove an address used to stake.
     #[rpc(name = "remove_staking_keys")]
-    fn remove_staking_keys(&self, _: Vec<Address>) -> jsonrpc_core::Result<()>;
+    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<(), PrivateApiError>;
 
     /// Return hashset of staking addresses.
     #[rpc(name = "list_staking_keys")]
-    fn list_staking_keys(&self) -> jsonrpc_core::Result<AddressHashSet>;
+    fn list_staking_keys(&self) -> Result<AddressHashSet, PrivateApiError>;
 
     #[rpc(name = "ban")]
-    fn ban(&self, _: NodeId) -> jsonrpc_core::Result<()>;
+    fn ban(&self, _: NodeId) -> Result<(), PrivateApiError>;
 
     #[rpc(name = "unban")]
-    fn unban(&self, _: IpAddr) -> jsonrpc_core::Result<()>;
+    fn unban(&self, _: IpAddr) -> Result<(), PrivateApiError>;
 
     #[rpc(name = "get_addresses")]
-    fn get_addresses(&self, _: Vec<Address>) -> jsonrpc_core::Result<Vec<AddressInfo>>;
+    fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>, PrivateApiError>;
 }
 
 impl MassaPrivate for API {
@@ -60,11 +63,11 @@ impl MassaPrivate for API {
         rpc_server!(self.clone());
     }
 
-    fn start_node(&self) -> jsonrpc_core::Result<()> {
+    fn start_node(&self) -> Result<(), PrivateApiError> {
         todo!()
     }
 
-    fn stop_node(&self) -> jsonrpc_core::Result<()> {
+    fn stop_node(&self) -> Result<(), PrivateApiError> {
         todo!()
     }
 
@@ -72,27 +75,29 @@ impl MassaPrivate for API {
         &self,
         _: PublicKey,
         _: Vec<u8>,
-    ) -> jsonrpc_core::Result<(Signature, PublicKey)> {
+    ) -> Result<(Signature, PublicKey), PrivateApiError> {
         todo!()
     }
 
-    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> jsonrpc_core::Result<()> {
+    fn add_staking_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>> {
+        let cmd_sender = self.consensus_command_sender.clone().unwrap();
+        let x = async move || Ok(cmd_sender.register_staking_private_keys(keys).await?);
+        Box::pin(x())
+    }
+
+    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<(), PrivateApiError> {
         todo!()
     }
 
-    fn remove_staking_keys(&self, _: Vec<Address>) -> jsonrpc_core::Result<()> {
+    fn list_staking_keys(&self) -> Result<AddressHashSet, PrivateApiError> {
         todo!()
     }
 
-    fn list_staking_keys(&self) -> jsonrpc_core::Result<AddressHashSet> {
+    fn ban(&self, _: NodeId) -> Result<(), PrivateApiError> {
         todo!()
     }
 
-    fn ban(&self, _: NodeId) -> jsonrpc_core::Result<()> {
-        todo!()
-    }
-
-    fn unban(&self, ip: IpAddr) -> jsonrpc_core::Result<()> {
+    fn unban(&self, ip: IpAddr) -> Result<(), PrivateApiError> {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -108,7 +113,7 @@ impl MassaPrivate for API {
             })
     }
 
-    fn get_addresses(&self, _: Vec<Address>) -> jsonrpc_core::Result<Vec<AddressInfo>> {
+    fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>, PrivateApiError> {
         todo!()
     }
 }
