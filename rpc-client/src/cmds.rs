@@ -4,7 +4,6 @@ use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
-    HelloWorld, // REMOVE ME
     Unban,
     InteractiveMode,
 }
@@ -15,8 +14,8 @@ impl FromStr for Command {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             // TODO: could a macro automate that? like `strum_macros::EnumString`
-            "HelloWorld" => Ok(Command::HelloWorld),
             "Unban" => Ok(Command::Unban),
+            "InteractiveMode" => Ok(Command::InteractiveMode),
             _ => Err("Command not found!".parse().unwrap()),
         }
     }
@@ -30,18 +29,18 @@ impl fmt::Display for Command {
 
 // TODO: Commands could also not be APIs calls (like Wallet ones)
 impl Command {
-    pub(crate) async fn run(&self, client: RpcClient, parameters: &str) -> String {
+    // TODO: is Vec<String> -> String the best way to encode an User interaction in CLI?
+    pub(crate) async fn run(&self, client: RpcClient, parameters: Vec<String>) -> String {
         match self {
-            Command::HelloWorld => client.hello_world().await.unwrap(), // REMOVE ME
             // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
             Command::Unban => serde_json::to_string(
                 &client
-                    .unban(serde_json::from_str(parameters).unwrap())
+                    .unban(serde_json::from_str(&parameters[0]).unwrap())
                     .await
                     .unwrap(),
             )
             .unwrap(),
-            _ => panic!(),
+            _ => panic!(), // Should never happen so keep this panic!
         }
     }
 }

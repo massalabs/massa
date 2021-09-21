@@ -12,33 +12,28 @@ mod rpc;
 #[derive(StructOpt)]
 struct Args {
     /// Port to listen on (Massa public API).
-    #[structopt(short = "p", long = "port", env = "PORT", default_value = "33035")]
-    port: u16,
+    #[structopt(short = "p", long = "port", env = "PORT", default_value = "33034")]
+    port: u16, // TODO: do we rename it as public-port?
     /// Port to listen on (Massa private API).
-    #[structopt(
-        short = "pp",
-        long = "private-port",
-        env = "PRIVATE_PORT",
-        default_value = "33034"
-    )]
-    _private_port: u16,
+    #[structopt(long = "private-port", env = "PRIVATE_PORT", default_value = "33035")]
+    private_port: u16,
     /// Address to listen on.
     #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
     address: String,
     /// Command that client would execute (non-interactive mode)
-    #[structopt(short = "cmd", long = "command", default_value = "InteractiveMode")]
+    #[structopt(name = "COMMAND", default_value = "InteractiveMode")]
     command: Command,
     /// Optional command parameter (as a JSON parsable string)
-    #[structopt(short = "p", long = "parameters", default_value = "{}")]
-    parameters: String,
+    #[structopt(name = "PARAMETERS")]
+    parameters: Vec<String>,
     /// Path of config file.
     #[structopt(
-        short = "cfg",
+        short = "c",
         long = "config",
         parse(from_os_str),
         default_value = "config/config.toml"
     )]
-    _config: PathBuf,
+    config: PathBuf,
     // TODO: do we want to add more CLI args?!
 }
 
@@ -51,7 +46,7 @@ fn main(args: Args) {
         .unwrap()
         .block_on(async {
             // TODO: We should handle 2 different ports
-            let url = format!("http://{}:{}", args.address, args.port);
+            let url = format!("http://{}:{}", args.address, args.private_port);
             let client = RpcClient::from_url(&url).await;
             // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
             if atty::is(Stream::Stdout) && args.command == Command::InteractiveMode {
@@ -62,7 +57,7 @@ fn main(args: Args) {
                 //////////////////////////
                 // Non-Interactive mode //
                 //////////////////////////
-                println!("{}", args.command.run(client, &args.parameters).await);
+                println!("{}", args.command.run(client, args.parameters).await);
             }
         });
 }
