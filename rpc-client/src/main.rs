@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 mod cmds;
+mod repl;
 mod rpc;
 
 #[derive(StructOpt)]
@@ -53,6 +54,7 @@ fn main(args: Args) {
                 //////////////////////
                 // Interactive mode //
                 //////////////////////
+                repl::run(client).await;
             } else {
                 //////////////////////////
                 // Non-Interactive mode //

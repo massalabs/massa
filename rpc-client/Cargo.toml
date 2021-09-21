@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 atty = "0.2"
+console = "0.14.1"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
 paw = "1.0"
 serde = { version = "1.0", features = ["derive"] }
