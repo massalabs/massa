@@ -21,8 +21,6 @@ use std::net::SocketAddr;
 use time::UTime;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
-use crate::messages::SignedBootstrapMessage;
-
 mod binders;
 pub mod config;
 mod error;
@@ -82,13 +80,10 @@ async fn get_state_internal(
             Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
             Ok(Ok(Some((
                 _,
-                BootstrapMessage::SignedBootstrapMessage {
+                BootstrapMessage::BootstrapTime {
+                    server_time,
                     signature,
-                    message:
-                        SignedBootstrapMessage::BootstrapTime {
-                            server_time,
-                            version,
-                        },
+                    version,
                 },
             )))) => {
                 if !our_version.is_compatible(&version) {
@@ -154,13 +149,9 @@ async fn get_state_internal(
         }
         Ok(Err(e)) => return Err(e),
         Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
-        Ok(Ok(Some((
-            _,
-            BootstrapMessage::SignedBootstrapMessage {
-                signature,
-                message: SignedBootstrapMessage::BootstrapPeers { peers },
-            },
-        )))) => (peers, signature),
+        Ok(Ok(Some((_, BootstrapMessage::BootstrapPeers { peers, signature })))) => {
+            (peers, signature)
+        }
         Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
     // Check signature.
@@ -184,9 +175,10 @@ async fn get_state_internal(
         Ok(Ok(None)) => return Err(BootstrapError::UnexpectedConnectionDrop),
         Ok(Ok(Some((
             _,
-            BootstrapMessage::SignedBootstrapMessage {
+            BootstrapMessage::ConsensusState {
+                pos,
+                graph,
                 signature,
-                message: SignedBootstrapMessage::ConsensusState { pos, graph },
             },
         )))) => (pos, graph, signature),
         Ok(Ok(Some((_, msg)))) => return Err(BootstrapError::UnexpectedMessage(msg)),
@@ -396,13 +388,10 @@ impl BootstrapServer {
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
-            writer.send(&messages::BootstrapMessage::SignedBootstrapMessage {
+            writer.send(&messages::BootstrapMessage::BootstrapTime {
+                server_time,
                 signature,
-                message: messages::SignedBootstrapMessage::BootstrapTime {
-                    server_time,
-
-                    version: self.version,
-                },
+                version: self.version,
             }),
         )
         .await
@@ -428,10 +417,7 @@ impl BootstrapServer {
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
-            writer.send(&messages::BootstrapMessage::SignedBootstrapMessage {
-                signature,
-                message: messages::SignedBootstrapMessage::BootstrapPeers { peers },
-            }),
+            writer.send(&messages::BootstrapMessage::BootstrapPeers { peers, signature }),
         )
         .await
         {
@@ -457,9 +443,10 @@ impl BootstrapServer {
         let signature = sign(&signed_data_hash, &self.private_key)?;
         match tokio::time::timeout(
             self.write_timeout.into(),
-            writer.send(&messages::BootstrapMessage::SignedBootstrapMessage {
+            writer.send(&messages::BootstrapMessage::ConsensusState {
+                pos,
+                graph,
                 signature,
-                message: messages::SignedBootstrapMessage::ConsensusState { pos, graph },
             }),
         )
         .await
