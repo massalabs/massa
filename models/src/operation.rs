@@ -2,7 +2,7 @@
 
 use crate::{
     address::AddressHashSet,
-    hhasher::{HHashMap, HHashSet},
+    hhasher::{HHashMap, HHashMap2, HHashSet},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -25,6 +25,7 @@ pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 pub struct OperationId(Hash);
 
 pub type OperationHashMap<T> = HHashMap<OperationId, T>;
+pub type OperationHashMap2<T> = HHashMap2<OperationId, T>;
 pub type OperationHashSet = HHashSet<OperationId>;
 
 impl std::fmt::Display for OperationId {
