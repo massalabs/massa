@@ -3,7 +3,7 @@
 use crate::{
     address::{AddressHashMap, AddressHashSet},
     array_from_slice,
-    hhasher::{HHashMap, HHashSet},
+    hhasher::{HHashMap, HHashSet, PreHashed},
     u8_from_slice, with_serialization_context, Address, DeserializeCompact, DeserializeMinBEInt,
     DeserializeVarInt, Endorsement, ModelsError, Operation, OperationHashSet, SerializeCompact,
     SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
@@ -23,6 +23,8 @@ pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct BlockId(pub Hash);
+
+impl PreHashed for BlockId {}
 
 impl std::fmt::Display for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

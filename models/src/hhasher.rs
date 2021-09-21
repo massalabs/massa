@@ -2,26 +2,34 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::hash::{BuildHasherDefault, Hasher};
+use std::marker::PhantomData;
 
-pub struct HHasher(u64);
+pub trait PreHashed {}
 
-impl Default for HHasher {
-    #[inline]
-    fn default() -> HHasher {
-        HHasher(0)
+pub struct HHasher<T: PreHashed> {
+    source: PhantomData<T>,
+    hash: u64,
+}
+
+impl<T: PreHashed> Default for HHasher<T> {
+    fn default() -> Self {
+        HHasher {
+            source: Default::default(),
+            hash: Default::default(),
+        }
     }
 }
 
-impl Hasher for HHasher {
+impl<T: PreHashed> Hasher for HHasher<T> {
     #[inline]
     fn finish(&self) -> u64 {
-        self.0
+        self.hash
     }
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         // assumes bytes.len() is at least 8, otherwise panics
-        self.0 = u64::from_ne_bytes(
+        self.hash = u64::from_ne_bytes(
             bytes[bytes.len().checked_sub(8).unwrap()..]
                 .try_into()
                 .unwrap(),
@@ -29,7 +37,6 @@ impl Hasher for HHasher {
     }
 }
 
-pub type BuildHHasher = BuildHasherDefault<HHasher>;
-
-pub type HHashMap<K, V> = HashMap<K, V, BuildHHasher>;
-pub type HHashSet<T> = HashSet<T, BuildHHasher>;
+pub type BuildHHasher<T> = BuildHasherDefault<HHasher<T>>;
+pub type HHashMap<K, V> = HashMap<K, V, BuildHHasher<K>>;
+pub type HHashSet<T> = HashSet<T, BuildHHasher<T>>;

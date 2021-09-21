@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::hhasher::{HHashMap, HHashSet};
+use crate::hhasher::{HHashMap, HHashSet, PreHashed};
 use crate::ledger::LedgerData;
 use crate::{Amount, ModelsError};
 use crypto::{
@@ -30,6 +30,8 @@ impl FromStr for Address {
         Ok(Address(Hash::from_str(s)?))
     }
 }
+
+impl PreHashed for Address {}
 
 impl Address {
     /// Gets the associated tread. Depends on the thread_count

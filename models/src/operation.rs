@@ -2,7 +2,7 @@
 
 use crate::{
     address::AddressHashSet,
-    hhasher::{HHashMap, HHashSet},
+    hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -39,6 +39,8 @@ impl FromStr for OperationId {
         Ok(OperationId(Hash::from_str(s)?))
     }
 }
+
+impl PreHashed for OperationId {}
 
 impl OperationId {
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
