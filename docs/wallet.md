@@ -12,34 +12,25 @@ Here is how to create a Massa wallet.
 
 Go to the client folder:
 
-----
-cd massa/massa-client/
-----
+    cd massa/massa-client/
 
 Start the interactive client and load a wallet file:
 
-----
-cargo run
-----
+    cargo run
 
 It loads the wallet file `wallet.dat`. If it does not exist, it is created.
 
 Now generate a new private key (and associated public key / address):
 
-----
-wallet_new_privkey
-----
+    wallet_new_privkey
 
 The list of addresses and keys of your wallet can be accessed with:
 
-----
-wallet_info
-----
-
+    wallet_info
 
 ## From the graphical interface
 
-If you don't plan to stake or use the command line client, you can also create a wallet on the web interface: head to the link:test.massa.net[explorer], in the wallet part.
+If you don’t plan to stake or use the command line client, you can also create a wallet on the web interface: head to the [explorer](test.massa.net), in the wallet part.
 
 Click `Generate private key` then `Add`.
 
@@ -47,11 +38,12 @@ This generates a new random private key from your computer randomness which stay
 
 Now you can add more addresses or see the list of your addresses with their associated thread and balance.
 
-Also, if you want to save this wallet and be able to restore it later, click `Save wallet`, and next time directly do `Load wallet`. 
-
+Also, if you want to save this wallet and be able to restore it later, click `Save wallet`, and next time directly do `Load wallet`.
 
 ## Next steps
 
-* Ask testnet coins from us in the link:https://discord.com/invite/TnsJQzXkRN[Discord] testnet channel.
-* link:staking.adoc[Staking] your coins to receive rewards.
-* link:transaction.adoc[Sending transactions].
+-   Ask testnet coins from us in the [Discord](https://discord.com/invite/TnsJQzXkRN) testnet channel.
+
+-   [Staking](staking.adoc) your coins to receive rewards.
+
+-   [Sending transactions](transaction.adoc).
