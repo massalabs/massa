@@ -45,7 +45,7 @@ pub trait MassaPrivate {
 
     /// Return hashset of staking addresses.
     #[rpc(name = "list_staking_keys")]
-    fn list_staking_keys(&self) -> Result<AddressHashSet, PrivateApiError>;
+    fn list_staking_keys(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>>;
 
     #[rpc(name = "ban")]
     fn ban(&self, _: NodeId) -> Result<(), PrivateApiError>;
@@ -121,8 +121,17 @@ impl MassaPrivate for API {
         Box::pin(closure())
     }
 
-    fn list_staking_keys(&self) -> Result<AddressHashSet, PrivateApiError> {
-        todo!()
+    fn list_staking_keys(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>> {
+        let cmd_sender = self.consensus_command_sender.clone();
+        let closure = async move || {
+            Ok(cmd_sender
+                .ok_or(PrivateApiError::MissingCommandSender(
+                    "consensus command sender".to_string(),
+                ))?
+                .get_staking_addresses()
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn ban(&self, _: NodeId) -> Result<(), PrivateApiError> {
