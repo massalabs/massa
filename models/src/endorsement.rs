@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    hhasher::{HHashMap, HHashSet},
+    hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -22,6 +22,8 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);
+
+impl PreHashed for EndorsementId {}
 
 pub type EndorsementHashMap<T> = HHashMap<EndorsementId, T>;
 pub type EndorsementHashSet = HHashSet<EndorsementId>;
