@@ -1289,7 +1289,6 @@ async fn get_last_stale(
 
     let discarded = graph.discarded_blocks;
     let mut discarded = discarded
-        .map
         .iter()
         .filter(|(_hash, (reason, _header))| *reason == DiscardReason::Stale)
         .map(|(hash, (_reason, header))| (*hash, header.content.slot))
@@ -1312,7 +1311,6 @@ async fn get_last_invalid(
     let graph = retrieve_graph_export(&event_tx).await?;
     let discarded = graph.discarded_blocks;
     let mut discarded = discarded
-        .map
         .iter()
         .filter(|(_hash, (reason, _header))| matches!(reason, DiscardReason::Invalid(_)))
         .map(|(hash, (_reason, header))| (*hash, header.content.slot))
@@ -1357,7 +1355,6 @@ async fn get_staker_info(
 
     let discarded = graph
         .discarded_blocks
-        .map
         .iter()
         .filter(|(_hash, (_reason, header))| {
             Address::from_public_key(&header.content.creator).unwrap() == creator

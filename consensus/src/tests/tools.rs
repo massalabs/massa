@@ -514,12 +514,12 @@ pub fn get_export_active_test_block(
     (
         ExportActiveBlock {
             parents,
-            dependencies: vec![],
+            dependencies: Default::default(),
             block,
-            children: vec![vec![], vec![]],
+            children: vec![Default::default(), Default::default()],
             is_final,
-            block_ledger_changes: vec![],
-            roll_updates: vec![],
+            block_ledger_changes: Default::default(),
+            roll_updates: Default::default(),
             production_events: vec![],
         },
         id,
