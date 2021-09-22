@@ -10,15 +10,14 @@ use tokio::time::timeout;
 const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 const CHANNEL_SIZE: usize = 256;
 
-pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
-pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
+pub type Duplex = DuplexStream;
 
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
-        mpsc::channel::<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>(CHANNEL_SIZE);
+        mpsc::channel::<(SocketAddr, oneshot::Sender<Duplex>)>(CHANNEL_SIZE);
 
     let (connection_connector_tx, connection_connector_rx) =
-        mpsc::channel::<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>(CHANNEL_SIZE);
+        mpsc::channel::<(Duplex, SocketAddr, oneshot::Sender<bool>)>(CHANNEL_SIZE);
 
     (
         MockEstablisher {
@@ -34,11 +33,11 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>, //(controller, mock)
+    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, //(controller, mock)
 }
 
 impl MockListener {
-    pub async fn accept(&mut self) -> std::io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
+    pub async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
         let (addr, sender) = self
             .connection_listener_rx
             .recv()
@@ -48,41 +47,34 @@ impl MockListener {
                 "MockListener accept channel from Establisher closed".to_string(),
             ))?;
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
-        let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-        let (duplex_controller_read, duplex_controller_write) = tokio::io::split(duplex_mock);
-        sender
-            .send((duplex_mock_read, duplex_mock_write))
-            .map_err(|_| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "MockListener accept return oneshot channel to Establisher closed".to_string(),
-                )
-            })?;
+        sender.send(duplex_mock).map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "MockListener accept return oneshot channel to Establisher closed".to_string(),
+            )
+        })?;
 
-        Ok((duplex_controller_read, duplex_controller_write, addr))
+        Ok((duplex_controller, addr))
     }
 }
 
 #[derive(Debug)]
 pub struct MockConnector {
-    connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
+    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
     timeout_duration: UTime,
 }
 
 impl MockConnector {
-    pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<(ReadHalf, WriteHalf)> {
+    pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
         //task the controller connection if exist.
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
-        let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_mock);
-        let (duplex_controller_read, duplex_controller_write) = tokio::io::split(duplex_controller);
-
         //to see if the connection is accepted
         let (accept_tx, accept_rx) = oneshot::channel::<bool>();
 
         //send new connection to mock
         timeout(self.timeout_duration.to_duration(), async move {
             self.connection_connector_tx
-                .send((duplex_mock_read, duplex_mock_write, addr, accept_tx))
+                .send((duplex_mock, addr, accept_tx))
                 .await
                 .map_err(|_err| {
                     io::Error::new(
@@ -91,7 +83,7 @@ impl MockConnector {
                     )
                 })?;
             if accept_rx.await.expect("mock accept_tx disappeared") {
-                Ok((duplex_controller_read, duplex_controller_write))
+                Ok(duplex_controller)
             } else {
                 Err(io::Error::new(
                     io::ErrorKind::ConnectionRefused,
@@ -111,9 +103,8 @@ impl MockConnector {
 
 #[derive(Debug)]
 pub struct MockEstablisher {
-    connection_listener_rx:
-        Option<mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>>,
-    connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
+    connection_listener_rx: Option<mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>>,
+    connection_connector_tx: mpsc::Sender<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
 }
 
 impl MockEstablisher {
@@ -140,22 +131,17 @@ impl MockEstablisher {
 }
 
 pub struct MockEstablisherInterface {
-    connection_listener_tx:
-        Option<mpsc::Sender<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>>,
-    connection_connector_rx:
-        mpsc::Receiver<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
+    connection_listener_tx: Option<mpsc::Sender<(SocketAddr, oneshot::Sender<Duplex>)>>,
+    connection_connector_rx: mpsc::Receiver<(Duplex, SocketAddr, oneshot::Sender<bool>)>,
 }
 
 impl MockEstablisherInterface {
-    pub async fn connect_to_controller(
-        &self,
-        addr: &SocketAddr,
-    ) -> io::Result<(ReadHalf, WriteHalf)> {
+    pub async fn connect_to_controller(&self, addr: &SocketAddr) -> io::Result<Duplex> {
         let sender = self.connection_listener_tx.as_ref().ok_or(io::Error::new(
             io::ErrorKind::Other,
             "mock connect_to_controller_listener channel not initialized".to_string(),
         ))?;
-        let (response_tx, response_rx) = oneshot::channel::<(ReadHalf, WriteHalf)>();
+        let (response_tx, response_rx) = oneshot::channel::<Duplex>();
         sender
             .send((addr.clone(), response_tx))
             .await
@@ -165,19 +151,19 @@ impl MockEstablisherInterface {
                     "mock connect_to_controller_listener channel to listener closed".to_string(),
                 )
             })?;
-        let (duplex_mock_read, duplex_mock_write) = response_rx.await.map_err(|_| {
+        let duplex_mock = response_rx.await.map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener connect_to_controller_listener channel from listener closed"
                     .to_string(),
             )
         })?;
-        Ok((duplex_mock_read, duplex_mock_write))
+        Ok(duplex_mock)
     }
 
     pub async fn wait_connection_attempt_from_controller(
         &mut self,
-    ) -> io::Result<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)> {
+    ) -> io::Result<(Duplex, SocketAddr, oneshot::Sender<bool>)> {
         self.connection_connector_rx
             .recv()
             .await
@@ -186,13 +172,4 @@ impl MockEstablisherInterface {
                 "MockListener get_connect_stream channel from connector closed".to_string(),
             ))
     }
-
-    /*
-    // purges/refuses all pending connection attempts from controller
-    pub async fn purge_connection_attempts_from_controller(&mut self) {
-        while let Ok((_, _, _, resp_tx)) = self.connection_connector_rx.try_recv() {
-            let _ = resp_tx.send(false);
-        }
-    }
-    */
 }

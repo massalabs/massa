@@ -4,11 +4,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 
 use bitvec::prelude::*;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    sync::mpsc::Receiver,
-    time::sleep,
-};
+use tokio::{sync::mpsc::Receiver, time::sleep};
 
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
@@ -26,9 +22,10 @@ use models::{
 };
 use time::UTime;
 
+use super::mock_establisher::Duplex;
 use crate::config::BootstrapConfig;
-
-use super::mock_establisher::{ReadHalf, WriteHalf};
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -358,18 +355,37 @@ pub fn get_peers() -> BootstrapPeers {
     ])
 }
 
-pub async fn bridge_mock_streams(mut read_side: ReadHalf, mut write_side: WriteHalf) {
-    let mut buf = vec![0; 1024];
+pub async fn bridge_mock_streams(mut side1: Duplex, mut side2: Duplex) {
+    let mut buf1 = vec![0u8; 1024];
+    let mut buf2 = vec![0u8; 1024];
     loop {
-        let n = read_side
-            .read(&mut buf)
-            .await
-            .expect("could not read read_side in bridge");
-        if n == 0 {
-            return;
-        }
-        if write_side.write_all(&buf[0..n]).await.is_err() {
-            return;
+        tokio::select! {
+            res1 = side1.read(&mut buf1) => match res1 {
+                Ok(n1) => {
+                    if n1 == 0 {
+                        return;
+                    }
+                    if side2.write_all(&buf1[..n1]).await.is_err() {
+                        return;
+                    }
+                },
+                Err(_err) => {
+                    return;
+                }
+            },
+            res2 = side2.read(&mut buf2) => match res2 {
+                Ok(n2) => {
+                    if n2 == 0 {
+                        return;
+                    }
+                    if side1.write_all(&buf2[..n2]).await.is_err() {
+                        return;
+                    }
+                },
+                Err(_err) => {
+                    return;
+                }
+            },
         }
     }
 }
