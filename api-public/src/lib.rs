@@ -17,7 +17,7 @@ use time::UTime;
 /// Public Massa JSON-RPC endpoints
 #[rpc(server)]
 pub trait MassaPublic {
-    fn serve_massa_public(&self);
+    fn serve_massa_public(&self); // todo add needed command servers
 
     /////////////////////////////////
     // Explorer (aggregated stats) //
@@ -70,6 +70,7 @@ pub trait MassaPublic {
 
 impl MassaPublic for API {
     fn serve_massa_public(&self) {
+        // todo add needed command servers
         rpc_server!(self.clone());
     }
 

@@ -1,7 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![feature(async_closure)]
 use api_dto::{AddressInfo, BalanceInfo, RollsInfo};
-use consensus::get_latest_block_slot_at_timestamp;
+use communication::network::NetworkCommandSender;
+use consensus::{get_latest_block_slot_at_timestamp, ConsensusCommandSender};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use error::PrivateApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
@@ -9,12 +10,12 @@ use jsonrpc_derive::rpc;
 use jsonrpc_http_server::ServerBuilder;
 use models::address::{Address, AddressHashSet};
 use models::node::NodeId;
-use models::{EndorsementHashSet, Slot};
+use models::Slot;
 use rpc_server::rpc_server;
 pub use rpc_server::API;
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
-use std::{thread, usize};
+use std::thread;
 use time::UTime;
 
 mod error;
@@ -22,7 +23,7 @@ mod error;
 /// Private Massa-RPC "manager mode" endpoints
 #[rpc(server)]
 pub trait MassaPrivate {
-    fn serve_massa_private(&self);
+    fn serve_massa_private(&mut self, _: ConsensusCommandSender, _: NetworkCommandSender);
 
     /// Starts the node and waits for node to start.
     /// Signals if the node is already running.
@@ -65,8 +66,14 @@ pub trait MassaPrivate {
 }
 
 impl MassaPrivate for API {
-    fn serve_massa_private(&self) {
-        rpc_server!(self.clone());
+    fn serve_massa_private(
+        &mut self,
+        consensus: ConsensusCommandSender,
+        network: NetworkCommandSender,
+    ) {
+        self.consensus_command_sender = Some(consensus);
+        self.network_command_sender = Some(network);
+        rpc_server!(&self.clone());
     }
 
     fn start_node(&self) -> Result<(), PrivateApiError> {
@@ -261,7 +268,7 @@ impl MassaPrivate for API {
                         .map(|(slot, (_, ads))| {
                             ads.iter()
                                 .enumerate()
-                                .filter(|(i, ad)| **ad == address)
+                                .filter(|(_, ad)| **ad == address)
                                 .map(|(i, _)| (*slot, i as u64))
                                 .collect::<Vec<(Slot, u64)>>()
                         })
