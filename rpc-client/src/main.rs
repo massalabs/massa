@@ -21,6 +21,7 @@ struct Args {
     /// Address to listen on.
     #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
     address: String,
+    // TODO: Should have a default value to be an optional argument ...
     /// Command that client would execute (non-interactive mode)
     #[structopt(name = "COMMAND", default_value = "InteractiveMode")]
     command: Command,
@@ -50,16 +51,17 @@ fn main(args: Args) {
             let url = format!("http://{}:{}", args.address, args.private_port);
             let client = RpcClient::from_url(&url).await;
             // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
-            if atty::is(Stream::Stdout) && args.command == Command::InteractiveMode {
+            if atty::is(Stream::Stdout) {
                 //////////////////////
                 // Interactive mode //
                 //////////////////////
-                repl::run(client).await;
-            } else {
+                repl::run(&client, &args.parameters).await;
+            } else if args.command != Command::InteractiveMode {
                 //////////////////////////
                 // Non-Interactive mode //
                 //////////////////////////
-                println!("{}", args.command.run(client, args.parameters).await);
+                let ret = args.command.run(&client, &args.parameters).await;
+                println!("{}", ret);
             }
         });
 }
