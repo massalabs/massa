@@ -14,8 +14,8 @@ mod rpc;
 #[derive(StructOpt)]
 struct Args {
     /// Port to listen on (Massa public API).
-    #[structopt(short = "p", long = "port", env = "PORT", default_value = "33034")]
-    port: u16, // TODO: do we rename it as public-port?
+    #[structopt(long = "public-port", env = "PUBLIC_PORT", default_value = "33034")]
+    public_port: u16,
     /// Port to listen on (Massa private API).
     #[structopt(long = "private-port", env = "PRIVATE_PORT", default_value = "33035")]
     private_port: u16,
@@ -35,8 +35,16 @@ struct Args {
         parse(from_os_str),
         default_value = "config/config.toml" // FIXME: This is not used yet ...
     )]
+    /// Path of wallet file.
+    #[structopt(
+        short = "w",
+        long = "wallet",
+        parse(from_os_str),
+        default_value = "wallet.dat"
+    )]
     config: PathBuf,
     // TODO: do we want to add more CLI args?!
+    // --json
 }
 
 #[paw::main]
