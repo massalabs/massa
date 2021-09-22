@@ -164,6 +164,21 @@ async fn launch(
     .await
     .unwrap();
 
+    // spawn APIs
+    let mut api_private = APIPrivate::from_url("127.0.0.1:33034");
+    api_private.serve_massa_private(
+        consensus_command_sender.clone(),
+        network_command_sender.clone(),
+        cfg.new_api.clone(),
+        cfg.consensus.clone(),
+    );
+
+    let api_public = APIPublic::from_url("127.0.0.1:33035");
+    api_public.serve_massa_public(); // todo add needed command servers
+
+    let api_eth = APIEth::from_url("127.0.0.1:33036");
+    api_eth.serve_eth_rpc(); // todo add needed command servers
+
     (
         pool_command_sender,
         consensus_event_receiver,

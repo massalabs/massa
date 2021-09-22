@@ -1892,6 +1892,7 @@ dependencies = [
  "communication",
  "consensus",
  "pool",
+ "serde 1.0.130",
 ]
 
 [[package]]

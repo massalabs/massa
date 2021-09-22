@@ -2,7 +2,7 @@
 #![feature(async_closure)]
 use api_dto::{AddressInfo, BalanceInfo, RollsInfo};
 use communication::network::NetworkCommandSender;
-use consensus::{get_latest_block_slot_at_timestamp, ConsensusCommandSender};
+use consensus::{get_latest_block_slot_at_timestamp, ConsensusCommandSender, ConsensusConfig};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use error::PrivateApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
@@ -11,8 +11,8 @@ use jsonrpc_http_server::ServerBuilder;
 use models::address::{Address, AddressHashSet};
 use models::node::NodeId;
 use models::Slot;
-use rpc_server::rpc_server;
 pub use rpc_server::API;
+use rpc_server::{rpc_server, APIConfig};
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use std::thread;
@@ -23,7 +23,13 @@ mod error;
 /// Private Massa-RPC "manager mode" endpoints
 #[rpc(server)]
 pub trait MassaPrivate {
-    fn serve_massa_private(&mut self, _: ConsensusCommandSender, _: NetworkCommandSender);
+    fn serve_massa_private(
+        &mut self,
+        _: ConsensusCommandSender,
+        _: NetworkCommandSender,
+        _: APIConfig,
+        _: ConsensusConfig,
+    );
 
     /// Starts the node and waits for node to start.
     /// Signals if the node is already running.
@@ -70,9 +76,13 @@ impl MassaPrivate for API {
         &mut self,
         consensus: ConsensusCommandSender,
         network: NetworkCommandSender,
+        api_cfg: APIConfig,
+        consensus_cfg: ConsensusConfig,
     ) {
         self.consensus_command_sender = Some(consensus);
         self.network_command_sender = Some(network);
+        self.api_config = Some(api_cfg);
+        self.consensus_config = Some(consensus_cfg);
         rpc_server!(&self.clone());
     }
 

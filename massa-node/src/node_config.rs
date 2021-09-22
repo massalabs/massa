@@ -7,6 +7,7 @@ use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
 use models::Version;
 use pool::PoolConfig;
+use rpc_server::APIConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
 
@@ -22,6 +23,7 @@ pub struct Config {
     pub network: NetworkConfig,
     pub consensus: ConsensusConfig,
     pub api: ApiConfig,
+    pub new_api: APIConfig,
     pub storage: StorageConfig,
     pub bootstrap: BootstrapConfig,
     pub pool: PoolConfig,
