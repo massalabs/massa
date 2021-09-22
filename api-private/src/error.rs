@@ -3,6 +3,7 @@ use consensus::ConsensusError;
 use crypto::CryptoError;
 use models::ModelsError;
 use thiserror::Error;
+use time::TimeError;
 
 #[derive(Error, Debug)]
 pub enum PrivateApiError {
@@ -18,12 +19,16 @@ pub enum PrivateApiError {
     CommunicationError(#[from] CommunicationError),
     #[error("models error : {0}")]
     ModelsError(#[from] ModelsError),
+    #[error("time error : {0}")]
+    TimeError(#[from] TimeError),
     #[error("not found")]
     NotFound,
     #[error("inconsistency: {0}")]
     InconsistencyError(String),
     #[error("missing command sender {0}")]
     MissingCommandSender(String),
+    #[error("missing config {0}")]
+    MissingConfig(String),
 }
 
 impl From<PrivateApiError> for jsonrpc_core::Error {

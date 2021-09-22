@@ -89,6 +89,7 @@ dependencies = [
  "models",
  "rpc-server",
  "thiserror",
+ "time 0.1.0",
 ]
 
 [[package]]

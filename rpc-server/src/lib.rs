@@ -1,15 +1,19 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::network::NetworkCommandSender;
-use consensus::ConsensusCommandSender;
+use config::APIConfig;
+use consensus::{ConsensusCommandSender, ConsensusConfig};
 use pool::PoolCommandSender;
 
+mod config;
 #[derive(Clone)]
 pub struct API {
     pub url: String,
     pub pool_command_sender: Option<PoolCommandSender>,
     pub consensus_command_sender: Option<ConsensusCommandSender>,
     pub network_command_sender: Option<NetworkCommandSender>,
+    pub consensus_config: Option<ConsensusConfig>,
+    pub api_config: Option<APIConfig>,
 }
 
 impl API {
@@ -20,6 +24,8 @@ impl API {
             pool_command_sender: None,
             consensus_command_sender: None,
             network_command_sender: None,
+            consensus_config: None,
+            api_config: None,
         }
     }
 
@@ -33,6 +39,12 @@ impl API {
         self.pool_command_sender = pool_command_sender;
         self.consensus_command_sender = consensus_command_sender;
         self.network_command_sender = network_command_sender;
+    }
+
+    pub fn set_configs(&mut self, consensus_config: ConsensusConfig, api: APIConfig) {
+        self.consensus_config = Some(consensus_config);
+        self.api_config = Some(api);
+        // todo add needed configs
     }
 }
 
