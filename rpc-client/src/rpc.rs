@@ -31,11 +31,6 @@ impl RpcClient {
         http::connect::<RpcClient>(&url).await.unwrap()
     }
 
-    // TODO: This is for test purpose only and should be removed
-    pub(crate) async fn hello_world(&self) -> RpcResult<String> {
-        self.0.call_method("HelloWorld", "String", ()).await
-    }
-
     /// End-to-end example with `Unban` command
     pub(crate) async fn unban(&self, ip: IpAddr) -> RpcResult<()> {
         self.0.call_method("Unban", "()", ip).await

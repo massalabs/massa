@@ -37,7 +37,7 @@ impl Command {
                 &client
                     .unban(serde_json::from_str(&parameters[0]).unwrap())
                     .await
-                    .unwrap(),
+                    .unwrap(), // FIXME: Better error handling ... (crash if server not running)
             )
             .unwrap(),
             _ => panic!(), // Should never happen so keep this panic!

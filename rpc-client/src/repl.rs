@@ -18,16 +18,54 @@ macro_rules! massa_fancy_ascii_art_logo {
 
 pub(crate) async fn run(client: &RpcClient, parameters: &Vec<String>) {
     massa_fancy_ascii_art_logo!();
+    println!("Use 'exit' to quit the prompt");
+    println!("Use the Up/Down arrows to scroll through history");
+    println!();
+    let mut history = MyHistory::default();
     loop {
-        let input: Result<Command, String> = // FIXME: Use proper error type
-            Input::<String>::new().interact_text().unwrap().parse();
-        match input {
-            Ok(command) => {
-                println!("{}", command.run(client, parameters).await);
+        if let Ok(cmd) = Input::<String>::with_theme(&ColorfulTheme::default())
+            .with_prompt("command")
+            .history_with(&mut history)
+            .interact_text()
+        {
+            if cmd == "exit" {
+                process::exit(0);
             }
             Err(err) => {
                 println!("{}", err);
             }
         }
+    }
+}
+
+const HISTORY: usize = 10000; // TODO: Should be available as a CLI arg/into `config.toml`?
+
+struct MyHistory {
+    max: usize,
+    history: VecDeque<String>,
+}
+
+impl Default for MyHistory {
+    fn default() -> Self {
+        MyHistory {
+            max: HISTORY,
+            history: VecDeque::new(),
+        }
+    }
+}
+
+impl<T> History<T> for MyHistory {
+    fn read(&self, pos: usize) -> Option<String> {
+        self.history.get(pos).cloned()
+    }
+
+    fn write(&mut self, val: &T)
+    where
+        T: Clone + Display,
+    {
+        if self.history.len() == self.max {
+            self.history.pop_back();
+        }
+        self.history.push_front(val.to_string());
     }
 }
