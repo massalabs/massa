@@ -143,7 +143,7 @@ impl PoolWorker {
                 operations.retain(|op_id, _op| newly_added.contains(op_id));
                 if !operations.is_empty() {
                     self.protocol_command_sender
-                        .propagate_operations(operations)
+                        .propagate_operations(Default::default())
                         .await?;
                 }
             }
@@ -230,7 +230,7 @@ impl PoolWorker {
                     operations.retain(|op_id, _op| newly_added.contains(op_id));
                     if !operations.is_empty() {
                         self.protocol_command_sender
-                            .propagate_operations(operations)
+                            .propagate_operations(Default::default())
                             .await?;
                     }
                 } else {

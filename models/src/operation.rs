@@ -2,7 +2,7 @@
 
 use crate::{
     address::AddressHashSet,
-    hhasher::{HHashMap, HHashSet},
+    hhasher::{HHashMap, HHashMap2, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -25,6 +25,7 @@ pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 pub struct OperationId(Hash);
 
 pub type OperationHashMap<T> = HHashMap<OperationId, T>;
+pub type OperationHashMap2<T> = HHashMap2<OperationId, T>;
 pub type OperationHashSet = HHashSet<OperationId>;
 
 impl std::fmt::Display for OperationId {
@@ -37,6 +38,21 @@ impl FromStr for OperationId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(OperationId(Hash::from_str(s)?))
+    }
+}
+
+impl Default for OperationId {
+    /// Only useful to pass type check related to PreHashed.
+    fn default() -> Self {
+        panic!("Default should never be used on OperationId.")
+    }
+}
+
+impl PreHashed for OperationId {
+    /// OperationId wraps a hash,
+    /// therefore is safe to be used in context of hashing.
+    fn was_safely_pre_hashed(&self) -> bool {
+        true
     }
 }
 

@@ -13,7 +13,7 @@ use crate::{
 };
 use models::{
     Block, BlockHashMap, BlockHashSet, BlockId, Endorsement, EndorsementHashMap, Operation,
-    OperationHashMap,
+    OperationHashMap, OperationHashMap2,
 };
 use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
@@ -164,7 +164,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operations(
         &mut self,
-        operations: OperationHashMap<Operation>,
+        operations: OperationHashMap2<Operation>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations

@@ -21,8 +21,8 @@ pub use endorsement::{
 };
 pub use error::ModelsError;
 pub use operation::{
-    Operation, OperationContent, OperationHashMap, OperationHashSet, OperationId, OperationType,
-    OPERATION_ID_SIZE_BYTES,
+    Operation, OperationContent, OperationHashMap, OperationHashMap2, OperationHashSet,
+    OperationId, OperationType, OPERATION_ID_SIZE_BYTES,
 };
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,

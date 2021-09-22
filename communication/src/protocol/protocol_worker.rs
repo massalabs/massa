@@ -9,7 +9,7 @@ use models::hhasher::BuildHHasher;
 use models::node::NodeId;
 use models::{
     Address, Block, BlockHashMap, BlockHashSet, BlockHeader, BlockId, EndorsementHashMap,
-    Operation, OperationHashMap, OperationId,
+    Operation, OperationHashMap, OperationHashMap2, OperationId,
 };
 use models::{Endorsement, EndorsementId};
 use serde::Serialize;
@@ -68,7 +68,7 @@ pub enum ProtocolCommand {
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(BlockHashMap<Option<Block>>),
     /// Propagate operations
-    PropagateOperations(OperationHashMap<Operation>),
+    PropagateOperations(OperationHashMap2<Operation>),
     /// Propagate endorsements
     PropagateEndorsements(EndorsementHashMap<Endorsement>),
 }
