@@ -48,7 +48,7 @@ pub trait MassaPrivate {
     fn list_staking_keys(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>>;
 
     #[rpc(name = "ban")]
-    fn ban(&self, _: NodeId) -> Result<(), PrivateApiError>;
+    fn ban(&self, _: NodeId) -> BoxFuture<Result<(), PrivateApiError>>;
 
     #[rpc(name = "unban")]
     fn unban(&self, _: IpAddr) -> Result<(), PrivateApiError>;
@@ -134,8 +134,17 @@ impl MassaPrivate for API {
         Box::pin(closure())
     }
 
-    fn ban(&self, _: NodeId) -> Result<(), PrivateApiError> {
-        todo!()
+    fn ban(&self, node_id: NodeId) -> BoxFuture<Result<(), PrivateApiError>> {
+        let network_command_sender = self.network_command_sender.clone();
+        let closure = async move || {
+            Ok(network_command_sender
+                .ok_or(PrivateApiError::MissingCommandSender(
+                    "Network command sender".to_string(),
+                ))?
+                .ban(node_id)
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn unban(&self, ip: IpAddr) -> Result<(), PrivateApiError> {
