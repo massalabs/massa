@@ -30,11 +30,10 @@ pub trait MassaPrivate {
     fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>>;
 
     #[rpc(name = "sign_message")]
-    fn sign_message(
+    fn node_sign_message(
         &self,
-        _: PublicKey,
         _: Vec<u8>,
-    ) -> Result<(Signature, PublicKey), PrivateApiError>;
+    ) -> BoxFuture<Result<(PublicKey, Signature), PrivateApiError>>;
 
     /// Add a new private key for the node to use to stake.
     #[rpc(name = "add_staking_keys")]
@@ -80,12 +79,20 @@ impl MassaPrivate for API {
         Box::pin(closure())
     }
 
-    fn sign_message(
+    fn node_sign_message(
         &self,
-        _: PublicKey,
-        _: Vec<u8>,
-    ) -> Result<(Signature, PublicKey), PrivateApiError> {
-        todo!()
+        message: Vec<u8>,
+    ) -> BoxFuture<Result<(PublicKey, Signature), PrivateApiError>> {
+        let network_command_sender = self.network_command_sender.clone();
+        let closure = async move || {
+            Ok(network_command_sender
+                .ok_or(PrivateApiError::MissingCommandSender(
+                    "Network command sender".to_string(),
+                ))?
+                .node_sign_message(message)
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn add_staking_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>> {

@@ -80,6 +80,7 @@ name = "api-private"
 version = "0.1.0"
 dependencies = [
  "api-dto",
+ "communication",
  "consensus",
  "crypto",
  "jsonrpc-core",

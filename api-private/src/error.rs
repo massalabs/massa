@@ -1,3 +1,4 @@
+use communication::CommunicationError;
 use consensus::ConsensusError;
 use crypto::CryptoError;
 use models::ModelsError;
@@ -13,6 +14,8 @@ pub enum PrivateApiError {
     CryptoError(#[from] CryptoError),
     #[error("consensus error : {0}")]
     ConsensusError(#[from] ConsensusError),
+    #[error("communication error : {0}")]
+    CommunicationError(#[from] CommunicationError),
     #[error("models error : {0}")]
     ModelsError(#[from] ModelsError),
     #[error("not found")]
