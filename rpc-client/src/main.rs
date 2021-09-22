@@ -21,9 +21,8 @@ struct Args {
     /// Address to listen on.
     #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
     address: String,
-    // TODO: Should have a default value to be an optional argument ...
     /// Command that client would execute (non-interactive mode)
-    #[structopt(name = "COMMAND", default_value = "InteractiveMode")]
+    #[structopt(name = "COMMAND", default_value = "Help")]
     command: Command,
     /// Optional command parameter (as a JSON parsable string)
     #[structopt(name = "PARAMETERS")]
@@ -56,7 +55,7 @@ fn main(args: Args) {
                 // Interactive mode //
                 //////////////////////
                 repl::run(&client, &args.parameters).await;
-            } else if args.command != Command::InteractiveMode {
+            } else {
                 //////////////////////////
                 // Non-Interactive mode //
                 //////////////////////////
