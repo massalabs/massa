@@ -41,7 +41,7 @@ pub trait MassaPrivate {
 
     /// Remove an address used to stake.
     #[rpc(name = "remove_staking_keys")]
-    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<(), PrivateApiError>;
+    fn remove_staking_keys(&self, _: Vec<Address>) -> BoxFuture<Result<(), PrivateApiError>>;
 
     /// Return hashset of staking addresses.
     #[rpc(name = "list_staking_keys")]
@@ -108,8 +108,17 @@ impl MassaPrivate for API {
         Box::pin(closure())
     }
 
-    fn remove_staking_keys(&self, _: Vec<Address>) -> Result<(), PrivateApiError> {
-        todo!()
+    fn remove_staking_keys(&self, keys: Vec<Address>) -> BoxFuture<Result<(), PrivateApiError>> {
+        let cmd_sender = self.consensus_command_sender.clone();
+        let closure = async move || {
+            Ok(cmd_sender
+                .ok_or(PrivateApiError::MissingCommandSender(
+                    "consensus command sender".to_string(),
+                ))?
+                .remove_staking_addresses(keys.into_iter().collect())
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn list_staking_keys(&self) -> Result<AddressHashSet, PrivateApiError> {
