@@ -1,7 +1,9 @@
 use crate::cmds::Command;
 use crate::rpc::RpcClient;
 use console::style;
-use dialoguer::Input;
+use dialoguer::{theme::ColorfulTheme, History, Input};
+use std::{collections::VecDeque, fmt::Display, process};
+use strum::ParseError;
 
 macro_rules! massa_fancy_ascii_art_logo {
     () => {
@@ -31,9 +33,14 @@ pub(crate) async fn run(client: &RpcClient, parameters: &Vec<String>) {
             if cmd == "exit" {
                 process::exit(0);
             }
-            Err(err) => {
-                println!("{}", err);
-            }
+            let input: Result<Command, ParseError> = cmd.parse();
+            println!(
+                "{}",
+                match input {
+                    Ok(command) => command.run(client, parameters).await,
+                    Err(_) => "Command not found!".to_string(),
+                }
+            );
         }
     }
 }

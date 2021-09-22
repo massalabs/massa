@@ -1,30 +1,13 @@
 use crate::rpc::RpcClient;
-use std::fmt;
-use std::str::FromStr;
+use strum::{EnumMessage, IntoEnumIterator};
+use strum_macros::{EnumIter, EnumMessage, EnumString, ToString};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, ToString)]
 pub enum Command {
+    #[strum(ascii_case_insensitive, message = "TODO")]
     Help,
+    #[strum(ascii_case_insensitive, message = "TODO")]
     Unban,
-}
-
-impl FromStr for Command {
-    type Err = String; // FIXME: create custom error type ...
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            // TODO: could a macro automate that? like `strum_macros::EnumString`
-            "Help" => Ok(Command::Help),
-            "Unban" => Ok(Command::Unban),
-            _ => Err("Command not found!".parse().unwrap()),
-        }
-    }
-}
-
-impl fmt::Display for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 // TODO: Commands could also not be APIs calls (like Wallet ones)
@@ -32,13 +15,15 @@ impl Command {
     // TODO: is Vec<String> -> String the best way to encode an User interaction in CLI?
     pub(crate) async fn run(&self, client: &RpcClient, parameters: &Vec<String>) -> String {
         match self {
-            Command::Help => if let Ok(command) = parameters[0].parse::<Command>() {
-                command.help()
-            } else {
-                "~~~~ HELP ~~~~"
+            Command::Help => {
+                if !parameters.is_empty() {
+                    if let Ok(c) = parameters[0].parse::<Command>() {
+                        return c.get_message().unwrap().to_string();
+                    }
+                }
+                help();
+                "".to_string() // FIXME: Ugly
             }
-            .parse()
-            .unwrap(),
             // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
             Command::Unban => serde_json::to_string(
                 &client
@@ -49,11 +34,11 @@ impl Command {
             .unwrap(),
         }
     }
+}
 
-    fn help(&self) -> &'static str {
-        match self {
-            Command::Help => "TODO",
-            Command::Unban => "TODO",
-        }
+fn help() {
+    println!("~~~~ HELP ~~~~");
+    for c in Command::iter() {
+        println!("{}", c.get_message().unwrap());
     }
 }
