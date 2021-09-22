@@ -80,8 +80,15 @@ impl MassaPrivate for API {
     }
 
     fn add_staking_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>> {
-        let cmd_sender = self.consensus_command_sender.clone().unwrap();
-        let x = async move || Ok(cmd_sender.register_staking_private_keys(keys).await?);
+        let cmd_sender = self.consensus_command_sender.clone();
+        let x = async move || {
+            Ok(cmd_sender
+                .ok_or(PrivateApiError::MissingCommandSender(
+                    "consensus command sender".to_string(),
+                ))?
+                .register_staking_private_keys(keys)
+                .await?)
+        };
         Box::pin(x())
     }
 
