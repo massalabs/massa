@@ -5,7 +5,7 @@ use crypto::signature::{PrivateKey, PublicKey, Signature};
 use error::PrivateApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
-use jsonrpc_http_server::{tokio, ServerBuilder};
+use jsonrpc_http_server::ServerBuilder;
 use models::address::{Address, AddressHashSet};
 use models::node::NodeId;
 use rpc_server::rpc_server;
@@ -51,7 +51,7 @@ pub trait MassaPrivate {
     fn ban(&self, _: NodeId) -> BoxFuture<Result<(), PrivateApiError>>;
 
     #[rpc(name = "unban")]
-    fn unban(&self, _: IpAddr) -> Result<(), PrivateApiError>;
+    fn unban(&self, _: IpAddr) -> BoxFuture<Result<(), PrivateApiError>>;
 
     #[rpc(name = "get_addresses")]
     fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>, PrivateApiError>;
@@ -147,20 +147,17 @@ impl MassaPrivate for API {
         Box::pin(closure())
     }
 
-    fn unban(&self, ip: IpAddr) -> Result<(), PrivateApiError> {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                self.network_command_sender
-                    .as_ref()
-                    .unwrap() // FIXME: replace by ?
-                    .unban(ip)
-                    .await
-                    .unwrap(); // FIXME: replace by ?
-                Ok(())
-            })
+    fn unban(&self, ip: IpAddr) -> BoxFuture<Result<(), PrivateApiError>> {
+        let network_command_sender = self.network_command_sender.clone();
+        let closure = async move || {
+            Ok(network_command_sender
+                .ok_or(PrivateApiError::MissingCommandSender(
+                    "Network command sender".to_string(),
+                ))?
+                .unban(ip)
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn get_addresses(&self, _: Vec<Address>) -> Result<Vec<AddressInfo>, PrivateApiError> {
