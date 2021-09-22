@@ -2,7 +2,7 @@
 
 use crate::{
     address::AddressHashSet,
-    hhasher::{HHashMap, HHashMap2, HHashSet, MassaHashable},
+    hhasher::{HHashMap, HHashMap2, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -42,16 +42,16 @@ impl FromStr for OperationId {
 }
 
 impl Default for OperationId {
-    /// Only useful to pass type check related to MassaHashable.
+    /// Only useful to pass type check related to PreHashed.
     fn default() -> Self {
         panic!("Default should never be used on OperationId.")
     }
 }
 
-impl MassaHashable for OperationId {
+impl PreHashed for OperationId {
     /// OperationId wraps a hash,
     /// therefore is safe to be used in context of hashing.
-    fn can_be_hashed(&self) -> bool {
+    fn was_safely_pre_hashed(&self) -> bool {
         true
     }
 }

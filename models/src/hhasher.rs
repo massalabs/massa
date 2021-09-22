@@ -30,20 +30,20 @@ impl Hasher for HHasher {
     }
 }
 
-pub trait MassaHashable {
+pub trait PreHashed {
     /// Implement this and return true,
     /// only if you are sure that the type
     /// can be safely used in the context of hashing.
-    fn can_be_hashed(&self) -> bool;
+    fn was_safely_pre_hashed(&self) -> bool;
 }
 
 #[derive(Default)]
-pub struct HHasher2<T: MassaHashable + Default> {
+pub struct HHasher2<T: PreHashed + Default> {
     source: PhantomData<T>,
     hash: u64,
 }
 
-impl<T: MassaHashable + Default> Hasher for HHasher2<T> {
+impl<T: PreHashed + Default> Hasher for HHasher2<T> {
     #[inline]
     fn finish(&self) -> u64 {
         self.hash
