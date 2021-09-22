@@ -221,6 +221,10 @@ async fn run(cfg: node_config::Config, mut apis: Vec<API>) {
                             warn!("in response to a desynchronization, the node is going to bootstrap again");
                             break true;
                         },
+                        Ok(ConsensusEvent::Stop) => {
+                            //todo add warning ?
+                            break false;
+                        }
                         Err(err) => {
                             error!("consensus_event_receiver.wait_event error: {:?}", err);
                             break false ;

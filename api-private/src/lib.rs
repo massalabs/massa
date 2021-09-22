@@ -27,7 +27,7 @@ pub trait MassaPrivate {
 
     /// Gracefully stop the node.
     #[rpc(name = "stop_node")]
-    fn stop_node(&self) -> Result<(), PrivateApiError>;
+    fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>>;
 
     #[rpc(name = "sign_message")]
     fn sign_message(
@@ -67,8 +67,17 @@ impl MassaPrivate for API {
         todo!()
     }
 
-    fn stop_node(&self) -> Result<(), PrivateApiError> {
-        todo!()
+    fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>> {
+        let cmd_sender = self.consensus_command_sender.clone();
+        let closure = async move || {
+            Ok(cmd_sender
+                .ok_or(PrivateApiError::MissingCommandSender(
+                    "consensus command sender".to_string(),
+                ))?
+                .stop()
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn sign_message(
@@ -81,7 +90,7 @@ impl MassaPrivate for API {
 
     fn add_staking_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
-        let x = async move || {
+        let closure = async move || {
             Ok(cmd_sender
                 .ok_or(PrivateApiError::MissingCommandSender(
                     "consensus command sender".to_string(),
@@ -89,7 +98,7 @@ impl MassaPrivate for API {
                 .register_staking_private_keys(keys)
                 .await?)
         };
-        Box::pin(x())
+        Box::pin(closure())
     }
 
     fn remove_staking_keys(&self, _: Vec<Address>) -> Result<(), PrivateApiError> {

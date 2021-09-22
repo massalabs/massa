@@ -432,6 +432,13 @@ impl ConsensusCommandSender {
             })
     }
 
+    pub async fn stop(&self) -> Result<(), ConsensusError> {
+        massa_trace!("consensus.consensus_controller.stop", {});
+        self.0.send(ConsensusCommand::Stop).await.map_err(|_| {
+            ConsensusError::SendChannelError("send error consensus command".to_string())
+        })
+    }
+
     pub async fn remove_staking_addresses(
         &self,
         addresses: AddressHashSet,
