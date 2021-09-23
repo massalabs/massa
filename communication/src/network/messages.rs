@@ -1,14 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::{
-    hash::HASH_SIZE_BYTES,
-    signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES},
-};
-use models::{
-    array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
-    DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt,
-    Version,
-};
+use crypto::signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
+use models::{BLOCK_ID_SIZE_BYTES, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version, array_from_slice, with_serialization_context};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, net::IpAddr};
@@ -208,9 +201,9 @@ impl DeserializeCompact for Message {
                 // hash list
                 let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
                 for _ in 0..length {
-                    let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                    cursor += HASH_SIZE_BYTES;
-                    list.push(hash);
+                    let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                    cursor += BLOCK_ID_SIZE_BYTES;
+                    list.push(b_id);
                 }
                 Message::AskForBlocks(list)
             }
@@ -230,9 +223,9 @@ impl DeserializeCompact for Message {
                 Message::PeerList(peers)
             }
             MessageTypeId::BlockNotFound => {
-                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += HASH_SIZE_BYTES;
-                Message::BlockNotFound(hash)
+                let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += BLOCK_ID_SIZE_BYTES;
+                Message::BlockNotFound(b_id)
             }
             MessageTypeId::Operations => {
                 // length
