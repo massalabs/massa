@@ -11,9 +11,10 @@ use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
 use models::address::AddressHashMap;
 use models::address::{AddressState, Addresses};
-use models::clique::ExportClique;
+use models::clique::Clique;
 use models::ledger::LedgerData;
 use models::BlockHashMap;
+use models::BlockHashSet;
 use models::OperationHashMap;
 use models::SerializeCompact;
 use models::StakersCycleProductionStats;
@@ -375,14 +376,14 @@ async fn test_cliques() {
     let mut graph = get_test_block_graph();
     let hash_set = (0..1)
         .map(|_| get_test_block_id())
-        .collect::<Vec<BlockId>>();
+        .collect::<BlockHashSet>();
     graph.max_cliques = vec![
-        ExportClique {
+        Clique {
             block_ids: hash_set.clone(),
             is_blockclique: true,
             fitness: 2,
         },
-        ExportClique {
+        Clique {
             block_ids: hash_set.clone(),
             is_blockclique: false,
             fitness: 1,
@@ -1699,7 +1700,7 @@ async fn test_last_stale() {
 
     //add default stale blocks
     let mut graph = get_test_block_graph();
-    graph.discarded_blocks.map.extend(vec![
+    graph.discarded_blocks.extend(vec![
         (
             get_test_block_id(),
             (
@@ -1784,7 +1785,7 @@ async fn test_last_invalid() {
 
     //add default stale blocks
     let mut graph = get_test_block_graph();
-    graph.discarded_blocks.map.extend(vec![
+    graph.discarded_blocks.extend(vec![
         (
             get_test_block_id(),
             (
@@ -1912,7 +1913,7 @@ async fn test_staker_info() {
             get_header(Slot::new(1, 1), Some(staker)).1,
         ),
     )];
-    graph.discarded_blocks.map.extend(vec![
+    graph.discarded_blocks.extend(vec![
         staker_s_discarded[0].clone(),
         (
             get_another_test_block_id(),

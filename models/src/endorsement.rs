@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    hhasher::{HHashMap, HHashSet},
+    hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -18,10 +18,12 @@ use crypto::{
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-// pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
+pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);
+
+impl PreHashed for EndorsementId {}
 
 pub type EndorsementHashMap<T> = HHashMap<EndorsementId, T>;
 pub type EndorsementHashSet = HHashSet<EndorsementId>;
@@ -40,15 +42,17 @@ impl FromStr for EndorsementId {
 }
 
 impl EndorsementId {
-    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
-    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn into_bytes(self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
-    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<EndorsementId, ModelsError> {
+    pub fn from_bytes(
+        data: &[u8; ENDORSEMENT_ID_SIZE_BYTES],
+    ) -> Result<EndorsementId, ModelsError> {
         Ok(EndorsementId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))

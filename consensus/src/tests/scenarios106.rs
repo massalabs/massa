@@ -239,7 +239,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 .await
                 .unwrap();
             assert!(!block_graph.active_blocks.contains_key(&hash3));
-            assert!(!block_graph.discarded_blocks.map.contains_key(&hash3));
+            assert!(!block_graph.discarded_blocks.contains_key(&hash3));
             (
                 protocol_controller,
                 consensus_command_sender,

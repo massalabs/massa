@@ -9,11 +9,11 @@ use models::hhasher::BuildHHasher;
 use models::node::NodeId;
 use models::{
     Address, Block, BlockHashMap, BlockHashSet, BlockHeader, BlockId, EndorsementHashMap,
-    Operation, OperationHashMap, OperationId,
+    EndorsementHashSet, Operation, OperationHashMap, OperationHashSet, OperationId,
 };
 use models::{Endorsement, EndorsementId};
 use serde::Serialize;
-use std::collections::{hash_map, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use time::TimeError;
 use tokio::{
     sync::mpsc,
@@ -245,11 +245,11 @@ pub struct ProtocolWorker {
     /// List of wanted blocks.
     block_wishlist: BlockHashSet,
     /// List of processed endorsements
-    checked_endorsements: EndorsementHashMap<Instant>,
+    checked_endorsements: EndorsementHashSet,
     /// List of processed operations
-    checked_operations: OperationHashMap<Instant>,
+    checked_operations: OperationHashSet,
     /// List of processed headers
-    checked_headers: BlockHashMap<(Vec<EndorsementId>, Instant)>,
+    checked_headers: BlockHashMap<Vec<EndorsementId>>,
 }
 
 impl ProtocolWorker {
@@ -837,8 +837,7 @@ impl ProtocolWorker {
 
         // check if this header was already verified
         let now = Instant::now();
-        if let Some((e_ids, inst)) = self.checked_headers.get_mut(&block_id) {
-            *inst = now;
+        if let Some(e_ids) = self.checked_headers.get_mut(&block_id) {
             if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
                 node_info.insert_known_block(
                     block_id,
@@ -860,7 +859,7 @@ impl ProtocolWorker {
         {
             Err(_) => {
                 warn!(
-                    "node {:?} sent us a header, containing critically incorrect endorsements",
+                    "node {:?} sent us a header containing critically incorrect endorsements",
                     source_node_id
                 );
                 return Ok(None);
@@ -910,7 +909,7 @@ impl ProtocolWorker {
 
         if self
             .checked_headers
-            .insert(block_id, (endorsement_ids.into_iter().collect(), now))
+            .insert(block_id, endorsement_ids)
             .is_none()
         {
             self.prune_checked_headers();
@@ -926,40 +925,22 @@ impl ProtocolWorker {
 
     /// Prune checked_endorsements if it is too large
     fn prune_checked_endorsements(&mut self) {
-        while self.checked_endorsements.len() > self.cfg.max_known_endorsements_size {
-            let e_id = *self
-                .checked_endorsements
-                .iter()
-                .min_by_key(|(_k, v)| *v)
-                .unwrap()
-                .0; // will not panic (checked above)
-            self.checked_endorsements.remove(&e_id);
+        if self.checked_endorsements.len() > self.cfg.max_known_endorsements_size {
+            self.checked_endorsements.clear();
         }
     }
 
     /// Prune checked operations if it has grown too large.
     fn prune_checked_operations(&mut self) {
-        while self.checked_operations.len() > self.cfg.max_known_ops_size {
-            let e_id = *self
-                .checked_operations
-                .iter()
-                .min_by_key(|(_k, v)| *v)
-                .unwrap()
-                .0; // will not panic (checked above)
-            self.checked_operations.remove(&e_id);
+        if self.checked_operations.len() > self.cfg.max_known_ops_size {
+            self.checked_operations.clear();
         }
     }
 
     /// Prune checked_headers if it is too large
     fn prune_checked_headers(&mut self) {
-        while self.checked_headers.len() > self.cfg.max_node_known_blocks_size {
-            let b_id = *self
-                .checked_headers
-                .iter()
-                .min_by_key(|(_k, (_v1, v2))| *v2)
-                .unwrap()
-                .0; // will not panic (checked above)
-            self.checked_headers.remove(&b_id);
+        if self.checked_headers.len() > self.cfg.max_node_known_blocks_size {
+            self.checked_headers.clear();
         }
     }
 
@@ -1080,16 +1061,10 @@ impl ProtocolWorker {
             }
 
             // Check operation signature only if not already checked.
-            match self.checked_operations.entry(operation_id) {
-                hash_map::Entry::Occupied(mut occ) => {
-                    *occ.get_mut() = now;
-                }
-                hash_map::Entry::Vacant(vac) => {
-                    // check signature
-                    operation.verify_signature()?;
-                    vac.insert(now);
-                    new_operations.insert(operation_id, operation);
-                }
+            if self.checked_operations.insert(operation_id) {
+                // check signature
+                operation.verify_signature()?;
+                new_operations.insert(operation_id, operation);
             };
         }
 
@@ -1145,17 +1120,10 @@ impl ProtocolWorker {
                 contains_duplicates = true;
             }
             // check endorsement signature if not already checked
-            match self.checked_endorsements.entry(endorsement_id) {
-                hash_map::Entry::Occupied(mut occ) => {
-                    *occ.get_mut() = now;
-                }
-                hash_map::Entry::Vacant(vac) => {
-                    // check signature
-                    endorsement.verify_signature()?;
-                    vac.insert(now);
-                    new_endorsements.insert(endorsement_id, endorsement);
-                }
-            };
+            if self.checked_endorsements.insert(endorsement_id) {
+                endorsement.verify_signature()?;
+                new_endorsements.insert(endorsement_id, endorsement);
+            }
         }
 
         // add to known endorsements for source node.

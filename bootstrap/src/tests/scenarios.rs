@@ -7,10 +7,13 @@ use super::{
         wait_consensus_command, wait_network_command,
     },
 };
-use crate::{get_state, start_bootstrap_server};
+use crate::{
+    get_state, start_bootstrap_server,
+    tests::tools::{assert_eq_bootstrap_graph, assert_eq_thread_cycle_states},
+};
 use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
-use models::{SerializeCompact, Version};
+use models::Version;
 use serial_test::serial;
 use std::str::FromStr;
 use time::UTime;
@@ -55,7 +58,7 @@ async fn test_bootstrap_server() {
     });
 
     // accept connection attempt from remote
-    let (remote_r, remote_w, conn_addr, resp) = tokio::time::timeout(
+    let (remote_rw, conn_addr, resp) = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         remote_interface.wait_connection_attempt_from_controller(),
     )
@@ -72,7 +75,7 @@ async fn test_bootstrap_server() {
 
     // connect to bootstrap
     let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked
-    let (bootstrap_r, bootstrap_w) = tokio::time::timeout(
+    let bootstrap_rw = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         bootstrap_interface.connect_to_controller(&remote_addr),
     )
@@ -80,12 +83,9 @@ async fn test_bootstrap_server() {
     .expect("timeout while connecting to bootstrap")
     .expect("could not connect to bootstrap");
 
-    // launch bridges
-    let bridge_h1 = tokio::spawn(async move {
-        bridge_mock_streams(remote_r, bootstrap_w).await;
-    });
-    let bridge_h2 = tokio::spawn(async move {
-        bridge_mock_streams(bootstrap_r, remote_w).await;
+    // launch bridge
+    let bridge = tokio::spawn(async move {
+        bridge_mock_streams(remote_rw, bootstrap_rw).await;
     });
 
     // wait for bootstrap to ask network for peers, send them
@@ -122,29 +122,21 @@ async fn test_bootstrap_server() {
         .await
         .expect("error while waiting for get_state to finish");
 
-    // wait for bridges
-    bridge_h1.await.expect("bridge 1 join failed");
-    bridge_h2.await.expect("bridge 2 join failed");
+    // wait for bridge
+    bridge.await.expect("bridge join failed");
 
     // check states
     let recv_pos = maybe_recv_pos.unwrap();
-    assert_eq!(
-        sent_pos.to_bytes_compact().unwrap(),
-        recv_pos.to_bytes_compact().unwrap(),
-        "mismatch between sent and received pos"
-    );
+
+    assert_eq_thread_cycle_states(&sent_pos, &recv_pos);
+
     let recv_graph = maybe_recv_graph.unwrap();
-    assert_eq!(
-        sent_graph.to_bytes_compact().unwrap(),
-        recv_graph.to_bytes_compact().unwrap(),
-        "mismatch between sent and received graphs"
-    );
+    assert_eq_bootstrap_graph(&sent_graph, &recv_graph);
 
     // check peers
     let recv_peers = maybe_recv_peers.unwrap();
     assert_eq!(
-        sent_peers.to_bytes_compact().unwrap(),
-        recv_peers.to_bytes_compact().unwrap(),
+        sent_peers.0, recv_peers.0,
         "mismatch between sent and received peers"
     );
 

@@ -4,20 +4,17 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 
 use bitvec::prelude::*;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    sync::mpsc::Receiver,
-    time::sleep,
-};
+use consensus::ledger::LedgerChanges;
+use tokio::{sync::mpsc::Receiver, time::sleep};
 
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
-    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake,
-    ExportThreadCycleState, LedgerExport, RollUpdate,
+    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
+    RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
 };
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
-use models::clique::ExportClique;
+use models::clique::Clique;
 use models::ledger::LedgerChange;
 use models::ledger::LedgerData;
 use models::{
@@ -26,9 +23,10 @@ use models::{
 };
 use time::UTime;
 
+use super::mock_establisher::Duplex;
 use crate::config::BootstrapConfig;
-
-use super::mock_establisher::{ReadHalf, WriteHalf};
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -141,41 +139,188 @@ where
     }
 }
 
+/// asserts that two ExportProofOfStake are equal
+pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOfStake) {
+    assert_eq!(
+        v1.cycle_states.len(),
+        v2.cycle_states.len(),
+        "length mismatch between sent and received pos"
+    );
+    for (itm1, itm2) in v1.cycle_states.iter().zip(v2.cycle_states.iter()) {
+        assert_eq!(
+            itm1.len(),
+            itm2.len(),
+            "subitem length mismatch between sent and received pos"
+        );
+        for (itm1, itm2) in itm1.iter().zip(itm2.iter()) {
+            assert_eq!(
+                itm1.cycle, itm2.cycle,
+                "ThreadCycleState.cycle mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.last_final_slot, itm2.last_final_slot,
+                "ThreadCycleState.last_final_slot mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.roll_count.0, itm2.roll_count.0,
+                "ThreadCycleState.roll_count mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.cycle_updates.0.len(),
+                itm2.cycle_updates.0.len(),
+                "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
+            );
+            for (a1, itm1) in itm1.cycle_updates.0.iter() {
+                let itm2 = itm2.cycle_updates.0.get(a1).expect(
+                    "ThreadCycleState.cycle_updates element miss between sent and received pos",
+                );
+                assert_eq!(
+                    itm1.to_bytes_compact().unwrap(),
+                    itm2.to_bytes_compact().unwrap(),
+                    "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
+                );
+            }
+            assert_eq!(
+                itm1.rng_seed, itm2.rng_seed,
+                "ThreadCycleState.rng_seed mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.production_stats, itm2.production_stats,
+                "ThreadCycleState.production_stats mismatch between sent and received pos"
+            );
+        }
+    }
+}
+
+/// asserts that two BootstrapableGraph are equal
+pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
+    assert_eq!(
+        v1.active_blocks.len(),
+        v2.active_blocks.len(),
+        "length mismatch"
+    );
+    for (id1, itm1) in v1.active_blocks.iter() {
+        let itm2 = v2.active_blocks.get(&id1).unwrap();
+        assert_eq!(
+            itm1.block.to_bytes_compact().unwrap(),
+            itm2.block.to_bytes_compact().unwrap(),
+            "block mismatch"
+        );
+        assert_eq!(
+            itm1.block_ledger_changes.0.len(),
+            itm2.block_ledger_changes.0.len(),
+            "ledger changes length mismatch"
+        );
+        for (id1, itm1) in itm1.block_ledger_changes.0.iter() {
+            let itm2 = itm2.block_ledger_changes.0.get(id1).unwrap();
+            assert_eq!(
+                itm1.balance_delta, itm2.balance_delta,
+                "balance delta mistmatch"
+            );
+            assert_eq!(
+                itm1.balance_increment, itm2.balance_increment,
+                "balance increment mismatch"
+            );
+        }
+        assert_eq!(itm1.children, itm2.children, "children mismatch");
+        assert_eq!(
+            itm1.dependencies, itm2.dependencies,
+            "dependencies mismatch"
+        );
+        assert_eq!(itm1.is_final, itm2.is_final, "is_final mismatch");
+        assert_eq!(itm1.parents, itm2.parents, "parents mismatch");
+        assert_eq!(
+            itm1.production_events, itm2.production_events,
+            "production events mismatch"
+        );
+        assert_eq!(
+            itm1.roll_updates.0.len(),
+            itm2.roll_updates.0.len(),
+            "roll updates len mismatch"
+        );
+        for (id1, itm1) in itm1.roll_updates.0.iter() {
+            let itm2 = itm2.roll_updates.0.get(id1).unwrap();
+            assert_eq!(
+                itm1.roll_purchases, itm2.roll_purchases,
+                "roll purchases mistmatch"
+            );
+            assert_eq!(itm1.roll_sales, itm2.roll_sales, "roll sales mismatch");
+        }
+    }
+    assert_eq!(v1.best_parents, v2.best_parents, "best parents mismatch");
+    assert_eq!(v1.gi_head, v2.gi_head, "gi_head mismatch");
+    assert_eq!(
+        v1.latest_final_blocks_periods, v2.latest_final_blocks_periods,
+        "latest_final_blocks_periods mismatch"
+    );
+    assert_eq!(v1.ledger.0.len(), v1.ledger.0.len(), "ledger len mismatch");
+    for (id1, itm1) in v1.ledger.0.iter() {
+        let itm2 = v2.ledger.0.get(id1).unwrap();
+        assert_eq!(itm1.balance, itm2.balance, "balance mistmatch");
+    }
+    assert_eq!(
+        v1.max_cliques.len(),
+        v2.max_cliques.len(),
+        "max_cliques len mismatch"
+    );
+    for (itm1, itm2) in v1.max_cliques.iter().zip(v2.max_cliques.iter()) {
+        assert_eq!(itm1.block_ids, itm2.block_ids, "block_ids mistmatch");
+        assert_eq!(itm1.fitness, itm2.fitness, "fitness mistmatch");
+        assert_eq!(
+            itm1.is_blockclique, itm2.is_blockclique,
+            "is_blockclique mistmatch"
+        );
+    }
+}
+
 pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
 
-    let mut ledger_subset = Vec::new();
-    ledger_subset.push((
+    let mut ledger_subset = LedgerSubset::default();
+    ledger_subset.0.insert(
         address,
         LedgerData {
             balance: Amount::from_str("10").unwrap(),
         },
-    ));
+    );
 
-    let cycle_state = ExportThreadCycleState {
+    let cycle_state = ThreadCycleState {
         cycle: 1,
         last_final_slot: Slot::new(1, 1),
-        roll_count: vec![(get_random_address(), 123), (get_random_address(), 456)],
-        cycle_updates: vec![
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 147,
-                    roll_sales: 44788,
-                },
-            ),
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 8887,
-                    roll_sales: 114,
-                },
-            ),
-        ],
+        roll_count: RollCounts(
+            vec![(get_random_address(), 123), (get_random_address(), 456)]
+                .into_iter()
+                .collect(),
+        ),
+        cycle_updates: RollUpdates(
+            vec![
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 147,
+                        roll_sales: 44788,
+                    },
+                ),
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 8887,
+                        roll_sales: 114,
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
         rng_seed: bitvec![Lsb0, u8 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-        production_stats: vec![(get_random_address(), 1, 2), (get_random_address(), 3, 4)],
+        production_stats: vec![
+            (get_random_address(), (1, 2)),
+            (get_random_address(), (3, 4)),
+        ]
+        .into_iter()
+        .collect(),
     };
     let boot_pos = ExportProofOfStake {
         cycle_states: vec![
@@ -258,67 +403,82 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             vec![
                 (get_dummy_block_id("b3"), 101),
                 (get_dummy_block_id("b4"), 455),
-            ],
-            vec![(get_dummy_block_id("b3_2"), 889)],
+            ]
+            .into_iter()
+            .collect(),
+            vec![(get_dummy_block_id("b3_2"), 889)]
+                .into_iter()
+                .collect(),
         ],
-        dependencies: vec![get_dummy_block_id("b5"), get_dummy_block_id("b6")],
+        dependencies: vec![get_dummy_block_id("b5"), get_dummy_block_id("b6")]
+            .into_iter()
+            .collect(),
         is_final: true,
-        block_ledger_changes: vec![
-            (
-                get_random_address(),
-                LedgerChange {
-                    balance_increment: true,
-                    balance_delta: Amount::from_str("157").unwrap(),
-                },
-            ),
-            (
-                get_random_address(),
-                LedgerChange {
-                    balance_increment: false,
-                    balance_delta: Amount::from_str("44").unwrap(),
-                },
-            ),
-            (
-                get_random_address(),
-                LedgerChange {
-                    balance_increment: false,
-                    balance_delta: Amount::from_str("878").unwrap(),
-                },
-            ),
-        ],
-        roll_updates: vec![
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 778,
-                    roll_sales: 54851,
-                },
-            ),
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 788778,
-                    roll_sales: 11451,
-                },
-            ),
-        ],
+        block_ledger_changes: LedgerChanges(
+            vec![
+                (
+                    get_random_address(),
+                    LedgerChange {
+                        balance_increment: true,
+                        balance_delta: Amount::from_str("157").unwrap(),
+                    },
+                ),
+                (
+                    get_random_address(),
+                    LedgerChange {
+                        balance_increment: false,
+                        balance_delta: Amount::from_str("44").unwrap(),
+                    },
+                ),
+                (
+                    get_random_address(),
+                    LedgerChange {
+                        balance_increment: false,
+                        balance_delta: Amount::from_str("878").unwrap(),
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
+        roll_updates: RollUpdates(
+            vec![
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 778,
+                        roll_sales: 54851,
+                    },
+                ),
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 788778,
+                        roll_sales: 11451,
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
         production_events: vec![
             (12, get_random_address(), true),
             (31, get_random_address(), false),
         ],
     };
-    assert_eq!(
-        ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
+
+    // check reserialization
+    assert_eq_thread_cycle_states(
+        &ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
             .unwrap()
-            .0
-            .to_bytes_compact()
-            .unwrap(),
-        boot_pos.to_bytes_compact().unwrap(),
-        "ExportProofOfStake serialization inconsistent"
+            .0,
+        &boot_pos,
     );
 
     let boot_graph = BootstrapableGraph {
-        active_blocks: vec![(get_dummy_block_id("block1"), block1)],
+        active_blocks: vec![(get_dummy_block_id("block1"), block1)]
+            .into_iter()
+            .collect(),
         best_parents: vec![
             (get_dummy_block_id("parent1"), 2),
             (get_dummy_block_id("parent2"), 3),
@@ -328,24 +488,26 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             (get_dummy_block_id("parent2"), 10),
         ],
         gi_head: vec![
-            (get_dummy_block_id("parent1"), vec![]),
-            (get_dummy_block_id("parent2"), vec![]),
-        ],
-        max_cliques: vec![ExportClique {
-            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+            (get_dummy_block_id("parent1"), Default::default()),
+            (get_dummy_block_id("parent2"), Default::default()),
+        ]
+        .into_iter()
+        .collect(),
+        max_cliques: vec![Clique {
+            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")]
+                .into_iter()
+                .collect(),
             fitness: 123,
             is_blockclique: true,
         }],
-        ledger: LedgerExport { ledger_subset },
+        ledger: ledger_subset,
     };
-    assert_eq!(
-        BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
+
+    assert_eq_bootstrap_graph(
+        &BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
             .unwrap()
-            .0
-            .to_bytes_compact()
-            .unwrap(),
-        boot_graph.to_bytes_compact().unwrap(),
-        "BootstrapableGraph serialization inconsistent"
+            .0,
+        &boot_graph,
     );
 
     (boot_pos, boot_graph)
@@ -358,18 +520,37 @@ pub fn get_peers() -> BootstrapPeers {
     ])
 }
 
-pub async fn bridge_mock_streams(mut read_side: ReadHalf, mut write_side: WriteHalf) {
-    let mut buf = vec![0; 1024];
+pub async fn bridge_mock_streams(mut side1: Duplex, mut side2: Duplex) {
+    let mut buf1 = vec![0u8; 1024];
+    let mut buf2 = vec![0u8; 1024];
     loop {
-        let n = read_side
-            .read(&mut buf)
-            .await
-            .expect("could not read read_side in bridge");
-        if n == 0 {
-            return;
-        }
-        if write_side.write_all(&buf[0..n]).await.is_err() {
-            return;
+        tokio::select! {
+            res1 = side1.read(&mut buf1) => match res1 {
+                Ok(n1) => {
+                    if n1 == 0 {
+                        return;
+                    }
+                    if side2.write_all(&buf1[..n1]).await.is_err() {
+                        return;
+                    }
+                },
+                Err(_err) => {
+                    return;
+                }
+            },
+            res2 = side2.read(&mut buf2) => match res2 {
+                Ok(n2) => {
+                    if n2 == 0 {
+                        return;
+                    }
+                    if side1.write_all(&buf2[..n2]).await.is_err() {
+                        return;
+                    }
+                },
+                Err(_err) => {
+                    return;
+                }
+            },
         }
     }
 }
