@@ -2,10 +2,10 @@
 
 use crate::{
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
-    BootstrapableGraph, LedgerExport,
+    BootstrapableGraph, LedgerSubset,
 };
 use crypto::{hash::Hash, signature::PublicKey};
-use models::clique::ExportClique;
+use models::clique::Clique;
 use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationId,
@@ -84,9 +84,11 @@ async fn test_storage() {
         op5.clone(),
     ];
 
-    let boot_ledger = LedgerExport {
-        ledger_subset: vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))],
-    };
+    let boot_ledger = LedgerSubset(
+        vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
+            .into_iter()
+            .collect(),
+    );
 
     let (boot_graph, b1, b2) = get_bootgraph(
         crypto::derive_public_key(&staking_keys[0]),
@@ -329,8 +331,8 @@ async fn test_consensus_and_storage() {
     // Storage: from A to B
     let op_storage_3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
 
-    let boot_ledger = LedgerExport {
-        ledger_subset: vec![
+    let boot_ledger = LedgerSubset(
+        vec![
             (
                 address_a,
                 LedgerData::new(Amount::from_str("1000").unwrap()),
@@ -339,8 +341,10 @@ async fn test_consensus_and_storage() {
                 address_b,
                 LedgerData::new(Amount::from_str("1000").unwrap()),
             ),
-        ],
-    };
+        ]
+        .into_iter()
+        .collect(),
+    );
 
     let block = Block {
         header: BlockHeader {
@@ -515,7 +519,7 @@ async fn test_consensus_and_storage() {
 fn get_bootgraph(
     creator: PublicKey,
     operations: Vec<Operation>,
-    ledger: LedgerExport,
+    ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =
         get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
@@ -560,19 +564,21 @@ fn get_bootgraph(
             latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],
             /// Head of the incompatibility graph.
             gi_head: vec![
-                (g0_id, vec![]),
-                (p1t0_id, vec![]),
-                (p2t0_id, vec![]),
-                (g1_id, vec![]),
-                (p1t0_id, vec![]),
-                (p2t0_id, vec![]),
+                (g0_id, Default::default()),
+                (p1t0_id, Default::default()),
+                (p2t0_id, Default::default()),
+                (g1_id, Default::default()),
+                (p1t0_id, Default::default()),
+                (p2t0_id, Default::default()),
             ]
             .into_iter()
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![ExportClique {
-                block_ids: vec![g0_id, p1t0_id, g1_id, p1t1_id, p2t0_id],
+            max_cliques: vec![Clique {
+                block_ids: vec![g0_id, p1t0_id, g1_id, p1t1_id, p2t0_id]
+                    .into_iter()
+                    .collect(),
                 fitness: 123,
                 is_blockclique: true,
             }],
