@@ -78,7 +78,6 @@ pub enum ConsensusCommand {
         address: Address,
         response_tx: oneshot::Sender<BlockHashMap<Status>>,
     },
-    Stop,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,7 +93,6 @@ pub struct ConsensusStats {
 #[derive(Debug, Clone)]
 pub enum ConsensusEvent {
     NeedSync, // probable desync detected, need resync
-    Stop,
 }
 
 /// Events that are emitted by consensus.
@@ -984,7 +982,6 @@ impl ConsensusWorker {
                         err
                     ))
                 }),
-            ConsensusCommand::Stop => self.send_consensus_event(ConsensusEvent::Stop).await,
         }
     }
 

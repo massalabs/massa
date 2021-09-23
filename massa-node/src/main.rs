@@ -25,7 +25,7 @@ use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
-use tokio::sync::oneshot;
+use tokio::sync::mpsc;
 
 mod node_config;
 
@@ -44,7 +44,7 @@ async fn launch(
     ProtocolManager,
     StorageManager,
     NetworkManager,
-    oneshot::Receiver<()>,
+    mpsc::Receiver<()>,
 ) {
     info!("Node version : {}", cfg.version);
     if let Some(end) = cfg.consensus.end_timestamp {
@@ -237,10 +237,6 @@ async fn run(cfg: node_config::Config) {
                             warn!("in response to a desynchronization, the node is going to bootstrap again");
                             break true;
                         },
-                        Ok(ConsensusEvent::Stop) => {
-                            //todo add warning ?
-                            break false;
-                        }
                         Err(err) => {
                             error!("consensus_event_receiver.wait_event error: {:?}", err);
                             break false ;
@@ -263,7 +259,7 @@ async fn run(cfg: node_config::Config) {
                     break false;
                 }
 
-                _ = &mut private_stop_rx=> {
+                _ = private_stop_rx.recv()=> {
                     info!("interrupt signal received");
                     break false;
                 }

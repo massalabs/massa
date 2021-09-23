@@ -13,7 +13,7 @@ use rpc_server::APIConfig;
 pub use rpc_server::API;
 use std::net::IpAddr;
 use std::thread;
-use tokio::sync::oneshot;
+use tokio::sync::mpsc;
 
 mod error;
 
@@ -23,7 +23,7 @@ pub struct ApiMassaPrivate {
     pub network_command_sender: NetworkCommandSender,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
-    pub stop_node_channel: oneshot::Sender<()>,
+    pub stop_node_channel: mpsc::Sender<()>,
 }
 
 /// Private Massa-RPC "manager mode" endpoints
@@ -70,8 +70,8 @@ impl ApiMassaPrivate {
         network_command_sender: NetworkCommandSender,
         api_config: APIConfig,
         consensus_config: ConsensusConfig,
-    ) -> (Self, oneshot::Receiver<()>) {
-        let (stop_node_channel, rx) = oneshot::channel();
+    ) -> (Self, mpsc::Receiver<()>) {
+        let (stop_node_channel, rx) = mpsc::channel(1);
         (
             ApiMassaPrivate {
                 url: url.to_string(),
@@ -79,7 +79,7 @@ impl ApiMassaPrivate {
                 network_command_sender,
                 consensus_config,
                 api_config,
-                stop_node_channel,
+                stop_node_channel: stop_node_channel,
             },
             rx,
         )
@@ -103,8 +103,14 @@ impl MassaPrivate for ApiMassaPrivate {
     }
 
     fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>> {
-        let cmd_sender = self.consensus_command_sender.clone();
-        let closure = async move || Ok(cmd_sender.stop().await?);
+        let stop = self.stop_node_channel.clone();
+        let closure = async move || {
+            stop.send(()).await.map_err(|e| {
+                PrivateApiError::SendChannelError(format!("error sending stop signal {:?}", e))
+            })?;
+            Ok(())
+        };
+
         Box::pin(closure())
     }
 
