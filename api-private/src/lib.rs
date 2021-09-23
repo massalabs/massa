@@ -13,16 +13,17 @@ use rpc_server::APIConfig;
 pub use rpc_server::API;
 use std::net::IpAddr;
 use std::thread;
+use tokio::sync::oneshot;
 
 mod error;
 
-#[derive(Clone)]
 pub struct ApiMassaPrivate {
     pub url: String,
     pub consensus_command_sender: ConsensusCommandSender,
     pub network_command_sender: NetworkCommandSender,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
+    pub stop_node_channel: oneshot::Sender<()>,
 }
 
 /// Private Massa-RPC "manager mode" endpoints
@@ -69,21 +70,27 @@ impl ApiMassaPrivate {
         network_command_sender: NetworkCommandSender,
         api_config: APIConfig,
         consensus_config: ConsensusConfig,
-    ) -> Self {
-        ApiMassaPrivate {
-            url: url.to_string(),
-            consensus_command_sender,
-            network_command_sender,
-            consensus_config,
-            api_config,
-        }
+    ) -> (Self, oneshot::Receiver<()>) {
+        let (stop_node_channel, rx) = oneshot::channel();
+        (
+            ApiMassaPrivate {
+                url: url.to_string(),
+                consensus_command_sender,
+                network_command_sender,
+                consensus_config,
+                api_config,
+                stop_node_channel,
+            },
+            rx,
+        )
     }
-    pub fn serve_massa_private(&mut self) {
+    pub fn serve_massa_private(self) {
         let mut io = IoHandler::new();
-        io.extend_with(self.clone().to_delegate());
+        let url = self.url.parse().unwrap();
+        io.extend_with(self.to_delegate());
 
         let server = ServerBuilder::new(io)
-            .start_http(&self.url.parse().unwrap())
+            .start_http(&url)
             .expect("Unable to start RPC server");
 
         thread::spawn(|| server.wait());

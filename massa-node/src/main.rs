@@ -25,6 +25,7 @@ use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
+use tokio::sync::oneshot;
 
 mod node_config;
 
@@ -43,6 +44,7 @@ async fn launch(
     ProtocolManager,
     StorageManager,
     NetworkManager,
+    oneshot::Receiver<()>,
 ) {
     info!("Node version : {}", cfg.version);
     if let Some(end) = cfg.consensus.end_timestamp {
@@ -165,7 +167,7 @@ async fn launch(
     .unwrap();
 
     // spawn APIs
-    let mut api_private = ApiMassaPrivate::create(
+    let (api_private, private_stop_rx) = ApiMassaPrivate::create(
         "127.0.0.1:33034",
         consensus_command_sender.clone(),
         network_command_sender.clone(),
@@ -197,6 +199,7 @@ async fn launch(
         protocol_manager,
         storage_manager,
         network_manager,
+        private_stop_rx,
     )
 }
 
@@ -216,6 +219,7 @@ async fn run(cfg: node_config::Config) {
             protocol_manager,
             storage_manager,
             network_manager,
+            mut private_stop_rx,
         ) = launch(cfg.clone()).await;
 
         // interrupt signal listener
@@ -255,6 +259,11 @@ async fn run(cfg: node_config::Config) {
 
                 _ = &mut stop_signal => {
                     massa_trace!("massa-node.main.run.select.stop", {});
+                    info!("interrupt signal received");
+                    break false;
+                }
+
+                _ = &mut private_stop_rx=> {
                     info!("interrupt signal received");
                     break false;
                 }
