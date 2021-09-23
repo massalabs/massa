@@ -5,7 +5,7 @@ use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     RollsInfo,
 };
-use consensus::get_latest_block_slot_at_timestamp;
+use consensus::{get_latest_block_slot_at_timestamp, ConsensusCommandSender, ConsensusConfig};
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
@@ -15,8 +15,8 @@ use models::clique::Clique;
 use models::operation::{Operation, OperationId};
 use models::EndorsementId;
 use models::{Address, BlockId, Slot};
-use rpc_server::rpc_server;
 pub use rpc_server::API;
+use rpc_server::{rpc_server, APIConfig};
 use std::collections::{HashMap, HashSet};
 use std::thread;
 use time::UTime;
@@ -26,7 +26,7 @@ mod error;
 /// Public Massa JSON-RPC endpoints
 #[rpc(server)]
 pub trait MassaPublic {
-    fn serve_massa_public(&self); // todo add needed command servers
+    fn serve_massa_public(&mut self, _: ConsensusCommandSender, _: ConsensusConfig, _: APIConfig); // todo add needed command servers
 
     /////////////////////////////////
     // Explorer (aggregated stats) //
@@ -82,8 +82,17 @@ pub trait MassaPublic {
 }
 
 impl MassaPublic for API {
-    fn serve_massa_public(&self) {
+    fn serve_massa_public(
+        &mut self,
+        consensus: ConsensusCommandSender,
+        consensus_cfg: ConsensusConfig,
+        api_cfg: APIConfig,
+    ) {
         // todo add needed command servers
+        self.consensus_command_sender = Some(consensus);
+        self.consensus_config = Some(consensus_cfg);
+
+        self.api_config = Some(api_cfg);
         rpc_server!(self.clone());
     }
 

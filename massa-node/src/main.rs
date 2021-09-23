@@ -173,8 +173,12 @@ async fn launch(
         cfg.consensus.clone(),
     );
 
-    let api_public = APIPublic::from_url("127.0.0.1:33035");
-    api_public.serve_massa_public(); // todo add needed command servers
+    let mut api_public = APIPublic::from_url("127.0.0.1:33035");
+    api_public.serve_massa_public(
+        consensus_command_sender.clone(),
+        cfg.consensus.clone(),
+        cfg.new_api.clone(),
+    ); // todo add needed command servers
 
     let api_eth = APIEth::from_url("127.0.0.1:33036");
     api_eth.serve_eth_rpc(); // todo add needed command servers
