@@ -13,7 +13,6 @@ jsonrpc-http-server = "18.0.0"
 crypto = {path = "../crypto"}
 api-dto = { path = "../api-dto" }
 models = {path = "../models"}
-
 communication = {path = "../communication"}
 consensus = {path = "../consensus"}
 time = {path = "../time"}

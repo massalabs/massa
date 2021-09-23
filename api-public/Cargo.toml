@@ -14,3 +14,7 @@ api-dto = { path = "../api-dto" }
 models = {path = "../models"}
 rpc-server = {path = "../rpc-server"}
 time = {path = "../time"}
+consensus = {path = "../consensus"}
+thiserror = "1.0"
+communication = {path = "../communication"}
+crypto = {path = "../crypto"}

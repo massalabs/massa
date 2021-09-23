@@ -97,11 +97,15 @@ name = "api-public"
 version = "0.1.0"
 dependencies = [
  "api-dto",
+ "communication",
+ "consensus",
+ "crypto",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "models",
  "rpc-server",
+ "thiserror",
  "time 0.1.0",
 ]
 
