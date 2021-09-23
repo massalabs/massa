@@ -1,12 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::error::CryptoError;
+use bitcoin_hashes;
 use std::{convert::TryInto, str::FromStr};
 
 pub const HASH_SIZE_BYTES: usize = 32;
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
-pub struct Hash([u8; HASH_SIZE_BYTES]);
+pub struct Hash(bitcoin_hashes::sha256::Hash);
 
 impl std::fmt::Display for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -29,9 +30,8 @@ impl Hash {
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// ```
     pub fn hash(data: &[u8]) -> Self {
-        use sha3::{Digest, Keccak256};
-
-        Hash(Keccak256::digest(data).try_into().expect("wrong hash size"))
+        use bitcoin_hashes::Hash;
+        Hash(bitcoin_hashes::sha256::Hash::hash(data))
     }
 
     /// Serialize a Hash using bs58 encoding with checksum.
@@ -55,7 +55,8 @@ impl Hash {
     /// let serialized = hash.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
-        self.0.clone()
+        use bitcoin_hashes::Hash;
+        *self.0.as_inner()
     }
 
     /// Convert into bytes.
@@ -67,7 +68,8 @@ impl Hash {
     /// let serialized = hash.into_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
-        self.0
+        use bitcoin_hashes::Hash;
+        self.0.into_inner()
     }
 
     /// Deserialize using bs58 encoding with checksum.
@@ -104,7 +106,11 @@ impl Hash {
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Hash, CryptoError> {
-        Ok(Hash(*data))
+        use bitcoin_hashes::Hash;
+        Ok(Hash(
+            bitcoin_hashes::sha256::Hash::from_slice(&data[..])
+                .map_err(|err| CryptoError::ParsingError(format!("{:?}", err)))?,
+        ))
     }
 }
 
@@ -228,15 +234,15 @@ mod tests {
         assert_eq!(hash, deserialized)
     }
 
-    // #[test]
-    // #[serial]
-    // fn test_hash() {
-    //     let data = "abc".as_bytes();
-    //     let hash = Hash::hash(&data);
-    //     let hash_ref: [u8; HASH_SIZE_BYTES] = [
-    //         186, 120, 22, 191, 143, 1, 207, 234, 65, 65, 64, 222, 93, 174, 34, 35, 176, 3, 97, 163,
-    //         150, 23, 122, 156, 180, 16, 255, 97, 242, 0, 21, 173,
-    //     ];
-    //     assert_eq!(hash.to_bytes(), hash_ref);
-    // }
+    #[test]
+    #[serial]
+    fn test_hash() {
+        let data = "abc".as_bytes();
+        let hash = Hash::hash(&data);
+        let hash_ref: [u8; HASH_SIZE_BYTES] = [
+            186, 120, 22, 191, 143, 1, 207, 234, 65, 65, 64, 222, 93, 174, 34, 35, 176, 3, 97, 163,
+            150, 23, 122, 156, 180, 16, 255, 97, 242, 0, 21, 173,
+        ];
+        assert_eq!(hash.to_bytes(), hash_ref);
+    }
 }

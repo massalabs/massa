@@ -7,7 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sha3 = "0.9.1"
 bitcoin_hashes = "0.10"
 bs58 = { version = "0.4", features = ["check"] }
 rand = { version = "0.8"}
