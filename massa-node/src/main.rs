@@ -259,7 +259,7 @@ async fn run(cfg: node_config::Config) {
                     break false;
                 }
 
-                _ = private_stop_rx.recv() => {
+                _ = api_private_stop_rx.recv() => {
                     info!("stop command received from private API");
                     break false;
                 }
