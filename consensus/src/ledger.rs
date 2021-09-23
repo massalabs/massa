@@ -651,11 +651,10 @@ impl SerializeCompact for LedgerSubset {
     /// # use std::str::FromStr;
     /// # use models::ledger::LedgerData;
     /// # use consensus::LedgerSubset;
-    /// # let mut ledger = LedgerSubset::default();
-    /// # ledger.ledger_subset = vec![
+    /// # let ledger = LedgerSubset(vec![
     /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
     /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(Amount::from_str("1020").unwrap())),
-    /// # ];
+    /// # ].into_iter().collect());
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
     /// #     parent_count: 2,
@@ -676,10 +675,10 @@ impl SerializeCompact for LedgerSubset {
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerSubset::from_bytes_compact(&bytes).unwrap();
-    /// for (address, data) in &ledger.ledger_subset {
-    ///    assert!(res.ledger_subset.iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
+    /// for (address, data) in &ledger.0 {
+    ///    assert!(res.0.iter().filter(|(addr, dta)| &address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
     /// }
-    /// assert_eq!(ledger.ledger_subset.len(), res.ledger_subset.len());
+    /// assert_eq!(ledger.0.len(), res.0.len());
     /// ```
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
