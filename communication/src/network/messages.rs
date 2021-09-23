@@ -1,7 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crypto::signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
-use models::{BLOCK_ID_SIZE_BYTES, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version, array_from_slice, with_serialization_context};
+use models::{
+    array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
+    DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt,
+    Version, BLOCK_ID_SIZE_BYTES,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, net::IpAddr};
