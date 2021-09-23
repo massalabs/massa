@@ -139,6 +139,140 @@ where
     }
 }
 
+/// asserts that two ExportProofOfStake are equal
+pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOfStake) {
+    assert_eq!(
+        v1.cycle_states.len(),
+        v2.cycle_states.len(),
+        "length mismatch between sent and received pos"
+    );
+    for (itm1, itm2) in v1.cycle_states.iter().zip(v2.cycle_states.iter()) {
+        assert_eq!(
+            itm1.len(),
+            itm2.len(),
+            "subitem length mismatch between sent and received pos"
+        );
+        for (itm1, itm2) in itm1.iter().zip(itm2.iter()) {
+            assert_eq!(
+                itm1.cycle, itm2.cycle,
+                "ThreadCycleState.cycle mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.last_final_slot, itm2.last_final_slot,
+                "ThreadCycleState.last_final_slot mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.roll_count.0, itm2.roll_count.0,
+                "ThreadCycleState.roll_count mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.cycle_updates.0.len(),
+                itm2.cycle_updates.0.len(),
+                "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
+            );
+            for (a1, itm1) in itm1.cycle_updates.0.iter() {
+                let itm2 = itm2.cycle_updates.0.get(a1).expect(
+                    "ThreadCycleState.cycle_updates element miss between sent and received pos",
+                );
+                assert_eq!(
+                    itm1.to_bytes_compact().unwrap(),
+                    itm2.to_bytes_compact().unwrap(),
+                    "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
+                );
+            }
+            assert_eq!(
+                itm1.rng_seed, itm2.rng_seed,
+                "ThreadCycleState.rng_seed mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.production_stats, itm2.production_stats,
+                "ThreadCycleState.production_stats mismatch between sent and received pos"
+            );
+        }
+    }
+}
+
+/// asserts that two BootstrapableGraph are equal
+pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
+    assert_eq!(
+        v1.active_blocks.len(),
+        v2.active_blocks.len(),
+        "length mismatch"
+    );
+    for (id1, itm1) in v1.active_blocks.iter() {
+        let itm2 = v2.active_blocks.get(&id1).unwrap();
+        assert_eq!(
+            itm1.block.to_bytes_compact().unwrap(),
+            itm2.block.to_bytes_compact().unwrap(),
+            "block mismatch"
+        );
+        assert_eq!(
+            itm1.block_ledger_changes.0.len(),
+            itm2.block_ledger_changes.0.len(),
+            "ledger changes length mismatch"
+        );
+        for (id1, itm1) in itm1.block_ledger_changes.0.iter() {
+            let itm2 = itm2.block_ledger_changes.0.get(id1).unwrap();
+            assert_eq!(
+                itm1.balance_delta, itm2.balance_delta,
+                "balance delta mistmatch"
+            );
+            assert_eq!(
+                itm1.balance_increment, itm2.balance_increment,
+                "balance increment mismatch"
+            );
+        }
+        assert_eq!(itm1.children, itm2.children, "children mismatch");
+        assert_eq!(
+            itm1.dependencies, itm2.dependencies,
+            "dependencies mismatch"
+        );
+        assert_eq!(itm1.is_final, itm2.is_final, "is_final mismatch");
+        assert_eq!(itm1.parents, itm2.parents, "parents mismatch");
+        assert_eq!(
+            itm1.production_events, itm2.production_events,
+            "production events mismatch"
+        );
+        assert_eq!(
+            itm1.roll_updates.0.len(),
+            itm2.roll_updates.0.len(),
+            "roll updates len mismatch"
+        );
+        for (id1, itm1) in itm1.roll_updates.0.iter() {
+            let itm2 = itm2.roll_updates.0.get(id1).unwrap();
+            assert_eq!(
+                itm1.roll_purchases, itm2.roll_purchases,
+                "roll purchases mistmatch"
+            );
+            assert_eq!(itm1.roll_sales, itm2.roll_sales, "roll sales mismatch");
+        }
+    }
+    assert_eq!(v1.best_parents, v2.best_parents, "best parents mismatch");
+    assert_eq!(v1.gi_head, v2.gi_head, "gi_head mismatch");
+    assert_eq!(
+        v1.latest_final_blocks_periods, v2.latest_final_blocks_periods,
+        "latest_final_blocks_periods mismatch"
+    );
+    assert_eq!(v1.ledger.0.len(), v1.ledger.0.len(), "ledger len mismatch");
+    for (id1, itm1) in v1.ledger.0.iter() {
+        let itm2 = v2.ledger.0.get(id1).unwrap();
+        assert_eq!(itm1.balance, itm2.balance, "balance mistmatch");
+    }
+    assert_eq!(
+        v1.max_cliques.len(),
+        v2.max_cliques.len(),
+        "max_cliques len mismatch"
+    );
+    for (itm1, itm2) in v1.max_cliques.iter().zip(v2.max_cliques.iter()) {
+        assert_eq!(itm1.block_ids, itm2.block_ids, "block_ids mistmatch");
+        assert_eq!(itm1.fitness, itm2.fitness, "fitness mistmatch");
+        assert_eq!(
+            itm1.is_blockclique, itm2.is_blockclique,
+            "is_blockclique mistmatch"
+        );
+    }
+}
+
 pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let private_key = crypto::generate_random_private_key();
     let public_key = crypto::derive_public_key(&private_key);
@@ -332,14 +466,13 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             (31, get_random_address(), false),
         ],
     };
-    assert_eq!(
-        ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
+
+    // check reserialization
+    assert_eq_thread_cycle_states(
+        &ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
             .unwrap()
-            .0
-            .to_bytes_compact()
-            .unwrap(),
-        boot_pos.to_bytes_compact().unwrap(),
-        "ExportProofOfStake serialization inconsistent"
+            .0,
+        &boot_pos,
     );
 
     let boot_graph = BootstrapableGraph {
@@ -369,14 +502,12 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         }],
         ledger: ledger_subset,
     };
-    assert_eq!(
-        BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
+
+    assert_eq_bootstrap_graph(
+        &BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
             .unwrap()
-            .0
-            .to_bytes_compact()
-            .unwrap(),
-        boot_graph.to_bytes_compact().unwrap(),
-        "BootstrapableGraph serialization inconsistent"
+            .0,
+        &boot_graph,
     );
 
     (boot_pos, boot_graph)
