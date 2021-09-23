@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
-use models::clique::{Clique, ExportClique};
+use models::clique::Clique;
 use models::ledger::LedgerChange;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHashMap,
@@ -26,7 +26,7 @@ use models::{
 
 use crate::error::ConsensusError;
 use crate::{
-    ledger::{Ledger, LedgerChanges, LedgerExport, LedgerSubset, OperationLedgerInterface},
+    ledger::{Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
     pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
 
@@ -88,11 +88,11 @@ impl ActiveBlock {
 pub struct ExportActiveBlock {
     pub block: Block,
     pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
-    pub children: Vec<Vec<(BlockId, u64)>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    pub dependencies: Vec<BlockId>,         // dependencies required for validity check
+    pub children: Vec<BlockHashMap<u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
+    pub dependencies: BlockHashSet,       // dependencies required for validity check
     pub is_final: bool,
-    pub block_ledger_changes: Vec<(Address, LedgerChange)>,
-    pub roll_updates: Vec<(Address, RollUpdate)>,
+    pub block_ledger_changes: LedgerChanges,
+    pub roll_updates: RollUpdates,
     pub production_events: Vec<(u64, Address, bool)>,
 }
 
@@ -101,15 +101,11 @@ impl From<ActiveBlock> for ExportActiveBlock {
         ExportActiveBlock {
             block: block.block,
             parents: block.parents,
-            children: block
-                .children
-                .into_iter()
-                .map(|map| map.into_iter().collect())
-                .collect(),
-            dependencies: block.dependencies.into_iter().collect(),
+            children: block.children,
+            dependencies: block.dependencies,
             is_final: block.is_final,
-            block_ledger_changes: block.block_ledger_changes.0.into_iter().collect(),
-            roll_updates: block.roll_updates.0.into_iter().collect(),
+            block_ledger_changes: block.block_ledger_changes,
+            roll_updates: block.roll_updates,
             production_events: block.production_events,
         }
     }
@@ -132,18 +128,14 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
         Ok(ActiveBlock {
             block: block.block,
             parents: block.parents,
-            children: block
-                .children
-                .into_iter()
-                .map(|map| map.into_iter().collect())
-                .collect(),
-            dependencies: block.dependencies.into_iter().collect(),
+            children: block.children,
+            dependencies: block.dependencies,
             descendants: Default::default(),
             is_final: block.is_final,
-            block_ledger_changes: LedgerChanges(block.block_ledger_changes.into_iter().collect()),
+            block_ledger_changes: block.block_ledger_changes,
             operation_set,
             addresses_to_operations,
-            roll_updates: RollUpdates(block.roll_updates.into_iter().collect()),
+            roll_updates: block.roll_updates,
             production_events: block.production_events,
         })
     }
@@ -207,24 +199,28 @@ impl SerializeCompact for ExportActiveBlock {
 
         //block_ledger_change
         let block_ledger_change_count: u32 =
-            self.block_ledger_changes.len().try_into().map_err(|err| {
-                ModelsError::SerializeError(format!(
-                    "too many block_ledger_change in ActiveBlock: {:?}",
-                    err
-                ))
-            })?;
+            self.block_ledger_changes
+                .0
+                .len()
+                .try_into()
+                .map_err(|err| {
+                    ModelsError::SerializeError(format!(
+                        "too many block_ledger_change in ActiveBlock: {:?}",
+                        err
+                    ))
+                })?;
         res.extend(block_ledger_change_count.to_varint_bytes());
-        for (addr, change) in self.block_ledger_changes.iter() {
+        for (addr, change) in self.block_ledger_changes.0.iter() {
             res.extend(&addr.to_bytes());
             res.extend(change.to_bytes_compact()?);
         }
 
         // roll updates
-        let roll_updates_count: u32 = self.roll_updates.len().try_into().map_err(|err| {
+        let roll_updates_count: u32 = self.roll_updates.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many roll updates in ActiveBlock: {:?}", err))
         })?;
         res.extend(roll_updates_count.to_varint_bytes());
-        for (addr, roll_update) in self.roll_updates.iter() {
+        for (addr, roll_update) in self.roll_updates.0.iter() {
             res.extend(addr.to_bytes());
             res.extend(roll_update.to_bytes_compact()?);
         }
@@ -301,7 +297,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut children: Vec<Vec<(BlockId, u64)>> = Vec::with_capacity(children_count as usize);
+        let mut children: Vec<BlockHashMap<u64>> = Vec::with_capacity(children_count as usize);
         for _ in 0..(children_count as usize) {
             let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             if map_count > max_bootstrap_children {
@@ -310,13 +306,14 @@ impl DeserializeCompact for ExportActiveBlock {
                 ));
             }
             cursor += delta;
-            let mut map: Vec<(BlockId, u64)> = Vec::with_capacity(map_count as usize);
+            let mut map: BlockHashMap<u64> =
+                BlockHashMap::with_capacity_and_hasher(map_count as usize, BuildHHasher::default());
             for _ in 0..(map_count as usize) {
                 let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += BLOCK_ID_SIZE_BYTES;
                 let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
-                map.push((hash, period));
+                map.insert(hash, period);
             }
             children.push(map);
         }
@@ -329,25 +326,30 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut dependencies: Vec<BlockId> = Vec::with_capacity(dependencies_count as usize);
+        let mut dependencies = BlockHashSet::with_capacity_and_hasher(
+            dependencies_count as usize,
+            BuildHHasher::default(),
+        );
         for _ in 0..(dependencies_count as usize) {
             let dep = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
-            dependencies.push(dep);
+            dependencies.insert(dep);
         }
 
         //block_ledger_changes
         let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         // TODO count check
         cursor += delta;
-        let mut block_ledger_changes: Vec<(Address, LedgerChange)> =
-            Vec::with_capacity(block_ledger_change_count as usize);
+        let mut block_ledger_changes = LedgerChanges(AddressHashMap::with_capacity_and_hasher(
+            block_ledger_change_count as usize,
+            BuildHHasher::default(),
+        ));
         for _ in 0..block_ledger_change_count {
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += ADDRESS_SIZE_BYTES;
             let (change, delta) = LedgerChange::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-            block_ledger_changes.push((address, change));
+            block_ledger_changes.0.insert(address, change);
         }
 
         // roll_updates
@@ -358,14 +360,16 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut roll_updates: Vec<(Address, RollUpdate)> =
-            Vec::with_capacity(roll_updates_count as usize);
+        let mut roll_updates = RollUpdates(AddressHashMap::with_capacity_and_hasher(
+            roll_updates_count as usize,
+            BuildHHasher::default(),
+        ));
         for _ in 0..roll_updates_count {
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += ADDRESS_SIZE_BYTES;
             let (roll_update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-            roll_updates.push((address, roll_update));
+            roll_updates.0.insert(address, roll_update);
         }
 
         // production_events
@@ -481,11 +485,6 @@ pub enum Status {
     Final,
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct ExportDiscardedBlocks {
-    pub map: BlockHashMap<(DiscardReason, BlockHeader)>,
-}
-
 impl<'a> From<&'a BlockGraph> for BlockGraphExport {
     /// Conversion from blockgraph.
     fn from(block_graph: &'a BlockGraph) -> Self {
@@ -496,11 +495,7 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
             best_parents: block_graph.best_parents.clone(),
             latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
             gi_head: block_graph.gi_head.clone(),
-            max_cliques: block_graph
-                .max_cliques
-                .iter()
-                .map(|v| ExportClique::from(v))
-                .collect(),
+            max_cliques: block_graph.max_cliques.clone(),
         };
 
         for (hash, block) in block_graph.block_statuses.iter() {
@@ -508,7 +503,6 @@ impl<'a> From<&'a BlockGraph> for BlockGraphExport {
                 BlockStatus::Discarded { header, reason, .. } => {
                     export
                         .discarded_blocks
-                        .map
                         .insert(*hash, (reason.clone(), header.clone()));
                 }
                 BlockStatus::Active(block) => {
@@ -544,7 +538,7 @@ pub struct BlockGraphExport {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: BlockHashMap<ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: ExportDiscardedBlocks,
+    pub discarded_blocks: BlockHashMap<(DiscardReason, BlockHeader)>,
     /// Best parents hashe in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
@@ -552,7 +546,7 @@ pub struct BlockGraphExport {
     /// Head of the incompatibility graph.
     pub gi_head: BlockHashMap<BlockHashSet>,
     /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<ExportClique>,
+    pub max_cliques: Vec<Clique>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -566,17 +560,17 @@ pub struct LedgerDataExport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootstrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: Vec<(BlockId, ExportActiveBlock)>,
+    pub active_blocks: BlockHashMap<ExportActiveBlock>,
     /// Best parents hashe in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// Head of the incompatibility graph.
-    pub gi_head: Vec<(BlockId, Vec<BlockId>)>,
+    pub gi_head: BlockHashMap<BlockHashSet>,
     /// List of maximal cliques of compatible blocks.
-    pub max_cliques: Vec<ExportClique>,
+    pub max_cliques: Vec<Clique>,
     /// Ledger at last final blocks
-    pub ledger: LedgerExport,
+    pub ledger: LedgerSubset,
 }
 
 impl<'a> TryFrom<&'a BlockGraph> for BootstrapableGraph {
@@ -605,12 +599,8 @@ impl<'a> TryFrom<&'a BlockGraph> for BootstrapableGraph {
                 .into_iter()
                 .map(|(hash, incomp)| (hash, incomp.into_iter().collect()))
                 .collect(),
-            max_cliques: block_graph
-                .max_cliques
-                .iter()
-                .map(|clique| ExportClique::from(clique))
-                .collect(),
-            ledger: LedgerExport::try_from(&block_graph.ledger)?,
+            max_cliques: block_graph.max_cliques.clone(),
+            ledger: LedgerSubset::try_from(&block_graph.ledger)?,
         })
     }
 }
@@ -715,14 +705,16 @@ impl DeserializeCompact for BootstrapableGraph {
             return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {:?}", active_blocks_count)));
         }
         cursor += delta;
-        let mut active_blocks: Vec<(BlockId, ExportActiveBlock)> =
-            Vec::with_capacity(active_blocks_count as usize);
+        let mut active_blocks = BlockHashMap::with_capacity_and_hasher(
+            active_blocks_count as usize,
+            BuildHHasher::default(),
+        );
         for _ in 0..(active_blocks_count as usize) {
             let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
             let (block, delta) = ExportActiveBlock::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-            active_blocks.push((hash, block));
+            active_blocks.insert(hash, block);
         }
 
         //best_parents
@@ -752,7 +744,8 @@ impl DeserializeCompact for BootstrapableGraph {
             return Err(ModelsError::DeserializeError(format!("too many blocks in gi_head for deserialization context in BootstrapableGraph: {:?}", gi_head_count)));
         }
         cursor += delta;
-        let mut gi_head: Vec<(BlockId, Vec<BlockId>)> = Vec::with_capacity(gi_head_count as usize);
+        let mut gi_head =
+            BlockHashMap::with_capacity_and_hasher(gi_head_count as usize, BuildHHasher::default());
         for _ in 0..(gi_head_count as usize) {
             let gihash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
@@ -761,13 +754,14 @@ impl DeserializeCompact for BootstrapableGraph {
                 return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {:?}", set_count)));
             }
             cursor += delta;
-            let mut set: Vec<BlockId> = Vec::with_capacity(set_count as usize);
+            let mut set =
+                BlockHashSet::with_capacity_and_hasher(set_count as usize, BuildHHasher::default());
             for _ in 0..(set_count as usize) {
                 let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += BLOCK_ID_SIZE_BYTES;
-                set.push(hash);
+                set.insert(hash);
             }
-            gi_head.push((gihash, set));
+            gi_head.insert(gihash, set);
         }
 
         //max_cliques
@@ -779,15 +773,15 @@ impl DeserializeCompact for BootstrapableGraph {
             )));
         }
         cursor += delta;
-        let mut max_cliques: Vec<ExportClique> = Vec::with_capacity(max_cliques_count as usize);
+        let mut max_cliques: Vec<Clique> = Vec::with_capacity(max_cliques_count as usize);
         for _ in 0..max_cliques_count {
-            let (c, delta) = ExportClique::from_bytes_compact(&buffer[cursor..])?;
+            let (c, delta) = Clique::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             max_cliques.push(c);
         }
 
         // ledger
-        let (ledger, delta) = LedgerExport::from_bytes_compact(&buffer[cursor..])?;
+        let (ledger, delta) = LedgerSubset::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         Ok((
@@ -974,11 +968,7 @@ impl BlockGraph {
                     .into_iter()
                     .map(|(h, v)| (h, v.into_iter().collect()))
                     .collect(),
-                max_cliques: boot_graph
-                    .max_cliques
-                    .into_iter()
-                    .map(|v| Clique::from(&v))
-                    .collect(),
+                max_cliques: boot_graph.max_cliques.clone(),
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
@@ -3991,30 +3981,34 @@ mod tests {
             .into_iter()
             .collect()],
             is_final: true,
-            block_ledger_changes: vec![
-                (
-                    Address::from_bytes(&Hash::hash("addr01".as_bytes()).into_bytes()).unwrap(),
-                    LedgerChange {
-                        balance_delta: Amount::from_str("1").unwrap(),
-                        balance_increment: true, // whether to increment or decrement balance of delta
-                    },
-                ),
-                (
-                    Address::from_bytes(&Hash::hash("addr02".as_bytes()).into_bytes()).unwrap(),
-                    LedgerChange {
-                        balance_delta: Amount::from_str("2").unwrap(),
-                        balance_increment: false, // whether to increment or decrement balance of delta
-                    },
-                ),
-                (
-                    Address::from_bytes(&Hash::hash("addr11".as_bytes()).into_bytes()).unwrap(),
-                    LedgerChange {
-                        balance_delta: Amount::from_str("3").unwrap(),
-                        balance_increment: false, // whether to increment or decrement balance of delta
-                    },
-                ),
-            ],
-            roll_updates: vec![],
+            block_ledger_changes: LedgerChanges(
+                vec![
+                    (
+                        Address::from_bytes(&Hash::hash("addr01".as_bytes()).into_bytes()).unwrap(),
+                        LedgerChange {
+                            balance_delta: Amount::from_str("1").unwrap(),
+                            balance_increment: true, // whether to increment or decrement balance of delta
+                        },
+                    ),
+                    (
+                        Address::from_bytes(&Hash::hash("addr02".as_bytes()).into_bytes()).unwrap(),
+                        LedgerChange {
+                            balance_delta: Amount::from_str("2").unwrap(),
+                            balance_increment: false, // whether to increment or decrement balance of delta
+                        },
+                    ),
+                    (
+                        Address::from_bytes(&Hash::hash("addr11".as_bytes()).into_bytes()).unwrap(),
+                        LedgerChange {
+                            balance_delta: Amount::from_str("3").unwrap(),
+                            balance_increment: false, // whether to increment or decrement balance of delta
+                        },
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            roll_updates: Default::default(),
             production_events: vec![],
         }
     }
@@ -4070,22 +4064,22 @@ mod tests {
         let (hash_genesist1, block_genesist1) = create_genesis_block(&cfg, 1).unwrap();
         let export_genesist0 = ExportActiveBlock {
             block: block_genesist0,
-            parents: vec![],      // one (hash, period) per thread ( if not genesis )
+            parents: vec![],  // one (hash, period) per thread ( if not genesis )
             children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
-            dependencies: vec![], // dependencies required for validity check
+            dependencies: Default::default(), // dependencies required for validity check
             is_final: true,
-            block_ledger_changes: vec![],
-            roll_updates: vec![],
+            block_ledger_changes: Default::default(),
+            roll_updates: Default::default(),
             production_events: vec![],
         };
         let export_genesist1 = ExportActiveBlock {
             block: block_genesist1,
-            parents: vec![],      // one (hash, period) per thread ( if not genesis )
+            parents: vec![],  // one (hash, period) per thread ( if not genesis )
             children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
-            dependencies: vec![], // dependencies required for validity check
+            dependencies: Default::default(), // dependencies required for validity check
             is_final: true,
-            block_ledger_changes: vec![],
-            roll_updates: vec![],
+            block_ledger_changes: Default::default(),
+            roll_updates: Default::default(),
             production_events: vec![],
         };
         //update ledger with initial content.
@@ -4289,7 +4283,9 @@ mod tests {
                 (get_dummy_block_id("blockp2t1"), blockp2t1.into()),
                 (get_dummy_block_id("blockp3t0"), blockp3t0.into()),
                 (get_dummy_block_id("blockp3t1"), blockp3t1.into()),
-            ],
+            ]
+            .into_iter()
+            .collect(),
             /// Best parents hash in each thread.
             best_parents: vec![
                 (get_dummy_block_id("blockp3t0"), 3),
@@ -4301,12 +4297,12 @@ mod tests {
                 (get_dummy_block_id("blockp2t1"), 2),
             ],
             /// Head of the incompatibility graph.
-            gi_head: vec![],
+            gi_head: Default::default(),
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![],
             /// Ledger at last final blocks
-            ledger: LedgerExport {
-                ledger_subset: vec![
+            ledger: LedgerSubset(
+                vec![
                     (
                         address_a,
                         LedgerData {
@@ -4319,8 +4315,10 @@ mod tests {
                             balance: Amount::from_str("2000000000").unwrap(),
                         },
                     ),
-                ],
-            },
+                ]
+                .into_iter()
+                .collect(),
+            ),
         };
 
         let block_graph = BlockGraph::new(cfg, Some(export_graph)).await.unwrap();
@@ -4419,10 +4417,11 @@ mod tests {
 
         println!("{:?}", new_block);
 
+        let b1_id = get_dummy_block_id("active11");
         let graph = BootstrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
             active_blocks: vec![
-                (get_dummy_block_id("active11"), active_block.clone()),
+                (b1_id, active_block.clone()),
                 (get_dummy_block_id("active12"), active_block.clone()),
                 (get_dummy_block_id("active13"), active_block.clone()),
             ]
@@ -4442,22 +4441,28 @@ mod tests {
             gi_head: vec![
                 (
                     get_dummy_block_id("gi_head11"),
-                    vec![get_dummy_block_id("set11"), get_dummy_block_id("set12")],
+                    vec![get_dummy_block_id("set11"), get_dummy_block_id("set12")]
+                        .into_iter()
+                        .collect(),
                 ),
                 (
                     get_dummy_block_id("gi_head12"),
-                    vec![get_dummy_block_id("set21"), get_dummy_block_id("set22")],
+                    vec![get_dummy_block_id("set21"), get_dummy_block_id("set22")]
+                        .into_iter()
+                        .collect(),
                 ),
                 (
                     get_dummy_block_id("gi_head13"),
-                    vec![get_dummy_block_id("set31"), get_dummy_block_id("set32")],
+                    vec![get_dummy_block_id("set31"), get_dummy_block_id("set32")]
+                        .into_iter()
+                        .collect(),
                 ),
             ]
             .into_iter()
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![ExportClique {
+            max_cliques: vec![Clique {
                 block_ids: vec![
                     get_dummy_block_id("max_cliques11"),
                     get_dummy_block_id("max_cliques12"),
@@ -4467,9 +4472,7 @@ mod tests {
                 fitness: 12,
                 is_blockclique: true,
             }],
-            ledger: LedgerExport {
-                ledger_subset: Vec::new(),
-            },
+            ledger: Default::default(),
         };
 
         let bytes = graph.to_bytes_compact().unwrap();
@@ -4477,8 +4480,8 @@ mod tests {
 
         assert_eq!(bytes.len(), cursor);
         assert_eq!(
-            graph.active_blocks[0].1.block.header.signature,
-            new_graph.active_blocks[0].1.block.header.signature
+            graph.active_blocks[&b1_id].block.header.signature,
+            new_graph.active_blocks[&b1_id].block.header.signature
         );
         assert_eq!(graph.best_parents[0], new_graph.best_parents[0]);
         assert_eq!(graph.best_parents[1], new_graph.best_parents[1]);

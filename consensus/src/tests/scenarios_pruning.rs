@@ -55,7 +55,7 @@ async fn test_pruning_of_discarded_blocks() {
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status");
-            assert!(status.discarded_blocks.map.len() <= cfg.max_discarded_blocks);
+            assert!(status.discarded_blocks.len() <= cfg.max_discarded_blocks);
 
             (
                 protocol_controller,
@@ -117,7 +117,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status");
-            assert!(status.discarded_blocks.map.len() <= cfg.max_future_processing_blocks);
+            assert!(status.discarded_blocks.len() <= cfg.max_future_processing_blocks);
             (
                 protocol_controller,
                 consensus_command_sender,
@@ -198,7 +198,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                     .get_block_graph_status()
                     .await
                     .expect("could not get block graph status");
-                if status.discarded_blocks.map.len() == 3 {
+                if status.discarded_blocks.len() == 3 {
                     break;
                 }
             }

@@ -1,23 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    array_from_slice, u8_from_slice, with_serialization_context, BlockHashSet, BlockId,
-    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
-    BLOCK_ID_SIZE_BYTES,
+    array_from_slice, hhasher::BuildHHasher, u8_from_slice, with_serialization_context,
+    BlockHashSet, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
+    SerializeVarInt, BLOCK_ID_SIZE_BYTES,
 };
 use core::usize;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-
-impl<'a> From<&'a ExportClique> for Clique {
-    fn from(export_clique: &'a ExportClique) -> Self {
-        Clique {
-            block_ids: export_clique.block_ids.iter().cloned().collect(),
-            fitness: export_clique.fitness,
-            is_blockclique: export_clique.is_blockclique,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Clique {
@@ -26,27 +16,10 @@ pub struct Clique {
     pub is_blockclique: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExportClique {
-    pub block_ids: Vec<BlockId>,
-    pub fitness: u64,
-    pub is_blockclique: bool,
-}
-
-impl<'a> From<&'a Clique> for ExportClique {
-    fn from(clique: &'a Clique) -> Self {
-        ExportClique {
-            block_ids: clique.block_ids.iter().cloned().collect(),
-            fitness: clique.fitness,
-            is_blockclique: clique.is_blockclique,
-        }
-    }
-}
-
-impl SerializeCompact for ExportClique {
+impl SerializeCompact for Clique {
     /// ## Example
     /// ```rust
-    /// use models::clique::ExportClique;
+    /// use models::clique::Clique;
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
     /// # use crypto::hash::Hash;
     /// # use std::str::FromStr;
@@ -71,13 +44,13 @@ impl SerializeCompact for ExportClique {
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
     /// #     BlockId(Hash::hash(s.as_bytes()))
     /// # }
-    /// let clique = ExportClique {
-    ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+    /// let clique = Clique {
+    ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")].into_iter().collect(),
     ///         fitness: 123,
     ///         is_blockclique: true,
     ///     };
     /// let bytes = clique.clone().to_bytes_compact().unwrap();
-    /// let (res, _) = ExportClique::from_bytes_compact(&bytes).unwrap();
+    /// let (res, _) = Clique::from_bytes_compact(&bytes).unwrap();
     /// assert_eq!(clique.block_ids, res.block_ids);
     /// assert_eq!(clique.is_blockclique, res.is_blockclique);
     /// assert_eq!(clique.fitness, res.fitness);
@@ -104,7 +77,7 @@ impl SerializeCompact for ExportClique {
     }
 }
 
-impl DeserializeCompact for ExportClique {
+impl DeserializeCompact for Clique {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         let mut cursor = 0usize;
         let max_bootstrap_blocks =
@@ -118,11 +91,12 @@ impl DeserializeCompact for ExportClique {
             )));
         }
         cursor += delta;
-        let mut block_ids: Vec<BlockId> = Vec::with_capacity(block_count as usize);
+        let mut block_ids =
+            BlockHashSet::with_capacity_and_hasher(block_count as usize, BuildHHasher::default());
         for _ in 0..block_count {
             let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
-            block_ids.push(b_id);
+            block_ids.insert(b_id);
         }
 
         // fitness
@@ -142,7 +116,7 @@ impl DeserializeCompact for ExportClique {
         cursor += 1;
 
         Ok((
-            ExportClique {
+            Clique {
                 block_ids,
                 fitness,
                 is_blockclique,

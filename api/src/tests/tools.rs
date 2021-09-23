@@ -2,10 +2,7 @@
 
 use crate::{get_filter, ApiConfig, ApiEvent};
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-use consensus::{
-    get_block_slot_timestamp, BlockGraphExport, ConsensusConfig, ExportCompiledBlock,
-    ExportDiscardedBlocks,
-};
+use consensus::{get_block_slot_timestamp, BlockGraphExport, ConsensusConfig, ExportCompiledBlock};
 use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
@@ -227,9 +224,7 @@ pub fn get_test_block_graph() -> BlockGraphExport {
     BlockGraphExport {
         genesis_blocks: vec![get_test_block_id(), get_another_test_block_id()],
         active_blocks: Default::default(),
-        discarded_blocks: ExportDiscardedBlocks {
-            map: Default::default(),
-        },
+        discarded_blocks: Default::default(),
         best_parents: Default::default(),
         latest_final_blocks_periods: Default::default(),
         gi_head: Default::default(),
