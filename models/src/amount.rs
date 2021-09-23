@@ -28,14 +28,6 @@ impl Amount {
         Amount(self.0.saturating_sub(amount.0))
     }
 
-    pub fn abs(self, amount: Amount) -> Self {
-        if self < amount {
-            amount.saturating_sub(self)
-        } else {
-            self.saturating_sub(amount)
-        }
-    }
-
     /// ```
     /// # use models::Amount;
     /// # use std::str::FromStr;

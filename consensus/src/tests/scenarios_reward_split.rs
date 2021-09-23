@@ -61,7 +61,6 @@ async fn test_reward_split() {
     cfg.max_operations_per_block = 5000;
     cfg.max_block_size = 2000;
     cfg.endorsement_count = 5;
-    cfg.block_reward = Amount::from_str("1").unwrap();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -206,65 +205,20 @@ async fn test_reward_split() {
                 .await
                 .unwrap();
 
-            let expected_a =
-                10.0 + {
-                    if pubkey_a == slot_one_pub_key {
-                        7.0 / 18.0
-                    } else {
-                        0.0
-                    }
-                } + {
-                    if pubkey_a == slot_two_pub_key {
-                        8.0 / 18.0
-                    } else {
-                        0.0
-                    }
-                };
-
-            let expected_b =
-                10.0 + {
-                    if pubkey_b == slot_one_pub_key {
-                        7.0 / 18.0
-                    } else {
-                        0.0
-                    }
-                } + {
-                    if pubkey_b == slot_two_pub_key {
-                        8.0 / 18.0
-                    } else {
-                        0.0
-                    }
-                };
-
-            let state_a = addresses_state.get(&address_a).unwrap();
-            let expected_a_str: String = expected_a
-                .to_string()
-                .chars()
-                .into_iter()
-                .take(12)
-                .collect();
-            assert!(
-                state_a
-                    .candidate_ledger_data
-                    .balance
-                    .abs(Amount::from_str(&expected_a_str).unwrap())
-                    <= Amount::from_raw(1),
+            let slot_one_creator_state = addresses_state
+                .get(&Address::from_public_key(&slot_one_pub_key).unwrap())
+                .unwrap();
+            assert_eq!(
+                slot_one_creator_state.candidate_ledger_data.balance,
+                Amount::from_str("10.388888886").unwrap()
             );
 
-            let state_b = addresses_state.get(&address_b).unwrap();
-
-            let expected_b_str: String = expected_b
-                .to_string()
-                .chars()
-                .into_iter()
-                .take(12)
-                .collect();
-            assert!(
-                state_b
-                    .candidate_ledger_data
-                    .balance
-                    .abs(Amount::from_str(&expected_b_str).unwrap())
-                    <= Amount::from_raw(1),
+            let slot_two_creator_state = addresses_state
+                .get(&Address::from_public_key(&slot_two_pub_key).unwrap())
+                .unwrap();
+            assert_eq!(
+                slot_two_creator_state.candidate_ledger_data.balance,
+                Amount::from_str("10.444444446").unwrap()
             );
 
             (
