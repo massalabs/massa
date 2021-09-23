@@ -9,24 +9,25 @@ use jsonrpc_derive::rpc;
 use jsonrpc_http_server::ServerBuilder;
 use models::address::{Address, AddressHashSet};
 use models::node::NodeId;
+use rpc_server::APIConfig;
 pub use rpc_server::API;
-use rpc_server::{rpc_server, APIConfig};
 use std::net::IpAddr;
 use std::thread;
 
 mod error;
 
+#[derive(Clone)]
+pub struct ApiMassaPrivate {
+    pub url: String,
+    pub consensus_command_sender: ConsensusCommandSender,
+    pub network_command_sender: NetworkCommandSender,
+    pub consensus_config: ConsensusConfig,
+    pub api_config: APIConfig,
+}
+
 /// Private Massa-RPC "manager mode" endpoints
 #[rpc(server)]
 pub trait MassaPrivate {
-    fn serve_massa_private(
-        &mut self,
-        _: ConsensusCommandSender,
-        _: NetworkCommandSender,
-        _: APIConfig,
-        _: ConsensusConfig,
-    );
-
     /// Starts the node and waits for node to start.
     /// Signals if the node is already running.
     #[rpc(name = "start_node")]
@@ -61,35 +62,42 @@ pub trait MassaPrivate {
     fn unban(&self, _: IpAddr) -> BoxFuture<Result<(), PrivateApiError>>;
 }
 
-impl MassaPrivate for API {
-    fn serve_massa_private(
-        &mut self,
-        consensus: ConsensusCommandSender,
-        network: NetworkCommandSender,
-        api_cfg: APIConfig,
-        consensus_cfg: ConsensusConfig,
-    ) {
-        self.consensus_command_sender = Some(consensus);
-        self.network_command_sender = Some(network);
-        self.api_config = Some(api_cfg);
-        self.consensus_config = Some(consensus_cfg);
-        rpc_server!(&self.clone());
+impl ApiMassaPrivate {
+    pub fn create(
+        url: &str,
+        consensus_command_sender: ConsensusCommandSender,
+        network_command_sender: NetworkCommandSender,
+        api_config: APIConfig,
+        consensus_config: ConsensusConfig,
+    ) -> Self {
+        ApiMassaPrivate {
+            url: url.to_string(),
+            consensus_command_sender,
+            network_command_sender,
+            consensus_config,
+            api_config,
+        }
     }
+    pub fn serve_massa_private(&mut self) {
+        let mut io = IoHandler::new();
+        io.extend_with(self.clone().to_delegate());
 
+        let server = ServerBuilder::new(io)
+            .start_http(&self.url.parse().unwrap())
+            .expect("Unable to start RPC server");
+
+        thread::spawn(|| server.wait());
+    }
+}
+
+impl MassaPrivate for ApiMassaPrivate {
     fn start_node(&self) -> Result<(), PrivateApiError> {
         todo!()
     }
 
     fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
-        let closure = async move || {
-            Ok(cmd_sender
-                .ok_or(PrivateApiError::MissingCommandSender(
-                    "consensus command sender".to_string(),
-                ))?
-                .stop()
-                .await?)
-        };
+        let closure = async move || Ok(cmd_sender.stop().await?);
         Box::pin(closure())
     }
 
@@ -98,27 +106,13 @@ impl MassaPrivate for API {
         message: Vec<u8>,
     ) -> BoxFuture<Result<(PublicKey, Signature), PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
-        let closure = async move || {
-            Ok(network_command_sender
-                .ok_or(PrivateApiError::MissingCommandSender(
-                    "Network command sender".to_string(),
-                ))?
-                .node_sign_message(message)
-                .await?)
-        };
+        let closure = async move || Ok(network_command_sender.node_sign_message(message).await?);
         Box::pin(closure())
     }
 
     fn add_staking_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
-        let closure = async move || {
-            Ok(cmd_sender
-                .ok_or(PrivateApiError::MissingCommandSender(
-                    "consensus command sender".to_string(),
-                ))?
-                .register_staking_private_keys(keys)
-                .await?)
-        };
+        let closure = async move || Ok(cmd_sender.register_staking_private_keys(keys).await?);
         Box::pin(closure())
     }
 
@@ -126,9 +120,6 @@ impl MassaPrivate for API {
         let cmd_sender = self.consensus_command_sender.clone();
         let closure = async move || {
             Ok(cmd_sender
-                .ok_or(PrivateApiError::MissingCommandSender(
-                    "consensus command sender".to_string(),
-                ))?
                 .remove_staking_addresses(keys.into_iter().collect())
                 .await?)
         };
@@ -137,40 +128,19 @@ impl MassaPrivate for API {
 
     fn list_staking_keys(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
-        let closure = async move || {
-            Ok(cmd_sender
-                .ok_or(PrivateApiError::MissingCommandSender(
-                    "consensus command sender".to_string(),
-                ))?
-                .get_staking_addresses()
-                .await?)
-        };
+        let closure = async move || Ok(cmd_sender.get_staking_addresses().await?);
         Box::pin(closure())
     }
 
     fn ban(&self, node_id: NodeId) -> BoxFuture<Result<(), PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
-        let closure = async move || {
-            Ok(network_command_sender
-                .ok_or(PrivateApiError::MissingCommandSender(
-                    "Network command sender".to_string(),
-                ))?
-                .ban(node_id)
-                .await?)
-        };
+        let closure = async move || Ok(network_command_sender.ban(node_id).await?);
         Box::pin(closure())
     }
 
     fn unban(&self, ip: IpAddr) -> BoxFuture<Result<(), PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
-        let closure = async move || {
-            Ok(network_command_sender
-                .ok_or(PrivateApiError::MissingCommandSender(
-                    "Network command sender".to_string(),
-                ))?
-                .unban(ip)
-                .await?)
-        };
+        let closure = async move || Ok(network_command_sender.unban(ip).await?);
         Box::pin(closure())
     }
 }

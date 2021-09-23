@@ -7,7 +7,7 @@ extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
 use api_eth::{EthRpc, API as APIEth};
-use api_private::{MassaPrivate, API as APIPrivate};
+use api_private::ApiMassaPrivate;
 use api_public::{MassaPublic, API as APIPublic};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
@@ -165,13 +165,14 @@ async fn launch(
     .unwrap();
 
     // spawn APIs
-    let mut api_private = APIPrivate::from_url("127.0.0.1:33034");
-    api_private.serve_massa_private(
+    let mut api_private = ApiMassaPrivate::create(
+        "127.0.0.1:33034",
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         cfg.new_api.clone(),
         cfg.consensus.clone(),
     );
+    api_private.serve_massa_private();
 
     let mut api_public = APIPublic::from_url("127.0.0.1:33035");
     api_public.serve_massa_public(
