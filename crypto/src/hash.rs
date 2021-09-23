@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::error::CryptoError;
+use sha3::{Digest, Keccak256};
 use std::{convert::TryInto, str::FromStr};
 
 pub const HASH_SIZE_BYTES: usize = 32;
@@ -29,8 +30,6 @@ impl Hash {
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// ```
     pub fn hash(data: &[u8]) -> Self {
-        use sha3::{Digest, Keccak256};
-
         Hash(Keccak256::digest(data).try_into().expect("wrong hash size"))
     }
 
