@@ -6,7 +6,7 @@ use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
 
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
@@ -26,6 +26,14 @@ impl Amount {
 
     pub fn saturating_sub(self, amount: Amount) -> Self {
         Amount(self.0.saturating_sub(amount.0))
+    }
+
+    pub fn abs(self, amount: Amount) -> Self {
+        if self < amount {
+            amount.saturating_sub(self)
+        } else {
+            self.saturating_sub(amount)
+        }
     }
 
     /// ```
