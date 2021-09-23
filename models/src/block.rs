@@ -40,15 +40,15 @@ impl FromStr for BlockId {
 }
 
 impl BlockId {
-    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> [u8; BLOCK_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
-    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn into_bytes(self) -> [u8; BLOCK_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
-    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<BlockId, ModelsError> {
+    pub fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> Result<BlockId, ModelsError> {
         Ok(BlockId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
@@ -217,7 +217,7 @@ impl BlockHeader {
 
     // Hash([slot, hash])
     fn get_signature_message(slot: &Slot, hash: &Hash) -> Hash {
-        let mut res = [0u8; SLOT_KEY_SIZE + HASH_SIZE_BYTES];
+        let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
         res[..SLOT_KEY_SIZE].copy_from_slice(&slot.to_bytes_key());
         res[SLOT_KEY_SIZE..].copy_from_slice(&hash.to_bytes());
         // rehash for safety
@@ -355,9 +355,9 @@ impl DeserializeCompact for BlockHeaderContent {
         let parents = if has_parents == 1 {
             let mut parents: Vec<BlockId> = Vec::with_capacity(parent_count as usize);
             for _ in 0..parent_count {
-                let parent_h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += HASH_SIZE_BYTES;
-                parents.push(BlockId(parent_h));
+                let parent_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += BLOCK_ID_SIZE_BYTES;
+                parents.push(parent_id);
             }
             parents
         } else if has_parents == 0 {

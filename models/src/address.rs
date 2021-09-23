@@ -59,7 +59,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> [u8; ADDRESS_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
@@ -76,7 +76,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn into_bytes(self) -> [u8; ADDRESS_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
@@ -93,7 +93,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Address, ModelsError> {
+    pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Result<Address, ModelsError> {
         Ok(Address(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))

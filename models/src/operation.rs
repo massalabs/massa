@@ -43,15 +43,15 @@ impl FromStr for OperationId {
 impl PreHashed for OperationId {}
 
 impl OperationId {
-    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
-    pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
+    pub fn into_bytes(self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
-    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
+    pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
