@@ -4,16 +4,17 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 
 use bitvec::prelude::*;
+use consensus::ledger::LedgerChanges;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
 use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
-    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake,
-    ExportThreadCycleState, LedgerExport, RollUpdate,
+    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
+    RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
 };
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
-use models::clique::ExportClique;
+use models::clique::Clique;
 use models::ledger::LedgerChange;
 use models::ledger::LedgerData;
 use models::{
@@ -143,36 +144,49 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let public_key = crypto::derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
 
-    let mut ledger_subset = Vec::new();
-    ledger_subset.push((
+    let mut ledger_subset = LedgerSubset::default();
+    ledger_subset.0.insert(
         address,
         LedgerData {
             balance: Amount::from_str("10").unwrap(),
         },
-    ));
+    );
 
-    let cycle_state = ExportThreadCycleState {
+    let cycle_state = ThreadCycleState {
         cycle: 1,
         last_final_slot: Slot::new(1, 1),
-        roll_count: vec![(get_random_address(), 123), (get_random_address(), 456)],
-        cycle_updates: vec![
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 147,
-                    roll_sales: 44788,
-                },
-            ),
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 8887,
-                    roll_sales: 114,
-                },
-            ),
-        ],
+        roll_count: RollCounts(
+            vec![(get_random_address(), 123), (get_random_address(), 456)]
+                .into_iter()
+                .collect(),
+        ),
+        cycle_updates: RollUpdates(
+            vec![
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 147,
+                        roll_sales: 44788,
+                    },
+                ),
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 8887,
+                        roll_sales: 114,
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
         rng_seed: bitvec![Lsb0, u8 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-        production_stats: vec![(get_random_address(), 1, 2), (get_random_address(), 3, 4)],
+        production_stats: vec![
+            (get_random_address(), (1, 2)),
+            (get_random_address(), (3, 4)),
+        ]
+        .into_iter()
+        .collect(),
     };
     let boot_pos = ExportProofOfStake {
         cycle_states: vec![
@@ -255,50 +269,64 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             vec![
                 (get_dummy_block_id("b3"), 101),
                 (get_dummy_block_id("b4"), 455),
-            ],
-            vec![(get_dummy_block_id("b3_2"), 889)],
+            ]
+            .into_iter()
+            .collect(),
+            vec![(get_dummy_block_id("b3_2"), 889)]
+                .into_iter()
+                .collect(),
         ],
-        dependencies: vec![get_dummy_block_id("b5"), get_dummy_block_id("b6")],
+        dependencies: vec![get_dummy_block_id("b5"), get_dummy_block_id("b6")]
+            .into_iter()
+            .collect(),
         is_final: true,
-        block_ledger_changes: vec![
-            (
-                get_random_address(),
-                LedgerChange {
-                    balance_increment: true,
-                    balance_delta: Amount::from_str("157").unwrap(),
-                },
-            ),
-            (
-                get_random_address(),
-                LedgerChange {
-                    balance_increment: false,
-                    balance_delta: Amount::from_str("44").unwrap(),
-                },
-            ),
-            (
-                get_random_address(),
-                LedgerChange {
-                    balance_increment: false,
-                    balance_delta: Amount::from_str("878").unwrap(),
-                },
-            ),
-        ],
-        roll_updates: vec![
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 778,
-                    roll_sales: 54851,
-                },
-            ),
-            (
-                get_random_address(),
-                RollUpdate {
-                    roll_purchases: 788778,
-                    roll_sales: 11451,
-                },
-            ),
-        ],
+        block_ledger_changes: LedgerChanges(
+            vec![
+                (
+                    get_random_address(),
+                    LedgerChange {
+                        balance_increment: true,
+                        balance_delta: Amount::from_str("157").unwrap(),
+                    },
+                ),
+                (
+                    get_random_address(),
+                    LedgerChange {
+                        balance_increment: false,
+                        balance_delta: Amount::from_str("44").unwrap(),
+                    },
+                ),
+                (
+                    get_random_address(),
+                    LedgerChange {
+                        balance_increment: false,
+                        balance_delta: Amount::from_str("878").unwrap(),
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
+        roll_updates: RollUpdates(
+            vec![
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 778,
+                        roll_sales: 54851,
+                    },
+                ),
+                (
+                    get_random_address(),
+                    RollUpdate {
+                        roll_purchases: 788778,
+                        roll_sales: 11451,
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
         production_events: vec![
             (12, get_random_address(), true),
             (31, get_random_address(), false),
@@ -315,7 +343,9 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     );
 
     let boot_graph = BootstrapableGraph {
-        active_blocks: vec![(get_dummy_block_id("block1"), block1)],
+        active_blocks: vec![(get_dummy_block_id("block1"), block1)]
+            .into_iter()
+            .collect(),
         best_parents: vec![
             (get_dummy_block_id("parent1"), 2),
             (get_dummy_block_id("parent2"), 3),
@@ -325,15 +355,19 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             (get_dummy_block_id("parent2"), 10),
         ],
         gi_head: vec![
-            (get_dummy_block_id("parent1"), vec![]),
-            (get_dummy_block_id("parent2"), vec![]),
-        ],
-        max_cliques: vec![ExportClique {
-            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+            (get_dummy_block_id("parent1"), Default::default()),
+            (get_dummy_block_id("parent2"), Default::default()),
+        ]
+        .into_iter()
+        .collect(),
+        max_cliques: vec![Clique {
+            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")]
+                .into_iter()
+                .collect(),
             fitness: 123,
             is_blockclique: true,
         }],
-        ledger: LedgerExport { ledger_subset },
+        ledger: ledger_subset,
     };
     assert_eq!(
         BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())

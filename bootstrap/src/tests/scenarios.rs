@@ -124,11 +124,60 @@ async fn test_bootstrap_server() {
 
     // check states
     let recv_pos = maybe_recv_pos.unwrap();
+
     assert_eq!(
-        sent_pos.to_bytes_compact().unwrap(),
-        recv_pos.to_bytes_compact().unwrap(),
-        "mismatch between sent and received pos"
+        sent_pos.cycle_states.len(),
+        recv_pos.cycle_states.len(),
+        "length mismatch between sent and received pos"
     );
+    for (itm1, itm2) in sent_pos
+        .cycle_states
+        .iter()
+        .zip(recv_pos.cycle_states.iter())
+    {
+        assert_eq!(
+            itm1.len(),
+            itm2.len(),
+            "subitem length mismatch between sent and received pos"
+        );
+        for (itm1, itm2) in itm1.iter().zip(itm2.iter()) {
+            assert_eq!(
+                itm1.cycle, itm2.cycle,
+                "ThreadCycleState.cycle mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.last_final_slot, itm2.last_final_slot,
+                "ThreadCycleState.last_final_slot mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.roll_count.0, itm2.roll_count.0,
+                "ThreadCycleState.roll_count mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.cycle_updates.0.len(),
+                itm2.cycle_updates.0.len(),
+                "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
+            );
+            for (a1, itm1) in itm1.cycle_updates.0.iter() {
+                let itm2 = itm2.cycle_updates.0.get(a1).expect(
+                    "ThreadCycleState.cycle_updates element miss between sent and received pos",
+                );
+                assert_eq!(
+                    itm1.to_bytes_compact().unwrap(),
+                    itm2.to_bytes_compact().unwrap(),
+                    "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
+                );
+            }
+            assert_eq!(
+                itm1.rng_seed, itm2.rng_seed,
+                "ThreadCycleState.rng_seed mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.production_stats, itm2.production_stats,
+                "ThreadCycleState.production_stats mismatch between sent and received pos"
+            );
+        }
+    }
     let recv_graph = maybe_recv_graph.unwrap();
     assert_eq!(
         sent_graph.to_bytes_compact().unwrap(),

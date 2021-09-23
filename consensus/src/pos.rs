@@ -5,6 +5,7 @@ use crate::{block_graph::ActiveBlock, ConsensusConfig};
 use bitvec::prelude::*;
 use crypto::hash::Hash;
 use models::address::{AddressHashMap, AddressHashSet};
+use models::hhasher::BuildHHasher;
 use models::{
     array_from_slice, with_serialization_context, Address, Amount, BlockHashMap, BlockId,
     DeserializeCompact, DeserializeVarInt, ModelsError, Operation, OperationType, SerializeCompact,
@@ -277,17 +278,24 @@ impl OperationRollInterface for Operation {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ThreadCycleState {
     /// Cycle number
-    cycle: u64,
+    pub cycle: u64,
     /// Last final slot (can be a miss)
-    last_final_slot: Slot,
+    pub last_final_slot: Slot,
     /// Number of rolls an address has
     pub roll_count: RollCounts,
     /// Cycle roll updates
     pub cycle_updates: RollUpdates,
     /// Used to seed the random selector at each cycle
-    rng_seed: BitVec<Lsb0, u8>,
+    pub rng_seed: BitVec<Lsb0, u8>,
     /// Per-address production statistics (ok_count, nok_count)
     pub production_stats: AddressHashMap<(u64, u64)>,
+}
+
+impl ThreadCycleState {
+    /// returns true if all slots of this cycle for this thread are final
+    fn is_complete(&self, periods_per_cycle: u64) -> bool {
+        self.last_final_slot.period == (self.cycle + 1) * periods_per_cycle - 1
+    }
 }
 
 pub struct ProofOfStake {
@@ -311,7 +319,7 @@ pub struct ProofOfStake {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportProofOfStake {
     /// Index by thread and cycle number
-    pub cycle_states: Vec<VecDeque<ExportThreadCycleState>>,
+    pub cycle_states: Vec<VecDeque<ThreadCycleState>>,
 }
 
 impl SerializeCompact for ExportProofOfStake {
@@ -352,7 +360,7 @@ impl DeserializeCompact for ExportProofOfStake {
             cycle_states.push(VecDeque::with_capacity(n_cycles as usize));
             for _ in 0..n_cycles {
                 let (thread_cycle_state, delta) =
-                    ExportThreadCycleState::from_bytes_compact(&buffer[cursor..])?;
+                    ThreadCycleState::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 cycle_states[thread as usize].push_back(thread_cycle_state);
             }
@@ -361,23 +369,7 @@ impl DeserializeCompact for ExportProofOfStake {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExportThreadCycleState {
-    /// Cycle number
-    pub cycle: u64,
-    /// Last final slot (can be a miss)
-    pub last_final_slot: Slot,
-    /// number of rolls an address has
-    pub roll_count: Vec<(Address, u64)>,
-    /// Compensated roll updatess
-    pub cycle_updates: Vec<(Address, RollUpdate)>,
-    /// Used to seed random selector at each cycle
-    pub rng_seed: BitVec<Lsb0, u8>,
-    /// Address production stats (ok_count, nok_count)
-    pub production_stats: Vec<(Address, u64, u64)>,
-}
-
-impl SerializeCompact for ExportThreadCycleState {
+impl SerializeCompact for ThreadCycleState {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
@@ -388,27 +380,27 @@ impl SerializeCompact for ExportThreadCycleState {
         res.extend(self.last_final_slot.to_bytes_compact()?);
 
         // roll count
-        let n_entries: u32 = self.roll_count.len().try_into().map_err(|err| {
+        let n_entries: u32 = self.roll_count.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
                 "too many entries when serializing ExportThreadCycleState roll_count: {:?}",
                 err
             ))
         })?;
         res.extend(n_entries.to_varint_bytes());
-        for (addr, n_rolls) in self.roll_count.iter() {
+        for (addr, n_rolls) in self.roll_count.0.iter() {
             res.extend(addr.to_bytes());
             res.extend(n_rolls.to_varint_bytes());
         }
 
         // cycle updates
-        let n_entries: u32 = self.cycle_updates.len().try_into().map_err(|err| {
+        let n_entries: u32 = self.cycle_updates.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
                 "too many entries when serializing ExportThreadCycleState cycle_updates: {:?}",
                 err
             ))
         })?;
         res.extend(n_entries.to_varint_bytes());
-        for (addr, updates) in self.cycle_updates.iter() {
+        for (addr, updates) in self.cycle_updates.0.iter() {
             res.extend(addr.to_bytes());
             res.extend(updates.to_bytes_compact()?);
         }
@@ -431,7 +423,7 @@ impl SerializeCompact for ExportThreadCycleState {
             ))
         })?;
         res.extend(n_entries.to_varint_bytes());
-        for (addr, ok_count, nok_count) in self.production_stats.iter() {
+        for (addr, (ok_count, nok_count)) in self.production_stats.iter() {
             res.extend(addr.to_bytes());
             res.extend(ok_count.to_varint_bytes());
             res.extend(nok_count.to_varint_bytes());
@@ -441,7 +433,7 @@ impl SerializeCompact for ExportThreadCycleState {
     }
 }
 
-impl DeserializeCompact for ExportThreadCycleState {
+impl DeserializeCompact for ThreadCycleState {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let max_entries = with_serialization_context(|context| (context.max_bootstrap_pos_entries));
         let mut cursor = 0usize;
@@ -462,13 +454,13 @@ impl DeserializeCompact for ExportThreadCycleState {
                 "invalid number entries when deserializing ExportThreadCycleStat roll_count".into(),
             ));
         }
-        let mut roll_count = Vec::with_capacity(n_entries as usize);
+        let mut roll_count = RollCounts::default();
         for _ in 0..n_entries {
             let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += ADDRESS_SIZE_BYTES;
             let (rolls, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
-            roll_count.push((addr, rolls));
+            roll_count.0.insert(addr, rolls);
         }
 
         // cycle updates
@@ -480,13 +472,16 @@ impl DeserializeCompact for ExportThreadCycleState {
                     .into(),
             ));
         }
-        let mut cycle_updates = Vec::with_capacity(n_entries as usize);
+        let mut cycle_updates = RollUpdates(AddressHashMap::with_capacity_and_hasher(
+            n_entries as usize,
+            BuildHHasher::default(),
+        ));
         for _ in 0..n_entries {
             let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += ADDRESS_SIZE_BYTES;
             let (update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
-            cycle_updates.push((addr, update));
+            cycle_updates.0.insert(addr, update);
         }
 
         // rng seed
@@ -516,7 +511,8 @@ impl DeserializeCompact for ExportThreadCycleState {
                     .into(),
             ));
         }
-        let mut production_stats = Vec::with_capacity(n_entries as usize);
+        let mut production_stats =
+            AddressHashMap::with_capacity_and_hasher(n_entries as usize, BuildHHasher::default());
         for _ in 0..n_entries {
             let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += ADDRESS_SIZE_BYTES;
@@ -524,12 +520,12 @@ impl DeserializeCompact for ExportThreadCycleState {
             cursor += delta;
             let (nok_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
-            production_stats.push((addr, ok_count, nok_count));
+            production_stats.insert(addr, (ok_count, nok_count));
         }
 
         // return struct
         Ok((
-            ExportThreadCycleState {
+            ThreadCycleState {
                 cycle,
                 last_final_slot,
                 roll_count,
@@ -555,19 +551,9 @@ impl ProofOfStake {
         let (cycle_states, initial_rolls) = if let Some(export) = boot_pos {
             // loading from bootstrap
 
-            // load cycles
-            let cycle_states: Vec<VecDeque<ThreadCycleState>> = export
-                .cycle_states
-                .into_iter()
-                .map(|vec| {
-                    vec.into_iter()
-                        .map(ThreadCycleState::from_export)
-                        .collect::<VecDeque<ThreadCycleState>>()
-                })
-                .collect();
-
             // if initial rolls are still needed for some threads, load them
-            let initial_rolls = if cycle_states
+            let initial_rolls = if export
+                .cycle_states
                 .iter()
                 .any(|v| v[0].cycle < cfg.pos_lock_cycles + cfg.pos_lock_cycles + 1)
             {
@@ -576,7 +562,7 @@ impl ProofOfStake {
                 None
             };
 
-            (cycle_states, initial_rolls)
+            (export.cycle_states, initial_rolls)
         } else {
             // iinitializing from scratch
 
@@ -643,15 +629,7 @@ impl ProofOfStake {
 
     pub fn export(&self) -> ExportProofOfStake {
         ExportProofOfStake {
-            cycle_states: self
-                .cycle_states
-                .iter()
-                .map(|vec| {
-                    vec.iter()
-                        .map(|frtd| frtd.export())
-                        .collect::<VecDeque<ExportThreadCycleState>>()
-                })
-                .collect(),
+            cycle_states: self.cycle_states.clone(),
         }
     }
 
@@ -1202,42 +1180,5 @@ impl ProofOfStake {
                 "negative cycle unavailable".to_string(),
             ))
         }
-    }
-}
-
-impl ThreadCycleState {
-    fn export(&self) -> ExportThreadCycleState {
-        ExportThreadCycleState {
-            cycle: self.cycle,
-            last_final_slot: self.last_final_slot,
-            roll_count: self.roll_count.0.clone().into_iter().collect(),
-            cycle_updates: self.cycle_updates.0.clone().into_iter().collect(),
-            rng_seed: self.rng_seed.clone(),
-            production_stats: self
-                .production_stats
-                .iter()
-                .map(|(k, (v_ok, v_nok))| (*k, *v_ok, *v_nok))
-                .collect(),
-        }
-    }
-
-    fn from_export(export: ExportThreadCycleState) -> ThreadCycleState {
-        ThreadCycleState {
-            cycle: export.cycle,
-            last_final_slot: export.last_final_slot,
-            roll_count: RollCounts(export.roll_count.into_iter().collect()),
-            cycle_updates: RollUpdates(export.cycle_updates.into_iter().collect()),
-            rng_seed: export.rng_seed,
-            production_stats: export
-                .production_stats
-                .into_iter()
-                .map(|(k, v_ok, v_nok)| (k, (v_ok, v_nok)))
-                .collect(),
-        }
-    }
-
-    /// returns true if all slots of this cycle for this thread are final
-    fn is_complete(&self, periods_per_cycle: u64) -> bool {
-        self.last_final_slot.period == (self.cycle + 1) * periods_per_cycle - 1
     }
 }

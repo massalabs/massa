@@ -797,28 +797,24 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B3 and B4 have become final.
     {
-        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
+        let ledger = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger
-            .ledger_subset
-            .iter()
-            .cloned()
-            .collect();
+            .ledger;
         assert_eq!(
-            ledger[&address_1].balance,
+            ledger.0[&address_1].balance,
             Amount::from_str("991").unwrap(),
             "wrong address balance"
         ); // TODO update balance with endorsement rewards
         assert_eq!(
-            ledger[&address_2].balance,
+            ledger.0[&address_2].balance,
             Amount::from_str("2985").unwrap(),
             "wrong address balance"
         );
         assert!(
-            !ledger.contains_key(&address_3),
+            !ledger.0.contains_key(&address_3),
             "address shouldn't be present"
         );
     }
@@ -847,28 +843,24 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B5 has become final.
     {
-        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
+        let ledger = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger
-            .ledger_subset
-            .iter()
-            .cloned()
-            .collect();
+            .ledger;
         assert_eq!(
-            ledger[&address_1].balance,
+            ledger.0[&address_1].balance,
             Amount::from_str("1002").unwrap(),
             "wrong address balance"
         );
         assert_eq!(
-            ledger[&address_2].balance,
+            ledger.0[&address_2].balance,
             Amount::from_str("2985").unwrap(),
             "wrong address balance"
         );
         assert_eq!(
-            ledger[&address_3].balance,
+            ledger.0[&address_3].balance,
             Amount::from_str("6").unwrap(),
             "wrong address balance"
         );
@@ -887,28 +879,24 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B6 has become final.
     {
-        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
+        let ledger = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger
-            .ledger_subset
-            .iter()
-            .cloned()
-            .collect();
+            .ledger;
         assert_eq!(
-            ledger[&address_1].balance,
+            ledger.0[&address_1].balance,
             Amount::from_str("1002").unwrap(),
             "wrong address balance"
         );
         assert_eq!(
-            ledger[&address_2].balance,
+            ledger.0[&address_2].balance,
             Amount::from_str("2995").unwrap(),
             "wrong address balance"
         );
         assert_eq!(
-            ledger[&address_3].balance,
+            ledger.0[&address_3].balance,
             Amount::from_str("6").unwrap(),
             "wrong address balance"
         );
@@ -927,28 +915,24 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B7 and B8 have become final.
     {
-        let ledger: HashMap<Address, LedgerData> = consensus_command_sender
+        let ledger = consensus_command_sender
             .get_bootstrap_state()
             .await
             .unwrap()
             .1
-            .ledger
-            .ledger_subset
-            .iter()
-            .cloned()
-            .collect();
+            .ledger;
         assert_eq!(
-            ledger[&address_1].balance,
+            ledger.0[&address_1].balance,
             Amount::from_str("992").unwrap(),
             "wrong address balance"
         );
         assert_eq!(
-            ledger[&address_2].balance,
+            ledger.0[&address_2].balance,
             Amount::from_str("2974").unwrap(),
             "wrong address balance"
         );
         assert_eq!(
-            ledger[&address_3].balance,
+            ledger.0[&address_3].balance,
             Amount::from_str("6").unwrap(),
             "wrong address balance"
         );
