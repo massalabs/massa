@@ -11,9 +11,7 @@ use tokio::{
 };
 
 #[cfg(test)]
-pub type ReadHalf = super::tests::mock_establisher::ReadHalf;
-#[cfg(test)]
-pub type WriteHalf = super::tests::mock_establisher::WriteHalf;
+pub type Duplex = super::tests::mock_establisher::Duplex;
 #[cfg(test)]
 pub type Listener = super::tests::mock_establisher::MockListener;
 #[cfg(test)]
@@ -22,9 +20,7 @@ pub type Connector = super::tests::mock_establisher::MockConnector;
 pub type Establisher = super::tests::mock_establisher::MockEstablisher;
 
 #[cfg(not(test))]
-pub type ReadHalf = tokio::net::tcp::OwnedReadHalf;
-#[cfg(not(test))]
-pub type WriteHalf = tokio::net::tcp::OwnedWriteHalf;
+pub type Duplex = TcpStream;
 #[cfg(not(test))]
 pub type Listener = DefaultListener;
 #[cfg(not(test))]
@@ -40,10 +36,9 @@ pub struct DefaultListener(TcpListener);
 #[cfg(not(test))]
 impl DefaultListener {
     /// Accepts a new incoming connection from this listener.
-    pub async fn accept(&mut self) -> io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
+    pub async fn accept(&mut self) -> io::Result<(Duplex, SocketAddr)> {
         let (sock, remote_addr) = self.0.accept().await?;
-        let (read_half, write_half) = sock.into_split();
-        Ok((read_half, write_half, remote_addr))
+        Ok((sock, remote_addr))
     }
 }
 
@@ -58,12 +53,9 @@ impl DefaultConnector {
     ///
     /// # Argument
     /// * addr: SocketAddr we are trying to connect to.
-    pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<(ReadHalf, WriteHalf)> {
+    pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
         match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
-            Ok(Ok(sock)) => {
-                let (reader, writer) = sock.into_split();
-                Ok((reader, writer))
-            }
+            Ok(Ok(sock)) => Ok(sock),
             Ok(Err(e)) => Err(e),
             Err(e) => Err(io::Error::new(io::ErrorKind::TimedOut, e)),
         }

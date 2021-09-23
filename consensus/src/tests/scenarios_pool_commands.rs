@@ -2,10 +2,10 @@
 
 use crate::{
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
-    BootstrapableGraph, LedgerExport,
+    BootstrapableGraph, LedgerSubset,
 };
 use crypto::signature::PublicKey;
-use models::clique::ExportClique;
+use models::clique::Clique;
 use models::ledger::LedgerData;
 use models::{Address, Amount, BlockId, Operation, Slot};
 use pool::PoolCommand;
@@ -200,9 +200,11 @@ async fn test_new_final_ops() {
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
-    let boot_ledger = LedgerExport {
-        ledger_subset: vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))],
-    };
+    let boot_ledger = LedgerSubset(
+        vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
+            .into_iter()
+            .collect(),
+    );
     let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
     let (boot_graph, mut p0, mut p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
 
@@ -316,9 +318,11 @@ async fn test_max_attempts_get_operations() {
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
-    let boot_ledger = LedgerExport {
-        ledger_subset: vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))],
-    };
+    let boot_ledger = LedgerSubset(
+        vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
+            .into_iter()
+            .collect(),
+    );
     let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
     let (boot_graph, _p0, _p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
 
@@ -439,9 +443,11 @@ async fn test_max_batch_size_get_operations() {
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
-    let boot_ledger = LedgerExport {
-        ledger_subset: vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))],
-    };
+    let boot_ledger = LedgerSubset(
+        vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
+            .into_iter()
+            .collect(),
+    );
     let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
     let (boot_graph, _p0, _p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
 
@@ -514,7 +520,7 @@ async fn test_max_batch_size_get_operations() {
 fn get_bootgraph(
     creator: PublicKey,
     operation: Operation,
-    ledger: LedgerExport,
+    ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =
         get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
@@ -542,13 +548,17 @@ fn get_bootgraph(
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],
             /// Head of the incompatibility graph.
-            gi_head: vec![(g0_id, vec![]), (p1t0_id, vec![]), (g1_id, vec![])]
-                .into_iter()
-                .collect(),
+            gi_head: vec![
+                (g0_id, Default::default()),
+                (p1t0_id, Default::default()),
+                (g1_id, Default::default()),
+            ]
+            .into_iter()
+            .collect(),
 
             /// List of maximal cliques of compatible blocks.
-            max_cliques: vec![ExportClique {
-                block_ids: vec![g0_id, p1t0_id, g1_id],
+            max_cliques: vec![Clique {
+                block_ids: vec![g0_id, p1t0_id, g1_id].into_iter().collect(),
                 fitness: 1111,
                 is_blockclique: true,
             }],

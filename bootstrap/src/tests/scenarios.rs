@@ -55,7 +55,7 @@ async fn test_bootstrap_server() {
     });
 
     // accept connection attempt from remote
-    let (remote_r, remote_w, conn_addr, resp) = tokio::time::timeout(
+    let (remote_rw, conn_addr, resp) = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         remote_interface.wait_connection_attempt_from_controller(),
     )
@@ -72,7 +72,7 @@ async fn test_bootstrap_server() {
 
     // connect to bootstrap
     let remote_addr = std::net::SocketAddr::from_str("82.245.72.98:10000").unwrap(); // not checked
-    let (bootstrap_r, bootstrap_w) = tokio::time::timeout(
+    let bootstrap_rw = tokio::time::timeout(
         std::time::Duration::from_millis(1000),
         bootstrap_interface.connect_to_controller(&remote_addr),
     )
@@ -80,12 +80,9 @@ async fn test_bootstrap_server() {
     .expect("timeout while connecting to bootstrap")
     .expect("could not connect to bootstrap");
 
-    // launch bridges
-    let bridge_h1 = tokio::spawn(async move {
-        bridge_mock_streams(remote_r, bootstrap_w).await;
-    });
-    let bridge_h2 = tokio::spawn(async move {
-        bridge_mock_streams(bootstrap_r, remote_w).await;
+    // launch bridge
+    let bridge = tokio::spawn(async move {
+        bridge_mock_streams(remote_rw, bootstrap_rw).await;
     });
 
     // wait for bootstrap to ask network for peers, send them
@@ -122,17 +119,65 @@ async fn test_bootstrap_server() {
         .await
         .expect("error while waiting for get_state to finish");
 
-    // wait for bridges
-    bridge_h1.await.expect("bridge 1 join failed");
-    bridge_h2.await.expect("bridge 2 join failed");
+    // wait for bridge
+    bridge.await.expect("bridge join failed");
 
     // check states
     let recv_pos = maybe_recv_pos.unwrap();
+
     assert_eq!(
-        sent_pos.to_bytes_compact().unwrap(),
-        recv_pos.to_bytes_compact().unwrap(),
-        "mismatch between sent and received pos"
+        sent_pos.cycle_states.len(),
+        recv_pos.cycle_states.len(),
+        "length mismatch between sent and received pos"
     );
+    for (itm1, itm2) in sent_pos
+        .cycle_states
+        .iter()
+        .zip(recv_pos.cycle_states.iter())
+    {
+        assert_eq!(
+            itm1.len(),
+            itm2.len(),
+            "subitem length mismatch between sent and received pos"
+        );
+        for (itm1, itm2) in itm1.iter().zip(itm2.iter()) {
+            assert_eq!(
+                itm1.cycle, itm2.cycle,
+                "ThreadCycleState.cycle mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.last_final_slot, itm2.last_final_slot,
+                "ThreadCycleState.last_final_slot mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.roll_count.0, itm2.roll_count.0,
+                "ThreadCycleState.roll_count mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.cycle_updates.0.len(),
+                itm2.cycle_updates.0.len(),
+                "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
+            );
+            for (a1, itm1) in itm1.cycle_updates.0.iter() {
+                let itm2 = itm2.cycle_updates.0.get(a1).expect(
+                    "ThreadCycleState.cycle_updates element miss between sent and received pos",
+                );
+                assert_eq!(
+                    itm1.to_bytes_compact().unwrap(),
+                    itm2.to_bytes_compact().unwrap(),
+                    "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
+                );
+            }
+            assert_eq!(
+                itm1.rng_seed, itm2.rng_seed,
+                "ThreadCycleState.rng_seed mismatch between sent and received pos"
+            );
+            assert_eq!(
+                itm1.production_stats, itm2.production_stats,
+                "ThreadCycleState.production_stats mismatch between sent and received pos"
+            );
+        }
+    }
     let recv_graph = maybe_recv_graph.unwrap();
     assert_eq!(
         sent_graph.to_bytes_compact().unwrap(),

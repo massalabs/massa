@@ -4,9 +4,11 @@
 #![feature(destructuring_assignment)]
 
 extern crate logging;
-mod node_config;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
+use api_eth::{EthRpc, API as APIEth};
+use api_private::{MassaPrivate, API as APIPrivate};
+use api_public::{MassaPublic, API as APIPublic};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
     network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},
@@ -20,9 +22,12 @@ use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::{init_serialization_context, Address, SerializationContext};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
+use rpc_server::API;
 use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
+
+mod node_config;
 
 async fn launch(
     cfg: node_config::Config,
@@ -176,7 +181,8 @@ async fn launch(
     )
 }
 
-async fn run(cfg: node_config::Config) {
+// FIXME: IDEA identify it unreachable code?
+async fn run(cfg: node_config::Config, mut apis: Vec<API>) {
     loop {
         let (
             pool_command_sender,
@@ -192,6 +198,14 @@ async fn run(cfg: node_config::Config) {
             storage_manager,
             network_manager,
         ) = launch(cfg.clone()).await;
+        // load command senders into API
+        for api in &mut apis {
+            api.set_command_senders(
+                Some(pool_command_sender.clone()),
+                Some(consensus_command_sender.clone()),
+                Some(network_command_sender.clone()),
+            );
+        }
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
         tokio::pin!(stop_signal);
@@ -644,5 +658,15 @@ async fn main() {
         .init()
         .unwrap();
 
-    run(cfg).await
+    // spawn APIs
+    let api_private = APIPrivate::from_url("127.0.0.1:33034");
+    api_private.serve_massa_private();
+
+    let api_public = APIPublic::from_url("127.0.0.1:33035");
+    api_public.serve_massa_public();
+
+    let api_eth = APIEth::from_url("127.0.0.1:33036");
+    api_eth.serve_eth_rpc();
+
+    run(cfg, vec![api_eth, api_private, api_public]).await
 }

@@ -1,11 +1,12 @@
 [package]
-name = "jsonrpc-api"
+name = "rpc-server"
 version = "0.1.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-jsonrpc-core = "18.0.0"
-jsonrpc-http-server = "18.0.0"
-jsonrpc-dto = { path = "../jsonrpc-dto" }
+# custom modules
+communication = {path = "../communication"}
+consensus = {path = "../consensus"}
+pool = {path = "../pool"}

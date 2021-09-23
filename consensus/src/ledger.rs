@@ -3,6 +3,7 @@
 use crate::error::InternalError;
 use crate::{ConsensusConfig, ConsensusError};
 use models::address::{AddressHashMap, AddressHashSet};
+use models::hhasher::BuildHHasher;
 use models::ledger::{LedgerChange, LedgerData};
 use models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
@@ -323,7 +324,7 @@ impl Ledger {
 
     /// If there is something in the ledger file, it is overwritten
     pub fn from_export(
-        export: LedgerExport,
+        export: LedgerSubset,
         latest_final_periods: Vec<u64>,
         cfg: ConsensusConfig,
     ) -> Result<Ledger, ConsensusError> {
@@ -331,7 +332,7 @@ impl Ledger {
         ledger.clear()?;
 
         // fill ledger per thread
-        for (address, addr_data) in export.ledger_subset.iter() {
+        for (address, addr_data) in export.0.iter() {
             let thread = address.get_thread(cfg.thread_count);
             if ledger.ledger_per_thread[thread as usize]
                 .insert(address.into_bytes(), addr_data.to_bytes_compact()?)?
@@ -628,38 +629,32 @@ impl LedgerSubset {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerExport {
-    pub ledger_subset: Vec<(Address, LedgerData)>,
-}
-
-impl<'a> TryFrom<&'a Ledger> for LedgerExport {
+impl<'a> TryFrom<&'a Ledger> for LedgerSubset {
     type Error = ConsensusError;
 
     fn try_from(value: &'a Ledger) -> Result<Self, Self::Error> {
-        Ok(LedgerExport {
-            ledger_subset: value
+        Ok(LedgerSubset(
+            value
                 .read_whole()?
                 .0
                 .iter()
                 .map(|(k, v)| (*k, v.clone()))
                 .collect(),
-        })
+        ))
     }
 }
 
-impl SerializeCompact for LedgerExport {
+impl SerializeCompact for LedgerSubset {
     /// ## Example
     /// ```rust
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
     /// # use std::str::FromStr;
     /// # use models::ledger::LedgerData;
-    /// # use consensus::LedgerExport;
-    /// # let mut ledger = LedgerExport::default();
-    /// # ledger.ledger_subset = vec![
+    /// # use consensus::LedgerSubset;
+    /// # let ledger = LedgerSubset(vec![
     /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
     /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(Amount::from_str("1020").unwrap())),
-    /// # ];
+    /// # ].into_iter().collect());
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
     /// #     parent_count: 2,
@@ -679,23 +674,23 @@ impl SerializeCompact for LedgerExport {
     /// #     max_block_endorsments: 8,
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
-    /// let (res, _) = LedgerExport::from_bytes_compact(&bytes).unwrap();
-    /// for (address, data) in &ledger.ledger_subset {
-    ///    assert!(res.ledger_subset.iter().filter(|(addr, dta)| address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
+    /// let (res, _) = LedgerSubset::from_bytes_compact(&bytes).unwrap();
+    /// for (address, data) in &ledger.0 {
+    ///    assert!(res.0.iter().filter(|(addr, dta)| &address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
     /// }
-    /// assert_eq!(ledger.ledger_subset.len(), res.ledger_subset.len());
+    /// assert_eq!(ledger.0.len(), res.0.len());
     /// ```
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
-        let entry_count: u64 = self.ledger_subset.len().try_into().map_err(|err| {
+        let entry_count: u64 = self.0.len().try_into().map_err(|err| {
             models::ModelsError::SerializeError(format!(
-                "too many entries in LedgerExport: {:?}",
+                "too many entries in LedgerSubset: {:?}",
                 err
             ))
         })?;
         res.extend(entry_count.to_varint_bytes());
-        for (address, data) in self.ledger_subset.iter() {
+        for (address, data) in self.0.iter() {
             res.extend(&address.to_bytes());
             res.extend(&data.to_bytes_compact()?);
         }
@@ -704,7 +699,7 @@ impl SerializeCompact for LedgerExport {
     }
 }
 
-impl DeserializeCompact for LedgerExport {
+impl DeserializeCompact for LedgerSubset {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
 
@@ -712,7 +707,10 @@ impl DeserializeCompact for LedgerExport {
         //TODO add entry_count checks
         cursor += delta;
 
-        let mut ledger_subset = Vec::with_capacity(entry_count as usize);
+        let mut ledger_subset = LedgerSubset(AddressHashMap::with_capacity_and_hasher(
+            entry_count as usize,
+            BuildHHasher::default(),
+        ));
         for _ in 0..entry_count {
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += ADDRESS_SIZE_BYTES;
@@ -720,10 +718,10 @@ impl DeserializeCompact for LedgerExport {
             let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
 
-            ledger_subset.push((address, data));
+            ledger_subset.0.insert(address, data);
         }
 
-        Ok((LedgerExport { ledger_subset }, cursor))
+        Ok((ledger_subset, cursor))
     }
 }
 

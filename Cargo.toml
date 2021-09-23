@@ -2,18 +2,20 @@
 
 members = [
 	"api",
+    "api-dto",
+    "api-public",
+    "api-private",
+    "api-eth",
     "bootstrap",
     "communication",
     "consensus",
     "crypto",
-    "jsonrpc-api",
-    "jsonrpc-client",
-    "jsonrpc-dto",
     "logging",
     "massa-client",
     "massa-node",
     "models",
     "pool",
+    "rpc-server",
     "storage",
     "time",
     "wallet"
