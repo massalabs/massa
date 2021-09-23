@@ -167,7 +167,7 @@ async fn launch(
     .unwrap();
 
     // spawn APIs
-    let (api_private, private_stop_rx) = ApiMassaPrivate::create(
+    let (api_private, api_private_stop_rx) = ApiMassaPrivate::create(
         "127.0.0.1:33034",
         consensus_command_sender.clone(),
         network_command_sender.clone(),
@@ -199,7 +199,7 @@ async fn launch(
         protocol_manager,
         storage_manager,
         network_manager,
-        private_stop_rx,
+        api_private_stop_rx,
     )
 }
 
@@ -219,7 +219,7 @@ async fn run(cfg: node_config::Config) {
             protocol_manager,
             storage_manager,
             network_manager,
-            mut private_stop_rx,
+            mut api_private_stop_rx,
         ) = launch(cfg.clone()).await;
 
         // interrupt signal listener
@@ -259,8 +259,8 @@ async fn run(cfg: node_config::Config) {
                     break false;
                 }
 
-                _ = private_stop_rx.recv()=> {
-                    info!("interrupt signal received");
+                _ = private_stop_rx.recv() => {
+                    info!("stop command received from private API");
                     break false;
                 }
             }
