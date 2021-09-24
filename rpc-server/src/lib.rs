@@ -1,15 +1,19 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::network::NetworkCommandSender;
-use consensus::ConsensusCommandSender;
+pub use config::APIConfig;
+use consensus::{ConsensusCommandSender, ConsensusConfig};
 use pool::PoolCommandSender;
 
+mod config;
 #[derive(Clone)]
 pub struct API {
     pub url: String,
     pub pool_command_sender: Option<PoolCommandSender>,
     pub consensus_command_sender: Option<ConsensusCommandSender>,
     pub network_command_sender: Option<NetworkCommandSender>,
+    pub consensus_config: Option<ConsensusConfig>,
+    pub api_config: Option<APIConfig>,
 }
 
 impl API {
@@ -20,19 +24,9 @@ impl API {
             pool_command_sender: None,
             consensus_command_sender: None,
             network_command_sender: None,
+            consensus_config: None,
+            api_config: None,
         }
-    }
-
-    /// A handy way to update all command senders
-    pub fn set_command_senders(
-        &mut self,
-        pool_command_sender: Option<PoolCommandSender>,
-        consensus_command_sender: Option<ConsensusCommandSender>,
-        network_command_sender: Option<NetworkCommandSender>,
-    ) {
-        self.pool_command_sender = pool_command_sender;
-        self.consensus_command_sender = consensus_command_sender;
-        self.network_command_sender = network_command_sender;
     }
 }
 
