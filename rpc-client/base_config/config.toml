@@ -1,0 +1,2 @@
+default_node = "127.0.0.1:33035"
+history = 10
