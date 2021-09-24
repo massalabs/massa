@@ -294,7 +294,8 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation
-            let operation = tools::create_operation_with_keys(&creator_node.private_key);
+            let operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
 
             let address = Address::from_public_key(&creator_node.id.0).unwrap();
             let serialization_context = models::get_serialization_context();
