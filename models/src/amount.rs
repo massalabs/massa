@@ -6,7 +6,7 @@ use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
 
-const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
