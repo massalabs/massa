@@ -1,0 +1,22 @@
+[package]
+name = "rpc-client"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+atty = "0.2"
+config = { version = "0.11" }
+console = { git = "https://github.com/mitsuhiko/console" }
+# needed until https://github.com/mitsuhiko/dialoguer/commit/8762a2e7c1ae7fe0db9eb8ed75a2c46a73f653b4 is push on crates.io
+dialoguer = { git = "https://github.com/mitsuhiko/dialoguer" }
+futures = "0.3"
+jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
+paw = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+structopt = { version = "0.3", features = [ "paw" ] }
+strum = "0.21"
+strum_macros = "0.21"
+tokio = { version = "1", features = ["full"] }
