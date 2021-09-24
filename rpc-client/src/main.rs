@@ -6,6 +6,7 @@ use cmds::Command;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+mod cfg;
 mod cmds;
 mod repl;
 mod rpc;
@@ -32,7 +33,7 @@ struct Args {
         short = "c",
         long = "config",
         parse(from_os_str),
-        default_value = "config/config.toml"
+        default_value = "config/config.toml" // FIXME: This is not used yet ...
     )]
     config: PathBuf,
     // TODO: do we want to add more CLI args?!

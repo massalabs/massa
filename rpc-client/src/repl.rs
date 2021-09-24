@@ -1,7 +1,9 @@
+use crate::cfg::Config;
 use crate::cmds::Command;
 use crate::rpc::RpcClient;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, History, Input};
+use std::fs::File;
 use std::{collections::VecDeque, fmt::Display, process};
 use strum::ParseError;
 
@@ -45,8 +47,6 @@ pub(crate) async fn run(client: &RpcClient, parameters: &Vec<String>) {
     }
 }
 
-const HISTORY: usize = 10000; // TODO: Should be available as a CLI arg/into `config.toml`?
-
 struct MyHistory {
     max: usize,
     history: VecDeque<String>,
@@ -54,8 +54,20 @@ struct MyHistory {
 
 impl Default for MyHistory {
     fn default() -> Self {
+        // FIXME: Duplicated code load config
+        let config_path = "base_config/config.toml";
+        let override_config_path = "config/config.toml";
+        let mut cfg = config::Config::default();
+        cfg.merge(config::File::with_name(config_path))
+            .expect("could not load main config file");
+        if std::path::Path::new(override_config_path).is_file() {
+            cfg.merge(config::File::with_name(override_config_path))
+                .expect("could not load override config file");
+        }
+        let cfg = cfg.try_into::<Config>().expect("error structuring config");
+
         MyHistory {
-            max: HISTORY,
+            max: cfg.history,
             history: VecDeque::new(),
         }
     }

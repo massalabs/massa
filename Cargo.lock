@@ -2089,6 +2089,7 @@ name = "rpc-client"
 version = "0.1.0"
 dependencies = [
  "atty",
+ "config",
  "console 0.14.1 (git+https://github.com/mitsuhiko/console)",
  "dialoguer",
  "futures 0.3.17",

@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 atty = "0.2"
+config = { version = "0.11" }
 console = { git = "https://github.com/mitsuhiko/console" }
 # needed until https://github.com/mitsuhiko/dialoguer/commit/8762a2e7c1ae7fe0db9eb8ed75a2c46a73f653b4 is push on crates.io
 dialoguer = { git = "https://github.com/mitsuhiko/dialoguer" }
