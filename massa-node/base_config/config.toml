@@ -8,6 +8,9 @@ version = "DEVE.0.0"
     selection_return_periods = 10
     bind = "127.0.0.1:33033"
 
+[new_api]
+    draw_lookahead_period_count =10
+
 [consensus]
     genesis_timestamp = 1626440641000
     end_timestamp = 1626440641000

@@ -38,17 +38,21 @@ pub trait MassaPrivate {
     #[rpc(name = "stop_node")]
     fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>>;
 
+    /// Sign message with node's key.
+    /// Returns the public key that signed the message and the signature.
     #[rpc(name = "node_sign_message")]
     fn node_sign_message(
         &self,
         _: Vec<u8>,
     ) -> BoxFuture<Result<(PublicKey, Signature), PrivateApiError>>;
 
-    /// Add a new private key for the node to use to stake.
+    /// Add a vec of new private keys for the node to use to stake.
+    /// No confirmation to expect.
     #[rpc(name = "add_staking_keys")]
     fn add_staking_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>>;
 
-    /// Remove an address used to stake.
+    /// Remove a vec of addresses used to stake.
+    /// No confirmation to expect.
     #[rpc(name = "remove_staking_keys")]
     fn remove_staking_keys(&self, _: Vec<Address>) -> BoxFuture<Result<(), PrivateApiError>>;
 
@@ -56,14 +60,19 @@ pub trait MassaPrivate {
     #[rpc(name = "list_staking_keys")]
     fn list_staking_keys(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>>;
 
+    /// Bans given node id
+    /// No confirmation to expect.
     #[rpc(name = "ban")]
     fn ban(&self, _: NodeId) -> BoxFuture<Result<(), PrivateApiError>>;
 
+    /// Unbans given ip addr
+    /// No confirmation to expect.
     #[rpc(name = "unban")]
     fn unban(&self, _: IpAddr) -> BoxFuture<Result<(), PrivateApiError>>;
 }
 
 impl ApiMassaPrivate {
+    /// creates Private Api from url and need command senders and configs
     pub fn create(
         url: &str,
         consensus_command_sender: ConsensusCommandSender,
@@ -84,6 +93,8 @@ impl ApiMassaPrivate {
             rx,
         )
     }
+
+    /// Starts massa private server.
     pub fn serve_massa_private(self) {
         let mut io = IoHandler::new();
         let url = self.url.parse().unwrap();
