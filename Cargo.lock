@@ -80,12 +80,17 @@ name = "api-private"
 version = "0.1.0"
 dependencies = [
  "api-dto",
+ "communication",
+ "consensus",
  "crypto",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "models",
  "rpc-server",
+ "thiserror",
+ "time 0.1.0",
+ "tokio",
 ]
 
 [[package]]
@@ -93,11 +98,15 @@ name = "api-public"
 version = "0.1.0"
 dependencies = [
  "api-dto",
+ "communication",
+ "consensus",
+ "crypto",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "models",
  "rpc-server",
+ "thiserror",
  "time 0.1.0",
 ]
 
@@ -2110,6 +2119,7 @@ dependencies = [
  "communication",
  "consensus",
  "pool",
+ "serde 1.0.130",
 ]
 
 [[package]]

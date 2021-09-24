@@ -11,7 +11,7 @@ use std::thread;
 /// Public Ethereum JSON-RPC endpoints (in intend to be compatible with EthRpc.io)
 #[rpc(server)]
 pub trait EthRpc {
-    fn serve_eth_rpc(&self);
+    fn serve_eth_rpc(&self); // todo add needed command servers
 
     /// Will be implemented later, when smart contracts are added.
     #[rpc(name = "Call")]
@@ -29,6 +29,7 @@ pub trait EthRpc {
 
 impl EthRpc for API {
     fn serve_eth_rpc(&self) {
+        // todo add needed command servers
         rpc_server!(self.clone());
     }
 

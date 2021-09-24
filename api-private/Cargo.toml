@@ -13,4 +13,10 @@ jsonrpc-http-server = "18.0.0"
 crypto = {path = "../crypto"}
 api-dto = { path = "../api-dto" }
 models = {path = "../models"}
+communication = {path = "../communication"}
+consensus = {path = "../consensus"}
+time = {path = "../time"}
 rpc-server = {path = "../rpc-server"}
+thiserror = "1.0"
+
+tokio = { version = "1.11", features = ["full"] }

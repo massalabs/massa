@@ -19,5 +19,5 @@ members = [
     "rpc-server",
     "storage",
     "time",
-    "wallet"
+    "wallet",
 ]

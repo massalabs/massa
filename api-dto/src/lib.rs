@@ -64,30 +64,30 @@ pub struct OperationInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceInfo {
-    final_balance: Amount,
-    candidate_balance: Amount,
-    locked_balance: Amount,
+    pub final_balance: Amount,
+    pub candidate_balance: Amount,
+    pub locked_balance: Amount,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RollsInfo {
-    active_rolls: u64,
-    final_rolls: u64,
-    candidate_rolls: u64,
+    pub active_rolls: u64,
+    pub final_rolls: u64,
+    pub candidate_rolls: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddressInfo {
-    address: Address,
-    thread: u8,
-    balance: BalanceInfo,
-    rolls: RollsInfo,
-    block_draws: HashSet<Slot>,
-    endorsement_draws: HashMap<Slot, u64>, // u64 is the index
-    blocks_created: BlockHashSet,
-    involved_in_endorsements: EndorsementHashSet,
-    involved_in_operations: OperationHashSet,
-    is_staking: bool,
+    pub address: Address,
+    pub thread: u8,
+    pub balance: BalanceInfo,
+    pub rolls: RollsInfo,
+    pub block_draws: HashSet<Slot>,
+    pub endorsement_draws: HashMap<Slot, u64>, // u64 is the index
+    pub blocks_created: BlockHashSet,
+    pub involved_in_endorsements: EndorsementHashSet,
+    pub involved_in_operations: OperationHashSet,
+    pub is_staking: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -7,7 +7,7 @@ extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
 use api_eth::{EthRpc, API as APIEth};
-use api_private::{MassaPrivate, API as APIPrivate};
+use api_private::ApiMassaPrivate;
 use api_public::{MassaPublic, API as APIPublic};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
@@ -22,10 +22,10 @@ use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::{init_serialization_context, Address, SerializationContext};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
-use rpc_server::API;
 use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
+use tokio::sync::mpsc;
 
 mod node_config;
 
@@ -44,6 +44,7 @@ async fn launch(
     ProtocolManager,
     StorageManager,
     NetworkManager,
+    mpsc::Receiver<()>,
 ) {
     info!("Node version : {}", cfg.version);
     if let Some(end) = cfg.consensus.end_timestamp {
@@ -165,6 +166,26 @@ async fn launch(
     .await
     .unwrap();
 
+    // spawn APIs
+    let (api_private, api_private_stop_rx) = ApiMassaPrivate::create(
+        "127.0.0.1:33034",
+        consensus_command_sender.clone(),
+        network_command_sender.clone(),
+        cfg.new_api.clone(),
+        cfg.consensus.clone(),
+    );
+    api_private.serve_massa_private();
+
+    let mut api_public = APIPublic::from_url("127.0.0.1:33035");
+    api_public.serve_massa_public(
+        consensus_command_sender.clone(),
+        cfg.consensus.clone(),
+        cfg.new_api.clone(),
+    ); // todo add needed command servers
+
+    let api_eth = APIEth::from_url("127.0.0.1:33036");
+    api_eth.serve_eth_rpc(); // todo add needed command servers
+
     (
         pool_command_sender,
         consensus_event_receiver,
@@ -178,11 +199,12 @@ async fn launch(
         protocol_manager,
         storage_manager,
         network_manager,
+        api_private_stop_rx,
     )
 }
 
 // FIXME: IDEA identify it unreachable code?
-async fn run(cfg: node_config::Config, mut apis: Vec<API>) {
+async fn run(cfg: node_config::Config) {
     loop {
         let (
             pool_command_sender,
@@ -197,15 +219,9 @@ async fn run(cfg: node_config::Config, mut apis: Vec<API>) {
             protocol_manager,
             storage_manager,
             network_manager,
+            mut api_private_stop_rx,
         ) = launch(cfg.clone()).await;
-        // load command senders into API
-        for api in &mut apis {
-            api.set_command_senders(
-                Some(pool_command_sender.clone()),
-                Some(consensus_command_sender.clone()),
-                Some(network_command_sender.clone()),
-            );
-        }
+
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
         tokio::pin!(stop_signal);
@@ -240,6 +256,11 @@ async fn run(cfg: node_config::Config, mut apis: Vec<API>) {
                 _ = &mut stop_signal => {
                     massa_trace!("massa-node.main.run.select.stop", {});
                     info!("interrupt signal received");
+                    break false;
+                }
+
+                _ = api_private_stop_rx.recv() => {
+                    info!("stop command received from private API");
                     break false;
                 }
             }
@@ -658,13 +679,5 @@ async fn main() {
         .init()
         .unwrap();
 
-    // spawn APIs
-    let api_private = APIPrivate::from_url("127.0.0.1:33034");
-    api_private.serve_massa_private();
-    let api_public = APIPublic::from_url("127.0.0.1:33035");
-    api_public.serve_massa_public();
-    let api_eth = APIEth::from_url("127.0.0.1:33036");
-    api_eth.serve_eth_rpc();
-
-    run(cfg, vec![api_eth, api_private, api_public]).await
+    run(cfg).await
 }
