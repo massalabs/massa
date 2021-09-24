@@ -12,18 +12,20 @@ In Massa, nodes are non-routable by default, an require a manual operation to be
 
 ## How to make your node routable
 
-* make sure the computer on which the node is running has a static public IP address (IPv4 or IPv6). You can retrieve the public IP address of your computer by opening https://api.ipify.org
-* if the computer running the node is behind a router/NAT, you will need to configure your router:
-  * if the router uses DHCP, the MAC address of the computer running the node must be set to have a permanent DHCP lease (a local IP address that never changes, usually of the form 192.168.X.XX)
-  * incoming connections on TCP ports 31244 and 31245 must be directed towards the local IP address of the computer running the node
-* setup the firewall on your computer to allow incoming TCP connections on ports 31244 and 31245 (ex: `ufw allow 31244 && ufw allow 31245` on ubuntu, or setup the windows firewall on windows)
-* create/edit file `massa-node/config/config.toml` with the following contents:
-+
-```toml
-[network]
+-   make sure the computer on which the node is running has a static public IP address (IPv4 or IPv6). You can retrieve the public IP address of your computer by opening <https://api.ipify.org>
+
+-   if the computer running the node is behind a router/NAT, you will need to configure your router:
+
+-   if the router uses DHCP, the MAC address of the computer running the node must be set to have a permanent DHCP lease (a local IP address that never changes, usually of the form 192.168.X.XX)
+
+-   incoming connections on TCP ports 31244 and 31245 must be directed towards the local IP address of the computer running the node
+
+-   setup the firewall on your computer to allow incoming TCP connections on ports 31244 and 31245 (ex: `ufw allow 31244 && ufw allow 31245` on ubuntu, or setup the windows firewall on windows)
+
+-   create/edit file `massa-node/config/config.toml` with the following contents:
+
+    ```toml
     routable_ip = "AAA.BBB.CCC.DDD"
-```
-+
-where AAA.BBB.CCC.DDD should be replaced with your public IP address (not the local one !)
-* run the massa node
-* you can then test if your ports are open by typing your public IP address and port 31244 in `https://www.yougetsignal.com/tools/open-ports/` (then again with port 31245)
+    ```
+
+    where AAA.BBB.CCC.DDD should be replaced with your public IP address (not the local one !) \* run the massa node \* you can then test if your ports are open by typing your public IP address and port 31244 in `https://www.yougetsignal.com/tools/open-ports/` (then again with port 31245)

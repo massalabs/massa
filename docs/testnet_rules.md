@@ -1,0 +1,93 @@
+# Testnet Staking Rewards Program
+
+In order to help achieve our goal of a fully decentralized and scaled blockchain, we designed a staking rewards program during the testnet phase.
+
+People that consistently run a node (with a publicly routable IP) and stake (produce blocks) will be rewarded mainnet Massa tokens when mainnet launches.
+
+Staking is what improves the security of the network. By buying rolls (freezing your coins) and producing your share of the blocks, you help honest nodes to collectively protect against potential attackers, who must not reach 51% of the block production. On mainnet, staking is incentivized through block rewards: for each block produced, you get 1 Massa. On testnet however, you get testnet Massa which have no value, this is why we will reward you with mainnet Massa for learning to setup your node and stake right now, which also help us improve the staking user experience.
+
+On July 16th we launched a first public version of Massa, the first testnet. More than 350 nodes were connected at the same time after one week, which overloaded our bootstrap nodes which were the only nodes accepting connections. By setting your node up to be routable (with a public IP), you become a real peer in the peer-to-peer network: you not only connect to existing routable nodes, but you offer other people the possibility to access the network through your connection. We will therefore also reward how often your node is publicly accessible.
+
+## Episodes
+
+We will have release cycles of 1 month each, called "episodes", the first one starting in August, 2021. At the beginning of an episode, participants will have a few days to setup their nodes with the newest version before scoring starts.
+
+Throughout the episode, you can ask for coins in the Discord faucet (on channel testnet-token-request). No need to abuse the faucet, we don’t reward you based on the number of rolls.
+
+At the end of the episode, all nodes will stop by themselves and become useless/unusable. Participants will have to download and launch the new version for the next episode. Make sure you keep the same node private key and wallet!
+
+## Scoring Formula
+
+The score of a node for a given episode is the following: \`\`\` Score = 50 \* (active\_cycles / nb\_cycles) \* (produced\_blocks / selected\_slots) + 50 \* (routable\_samples / routability\_trials) + 20 \* average\_maxim\_factor
+
+\`\`\`
+
+-   50 points of the score are based on staking:
+
+    -   (`active_cycles` / `nb_cycles` ) \* (`produced_blocks` / `selected_slots`)
+
+        -   `active_cycles` is the number of cycles in the episode during which the address had active rolls.
+
+        -   `nb_cycles` is the total number of cycles in the episode.
+
+        -   `produced_blocks` is the number of final blocks produced by the staker during the episode.
+
+        -   `selected_slots` is the number of final slots for which the staker was selected to create blocks during the episode. If `selected_slots` = 0, the staking score is set to 0.
+
+        -   The maximum score is supposed to be reached if during the whole episode, the node has rolls and produces all blocks when it is selected to.
+
+-   50 points of the score are based on the routability of the node: how often the node can be reached by other nodes.
+
+    -   `routable_samples` / `random_routability_trials`
+
+        -   `routability_trials` is the total number of random connection trials that we performed towards the node during the episode.
+
+        -   `routable_samples` is the number of random connection trials that resulted in a successful connection.
+
+        -   Maximum score is achieved if the node can always be reached by other nodes.
+
+-   20 points of the score incentivize node diversity: the network is more decentralized if nodes are spread across countries and providers than if they are all hosted at the same location/provider
+
+    -   `average_maxim_factor` is the average `maxim_factor` value across routability samples. The following simplified pseudocode describes the computation of maxim factors for a set of IPV4s:
+
+        ```python
+        def maxim_factors(ipv4s): if not ipv4s: return []
+
+        binary_ips = []
+        for ip in ipv4s:
+            binary_ips.append("".join(["{0:b}".format(int(part)).rjust(8,"0") for part in ip.split(".")]))
+
+        scores = []
+        for bin_ip in binary_ips:
+            cnt = 0.0
+            for pow2 in range(1, 32):
+                cnt = cnt - (sum([1.0 for v in binary_ips if v.startswith(bin_ip[:(32-pow2)])])-1) / (4**(pow2 * 0.01))
+            scores.append(cnt)
+
+        min_score = min(scores)
+        span = (max(scores) - min_score)
+        if span != 0:
+            scores = [(s - min_score)/span for s in scores]
+        else
+            scores = [1 for _ in scores]
+
+            return scores
+        ```
+
+        note that IPV6s are for now given max score
+
+We encourage every person to run only one node. Running multiple nodes with the same staking keys will result in roll slashing in the future. Running multiple nodes with the same node\_privkey.key also reduces network health and will be a point of attention for rewards.
+
+## Registration
+
+To validate your participation to the testnet staking reward program, you have to register with your Discord account. Write something in the `testnet-rewards` channel of our [Discord](https://discord.com/invite/TnsJQzXkRN) and our bot will DM you instructions.
+
+## From scores to rewards
+
+The launch of mainnet is currently planned for Q2 2022.
+
+By this time, people will be able to claim their rewards through a KYC process (most likely including video/liveness) to ensure that the same people don’t do multiple claims, and in compliance with KYC/AML laws.
+
+The testnet score of a person will be the sum of all their episode scores.
+
+The mainnet reward will be linked to the testnet score. More info on mainnet rewards will come later.
