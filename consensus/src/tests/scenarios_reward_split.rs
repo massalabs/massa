@@ -3,10 +3,7 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use crypto::hash::Hash;
 use models::ledger::LedgerData;
-use models::{
-    amount::AMOUNT_DECIMAL_FACTOR, Address, Amount, BlockId, Endorsement, EndorsementContent,
-    SerializeCompact, Slot,
-};
+use models::{Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -209,42 +206,80 @@ async fn test_reward_split() {
                 .await
                 .unwrap();
 
-            let mult_factor = AMOUNT_DECIMAL_FACTOR;
-            let expected_a = Amount::from_raw(
-                10 * mult_factor
-                    + {
-                        if pubkey_a == slot_one_pub_key {
-                            7 * mult_factor / 18
-                        } else {
-                            0
-                        }
-                    }
-                    + {
-                        if pubkey_a == slot_two_pub_key {
-                            8 * mult_factor / 18
-                        } else {
-                            0
-                        }
-                    },
-            );
+            let third = cfg
+                .block_reward
+                .checked_div_u64((3 * (1 + cfg.endorsement_count)).into())
+                .unwrap();
 
-            let expected_b = Amount::from_raw(
-                10 * mult_factor
-                    + {
-                        if pubkey_b == slot_one_pub_key {
-                            7 * mult_factor / 18
-                        } else {
-                            0
-                        }
-                    }
-                    + {
-                        if pubkey_b == slot_two_pub_key {
-                            8 * mult_factor / 18
-                        } else {
-                            0
-                        }
-                    },
-            );
+            let expected_a = Amount::from_str("10")
+                .unwrap() // initial ledger
+                .saturating_add(if pubkey_a == slot_one_pub_key {
+                    // block 1 reward
+                    cfg.block_reward
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third)
+                        // endorsements reward
+                        .saturating_add(
+                            third // parent in ed 1
+                                .saturating_add(third) // creator of ed 2
+                                .saturating_add(third) // parent in ed 2
+                                .saturating_add(third), // parent in ed 3
+                        )
+                } else {
+                    Default::default()
+                })
+                .saturating_add(if pubkey_a == slot_two_pub_key {
+                    // block 2 creation reward
+                    cfg.block_reward
+                        .checked_mul_u64(1 + 3)
+                        .unwrap()
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third.checked_mul_u64(2 * 3).unwrap())
+                        // endorsement rewards
+                        .saturating_add(
+                            third // creator of ed 1
+                                .saturating_add(third), //creator of ed 3
+                        )
+                } else {
+                    Default::default()
+                });
+
+            let expected_b = Amount::from_str("10")
+                .unwrap() // initial ledger
+                .saturating_add(if pubkey_b == slot_one_pub_key {
+                    // block 1 reward
+                    cfg.block_reward
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third)
+                        // endorsements reward
+                        .saturating_add(
+                            third // parent in ed 1
+                                .saturating_add(third) // creator of ed 2
+                                .saturating_add(third) // parent in ed 2
+                                .saturating_add(third), // parent in ed 3
+                        )
+                } else {
+                    Default::default()
+                })
+                .saturating_add(if pubkey_b == slot_two_pub_key {
+                    // block 2 creation reward
+                    cfg.block_reward
+                        .checked_mul_u64(1 + 3)
+                        .unwrap()
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third.checked_mul_u64(2 * 3).unwrap())
+                        // endorsement rewards
+                        .saturating_add(
+                            third // creator of ed 1
+                                .saturating_add(third), //creator of ed 3
+                        )
+                } else {
+                    Default::default()
+                });
 
             let state_a = addresses_state.get(&address_a).unwrap();
             assert_eq!(state_a.candidate_ledger_data.balance, expected_a);
