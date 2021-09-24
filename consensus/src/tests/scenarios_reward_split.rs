@@ -198,7 +198,7 @@ async fn test_reward_split() {
             b2.header.content.endorsements = vec![ed_1, ed_2, ed_3];
 
             // Propagate block.
-            tools::propagate_block(&mut protocol_controller, b2, true, 500).await;
+            tools::propagate_block(&mut protocol_controller, b2, true, 600).await;
 
             // Check balances after second block.
             let addresses_state = consensus_command_sender
@@ -216,9 +216,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_a == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
+                        .checked_mul_u64(1 + 0)
+                        .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third)
+                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1
@@ -251,9 +253,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_b == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
+                        .checked_mul_u64(1 + 0)
+                        .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third)
+                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1
