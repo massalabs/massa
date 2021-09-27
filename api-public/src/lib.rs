@@ -15,19 +15,54 @@ use models::clique::Clique;
 use models::operation::{Operation, OperationId};
 use models::EndorsementId;
 use models::{Address, BlockId, Slot};
+use rpc_server::APIConfig;
 pub use rpc_server::API;
-use rpc_server::{rpc_server, APIConfig};
 use std::collections::{HashMap, HashSet};
 use std::thread;
 use time::UTime;
 
 mod error;
 
+pub struct ApiMassaPublic {
+    pub url: String,
+    pub consensus_command_sender: ConsensusCommandSender,
+    pub consensus_config: ConsensusConfig,
+    pub api_config: APIConfig,
+}
+
+impl ApiMassaPublic {
+    /// creates Private Api from url and need command senders and configs
+    pub fn create(
+        url: &str,
+        consensus_command_sender: ConsensusCommandSender,
+        api_config: APIConfig,
+        consensus_config: ConsensusConfig,
+    ) -> Self {
+        ApiMassaPublic {
+            url: url.to_string(),
+            consensus_command_sender,
+            consensus_config,
+            api_config,
+        }
+    }
+
+    /// Starts massa public server.
+    pub fn serve_massa_public(self) {
+        let mut io = IoHandler::new();
+        let url = self.url.parse().unwrap();
+        io.extend_with(self.to_delegate());
+
+        let server = ServerBuilder::new(io)
+            .start_http(&url)
+            .expect("Unable to start RPC server");
+
+        thread::spawn(|| server.wait());
+    }
+}
+
 /// Public Massa JSON-RPC endpoints
 #[rpc(server)]
 pub trait MassaPublic {
-    fn serve_massa_public(&mut self, _: ConsensusCommandSender, _: ConsensusConfig, _: APIConfig); // todo add needed command servers
-
     /////////////////////////////////
     // Explorer (aggregated stats) //
     /////////////////////////////////
@@ -81,21 +116,7 @@ pub trait MassaPublic {
     fn send_operations(&self, _: Vec<Operation>) -> jsonrpc_core::Result<Vec<OperationId>>;
 }
 
-impl MassaPublic for API {
-    fn serve_massa_public(
-        &mut self,
-        consensus: ConsensusCommandSender,
-        consensus_cfg: ConsensusConfig,
-        api_cfg: APIConfig,
-    ) {
-        // todo add needed command servers
-        self.consensus_command_sender = Some(consensus);
-        self.consensus_config = Some(consensus_cfg);
-
-        self.api_config = Some(api_cfg);
-        rpc_server!(self.clone());
-    }
-
+impl MassaPublic for ApiMassaPublic {
     fn get_status(&self) -> jsonrpc_core::Result<NodeStatus> {
         todo!()
     }
@@ -145,9 +166,6 @@ impl MassaPublic for API {
         let addrs = addresses.clone();
         let closure = async move || {
             let mut res = Vec::new();
-            let cmd_sender = cmd_sender.ok_or(PublicApiError::MissingCommandSender(
-                "consensus command sender".to_string(),
-            ))?;
 
             // roll and balance info
 
@@ -159,11 +177,6 @@ impl MassaPublic for API {
             // next draws info
             let now = UTime::now(0)?; // todo get clock compensation ?
 
-            let cfg = cfg.ok_or(PublicApiError::MissingConfig(
-                "consensus config".to_string(),
-            ))?;
-
-            let api_cfg = api_cfg.ok_or(PublicApiError::MissingConfig("api config".to_string()))?;
             let current_slot = get_latest_block_slot_at_timestamp(
                 cfg.thread_count,
                 cfg.t0,
