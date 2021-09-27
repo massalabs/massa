@@ -1414,7 +1414,9 @@ impl BlockGraph {
         &self.best_parents
     }
 
+    /// Returns the list of block IDs created by a given address, and their finality statuses
     pub fn get_block_ids_by_creator(&self, address: &Address) -> BlockHashMap<Status> {
+        // iterate on active (final and non-final) blocks
         self.active_index
             .iter()
             .filter_map(|block_id| {
@@ -1424,6 +1426,7 @@ impl BlockGraph {
                     ..
                 })) = self.block_statuses.get(block_id)
                 {
+                    // list blocks with the right creator address
                     if creator_address == address {
                         return Some((
                             *block_id,
@@ -1439,6 +1442,7 @@ impl BlockGraph {
             })
             .collect()
     }
+
     ///for algo see pos.md
     // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
     // returns (roll_counts, cycle_roll_updates)
