@@ -64,6 +64,7 @@ pub struct BlockStateAccumulator {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
+    pub creator_address: Address,
     pub block: Block,
     pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
     pub children: Vec<BlockHashMap<u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
@@ -126,6 +127,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
 
         let addresses_to_operations = block.block.involved_addresses()?;
         Ok(ActiveBlock {
+            creator_address: Address::from_public_key(&block.block.header.content.creator)?,
             block: block.block,
             parents: block.parents,
             children: block.children,
@@ -803,6 +805,11 @@ pub struct BlockGraph {
     genesis_hashes: Vec<BlockId>,
     sequence_counter: u64,
     block_statuses: BlockHashMap<BlockStatus>,
+    incoming_index: BlockHashSet,
+    waiting_for_slot_index: BlockHashSet,
+    waiting_for_dependencies_index: BlockHashSet,
+    active_index: BlockHashSet,
+    discarded_index: BlockHashSet,
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
     best_parents: Vec<(BlockId, u64)>,
     gi_head: BlockHashMap<BlockHashSet>,
@@ -908,16 +915,16 @@ impl BlockGraph {
         // load genesis blocks
 
         let mut block_statuses = BlockHashMap::default();
-        let mut block_hashes = Vec::with_capacity(cfg.thread_count as usize);
+        let mut genesis_block_ids = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
-            let (hash, block) = create_genesis_block(&cfg, thread).map_err(|err| {
+            let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
                 ConsensusError::GenesisCreationError(format!("genesis error {:?}", err))
             })?;
-
-            block_hashes.push(hash);
+            genesis_block_ids.push(block_id);
             block_statuses.insert(
-                hash,
+                block_id,
                 BlockStatus::Active(ActiveBlock {
+                    creator_address: Address::from_public_key(&block.header.content.creator)?,
                     parents: Vec::new(),
                     children: vec![BlockHashMap::default(); cfg.thread_count as usize],
                     dependencies: BlockHashSet::default(),
@@ -941,6 +948,7 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
+            // load from boot graph
             let ledger = Ledger::from_export(
                 boot_graph.ledger,
                 boot_graph
@@ -953,7 +961,7 @@ impl BlockGraph {
             let mut res_graph = BlockGraph {
                 cfg,
                 sequence_counter: 0,
-                genesis_hashes: block_hashes.clone(),
+                genesis_hashes: genesis_block_ids,
                 block_statuses: boot_graph
                     .active_blocks
                     .iter()
@@ -961,6 +969,11 @@ impl BlockGraph {
                         Ok((*hash, BlockStatus::Active(block.clone().try_into()?)))
                     })
                     .collect::<Result<_, ConsensusError>>()?,
+                incoming_index: Default::default(),
+                waiting_for_slot_index: Default::default(),
+                waiting_for_dependencies_index: Default::default(),
+                active_index: boot_graph.active_blocks.keys().copied().collect(),
+                discarded_index: Default::default(),
                 latest_final_blocks_periods: boot_graph.latest_final_blocks_periods,
                 best_parents: boot_graph.best_parents,
                 gi_head: boot_graph
@@ -1010,10 +1023,15 @@ impl BlockGraph {
             Ok(BlockGraph {
                 cfg,
                 sequence_counter: 0,
-                genesis_hashes: block_hashes.clone(),
                 block_statuses,
-                latest_final_blocks_periods: block_hashes.iter().map(|h| (*h, 0)).collect(),
-                best_parents: block_hashes.iter().map(|v| (*v, 0)).collect(),
+                incoming_index: Default::default(),
+                waiting_for_slot_index: Default::default(),
+                waiting_for_dependencies_index: Default::default(),
+                active_index: genesis_block_ids.iter().copied().collect(),
+                discarded_index: Default::default(),
+                latest_final_blocks_periods: genesis_block_ids.iter().map(|h| (*h, 0)).collect(),
+                best_parents: genesis_block_ids.iter().map(|v| (*v, 0)).collect(),
+                genesis_hashes: genesis_block_ids,
                 gi_head: BlockHashMap::default(),
                 max_cliques: vec![Clique {
                     block_ids: BlockHashSet::default(),
@@ -1396,34 +1414,35 @@ impl BlockGraph {
         &self.best_parents
     }
 
+    /// Returns the list of block IDs created by a given address, and their finality statuses
     pub fn get_block_ids_by_creator(&self, address: &Address) -> BlockHashMap<Status> {
-        self.block_statuses
+        // iterate on active (final and non-final) blocks
+        self.active_index
             .iter()
-            .filter_map(|(id, block)| match block {
-                BlockStatus::Active(ActiveBlock {
-                    block, is_final, ..
-                }) => {
-                    if let Ok(creator) = Address::from_public_key(&block.header.content.creator) {
-                        if creator != *address {
-                            None
-                        } else {
-                            Some((
-                                *id,
-                                if *is_final {
-                                    Status::Final
-                                } else {
-                                    Status::Active
-                                },
-                            ))
-                        }
-                    } else {
-                        None
+            .filter_map(|block_id| {
+                if let Some(BlockStatus::Active(ActiveBlock {
+                    creator_address,
+                    is_final,
+                    ..
+                })) = self.block_statuses.get(block_id)
+                {
+                    // list blocks with the right creator address
+                    if creator_address == address {
+                        return Some((
+                            *block_id,
+                            if *is_final {
+                                Status::Final
+                            } else {
+                                Status::Active
+                            },
+                        ));
                     }
                 }
-                _ => None,
+                None
             })
             .collect()
     }
+
     ///for algo see pos.md
     // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
     // returns (roll_counts, cycle_roll_updates)
@@ -1577,14 +1596,14 @@ impl BlockGraph {
         address: &Address,
     ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
         let mut res: OperationHashMap<OperationSearchResult> = Default::default();
-        for (_, block_status) in self.block_statuses.iter() {
-            if let BlockStatus::Active(ActiveBlock {
+        for b_id in self.active_index.iter() {
+            if let Some(BlockStatus::Active(ActiveBlock {
                 addresses_to_operations,
                 is_final,
                 operation_set,
                 block,
                 ..
-            }) = block_status
+            })) = self.block_statuses.get(b_id)
             {
                 if let Some(ops) = addresses_to_operations.get(address) {
                     for op in ops.iter() {
@@ -1637,13 +1656,13 @@ impl BlockGraph {
     ) -> OperationHashMap<OperationSearchResult> {
         let mut res: OperationHashMap<OperationSearchResult> = Default::default();
         // for each active block
-        for (block_id, block_status) in self.block_statuses.iter() {
-            if let BlockStatus::Active(ActiveBlock {
+        for block_id in self.active_index.iter() {
+            if let Some(BlockStatus::Active(ActiveBlock {
                 block,
                 operation_set,
                 is_final,
                 ..
-            }) = block_status
+            })) = self.block_statuses.get(block_id)
             {
                 // check the intersection with the wanted operation ids, and update/insert into results
                 operation_ids
@@ -1679,13 +1698,13 @@ impl BlockGraph {
     ) -> Result<(), ConsensusError> {
         // list all elements for which the time has come
         let to_process: BTreeSet<(Slot, BlockId)> = self
-            .block_statuses
+            .waiting_for_slot_index
             .iter()
-            .filter_map(|(hash, block_status)| match block_status {
-                BlockStatus::WaitingForSlot(header_or_block) => {
+            .filter_map(|b_id| match self.block_statuses.get(b_id) {
+                Some(BlockStatus::WaitingForSlot(header_or_block)) => {
                     let slot = header_or_block.get_slot();
                     if Some(slot) <= current_slot {
-                        Some((slot, *hash))
+                        Some((slot, *b_id))
                     } else {
                         None
                     }
@@ -1704,23 +1723,24 @@ impl BlockGraph {
     /// A new header has come !
     pub fn incoming_header(
         &mut self,
-        hash: BlockId,
+        block_id: BlockId,
         header: BlockHeader,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
         // ignore genesis blocks
-        if self.genesis_hashes.contains(&hash) {
+        if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
 
-        massa_trace!("consensus.block_graph.incoming_header", {"hash": hash, "header": header});
+        massa_trace!("consensus.block_graph.incoming_header", {"block_id": block_id, "header": header});
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
-        match self.block_statuses.entry(hash) {
+        match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
             hash_map::Entry::Vacant(vac) => {
-                to_ack.insert((header.content.slot, hash));
+                to_ack.insert((header.content.slot, block_id));
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Header(header)));
+                self.incoming_index.insert(block_id);
             }
             hash_map::Entry::Occupied(mut occ) => match occ.get_mut() {
                 BlockStatus::Discarded {
@@ -1731,7 +1751,7 @@ impl BlockGraph {
                 }
                 BlockStatus::WaitingForDependencies { .. } => {
                     // promote in dependencies
-                    self.promote_dep_tree(hash)?;
+                    self.promote_dep_tree(block_id)?;
                 }
                 _ => {}
             },
@@ -1767,6 +1787,7 @@ impl BlockGraph {
                     block,
                     operation_set,
                 )));
+                self.incoming_index.insert(block_id);
             }
             hash_map::Entry::Occupied(mut occ) => match occ.get_mut() {
                 BlockStatus::Discarded {
@@ -1873,6 +1894,7 @@ impl BlockGraph {
                 let header = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
                     self.block_statuses.remove(&block_id)
                 {
+                    self.incoming_index.remove(&block_id);
                     header
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
@@ -1895,6 +1917,7 @@ impl BlockGraph {
                                 ),
                             },
                         );
+                        self.waiting_for_dependencies_index.insert(block_id);
                         self.promote_dep_tree(block_id)?;
 
                         massa_trace!(
@@ -1918,6 +1941,7 @@ impl BlockGraph {
                                 ),
                             },
                         );
+                        self.waiting_for_dependencies_index.insert(block_id);
                         self.promote_dep_tree(block_id)?;
 
                         return Ok(BTreeSet::new());
@@ -1928,6 +1952,7 @@ impl BlockGraph {
                             block_id,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
                         );
+                        self.waiting_for_slot_index.insert(block_id);
 
                         massa_trace!(
                             "consensus.block_graph.process.incoming_header.waiting_for_slot",
@@ -1953,6 +1978,7 @@ impl BlockGraph {
                                 ),
                             },
                         );
+                        self.discarded_index.insert(block_id);
 
                         return Ok(BTreeSet::new());
                     }
@@ -1968,6 +1994,7 @@ impl BlockGraph {
                     HeaderOrBlock::Block(block, operation_set),
                 )) = self.block_statuses.remove(&block_id)
                 {
+                    self.incoming_index.remove(&block_id);
                     (block, operation_set)
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
@@ -2013,6 +2040,7 @@ impl BlockGraph {
                                 ),
                             },
                         );
+                        self.waiting_for_dependencies_index.insert(block_id);
                         self.promote_dep_tree(block_id)?;
                         massa_trace!(
                             "consensus.block_graph.process.incoming_block.waiting_for_dependencies",
@@ -2026,6 +2054,7 @@ impl BlockGraph {
                             block_id,
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Block(block, operation_set)),
                         );
+                        self.waiting_for_slot_index.insert(block_id);
 
                         massa_trace!(
                             "consensus.block_graph.process.incoming_block.waiting_for_slot",
@@ -2052,6 +2081,7 @@ impl BlockGraph {
                                 ),
                             },
                         );
+                        self.discarded_index.insert(block_id);
 
                         return Ok(BTreeSet::new());
                     }
@@ -2075,8 +2105,10 @@ impl BlockGraph {
                 if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
                     self.block_statuses.remove(&block_id)
                 {
+                    self.waiting_for_slot_index.remove(&block_id);
                     self.block_statuses
                         .insert(block_id, BlockStatus::Incoming(header_or_block));
+                    self.incoming_index.insert(block_id);
                     reprocess.insert((slot, block_id));
                     massa_trace!(
                         "consensus.block_graph.process.waiting_for_slot.reprocess",
@@ -2104,9 +2136,11 @@ impl BlockGraph {
                     header_or_block, ..
                 }) = self.block_statuses.remove(&block_id)
                 {
+                    self.waiting_for_dependencies_index.remove(&block_id);
                     reprocess.insert((header_or_block.get_slot(), block_id));
                     self.block_statuses
                         .insert(block_id, BlockStatus::Incoming(header_or_block));
+                    self.incoming_index.insert(block_id);
                     massa_trace!(
                         "consensus.block_graph.process.waiting_for_dependencies.reprocess",
                         { "block_id": block_id }
@@ -2141,12 +2175,12 @@ impl BlockGraph {
                 "block_id": block_id
             });
             self.to_propagate.insert(block_id, active.block.clone());
-            for (itm_block_id, itm_status) in self.block_statuses.iter_mut() {
-                if let BlockStatus::WaitingForDependencies {
+            for itm_block_id in self.waiting_for_dependencies_index.iter() {
+                if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
                     ..
-                } = itm_status
+                }) = self.block_statuses.get_mut(itm_block_id)
                 {
                     if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: retry
@@ -2519,10 +2553,10 @@ impl BlockGraph {
         // check if the block is incompatible with a final block
         if !incomp.is_disjoint(
             &self
-                .block_statuses
+                .active_index
                 .iter()
-                .filter_map(|(h, s)| {
-                    if let BlockStatus::Active(a) = s {
+                .filter_map(|h| {
+                    if let Some(BlockStatus::Active(a)) = self.block_statuses.get(h) {
                         if a.is_final {
                             return Some(*h);
                         }
@@ -2945,6 +2979,7 @@ impl BlockGraph {
         self.block_statuses.insert(
             add_block_id,
             BlockStatus::Active(ActiveBlock {
+                creator_address: Address::from_public_key(&add_block.header.content.creator)?,
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
                 descendants: BlockHashSet::default(),
@@ -2958,6 +2993,7 @@ impl BlockGraph {
                 production_events,
             }),
         );
+        self.active_index.insert(add_block_id);
 
         // add as child to parents
         for (parent_h, _parent_period) in parents_hash_period.iter() {
@@ -3149,6 +3185,7 @@ impl BlockGraph {
             if let Some(BlockStatus::Active(active_block)) =
                 self.block_statuses.remove(&stale_block_hash)
             {
+                self.active_index.remove(&stale_block_hash);
                 if active_block.is_final {
                     return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} was already final", add_block_id, stale_block_hash)));
                 }
@@ -3428,16 +3465,9 @@ impl BlockGraph {
     // prune active blocks and return final blocks, return discarded final blocks
     fn prune_active(&mut self) -> Result<BlockHashMap<Block>, ConsensusError> {
         // list all active blocks
-        let active_blocks: BlockHashSet = self
-            .block_statuses
-            .iter()
-            .filter_map(|(h, bs)| match bs {
-                BlockStatus::Active(_) => Some(*h),
-                _ => None,
-            })
-            .collect();
-
-        let mut retain_active: BlockHashSet = BlockHashSet::default();
+        let active_blocks: BlockHashSet = self.active_index.clone();
+        let mut retain_active: BlockHashSet =
+            BlockHashSet::with_capacity_and_hasher(active_blocks.len(), BuildHHasher::default());
 
         let latest_final_blocks: Vec<BlockId> = self
             .latest_final_blocks_periods
@@ -3448,19 +3478,19 @@ impl BlockGraph {
         // retain all non-final active blocks,
         // the current "best parents",
         // and the dependencies for both.
-        for (hash, block_status) in self.block_statuses.iter() {
-            if let BlockStatus::Active(ActiveBlock {
+        for block_id in active_blocks.iter() {
+            if let Some(BlockStatus::Active(ActiveBlock {
                 is_final,
                 dependencies,
                 ..
-            }) = block_status
+            })) = self.block_statuses.get(block_id)
             {
                 if !*is_final
-                    || self.best_parents.iter().find(|(b, _p)| b == hash).is_some()
-                    || latest_final_blocks.contains(hash)
+                    || self.best_parents.iter().any(|(b, _p)| b == block_id)
+                    || latest_final_blocks.contains(block_id)
                 {
                     retain_active.extend(dependencies);
-                    retain_active.insert(*hash);
+                    retain_active.insert(*block_id);
                 }
             }
         }
@@ -3556,6 +3586,7 @@ impl BlockGraph {
             let discarded_active = if let Some(BlockStatus::Active(discarded_active)) =
                 self.block_statuses.remove(discard_active_h)
             {
+                self.active_index.remove(discard_active_h);
                 discarded_active
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and removing unused final active blocks - {:?} is missing", discard_active_h)));
@@ -3581,6 +3612,7 @@ impl BlockGraph {
                     sequence_number: BlockGraph::new_sequence_number(&mut self.sequence_counter),
                 },
             );
+            self.discarded_index.insert(*discard_active_h);
 
             discarded_finals.insert(*discard_active_h, discarded_active.block);
         }
@@ -3631,12 +3663,12 @@ impl BlockGraph {
 
         // list items that are older than the latest final blocks in their threads or have deps that are discarded
         {
-            for (hash, block_status) in self.block_statuses.iter() {
-                if let BlockStatus::WaitingForDependencies {
+            for block_id in self.waiting_for_dependencies_index.iter() {
+                if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
                     sequence_number,
-                } = block_status
+                }) = self.block_statuses.get(block_id)
                 {
                     // has already discarded dependencies => discard (choose worst reason)
                     let mut discard_reason = None;
@@ -3648,7 +3680,7 @@ impl BlockGraph {
                             discarded_dep_found = true;
                             match reason {
                                 DiscardReason::Invalid(reason) => {
-                                    discard_reason = Some(DiscardReason::Invalid(format!("discarded because depend on block:{} that has discard reason:{}", hash, reason)));
+                                    discard_reason = Some(DiscardReason::Invalid(format!("discarded because depend on block:{} that has discard reason:{}", block_id, reason)));
                                     break;
                                 }
                                 DiscardReason::Stale => discard_reason = Some(DiscardReason::Stale),
@@ -3657,19 +3689,19 @@ impl BlockGraph {
                         }
                     }
                     if discarded_dep_found {
-                        to_discard.insert(*hash, discard_reason);
+                        to_discard.insert(*block_id, discard_reason);
                         continue;
                     }
 
                     // is at least as old as the latest final block in its thread => discard as stale
                     let slot = header_or_block.get_slot();
                     if slot.period <= self.latest_final_blocks_periods[slot.thread as usize].1 {
-                        to_discard.insert(*hash, Some(DiscardReason::Stale));
+                        to_discard.insert(*block_id, Some(DiscardReason::Stale));
                         continue;
                     }
 
                     // otherwise, mark as to_keep
-                    to_keep.insert(*hash, (*sequence_number, header_or_block.get_slot()));
+                    to_keep.insert(*block_id, (*sequence_number, header_or_block.get_slot()));
                 }
             }
         }
@@ -3740,25 +3772,26 @@ impl BlockGraph {
         }
 
         // transition states to Discarded if there is a reason, otherwise just drop
-        for (hash, reason_opt) in to_discard.drain() {
+        for (block_id, reason_opt) in to_discard.drain() {
             if let Some(BlockStatus::WaitingForDependencies {
                 header_or_block, ..
-            }) = self.block_statuses.remove(&hash)
+            }) = self.block_statuses.remove(&block_id)
             {
+                self.waiting_for_dependencies_index.remove(&block_id);
                 let header = match header_or_block {
                     HeaderOrBlock::Header(h) => h,
                     HeaderOrBlock::Block(b, _) => b.header,
                 };
-                massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": hash, "reason": reason_opt});
+                massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
 
                 if let Some(reason) = reason_opt {
                     // add to stats if reason is Stale
                     if reason == DiscardReason::Stale {
-                        self.new_stale_blocks.insert(hash, header.content.slot);
+                        self.new_stale_blocks.insert(block_id, header.content.slot);
                     }
                     // transition to Discarded only if there is a reason
                     self.block_statuses.insert(
-                        hash,
+                        block_id,
                         BlockStatus::Discarded {
                             header,
                             reason,
@@ -3767,6 +3800,7 @@ impl BlockGraph {
                             ),
                         },
                     );
+                    self.discarded_index.insert(block_id);
                 }
             }
         }
@@ -3775,55 +3809,52 @@ impl BlockGraph {
     }
 
     fn prune_slot_waiting(&mut self) {
+        if self.waiting_for_slot_index.len() <= self.cfg.max_future_processing_blocks {
+            return;
+        }
         let mut slot_waiting: Vec<(Slot, BlockId)> = self
-            .block_statuses
+            .waiting_for_slot_index
             .iter()
-            .filter_map(|(hash, block_status)| {
-                if let BlockStatus::WaitingForSlot(header_or_block) = block_status {
-                    return Some((header_or_block.get_slot(), *hash));
+            .filter_map(|block_id| {
+                if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
+                    self.block_statuses.get(block_id)
+                {
+                    return Some((header_or_block.get_slot(), *block_id));
                 }
                 None
             })
             .collect();
         slot_waiting.sort_unstable();
-        let retained: BlockHashSet = slot_waiting
-            .into_iter()
-            .take(self.cfg.max_future_processing_blocks)
-            .map(|(_slot, hash)| hash)
-            .collect();
-        self.block_statuses.retain(|hash, block_status| {
-            if let BlockStatus::WaitingForSlot(_) = block_status {
-                return retained.contains(hash);
-            }
-            true
-        });
+        for idx in self.cfg.max_future_processing_blocks..slot_waiting.len() {
+            let (_slot, block_id) = &slot_waiting[idx];
+            self.block_statuses.remove(&block_id);
+            self.waiting_for_slot_index.remove(&block_id);
+        }
     }
 
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
+        if self.discarded_index.len() <= self.cfg.max_discarded_blocks {
+            return Ok(());
+        }
         let mut discard_hashes: Vec<(u64, BlockId)> = self
-            .block_statuses
+            .discarded_index
             .iter()
-            .filter_map(|(hash, block_status)| {
-                if let BlockStatus::Discarded {
+            .filter_map(|block_id| {
+                if let Some(BlockStatus::Discarded {
                     sequence_number, ..
-                } = block_status
+                }) = self.block_statuses.get(block_id)
                 {
-                    return Some((*sequence_number, *hash));
+                    return Some((*sequence_number, *block_id));
                 }
                 None
             })
             .collect();
-        if discard_hashes.len() <= self.cfg.max_discarded_blocks {
-            return Ok(());
-        }
         discard_hashes.sort_unstable();
-        discard_hashes.truncate(self.cfg.max_discarded_blocks);
-        discard_hashes
-            .into_iter()
-            .take(self.cfg.max_discarded_blocks)
-            .for_each(|(_period, hash)| {
-                self.block_statuses.remove(&hash);
-            });
+        discard_hashes.truncate(self.discarded_index.len() - self.cfg.max_discarded_blocks);
+        for (_, block_id) in discard_hashes.into_iter() {
+            self.block_statuses.remove(&block_id);
+            self.discarded_index.remove(&block_id);
+        }
         Ok(())
     }
 
@@ -3856,11 +3887,11 @@ impl BlockGraph {
     // get the current block wishlist
     pub fn get_block_wishlist(&self) -> Result<BlockHashSet, ConsensusError> {
         let mut wishlist = BlockHashSet::default();
-        for block_status in self.block_statuses.values() {
-            if let BlockStatus::WaitingForDependencies {
+        for block_id in self.waiting_for_dependencies_index.iter() {
+            if let Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
                 ..
-            } = block_status
+            }) = self.block_statuses.get(block_id)
             {
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
                     if let Some(BlockStatus::WaitingForDependencies {
