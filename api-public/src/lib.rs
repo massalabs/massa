@@ -83,7 +83,7 @@ pub trait MassaPublic {
     fn get_status(&self) -> jsonrpc_core::Result<NodeStatus>;
 
     #[rpc(name = "get_cliques")]
-    fn get_cliques(&self) -> jsonrpc_core::Result<Vec<Clique>>;
+    fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, PublicApiError>>;
 
     //////////////////////////////////
     // Debug (specific information) //
@@ -132,8 +132,16 @@ impl MassaPublic for ApiMassaPublic {
         todo!()
     }
 
-    fn get_cliques(&self) -> jsonrpc_core::Result<Vec<Clique>> {
-        todo!()
+    fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, PublicApiError>> {
+        let consensus_command_sender = self.consensus_command_sender.clone();
+        let closure = async move || {
+            Ok(consensus_command_sender
+                .get_block_graph_status()
+                .await?
+                .max_cliques)
+        };
+
+        Box::pin(closure())
     }
 
     fn get_stakers(&self) -> jsonrpc_core::Result<AddressHashMap<RollsInfo>> {
