@@ -47,7 +47,7 @@ version = "DEVE.0.0"
     roll_price = "100"
     #stats
     stats_timespan = 60000
-    block_db_prune_interval = 1000
+    block_db_prune_interval = 5000
 
 [protocol]
     message_timeout = 5000
@@ -56,7 +56,7 @@ version = "DEVE.0.0"
     max_node_wanted_blocks_size = 1024
     max_simultaneous_ask_blocks_per_node = 2048
     max_send_wait = 500
-    max_known_ops_size = 1024
+    max_known_ops_size = 10024
     max_known_endorsements_size = 1024
 
 [network]
