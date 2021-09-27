@@ -61,6 +61,7 @@ async fn test_reward_split() {
     cfg.max_operations_per_block = 5000;
     cfg.max_block_size = 2000;
     cfg.endorsement_count = 5;
+    cfg.block_reward = Amount::from_str("1").unwrap();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -197,7 +198,7 @@ async fn test_reward_split() {
             b2.header.content.endorsements = vec![ed_1, ed_2, ed_3];
 
             // Propagate block.
-            tools::propagate_block(&mut protocol_controller, b2, true, 500).await;
+            tools::propagate_block(&mut protocol_controller, b2, true, 600).await;
 
             // Check balances after second block.
             let addresses_state = consensus_command_sender
@@ -205,21 +206,90 @@ async fn test_reward_split() {
                 .await
                 .unwrap();
 
-            let slot_one_creator_state = addresses_state
-                .get(&Address::from_public_key(&slot_one_pub_key).unwrap())
+            let third = cfg
+                .block_reward
+                .checked_div_u64((3 * (1 + cfg.endorsement_count)).into())
                 .unwrap();
-            assert_eq!(
-                slot_one_creator_state.candidate_ledger_data.balance,
-                Amount::from_str("10.388888886").unwrap()
-            );
 
-            let slot_two_creator_state = addresses_state
-                .get(&Address::from_public_key(&slot_two_pub_key).unwrap())
-                .unwrap();
-            assert_eq!(
-                slot_two_creator_state.candidate_ledger_data.balance,
-                Amount::from_str("10.444444446").unwrap()
-            );
+            let expected_a = Amount::from_str("10")
+                .unwrap() // initial ledger
+                .saturating_add(if pubkey_a == slot_one_pub_key {
+                    // block 1 reward
+                    cfg.block_reward
+                        .checked_mul_u64(1 + 0)
+                        .unwrap()
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        // endorsements reward
+                        .saturating_add(
+                            third // parent in ed 1
+                                .saturating_add(third) // creator of ed 2
+                                .saturating_add(third) // parent in ed 2
+                                .saturating_add(third), // parent in ed 3
+                        )
+                } else {
+                    Default::default()
+                })
+                .saturating_add(if pubkey_a == slot_two_pub_key {
+                    // block 2 creation reward
+                    cfg.block_reward
+                        .checked_mul_u64(1 + 3)
+                        .unwrap()
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third.checked_mul_u64(2 * 3).unwrap())
+                        // endorsement rewards
+                        .saturating_add(
+                            third // creator of ed 1
+                                .saturating_add(third), //creator of ed 3
+                        )
+                } else {
+                    Default::default()
+                });
+
+            let expected_b = Amount::from_str("10")
+                .unwrap() // initial ledger
+                .saturating_add(if pubkey_b == slot_one_pub_key {
+                    // block 1 reward
+                    cfg.block_reward
+                        .checked_mul_u64(1 + 0)
+                        .unwrap()
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        // endorsements reward
+                        .saturating_add(
+                            third // parent in ed 1
+                                .saturating_add(third) // creator of ed 2
+                                .saturating_add(third) // parent in ed 2
+                                .saturating_add(third), // parent in ed 3
+                        )
+                } else {
+                    Default::default()
+                })
+                .saturating_add(if pubkey_b == slot_two_pub_key {
+                    // block 2 creation reward
+                    cfg.block_reward
+                        .checked_mul_u64(1 + 3)
+                        .unwrap()
+                        .checked_div_u64((1 + cfg.endorsement_count).into())
+                        .unwrap()
+                        .saturating_sub(third.checked_mul_u64(2 * 3).unwrap())
+                        // endorsement rewards
+                        .saturating_add(
+                            third // creator of ed 1
+                                .saturating_add(third), //creator of ed 3
+                        )
+                } else {
+                    Default::default()
+                });
+
+            let state_a = addresses_state.get(&address_a).unwrap();
+            assert_eq!(state_a.candidate_ledger_data.balance, expected_a);
+
+            let state_b = addresses_state.get(&address_b).unwrap();
+            assert_eq!(state_b.candidate_ledger_data.balance, expected_b);
 
             (
                 protocol_controller,
