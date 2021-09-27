@@ -3,6 +3,7 @@ use consensus::ConsensusError;
 use crypto::CryptoError;
 use models::ModelsError;
 use pool::PoolError;
+use storage::StorageError;
 use thiserror::Error;
 use time::TimeError;
 
@@ -24,6 +25,8 @@ pub enum PublicApiError {
     TimeError(#[from] TimeError),
     #[error("pool error : {0}")]
     PoolError(#[from] PoolError),
+    #[error("storage error : {0}")]
+    StorageError(#[from] StorageError),
     #[error("not found")]
     NotFound,
     #[error("inconsistency: {0}")]

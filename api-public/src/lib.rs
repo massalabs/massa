@@ -5,7 +5,10 @@ use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     RollsInfo,
 };
-use consensus::{get_latest_block_slot_at_timestamp, ConsensusCommandSender, ConsensusConfig};
+use consensus::{
+    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
+    ConsensusCommandSender, ConsensusConfig, Status,
+};
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
@@ -20,6 +23,7 @@ use rpc_server::APIConfig;
 pub use rpc_server::API;
 use std::collections::{HashMap, HashSet};
 use std::thread;
+use storage::StorageAccess;
 use time::UTime;
 
 mod error;
@@ -28,6 +32,7 @@ pub struct ApiMassaPublic {
     pub url: String,
     pub consensus_command_sender: ConsensusCommandSender,
     pub pool_command_sender: PoolCommandSender,
+    pub storage_command_sender: Option<StorageAccess>,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
 }
@@ -40,6 +45,7 @@ impl ApiMassaPublic {
         api_config: APIConfig,
         consensus_config: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
+        storage_command_sender: Option<StorageAccess>,
     ) -> Self {
         ApiMassaPublic {
             url: url.to_string(),
@@ -47,6 +53,7 @@ impl ApiMassaPublic {
             consensus_config,
             api_config,
             pool_command_sender,
+            storage_command_sender,
         }
     }
 
@@ -105,7 +112,7 @@ pub trait MassaPublic {
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
-    ) -> jsonrpc_core::Result<Vec<BlockSummary>>;
+    ) -> BoxFuture<Result<Vec<BlockSummary>, PublicApiError>>;
 
     #[rpc(name = "get_addresses")]
     fn get_addresses(&self, _: Vec<Address>)
@@ -150,10 +157,75 @@ impl MassaPublic for ApiMassaPublic {
 
     fn get_graph_interval(
         &self,
-        _time_start: Option<UTime>,
-        _time_end: Option<UTime>,
-    ) -> jsonrpc_core::Result<Vec<BlockSummary>> {
-        todo!()
+        time_start: Option<UTime>,
+        time_end: Option<UTime>,
+    ) -> BoxFuture<Result<Vec<BlockSummary>, PublicApiError>> {
+        let consensus_command_sender = self.consensus_command_sender.clone();
+        let opt_storage_command_sender = self.storage_command_sender.clone();
+        let consensus_config = self.consensus_config.clone();
+        let closure = async move || {
+            let graph = consensus_command_sender.get_block_graph_status().await?;
+
+            //filter block from graph_export
+            let start = time_start.unwrap_or_else(|| UTime::from(0));
+            let end = time_end.unwrap_or_else(|| UTime::from(u64::MAX));
+            let mut res = Vec::new();
+            let block_clique = graph
+                .max_cliques
+                .iter()
+                .find(|clique| clique.is_blockclique)
+                .ok_or(PublicApiError::InconsistencyError(
+                    "Missing block clique".to_string(),
+                ))?;
+            for (id, exported_block) in graph.active_blocks.into_iter() {
+                let header = exported_block.block;
+                let status = exported_block.status;
+                let time = get_block_slot_timestamp(
+                    consensus_config.thread_count,
+                    consensus_config.t0,
+                    consensus_config.genesis_timestamp,
+                    header.content.slot,
+                )?;
+
+                if start <= time && time < end {
+                    res.push(BlockSummary {
+                        id,
+                        is_final: status == Status::Final,
+                        is_stale: false, // todo in the old api we considered only active blocks. Do we need to consider also discarded blocks ?
+                        is_in_blockclique: block_clique.block_ids.contains(&id),
+                        slot: header.content.slot,
+                        creator: Address::from_public_key(&header.content.creator)?,
+                        parents: header.content.parents,
+                    })
+                }
+            }
+
+            if let Some(storage) = opt_storage_command_sender {
+                let (start_slot, end_slot) = time_range_to_slot_range(
+                    consensus_config.thread_count,
+                    consensus_config.t0,
+                    consensus_config.genesis_timestamp,
+                    time_start,
+                    time_end,
+                )?;
+
+                let blocks = storage.get_slot_range(start_slot, end_slot).await?;
+                for (id, block) in blocks {
+                    res.push(BlockSummary {
+                        id,
+                        is_final: true,
+                        is_stale: false,         // because in storage
+                        is_in_blockclique: true, // because in storage
+                        slot: block.header.content.slot,
+                        creator: Address::from_public_key(&block.header.content.creator)?,
+                        parents: block.header.content.parents,
+                    })
+                }
+            }
+            Ok(res)
+        };
+
+        Box::pin(closure())
     }
 
     fn send_operations(&self, ops: Vec<Operation>) -> BoxFuture<Result<(), PublicApiError>> {

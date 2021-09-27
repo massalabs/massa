@@ -107,6 +107,7 @@ dependencies = [
  "models",
  "pool",
  "rpc-server",
+ "storage",
  "thiserror",
  "time 0.1.0",
 ]

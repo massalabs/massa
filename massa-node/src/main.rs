@@ -148,7 +148,7 @@ async fn launch(
         cfg.protocol.clone(),
         cfg.network.clone(),
         cfg.pool.clone(),
-        Some(storage_command_sender),
+        Some(storage_command_sender.clone()),
         clock_compensation,
     )
     .await
@@ -182,6 +182,7 @@ async fn launch(
         cfg.new_api.clone(),
         cfg.consensus.clone(),
         pool_command_sender.clone(),
+        Some(storage_command_sender),
     );
     api_public.serve_massa_public(); // todo add needed command servers
 
