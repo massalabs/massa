@@ -15,6 +15,7 @@ use models::clique::Clique;
 use models::operation::{Operation, OperationId};
 use models::EndorsementId;
 use models::{Address, BlockId, Slot};
+use pool::PoolCommandSender;
 use rpc_server::APIConfig;
 pub use rpc_server::API;
 use std::collections::{HashMap, HashSet};
@@ -26,6 +27,7 @@ mod error;
 pub struct ApiMassaPublic {
     pub url: String,
     pub consensus_command_sender: ConsensusCommandSender,
+    pub pool_command_sender: PoolCommandSender,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
 }
@@ -37,12 +39,14 @@ impl ApiMassaPublic {
         consensus_command_sender: ConsensusCommandSender,
         api_config: APIConfig,
         consensus_config: ConsensusConfig,
+        pool_command_sender: PoolCommandSender,
     ) -> Self {
         ApiMassaPublic {
             url: url.to_string(),
             consensus_command_sender,
             consensus_config,
             api_config,
+            pool_command_sender,
         }
     }
 
@@ -111,9 +115,9 @@ pub trait MassaPublic {
     // User (interaction with the node) //
     //////////////////////////////////////
 
-    /// Return list of all those that were sent
+    /// Adds operations to pool.
     #[rpc(name = "send_operations")]
-    fn send_operations(&self, _: Vec<Operation>) -> jsonrpc_core::Result<Vec<OperationId>>;
+    fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<(), PublicApiError>>;
 }
 
 impl MassaPublic for ApiMassaPublic {
@@ -152,8 +156,18 @@ impl MassaPublic for ApiMassaPublic {
         todo!()
     }
 
-    fn send_operations(&self, _: Vec<Operation>) -> jsonrpc_core::Result<Vec<OperationId>> {
-        todo!()
+    fn send_operations(&self, ops: Vec<Operation>) -> BoxFuture<Result<(), PublicApiError>> {
+        let mut cmd_sender = self.pool_command_sender.clone();
+        let closure = async move || {
+            Ok(cmd_sender
+                .add_operations(
+                    ops.into_iter()
+                        .map(|op| Ok((op.get_operation_id()?, op)))
+                        .collect::<Result<_, PublicApiError>>()?,
+                )
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn get_addresses(

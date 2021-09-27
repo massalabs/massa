@@ -181,6 +181,7 @@ async fn launch(
         consensus_command_sender.clone(),
         cfg.new_api.clone(),
         cfg.consensus.clone(),
+        pool_command_sender.clone(),
     );
     api_public.serve_massa_public(); // todo add needed command servers
 
