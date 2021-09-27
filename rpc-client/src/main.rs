@@ -53,6 +53,7 @@ struct Args {
 #[paw::main]
 fn main(args: Args) {
     setup_panic!();
+    // TODO: Sentry (need to fix config loading first)
     // `#[tokio::main]` macro expanded!
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()

@@ -2,6 +2,7 @@ version = "DEVE.0.0"
 
 [logging]
     level = 2
+    sentry = false
 
 [api]
     max_return_invalid_blocks = 10
@@ -90,7 +91,7 @@ version = "DEVE.0.0"
     max_stored_blocks= 1000
     path = "storage/block_store"
     cache_capacity = 10000
-    #flush_every_ms = 
+    #flush_every_ms =
     reset_at_startup = true
 
 [bootstrap]
