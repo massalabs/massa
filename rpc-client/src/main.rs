@@ -5,6 +5,7 @@
 use crate::rpc::RpcClient;
 use atty::Stream;
 use cmds::Command;
+use human_panic::setup_panic;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -51,6 +52,7 @@ struct Args {
 
 #[paw::main]
 fn main(args: Args) {
+    setup_panic!();
     // `#[tokio::main]` macro expanded!
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
