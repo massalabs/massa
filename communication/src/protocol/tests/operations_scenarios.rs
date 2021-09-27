@@ -138,8 +138,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             // 1. Create an operation
-            let operation =
-                tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
 
             // Send operation and wait for the protocol event,
             // just to be sure the nodes are connected before sending the propagate command.
@@ -213,8 +212,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_avbout
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             // 1. Create an operation
-            let operation =
-                tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
 
             // Send operation and wait for the protocol event,
             // just to be sure the nodes are connected before sending the propagate command.
