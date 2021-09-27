@@ -1118,6 +1118,7 @@ impl ConsensusWorker {
         &mut self,
         operation_ids: &OperationHashSet,
     ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
+        // todo move that to api
         // get from pool
         let mut res: OperationHashMap<OperationSearchResult> = self
             .pool_command_sender
@@ -1147,6 +1148,7 @@ impl ConsensusWorker {
                     .or_insert(search_new);
             });
 
+        // todo move that to api
         // for those that have not been found in consensus, extend with storage
         if let Some(storage) = &mut self.opt_storage_command_sender {
             let to_gather: OperationHashSet = operation_ids

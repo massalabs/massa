@@ -55,11 +55,11 @@ pub struct NodeStatus {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OperationInfo {
-    id: OperationId,
-    in_pool: bool,
-    in_blocks: Vec<BlockId>,
-    is_final: bool,
-    operation: Operation,
+    pub id: OperationId,
+    pub in_pool: bool,
+    pub in_blocks: Vec<BlockId>,
+    pub is_final: bool,
+    pub operation: Operation,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

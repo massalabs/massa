@@ -95,7 +95,10 @@ pub trait MassaPublic {
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]
-    fn get_operations(&self, _: Vec<OperationId>) -> jsonrpc_core::Result<Vec<OperationInfo>>;
+    fn get_operations(
+        &self,
+        _: Vec<OperationId>,
+    ) -> BoxFuture<Result<Vec<OperationInfo>, PublicApiError>>;
 
     #[rpc(name = "get_endorsements")]
     fn get_endorsements(&self, _: Vec<EndorsementId>)
@@ -148,8 +151,29 @@ impl MassaPublic for ApiMassaPublic {
         todo!()
     }
 
-    fn get_operations(&self, _: Vec<OperationId>) -> jsonrpc_core::Result<Vec<OperationInfo>> {
-        todo!()
+    fn get_operations(
+        &self,
+        ops: Vec<OperationId>,
+    ) -> BoxFuture<Result<Vec<OperationInfo>, PublicApiError>> {
+        let consensus_command_sender = self.consensus_command_sender.clone();
+        // todo use that command sender
+        let opt_storage_command_sender = self.storage_command_sender.clone();
+        let closure = async move || {
+            Ok(consensus_command_sender
+                .get_operations(ops.into_iter().collect())
+                .await?
+                .into_iter()
+                .map(|(id, op)| OperationInfo {
+                    id,
+                    in_pool: op.in_pool,
+                    in_blocks: op.in_blocks.keys().copied().collect(),
+                    is_final: op.in_blocks.iter().any(|(_, (_, is_final))| *is_final),
+                    operation: op.op,
+                })
+                .collect())
+        };
+
+        Box::pin(closure())
     }
 
     fn get_endorsements(
