@@ -36,6 +36,7 @@ impl Wallet {
         let path = std::path::Path::new(json_file);
         let keys = if path.is_file() {
             serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(path)?)?
+        // TODO: DECRYPT
         } else {
             Vec::new()
         };
@@ -98,7 +99,7 @@ impl Wallet {
             serde_json::to_string_pretty(
                 &self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>(),
             )?,
-        )?;
+        )?; // TODO: ENCRYPT
         Ok(())
     }
 
@@ -134,22 +135,6 @@ impl<'a> std::fmt::Display for WalletInfo<'a> {
         Ok(())
     }
 }
-
-// FIXME: dead code...
-// impl std::fmt::Display for Wallet {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         writeln!(f)?;
-//         for key in &self.keys {
-//             let public_key = derive_public_key(key);
-//             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
-//             writeln!(f)?;
-//             writeln!(f, "Private key: {}", key)?;
-//             writeln!(f, "Public key: {}", public_key)?;
-//             writeln!(f, "Address: {}", addr)?;
-//         }
-//         Ok(())
-//     }
-// }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ConsensusConfigData {
