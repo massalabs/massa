@@ -18,7 +18,12 @@ pub enum Command {
 // TODO: Commands could also not be APIs calls (like Wallet ones)
 impl Command {
     // TODO: is Vec<String> -> String the best way to encode an User interaction in CLI?
-    pub(crate) async fn run(&self, client: &RpcClient, parameters: &Vec<String>) -> String {
+    pub(crate) async fn run(
+        &self,
+        public_client: &RpcClient,
+        private_client: &RpcClient,
+        parameters: &Vec<String>,
+    ) -> String {
         match self {
             Command::Exit => process::exit(0),
             Command::Help => {
@@ -32,7 +37,7 @@ impl Command {
             }
             // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
             Command::Unban => serde_json::to_string(
-                &client
+                &public_client
                     .unban(serde_json::from_str(&parameters[0]).unwrap())
                     .await
                     .unwrap(),

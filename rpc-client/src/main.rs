@@ -59,20 +59,24 @@ fn main(args: Args) {
         .build()
         .unwrap()
         .block_on(async {
-            // TODO: We should handle 2 different ports
-            let url = format!("http://{}:{}", args.address, args.private_port);
-            let client = RpcClient::from_url(&url).await;
+            let public_url = format!("http://{}:{}", args.address, args.public_port);
+            let public_client = RpcClient::from_url(&public_url).await;
+            let private_url = format!("http://{}:{}", args.address, args.private_port);
+            let private_client = RpcClient::from_url(&private_url).await;
             // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
             if atty::is(Stream::Stdout) {
                 //////////////////////
                 // Interactive mode //
                 //////////////////////
-                repl::run(&client).await;
+                repl::run(&public_client, &private_client).await;
             } else {
                 //////////////////////////
                 // Non-Interactive mode //
                 //////////////////////////
-                let ret = args.command.run(&client, &args.parameters).await;
+                let ret = args
+                    .command
+                    .run(&public_client, &private_client, &args.parameters)
+                    .await;
                 println!("{}", ret);
             }
         });
