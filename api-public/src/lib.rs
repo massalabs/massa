@@ -7,7 +7,7 @@ use api_dto::{
 };
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
-    ConsensusCommandSender, ConsensusConfig, Status,
+    ConsensusCommandSender, ConsensusConfig, ExportBlockStatus, Status,
 };
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
@@ -103,7 +103,7 @@ pub trait MassaPublic {
 
     /// Get information on a block given its hash
     #[rpc(name = "get_block")]
-    fn get_block(&self, _: BlockId) -> jsonrpc_core::Result<BlockInfo>;
+    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, PublicApiError>>;
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from <time_start> (included) and to <time_end> (excluded) millisecond timestamp
@@ -151,8 +151,47 @@ impl MassaPublic for ApiMassaPublic {
         todo!()
     }
 
-    fn get_block(&self, _: BlockId) -> jsonrpc_core::Result<BlockInfo> {
-        todo!()
+    fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, PublicApiError>> {
+        let consensus_command_sender = self.consensus_command_sender.clone();
+        let opt_storage_command_sender = self.storage_command_sender.clone();
+        let consensus_config = self.consensus_config.clone();
+        let closure = async move || {
+            let graph = consensus_command_sender.get_block_graph_status().await?;
+            let block_clique = graph
+                .max_cliques
+                .iter()
+                .find(|clique| clique.is_blockclique)
+                .ok_or(PublicApiError::InconsistencyError(
+                    "Missing block clique".to_string(),
+                ))?;
+            if let Some(block) = consensus_command_sender.get_active_block(id).await? {
+                Ok(BlockInfo {
+                    id,
+                    is_final: false, // todo retrive block finality
+                    is_stale: false,
+                    is_in_blockclique: block_clique.block_ids.contains(&id),
+                    block,
+                })
+            } else {
+                if let Some(cmd_tx) = opt_storage_command_sender {
+                    match cmd_tx.get_block(id).await {
+                        Ok(Some(block)) => Ok(BlockInfo {
+                            id,
+                            is_final: true,
+                            is_stale: false,
+                            is_in_blockclique: block_clique.block_ids.contains(&id),
+                            block,
+                        }),
+                        Ok(None) => Err(PublicApiError::NotFound),
+                        Err(e) => Err(e.into()),
+                    }
+                } else {
+                    Err(PublicApiError::NotFound)
+                }
+            }
+        };
+
+        Box::pin(closure())
     }
 
     fn get_graph_interval(

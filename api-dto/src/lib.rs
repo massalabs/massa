@@ -101,11 +101,11 @@ pub struct EndorsementInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BlockInfo {
-    id: BlockId,
-    is_final: bool,
-    is_stale: bool,
-    is_in_blockclique: bool,
-    block: Block,
+    pub id: BlockId,
+    pub is_final: bool,
+    pub is_stale: bool,
+    pub is_in_blockclique: bool,
+    pub block: Block,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
