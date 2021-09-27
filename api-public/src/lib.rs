@@ -7,7 +7,7 @@ use api_dto::{
 };
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
-    ConsensusCommandSender, ConsensusConfig, ExportBlockStatus, Status,
+    ConsensusCommandSender, ConsensusConfig, Status,
 };
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
@@ -154,7 +154,6 @@ impl MassaPublic for ApiMassaPublic {
     fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
         let opt_storage_command_sender = self.storage_command_sender.clone();
-        let consensus_config = self.consensus_config.clone();
         let closure = async move || {
             let graph = consensus_command_sender.get_block_graph_status().await?;
             let block_clique = graph
