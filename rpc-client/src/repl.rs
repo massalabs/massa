@@ -5,7 +5,7 @@ use crate::cmds::Command;
 use crate::rpc::RpcClient;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, History, Input};
-use std::{collections::VecDeque, fmt::Display, process};
+use std::{collections::VecDeque, fmt::Display};
 use strum::ParseError;
 
 macro_rules! massa_fancy_ascii_art_logo {
@@ -33,10 +33,6 @@ pub(crate) async fn run(client: &RpcClient) {
             .history_with(&mut history)
             .interact_text()
         {
-            // TODO: should be implemented as a Command::Quit
-            if input == "exit" {
-                process::exit(0);
-            }
             // User input parsing
             let input: Vec<String> = input.split_whitespace().map(|x| x.to_string()).collect();
             let cmd: Result<Command, ParseError> = input[0].parse();
