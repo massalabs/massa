@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use std::net::IpAddr;

@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![feature(str_split_whitespace_as_str)]
+
 use crate::rpc::RpcClient;
 use atty::Stream;
 use cmds::Command;
@@ -63,7 +65,7 @@ fn main(args: Args) {
                 //////////////////////
                 // Interactive mode //
                 //////////////////////
-                repl::run(&client, &args.parameters).await;
+                repl::run(&client).await;
             } else {
                 //////////////////////////
                 // Non-Interactive mode //

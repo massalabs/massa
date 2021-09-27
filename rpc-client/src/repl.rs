@@ -1,10 +1,11 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 use crate::cfg::Config;
 use crate::cmds::Command;
 use crate::rpc::RpcClient;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, History, Input};
-use std::fs::File;
-use std::{collections::VecDeque, fmt::Display, process};
+use std::{collections::VecDeque, fmt::Display};
 use strum::ParseError;
 
 macro_rules! massa_fancy_ascii_art_logo {
@@ -20,27 +21,29 @@ macro_rules! massa_fancy_ascii_art_logo {
     };
 }
 
-pub(crate) async fn run(client: &RpcClient, parameters: &Vec<String>) {
+pub(crate) async fn run(client: &RpcClient) {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
     println!();
     let mut history = MyHistory::default();
     loop {
-        if let Ok(cmd) = Input::<String>::with_theme(&ColorfulTheme::default())
+        if let Ok(input) = Input::<String>::with_theme(&ColorfulTheme::default())
             .with_prompt("command")
             .history_with(&mut history)
             .interact_text()
         {
-            if cmd == "exit" {
-                process::exit(0);
-            }
-            let input: Result<Command, ParseError> = cmd.parse();
+            // User input parsing
+            let input: Vec<String> = input.split_whitespace().map(|x| x.to_string()).collect();
+            let cmd: Result<Command, ParseError> = input[0].parse();
+            let parameters = input[1..].to_vec();
+            // Print result of evaluated command
             println!(
                 "{}",
-                match input {
-                    Ok(command) => command.run(client, parameters).await,
-                    Err(_) => "Command not found!".to_string(),
+                match cmd {
+                    Ok(command) => command.run(client, &parameters).await,
+                    Err(_) =>
+                        "Command not found!\ntype \"help\" to get the list of commands".to_string(),
                 }
             );
         }
