@@ -15,8 +15,9 @@ members = [
     "massa-node",
     "models",
     "pool",
+    "rpc-client",
     "rpc-server",
     "storage",
     "time",
-    "wallet"
+    "wallet",
 ]
