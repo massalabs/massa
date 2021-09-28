@@ -59,7 +59,7 @@ fn main(args: Args) {
         .unwrap()
         .block_on(async {
             let client = Client::new(&args.address, args.public_port, args.private_port).await;
-            if atty::is(Stream::Stdout) {
+            if atty::is(Stream::Stdout) && args.command == Command::help {
                 repl::run(&client).await; // Interactive mode
             } else {
                 args.command.run(&client, &args.parameters).await; // Non-Interactive mode
