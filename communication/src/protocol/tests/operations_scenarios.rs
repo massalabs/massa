@@ -28,7 +28,8 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation
-            let operation = tools::create_operation();
+            let operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
@@ -82,7 +83,8 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation.
-            let mut operation = tools::create_operation();
+            let mut operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
 
             // Change the fee, making the signature invalid.
             operation.content.fee = Amount::from_str("111").unwrap();
@@ -136,7 +138,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             // 1. Create an operation
-            let operation = tools::create_operation();
+            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
 
             // Send operation and wait for the protocol event,
             // just to be sure the nodes are connected before sending the propagate command.
@@ -210,7 +212,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_avbout
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             // 1. Create an operation
-            let operation = tools::create_operation();
+            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
 
             // Send operation and wait for the protocol event,
             // just to be sure the nodes are connected before sending the propagate command.
@@ -294,7 +296,8 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation
-            let operation = tools::create_operation_with_keys(&creator_node.private_key);
+            let operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
 
             let address = Address::from_public_key(&creator_node.id.0).unwrap();
             let serialization_context = models::get_serialization_context();
