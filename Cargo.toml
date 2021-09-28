@@ -1,7 +1,6 @@
 [workspace]
 
 members = [
-	"api",
     "api-public",
     "api-private",
     "bootstrap",
@@ -9,7 +8,6 @@ members = [
     "consensus",
     "crypto",
     "logging",
-    "massa-client",
     "massa-node",
     "models",
     "pool",
