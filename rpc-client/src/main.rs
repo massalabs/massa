@@ -63,7 +63,6 @@ fn main(args: Args) {
             let public_client = RpcClient::from_url(&public_url).await;
             let private_url = format!("http://{}:{}", args.address, args.private_port);
             let private_client = RpcClient::from_url(&private_url).await;
-            // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
             if atty::is(Stream::Stdout) {
                 //////////////////////
                 // Interactive mode //
@@ -73,11 +72,9 @@ fn main(args: Args) {
                 //////////////////////////
                 // Non-Interactive mode //
                 //////////////////////////
-                let ret = args
-                    .command
+                args.command
                     .run(&public_client, &private_client, &args.parameters)
                     .await;
-                println!("{}", ret);
             }
         });
 }

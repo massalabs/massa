@@ -38,17 +38,14 @@ pub(crate) async fn run(public_client: &RpcClient, private_client: &RpcClient) {
             let cmd: Result<Command, ParseError> = input[0].parse();
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
-            println!(
-                "{}",
-                match cmd {
-                    Ok(command) =>
-                        command
-                            .run(public_client, private_client, &parameters)
-                            .await,
-                    Err(_) =>
-                        "Command not found!\ntype \"help\" to get the list of commands".to_string(),
+            match cmd {
+                Ok(command) => {
+                    command
+                        .run(public_client, private_client, &parameters)
+                        .await
                 }
-            );
+                Err(_) => Command::not_found(),
+            }
         }
     }
 }
