@@ -30,7 +30,10 @@ impl From<RpcChannel> for RpcClient {
 impl RpcClient {
     /// Default constructor
     pub(crate) async fn from_url(url: &str) -> RpcClient {
-        http::connect::<RpcClient>(&url).await.unwrap()
+        match http::connect::<RpcClient>(&url).await {
+            Ok(client) => client,
+            Err(_) => panic!("Unable to connect to Node."),
+        }
     }
 
     /// End-to-end example with `Unban` command

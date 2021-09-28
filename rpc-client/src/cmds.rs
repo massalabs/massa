@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::rpc::RpcClient;
+use console::style;
 use std::process;
 use strum::{EnumMessage, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage, EnumString, ToString};
@@ -15,35 +16,61 @@ pub enum Command {
     Unban,
 }
 
+macro_rules! repl_error {
+    ($err: expr) => {
+        style(format!("Error: {}", $err)).red().to_string()
+    };
+}
+
 // TODO: Commands could also not be APIs calls (like Wallet ones)
 impl Command {
-    // TODO: is Vec<String> -> String the best way to encode an User interaction in CLI?
-    pub(crate) async fn run(&self, client: &RpcClient, parameters: &Vec<String>) -> String {
+    pub(crate) fn not_found() {
+        println!(
+            "{}",
+            repl_error!("Command not found!\ntype \"help\" to get the list of commands")
+        );
+    }
+
+    // TODO: should run(...) be impl on Command or on some struct containing clients?
+    pub(crate) async fn run(
+        &self,
+        public_client: &RpcClient,
+        private_client: &RpcClient,
+        parameters: &Vec<String>,
+    ) {
         match self {
             Command::Exit => process::exit(0),
             Command::Help => {
                 if !parameters.is_empty() {
                     if let Ok(c) = parameters[0].parse::<Command>() {
-                        return c.get_message().unwrap().to_string();
+                        println!("{}", c.get_message().unwrap());
+                    } else {
+                        Command::not_found();
                     }
+                } else {
+                    help();
                 }
-                help();
-                "".to_string() // FIXME: Ugly
             }
-            // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
-            Command::Unban => serde_json::to_string(
-                &client
-                    .unban(serde_json::from_str(&parameters[0]).unwrap())
-                    .await
-                    .unwrap(), // FIXME: Better error handling ... (crash if server not running)
-            )
-            .unwrap(),
+            Command::Unban => println!(
+                "{}",
+                // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
+                match serde_json::from_str(&parameters[0]) {
+                    Ok(ip) => match &public_client.unban(ip).await {
+                        Ok(output) => serde_json::to_string(output)
+                            .expect("Failed to serialized command output ..."),
+                        Err(e) => repl_error!(e),
+                    },
+                    Err(_) => repl_error!(
+                        "IP given is not well formed...\ntype \"help unban\" to more info"
+                    ),
+                }
+            ),
         }
     }
 }
 
 fn help() {
-    println!("~~~~ HELP ~~~~");
+    println!("{}", style("~~~~ HELP ~~~~").green());
     for c in Command::iter() {
         println!("{}", c.get_message().unwrap());
     }
