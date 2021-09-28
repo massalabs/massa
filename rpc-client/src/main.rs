@@ -26,7 +26,7 @@ struct Args {
     #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
     address: String,
     /// Command that client would execute (non-interactive mode)
-    #[structopt(name = "COMMAND", default_value = "Help")]
+    #[structopt(name = "COMMAND", default_value = "help")]
     command: Command,
     /// Optional command parameter (as a JSON parsable string)
     #[structopt(name = "PARAMETERS")]
@@ -46,8 +46,7 @@ struct Args {
         default_value = "wallet.dat"
     )]
     config: PathBuf,
-    // TODO: do we want to add more CLI args?!
-    // --json
+    // TODO: Do we want to add more CLI args?! e.g `--json`
 }
 
 #[paw::main]
@@ -61,15 +60,9 @@ fn main(args: Args) {
         .block_on(async {
             let client = Client::new(&args.address, args.public_port, args.private_port).await;
             if atty::is(Stream::Stdout) {
-                //////////////////////
-                // Interactive mode //
-                //////////////////////
-                repl::run(&client).await;
+                repl::run(&client).await; // Interactive mode
             } else {
-                //////////////////////////
-                // Non-Interactive mode //
-                //////////////////////////
-                args.command.run(&client, &args.parameters).await;
+                args.command.run(&client, &args.parameters).await; // Non-Interactive mode
             }
         });
 }

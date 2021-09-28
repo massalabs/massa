@@ -40,7 +40,7 @@ pub(crate) async fn run(client: &Client) {
             // Print result of evaluated command
             match cmd {
                 Ok(command) => command.run(client, &parameters).await,
-                Err(_) => Command::not_found(),
+                Err(_) => println!("{}", Command::not_found()),
             }
         }
     }
