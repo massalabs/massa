@@ -79,7 +79,8 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation
-            let mut operation = tools::create_operation();
+            let mut operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
 
             // 2. Change the validity period.
             operation.content.expire_period += 10;

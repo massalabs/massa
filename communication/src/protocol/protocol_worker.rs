@@ -801,9 +801,23 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    /// Check a header's signature, and if valid note the node knows the block.
-    /// boolean whether the header is new
-    /// Does not ban if the header is invalid
+    /// Perform checks on a header,
+    /// and if valid update the node's view of the world.
+    ///
+    /// Returns a boolean representing whether the header is new.
+    ///
+    /// Does not ban the source node if the header is invalid.
+    ///
+    /// Checks performed on Header:
+    /// - Not genesis.
+    /// - Can compute a BlockId.
+    /// - Valid signature.
+    /// - Absence of duplicate endorsements.
+    ///
+    /// Checks performed on endorsements:
+    /// - Unique indices.
+    /// - Slot matches that of the block.
+    /// - Block matches that of the block.
     async fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
@@ -945,7 +959,17 @@ impl ProtocolWorker {
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
-    /// Does not ban if the block is invalid
+    /// Does not ban if the block is invalid.
+    ///
+    /// Checks performed:
+    /// - Check the header(see note_header_from_node).
+    /// - Check operations(see note_operations_from_node).
+    /// - Check operations:
+    ///     - Absense of duplicates.
+    ///     - Validity period includes the slot of the block.
+    ///     - Address matches that of the block.
+    ///     - Thread matches that of the block.
+    /// - Check root hash.
     async fn note_block_from_node(
         &mut self,
         block: &Block,
@@ -1025,12 +1049,17 @@ impl ProtocolWorker {
         Ok(Some((block_id, received_operations_ids)))
     }
 
-    /// Check operations
+    /// Checks operations, caching knowledge of valid ones.
+    ///
     /// Does not ban if the operation is invalid.
+    ///
     /// Returns :
     /// - a list of seen operation ids, for use in checking the root hash of the block.
     /// - a map of seen operations with indices and validity periods to avoid recomputing them later
     /// - a boolean indicating whether duplicate operations were noted.
+    ///
+    /// Checks performed:
+    /// - Valid signature
     async fn note_operations_from_node(
         &mut self,
         operations: Vec<Operation>,
@@ -1096,7 +1125,13 @@ impl ProtocolWorker {
 
     /// Note endorsements coming from a given node,
     /// and propagate them when they were received outside of a header.
+    ///
+    /// Caches knowledge of valid ones.
+    ///
     /// Does not ban if the endorsement is invalid
+    ///
+    /// Checks performed:
+    /// - Valid signature.
     async fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<Endorsement>,

@@ -52,7 +52,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             // block with ok operation
             {
-                let op = create_operation_with_expire_period(private_key, public_key, 5);
+                let op = create_operation_with_expire_period(&private_key, 5);
 
                 let block = create_block_with_operations(
                     &creator_node.private_key,
@@ -73,7 +73,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             // block with operation too far in the future
             {
-                let op = create_operation_with_expire_period(private_key, public_key, 50);
+                let op = create_operation_with_expire_period(&private_key, 50);
 
                 let block = create_block_with_operations(
                     &creator_node.private_key,
@@ -93,7 +93,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             }
             // block with an operation twice
             {
-                let op = create_operation_with_expire_period(private_key, public_key, 5);
+                let op = create_operation_with_expire_period(&private_key, 5);
 
                 let block = create_block_with_operations(
                     &creator_node.private_key,
@@ -113,7 +113,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             }
             // block with wrong merkle root
             {
-                let op = create_operation_with_expire_period(private_key, public_key, 5);
+                let op = create_operation_with_expire_period(&private_key, 5);
 
                 let block = {
                     let operation_merkle_root = Hash::hash("merkle root".as_bytes());
@@ -148,7 +148,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             // block with operation with wrong signature
             {
-                let mut op = create_operation_with_expire_period(private_key, public_key, 5);
+                let mut op = create_operation_with_expire_period(&private_key, 5);
                 op.content.fee = Amount::from_str("10").unwrap();
                 let block = create_block_with_operations(
                     &creator_node.private_key,
@@ -169,7 +169,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             // block with operation in wrong thread
             {
-                let mut op = create_operation_with_expire_period(private_key, public_key, 5);
+                let mut op = create_operation_with_expire_period(&private_key, 5);
                 op.content.fee = Amount::from_str("10").unwrap();
                 let block = create_block_with_operations(
                     &creator_node.private_key,
