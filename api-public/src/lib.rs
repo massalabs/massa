@@ -272,7 +272,7 @@ impl MassaPublic for ApiMassaPublic {
         &self,
         _: Vec<EndorsementId>,
     ) -> jsonrpc_core::Result<Vec<EndorsementInfo>> {
-        todo!()
+        todo!() // wait for !238
     }
 
     fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, PublicApiError>> {
@@ -452,6 +452,7 @@ impl MassaPublic for ApiMassaPublic {
 
             // endorsements info
             // todo add get_endorsements_by_address consensus command
+            // wait for !238
 
             // operations info
             let mut ops = HashMap::new();
@@ -501,7 +502,7 @@ impl MassaPublic for ApiMassaPublic {
                         .keys()
                         .copied()
                         .collect(),
-                    involved_in_endorsements: HashSet::new().into_iter().collect(), // todo update
+                    involved_in_endorsements: HashSet::new().into_iter().collect(), // todo update wait for !238
                     involved_in_operations: ops
                         .get(&address)
                         .ok_or(PublicApiError::NotFound)?
