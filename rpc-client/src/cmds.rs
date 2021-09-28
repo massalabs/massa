@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::rpc::RpcClient;
+use crate::rpc::Client;
 use console::style;
 use std::process;
 use strum::{EnumMessage, IntoEnumIterator};
@@ -32,12 +32,7 @@ impl Command {
     }
 
     // TODO: should run(...) be impl on Command or on some struct containing clients?
-    pub(crate) async fn run(
-        &self,
-        public_client: &RpcClient,
-        private_client: &RpcClient,
-        parameters: &Vec<String>,
-    ) {
+    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>) {
         match self {
             Command::Exit => process::exit(0),
             Command::Help => {
@@ -55,7 +50,7 @@ impl Command {
                 "{}",
                 // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
                 match serde_json::from_str(&parameters[0]) {
-                    Ok(ip) => match &public_client.unban(ip).await {
+                    Ok(ip) => match &client.public.unban(ip).await {
                         Ok(output) => serde_json::to_string(output)
                             .expect("Failed to serialized command output ..."),
                         Err(e) => repl_error!(e),

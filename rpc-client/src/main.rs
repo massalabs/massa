@@ -2,7 +2,7 @@
 
 #![feature(str_split_whitespace_as_str)]
 
-use crate::rpc::RpcClient;
+use crate::rpc::Client;
 use atty::Stream;
 use cmds::Command;
 use human_panic::setup_panic;
@@ -59,22 +59,17 @@ fn main(args: Args) {
         .build()
         .unwrap()
         .block_on(async {
-            let public_url = format!("http://{}:{}", args.address, args.public_port);
-            let public_client = RpcClient::from_url(&public_url).await;
-            let private_url = format!("http://{}:{}", args.address, args.private_port);
-            let private_client = RpcClient::from_url(&private_url).await;
+            let client = Client::new(&args.address, args.public_port, args.private_port).await;
             if atty::is(Stream::Stdout) {
                 //////////////////////
                 // Interactive mode //
                 //////////////////////
-                repl::run(&public_client, &private_client).await;
+                repl::run(&client).await;
             } else {
                 //////////////////////////
                 // Non-Interactive mode //
                 //////////////////////////
-                args.command
-                    .run(&public_client, &private_client, &args.parameters)
-                    .await;
+                args.command.run(&client, &args.parameters).await;
             }
         });
 }
