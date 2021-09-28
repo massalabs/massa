@@ -2,13 +2,18 @@
 
 #![feature(async_closure)]
 use api_dto::{
-    AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    RollsInfo,
+    AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NetworkStats, NodeStatus,
+    OperationInfo, PoolStats, RollsInfo, TimeStats,
 };
+use communication::network::NetworkCommandSender;
+use communication::network::NetworkConfig;
+use communication::NodeId;
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
     ConsensusCommandSender, ConsensusConfig, Status,
 };
+use crypto::derive_public_key;
+use crypto::generate_random_private_key;
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
@@ -16,8 +21,8 @@ use jsonrpc_http_server::ServerBuilder;
 use models::address::AddressHashMap;
 use models::clique::Clique;
 use models::operation::{Operation, OperationId};
-use models::EndorsementId;
 use models::{Address, BlockId, Slot};
+use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
 use rpc_server::APIConfig;
 pub use rpc_server::API;
@@ -35,6 +40,9 @@ pub struct ApiMassaPublic {
     pub storage_command_sender: Option<StorageAccess>,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
+    pub network_config: NetworkConfig,
+    pub version: Version,
+    pub network_command_sender: NetworkCommandSender,
 }
 
 impl ApiMassaPublic {
@@ -46,6 +54,9 @@ impl ApiMassaPublic {
         consensus_config: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
         storage_command_sender: Option<StorageAccess>,
+        network_config: NetworkConfig,
+        version: Version,
+        network_command_sender: NetworkCommandSender,
     ) -> Self {
         ApiMassaPublic {
             url: url.to_string(),
@@ -54,6 +65,9 @@ impl ApiMassaPublic {
             api_config,
             pool_command_sender,
             storage_command_sender,
+            network_config,
+            version,
+            network_command_sender,
         }
     }
 
@@ -80,7 +94,7 @@ pub trait MassaPublic {
 
     /// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
     #[rpc(name = "get_status")]
-    fn get_status(&self) -> jsonrpc_core::Result<NodeStatus>;
+    fn get_status(&self) -> BoxFuture<Result<NodeStatus, PublicApiError>>;
 
     #[rpc(name = "get_cliques")]
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, PublicApiError>>;
@@ -131,8 +145,67 @@ pub trait MassaPublic {
 }
 
 impl MassaPublic for ApiMassaPublic {
-    fn get_status(&self) -> jsonrpc_core::Result<NodeStatus> {
-        todo!()
+    fn get_status(&self) -> BoxFuture<Result<NodeStatus, PublicApiError>> {
+        let consensus_command_sender = self.consensus_command_sender.clone();
+        let network_command_sender = self.network_command_sender.clone();
+        let network_config = self.network_config.clone();
+        let version = self.version.clone();
+        let consensus_config = self.consensus_config.clone();
+
+        let closure = async move || {
+            let now = UTime::now(0)?; // todo get compensation millis;
+            let last_slot = get_latest_block_slot_at_timestamp(
+                consensus_config.thread_count,
+                consensus_config.t0,
+                consensus_config.genesis_timestamp,
+                now,
+            )?;
+            let stats = consensus_command_sender.get_stats().await?;
+            Ok(NodeStatus {
+                node_id: NodeId(derive_public_key(&generate_random_private_key())),
+                node_ip: network_config.routable_ip,
+                version,
+                genesis_timestamp: consensus_config.genesis_timestamp,
+                t0: consensus_config.t0,
+                delta_f0: consensus_config.delta_f0,
+                roll_price: consensus_config.roll_price,
+                thread_count: consensus_config.thread_count,
+                current_time: now,
+                connected_nodes: network_command_sender
+                    .get_peers()
+                    .await?
+                    .peers
+                    .iter()
+                    .map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
+                    .flatten()
+                    .collect(),
+
+                last_slot,
+                next_slot: last_slot
+                    .unwrap_or(Slot::new(0, 0))
+                    .get_next_slot(consensus_config.thread_count)?,
+                time_stats: TimeStats {
+                    time_start: consensus_config.genesis_timestamp,
+                    time_end: consensus_config.end_timestamp,
+                    final_block_count: stats.final_block_count,
+                    stale_block_count: stats.stale_block_count,
+                    final_operation_count: stats.final_operation_count,
+                },
+                pool_stats: PoolStats {
+                    operation_count: 0,
+                    endorsement_count: 0,
+                }, // todo add get pool stats command
+                network_stats: NetworkStats {
+                    in_connection_count: 0,
+                    out_connection_count: 0,
+                    known_peer_count: 0,
+                    banned_peer_count: 0,
+                    active_node_count: 0,
+                }, // todo add get network stats command
+            })
+        };
+
+        Box::pin(closure())
     }
 
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, PublicApiError>> {

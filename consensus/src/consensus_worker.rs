@@ -82,11 +82,11 @@ pub enum ConsensusCommand {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusStats {
-    timespan: UTime,
-    final_block_count: u64,
-    final_operation_count: u64,
-    stale_block_count: u64,
-    clique_count: u64,
+    pub timespan: UTime,
+    pub final_block_count: u64,
+    pub final_operation_count: u64,
+    pub stale_block_count: u64,
+    pub clique_count: u64,
 }
 
 /// Events that are emitted by consensus.
