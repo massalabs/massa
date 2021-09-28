@@ -377,7 +377,7 @@ impl ConsensusWorker {
 
         if observed_slot == Slot::new(1, 0) {
             // first block that can be created
-            info!("Masa network has started ! 🎉")
+            info!("Massa network has started ! 🎉")
         }
 
         // check if there are any final blocks not produced by us
