@@ -91,7 +91,7 @@ pub trait MassaPublic {
 
     /// Returns the active stakers and their roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> jsonrpc_core::Result<AddressHashMap<RollsInfo>>;
+    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<RollsInfo>, PublicApiError>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]
@@ -147,8 +147,27 @@ impl MassaPublic for ApiMassaPublic {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> jsonrpc_core::Result<AddressHashMap<RollsInfo>> {
-        todo!()
+    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<RollsInfo>, PublicApiError>> {
+        let consensus_command_sender = self.consensus_command_sender.clone();
+        let closure = async move || {
+            let addrs = consensus_command_sender.get_staking_addresses().await?;
+            let info = consensus_command_sender.get_addresses_info(addrs).await?;
+            Ok(info
+                .into_iter()
+                .map(|(ad, state)| {
+                    (
+                        ad,
+                        RollsInfo {
+                            active_rolls: state.active_rolls.unwrap_or_default(),
+                            final_rolls: state.final_rolls,
+                            candidate_rolls: state.candidate_rolls,
+                        },
+                    )
+                })
+                .collect())
+        };
+
+        Box::pin(closure())
     }
 
     fn get_operations(
