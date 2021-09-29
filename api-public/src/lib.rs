@@ -21,6 +21,7 @@ use jsonrpc_http_server::ServerBuilder;
 use models::address::AddressHashMap;
 use models::clique::Clique;
 use models::operation::{Operation, OperationId};
+use models::OperationHashMap;
 use models::{Address, BlockId, Slot};
 use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
@@ -139,9 +140,12 @@ pub trait MassaPublic {
     // User (interaction with the node) //
     //////////////////////////////////////
 
-    /// Adds operations to pool.
+    /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[rpc(name = "send_operations")]
-    fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<(), PublicApiError>>;
+    fn send_operations(
+        &self,
+        _: Vec<Operation>,
+    ) -> BoxFuture<Result<Vec<OperationId>, PublicApiError>>;
 }
 
 impl MassaPublic for ApiMassaPublic {
@@ -390,16 +394,19 @@ impl MassaPublic for ApiMassaPublic {
         Box::pin(closure())
     }
 
-    fn send_operations(&self, ops: Vec<Operation>) -> BoxFuture<Result<(), PublicApiError>> {
+    fn send_operations(
+        &self,
+        ops: Vec<Operation>,
+    ) -> BoxFuture<Result<Vec<OperationId>, PublicApiError>> {
         let mut cmd_sender = self.pool_command_sender.clone();
         let closure = async move || {
-            Ok(cmd_sender
-                .add_operations(
-                    ops.into_iter()
-                        .map(|op| Ok((op.get_operation_id()?, op)))
-                        .collect::<Result<_, PublicApiError>>()?,
-                )
-                .await?)
+            let to_send = ops
+                .into_iter()
+                .map(|op| Ok((op.verify_integrity()?, op)))
+                .collect::<Result<OperationHashMap<_>, PublicApiError>>()?;
+            let ids = to_send.keys().copied().collect();
+            cmd_sender.add_operations(to_send).await?;
+            Ok(ids)
         };
         Box::pin(closure())
     }
