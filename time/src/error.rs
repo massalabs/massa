@@ -1,13 +1,14 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use displaydoc::Display;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Display, Error, Debug)]
 pub enum TimeError {
-    #[error("Error converting")]
+    /// Error converting
     ConversionError,
-    #[error("Time overflow error")]
+    /// Time overflow error
     TimeOverflowError,
-    #[error("Checked operation error : {0}")]
+    /// Checked operation error : {0}
     CheckedOperationError(String),
 }

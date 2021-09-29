@@ -1,12 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use displaydoc::Display;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Display, Error, Debug)]
 pub enum CryptoError {
-    #[error("parsing error : {0}")]
+    /// parsing error : {0}
     ParsingError(String),
 
-    #[error("error forwarded by engine: {0}")]
+    /// error forwarded by engine: {0}
     EngineError(#[from] secp256k1::Error),
 }

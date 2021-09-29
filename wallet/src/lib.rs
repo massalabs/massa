@@ -23,7 +23,7 @@ mod error;
 
 pub use error::WalletError;
 
-/// contains the private keys created in the wallet.
+/// Contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wallet {
     keys: AddressHashMap<(PublicKey, PrivateKey)>,
@@ -103,13 +103,14 @@ impl Wallet {
     }
 }
 
-/// contains the private keys created in the wallet.
+/// Contains the private keys created in the wallet.
 #[derive(Debug)]
 pub struct WalletInfo<'a> {
     pub wallet: &'a Wallet,
     pub balances: AddressHashMap<WrappedAddressState>,
 }
 
+// TODO: remove fmt::Display for WalletInfo?
 impl<'a> std::fmt::Display for WalletInfo<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "WARNING: do not share your private keys")?;
@@ -129,6 +130,7 @@ impl<'a> std::fmt::Display for WalletInfo<'a> {
     }
 }
 
+// FIXME: dead code...
 // impl std::fmt::Display for Wallet {
 //     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 //         writeln!(f)?;

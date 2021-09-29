@@ -1,29 +1,30 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use displaydoc::Display;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Display, Error, Debug)]
 pub enum ModelsError {
-    #[error("hashing error")]
+    /// hashing error
     HashError,
-    #[error("Serialization error: {0}")]
+    /// Serialization error: {0}
     SerializeError(String),
-    #[error("Deserialization error: {0}")]
+    /// Deserialization error: {0}
     DeserializeError(String),
-    #[error("buffer error: {0}")]
+    /// buffer error: {0}
     BufferError(String),
-    #[error("crypto error: {0}")]
+    /// crypto error: {0}
     CryptoError(#[from] crypto::CryptoError),
-    #[error("thread overflow error")]
+    /// thread overflow error
     ThreadOverflowError,
-    #[error("period overflow error")]
+    /// period overflow error
     PeriodOverflowError,
-    #[error("amount parse error")]
+    /// amount parse error
     AmountParseError(String),
-    #[error("checked operation error")]
+    /// checked operation error
     CheckedOperationError(String),
-    #[error("invalid version identifier: {0}")]
+    /// invalid version identifier: {0}
     InavalidVersionError(String),
-    #[error("invalid ledger change: {0}")]
+    /// invalid ledger change: {0}
     InvalidLedgerChange(String),
 }
