@@ -142,6 +142,10 @@ pub struct BlockHeader {
     pub signature: Signature,
 }
 
+/// Checks performed:
+/// - Validity of header.
+/// - Number of operations.
+/// - Validity of operations.
 impl SerializeCompact for Block {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -165,6 +169,11 @@ impl SerializeCompact for Block {
     }
 }
 
+/// Checks performed:
+/// - Validity of header.
+/// - Size of block.
+/// - Operation count.
+/// - Validity of operation.
 impl DeserializeCompact for Block {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
@@ -263,6 +272,8 @@ impl BlockHeader {
     }
 }
 
+/// Checks performed:
+/// - Content.
 impl SerializeCompact for BlockHeader {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -277,6 +288,9 @@ impl SerializeCompact for BlockHeader {
     }
 }
 
+/// Checks performed:
+/// - Content
+/// - Signature.
 impl DeserializeCompact for BlockHeader {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
@@ -299,6 +313,10 @@ impl BlockHeaderContent {
     }
 }
 
+/// Checks performed:
+/// - Validity of slot.
+/// - Valid length of included endorsements.
+/// - Validity of included endorsements.
 impl SerializeCompact for BlockHeaderContent {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -309,7 +327,6 @@ impl SerializeCompact for BlockHeaderContent {
         // slot
         res.extend(self.slot.to_bytes_compact()?);
 
-        // parents (note: there should be none if slot period=0)
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
             res.push(0);
@@ -336,6 +353,11 @@ impl SerializeCompact for BlockHeaderContent {
     }
 }
 
+/// Checks performed:
+/// - Validity of slot.
+/// - Presence of parent.
+/// - Valid length of included endorsements.
+/// - Validity of included endorsements.
 impl DeserializeCompact for BlockHeaderContent {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;

@@ -50,6 +50,7 @@ impl serde::Serialize for Version {
     }
 }
 
+/// Checks performed: none.
 impl SerializeCompact for Version {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -60,6 +61,10 @@ impl SerializeCompact for Version {
     }
 }
 
+/// Checks performed:
+/// - Validity of instance.
+/// - Validity of major version.
+/// - Validity of minor version.
 impl DeserializeCompact for Version {
     /// ```rust
     /// # use models::*;
