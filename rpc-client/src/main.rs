@@ -2,7 +2,7 @@
 
 #![feature(str_split_whitespace_as_str)]
 
-use crate::rpc::RpcClient;
+use crate::rpc::Client;
 use atty::Stream;
 use cmds::Command;
 use human_panic::setup_panic;
@@ -26,7 +26,7 @@ struct Args {
     #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
     address: String,
     /// Command that client would execute (non-interactive mode)
-    #[structopt(name = "COMMAND", default_value = "Help")]
+    #[structopt(name = "COMMAND", default_value = "help")]
     command: Command,
     /// Optional command parameter (as a JSON parsable string)
     #[structopt(name = "PARAMETERS")]
@@ -46,8 +46,7 @@ struct Args {
         default_value = "wallet.dat"
     )]
     config: PathBuf,
-    // TODO: do we want to add more CLI args?!
-    // --json
+    // TODO: Do we want to add more CLI args?! e.g `--json`
 }
 
 #[paw::main]
@@ -59,22 +58,11 @@ fn main(args: Args) {
         .build()
         .unwrap()
         .block_on(async {
-            let public_url = format!("http://{}:{}", args.address, args.public_port);
-            let public_client = RpcClient::from_url(&public_url).await;
-            let private_url = format!("http://{}:{}", args.address, args.private_port);
-            let private_client = RpcClient::from_url(&private_url).await;
-            if atty::is(Stream::Stdout) {
-                //////////////////////
-                // Interactive mode //
-                //////////////////////
-                repl::run(&public_client, &private_client).await;
+            let client = Client::new(&args.address, args.public_port, args.private_port).await;
+            if atty::is(Stream::Stdout) && args.command == Command::help {
+                repl::run(&client).await; // Interactive mode
             } else {
-                //////////////////////////
-                // Non-Interactive mode //
-                //////////////////////////
-                args.command
-                    .run(&public_client, &private_client, &args.parameters)
-                    .await;
+                args.command.run(&client, &args.parameters).await; // Non-Interactive mode
             }
         });
 }

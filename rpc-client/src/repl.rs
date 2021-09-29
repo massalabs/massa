@@ -2,7 +2,7 @@
 
 use crate::cfg::Config;
 use crate::cmds::Command;
-use crate::rpc::RpcClient;
+use crate::rpc::Client;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, History, Input};
 use std::{collections::VecDeque, fmt::Display};
@@ -21,7 +21,7 @@ macro_rules! massa_fancy_ascii_art_logo {
     };
 }
 
-pub(crate) async fn run(public_client: &RpcClient, private_client: &RpcClient) {
+pub(crate) async fn run(client: &Client) {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
@@ -39,12 +39,8 @@ pub(crate) async fn run(public_client: &RpcClient, private_client: &RpcClient) {
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
             match cmd {
-                Ok(command) => {
-                    command
-                        .run(public_client, private_client, &parameters)
-                        .await
-                }
-                Err(_) => Command::not_found(),
+                Ok(command) => command.run(client, &parameters).await,
+                Err(_) => println!("{}", Command::not_found()),
             }
         }
     }
