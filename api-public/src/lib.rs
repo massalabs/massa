@@ -8,6 +8,7 @@ use api_dto::{
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
 use communication::NodeId;
+use consensus::ExportBlockStatus;
 use consensus::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
     ConsensusCommandSender, ConsensusConfig, Status,
@@ -297,10 +298,21 @@ impl MassaPublic for ApiMassaPublic {
                 .ok_or(PublicApiError::InconsistencyError(
                     "Missing block clique".to_string(),
                 ))?;
-            if let Some(block) = consensus_command_sender.get_active_block(id).await? {
+            if let Some((block, is_final)) =
+                match consensus_command_sender.get_block_status(id).await? {
+                    Some(ExportBlockStatus::Active(block)) => Some((block, false)),
+                    Some(ExportBlockStatus::Incoming) => None,
+                    Some(ExportBlockStatus::WaitingForSlot) => None,
+                    Some(ExportBlockStatus::WaitingForDependencies) => None,
+                    Some(ExportBlockStatus::Discarded(_)) => None, // todo get block if stale
+                    Some(ExportBlockStatus::Final(block)) => Some((block, true)),
+                    Some(ExportBlockStatus::Stored(_)) => None, // todo remove with old api
+                    None => None,
+                }
+            {
                 Ok(BlockInfo {
                     id,
-                    is_final: false, // todo retrive block finality
+                    is_final,
                     is_stale: false,
                     is_in_blockclique: block_clique.block_ids.contains(&id),
                     block,

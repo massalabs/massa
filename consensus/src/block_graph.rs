@@ -446,8 +446,9 @@ pub enum ExportBlockStatus {
     WaitingForSlot,
     WaitingForDependencies,
     Active(Block),
+    Final(Block),
     Discarded(DiscardReason),
-    Stored(Block),
+    Stored(Block), // todo remove with old api
 }
 
 impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
@@ -457,7 +458,11 @@ impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
             BlockStatus::WaitingForSlot(_) => ExportBlockStatus::WaitingForSlot,
             BlockStatus::WaitingForDependencies { .. } => ExportBlockStatus::WaitingForDependencies,
             BlockStatus::Active(active_block) => {
-                ExportBlockStatus::Active(active_block.block.clone())
+                if active_block.is_final {
+                    ExportBlockStatus::Final(active_block.block.clone())
+                } else {
+                    ExportBlockStatus::Active(active_block.block.clone())
+                }
             }
             BlockStatus::Discarded { reason, .. } => ExportBlockStatus::Discarded(reason.clone()),
         }

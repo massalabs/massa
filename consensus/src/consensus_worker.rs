@@ -739,6 +739,7 @@ impl ConsensusWorker {
                 );
 
                 let mut found_block = self.block_db.get_export_block_status(&block_id);
+                // todo remove with old api
                 if found_block.is_none() {
                     if let Some(storage) = &self.opt_storage_command_sender {
                         found_block = storage
