@@ -6,6 +6,7 @@ use models::ModelsError;
 use thiserror::Error;
 use time::TimeError;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum PrivateApiError {
     /// send  channel error: {0}

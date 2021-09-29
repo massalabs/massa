@@ -8,6 +8,7 @@ use displaydoc::Display;
 use thiserror::Error;
 use time::TimeError;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum BootstrapError {
     /// io error: {0}

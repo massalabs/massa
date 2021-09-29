@@ -5,6 +5,7 @@ use displaydoc::Display;
 use models::ModelsError;
 use thiserror::Error;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum PoolError {
     /// there was an inconsistency between containers

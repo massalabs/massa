@@ -6,6 +6,7 @@ use models::ModelsError;
 use std::net::IpAddr;
 use thiserror::Error;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum CommunicationError {
     /// wrong signature

@@ -1,6 +1,7 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ReplError {
     /// Error: {0}

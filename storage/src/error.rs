@@ -5,6 +5,7 @@ use models::ModelsError;
 use sled::transaction::{TransactionError, UnabortableTransactionError};
 use thiserror::Error;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum StorageError {
     /// join error: {0}
@@ -33,6 +34,7 @@ pub enum StorageError {
     ClearError(String),
 }
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum InternalError {
     /// transaction error {0}

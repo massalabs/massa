@@ -8,12 +8,14 @@ use rand::distributions::WeightedError;
 use std::array::TryFromSliceError;
 use thiserror::Error;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum InternalError {
     /// transaction error {0}
     TransactionError(String),
 }
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ConsensusError {
     /// Our key is missing

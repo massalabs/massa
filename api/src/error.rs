@@ -8,6 +8,7 @@ use storage::StorageError;
 use thiserror::Error;
 use time::TimeError;
 
+#[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ApiError {
     /// join error:  {0}
