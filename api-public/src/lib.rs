@@ -46,6 +46,7 @@ pub struct ApiMassaPublic {
     pub network_config: NetworkConfig,
     pub version: Version,
     pub network_command_sender: NetworkCommandSender,
+    pub compensation_millis: i64,
 }
 
 impl ApiMassaPublic {
@@ -60,6 +61,7 @@ impl ApiMassaPublic {
         network_config: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
+        compensation_millis: i64,
     ) -> Self {
         ApiMassaPublic {
             url: url.to_string(),
@@ -71,6 +73,7 @@ impl ApiMassaPublic {
             network_config,
             version,
             network_command_sender,
+            compensation_millis,
         }
     }
 
@@ -157,9 +160,10 @@ impl MassaPublic for ApiMassaPublic {
         let network_config = self.network_config.clone();
         let version = self.version.clone();
         let consensus_config = self.consensus_config.clone();
+        let compensation_millis = self.compensation_millis;
 
         let closure = async move || {
-            let now = UTime::now(0)?; // todo get compensation millis;
+            let now = UTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
                 consensus_config.thread_count,
                 consensus_config.t0,
@@ -422,6 +426,7 @@ impl MassaPublic for ApiMassaPublic {
         let cfg = self.consensus_config.clone();
         let api_cfg = self.api_config.clone();
         let addrs = addresses.clone();
+        let compensation_millis = self.compensation_millis;
         let closure = async move || {
             let mut res = Vec::new();
 
@@ -433,7 +438,7 @@ impl MassaPublic for ApiMassaPublic {
                 .await?;
 
             // next draws info
-            let now = UTime::now(0)?; // todo get clock compensation ?
+            let now = UTime::now(compensation_millis)?;
 
             let current_slot = get_latest_block_slot_at_timestamp(
                 cfg.thread_count,

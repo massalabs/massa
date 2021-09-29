@@ -186,6 +186,7 @@ async fn launch(
         cfg.network,
         cfg.version,
         network_command_sender.clone(),
+        clock_compensation,
     );
     api_public.serve_massa_public(); // todo add needed command servers
 
