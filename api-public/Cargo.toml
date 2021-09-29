@@ -18,3 +18,5 @@ consensus = {path = "../consensus"}
 thiserror = "1.0"
 communication = {path = "../communication"}
 crypto = {path = "../crypto"}
+pool = {path = "../pool"}
+storage = {path = "../storage"}
