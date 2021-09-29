@@ -21,12 +21,14 @@ use jsonrpc_http_server::ServerBuilder;
 use models::address::AddressHashMap;
 use models::clique::Clique;
 use models::operation::{Operation, OperationId};
+use models::BlockHashSet;
 use models::OperationHashMap;
 use models::{Address, BlockId, Slot};
 use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
 use rpc_server::APIConfig;
 pub use rpc_server::API;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::thread;
 use storage::StorageAccess;
@@ -252,7 +254,7 @@ impl MassaPublic for ApiMassaPublic {
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
-        // todo use that command sender
+        // todo use that command sender after #267
         let opt_storage_command_sender = self.storage_command_sender.clone();
         let closure = async move || {
             Ok(consensus_command_sender
@@ -416,6 +418,7 @@ impl MassaPublic for ApiMassaPublic {
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, PublicApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
+        let storage_cmd_sender = self.storage_command_sender.clone();
         let cfg = self.consensus_config.clone();
         let api_cfg = self.api_config.clone();
         let addrs = addresses.clone();
@@ -454,7 +457,23 @@ impl MassaPublic for ApiMassaPublic {
             let mut blocks = HashMap::new();
             let cloned = addrs.clone();
             for ad in cloned.iter() {
-                blocks.insert(ad, cmd_sender.get_block_ids_by_creator(*ad).await?);
+                blocks.insert(
+                    ad,
+                    cmd_sender
+                        .get_block_ids_by_creator(*ad)
+                        .await?
+                        .into_keys()
+                        .collect::<BlockHashSet>(),
+                );
+                if let Some(access) = &storage_cmd_sender {
+                    let new = access.get_block_ids_by_creator(ad).await?;
+                    match blocks.entry(ad) {
+                        Entry::Occupied(mut occ) => occ.get_mut().extend(new),
+                        Entry::Vacant(vac) => {
+                            vac.insert(new);
+                        }
+                    }
+                }
             }
 
             // endorsements info
@@ -466,6 +485,7 @@ impl MassaPublic for ApiMassaPublic {
             let cloned = addrs.clone();
             for ad in cloned.iter() {
                 ops.insert(ad, cmd_sender.get_operations_involving_address(*ad).await?);
+                // todo wait for #266 and look into pool and storage
             }
 
             // staking addrs
@@ -506,7 +526,7 @@ impl MassaPublic for ApiMassaPublic {
                     blocks_created: blocks
                         .get(&address)
                         .ok_or(PublicApiError::NotFound)?
-                        .keys()
+                        .into_iter()
                         .copied()
                         .collect(),
                     involved_in_endorsements: HashSet::new().into_iter().collect(), // todo update wait for !238
