@@ -7,6 +7,22 @@ use std::net::IpAddr;
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!
 
+pub struct Client {
+    pub public: RpcClient,
+    pub private: RpcClient,
+}
+
+impl Client {
+    pub(crate) async fn new(address: &str, public_port: u16, private_port: u16) -> Client {
+        let public_url = format!("http://{}:{}", address, public_port);
+        let private_url = format!("http://{}:{}", address, private_port);
+        Client {
+            public: RpcClient::from_url(&public_url).await,
+            private: RpcClient::from_url(&private_url).await,
+        }
+    }
+}
+
 // TODO: Did we crate 2 RpcClient structs? (to separate public/private calls in impl)
 pub struct RpcClient(TypedClient);
 
