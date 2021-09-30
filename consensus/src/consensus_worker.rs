@@ -82,11 +82,11 @@ pub enum ConsensusCommand {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusStats {
-    timespan: UTime,
-    final_block_count: u64,
-    final_operation_count: u64,
-    stale_block_count: u64,
-    clique_count: u64,
+    pub timespan: UTime,
+    pub final_block_count: u64,
+    pub final_operation_count: u64,
+    pub stale_block_count: u64,
+    pub clique_count: u64,
 }
 
 /// Events that are emitted by consensus.
@@ -739,6 +739,7 @@ impl ConsensusWorker {
                 );
 
                 let mut found_block = self.block_db.get_export_block_status(&block_id);
+                // todo remove with old api
                 if found_block.is_none() {
                     if let Some(storage) = &self.opt_storage_command_sender {
                         found_block = storage
@@ -1118,6 +1119,7 @@ impl ConsensusWorker {
         &mut self,
         operation_ids: &OperationHashSet,
     ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
+        // todo move that to api
         // get from pool
         let mut res: OperationHashMap<OperationSearchResult> = self
             .pool_command_sender
@@ -1147,6 +1149,7 @@ impl ConsensusWorker {
                     .or_insert(search_new);
             });
 
+        // todo move that to api
         // for those that have not been found in consensus, extend with storage
         if let Some(storage) = &mut self.opt_storage_command_sender {
             let to_gather: OperationHashSet = operation_ids

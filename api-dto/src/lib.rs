@@ -12,54 +12,54 @@ use time::UTime;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TimeStats {
-    time_start: UTime,
-    time_end: UTime,
-    final_block_count: u64,
-    stale_block_count: u64,
-    final_operation_count: u64,
+    pub time_start: UTime,
+    pub time_end: Option<UTime>,
+    pub final_block_count: u64,
+    pub stale_block_count: u64,
+    pub final_operation_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PoolStats {
-    operation_count: u64,
-    endorsement_count: u64,
+    pub operation_count: u64,
+    pub endorsement_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NetworkStats {
-    in_connection_count: u64,
-    out_connection_count: u64,
-    known_peer_count: u64,
-    banned_peer_count: u64,
-    active_node_count: u64,
+    pub in_connection_count: u64,
+    pub out_connection_count: u64,
+    pub known_peer_count: u64,
+    pub banned_peer_count: u64,
+    pub active_node_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NodeStatus {
-    node_id: NodeId,
-    node_ip: Option<IpAddr>,
-    version: Version,
-    genesis_timestamp: UTime,
-    t0: UTime,
-    delta_f0: UTime,
-    roll_price: Amount,
-    thread_count: Amount,
-    current_time: UTime,
-    connected_nodes: HashMap<NodeId, IpAddr>,
-    last_slot: Option<Slot>,
-    next_slot: Slot,
-    time_stats: TimeStats,
-    pool_stats: PoolStats,
-    network_stats: NetworkStats,
+    pub node_id: NodeId,
+    pub node_ip: Option<IpAddr>,
+    pub version: Version,
+    pub genesis_timestamp: UTime,
+    pub t0: UTime,
+    pub delta_f0: u64,
+    pub roll_price: Amount,
+    pub thread_count: u8,
+    pub current_time: UTime,
+    pub connected_nodes: HashMap<NodeId, IpAddr>,
+    pub last_slot: Option<Slot>,
+    pub next_slot: Slot,
+    pub time_stats: TimeStats,
+    pub pool_stats: PoolStats,
+    pub network_stats: NetworkStats,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OperationInfo {
-    id: OperationId,
-    in_pool: bool,
-    in_blocks: Vec<BlockId>,
-    is_final: bool,
-    operation: Operation,
+    pub id: OperationId,
+    pub in_pool: bool,
+    pub in_blocks: Vec<BlockId>,
+    pub is_final: bool,
+    pub operation: Operation,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -101,11 +101,11 @@ pub struct EndorsementInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BlockInfo {
-    id: BlockId,
-    is_final: bool,
-    is_stale: bool,
-    is_in_blockclique: bool,
-    block: Block,
+    pub id: BlockId,
+    pub is_final: bool,
+    pub is_stale: bool,
+    pub is_in_blockclique: bool,
+    pub block: Block,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
