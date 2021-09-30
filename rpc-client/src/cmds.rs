@@ -152,7 +152,7 @@ impl Command {
     }
 
     // TODO: should run(...) be impl on Command or on some struct containing clients?
-    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>) {
+    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>, json: bool) {
         match self {
             Command::exit => process::exit(0),
             Command::help => {
@@ -171,8 +171,13 @@ impl Command {
                 // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
                 match serde_json::from_str(&parameters[0]) {
                     Ok(ip) => match &client.public.unban(ip).await {
-                        Ok(output) => serde_json::to_string(output)
-                            .expect("Failed to serialized command output ..."),
+                        Ok(output) =>
+                            if json {
+                                serde_json::to_string(output)
+                                    .expect("Failed to serialized command output ...")
+                            } else {
+                                "IP successfully unbanned!".to_string()
+                            },
                         Err(e) => repl_error!(e),
                     },
                     Err(_) => repl_error!(
