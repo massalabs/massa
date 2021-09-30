@@ -15,7 +15,8 @@ thiserror = "1.0"
 tracing = "0.1"
 # custom modules
 crypto = {path = "../crypto"}
-network = {path = "../network"}
-consensus = {path = "../consensus"}
+consensus = {path = "../consensus"} # TODO: Should be removed
+consensus_traits = {path = "../consensus_traits"}
 models = {path = "../models"}
+network = {path = "../network"}
 time = {path = "../time"}

@@ -24,7 +24,8 @@ tracing = "0.1"
 # custom modules
 api = { path = "../api" }
 network = {path = "../network"}
-consensus = {path = "../consensus"}
+consensus = {path = "../consensus"} # TODO: Should be removed
+consensus_traits = {path = "../consensus_traits"}
 crypto = {path = "../crypto"}
 models = {path = "../models"}
 pool = {path = "../pool"}

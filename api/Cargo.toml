@@ -16,13 +16,14 @@ tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
 warp = "0.3"
 # custom modules
-network = {path = "../network"}
-protocol = {path = "../protocol"}
-consensus = {path = "../consensus"}
+consensus = {path = "../consensus"} # TODO: Should be removed
+consensus_traits = {path = "../consensus_traits"}
 crypto = {path = "../crypto"}
 logging = { path = "../logging" }
 models = {path = "../models"}
+network = {path = "../network"}
 pool = {path = "../pool"}
+protocol = {path = "../protocol"}
 storage = {path = "../storage"}
 time = {path = "../time"}
 

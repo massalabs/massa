@@ -34,6 +34,7 @@ name = "api"
 version = "0.1.0"
 dependencies = [
  "consensus",
+ "consensus_traits",
  "crypto",
  "displaydoc",
  "logging",
@@ -61,6 +62,7 @@ name = "api-private"
 version = "0.1.0"
 dependencies = [
  "consensus",
+ "consensus_traits",
  "crypto",
  "displaydoc",
  "jsonrpc-core",
@@ -79,6 +81,7 @@ name = "api-public"
 version = "0.1.0"
 dependencies = [
  "consensus",
+ "consensus_traits",
  "crypto",
  "displaydoc",
  "jsonrpc-core",
@@ -169,6 +172,7 @@ version = "0.1.0"
 dependencies = [
  "bitvec",
  "consensus",
+ "consensus_traits",
  "crypto",
  "displaydoc",
  "futures 0.3.17",
@@ -309,6 +313,7 @@ name = "consensus"
 version = "0.1.0"
 dependencies = [
  "bitvec",
+ "consensus_traits",
  "crypto",
  "displaydoc",
  "futures 0.3.17",
@@ -333,6 +338,10 @@ dependencies = [
  "tokio-util",
  "tracing",
 ]
+
+[[package]]
+name = "consensus_traits"
+version = "0.1.0"
 
 [[package]]
 name = "console"
@@ -1150,6 +1159,7 @@ dependencies = [
  "clap",
  "config",
  "consensus",
+ "consensus_traits",
  "crypto",
  "displaydoc",
  "models",
@@ -1177,6 +1187,7 @@ dependencies = [
  "bootstrap",
  "config",
  "consensus",
+ "consensus_traits",
  "futures 0.3.17",
  "logging",
  "models",
@@ -2995,6 +3006,9 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 name = "wallet"
 version = "0.1.0"
 dependencies = [
+ "api",
+ "consensus",
+ "consensus_traits",
  "crypto",
  "displaydoc",
  "models",
