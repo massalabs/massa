@@ -39,7 +39,7 @@ pub(crate) async fn run(client: &Client) {
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
             match cmd {
-                Ok(command) => command.run(client, &parameters).await,
+                Ok(command) => command.run(client, &parameters, false).await,
                 Err(_) => println!("{}", Command::not_found()),
             }
         }
