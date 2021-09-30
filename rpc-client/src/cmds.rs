@@ -2,7 +2,9 @@
 
 use crate::rpc::Client;
 use console::style;
+use std::net::IpAddr;
 use std::process;
+use std::str::FromStr;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
 
@@ -169,8 +171,8 @@ impl Command {
             Command::unban => println!(
                 "{}",
                 // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
-                match serde_json::from_str(&parameters[0]) {
-                    Ok(ip) => match &client.public.unban(ip).await {
+                match IpAddr::from_str(&parameters[0]) {
+                    Ok(ip) => match &client.private.unban(&vec![ip]).await {
                         Ok(output) =>
                             if json {
                                 serde_json::to_string(output)

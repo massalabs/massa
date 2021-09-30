@@ -53,7 +53,7 @@ impl RpcClient {
     }
 
     /// End-to-end example with `Unban` command
-    pub(crate) async fn unban(&self, ip: IpAddr) -> RpcResult<()> {
+    pub(crate) async fn unban(&self, ip: &Vec<IpAddr>) -> RpcResult<()> {
         self.0.call_method("Unban", "()", ip).await
     }
 
