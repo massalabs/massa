@@ -120,7 +120,9 @@ dependencies = [
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "models",
+ "pool",
  "rpc-server",
+ "storage",
  "thiserror",
  "time 0.1.0",
 ]
