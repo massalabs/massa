@@ -46,7 +46,8 @@ struct Args {
         default_value = "wallet.dat"
     )]
     config: PathBuf,
-    // TODO: Do we want to add more CLI args?! e.g `--json`
+    #[structopt(short = "j", long = "json")]
+    json: bool,
 }
 
 #[paw::main]
@@ -62,7 +63,7 @@ fn main(args: Args) {
             if atty::is(Stream::Stdout) && args.command == Command::help {
                 repl::run(&client).await; // Interactive mode
             } else {
-                args.command.run(&client, &args.parameters).await; // Non-Interactive mode
+                args.command.run(&client, &args.parameters, args.json).await; // Non-Interactive mode
             }
         });
 }
