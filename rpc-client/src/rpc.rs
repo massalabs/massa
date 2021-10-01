@@ -3,6 +3,10 @@
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use std::net::IpAddr;
+use models::address::AddressHashSet;
+use models::Address;
+use models::node::NodeId;
+use crypto::signature::{PublicKey, Signature, PrivateKey};
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!
@@ -52,10 +56,60 @@ impl RpcClient {
         }
     }
 
-    /// End-to-end example with `Unban` command
-    pub(crate) async fn unban(&self, ip: &Vec<IpAddr>) -> RpcResult<()> {
-        self.0.call_method("Unban", "()", ip).await
+    /// Starts the node and waits for node to start.
+    /// Signals if the node is already running.
+    pub(crate) async fn start_node(&self) -> RpcResult<()> {
+        self.0.call_method("start_node", "()", ()).await
     }
 
-    // TODO: We should here implement all of our desired API calls
+    /// Gracefully stop the node.
+    pub(crate) async fn stop_node(&self) -> RpcResult<()> {
+        self.0.call_method("stop_node", "()", ()).await
+    }
+
+    /// Sign message with node's key.
+    /// Returns the public key that signed the message and the signature.
+    pub(crate) async fn node_sign_message(
+        &self,
+        message: Vec<u8>,
+    ) -> RpcResult<(PublicKey, Signature)> {
+        self.0
+            .call_method("node_sign_message", "(PublicKey, Signature)", message)
+            .await
+    }
+
+    /// Add a vec of new private keys for the node to use to stake.
+    /// No confirmation to expect.
+    pub(crate) async fn add_staking_keys(&self, private_keys: Vec<PrivateKey>) -> RpcResult<()> {
+        self.0
+            .call_method("add_staking_keys", "()", private_keys)
+            .await
+    }
+
+    /// Remove a vec of addresses used to stake.
+    /// No confirmation to expect.
+    pub(crate) async fn remove_staking_keys(&self, addresses: Vec<Address>) -> RpcResult<()> {
+        self.0
+            .call_method("remove_staking_keys", "()", addresses)
+            .await
+    }
+
+    /// Return hashset of staking addresses.
+    pub(crate) async fn list_staking_keys(&self) -> RpcResult<AddressHashSet> {
+        self.0
+            .call_method("list_staking_keys", "AddressHashSet", ())
+            .await
+    }
+
+    /// Bans given node id
+    /// No confirmation to expect.
+    pub(crate) async fn ban(&self, node_id: NodeId) -> RpcResult<()> {
+        self.0.call_method("ban", "()", node_id).await
+    }
+
+    /// Unbans given ip addr
+    /// No confirmation to expect.
+    pub(crate) async fn unban(&self, ip: &Vec<IpAddr>) -> RpcResult<()> {
+        self.0.call_method("unban", "()", ip).await
+    }
 }
