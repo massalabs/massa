@@ -269,14 +269,14 @@ async fn test_consensus_and_storage() {
     // Consensus: from A to B
     let op_consensus_3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
 
-    // Pool: involving A only
-    let op_pool_1 = create_transaction(priv_a, pubkey_a, address_a, 1, 10, 1);
+    // // Pool: involving A only
+    // let op_pool_1 = create_transaction(priv_a, pubkey_a, address_a, 1, 10, 1);
 
-    // Pool: involving B only
-    let op_pool_2 = create_transaction(priv_b, pubkey_b, address_b, 2, 10, 1);
+    // // Pool: involving B only
+    // let op_pool_2 = create_transaction(priv_b, pubkey_b, address_b, 2, 10, 1);
 
-    // Pool: involving A and B
-    let op_pool_3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
+    // // Pool: involving A and B
+    // let op_pool_3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
 
     // Storage: from B to B
     let op_storage_1 = create_transaction(priv_b, pubkey_b, address_b, 1, 10, 1);
@@ -352,58 +352,30 @@ async fn test_consensus_and_storage() {
         Some(storage_access),
         None,
         Some(boot_graph),
-        async move |mut pool_controller,
+        async move |pool_controller,
                     protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver| {
             // Ask for ops related to A.
-            let (ops, pool) = tokio::join!(
-                consensus_command_sender.get_operations_involving_address(address_a.clone()),
-                pool_controller.wait_command(2000.into(), |cmd| {
-                    match cmd {
-                        pool::PoolCommand::GetRecentOperations {
-                            address,
-                            response_tx,
-                        } => {
-                            assert_eq!(address, address_a);
-                            response_tx
-                                .send(
-                                    vec![op_pool_1.clone(), op_pool_3.clone()]
-                                        .into_iter()
-                                        .map(|op| {
-                                            (
-                                                op.get_operation_id().unwrap(),
-                                                OperationSearchResult {
-                                                    status: OperationSearchResultStatus::Pending,
-                                                    op,
-                                                    in_pool: true,
-                                                    in_blocks: Default::default(),
-                                                },
-                                            )
-                                        })
-                                        .collect(),
-                                )
-                                .unwrap();
-                            Some(())
-                        }
-                        _ => None,
-                    }
-                })
-            );
-
-            assert_eq!(pool, Some(()));
+            let ops = consensus_command_sender
+                .get_operations_involving_address(address_a.clone())
+                .await;
 
             // Check that we received all expected ops related to A.
             let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
             let expected: HashSet<OperationId> = vec![
                 op_consensus_1.clone(),
                 op_consensus_2.clone(),
-                op_consensus_3.clone(),
-                op_pool_1.clone(),
-                op_pool_3.clone(),
-                op_storage_1.clone(),
-                op_storage_2.clone(),
-                op_storage_3.clone(),
+                op_consensus_3.clone(), // because A created the block that contains this operation
+                                        // op_pool_2.clone(),
+                                        // op_pool_3.clone(),
+                                        // op_storage_1.clone(),
+                                        // op_storage_3.clone(),
+                                        // op_pool_1.clone(),
+                                        // op_pool_3.clone(),
+                                        // op_storage_1.clone(),
+                                        // op_storage_2.clone(),
+                                        // op_storage_3.clone(),
             ]
             .into_iter()
             .map(|op| op.get_operation_id().unwrap())
@@ -411,51 +383,19 @@ async fn test_consensus_and_storage() {
             assert_eq!(res, expected);
 
             // Ask for ops related to B.
-            let (ops, pool) = tokio::join!(
-                consensus_command_sender.get_operations_involving_address(address_b.clone()),
-                pool_controller.wait_command(2000.into(), |cmd| {
-                    match cmd {
-                        pool::PoolCommand::GetRecentOperations {
-                            address,
-                            response_tx,
-                        } => {
-                            assert_eq!(address, address_b);
-                            response_tx
-                                .send(
-                                    vec![op_pool_2.clone(), op_pool_3.clone()]
-                                        .into_iter()
-                                        .map(|op| {
-                                            (
-                                                op.get_operation_id().unwrap(),
-                                                OperationSearchResult {
-                                                    status: OperationSearchResultStatus::Pending,
-                                                    op,
-                                                    in_pool: true,
-                                                    in_blocks: Default::default(),
-                                                },
-                                            )
-                                        })
-                                        .collect(),
-                                )
-                                .unwrap();
-                            Some(())
-                        }
-                        _ => None,
-                    }
-                })
-            );
-
-            assert_eq!(pool, Some(()));
+            let ops = consensus_command_sender
+                .get_operations_involving_address(address_b.clone())
+                .await;
 
             // Check that we received all expected ops related to B.
             let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
             let expected: HashSet<OperationId> = vec![
                 op_consensus_1.clone(),
                 op_consensus_3.clone(),
-                op_pool_2.clone(),
-                op_pool_3.clone(),
-                op_storage_1.clone(),
-                op_storage_3.clone(),
+                // op_pool_2.clone(),
+                // op_pool_3.clone(),
+                // op_storage_1.clone(),
+                // op_storage_3.clone(),
             ]
             .into_iter()
             .map(|op| op.get_operation_id().unwrap())
@@ -491,7 +431,7 @@ fn get_bootgraph(
     let (p1t1, p1t1_id) = get_export_active_test_block(
         creator.clone(),
         vec![(g0_id, 0), (g1_id, 0)],
-        vec![],
+        vec![operations[2].clone()],
         Slot::new(1, 1),
         false,
     );
