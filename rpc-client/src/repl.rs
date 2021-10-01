@@ -38,10 +38,13 @@ pub(crate) async fn run(client: &Client) {
             let cmd: Result<Command, ParseError> = input[0].parse();
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
-            match cmd {
-                Ok(command) => command.run(client, &parameters, false).await,
-                Err(_) => println!("{}", Command::not_found()),
-            }
+            println!(
+                "{}",
+                match cmd {
+                    Ok(command) => command.run(client, &parameters).await,
+                    Err(_) => Command::not_found(),
+                }
+            );
         }
     }
 }

@@ -31,6 +31,9 @@ pub enum Command {
     )]
     ban,
 
+    #[strum(ascii_case_insensitive, message = "start a node")]
+    node_start,
+
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
 
@@ -127,16 +130,30 @@ pub enum Command {
     send_transaction,
 }
 
-macro_rules! repl_error {
+macro_rules! repl_err {
     ($err: expr) => {
         style(format!("Error: {}", $err)).red().to_string()
+    };
+}
+
+macro_rules! repl_ok {
+    ($ok: expr) => {
+        $ok.to_string()
     };
 }
 
 // TODO: Commands could also not be APIs calls (like Wallet ones)
 impl Command {
     pub(crate) fn not_found() -> String {
-        repl_error!("Command not found!\ntype \"help\" to get the list of commands")
+        repl_err!("Command not found!\ntype \"help\" to get the list of commands")
+    }
+
+    pub(crate) fn wrong_parameters(&self) -> String {
+        repl_err!(format!(
+            "{} given is not well formed...\ntype \"help {}\" to more info",
+            self.get_str("args").unwrap(),
+            self.to_string()
+        ))
     }
 
     pub(crate) fn help(&self) -> String {
@@ -153,64 +170,131 @@ impl Command {
         )
     }
 
-    // TODO: should run(...) be impl on Command or on some struct containing clients?
-    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>, json: bool) {
+    // TODO: Return type should be something like:
+    // use std::fmt::Display;
+    // use serde_json::ser::Formatter;
+    // pub(crate) async fn run<T: Display + Formatter>(&self, client: &Client, parameters: &Vec<String>) -> T
+    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>) -> String {
         match self {
             Command::exit => process::exit(0),
+
             Command::help => {
                 if !parameters.is_empty() {
                     if let Ok(c) = parameters[0].parse::<Command>() {
-                        println!("{}", c.help());
+                        c.help()
                     } else {
-                        println!("{}", Command::not_found());
+                        Command::not_found()
                     }
                 } else {
-                    cli_help();
+                    format!(
+                        "HELP of Massa client (list of available commands):\n{}",
+                        Command::iter()
+                            .map(|c| c.help())
+                            .collect::<Vec<String>>()
+                            .join("\n")
+                    )
                 }
             }
-            Command::unban => println!(
-                "{}",
-                // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
-                match IpAddr::from_str(&parameters[0]) {
-                    Ok(ip) => match &client.private.unban(&vec![ip]).await {
-                        Ok(output) =>
-                            if json {
-                                serde_json::to_string(output)
-                                    .expect("Failed to serialized command output ...")
-                            } else {
-                                "IP successfully unbanned!".to_string()
-                            },
-                        Err(e) => repl_error!(e),
-                    },
-                    Err(_) => repl_error!(
-                        "IP given is not well formed...\ntype \"help unban\" to more info"
-                    ),
-                }
-            ),
-            Command::ban => {}
-            Command::node_stop => {}
-            Command::node_get_staking_addresses => {}
-            Command::node_remove_staking_addresses => {}
-            Command::node_add_staking_private_keys => {}
-            Command::node_testnet_rewards_program_ownership_proof => {}
-            Command::get_status => {}
-            Command::get_addresses_info => {}
-            Command::get_blocks_info => {}
-            Command::get_endorsements_info => {}
-            Command::get_operations_info => {}
-            Command::wallet_info => {}
-            Command::wallet_add_private_keys => {}
-            Command::wallet_remove_addresses => {}
-            Command::buy_rolls => {}
-            Command::sell_rolls => {}
-            Command::send_transaction => {}
-        }
-    }
-}
 
-fn cli_help() {
-    println!("HELP of Massa client (list of available commands):");
-    for c in Command::iter() {
-        println!("{}", c.help());
+            Command::unban => match IpAddr::from_str(&parameters[0]) {
+                Ok(ip) => match &client.private.unban(&vec![ip]).await {
+                    Ok(_) => repl_ok!("Request of unbanning successfully sent!"),
+                    Err(e) => repl_err!(e),
+                },
+                Err(_) => self.wrong_parameters(),
+            },
+
+            Command::ban => match serde_json::from_str(&parameters[0]) {
+                Ok(node_id) => match &client.private.ban(node_id).await {
+                    Ok(_) => repl_ok!("Request of banning successfully sent!"),
+                    Err(e) => repl_err!(e),
+                },
+                Err(_) => self.wrong_parameters(),
+            },
+
+            Command::node_start => match process::Command::new("massa-node").spawn() {
+                Ok(_) => repl_ok!("Node successfully started!"),
+                Err(e) => repl_err!(e),
+            },
+
+            Command::node_stop => match &client.private.stop_node().await {
+                Ok(_) => repl_ok!("Request of stopping the Node successfully sent"),
+                Err(e) => repl_err!(e),
+            },
+
+            Command::node_get_staking_addresses => {
+                match &client.private.get_staking_addresses().await {
+                    Ok(output) => serde_json::to_string(output)
+                        .expect("Failed to serialized command output ..."),
+                    Err(e) => repl_err!(e),
+                }
+            }
+
+            Command::node_remove_staking_addresses => match serde_json::from_str(&parameters[0]) {
+                Ok(addresses) => match &client.private.remove_staking_addresses(addresses).await {
+                    Ok(_) => repl_ok!("Addresses successfully removed!"),
+                    Err(e) => repl_err!(e),
+                },
+                Err(_) => self.wrong_parameters(),
+            },
+
+            Command::node_add_staking_private_keys => match serde_json::from_str(&parameters[0]) {
+                Ok(private_keys) => {
+                    match &client.private.add_staking_private_keys(private_keys).await {
+                        Ok(_) => repl_ok!("Private keys successfully added!"),
+                        Err(e) => repl_err!(e),
+                    }
+                }
+                Err(_) => self.wrong_parameters(),
+            },
+
+            Command::node_testnet_rewards_program_ownership_proof => {
+                todo!()
+            }
+
+            Command::get_status => {
+                todo!()
+            }
+
+            Command::get_addresses_info => {
+                todo!()
+            }
+
+            Command::get_blocks_info => {
+                todo!()
+            }
+
+            Command::get_endorsements_info => {
+                todo!()
+            }
+
+            Command::get_operations_info => {
+                todo!()
+            }
+
+            Command::wallet_info => {
+                todo!()
+            }
+
+            Command::wallet_add_private_keys => {
+                todo!()
+            }
+
+            Command::wallet_remove_addresses => {
+                todo!()
+            }
+
+            Command::buy_rolls => {
+                todo!()
+            }
+
+            Command::sell_rolls => {
+                todo!()
+            }
+
+            Command::send_transaction => {
+                todo!()
+            }
+        }
     }
 }

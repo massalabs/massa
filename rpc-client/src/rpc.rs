@@ -1,12 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crypto::signature::{PrivateKey, PublicKey, Signature};
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-use std::net::IpAddr;
 use models::address::AddressHashSet;
-use models::Address;
 use models::node::NodeId;
-use crypto::signature::{PublicKey, Signature, PrivateKey};
+use models::Address;
+use std::net::IpAddr;
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!
@@ -56,12 +56,6 @@ impl RpcClient {
         }
     }
 
-    /// Starts the node and waits for node to start.
-    /// Signals if the node is already running.
-    pub(crate) async fn start_node(&self) -> RpcResult<()> {
-        self.0.call_method("start_node", "()", ()).await
-    }
-
     /// Gracefully stop the node.
     pub(crate) async fn stop_node(&self) -> RpcResult<()> {
         self.0.call_method("stop_node", "()", ()).await
@@ -80,24 +74,27 @@ impl RpcClient {
 
     /// Add a vec of new private keys for the node to use to stake.
     /// No confirmation to expect.
-    pub(crate) async fn add_staking_keys(&self, private_keys: Vec<PrivateKey>) -> RpcResult<()> {
+    pub(crate) async fn add_staking_private_keys(
+        &self,
+        private_keys: Vec<PrivateKey>,
+    ) -> RpcResult<()> {
         self.0
-            .call_method("add_staking_keys", "()", private_keys)
+            .call_method("add_staking_private_keys", "()", private_keys)
             .await
     }
 
     /// Remove a vec of addresses used to stake.
     /// No confirmation to expect.
-    pub(crate) async fn remove_staking_keys(&self, addresses: Vec<Address>) -> RpcResult<()> {
+    pub(crate) async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
         self.0
-            .call_method("remove_staking_keys", "()", addresses)
+            .call_method("remove_staking_addresses", "()", addresses)
             .await
     }
 
     /// Return hashset of staking addresses.
-    pub(crate) async fn list_staking_keys(&self) -> RpcResult<AddressHashSet> {
+    pub(crate) async fn get_staking_addresses(&self) -> RpcResult<AddressHashSet> {
         self.0
-            .call_method("list_staking_keys", "AddressHashSet", ())
+            .call_method("get_staking_addresses", "AddressHashSet", ())
             .await
     }
 

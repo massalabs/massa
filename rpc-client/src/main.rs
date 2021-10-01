@@ -63,7 +63,16 @@ fn main(args: Args) {
             if atty::is(Stream::Stdout) && args.command == Command::help {
                 repl::run(&client).await; // Interactive mode
             } else {
-                args.command.run(&client, &args.parameters, args.json).await; // Non-Interactive mode
+                let output = args.command.run(&client, &args.parameters).await; // Non-Interactive mode
+                println!(
+                    "{}",
+                    if args.json {
+                        serde_json::to_string(&output)
+                            .expect("Failed to serialized command output ...")
+                    } else {
+                        output
+                    }
+                );
             }
         });
 }
