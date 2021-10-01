@@ -260,7 +260,6 @@ impl MassaPublic for ApiMassaPublic {
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
-        // todo use that command sender after #267
         let mut pool_command_sender = self.pool_command_sender.clone();
         let storage_command_sender = self.storage_command_sender.clone();
         let closure = async move || {
