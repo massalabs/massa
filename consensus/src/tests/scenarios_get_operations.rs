@@ -366,16 +366,15 @@ async fn test_consensus_and_storage() {
             let expected: HashSet<OperationId> = vec![
                 op_consensus_1.clone(),
                 op_consensus_2.clone(),
-                op_consensus_3.clone(), // because A created the block that contains this operation
-                                        // op_pool_2.clone(),
-                                        // op_pool_3.clone(),
-                                        // op_storage_1.clone(),
-                                        // op_storage_3.clone(),
-                                        // op_pool_1.clone(),
-                                        // op_pool_3.clone(),
-                                        // op_storage_1.clone(),
-                                        // op_storage_2.clone(),
-                                        // op_storage_3.clone(),
+                // op_pool_2.clone(),
+                // op_pool_3.clone(),
+                // op_storage_1.clone(),
+                // op_storage_3.clone(),
+                // op_pool_1.clone(),
+                // op_pool_3.clone(),
+                // op_storage_1.clone(),
+                // op_storage_2.clone(),
+                // op_storage_3.clone(),
             ]
             .into_iter()
             .map(|op| op.get_operation_id().unwrap())
@@ -391,7 +390,6 @@ async fn test_consensus_and_storage() {
             let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
             let expected: HashSet<OperationId> = vec![
                 op_consensus_1.clone(),
-                op_consensus_3.clone(),
                 // op_pool_2.clone(),
                 // op_pool_3.clone(),
                 // op_storage_1.clone(),
@@ -431,7 +429,7 @@ fn get_bootgraph(
     let (p1t1, p1t1_id) = get_export_active_test_block(
         creator.clone(),
         vec![(g0_id, 0), (g1_id, 0)],
-        vec![operations[2].clone()],
+        vec![],
         Slot::new(1, 1),
         false,
     );
