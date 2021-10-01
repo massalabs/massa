@@ -68,7 +68,7 @@ pub trait MassaPrivate {
     /// Unbans given ip addr
     /// No confirmation to expect.
     #[rpc(name = "unban")]
-    fn unban(&self, _: IpAddr) -> BoxFuture<Result<(), PrivateApiError>>;
+    fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), PrivateApiError>>;
 }
 
 impl ApiMassaPrivate {
@@ -162,9 +162,13 @@ impl MassaPrivate for ApiMassaPrivate {
         Box::pin(closure())
     }
 
-    fn unban(&self, ip: IpAddr) -> BoxFuture<Result<(), PrivateApiError>> {
+    fn unban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
-        let closure = async move || Ok(network_command_sender.unban(ip).await?);
+        let closure = async move || {
+            for ip in ips {
+                Ok(network_command_sender.unban(ip).await?)
+            }
+        };
         Box::pin(closure())
     }
 }
