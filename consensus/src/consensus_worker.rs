@@ -739,24 +739,14 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_block_status",
                     {}
                 );
-
-                let mut found_block = self.block_db.get_export_block_status(&block_id);
-                // todo remove with old api
-                if found_block.is_none() {
-                    if let Some(storage) = &self.opt_storage_command_sender {
-                        found_block = storage
-                            .get_block(block_id)
-                            .await?
-                            .map(ExportBlockStatus::Stored);
-                    }
-                }
-
-                response_tx.send(found_block).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetBlock Status answer:{:?}",
-                        err
-                    ))
-                })
+                response_tx
+                    .send(self.block_db.get_export_block_status(&block_id))
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetBlock Status answer:{:?}",
+                            err
+                        ))
+                    })
             }
             ConsensusCommand::GetSelectionDraws {
                 start,

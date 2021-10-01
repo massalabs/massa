@@ -667,6 +667,7 @@ async fn get_block(
     } else {
         if let Some(cmd_tx) = opt_storage_command_sender {
             match cmd_tx.get_block(block_id).await {
+                // todo this is blocking the removal of Stored variant.
                 Ok(Some(block)) => Ok(Some(ExportBlockStatus::Stored(block))),
                 Ok(None) => Err(ApiError::NotFound),
                 Err(e) => Err(e.into()),
