@@ -3247,6 +3247,7 @@ impl BlockGraph {
                         ),
                     },
                 );
+                self.discarded_index.insert(stale_block_hash);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} is missing", add_block_id, stale_block_hash)));
             }
