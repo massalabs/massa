@@ -707,7 +707,7 @@ impl NetworkWorker {
                 }
             }
             NetworkCommand::SendBlockHeader { node, header } => {
-                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"hash": header.content.compute_hash()?, "header": header, "node": node});
+                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.compute_block_id()?, "header": header, "node": node});
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
                     NodeCommand::SendBlockHeader(header),
@@ -997,7 +997,7 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
                 massa_trace!(
                     "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-                    {"hash": data.header.content.compute_hash()?, "block": data, "node": from_node_id}
+                    {"block_id": data.header.compute_block_id()?, "block": data, "node": from_node_id}
                 );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlock {

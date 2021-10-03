@@ -185,14 +185,14 @@ impl NodeWorker {
                             Message::Block(block) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::Block",
-                                    {"hash": block.header.content.compute_hash()?, "block": block, "node": self.node_id}
+                                    {"block_id": block.header.compute_block_id()?, "block": block, "node": self.node_id}
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
                             },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::BlockHeader",
-                                    {"hash": header.content.compute_hash()?, "header": header, "node": self.node_id}
+                                    {"block_id": header.compute_block_id()?, "header": header, "node": self.node_id}
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
                             },
@@ -250,13 +250,13 @@ impl NodeWorker {
                             }
                         },
                         Some(NodeCommand::SendBlockHeader(header)) => {
-                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.content.compute_hash()?, "header": header, "node": self.node_id});
+                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.compute_block_id()?, "header": header, "node": self.node_id});
                             if writer_command_tx.send(Message::BlockHeader(header)).await.is_err() {
                                 break;
                             }
                         },
                         Some(NodeCommand::SendBlock(block)) => {
-                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.content.compute_hash()?, "block": block, "node": self.node_id});
+                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.compute_block_id()?, "block": block, "node": self.node_id});
                             if writer_command_tx.send(Message::Block(block)).await.is_err() {
                                 break;
                             }
