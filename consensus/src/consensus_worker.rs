@@ -170,11 +170,12 @@ impl ConsensusWorker {
         clock_compensation: i64,
         staking_keys: AddressHashMap<(PublicKey, PrivateKey)>,
     ) -> Result<ConsensusWorker, ConsensusError> {
-        let previous_slot = get_current_latest_block_slot(
+        let now = UTime::now(clock_compensation)?;
+        let previous_slot = get_latest_block_slot_at_timestamp(
             cfg.thread_count,
             cfg.t0,
             cfg.genesis_timestamp,
-            clock_compensation,
+            now,
         )?;
         let next_slot = previous_slot.map_or(Ok(Slot::new(0u64, 0u8)), |s| {
             s.get_next_slot(cfg.thread_count)
@@ -184,7 +185,6 @@ impl ConsensusWorker {
             .iter()
             .map(|(_block_id, period)| *period)
             .collect();
-        let now = UTime::now(clock_compensation)?;
         info!(
             "Started node at time {}, cycle {}, period {}, thread {}",
             now.to_utc_string(),
@@ -350,7 +350,7 @@ impl ConsensusWorker {
             now,
         )?;
 
-        if observed_slot <= self.previous_slot {
+        if observed_slot < Some(self.next_slot) {
             // reset timer for next slot
             next_slot_timer.set(sleep_until(
                 get_block_slot_timestamp(
@@ -369,15 +369,17 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.slot_tick", {
             "slot": observed_slot
         });
-        let cur_cycle = observed_slot.get_cycle(self.cfg.periods_per_cycle);
 
-        if observed_slot.get_cycle(self.cfg.periods_per_cycle) != cur_cycle {
-            info!("Started cycle {}", cur_cycle);
-        }
-
-        if observed_slot == Slot::new(1, 0) {
-            // first block that can be created
+        let previous_cycle = self
+            .previous_slot
+            .map(|s| s.get_cycle(self.cfg.periods_per_cycle));
+        let observed_cycle = observed_slot.get_cycle(self.cfg.periods_per_cycle);
+        if previous_cycle.is_none() {
+            // first cycle observed
             info!("Massa network has started ! 🎉")
+        }
+        if previous_cycle < Some(observed_cycle) {
+            info!("Started cycle {}", observed_cycle);
         }
 
         // check if there are any final blocks not produced by us
@@ -401,10 +403,7 @@ impl ConsensusWorker {
 
         // create blocks
         if !self.cfg.disable_block_creation && observed_slot.period > 0 {
-            let mut cur_slot = self.previous_slot.map_or_else(
-                || Ok(Slot::new(0, 0)),
-                |v| v.get_next_slot(self.cfg.thread_count),
-            )?;
+            let mut cur_slot = self.next_slot;
             while cur_slot <= observed_slot {
                 let block_draw = match self.pos.draw_block_producer(cur_slot) {
                     Ok(b_draw) => Some(b_draw),
