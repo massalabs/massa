@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 bitvec = { version = "0.22", features = ["serde"] }
+displaydoc = "0.2"
 futures = { version = "0.3" }
 log = { version = "0.4" }
 num = { version = "0.4", features = ["serde"] }

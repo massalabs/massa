@@ -51,6 +51,7 @@ dependencies = [
  "communication",
  "consensus",
  "crypto",
+ "displaydoc",
  "log",
  "logging",
  "models",
@@ -98,6 +99,7 @@ dependencies = [
  "communication",
  "consensus",
  "crypto",
+ "displaydoc",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
@@ -116,6 +118,7 @@ dependencies = [
  "communication",
  "consensus",
  "crypto",
+ "displaydoc",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
@@ -219,6 +222,7 @@ dependencies = [
  "communication",
  "consensus",
  "crypto",
+ "displaydoc",
  "log",
  "logging",
  "models",
@@ -340,6 +344,7 @@ name = "communication"
 version = "0.1.0"
 dependencies = [
  "crypto",
+ "displaydoc",
  "futures 0.3.17",
  "itertools",
  "log",
@@ -383,6 +388,7 @@ dependencies = [
  "bitvec",
  "communication",
  "crypto",
+ "displaydoc",
  "futures 0.3.17",
  "log",
  "logging",
@@ -503,6 +509,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin_hashes",
  "bs58",
+ "displaydoc",
  "pretty_assertions",
  "rand 0.8.4",
  "secp256k1",
@@ -592,6 +599,17 @@ dependencies = [
  "libc",
  "redox_users",
  "winapi",
+]
+
+[[package]]
+name = "displaydoc"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bf95dc3f046b9da4f2d51833c0d3547d8564ef6910f5c1ed130306a75b92886"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1248,6 +1266,7 @@ dependencies = [
  "config",
  "consensus",
  "crypto",
+ "displaydoc",
  "log",
  "models",
  "pool",
@@ -1366,6 +1385,7 @@ name = "models"
 version = "0.1.0"
 dependencies = [
  "crypto",
+ "displaydoc",
  "integer-encoding",
  "lazy_static",
  "num_enum",
@@ -1772,6 +1792,7 @@ version = "0.1.0"
 dependencies = [
  "communication",
  "crypto",
+ "displaydoc",
  "futures 0.3.17",
  "log",
  "logging",
@@ -2546,6 +2567,7 @@ name = "storage"
 version = "0.1.0"
 dependencies = [
  "crypto",
+ "displaydoc",
  "log",
  "logging",
  "models",
@@ -2703,6 +2725,7 @@ name = "time"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "displaydoc",
  "pretty_assertions",
  "serde 1.0.130",
  "serial_test",
@@ -3025,6 +3048,7 @@ dependencies = [
  "config",
  "consensus",
  "crypto",
+ "displaydoc",
  "log",
  "models",
  "reqwest",

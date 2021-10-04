@@ -5,6 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2018"
 
 [dependencies]
+displaydoc = "0.2"
 integer-encoding = "3.0"
 lazy_static = "1.4"
 num_enum = "0.5"
