@@ -269,15 +269,6 @@ async fn test_consensus_and_storage() {
     // Consensus: from A to B
     let op_consensus_3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
 
-    // // Pool: involving A only
-    // let op_pool_1 = create_transaction(priv_a, pubkey_a, address_a, 1, 10, 1);
-
-    // // Pool: involving B only
-    // let op_pool_2 = create_transaction(priv_b, pubkey_b, address_b, 2, 10, 1);
-
-    // // Pool: involving A and B
-    // let op_pool_3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
-
     // Storage: from B to B
     let op_storage_1 = create_transaction(priv_b, pubkey_b, address_b, 1, 10, 1);
 
@@ -363,22 +354,11 @@ async fn test_consensus_and_storage() {
 
             // Check that we received all expected ops related to A.
             let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
-            let expected: HashSet<OperationId> = vec![
-                op_consensus_1.clone(),
-                op_consensus_2.clone(),
-                // op_pool_2.clone(),
-                // op_pool_3.clone(),
-                // op_storage_1.clone(),
-                // op_storage_3.clone(),
-                // op_pool_1.clone(),
-                // op_pool_3.clone(),
-                // op_storage_1.clone(),
-                // op_storage_2.clone(),
-                // op_storage_3.clone(),
-            ]
-            .into_iter()
-            .map(|op| op.get_operation_id().unwrap())
-            .collect();
+            let expected: HashSet<OperationId> =
+                vec![op_consensus_1.clone(), op_consensus_2.clone()]
+                    .into_iter()
+                    .map(|op| op.get_operation_id().unwrap())
+                    .collect();
             assert_eq!(res, expected);
 
             // Ask for ops related to B.
@@ -388,16 +368,10 @@ async fn test_consensus_and_storage() {
 
             // Check that we received all expected ops related to B.
             let res: HashSet<OperationId> = ops.unwrap().keys().map(|key| key.clone()).collect();
-            let expected: HashSet<OperationId> = vec![
-                op_consensus_1.clone(),
-                // op_pool_2.clone(),
-                // op_pool_3.clone(),
-                // op_storage_1.clone(),
-                // op_storage_3.clone(),
-            ]
-            .into_iter()
-            .map(|op| op.get_operation_id().unwrap())
-            .collect();
+            let expected: HashSet<OperationId> = vec![op_consensus_1.clone()]
+                .into_iter()
+                .map(|op| op.get_operation_id().unwrap())
+                .collect();
             assert_eq!(res, expected);
             (
                 pool_controller,
