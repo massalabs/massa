@@ -55,6 +55,9 @@ impl SerializeCompact for Clique {
     /// assert_eq!(clique.is_blockclique, res.is_blockclique);
     /// assert_eq!(clique.fitness, res.fitness);
     /// ```
+    ///
+    /// Checks performed:
+    /// - Number of blocks.
     fn to_bytes_compact(&self) -> Result<Vec<u8>, crate::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
@@ -77,13 +80,17 @@ impl SerializeCompact for Clique {
     }
 }
 
+/// Checks performed:
+/// - Number of blocks.
+/// - Validity of block ids.
+/// - Validity of fitness.
+/// - Validity of the `is_blockclique` flag.
 impl DeserializeCompact for Clique {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         let mut cursor = 0usize;
         let max_bootstrap_blocks =
             with_serialization_context(|context| context.max_bootstrap_blocks);
 
-        // block_ids
         let (block_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if block_count > max_bootstrap_blocks {
             return Err(ModelsError::DeserializeError(format!(
