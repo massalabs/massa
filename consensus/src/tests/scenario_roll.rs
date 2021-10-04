@@ -28,13 +28,13 @@ use models::ledger::LedgerData;
 #[serial]
 async fn test_roll() {
     // setup logging
-    /*
+
     stderrlog::new()
-        .verbosity(4)
+        .verbosity(2)
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()
         .unwrap();
-    */
+
     let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
@@ -115,6 +115,7 @@ async fn test_roll() {
             let addresses = addresses;
 
             // cycle 0
+            info!("cycle 0");
             let (_, block1_err1, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
@@ -144,6 +145,7 @@ async fn test_roll() {
 
             propagate_block(&mut protocol_controller, block1, true, 150).await;
             parents[0] = id_1;
+            info!("block (1,0)");
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -167,7 +169,11 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block1t1, true, 150).await;
             parents[1] = id_1t1;
 
+            info!("block (1,1)");
             // cycle 1
+            // todo check draws
+
+            info!("cycle 1");
             let (id_2, block2, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(2, 0),
@@ -179,6 +185,8 @@ async fn test_roll() {
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 2, 0).await;
             propagate_block(&mut protocol_controller, block2, true, 150).await;
             parents[0] = id_2;
+
+            info!("block (2,0)");
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -198,8 +206,11 @@ async fn test_roll() {
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 2, 1).await;
             propagate_block(&mut protocol_controller, block2t2, true, 150).await;
             parents[1] = id_2t;
+            info!("block (2,1)");
 
             // miss block 3 in thread 0
+
+            info!("miss block (3,0)");
 
             // block 3 in thread 1
             let (id_3t1, block3t1, _) =
@@ -208,9 +219,15 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block3t1, true, 150).await;
             parents[1] = id_3t1;
 
+            info!("block (3,1)");
             // cycle 2
+            // todo check draws
+
+            info!("cycle 2");
 
             //miss block 4
+
+            info!("miss block (4,0)");
 
             let (id_4t1, block4t1, _) =
                 create_block_with_operations(&cfg, Slot::new(4, 1), &parents, priv_1, vec![]);
@@ -218,19 +235,25 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block4t1, true, 150).await;
             parents[1] = id_4t1;
 
+            info!("block (4,1)");
+
             let (id_5, block5, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 0), &parents, priv_1, vec![]);
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 5, 0).await;
             propagate_block(&mut protocol_controller, block5, true, 150).await;
             parents[0] = id_5;
 
+            info!("block (5,0)");
             let (id_5t1, block5t1, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 5, 1).await;
             propagate_block(&mut protocol_controller, block5t1, true, 150).await;
             parents[1] = id_5t1;
 
+            info!("block (5,1)");
             // cycle 3
+
+            info!("cycle 3");
             let draws: HashMap<_, _> = consensus_command_sender
                 .get_selection_draws(Slot::new(6, 0), Slot::new(8, 0))
                 .await
@@ -266,6 +289,7 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block6, true, 150).await;
             parents[0] = id_6;
 
+            info!("block (6,0)");
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
                 .await
@@ -289,6 +313,7 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block6t1, true, 150).await;
             parents[1] = id_6t1;
 
+            info!("block (6,1)");
             let (id_7, block7, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(7, 0),
@@ -301,6 +326,7 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block7, true, 150).await;
             parents[0] = id_7;
 
+            info!("block (7,0)");
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
                 .await
@@ -320,11 +346,15 @@ async fn test_roll() {
                 vec![],
             );
 
+            info!("block (7,1)");
+
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 7, 1).await;
             propagate_block(&mut protocol_controller, block7t1, true, 150).await;
             parents[1] = id_7t1;
 
             // cycle 4
+
+            info!("cycle 4");
 
             let (id_8, block8, _) = create_block_with_operations(
                 &cfg,
@@ -337,6 +367,7 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block8, true, 150).await;
             parents[0] = id_8;
 
+            info!("block (8,0)");
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
                 .await
@@ -356,6 +387,7 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block8t1, true, 150).await;
             parents[1] = id_8t1;
 
+            info!("block (8,1)");
             let (id_9, block9, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(9, 0),
@@ -366,6 +398,7 @@ async fn test_roll() {
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 9, 0).await;
             propagate_block(&mut protocol_controller, block9, true, 150).await;
             parents[0] = id_9;
+            info!("block (9,0)");
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -385,8 +418,11 @@ async fn test_roll() {
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 9, 1).await;
             propagate_block(&mut protocol_controller, block9t1, true, 150).await;
             parents[1] = id_9t1;
+            info!("block (9,1)");
 
             // cycle 5
+
+            info!("cycle 5");
 
             let (id_10, block10, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 0), &parents, priv_1, vec![]);
@@ -394,6 +430,7 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block10, true, 150).await;
             parents[0] = id_10;
 
+            info!("block (10,0)");
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
                 .await
@@ -420,6 +457,7 @@ async fn test_roll() {
             wait_pool_slot(&mut &mut pool_controller, cfg.t0, 10, 1).await;
             propagate_block(&mut protocol_controller, block10t1, true, 150).await;
             parents[1] = id_10t1;
+            info!("block (10,1)");
 
             let (id_11, block11, _) =
                 create_block_with_operations(&cfg, Slot::new(11, 0), &parents, priv_1, vec![]);
@@ -427,6 +465,7 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block11, true, 150).await;
             parents[0] = id_11;
 
+            info!("block (11,0)");
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
                 .await
