@@ -152,16 +152,7 @@ async fn test_get_operation() {
                 .unwrap();
 
             let mut expected = HashMap::new();
-            // only in storage
-            // expected.insert(
-            //     op1.get_operation_id().unwrap(),
-            //     OperationSearchResult {
-            //         status: OperationSearchResultStatus::Pending,
-            //         op: op1,
-            //         in_pool: false,
-            //         in_blocks: Default::default(),
-            //     },
-            // );
+
             expected.insert(
                 op2.get_operation_id().unwrap(),
                 OperationSearchResult {
@@ -180,16 +171,6 @@ async fn test_get_operation() {
                     in_blocks: vec![(b2, (0, false))].into_iter().collect(),
                 },
             );
-            // only in storage
-            // expected.insert(
-            //     op4.get_operation_id().unwrap(),
-            //     OperationSearchResult {
-            //         status: OperationSearchResultStatus::Pending,
-            //         op: op4,
-            //         in_pool: false,
-            //         in_blocks: vec![(b3, (0, true))].into_iter().collect(),
-            //     },
-            // );
 
             assert_eq!(ops.len(), expected.len());
 
