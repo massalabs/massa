@@ -1726,6 +1726,10 @@ impl BlockGraph {
     }
 
     /// A new header has come !
+    ///
+    /// Checks performed:
+    /// - Ignore genesis blocks.
+    /// - See `process`.
     pub fn incoming_header(
         &mut self,
         block_id: BlockId,
@@ -1769,6 +1773,10 @@ impl BlockGraph {
     }
 
     /// A new block has come
+    ///
+    /// Checks performed:
+    /// - Ignore genesis blocks.
+    /// - See `process`.
     pub fn incoming_block(
         &mut self,
         block_id: BlockId,
@@ -1850,6 +1858,10 @@ impl BlockGraph {
     }
 
     // ack a single item, return a set of items to re-ack
+    ///
+    /// Checks performed:
+    /// - See `check_header` for checks on incoming headers.
+    /// - See `check_block` for checks on incoming blocks.
     fn process(
         &mut self,
         block_id: BlockId,
@@ -2248,6 +2260,24 @@ impl BlockGraph {
         Ok(result)
     }
 
+    /// Process an incoming header.
+    ///
+    /// Checks performed:
+    /// - Number of parents matches thread count.
+    /// - Slot above 0.
+    /// - Valid thread.
+    /// - Check that the block is older than the latest final one in thread.
+    /// - Check that the block slot is not too much into the future,
+    ///   as determined by the config `future_block_processing_max_periods`.
+    /// - Check if it was the creator's turn to create this block.
+    /// - TODO: check for double staking.
+    /// - Check parents are present.
+    /// - Check the topological consistency of the parents.
+    /// - Check endorsements (note: separate into func?).
+    /// - Check thread incompatibility test.
+    /// - Check grandpa incompatibility test.
+    /// - Check if the block is incompatible with a parent.
+    /// - Check if the block is incompatible with a final block.
     fn check_header(
         &self,
         block_id: &BlockId,
@@ -2602,6 +2632,11 @@ impl BlockGraph {
         })
     }
 
+    /// Process and incoming block.
+    ///
+    /// Checks performed:
+    /// - See `check_header`.
+    /// - See `check_operations`.
     fn check_block(
         &self,
         block_id: &BlockId,
@@ -2679,6 +2714,9 @@ impl BlockGraph {
     ///
     /// Returns changes done by that block to the ledger (one hashmap per thread) and rolls
     /// consensus/pos.md#block-reception-process
+    ///
+    /// Checks performed:
+    /// - Check that ops were not reused in previous blocks.
     fn check_operations(
         &self,
         block_to_check: &Block,
