@@ -17,6 +17,83 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
 
+#[tokio::test]
+#[serial]
+async fn test_genesis_block_creation() {
+    let thread_count = 2;
+    //define addresses use for the test
+    // addresses a and b both in thread 0
+    // addr 1 has 1 roll and 0 coins
+    // addr 2 is in consensus and has 0 roll and 1000 coins
+    let mut priv_1 = crypto::generate_random_private_key();
+    let mut pubkey_1 = crypto::derive_public_key(&priv_1);
+    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    while 0 != address_1.get_thread(thread_count) {
+        priv_1 = crypto::generate_random_private_key();
+        pubkey_1 = crypto::derive_public_key(&priv_1);
+        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    }
+    assert_eq!(0, address_1.get_thread(thread_count));
+
+    let mut priv_2 = crypto::generate_random_private_key();
+    let mut pubkey_2 = crypto::derive_public_key(&priv_2);
+    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    while 0 != address_2.get_thread(thread_count) {
+        priv_2 = crypto::generate_random_private_key();
+        pubkey_2 = crypto::derive_public_key(&priv_2);
+        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    }
+    assert_eq!(0, address_2.get_thread(thread_count));
+
+    let mut ledger = HashMap::new();
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("1000").unwrap()),
+    );
+    let ledger_file = generate_ledger_file(&ledger);
+    let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
+
+    //init roll cont
+    let mut roll_counts = RollCounts::default();
+    let update = RollUpdate {
+        roll_purchases: 1,
+        roll_sales: 0,
+    };
+    let mut updates = RollUpdates::default();
+    updates.apply(&address_1, &update).unwrap();
+    roll_counts.apply_updates(&updates).unwrap();
+    let staking_file = tools::generate_staking_keys_file(&staking_keys);
+
+    let roll_counts_file = tools::generate_roll_counts_file(&roll_counts);
+    let mut cfg = tools::default_consensus_config(
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_file.path(),
+    );
+
+    // Set genesis timestamp.
+    cfg.genesis_timestamp = UTime::from_str("1633301290000").unwrap();
+
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let genesis_ids = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
+
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
 // implement test of issue !424.
 #[tokio::test]
 #[serial]
