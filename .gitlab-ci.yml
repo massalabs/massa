@@ -18,6 +18,13 @@ build:
     - cargo update
     - cargo build
 
+just_test:
+  stage: build
+  image: "rustlang/rust:nightly"
+  script:
+    - cargo update
+    - cargo test
+
 test_roll:
   stage: build
   image: "rustlang/rust:nightly"
