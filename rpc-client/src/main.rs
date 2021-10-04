@@ -2,10 +2,12 @@
 
 #![feature(str_split_whitespace_as_str)]
 
+use crate::cfg::Settings;
 use crate::rpc::Client;
 use atty::Stream;
 use cmds::Command;
 use human_panic::setup_panic;
+use std::net::IpAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -17,27 +19,20 @@ mod rpc;
 #[derive(StructOpt)]
 struct Args {
     /// Port to listen on (Massa public API).
-    #[structopt(long = "public-port", env = "PUBLIC_PORT", default_value = "33034")]
-    public_port: u16,
+    #[structopt(long)]
+    public_port: Option<u16>,
     /// Port to listen on (Massa private API).
-    #[structopt(long = "private-port", env = "PRIVATE_PORT", default_value = "33035")]
-    private_port: u16,
+    #[structopt(long)]
+    private_port: Option<u16>,
     /// Address to listen on.
-    #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
-    address: String,
+    #[structopt(long)]
+    ip: Option<IpAddr>,
     /// Command that client would execute (non-interactive mode)
     #[structopt(name = "COMMAND", default_value = "help")]
     command: Command,
     /// Optional command parameter (as a JSON parsable string)
     #[structopt(name = "PARAMETERS")]
     parameters: Vec<String>,
-    /// Path of config file.
-    #[structopt(
-        short = "c",
-        long = "config",
-        parse(from_os_str),
-        default_value = "config/config.toml" // FIXME: This is not used yet ...
-    )]
     /// Path of wallet file.
     #[structopt(
         short = "w",
@@ -45,7 +40,7 @@ struct Args {
         parse(from_os_str),
         default_value = "wallet.dat"
     )]
-    config: PathBuf,
+    wallet: PathBuf, // TODO: use me with Wallet::new(args.wallet)
     #[structopt(short = "j", long = "json")]
     json: bool,
 }
@@ -59,7 +54,20 @@ fn main(args: Args) {
         .build()
         .unwrap()
         .block_on(async {
-            let client = Client::new(&args.address, args.public_port, args.private_port).await;
+            let settings = Settings::load();
+            let address = match args.ip {
+                Some(ip) => ip,
+                None => settings.default_node.ip,
+            };
+            let public_port = match args.public_port {
+                Some(public_port) => public_port,
+                None => settings.default_node.public_port,
+            };
+            let private_port = match args.private_port {
+                Some(private_port) => private_port,
+                None => settings.default_node.private_port,
+            };
+            let client = Client::new(address, public_port, private_port).await;
             if atty::is(Stream::Stdout) && args.command == Command::help {
                 repl::run(&client).await; // Interactive mode
             } else {
