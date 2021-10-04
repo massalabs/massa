@@ -124,22 +124,24 @@ mod nodeinfo {
             self.known_blocks.get(block_id)
         }
 
-        /// Insert knowledge of a block in NodeInfo
+        /// Insert knowledge of a list of blocks in NodeInfo
         ///
         /// ## Arguments
         /// - self: node info
-        /// - block_id: given block
+        /// - block_ids: list of blocks
         /// - val: if that node knows that block
         /// - instant: when that information was created
         /// - max_node_known_blocks_size : max size of the knowledge of an other node we want to keep
-        pub fn insert_known_block(
+        pub fn insert_known_blocks(
             &mut self,
-            block_id: BlockId,
+            block_ids: &[BlockId],
             val: bool,
             instant: Instant,
             max_node_known_blocks_size: usize,
         ) {
-            self.known_blocks.insert(block_id, (val, instant));
+            for block_id in block_ids {
+                self.known_blocks.insert(*block_id, (val, instant));
+            }
             while self.known_blocks.len() > max_node_known_blocks_size {
                 //remove oldest item
                 let (&h, _) = self
@@ -394,8 +396,8 @@ impl ProtocolWorker {
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
                     if node_info.remove_wanted_block(&block_id) {
-                        node_info.insert_known_block(
-                            block_id,
+                        node_info.insert_known_blocks(
+                            &vec![block_id],
                             true,
                             Instant::now(),
                             self.cfg.max_node_known_blocks_size,
@@ -473,8 +475,8 @@ impl ProtocolWorker {
                             // Send the block once to all nodes who asked for it.
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
                                 if node_info.remove_wanted_block(&block_id) {
-                                    node_info.insert_known_block(
-                                        block_id,
+                                    node_info.insert_known_blocks(
+                                        &vec![block_id],
                                         true,
                                         Instant::now(),
                                         self.cfg.max_node_known_blocks_size,
@@ -623,7 +625,7 @@ impl ProtocolWorker {
             let mut needs_ask = true;
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                //map to remove the borrow on asked_blocks. Otherwise can't call insert_known_block
+                //map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
                 let ask_time_opt = node_info.asked_blocks.get(hash).copied();
                 let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
                     let t = ask_time
@@ -663,8 +665,8 @@ impl ProtocolWorker {
                     (true, Some(timeout_at), Some((true, info_time))) => {
                         if info_time < &timeout_at {
                             // info less recent than timeout: mark as not having it
-                            node_info.insert_known_block(
-                                *hash,
+                            node_info.insert_known_blocks(
+                                &vec![*hash],
                                 false,
                                 timeout_at,
                                 self.cfg.max_node_known_blocks_size,
@@ -679,8 +681,8 @@ impl ProtocolWorker {
                     (true, Some(timeout_at), Some((false, info_time))) => {
                         if info_time < &timeout_at {
                             // info less recent than timeout: update info time
-                            node_info.insert_known_block(
-                                *hash,
+                            node_info.insert_known_blocks(
+                                &vec![*hash],
                                 false,
                                 timeout_at,
                                 self.cfg.max_node_known_blocks_size,
@@ -690,8 +692,8 @@ impl ProtocolWorker {
                     }
                     // timed out but don't know if has it: mark as not having it
                     (true, Some(timeout_at), None) => {
-                        node_info.insert_known_block(
-                            *hash,
+                        node_info.insert_known_blocks(
+                            &vec![*hash],
                             false,
                             timeout_at,
                             self.cfg.max_node_known_blocks_size,
@@ -801,9 +803,23 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    /// Check a header's signature, and if valid note the node knows the block.
-    /// boolean whether the header is new
-    /// Does not ban if the header is invalid
+    /// Perform checks on a header,
+    /// and if valid update the node's view of the world.
+    ///
+    /// Returns a boolean representing whether the header is new.
+    ///
+    /// Does not ban the source node if the header is invalid.
+    ///
+    /// Checks performed on Header:
+    /// - Not genesis.
+    /// - Can compute a BlockId.
+    /// - Valid signature.
+    /// - Absence of duplicate endorsements.
+    ///
+    /// Checks performed on endorsements:
+    /// - Unique indices.
+    /// - Slot matches that of the block.
+    /// - Block matches that of the block.
     async fn note_header_from_node(
         &mut self,
         header: &BlockHeader,
@@ -839,8 +855,14 @@ impl ProtocolWorker {
         let now = Instant::now();
         if let Some(e_ids) = self.checked_headers.get_mut(&block_id) {
             if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-                node_info.insert_known_block(
-                    block_id,
+                node_info.insert_known_blocks(
+                    &header.content.parents,
+                    true,
+                    now,
+                    self.cfg.max_node_known_blocks_size,
+                );
+                node_info.insert_known_blocks(
+                    &vec![block_id],
                     true,
                     now,
                     self.cfg.max_node_known_blocks_size,
@@ -916,7 +938,18 @@ impl ProtocolWorker {
         }
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_block(block_id, true, now, self.cfg.max_node_known_blocks_size);
+            node_info.insert_known_blocks(
+                &header.content.parents,
+                true,
+                now,
+                self.cfg.max_node_known_blocks_size,
+            );
+            node_info.insert_known_blocks(
+                &vec![block_id],
+                true,
+                now,
+                self.cfg.max_node_known_blocks_size,
+            );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, true)));
         }
@@ -945,7 +978,17 @@ impl ProtocolWorker {
     }
 
     /// Check a header's signature, and if valid note the node knows the block.
-    /// Does not ban if the block is invalid
+    /// Does not ban if the block is invalid.
+    ///
+    /// Checks performed:
+    /// - Check the header(see note_header_from_node).
+    /// - Check operations(see note_operations_from_node).
+    /// - Check operations:
+    ///     - Absense of duplicates.
+    ///     - Validity period includes the slot of the block.
+    ///     - Address matches that of the block.
+    ///     - Thread matches that of the block.
+    /// - Check root hash.
     async fn note_block_from_node(
         &mut self,
         block: &Block,
@@ -1025,12 +1068,17 @@ impl ProtocolWorker {
         Ok(Some((block_id, received_operations_ids)))
     }
 
-    /// Check operations
+    /// Checks operations, caching knowledge of valid ones.
+    ///
     /// Does not ban if the operation is invalid.
+    ///
     /// Returns :
     /// - a list of seen operation ids, for use in checking the root hash of the block.
     /// - a map of seen operations with indices and validity periods to avoid recomputing them later
     /// - a boolean indicating whether duplicate operations were noted.
+    ///
+    /// Checks performed:
+    /// - Valid signature
     async fn note_operations_from_node(
         &mut self,
         operations: Vec<Operation>,
@@ -1096,7 +1144,13 @@ impl ProtocolWorker {
 
     /// Note endorsements coming from a given node,
     /// and propagate them when they were received outside of a header.
+    ///
+    /// Caches knowledge of valid ones.
+    ///
     /// Does not ban if the endorsement is invalid
+    ///
+    /// Checks performed:
+    /// - Valid signature.
     async fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<Endorsement>,
@@ -1242,8 +1296,8 @@ impl ProtocolWorker {
             NetworkEvent::BlockNotFound { node, block_id } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.block_not_found", { "node": node, "block_id": block_id});
                 if let Some(info) = self.active_nodes.get_mut(&node) {
-                    info.insert_known_block(
-                        block_id,
+                    info.insert_known_blocks(
+                        &vec![block_id],
                         false,
                         Instant::now(),
                         self.cfg.max_node_known_blocks_size,
@@ -1295,27 +1349,37 @@ mod tests {
         let instant = Instant::now();
 
         let hash_test = get_dummy_block_id("test");
-        nodeinfo.insert_known_block(hash_test, true, instant, max_node_known_blocks_size);
+        nodeinfo.insert_known_blocks(&vec![hash_test], true, instant, max_node_known_blocks_size);
         let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
         assert!(val);
         assert_eq!(instant, *t);
-        nodeinfo.insert_known_block(hash_test, false, instant, max_node_known_blocks_size);
+        nodeinfo.insert_known_blocks(&vec![hash_test], false, instant, max_node_known_blocks_size);
         let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
         assert!(!val);
         assert_eq!(instant, *t);
 
         for index in 0..9 {
             let hash = get_dummy_block_id(&index.to_string());
-            nodeinfo.insert_known_block(hash, true, Instant::now(), max_node_known_blocks_size);
+            nodeinfo.insert_known_blocks(
+                &vec![hash],
+                true,
+                Instant::now(),
+                max_node_known_blocks_size,
+            );
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }
 
         //re insert the oldest to update its timestamp.
-        nodeinfo.insert_known_block(hash_test, false, Instant::now(), max_node_known_blocks_size);
+        nodeinfo.insert_known_blocks(
+            &vec![hash_test],
+            false,
+            Instant::now(),
+            max_node_known_blocks_size,
+        );
 
         //add hash that triggers container pruning
-        nodeinfo.insert_known_block(
-            get_dummy_block_id("test2"),
+        nodeinfo.insert_known_blocks(
+            &vec![get_dummy_block_id("test2")],
             true,
             Instant::now(),
             max_node_known_blocks_size,

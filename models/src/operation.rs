@@ -98,6 +98,8 @@ pub enum OperationType {
     },
 }
 
+/// Checks performed:
+/// - Validity of the amount.
 impl SerializeCompact for OperationType {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -134,6 +136,11 @@ impl SerializeCompact for OperationType {
     }
 }
 
+/// Checks performed:
+/// - Validity of the type id.
+/// - Validity of the address(for transactions).
+/// - Validity of the amount(for transactions).
+/// - Validity of the roll count(for roll buy/sell).
 impl DeserializeCompact for OperationType {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0;
@@ -180,6 +187,9 @@ impl DeserializeCompact for OperationType {
     }
 }
 
+/// Checks performed:
+/// - Validity of the fee.
+/// - Validity of the operation type.
 impl SerializeCompact for OperationContent {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -200,6 +210,11 @@ impl SerializeCompact for OperationContent {
     }
 }
 
+/// Checks performed:
+/// - Validity of the fee.
+/// - Validity of the expire period.
+/// - Validity of the sender public key.
+/// - Validity of the operation type.
 impl DeserializeCompact for OperationContent {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
@@ -298,6 +313,8 @@ impl Operation {
     }
 }
 
+/// Checks performed:
+/// - Content.
 impl SerializeCompact for Operation {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -312,6 +329,9 @@ impl SerializeCompact for Operation {
     }
 }
 
+/// Checks performed:
+/// - Content.
+/// - Signature.
 impl DeserializeCompact for Operation {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0;

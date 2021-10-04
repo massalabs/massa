@@ -223,6 +223,7 @@ impl From<ExportBlockStatus> for WrappedBlockStatus {
             ExportBlockStatus::Active(block) => WrappedBlockStatus::Active(block.into()),
             ExportBlockStatus::Discarded(reason) => WrappedBlockStatus::Discarded(reason),
             ExportBlockStatus::Stored(block) => WrappedBlockStatus::Stored(block.into()),
+            ExportBlockStatus::Final(_) => todo!(), // todo this should disappear with old client
         }
     }
 }

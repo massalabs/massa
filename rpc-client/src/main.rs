@@ -1,8 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::rpc::RpcClient;
+#![feature(str_split_whitespace_as_str)]
+
+use crate::rpc::Client;
 use atty::Stream;
 use cmds::Command;
+use human_panic::setup_panic;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -23,7 +26,7 @@ struct Args {
     #[structopt(short = "a", long = "address", default_value = "127.0.0.1")]
     address: String,
     /// Command that client would execute (non-interactive mode)
-    #[structopt(name = "COMMAND", default_value = "Help")]
+    #[structopt(name = "COMMAND", default_value = "help")]
     command: Command,
     /// Optional command parameter (as a JSON parsable string)
     #[structopt(name = "PARAMETERS")]
@@ -43,33 +46,24 @@ struct Args {
         default_value = "wallet.dat"
     )]
     config: PathBuf,
-    // TODO: do we want to add more CLI args?!
-    // --json
+    #[structopt(short = "j", long = "json")]
+    json: bool,
 }
 
 #[paw::main]
 fn main(args: Args) {
+    setup_panic!();
     // `#[tokio::main]` macro expanded!
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
         .block_on(async {
-            // TODO: We should handle 2 different ports
-            let url = format!("http://{}:{}", args.address, args.private_port);
-            let client = RpcClient::from_url(&url).await;
-            // TODO: (de)serialize input/output from/to JSON with serde should be less verbose
-            if atty::is(Stream::Stdout) {
-                //////////////////////
-                // Interactive mode //
-                //////////////////////
-                repl::run(&client, &args.parameters).await;
+            let client = Client::new(&args.address, args.public_port, args.private_port).await;
+            if atty::is(Stream::Stdout) && args.command == Command::help {
+                repl::run(&client).await; // Interactive mode
             } else {
-                //////////////////////////
-                // Non-Interactive mode //
-                //////////////////////////
-                let ret = args.command.run(&client, &args.parameters).await;
-                println!("{}", ret);
+                args.command.run(&client, &args.parameters, args.json).await; // Non-Interactive mode
             }
         });
 }

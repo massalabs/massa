@@ -11,6 +11,7 @@ bs58 = { version = "0.4", features = ["check"] }
 chrono = "0.4"
 clap = "2.33"
 config = { version = "0.11" }
+displaydoc = "0.2"
 log = { version = "0.4" }
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 rustyline = "7.1.0"
