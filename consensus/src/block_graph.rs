@@ -19,9 +19,9 @@ use models::ledger::LedgerChange;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHashMap,
     BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt,
-    ModelsError, Operation, OperationHashMap, OperationHashSet, OperationSearchResult,
-    OperationSearchResultBlockStatus, OperationSearchResultStatus, SerializeCompact,
-    SerializeVarInt, Slot, ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES,
+    EndorsementId, ModelsError, Operation, OperationHashMap, OperationHashSet,
+    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
+    SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES,
 };
 
 use crate::error::ConsensusError;
@@ -35,7 +35,7 @@ use super::config::ConsensusConfig;
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
     Header(BlockHeader),
-    Block(Block, OperationHashMap<(usize, u64)>), // (index, validity end period)
+    Block(Block, OperationHashMap<(usize, u64)>, Vec<EndorsementId>), // (index, validity end period)
 }
 
 impl HeaderOrBlock {
@@ -43,7 +43,7 @@ impl HeaderOrBlock {
     pub fn get_slot(&self) -> Slot {
         match self {
             HeaderOrBlock::Header(header) => header.content.slot,
-            HeaderOrBlock::Block(block, _) => block.header.content.slot,
+            HeaderOrBlock::Block(block, ..) => block.header.content.slot,
         }
     }
 }
@@ -73,6 +73,7 @@ pub struct ActiveBlock {
     pub is_final: bool,
     pub block_ledger_changes: LedgerChanges,
     pub operation_set: OperationHashMap<(usize, u64)>, // index in the block, end of validity period
+    pub endorsement_ids: Vec<EndorsementId>,           // IDs of the endorsements
     pub addresses_to_operations: AddressHashMap<OperationHashSet>,
     pub roll_updates: RollUpdates, // Address -> RollUpdate
     pub production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
@@ -125,6 +126,15 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             })
             .collect::<Result<_, _>>()?;
 
+        let endorsement_ids = block
+            .block
+            .header
+            .content
+            .endorsements
+            .iter()
+            .map(|endo| endo.compute_endorsement_id())
+            .collect::<Result<_, _>>()?;
+
         let addresses_to_operations = block.block.involved_addresses()?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&block.block.header.content.creator)?,
@@ -136,6 +146,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             is_final: block.is_final,
             block_ledger_changes: block.block_ledger_changes,
             operation_set,
+            endorsement_ids,
             addresses_to_operations,
             roll_updates: block.roll_updates,
             production_events: block.production_events,
@@ -819,7 +830,7 @@ pub struct BlockGraph {
     best_parents: Vec<(BlockId, u64)>,
     gi_head: BlockHashMap<BlockHashSet>,
     max_cliques: Vec<Clique>,
-    to_propagate: BlockHashMap<Block>,
+    to_propagate: BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)>,
     attack_attempts: Vec<BlockId>,
     new_final_blocks: BlockHashSet,
     new_stale_blocks: BlockHashMap<Slot>,
@@ -936,10 +947,8 @@ impl BlockGraph {
                     descendants: BlockHashSet::default(),
                     is_final: true,
                     block_ledger_changes: LedgerChanges::default(), // no changes in genesis blocks
-                    operation_set: OperationHashMap::with_capacity_and_hasher(
-                        0,
-                        BuildHHasher::default(),
-                    ),
+                    operation_set: Default::default(),
+                    endorsement_ids: Default::default(),
                     addresses_to_operations: AddressHashMap::with_capacity_and_hasher(
                         0,
                         BuildHHasher::default(),
@@ -1782,6 +1791,7 @@ impl BlockGraph {
         block_id: BlockId,
         block: Block,
         operation_set: OperationHashMap<(usize, u64)>,
+        endorsement_ids: Vec<EndorsementId>,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
@@ -1799,6 +1809,7 @@ impl BlockGraph {
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block(
                     block,
                     operation_set,
+                    endorsement_ids,
                 )));
                 self.incoming_index.insert(block_id);
             }
@@ -1811,7 +1822,7 @@ impl BlockGraph {
                 }
                 BlockStatus::WaitingForSlot(header_or_block) => {
                     // promote to full block
-                    *header_or_block = HeaderOrBlock::Block(block, operation_set);
+                    *header_or_block = HeaderOrBlock::Block(block, operation_set, endorsement_ids);
                 }
                 BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -1823,7 +1834,7 @@ impl BlockGraph {
                         // a dependency was satisfied: process
                         to_ack.insert((block.header.content.slot, block_id));
                     }
-                    *header_or_block = HeaderOrBlock::Block(block, operation_set);
+                    *header_or_block = HeaderOrBlock::Block(block, operation_set, endorsement_ids);
                     // promote in dependencies
                     self.promote_dep_tree(block_id)?;
                 }
@@ -1881,6 +1892,7 @@ impl BlockGraph {
             valid_block_inherited_incomp_count,
             valid_block_changes,
             valid_block_operation_set,
+            valid_block_endorsement_ids,
             valid_block_roll_updates,
             valid_block_production_events,
         ) = match self.block_statuses.get(&block_id) {
@@ -2003,16 +2015,17 @@ impl BlockGraph {
             }
 
             // incoming block
-            Some(BlockStatus::Incoming(HeaderOrBlock::Block(_, _))) => {
+            Some(BlockStatus::Incoming(HeaderOrBlock::Block(..))) => {
                 massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
-                let (block, operation_set) = if let Some(BlockStatus::Incoming(
-                    HeaderOrBlock::Block(block, operation_set),
-                )) = self.block_statuses.remove(&block_id)
+                let (block, operation_set, endorsement_ids) = if let Some(BlockStatus::Incoming(
+                    HeaderOrBlock::Block(block, operation_set, endorsement_ids),
+                )) =
+                    self.block_statuses.remove(&block_id)
                 {
                     self.incoming_index.remove(&block_id);
-                    (block, operation_set)
+                    (block, operation_set, endorsement_ids)
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
                         "inconsistency inside block statuses removing incoming block {:?}",
@@ -2041,6 +2054,7 @@ impl BlockGraph {
                             inherited_incompatibilities_count,
                             block_ledger_changes,
                             operation_set,
+                            endorsement_ids,
                             roll_updates,
                             production_events,
                         )
@@ -2050,7 +2064,11 @@ impl BlockGraph {
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::WaitingForDependencies {
-                                header_or_block: HeaderOrBlock::Block(block, operation_set),
+                                header_or_block: HeaderOrBlock::Block(
+                                    block,
+                                    operation_set,
+                                    endorsement_ids,
+                                ),
                                 unsatisfied_dependencies: dependencies,
                                 sequence_number: BlockGraph::new_sequence_number(
                                     &mut self.sequence_counter,
@@ -2069,7 +2087,11 @@ impl BlockGraph {
                         // set as waiting for slot
                         self.block_statuses.insert(
                             block_id,
-                            BlockStatus::WaitingForSlot(HeaderOrBlock::Block(block, operation_set)),
+                            BlockStatus::WaitingForSlot(HeaderOrBlock::Block(
+                                block,
+                                operation_set,
+                                endorsement_ids,
+                            )),
                         );
                         self.waiting_for_slot_index.insert(block_id);
 
@@ -2181,6 +2203,7 @@ impl BlockGraph {
             valid_block_inherited_incomp_count,
             valid_block_changes,
             valid_block_operation_set,
+            valid_block_endorsement_ids,
             valid_block_addresses_to_operations,
             valid_block_roll_updates,
             valid_block_production_events,
@@ -2191,7 +2214,14 @@ impl BlockGraph {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
-            self.to_propagate.insert(block_id, active.block.clone());
+            self.to_propagate.insert(
+                block_id,
+                (
+                    active.block.clone(),
+                    active.operation_set.keys().copied().collect(),
+                    active.endorsement_ids.clone(),
+                ),
+            );
             for itm_block_id in self.waiting_for_dependencies_index.iter() {
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -3011,6 +3041,7 @@ impl BlockGraph {
         inherited_incomp_count: usize,
         block_ledger_changes: LedgerChanges,
         operation_set: OperationHashMap<(usize, u64)>,
+        endorsement_ids: Vec<EndorsementId>,
         addresses_to_operations: AddressHashMap<OperationHashSet>,
         roll_updates: RollUpdates,
         production_events: Vec<(u64, Address, bool)>,
@@ -3031,6 +3062,7 @@ impl BlockGraph {
                 is_final: false,
                 block_ledger_changes,
                 operation_set,
+                endorsement_ids,
                 addresses_to_operations,
                 roll_updates,
                 production_events,
@@ -3824,7 +3856,7 @@ impl BlockGraph {
                 self.waiting_for_dependencies_index.remove(&block_id);
                 let header = match header_or_block {
                     HeaderOrBlock::Header(h) => h,
-                    HeaderOrBlock::Block(b, _) => b.header,
+                    HeaderOrBlock::Block(b, ..) => b.header,
                 };
                 massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
 
@@ -3939,7 +3971,7 @@ impl BlockGraph {
             {
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
                     if let Some(BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Block(_, _),
+                        header_or_block: HeaderOrBlock::Block(..),
                         ..
                     }) = self.block_statuses.get(unsatisfied_h)
                     {
@@ -3968,7 +4000,9 @@ impl BlockGraph {
 
     // Get the headers to be propagated.
     // Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_blocks_to_propagate(&mut self) -> BlockHashMap<Block> {
+    pub fn get_blocks_to_propagate(
+        &mut self,
+    ) -> BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)> {
         mem::take(&mut self.to_propagate)
     }
 

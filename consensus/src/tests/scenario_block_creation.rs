@@ -8,7 +8,7 @@ use crate::{
 };
 use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
-use models::ledger::LedgerData;
+use models::{ledger::LedgerData, EndorsementId};
 use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use models::{Endorsement, SerializeCompact};
 use pool::PoolCommand;
@@ -77,8 +77,8 @@ async fn test_genesis_block_creation() {
     tools::consensus_without_pool_test(
         cfg.clone(),
         None,
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let genesis_ids = consensus_command_sender
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let _genesis_ids = consensus_command_sender
                 .get_block_graph_status()
                 .await
                 .expect("could not get block graph status")
@@ -401,7 +401,9 @@ async fn test_order_of_inclusion() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(300.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock {
+                        block_id, block, ..
+                    } => Some((block_id, block)),
                     _ => None,
                 })
                 .await
@@ -529,9 +531,9 @@ async fn test_block_filling() {
                 // wait for block
                 let (block_id, block) = protocol_controller
                     .wait_command(500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock { block_id, block } => {
-                            Some((block_id, block))
-                        }
+                        ProtocolCommand::IntegratedBlock {
+                            block_id, block, ..
+                        } => Some((block_id, block)),
                         _ => None,
                     })
                     .await
@@ -567,7 +569,7 @@ async fn test_block_filling() {
                     } => {
                         assert_eq!(Slot::new(1, 0), target_slot);
                         assert_eq!(parent, prev_blocks[0]);
-                        let mut eds: Vec<Endorsement> = Vec::new();
+                        let mut eds: Vec<(EndorsementId, Endorsement)> = Vec::new();
                         for (index, creator) in creators.iter().enumerate() {
                             let ed = if *creator == address_a {
                                 create_endorsement(priv_a, target_slot, parent, index as u32)
@@ -576,7 +578,7 @@ async fn test_block_filling() {
                             } else {
                                 panic!("invalid endorser choice");
                             };
-                            eds.push(ed);
+                            eds.push((ed.compute_endorsement_id().unwrap(), ed));
                         }
                         response_tx.send(eds.clone()).unwrap();
                         Some(eds)
@@ -625,7 +627,9 @@ async fn test_block_filling() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(500.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock {
+                        block_id, block, ..
+                    } => Some((block_id, block)),
                     _ => None,
                 })
                 .await
@@ -636,11 +640,11 @@ async fn test_block_filling() {
 
             // assert it includes the sent endorsements
             assert_eq!(block.header.content.endorsements.len(), eds.len());
-            for (e_found, e_expected) in block.header.content.endorsements.iter().zip(eds.iter()) {
-                assert_eq!(
-                    e_found.compute_endorsement_id().unwrap(),
-                    e_expected.compute_endorsement_id().unwrap()
-                );
+            for (e_found, (e_expected_id, e_expected)) in
+                block.header.content.endorsements.iter().zip(eds.iter())
+            {
+                assert_eq!(e_found.compute_endorsement_id().unwrap(), *e_expected_id);
+                assert_eq!(e_expected.compute_endorsement_id().unwrap(), *e_expected_id);
             }
 
             // create empty block
@@ -651,7 +655,7 @@ async fn test_block_filling() {
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
                     operation_merkle_root: Hash::hash(&Vec::new()[..]),
-                    endorsements: eds.clone(),
+                    endorsements: eds.iter().map(|(_e_id, endo)| endo.clone()).collect(),
                 },
             )
             .unwrap();

@@ -8,7 +8,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, Operation, OperationHashMap,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use tokio::{
@@ -162,7 +162,7 @@ impl PoolCommandSender {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<Endorsement>, PoolError> {
+    ) -> Result<Vec<(EndorsementId, Endorsement)>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements", {
             "target_slot": target_slot
         });

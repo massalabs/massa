@@ -303,10 +303,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 .await
                 .unwrap();
             assert_eq!(res.len(), 1);
-            assert_eq!(
-                res[0].compute_endorsement_id().unwrap(),
-                endorsement.compute_endorsement_id().unwrap()
-            );
+            assert_eq!(res[0].0, endorsement.compute_endorsement_id().unwrap());
             (protocol_controller, pool_command_sender, pool_manager)
         },
     )
