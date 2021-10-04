@@ -18,6 +18,20 @@ build:
     - cargo update
     - cargo build
 
+just_test:
+  stage: build
+  image: "rustlang/rust:nightly"
+  script:
+    - cargo update
+    - cargo test
+
+test_roll:
+  stage: build
+  image: "rustlang/rust:nightly"
+  script:
+    - cargo update
+    - cargo test --package consensus --lib -- tests::scenario_roll::test_roll --exact --nocapture
+
 # Use tarpaulin to test the project
 test:
   stage: build
