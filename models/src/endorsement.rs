@@ -104,6 +104,8 @@ impl Endorsement {
     }
 }
 
+/// Checks performed:
+/// - Validity of the content.
 impl SerializeCompact for Endorsement {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -118,6 +120,9 @@ impl SerializeCompact for Endorsement {
     }
 }
 
+/// Checks performed:
+/// - Validity of the content.
+/// - Validity of the signature.
 impl DeserializeCompact for Endorsement {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0;
@@ -148,6 +153,8 @@ pub struct EndorsementContent {
     pub endorsed_block: BlockId,
 }
 
+/// Checks performed:
+/// - Validity of the slot.
 impl SerializeCompact for EndorsementContent {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -168,6 +175,11 @@ impl SerializeCompact for EndorsementContent {
     }
 }
 
+/// Checks performed:
+/// - Validity of the sender public key.
+/// - Validity of the slot.
+/// - Validity of the endorsement index.
+/// - Validity of the endorsed block id.
 impl DeserializeCompact for EndorsementContent {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let max_block_endorsments =

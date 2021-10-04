@@ -66,6 +66,8 @@ enum MessageTypeId {
     Endorsements = 9,
 }
 
+/// For more details on how incoming objects are checked for validity at this stage,
+/// see their implementation of `to_bytes_compact` in `models`.
 impl SerializeCompact for Message {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -137,6 +139,8 @@ impl SerializeCompact for Message {
     }
 }
 
+/// For more details on how incoming objects are checked for validity at this stage,
+/// see their implementation of `from_bytes_compact` in `models`.
 impl DeserializeCompact for Message {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;

@@ -142,6 +142,8 @@ impl SerializeCompact for Slot {
     /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
     /// assert_eq!(slot, deser);
     /// ```
+    ///
+    /// Checks performed: none.
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::with_capacity(9);
         res.extend(self.period.to_varint_bytes());
@@ -181,6 +183,11 @@ impl DeserializeCompact for Slot {
     /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
     /// assert_eq!(slot, deser);
     /// ```
+    ///
+    /// Checks performed:
+    /// - Valid period and delta.
+    /// - Valid thread.
+    /// - Valid thread number.
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let parent_count = with_serialization_context(|context| context.parent_count);
         let mut cursor = 0usize;
