@@ -358,7 +358,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             // 4. Simulate consensus sending block.
             let mut results = BlockHashMap::default();
-            results.insert(expected_hash.clone(), Some(block));
+            results.insert(expected_hash.clone(), Some((block, None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
                 .await

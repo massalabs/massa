@@ -2,7 +2,8 @@
 
 use crate::{PoolConfig, PoolError};
 use models::{
-    Address, BlockId, Endorsement, EndorsementContent, EndorsementHashMap, EndorsementHashSet, Slot,
+    Address, BlockId, Endorsement, EndorsementContent, EndorsementHashMap, EndorsementHashSet,
+    EndorsementId, Slot,
 };
 
 pub struct EndorsementPool {
@@ -41,11 +42,11 @@ impl EndorsementPool {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<Endorsement>, PoolError> {
+    ) -> Result<Vec<(EndorsementId, Endorsement)>, PoolError> {
         let mut candidates = self
             .endorsements
             .iter()
-            .filter_map(|(_, endorsement)| {
+            .filter_map(|(endo_id, endorsement)| {
                 let creator = match Address::from_public_key(&endorsement.content.sender_public_key)
                 {
                     Ok(addr) => addr,
@@ -55,14 +56,14 @@ impl EndorsementPool {
                     && endorsement.content.slot == target_slot
                     && creators.get(endorsement.content.index as usize) == Some(&creator)
                 {
-                    Some(Ok(endorsement.clone()))
+                    Some(Ok((*endo_id, endorsement.clone())))
                 } else {
                     None
                 }
             })
-            .collect::<Result<Vec<Endorsement>, PoolError>>()?;
-        candidates.sort_unstable_by_key(|endo| endo.content.index);
-        candidates.dedup_by_key(|e| e.content.index);
+            .collect::<Result<Vec<(EndorsementId, Endorsement)>, PoolError>>()?;
+        candidates.sort_unstable_by_key(|(_e_id, endo)| endo.content.index);
+        candidates.dedup_by_key(|(_e_id, endo)| endo.content.index);
         Ok(candidates)
     }
 

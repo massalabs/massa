@@ -54,6 +54,7 @@ impl MockProtocolController {
                 block_id,
                 block,
                 operation_set: Default::default(),
+                endorsement_ids: Default::default(),
             })
             .await
             .expect("could not send protocol event");
