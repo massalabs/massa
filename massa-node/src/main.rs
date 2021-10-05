@@ -553,7 +553,7 @@ async fn on_api_event(
         ApiEvent::Unban(ip) => {
             massa_trace!("massa-node.main.run.select.api_event.unban", {});
             network_command_sender
-                .unban(ip)
+                .unban(vec![ip])
                 .await
                 .expect("unban failed in api_event_receiver.wait_event")
         }
