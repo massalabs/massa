@@ -68,6 +68,18 @@ pub enum NetworkCommand {
         msg: Vec<u8>,
         response_tx: oneshot::Sender<(PublicKey, Signature)>,
     },
+    GetStats {
+        response_tx: oneshot::Sender<NetworkStats>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NetworkStats {
+    pub in_connection_count: u64,
+    pub out_connection_count: u64,
+    pub known_peer_count: u64,
+    pub banned_peer_count: u64,
+    pub active_node_count: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -849,6 +861,27 @@ impl NetworkWorker {
                 })?;
             }
             NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
+            NetworkCommand::GetStats { response_tx } => {
+                let res = NetworkStats {
+                    in_connection_count: self.peer_info_db.active_in_nonbootstrap_connections
+                        as u64, // todo add bootstrap connections
+                    out_connection_count: self.peer_info_db.active_out_nonbootstrap_connections
+                        as u64, // todo add bootstrap connections
+                    known_peer_count: self.peer_info_db.peers.len() as u64,
+                    banned_peer_count: self
+                        .peer_info_db
+                        .peers
+                        .iter()
+                        .filter(|(_, p)| p.banned)
+                        .fold(0, |acc, _| acc + 1),
+                    active_node_count: self.active_nodes.len() as u64,
+                };
+                response_tx.send(res).map_err(|_| {
+                    CommunicationError::ChannelError(
+                        "could not send NodeSignMessage response upstream".into(),
+                    )
+                })?;
+            }
         }
         Ok(())
     }
