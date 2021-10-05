@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use communication::network::NetworkStats;
 use models::node::NodeId;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
@@ -23,15 +24,6 @@ pub struct TimeStats {
 pub struct PoolStats {
     pub operation_count: u64,
     pub endorsement_count: u64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct NetworkStats {
-    pub in_connection_count: u64,
-    pub out_connection_count: u64,
-    pub known_peer_count: u64,
-    pub banned_peer_count: u64,
-    pub active_node_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
