@@ -440,15 +440,23 @@ async fn on_api_event(
                 "massa-node.main.run.select.api_event.get_operations_involving_address",
                 {}
             );
-            if response_tx
-                .send(
-                    consensus_command_sender
-                        .get_operations_involving_address(address)
-                        .await
-                        .expect("could not get recent operations"),
-                )
-                .is_err()
-            {
+            let mut res: OperationHashMap<_> = api_pool_command_sender
+                .get_operations_involving_address(address)
+                .await
+                .expect("could not get recent operations from pool");
+
+            consensus_command_sender
+                .get_operations_involving_address(address)
+                .await
+                .expect("could not retrieve recent operations from consensus")
+                .into_iter()
+                .for_each(|(op_id, search_new)| {
+                    res.entry(op_id)
+                        .and_modify(|search_old| search_old.extend(&search_new))
+                        .or_insert(search_new);
+                });
+
+            if response_tx.send(res).is_err() {
                 warn!("could not send get_operations_involving_address response in api_event_receiver.wait_event");
             }
         }

@@ -839,38 +839,14 @@ impl ConsensusWorker {
                     { "address": address }
                 );
 
-                let mut res: OperationHashMap<_> = self
-                    .pool_command_sender
-                    .get_operations_involving_address(address)
-                    .await?;
-
-                self.block_db
-                    .get_operations_involving_address(&address)?
-                    .into_iter()
-                    .for_each(|(op_id, search_new)| {
-                        res.entry(op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
-
-                if let Some(access) = &self.opt_storage_command_sender {
-                    access
-                        .get_operations_involving_address(&address)
-                        .await?
-                        .into_iter()
-                        .for_each(|(op_id, search_new)| {
-                            res.entry(op_id)
-                                .and_modify(|search_old| search_old.extend(&search_new))
-                                .or_insert(search_new);
-                        })
-                }
-
-                response_tx.send(res).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetRecentOPerations response: {:?}",
-                        err
-                    ))
-                })
+                response_tx
+                    .send(self.block_db.get_operations_involving_address(&address)?)
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetRecentOPerations response: {:?}",
+                            err
+                        ))
+                    })
             }
             ConsensusCommand::GetOperations {
                 operation_ids,
