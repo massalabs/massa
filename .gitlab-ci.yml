@@ -1,13 +1,14 @@
 stages:
   - build
 
-# Use rustfmt to check formatting
 sanity:
   stage: build
-  image: "demilletech/rust"
+  image: "rustlang/rust:nightly"
   script:
     - cargo update
+    - rustup component add rustfmt # TODO: clippy
     - cargo fmt -- --check
+#   - cargo clippy
 
 build:
   stage: build
