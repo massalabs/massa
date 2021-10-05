@@ -93,7 +93,12 @@ impl Wallet {
 
     /// Save the wallet in json format in a file
     fn save(&self) -> Result<(), WalletError> {
-        std::fs::write(&self.wallet_path, serde_json::to_string_pretty(&self.keys)?)?;
+        std::fs::write(
+            &self.wallet_path,
+            serde_json::to_string_pretty(
+                &self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>(),
+            )?,
+        )?;
         Ok(())
     }
 
