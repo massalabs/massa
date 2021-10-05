@@ -72,7 +72,7 @@ impl RpcClient {
 
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
-    pub(crate) async fn node_sign_message(
+    pub(crate) async fn _node_sign_message(
         &self,
         message: Vec<u8>,
     ) -> RpcResult<(PublicKey, Signature)> {
@@ -130,14 +130,14 @@ impl RpcClient {
         self.0.call_method("get_status", "NodeStatus", ()).await
     }
 
-    pub(crate) async fn get_cliques(&self) -> RpcResult<Vec<Clique>> {
+    pub(crate) async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
         self.0.call_method("get_cliques", "Vec<Clique>", ()).await
     }
 
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub(crate) async fn get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
+    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
         self.0
             .call_method("get_stakers", "AddressHashMap<RollsInfo>", ())
             .await
@@ -169,7 +169,7 @@ impl RpcClient {
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from <time_start> (included) and to <time_end> (excluded) millisecond timestamp
-    pub(crate) async fn get_graph_interval(
+    pub(crate) async fn _get_graph_interval(
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
@@ -195,7 +195,7 @@ impl RpcClient {
     // User (interaction with the node)
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    pub(crate) async fn send_operations(
+    pub(crate) async fn _send_operations(
         &self,
         operations: Vec<Operation>,
     ) -> RpcResult<Vec<OperationId>> {

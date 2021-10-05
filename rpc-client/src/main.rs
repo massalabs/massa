@@ -40,7 +40,7 @@ struct Args {
         parse(from_os_str),
         default_value = "wallet.dat"
     )]
-    wallet: PathBuf, // TODO: use me with Wallet::new(args.wallet)
+    _wallet: PathBuf, // TODO: use me with Wallet::new(args.wallet)
     #[structopt(short = "j", long = "json")]
     json: bool,
 }
