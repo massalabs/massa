@@ -1,3 +1,13 @@
+cache: &global_cache
+  key:
+    files:
+      - Cargo.lock
+  paths:
+    - ~/.cargo/registry/index
+    - ~/.cargo/registry/cache
+    - ~/.cargo/git
+    - ./target
+
 stages:
   - sanity
   - build
@@ -8,6 +18,8 @@ stages:
 sanity:
   stage: sanity
   image: "rustlang/rust:nightly"
+  cache:
+    <<: *global_cache
   script:
     - rustup component add rustfmt # TODO: clippy
     - cargo fmt -- --check
@@ -16,24 +28,32 @@ sanity:
 build:
   stage: build
   image: "rustlang/rust:nightly"
+  cache:
+    <<: *global_cache
   script:
     - RUSTFLAGS="-D warnings" cargo build
 
 test:
   stage: test
   image: "rustlang/rust:nightly"
+  cache:
+    <<: *global_cache
   script:
     - cargo test --lib
 
 doctest:
   stage: test
   image: "rustlang/rust:nightly"
+  cache:
+    <<: *global_cache
   script:
     - cargo test --doc
 
 coverage:
   stage: coverage
   image: "rustlang/rust:nightly"
+  cache:
+    <<: *global_cache
   script:
     - cargo install cargo-tarpaulin -f
     - cargo tarpaulin --out Xml
