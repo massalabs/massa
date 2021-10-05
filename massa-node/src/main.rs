@@ -21,7 +21,11 @@ use consensus::{
 use human_panic::setup_panic;
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
-use models::{init_serialization_context, Address, SerializationContext};
+use models::OperationHashMap;
+use models::{
+    init_serialization_context, Address, BlockHashMap, OperationSearchResult,
+    OperationSearchResultStatus, SerializationContext,
+};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use storage::{start_storage, StorageManager};
 use time::UTime;
@@ -454,15 +458,35 @@ async fn on_api_event(
             massa_trace!("massa-node.main.run.select.api_event.get_operations", {
                 "operation_ids": operation_ids
             });
-            if response_tx
-                .send(
-                    consensus_command_sender
-                        .get_operations(operation_ids)
-                        .await
-                        .expect("could not get operations"),
-                )
-                .is_err()
-            {
+            let mut res: OperationHashMap<OperationSearchResult> = api_pool_command_sender
+                .get_operations(operation_ids.iter().cloned().collect())
+                .await
+                .expect("could not get operations from pool")
+                .into_iter()
+                .map(|(id, op)| {
+                    (
+                        id,
+                        OperationSearchResult {
+                            in_pool: true,
+                            in_blocks: BlockHashMap::default(),
+                            op,
+                            status: OperationSearchResultStatus::Pending,
+                        },
+                    )
+                })
+                .collect();
+
+            consensus_command_sender
+                .get_operations(operation_ids.iter().cloned().collect())
+                .await
+                .expect("could not get opeatrions frim consensus")
+                .into_iter()
+                .for_each(|(op_id, search_new)| {
+                    res.entry(op_id)
+                        .and_modify(|search_old| search_old.extend(&search_new))
+                        .or_insert(search_new);
+                });
+            if response_tx.send(res).is_err() {
                 warn!("could not send get_operations response in api_event_receiver.wait_event");
             }
         }

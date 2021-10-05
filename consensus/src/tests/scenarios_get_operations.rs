@@ -18,7 +18,7 @@ use time::UTime;
 
 #[tokio::test]
 #[serial]
-async fn test_storage() {
+async fn test_get_operation() {
     // // setup logging
     // stderrlog::new()
     //     .verbosity(4)
@@ -138,61 +138,27 @@ async fn test_storage() {
         Some(storage_access),
         None,
         Some(boot_graph),
-        async move |mut pool_controller,
+        async move |pool_controller,
                     protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver| {
-            let (ops, pool) = tokio::join!(
-                consensus_command_sender.get_operations(
+            let ops = consensus_command_sender
+                .get_operations(
                     ops.iter()
-                        .map(|op| { op.get_operation_id().unwrap() })
-                        .collect()
-                ),
-                pool_controller.wait_command(2000.into(), |cmd| {
-                    match cmd {
-                        pool::PoolCommand::GetOperations {
-                            operation_ids,
-                            response_tx,
-                        } => {
-                            assert_eq!(
-                                operation_ids,
-                                ops.iter()
-                                    .map(|op| { op.get_operation_id().unwrap() })
-                                    .collect()
-                            );
-                            response_tx
-                                .send(
-                                    ops[0..4]
-                                        .iter()
-                                        .map(|op| (op.get_operation_id().unwrap(), op.clone()))
-                                        .collect(),
-                                )
-                                .unwrap();
-                            Some(())
-                        }
-                        _ => None,
-                    }
-                })
-            );
-
-            assert_eq!(pool, Some(()));
+                        .map(|op| op.get_operation_id().unwrap())
+                        .collect(),
+                )
+                .await
+                .unwrap();
 
             let mut expected = HashMap::new();
-            expected.insert(
-                op1.get_operation_id().unwrap(),
-                OperationSearchResult {
-                    status: OperationSearchResultStatus::Pending,
-                    op: op1,
-                    in_pool: true,
-                    in_blocks: Default::default(),
-                },
-            );
+
             expected.insert(
                 op2.get_operation_id().unwrap(),
                 OperationSearchResult {
                     status: OperationSearchResultStatus::Pending,
                     op: op2,
-                    in_pool: true,
+                    in_pool: false,
                     in_blocks: vec![(b1, (0, true))].into_iter().collect(),
                 },
             );
@@ -201,21 +167,11 @@ async fn test_storage() {
                 OperationSearchResult {
                     status: OperationSearchResultStatus::Pending,
                     op: op3,
-                    in_pool: true,
+                    in_pool: false,
                     in_blocks: vec![(b2, (0, false))].into_iter().collect(),
                 },
             );
-            expected.insert(
-                op4.get_operation_id().unwrap(),
-                OperationSearchResult {
-                    status: OperationSearchResultStatus::Pending,
-                    op: op4,
-                    in_pool: true,
-                    in_blocks: vec![(b3, (0, true))].into_iter().collect(),
-                },
-            );
 
-            let ops = ops.unwrap();
             assert_eq!(ops.len(), expected.len());
 
             for (
