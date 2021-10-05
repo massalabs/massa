@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::cfg::Config;
+use crate::cfg::Settings;
 use crate::cmds::Command;
 use crate::rpc::Client;
 use console::style;
@@ -12,7 +12,7 @@ macro_rules! massa_fancy_ascii_art_logo {
     () => {
         println!(
             "{}\n{}\n{}\n{}\n{}\n",
-            style("███    ███  █████  ███████ ███████  █████").color256(160),
+            style("███    ███  █████  ███████ ███████  █████ ").color256(160),
             style("████  ████ ██   ██ ██      ██      ██   ██").color256(161),
             style("██ ████ ██ ███████ ███████ ███████ ███████").color256(162),
             style("██  ██  ██ ██   ██      ██      ██ ██   ██").color256(163),
@@ -56,20 +56,9 @@ struct MyHistory {
 
 impl Default for MyHistory {
     fn default() -> Self {
-        // FIXME: Duplicated code load config
-        let config_path = "base_config/config.toml";
-        let override_config_path = "config/config.toml";
-        let mut cfg = config::Config::default();
-        cfg.merge(config::File::with_name(config_path))
-            .expect("could not load main config file");
-        if std::path::Path::new(override_config_path).is_file() {
-            cfg.merge(config::File::with_name(override_config_path))
-                .expect("could not load override config file");
-        }
-        let cfg = cfg.try_into::<Config>().expect("error structuring config");
-
+        let settings = Settings::load();
         MyHistory {
-            max: cfg.history,
+            max: settings.history,
             history: VecDeque::new(),
         }
     }

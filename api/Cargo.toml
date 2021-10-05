@@ -12,6 +12,9 @@ log = { version = "0.4" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 serde_qs = {version= "0.8", features = ["warp"]}
+thiserror = "1.0"
+tokio = { version = "1.11", features = ["full"] }
+warp = "0.3"
 # custom modules
 communication = {path = "../communication"}
 consensus = {path = "../consensus"}
@@ -21,10 +24,6 @@ models = {path = "../models"}
 pool = {path = "../pool"}
 storage = {path = "../storage"}
 time = {path = "../time"}
-
-thiserror = "1.0"
-tokio = { version = "1.11", features = ["full"] }
-warp = "0.3"
 
 [dev-dependencies]
 num = "0.4"
