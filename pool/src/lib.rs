@@ -16,7 +16,7 @@ mod pool_worker;
 pub use config::PoolConfig;
 pub use error::PoolError;
 pub use pool_controller::{start_pool_controller, PoolCommandSender, PoolManager};
-pub use pool_worker::PoolCommand;
+pub use pool_worker::{PoolCommand, PoolStats};
 
 #[cfg(test)]
 mod tests;
