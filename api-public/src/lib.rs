@@ -499,6 +499,7 @@ impl MassaPublic for ApiMassaPublic {
         let cfg = self.consensus_config.clone();
         let api_cfg = self.api_config.clone();
         let addrs = addresses.clone();
+        let mut pool_command_sender = self.pool_command_sender.clone();
         let compensation_millis = self.compensation_millis;
         let closure = async move || {
             let mut res = Vec::new();
@@ -562,8 +563,33 @@ impl MassaPublic for ApiMassaPublic {
             let mut ops = HashMap::new();
             let cloned = addrs.clone();
             for ad in cloned.iter() {
-                ops.insert(ad, cmd_sender.get_operations_involving_address(*ad).await?);
-                // todo wait for #266 and look into pool and storage
+                let mut res: OperationHashMap<_> = pool_command_sender
+                    .get_operations_involving_address(*ad)
+                    .await?;
+
+                cmd_sender
+                    .get_operations_involving_address(*ad)
+                    .await?
+                    .into_iter()
+                    .for_each(|(op_id, search_new)| {
+                        res.entry(op_id)
+                            .and_modify(|search_old| search_old.extend(&search_new))
+                            .or_insert(search_new);
+                    });
+
+                if let Some(access) = &storage_cmd_sender {
+                    access
+                        .get_operations_involving_address(&ad)
+                        .await?
+                        .into_iter()
+                        .for_each(|(op_id, search_new)| {
+                            res.entry(op_id)
+                                .and_modify(|search_old| search_old.extend(&search_new))
+                                .or_insert(search_new);
+                        })
+                }
+
+                ops.insert(ad, res);
             }
 
             // staking addrs
