@@ -16,8 +16,7 @@ use models::{hhasher::BuildHHasher, ledger::LedgerData};
 use models::{
     Address, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
-    StakersCycleProductionStats,
+    OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
@@ -891,7 +890,7 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_operations",
                     { "operation_ids": operation_ids }
                 );
-                let res = self.get_operations(&operation_ids).await?;
+                let res = self.get_operations(&operation_ids).await;
                 response_tx.send(res).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send get operations response: {:?}",
@@ -1120,64 +1119,8 @@ impl ConsensusWorker {
     async fn get_operations(
         &mut self,
         operation_ids: &OperationHashSet,
-    ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
-        // todo move that to api
-        // get from pool
-        let mut res: OperationHashMap<OperationSearchResult> = self
-            .pool_command_sender
-            .get_operations(operation_ids.clone())
-            .await?
-            .into_iter()
-            .map(|(op_id, op)| {
-                (
-                    op_id,
-                    OperationSearchResult {
-                        op,
-                        in_pool: true,
-                        in_blocks: BlockHashMap::default(),
-                        status: OperationSearchResultStatus::Pending,
-                    },
-                )
-            })
-            .collect();
-
-        // extend with consensus
-        self.block_db
-            .get_operations(operation_ids)
-            .into_iter()
-            .for_each(|(op_id, search_new)| {
-                res.entry(op_id)
-                    .and_modify(|search_old| search_old.extend(&search_new))
-                    .or_insert(search_new);
-            });
-
-        // todo move that to api
-        // for those that have not been found in consensus, extend with storage
-        if let Some(storage) = &mut self.opt_storage_command_sender {
-            let to_gather: OperationHashSet = operation_ids
-                .iter()
-                .filter(|op_id| {
-                    if let Some(cur_search) = res.get(op_id) {
-                        if !cur_search.in_blocks.is_empty() {
-                            return false;
-                        }
-                    }
-                    true
-                })
-                .copied()
-                .collect();
-            storage
-                .get_operations(to_gather)
-                .await?
-                .into_iter()
-                .for_each(|(op_id, search_new)| {
-                    res.entry(op_id)
-                        .and_modify(|search_old| search_old.extend(&search_new))
-                        .or_insert(search_new);
-                });
-        }
-
-        Ok(res)
+    ) -> OperationHashMap<OperationSearchResult> {
+        self.block_db.get_operations(operation_ids)
     }
 
     /// Manages received protocolevents.

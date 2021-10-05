@@ -140,6 +140,7 @@ pub fn get_filter(
         .and_then(move |hash| wrap_api_call(get_block(evt_tx.clone(), hash, storage.clone())));
 
     let evt_tx = event_tx.clone();
+    let storage = opt_storage_command_sender.clone();
     let operations = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -147,7 +148,11 @@ pub fn get_filter(
         .and(warp::path::end())
         .and(serde_qs::warp::query(serde_qs::Config::default()))
         .and_then(move |OperationIds { operation_ids }| {
-            wrap_api_call(get_operations(evt_tx.clone(), operation_ids))
+            wrap_api_call(get_operations(
+                evt_tx.clone(),
+                operation_ids,
+                storage.clone(),
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -697,13 +702,20 @@ async fn get_block_ids_by_creator(
 async fn get_operations(
     event_tx: mpsc::Sender<ApiEvent>,
     operation_ids: OperationHashSet,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<Vec<(OperationId, OperationSearchResult)>, ApiError> {
     massa_trace!("api.filters.get_operations", {
         "operation_ids": operation_ids
     });
-    retrieve_operations(operation_ids, &event_tx)
-        .await
-        .map(|map| map.into_iter().collect())
+    let mut res: Vec<(OperationId, OperationSearchResult)> =
+        retrieve_operations(operation_ids.clone(), &event_tx)
+            .await
+            .map(|map| map.into_iter().collect())?;
+
+    if let Some(access) = opt_storage_command_sender {
+        res.extend(access.get_operations(operation_ids).await?);
+    }
+    Ok(res)
 }
 
 async fn do_node_sign_msg(

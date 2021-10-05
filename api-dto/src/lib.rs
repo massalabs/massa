@@ -62,6 +62,14 @@ pub struct OperationInfo {
     pub operation: Operation,
 }
 
+impl OperationInfo {
+    pub fn extend(&mut self, other: &OperationInfo) {
+        self.in_pool = self.in_pool || other.in_pool;
+        self.in_blocks.extend(other.in_blocks.iter());
+        self.is_final = self.is_final || other.is_final;
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceInfo {
     pub final_balance: Amount,
