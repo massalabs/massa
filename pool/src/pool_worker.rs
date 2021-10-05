@@ -12,6 +12,8 @@ use models::{
 };
 use tokio::sync::{mpsc, oneshot};
 
+use serde::{Deserialize, Serialize};
+
 /// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
@@ -41,6 +43,13 @@ pub enum PoolCommand {
         response_tx: oneshot::Sender<Vec<(EndorsementId, Endorsement)>>,
     },
     AddEndorsements(EndorsementHashMap<Endorsement>),
+    GetStats(oneshot::Sender<PoolStats>),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PoolStats {
+    pub operation_count: u64,
+    pub endorsement_count: u64,
 }
 
 /// Events that are emitted by pool.
@@ -208,6 +217,12 @@ impl PoolWorker {
                         .await?;
                 }
             }
+            PoolCommand::GetStats(response_tx) => response_tx
+                .send(PoolStats {
+                    operation_count: self.operation_pool.len() as u64,
+                    endorsement_count: self.endorsement_pool.len() as u64,
+                })
+                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())
     }
