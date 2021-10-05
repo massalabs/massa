@@ -7,7 +7,7 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, Operation, OperationHashMap,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use tokio::sync::{mpsc, oneshot};
@@ -38,7 +38,7 @@ pub enum PoolCommand {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-        response_tx: oneshot::Sender<Vec<Endorsement>>,
+        response_tx: oneshot::Sender<Vec<(EndorsementId, Endorsement)>>,
     },
     AddEndorsements(EndorsementHashMap<Endorsement>),
 }
