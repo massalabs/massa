@@ -14,6 +14,7 @@ dialoguer = { git = "https://github.com/mitsuhiko/dialoguer" }
 futures = "0.3"
 human-panic = "1.0.3"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
+lazy_static = "1"
 paw = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }

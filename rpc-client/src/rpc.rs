@@ -22,9 +22,9 @@ pub struct Client {
 }
 
 impl Client {
-    pub(crate) async fn new(address: &str, public_port: u16, private_port: u16) -> Client {
-        let public_url = format!("http://{}:{}", address, public_port);
-        let private_url = format!("http://{}:{}", address, private_port);
+    pub(crate) async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
+        let public_url = format!("http://{}:{}", ip, public_port);
+        let private_url = format!("http://{}:{}", ip, private_port);
         Client {
             public: RpcClient::from_url(&public_url).await,
             private: RpcClient::from_url(&private_url).await,
