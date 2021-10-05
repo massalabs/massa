@@ -159,7 +159,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 
             // 4. Simulate consensus sending block.
             let mut results = BlockHashMap::default();
-            results.insert(expected_hash.clone(), Some(block));
+            results.insert(expected_hash.clone(), Some((block, None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
                 .await

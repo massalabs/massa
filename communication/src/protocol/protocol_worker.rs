@@ -72,7 +72,9 @@ pub enum ProtocolCommand {
         remove: BlockHashSet,
     },
     /// The response to a ProtocolEvent::GetBlocks.
-    GetBlocksResults(BlockHashMap<Option<Block>>),
+    GetBlocksResults(
+        BlockHashMap<Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>>,
+    ),
     /// Propagate operations
     PropagateOperations(OperationHashMap<Operation>),
     /// Propagate endorsements
@@ -499,10 +501,10 @@ impl ProtocolWorker {
                 );
             }
             ProtocolCommand::GetBlocksResults(results) => {
-                for (block_id, block) in results.into_iter() {
-                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "block_id": block_id, "block": block });
-                    match block {
-                        Some(block) => {
+                for (block_id, block_info) in results.into_iter() {
+                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "block_id": block_id, "block_info": block_info });
+                    match block_info {
+                        Some((block, opt_operation_ids, opt_endorsement_ids)) => {
                             // Send the block once to all nodes who asked for it.
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
                                 if node_info.remove_wanted_block(&block_id) {
@@ -512,6 +514,22 @@ impl ProtocolWorker {
                                         Instant::now(),
                                         self.cfg.max_node_known_blocks_size,
                                     );
+                                    if let Some(ref endorsement_ids) = opt_endorsement_ids {
+                                        // if endorsement IDs are available from the search, note them
+                                        // otherwise, it means that they are not relevant anyways (old final block)
+                                        node_info.insert_known_endorsements(
+                                            endorsement_ids.clone(),
+                                            self.cfg.max_known_endorsements_size,
+                                        );
+                                    }
+                                    if let Some(ref operation_ids) = opt_operation_ids {
+                                        // if operation IDs are available from the search, note them
+                                        // otherwise, it means that they are not relevant anyways (old final block)
+                                        node_info.insert_known_ops(
+                                            operation_ids.clone(),
+                                            self.cfg.max_known_ops_size,
+                                        );
+                                    }
                                     massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                                     self.network_command_sender
                                         .send_block(*node_id, block.clone())

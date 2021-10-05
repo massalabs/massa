@@ -136,7 +136,9 @@ impl ProtocolCommandSender {
     /// Send the response to a ProtocolEvent::GetBlocks.
     pub async fn send_get_blocks_results(
         &mut self,
-        results: BlockHashMap<Option<Block>>,
+        results: BlockHashMap<
+            Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>,
+        >,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
             "results": results

@@ -1222,11 +1222,18 @@ impl ConsensusWorker {
                 for block_hash in list {
                     if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
-                        results.insert(block_hash, Some(a_block.block.clone()));
+                        results.insert(
+                            block_hash,
+                            Some((
+                                a_block.block.clone(),
+                                Some(a_block.operation_set.keys().copied().collect()),
+                                Some(a_block.endorsement_ids.clone()),
+                            )),
+                        );
                     } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
                         if let Some(block) = storage_command_sender.get_block(block_hash).await? {
                             massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});
-                            results.insert(block_hash, Some(block));
+                            results.insert(block_hash, Some((block, None, None)));
                         } else {
                             // not found in given storage
                             massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_not_found", { "hash": block_hash});
