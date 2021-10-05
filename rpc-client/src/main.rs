@@ -67,8 +67,7 @@ fn main(args: Args) {
                 println!(
                     "{}",
                     if args.json {
-                        serde_json::to_string(&output)
-                            .expect("Failed to serialized command output ...")
+                        serde_json::to_string(&output).expect("failed to serialize command output")
                     } else {
                         output
                     }

@@ -1,12 +1,17 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use api_dto::{
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
+};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-use models::address::AddressHashSet;
+use models::address::{AddressHashMap, AddressHashSet};
+use models::clique::Clique;
 use models::node::NodeId;
-use models::Address;
+use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use std::net::IpAddr;
+use time::UTime;
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!
@@ -55,6 +60,10 @@ impl RpcClient {
             Err(_) => panic!("Unable to connect to Node."),
         }
     }
+
+    /////////////////
+    // private-api //
+    /////////////////
 
     /// Gracefully stop the node.
     pub(crate) async fn stop_node(&self) -> RpcResult<()> {
@@ -108,5 +117,90 @@ impl RpcClient {
     /// No confirmation to expect.
     pub(crate) async fn unban(&self, ip: &Vec<IpAddr>) -> RpcResult<()> {
         self.0.call_method("unban", "()", ip).await
+    }
+
+    ////////////////
+    // public-api //
+    ////////////////
+
+    // Explorer (aggregated stats)
+
+    /// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
+    pub(crate) async fn get_status(&self) -> RpcResult<NodeStatus> {
+        self.0.call_method("get_status", "NodeStatus", ()).await
+    }
+
+    pub(crate) async fn get_cliques(&self) -> RpcResult<Vec<Clique>> {
+        self.0.call_method("get_cliques", "Vec<Clique>", ()).await
+    }
+
+    // Debug (specific information)
+
+    /// Returns the active stakers and their roll counts for the current cycle.
+    pub(crate) async fn get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
+        self.0
+            .call_method("get_stakers", "AddressHashMap<RollsInfo>", ())
+            .await
+    }
+
+    /// Returns operations information associated to a given list of operations' IDs.
+    pub(crate) async fn get_operations(
+        &self,
+        operation_ids: Vec<OperationId>,
+    ) -> RpcResult<Vec<OperationInfo>> {
+        self.0
+            .call_method("get_operations", "Vec<OperationInfo>", operation_ids)
+            .await
+    }
+
+    pub(crate) async fn get_endorsements(
+        &self,
+        endorsement_ids: Vec<EndorsementId>,
+    ) -> RpcResult<Vec<EndorsementInfo>> {
+        self.0
+            .call_method("get_endorsements", "Vec<EndorsementInfo>", endorsement_ids)
+            .await
+    }
+
+    /// Get information on a block given its hash
+    pub(crate) async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
+        self.0.call_method("get_block", "BlockInfo", block_id).await
+    }
+
+    /// Get the block graph within the specified time interval.
+    /// Optional parameters: from <time_start> (included) and to <time_end> (excluded) millisecond timestamp
+    pub(crate) async fn get_graph_interval(
+        &self,
+        time_start: Option<UTime>,
+        time_end: Option<UTime>,
+    ) -> RpcResult<Vec<BlockSummary>> {
+        self.0
+            .call_method(
+                "get_graph_interval",
+                "Vec<BlockSummary>",
+                (time_start, time_end),
+            )
+            .await
+    }
+
+    pub(crate) async fn get_addresses(
+        &self,
+        addresses: Vec<Address>,
+    ) -> RpcResult<Vec<AddressInfo>> {
+        self.0
+            .call_method("get_addresses", "Vec<AddressInfo>", addresses)
+            .await
+    }
+
+    // User (interaction with the node)
+
+    /// Adds operations to pool. Returns operations that were ok and sent to pool.
+    pub(crate) async fn send_operations(
+        &self,
+        operations: Vec<Operation>,
+    ) -> RpcResult<Vec<OperationId>> {
+        self.0
+            .call_method("send_operations", "Vec<OperationId>", operations)
+            .await
     }
 }

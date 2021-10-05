@@ -2200,6 +2200,7 @@ dependencies = [
 name = "rpc-client"
 version = "0.1.0"
 dependencies = [
+ "api-dto",
  "atty",
  "config",
  "console 0.14.1 (git+https://github.com/mitsuhiko/console)",
@@ -2215,6 +2216,7 @@ dependencies = [
  "structopt",
  "strum",
  "strum_macros",
+ "time 0.1.0",
  "tokio",
 ]
 

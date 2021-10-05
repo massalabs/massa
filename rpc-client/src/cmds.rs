@@ -31,9 +31,9 @@ pub enum Command {
     )]
     ban,
 
-    #[strum(ascii_case_insensitive, message = "start a node")]
-    node_start,
-
+    // TODO:
+    // #[strum(ascii_case_insensitive, message = "start a node")]
+    // node_start,
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
 
@@ -72,28 +72,28 @@ pub enum Command {
         props(args = "[Addresses]"),
         message = "gets info about a list of addresses"
     )]
-    get_addresses_info,
+    get_addresses,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "[BlockIds]"),
         message = "gets info about a list of blocks"
     )]
-    get_blocks_info,
+    get_blocks,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "[EndorsementIds]"),
         message = "gets info about a list of endorsements"
     )]
-    get_endorsements_info,
+    get_endorsements,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "[OperationIds]"),
         message = "gets info about a list of operations"
     )]
-    get_operations_info,
+    get_operations,
 
     #[strum(ascii_case_insensitive, message = "prints wallet info")]
     wallet_info,
@@ -212,11 +212,12 @@ impl Command {
                 Err(_) => self.wrong_parameters(),
             },
 
-            Command::node_start => match process::Command::new("massa-node").spawn() {
-                Ok(_) => repl_ok!("Node successfully started!"),
-                Err(e) => repl_err!(e),
-            },
-
+            // TODO: process spawn should be detached
+            // Command::node_start => match process::Command::new("massa-node").spawn() {
+            //     Ok(_) => repl_ok!("Node successfully started!"),
+            //     Err(e) => repl_err!(e),
+            // },
+            //
             Command::node_stop => match &client.private.stop_node().await {
                 Ok(_) => repl_ok!("Request of stopping the Node successfully sent"),
                 Err(e) => repl_err!(e),
@@ -224,8 +225,9 @@ impl Command {
 
             Command::node_get_staking_addresses => {
                 match &client.private.get_staking_addresses().await {
-                    Ok(output) => serde_json::to_string(output)
-                        .expect("Failed to serialized command output ..."),
+                    Ok(output) => {
+                        serde_json::to_string(output).expect("failed to serialize command output")
+                    }
                     Err(e) => repl_err!(e),
                 }
             }
@@ -248,53 +250,67 @@ impl Command {
                 Err(_) => self.wrong_parameters(),
             },
 
-            Command::node_testnet_rewards_program_ownership_proof => {
-                todo!()
+            Command::node_testnet_rewards_program_ownership_proof => todo!(),
+
+            // TODO: format!("{:?}" ...) should be replaced by impl std::fmt::Display
+            Command::get_status => match serde_json::from_str(&parameters[0]) {
+                Ok(()) => match &client.public.get_status().await {
+                    Ok(status) => repl_ok!(format!("{:?}", status)),
+                    Err(e) => repl_err!(e),
+                },
+                Err(_) => self.wrong_parameters(),
+            },
+
+            // TODO: parameters parsing is fuzzy here, should be replace by .parse() trait impl
+            Command::get_addresses => {
+                match serde_json::from_str(&serde_json::to_string(parameters).unwrap()) {
+                    Ok(adresses) => match &client.public.get_addresses(adresses).await {
+                        Ok(adresses_info) => repl_ok!(format!("{:?}", adresses_info)),
+                        Err(e) => repl_err!(e),
+                    },
+                    Err(_) => self.wrong_parameters(),
+                }
             }
 
-            Command::get_status => {
-                todo!()
+            Command::get_blocks => match serde_json::from_str(&parameters[0]) {
+                Ok(block_id) => match &client.public.get_block(block_id).await {
+                    Ok(block_info) => repl_ok!(format!("{:?}", block_info)),
+                    Err(e) => repl_err!(e),
+                },
+                Err(_) => self.wrong_parameters(),
+            },
+
+            Command::get_endorsements => {
+                match serde_json::from_str(&serde_json::to_string(parameters).unwrap()) {
+                    Ok(endorsements) => match &client.public.get_endorsements(endorsements).await {
+                        Ok(endorsements_info) => repl_ok!(format!("{:?}", endorsements_info)),
+                        Err(e) => repl_err!(e),
+                    },
+                    Err(_) => self.wrong_parameters(),
+                }
             }
 
-            Command::get_addresses_info => {
-                todo!()
+            Command::get_operations => {
+                match serde_json::from_str(&serde_json::to_string(parameters).unwrap()) {
+                    Ok(operations) => match &client.public.get_operations(operations).await {
+                        Ok(operations_info) => repl_ok!(format!("{:?}", operations_info)),
+                        Err(e) => repl_err!(e),
+                    },
+                    Err(_) => self.wrong_parameters(),
+                }
             }
 
-            Command::get_blocks_info => {
-                todo!()
-            }
+            Command::wallet_info => todo!(),
 
-            Command::get_endorsements_info => {
-                todo!()
-            }
+            Command::wallet_add_private_keys => todo!(),
 
-            Command::get_operations_info => {
-                todo!()
-            }
+            Command::wallet_remove_addresses => todo!(),
 
-            Command::wallet_info => {
-                todo!()
-            }
+            Command::buy_rolls => todo!(),
 
-            Command::wallet_add_private_keys => {
-                todo!()
-            }
+            Command::sell_rolls => todo!(),
 
-            Command::wallet_remove_addresses => {
-                todo!()
-            }
-
-            Command::buy_rolls => {
-                todo!()
-            }
-
-            Command::sell_rolls => {
-                todo!()
-            }
-
-            Command::send_transaction => {
-                todo!()
-            }
+            Command::send_transaction => todo!(),
         }
     }
 }
