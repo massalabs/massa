@@ -491,14 +491,16 @@ impl ConsensusWorker {
 
         // get endorsements
         // it is assumed that only valid endorsements in that context are selected by pool
-        let endorsements = if thread_parent_period > 0 {
+        let (endorsement_ids, endorsements) = if thread_parent_period > 0 {
             let thread_parent_slot = Slot::new(thread_parent_period, cur_slot.thread);
             let endorsement_draws = self.pos.draw_endorsement_producers(thread_parent_slot)?;
             self.pool_command_sender
                 .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
                 .await?
+                .into_iter()
+                .unzip()
         } else {
-            Vec::new()
+            (Vec::new(), Vec::new())
         };
 
         massa_trace!("consensus.create_block.get_endorsements.result", {
@@ -655,6 +657,7 @@ impl ConsensusWorker {
             block_id,
             block,
             operation_set,
+            endorsement_ids,
             &mut self.pos,
             Some(cur_slot),
         )?;
@@ -1187,12 +1190,14 @@ impl ConsensusWorker {
                 block_id,
                 block,
                 operation_set,
+                endorsement_ids,
             } => {
                 massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
                 self.block_db.incoming_block(
                     block_id,
                     block,
                     operation_set,
+                    endorsement_ids,
                     &mut self.pos,
                     self.previous_slot,
                 )?;
@@ -1217,11 +1222,18 @@ impl ConsensusWorker {
                 for block_hash in list {
                     if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
-                        results.insert(block_hash, Some(a_block.block.clone()));
+                        results.insert(
+                            block_hash,
+                            Some((
+                                a_block.block.clone(),
+                                Some(a_block.operation_set.keys().copied().collect()),
+                                Some(a_block.endorsement_ids.clone()),
+                            )),
+                        );
                     } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
                         if let Some(block) = storage_command_sender.get_block(block_hash).await? {
                             massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});
-                            results.insert(block_hash, Some(block));
+                            results.insert(block_hash, Some((block, None, None)));
                         } else {
                             // not found in given storage
                             massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_not_found", { "hash": block_hash});
@@ -1254,10 +1266,12 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
         // Propagate new blocks
-        for (block_id, block) in self.block_db.get_blocks_to_propagate().into_iter() {
+        for (block_id, (block, op_ids, endo_ids)) in
+            self.block_db.get_blocks_to_propagate().into_iter()
+        {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "block_id": block_id, "block": block });
             self.protocol_command_sender
-                .integrated_block(block_id, block)
+                .integrated_block(block_id, block, op_ids, endo_ids)
                 .await?;
         }
 

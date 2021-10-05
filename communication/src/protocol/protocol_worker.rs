@@ -29,6 +29,7 @@ pub enum ProtocolEvent {
         block_id: BlockId,
         block: Block,
         operation_set: OperationHashMap<(usize, u64)>, // (index, validity end period)
+        endorsement_ids: Vec<EndorsementId>,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
@@ -57,7 +58,12 @@ pub enum ProtocolPoolEvent {
 #[derive(Debug, Serialize)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
-    IntegratedBlock { block_id: BlockId, block: Block },
+    IntegratedBlock {
+        block_id: BlockId,
+        block: Block,
+        operation_ids: OperationHashSet,
+        endorsement_ids: Vec<EndorsementId>,
+    },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
     /// Wishlist delta
@@ -66,7 +72,9 @@ pub enum ProtocolCommand {
         remove: BlockHashSet,
     },
     /// The response to a ProtocolEvent::GetBlocks.
-    GetBlocksResults(BlockHashMap<Option<Block>>),
+    GetBlocksResults(
+        BlockHashMap<Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>>,
+    ),
     /// Propagate operations
     PropagateOperations(OperationHashMap<Operation>),
     /// Propagate endorsements
@@ -78,10 +86,15 @@ pub enum ProtocolManagementCommand {}
 
 //put in a module to block private access from Protocol_worker.
 mod nodeinfo {
+    use std::collections::VecDeque;
+
     use models::{
-        BlockHashMap, BlockId, EndorsementHashMap, EndorsementId, OperationHashMap, OperationId,
+        hhasher::BuildHHasher, BlockHashMap, BlockId, EndorsementHashSet, EndorsementId,
+        OperationHashSet, OperationId,
     };
     use tokio::time::Instant;
+
+    use crate::protocol::ProtocolConfig;
 
     /// Information about a node we are connected to,
     /// essentially our view of its state.
@@ -99,22 +112,38 @@ mod nodeinfo {
         pub asked_blocks: BlockHashMap<Instant>,
         /// Instant when the node was added
         pub connection_instant: Instant,
-        /// all known operation with instant of that info
-        pub known_operations: OperationHashMap<Instant>,
-        /// all known endorsements with instant of that info
-        pub known_endorsements: EndorsementHashMap<Instant>,
+        /// all known operations
+        pub known_operations: OperationHashSet,
+        pub known_operations_queue: VecDeque<OperationId>,
+        /// all known endorsements
+        pub known_endorsements: EndorsementHashSet,
+        pub known_endorsements_queue: VecDeque<EndorsementId>,
     }
 
     impl NodeInfo {
         /// Creates empty node info
-        pub fn new() -> NodeInfo {
+        pub fn new(cfg: &ProtocolConfig) -> NodeInfo {
             NodeInfo {
-                known_blocks: Default::default(),
-                wanted_blocks: Default::default(),
+                known_blocks: BlockHashMap::with_capacity_and_hasher(
+                    cfg.max_node_known_blocks_size,
+                    BuildHHasher::default(),
+                ),
+                wanted_blocks: BlockHashMap::with_capacity_and_hasher(
+                    cfg.max_node_wanted_blocks_size,
+                    BuildHHasher::default(),
+                ),
                 asked_blocks: Default::default(),
                 connection_instant: Instant::now(),
-                known_operations: Default::default(),
-                known_endorsements: Default::default(),
+                known_operations: OperationHashSet::with_capacity_and_hasher(
+                    cfg.max_known_ops_size,
+                    BuildHHasher::default(),
+                ),
+                known_operations_queue: VecDeque::with_capacity(cfg.max_known_ops_size),
+                known_endorsements: EndorsementHashSet::with_capacity_and_hasher(
+                    cfg.max_known_endorsements_size,
+                    BuildHHasher::default(),
+                ),
+                known_endorsements_queue: VecDeque::with_capacity(cfg.max_known_endorsements_size),
             }
         }
 
@@ -155,40 +184,40 @@ mod nodeinfo {
 
         pub fn insert_known_endorsements(
             &mut self,
-            endorsements: EndorsementHashMap<Instant>,
+            endorsements: Vec<EndorsementId>,
             max_endorsements_nb: usize,
         ) {
-            self.known_endorsements.extend(endorsements);
-            while self.known_endorsements.len() > max_endorsements_nb {
-                //remove oldest item
-                let (&h, _) = self
-                    .known_endorsements
-                    .iter()
-                    .min_by_key(|(h, t)| (*t, *h))
-                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
-                self.known_endorsements.remove(&h);
+            for endorsement_id in endorsements.into_iter() {
+                if self.known_endorsements.insert(endorsement_id) {
+                    self.known_endorsements_queue.push_front(endorsement_id);
+                    if self.known_endorsements_queue.len() > max_endorsements_nb {
+                        if let Some(r) = self.known_endorsements_queue.pop_back() {
+                            self.known_endorsements.remove(&r);
+                        }
+                    }
+                }
             }
         }
 
         pub fn knows_endorsement(&self, endorsement_id: &EndorsementId) -> bool {
-            self.known_endorsements.contains_key(endorsement_id)
+            self.known_endorsements.contains(endorsement_id)
         }
 
-        pub fn insert_known_ops(&mut self, ops: OperationHashMap<Instant>, max_ops_nb: usize) {
-            self.known_operations.extend(ops);
-            while self.known_operations.len() > max_ops_nb {
-                //remove oldest item
-                let (&h, _) = self
-                    .known_operations
-                    .iter()
-                    .min_by_key(|(h, t)| (*t, *h))
-                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
-                self.known_operations.remove(&h);
+        pub fn insert_known_ops(&mut self, ops: OperationHashSet, max_ops_nb: usize) {
+            for operation_id in ops.into_iter() {
+                if self.known_operations.insert(operation_id) {
+                    self.known_operations_queue.push_front(operation_id);
+                    if self.known_operations_queue.len() > max_ops_nb {
+                        if let Some(op_id) = self.known_operations_queue.pop_back() {
+                            self.known_operations.remove(&op_id);
+                        }
+                    }
+                }
             }
         }
 
         pub fn knows_op(&self, op: &OperationId) -> bool {
-            self.known_operations.contains_key(op)
+            self.known_operations.contains(op)
         }
 
         /// insert a block in wanted list of a node.
@@ -391,25 +420,29 @@ impl ProtocolWorker {
             "cmd": cmd
         });
         match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, block } => {
+            ProtocolCommand::IntegratedBlock {
+                block_id,
+                block,
+                operation_ids,
+                endorsement_ids,
+            } => {
                 massa_trace!("protocol.protocol_worker.process_command.integrated_block.begin", { "block_id": block_id, "block": block });
+                let now = Instant::now();
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
                     if node_info.remove_wanted_block(&block_id) {
                         node_info.insert_known_blocks(
                             &vec![block_id],
                             true,
-                            Instant::now(),
+                            now,
                             self.cfg.max_node_known_blocks_size,
                         );
-                        node_info.insert_known_ops(
-                            block
-                                .operations
-                                .iter()
-                                .map(|op| Ok((op.get_operation_id()?, Instant::now())))
-                                .collect::<Result<_, CommunicationError>>()?,
-                            self.cfg.max_known_ops_size,
+                        node_info.insert_known_endorsements(
+                            endorsement_ids.clone(),
+                            self.cfg.max_known_endorsements_size,
                         );
+                        node_info
+                            .insert_known_ops(operation_ids.clone(), self.cfg.max_known_ops_size);
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                         self.network_command_sender
                             .send_block(*node_id, block.clone())
@@ -420,7 +453,7 @@ impl ProtocolWorker {
                                 )
                             })?;
                     } else {
-                        // node that aren't asking for that block
+                        // node that isn't asking for that block
                         let cond = node_info.get_known_block(&block_id);
                         // if we don't know if that node knows that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
@@ -468,10 +501,10 @@ impl ProtocolWorker {
                 );
             }
             ProtocolCommand::GetBlocksResults(results) => {
-                for (block_id, block) in results.into_iter() {
-                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "block_id": block_id, "block": block });
-                    match block {
-                        Some(block) => {
+                for (block_id, block_info) in results.into_iter() {
+                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "block_id": block_id, "block_info": block_info });
+                    match block_info {
+                        Some((block, opt_operation_ids, opt_endorsement_ids)) => {
                             // Send the block once to all nodes who asked for it.
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
                                 if node_info.remove_wanted_block(&block_id) {
@@ -481,6 +514,22 @@ impl ProtocolWorker {
                                         Instant::now(),
                                         self.cfg.max_node_known_blocks_size,
                                     );
+                                    if let Some(ref endorsement_ids) = opt_endorsement_ids {
+                                        // if endorsement IDs are available from the search, note them
+                                        // otherwise, it means that they are not relevant anyways (old final block)
+                                        node_info.insert_known_endorsements(
+                                            endorsement_ids.clone(),
+                                            self.cfg.max_known_endorsements_size,
+                                        );
+                                    }
+                                    if let Some(ref operation_ids) = opt_operation_ids {
+                                        // if operation IDs are available from the search, note them
+                                        // otherwise, it means that they are not relevant anyways (old final block)
+                                        node_info.insert_known_ops(
+                                            operation_ids.clone(),
+                                            self.cfg.max_known_ops_size,
+                                        );
+                                    }
                                     massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                                     self.network_command_sender
                                         .send_block(*node_id, block.clone())
@@ -533,7 +582,6 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operations": ops }
                 );
-                let cur_instant = Instant::now();
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_ops: OperationHashMap<Operation> = ops
                         .iter()
@@ -541,7 +589,7 @@ impl ProtocolWorker {
                         .map(|(k, v)| (*k, v.clone()))
                         .collect();
                     node_info.insert_known_ops(
-                        new_ops.iter().map(|(id, _)| (*id, cur_instant)).collect(),
+                        new_ops.keys().copied().collect(),
                         self.cfg.max_known_ops_size,
                     );
                     let to_send = new_ops.into_iter().map(|(_, op)| op).collect::<Vec<_>>();
@@ -557,7 +605,6 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_endorsements.begin",
                     { "endorsements": endorsements }
                 );
-                let cur_instant = Instant::now();
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_endorsements: EndorsementHashMap<Endorsement> = endorsements
                         .iter()
@@ -565,10 +612,7 @@ impl ProtocolWorker {
                         .map(|(k, v)| (*k, v.clone()))
                         .collect();
                     node_info.insert_known_endorsements(
-                        new_endorsements
-                            .iter()
-                            .map(|(id, _)| (*id, cur_instant))
-                            .collect(),
+                        new_endorsements.keys().copied().collect(),
                         self.cfg.max_known_endorsements_size,
                     );
                     let to_send = new_endorsements
@@ -824,7 +868,7 @@ impl ProtocolWorker {
         &mut self,
         header: &BlockHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, bool)>, CommunicationError> {
+    ) -> Result<Option<(BlockId, Vec<EndorsementId>, bool)>, CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
@@ -853,7 +897,7 @@ impl ProtocolWorker {
 
         // check if this header was already verified
         let now = Instant::now();
-        if let Some(e_ids) = self.checked_headers.get_mut(&block_id) {
+        if let Some(e_ids) = self.checked_headers.get(&block_id) {
             if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
                 node_info.insert_known_blocks(
                     &header.content.parents,
@@ -867,12 +911,10 @@ impl ProtocolWorker {
                     now,
                     self.cfg.max_node_known_blocks_size,
                 );
-                node_info.insert_known_endorsements(
-                    e_ids.into_iter().map(|id| (*id, now)).collect(),
-                    self.cfg.max_known_endorsements_size,
-                )
+                node_info
+                    .insert_known_endorsements(e_ids.clone(), self.cfg.max_known_endorsements_size)
             }
-            return Ok(Some((block_id, false)));
+            return Ok(Some((block_id, e_ids.clone(), false)));
         }
 
         let (endorsement_ids, endorsements_reused) = match self
@@ -931,7 +973,7 @@ impl ProtocolWorker {
 
         if self
             .checked_headers
-            .insert(block_id, endorsement_ids)
+            .insert(block_id, endorsement_ids.clone())
             .is_none()
         {
             self.prune_checked_headers();
@@ -951,7 +993,7 @@ impl ProtocolWorker {
                 self.cfg.max_node_known_blocks_size,
             );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
-            return Ok(Some((block_id, true)));
+            return Ok(Some((block_id, endorsement_ids, true)));
         }
         Ok(None)
     }
@@ -993,11 +1035,14 @@ impl ProtocolWorker {
         &mut self,
         block: &Block,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, OperationHashMap<(usize, u64)>)>, CommunicationError> {
+    ) -> Result<
+        Option<(BlockId, OperationHashMap<(usize, u64)>, Vec<EndorsementId>)>,
+        CommunicationError,
+    > {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
-        let (block_id, _is_header_new) = match self
+        let (block_id, endorsement_ids, _is_header_new) = match self
             .note_header_from_node(&block.header, source_node_id)
             .await
         {
@@ -1065,7 +1110,7 @@ impl ProtocolWorker {
 
         // Note: block already added to node's view in `note_header_from_node`.
 
-        Ok(Some((block_id, received_operations_ids)))
+        Ok(Some((block_id, received_operations_ids, endorsement_ids)))
     }
 
     /// Checks operations, caching knowledge of valid ones.
@@ -1086,7 +1131,6 @@ impl ProtocolWorker {
         propagate: bool,
     ) -> Result<(Vec<OperationId>, OperationHashMap<(usize, u64)>, bool), CommunicationError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
-        let now = Instant::now();
         let length = operations.len();
         let mut has_duplicate_operations = false;
         let mut seen_ops = vec![];
@@ -1119,10 +1163,7 @@ impl ProtocolWorker {
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_ops(
-                received_ids
-                    .iter()
-                    .map(|(id, _)| (id.clone(), now))
-                    .collect(),
+                received_ids.keys().copied().collect(),
                 self.cfg.max_known_ops_size,
             );
         }
@@ -1160,17 +1201,16 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut contains_duplicates = false;
-        let now = Instant::now();
 
         let mut unique_ids =
-            EndorsementHashMap::with_capacity_and_hasher(length, BuildHHasher::default());
+            EndorsementHashSet::with_capacity_and_hasher(length, BuildHHasher::default());
         let mut new_endorsements =
             EndorsementHashMap::with_capacity_and_hasher(length, BuildHHasher::default());
         let mut endorsement_ids: Vec<EndorsementId> = Vec::with_capacity(length);
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.compute_endorsement_id()?;
             endorsement_ids.push(endorsement_id);
-            if unique_ids.insert(endorsement_id.clone(), now).is_some() {
+            if !unique_ids.insert(endorsement_id) {
                 contains_duplicates = true;
             }
             // check endorsement signature if not already checked
@@ -1182,7 +1222,10 @@ impl ProtocolWorker {
 
         // add to known endorsements for source node.
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_endorsements(unique_ids, self.cfg.max_known_endorsements_size);
+            node_info.insert_known_endorsements(
+                endorsement_ids.clone(),
+                self.cfg.max_known_endorsements_size,
+            );
         }
 
         if !new_endorsements.is_empty() {
@@ -1216,7 +1259,8 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.on_network_event.new_connection",
                     { "node": node_id }
                 );
-                self.active_nodes.insert(node_id, nodeinfo::NodeInfo::new());
+                self.active_nodes
+                    .insert(node_id, nodeinfo::NodeInfo::new(&self.cfg));
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
@@ -1235,7 +1279,7 @@ impl ProtocolWorker {
                 block,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
-                if let Some((block_id, operation_set)) =
+                if let Some((block_id, operation_set, endorsement_ids)) =
                     self.note_block_from_node(&block, &from_node_id).await?
                 {
                     let mut set =
@@ -1246,6 +1290,7 @@ impl ProtocolWorker {
                         block_id,
                         block,
                         operation_set,
+                        endorsement_ids,
                     })
                     .await;
                     self.update_ask_block(block_ask_timer).await?;
@@ -1274,7 +1319,7 @@ impl ProtocolWorker {
                 header,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block_header", { "node": source_node_id, "header": header});
-                if let Some((block_id, is_new)) =
+                if let Some((block_id, _endorsement_ids, is_new)) =
                     self.note_header_from_node(&header, &source_node_id).await?
                 {
                     if is_new {
@@ -1339,13 +1384,15 @@ mod tests {
     use super::nodeinfo::NodeInfo;
     use super::*;
     use crate::network::tests::tools::get_dummy_block_id;
+    use crate::protocol::tests::tools::create_protocol_config;
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_node_info_know_block() {
         let max_node_known_blocks_size = 10;
-        let mut nodeinfo = NodeInfo::new();
+        let protocol_cfg = create_protocol_config();
+        let mut nodeinfo = NodeInfo::new(&protocol_cfg);
         let instant = Instant::now();
 
         let hash_test = get_dummy_block_id("test");
@@ -1404,7 +1451,8 @@ mod tests {
     #[serial]
     fn test_node_info_wanted_block() {
         let max_node_wanted_blocks_size = 10;
-        let mut nodeinfo = NodeInfo::new();
+        let protocol_cfg = create_protocol_config();
+        let mut nodeinfo = NodeInfo::new(&protocol_cfg);
 
         let hash = get_dummy_block_id("test");
         nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);

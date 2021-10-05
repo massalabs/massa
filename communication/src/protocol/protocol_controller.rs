@@ -12,8 +12,8 @@ use crate::{
     network::{NetworkCommandSender, NetworkEventReceiver},
 };
 use models::{
-    Block, BlockHashMap, BlockHashSet, BlockId, Endorsement, EndorsementHashMap, Operation,
-    OperationHashMap,
+    Block, BlockHashMap, BlockHashSet, BlockId, Endorsement, EndorsementHashMap, EndorsementId,
+    Operation, OperationHashMap, OperationHashSet,
 };
 use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
@@ -96,11 +96,18 @@ impl ProtocolCommandSender {
         &mut self,
         block_id: BlockId,
         block: Block,
+        operation_ids: OperationHashSet,
+        endorsement_ids: Vec<EndorsementId>,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
         let res = self
             .0
-            .send(ProtocolCommand::IntegratedBlock { block_id, block })
+            .send(ProtocolCommand::IntegratedBlock {
+                block_id,
+                block,
+                operation_ids,
+                endorsement_ids,
+            })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("block_integrated command send error".into())
@@ -129,7 +136,9 @@ impl ProtocolCommandSender {
     /// Send the response to a ProtocolEvent::GetBlocks.
     pub async fn send_get_blocks_results(
         &mut self,
-        results: BlockHashMap<Option<Block>>,
+        results: BlockHashMap<
+            Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>,
+        >,
     ) -> Result<(), CommunicationError> {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
             "results": results
