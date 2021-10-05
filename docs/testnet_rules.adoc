@@ -41,8 +41,10 @@ Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 
 ** `routable_cycles` / `nb_cycles`
 *** `routable_cycles` is the number of connection trials that resulted in a successful connection.
 *** Maximum score is achieved if the node can always be reached by other nodes.
-* 20 points of the score incentivize node diversity: the network is more decentralized if nodes are spread across countries and providers than if they are all hosted at the same location/provider
-** `total_maxim_factor` is the total amount of `maxim_factor` accumulated at each cycle. The `maxim_factor` is a value between 0 and 1 representing the distance between this node IP address and the IP addresses of other nodes in a given cycle. Maximum score is reached when running the node at home or with a provider that is not used to run other Massa nodes.
+* 20 points of the score incentivize node diversity: the network is more decentralized if nodes are spread across countries and providers than if they are all hosted at the same location/provider.
+** `total_maxim_factor` / `nb_cycles`
+*** `total_maxim_factor` is the total amount of `maxim_factor` accumulated at each cycle. The `maxim_factor` is a value between 0 and 1 representing the distance between this node IP address and the IP addresses of other nodes in a given cycle. 
+*** Maximum score is reached when running the node at home or with a provider that is not used to run other Massa nodes.
 
 We encourage every person to run only one node.
 Running multiple nodes with the same staking keys will result in roll slashing in the future.
