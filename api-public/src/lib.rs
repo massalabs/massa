@@ -3,7 +3,7 @@
 #![feature(async_closure)]
 use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NetworkStats, NodeStatus,
-    OperationInfo, PoolStats, RollsInfo, TimeStats,
+    OperationInfo, RollsInfo, TimeStats,
 };
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
@@ -163,6 +163,7 @@ impl MassaPublic for ApiMassaPublic {
         let version = self.version.clone();
         let consensus_config = self.consensus_config.clone();
         let compensation_millis = self.compensation_millis;
+        let mut pool_command_sender = self.pool_command_sender.clone();
 
         let closure = async move || {
             let now = UTime::now(compensation_millis)?;
@@ -173,6 +174,7 @@ impl MassaPublic for ApiMassaPublic {
                 now,
             )?;
             let stats = consensus_command_sender.get_stats().await?;
+            let pool_stats = pool_command_sender.get_pool_stats().await?;
             Ok(NodeStatus {
                 node_id: NodeId(derive_public_key(&generate_random_private_key())),
                 node_ip: network_config.routable_ip,
@@ -203,10 +205,7 @@ impl MassaPublic for ApiMassaPublic {
                     stale_block_count: stats.stale_block_count,
                     final_operation_count: stats.final_operation_count,
                 },
-                pool_stats: PoolStats {
-                    operation_count: 0,
-                    endorsement_count: 0,
-                }, // todo add get pool stats command
+                pool_stats,
                 network_stats: NetworkStats {
                     in_connection_count: 0,
                     out_connection_count: 0,

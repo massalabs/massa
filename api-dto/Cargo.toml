@@ -9,4 +9,5 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 # custom modules
 models = {path = "../models"}
+pool = {path = "../pool"}
 time = {path = "../time"}
