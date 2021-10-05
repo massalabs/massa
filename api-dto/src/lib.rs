@@ -5,6 +5,7 @@ use models::{
     Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
     Operation, OperationHashSet, OperationId, Slot, Version,
 };
+use pool::PoolStats;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
@@ -17,12 +18,6 @@ pub struct TimeStats {
     pub final_block_count: u64,
     pub stale_block_count: u64,
     pub final_operation_count: u64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PoolStats {
-    pub operation_count: u64,
-    pub endorsement_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
