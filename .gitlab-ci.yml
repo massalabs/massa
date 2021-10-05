@@ -1,4 +1,3 @@
-
 stages:
   - build
 
@@ -16,7 +15,7 @@ build:
   image: "rustlang/rust:nightly"
   script:
     - cargo update
-    - cargo build
+    - RUSTFLAGS="-D warnings" cargo build
 
 # Use tarpaulin to test the project
 test:
