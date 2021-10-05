@@ -2,8 +2,8 @@
 
 #![feature(async_closure)]
 use api_dto::{
-    AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NetworkStats, NodeStatus,
-    OperationInfo, RollsInfo, TimeStats,
+    AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    RollsInfo, TimeStats,
 };
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
@@ -174,6 +174,7 @@ impl MassaPublic for ApiMassaPublic {
                 now,
             )?;
             let stats = consensus_command_sender.get_stats().await?;
+            let network_stats = network_command_sender.get_network_stats().await?;
             let pool_stats = pool_command_sender.get_pool_stats().await?;
             Ok(NodeStatus {
                 node_id: NodeId(derive_public_key(&generate_random_private_key())),
@@ -205,14 +206,9 @@ impl MassaPublic for ApiMassaPublic {
                     stale_block_count: stats.stale_block_count,
                     final_operation_count: stats.final_operation_count,
                 },
+
+                network_stats,
                 pool_stats,
-                network_stats: NetworkStats {
-                    in_connection_count: 0,
-                    out_connection_count: 0,
-                    known_peer_count: 0,
-                    banned_peer_count: 0,
-                    active_node_count: 0,
-                }, // todo add get network stats command
             })
         };
 
