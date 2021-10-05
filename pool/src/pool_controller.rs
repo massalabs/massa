@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::pool_worker::PoolStats;
+
 use super::{
     config::{PoolConfig, CHANNEL_SIZE},
     error::PoolError,
@@ -92,6 +94,22 @@ impl PoolCommandSender {
             .await
             .map_err(|_| PoolError::ChannelError("update_current_slot command send error".into()));
         res
+    }
+
+    pub async fn get_pool_stats(&mut self) -> Result<PoolStats, PoolError> {
+        massa_trace!("pool.command_sender.get_pool_stats", {});
+        let (response_tx, response_rx) = oneshot::channel();
+
+        self.0
+            .send(PoolCommand::GetStats(response_tx))
+            .await
+            .map_err(|_| PoolError::ChannelError("get_pool_stats command send error".into()))?;
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_pool_stats {:?}",
+                e
+            ))
+        })
     }
 
     pub async fn final_operations(

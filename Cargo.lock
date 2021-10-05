@@ -76,6 +76,7 @@ name = "api-dto"
 version = "0.1.0"
 dependencies = [
  "models",
+ "pool",
  "serde 1.0.130",
  "time 0.1.0",
 ]
