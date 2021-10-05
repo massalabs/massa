@@ -9,7 +9,9 @@ version = "DEVE.0.0"
     bind = "127.0.0.1:33033"
 
 [new_api]
-    draw_lookahead_period_count =10
+    draw_lookahead_period_count = 10
+    bind_private = "127.0.0.1:33034"
+    bind_public = "[::]:33035"
 
 [consensus]
     genesis_timestamp = 1626440641000
@@ -90,7 +92,6 @@ version = "DEVE.0.0"
     max_stored_blocks= 1000
     path = "storage/block_store"
     cache_capacity = 10000
-    #flush_every_ms = 
     reset_at_startup = true
 
 [bootstrap]

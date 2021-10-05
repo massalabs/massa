@@ -6,7 +6,7 @@
 extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
-use api_eth::{EthRpc, API as APIEth};
+// TODO: use api_eth::{EthRpc, API as APIEth};
 use api_private::ApiMassaPrivate;
 use api_public::ApiMassaPublic;
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
@@ -173,7 +173,7 @@ async fn launch(
 
     // spawn APIs
     let (api_private, api_private_stop_rx) = ApiMassaPrivate::create(
-        "127.0.0.1:33034",
+        &cfg.new_api.bind_private.to_string(),
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         cfg.new_api.clone(),
@@ -182,7 +182,7 @@ async fn launch(
     api_private.serve_massa_private();
 
     let api_public = ApiMassaPublic::create(
-        "127.0.0.1:33035",
+        &cfg.new_api.bind_public.to_string(),
         consensus_command_sender.clone(),
         cfg.new_api,
         cfg.consensus,
@@ -193,10 +193,11 @@ async fn launch(
         network_command_sender.clone(),
         clock_compensation,
     );
-    api_public.serve_massa_public(); // todo add needed command servers
+    api_public.serve_massa_public();
 
-    let api_eth = APIEth::from_url("127.0.0.1:33036");
-    api_eth.serve_eth_rpc(); // todo add needed command servers
+    // TODO: This will implemented later ...
+    // let api_eth = APIEth::from_url("127.0.0.1:33036");
+    // api_eth.serve_eth_rpc();
 
     (
         pool_command_sender,
