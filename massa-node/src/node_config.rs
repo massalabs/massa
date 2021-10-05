@@ -14,6 +14,7 @@ use storage::StorageConfig;
 #[derive(Debug, Deserialize, Clone)]
 pub struct LoggingConfig {
     pub level: usize,
+    pub sentry: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]

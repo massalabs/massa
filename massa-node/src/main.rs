@@ -694,7 +694,17 @@ async fn main() {
     let cfg = cfg
         .try_into::<node_config::Config>()
         .expect("error structuring config");
-
+    if cfg.logging.sentry {
+        // TODO: Change the DSN. The DSN (Data Source Name) tells the SDK where to send events.
+        // If you forget it, view Settings -> Projects -> Client Keys (DSN) in sentry.io.
+        let _guard = sentry::init((
+            "https://examplePublicKey@o0.ingest.sentry.io/0",
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        ));
+    }
     // setup logging
     stderrlog::new()
         .module(module_path!())
