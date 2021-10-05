@@ -211,7 +211,7 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
-    let storage = opt_storage_command_sender;
+    let storage = opt_storage_command_sender.clone();
     let block_ids_by_creator = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -373,6 +373,7 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
+    let storage = opt_storage_command_sender;
     let operations_involving_address = warp::get()
         .and(warp::path("api"))
         .and(warp::path("v1"))
@@ -380,7 +381,11 @@ pub fn get_filter(
         .and(warp::path::param::<Address>())
         .and(warp::path::end())
         .and_then(move |address| {
-            wrap_api_call(get_operations_involving_address(evt_tx.clone(), address))
+            wrap_api_call(get_operations_involving_address(
+                evt_tx.clone(),
+                address,
+                storage.clone(),
+            ))
         });
 
     let evt_tx = event_tx.clone();
@@ -1187,6 +1192,7 @@ async fn get_peers(event_tx: mpsc::Sender<ApiEvent>) -> Result<Peers, ApiError> 
 async fn get_operations_involving_address(
     event_tx: mpsc::Sender<ApiEvent>,
     address: Address,
+    opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<OperationHashMap<OperationSearchResult>, ApiError> {
     massa_trace!("api.filters.get_operations_involving_address", {
         "address": address
@@ -1205,12 +1211,25 @@ async fn get_operations_involving_address(
             ))
         })?;
 
-    let res = response_rx.await.map_err(|e| {
+    let mut res = response_rx.await.map_err(|e| {
         ApiError::ReceiveChannelError(format!(
             "could not retrieve operation involving address: {0}",
             e
         ))
     })?;
+
+    if let Some(access) = &opt_storage_command_sender {
+        access
+            .get_operations_involving_address(&address)
+            .await
+            .expect("could not retrieve recent operations from storage")
+            .into_iter()
+            .for_each(|(op_id, search_new)| {
+                res.entry(op_id)
+                    .and_modify(|search_old| search_old.extend(&search_new))
+                    .or_insert(search_new);
+            })
+    }
 
     Ok(res)
 }

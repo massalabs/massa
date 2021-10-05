@@ -29,11 +29,6 @@ pub struct ApiMassaPrivate {
 /// Private Massa-RPC "manager mode" endpoints
 #[rpc(server)]
 pub trait MassaPrivate {
-    /// Starts the node and waits for node to start.
-    /// Signals if the node is already running.
-    #[rpc(name = "start_node")]
-    fn start_node(&self) -> Result<(), PrivateApiError>;
-
     /// Gracefully stop the node.
     #[rpc(name = "stop_node")]
     fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>>;
@@ -48,17 +43,20 @@ pub trait MassaPrivate {
 
     /// Add a vec of new private keys for the node to use to stake.
     /// No confirmation to expect.
-    #[rpc(name = "add_staking_keys")]
-    fn add_staking_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>>;
+    #[rpc(name = "add_staking_private_keys")]
+    fn add_staking_private_keys(
+        &self,
+        _: Vec<PrivateKey>,
+    ) -> BoxFuture<Result<(), PrivateApiError>>;
 
     /// Remove a vec of addresses used to stake.
     /// No confirmation to expect.
-    #[rpc(name = "remove_staking_keys")]
-    fn remove_staking_keys(&self, _: Vec<Address>) -> BoxFuture<Result<(), PrivateApiError>>;
+    #[rpc(name = "remove_staking_addresses")]
+    fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), PrivateApiError>>;
 
     /// Return hashset of staking addresses.
-    #[rpc(name = "list_staking_keys")]
-    fn list_staking_keys(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>>;
+    #[rpc(name = "get_staking_addresses")]
+    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>>;
 
     /// Bans given node id
     /// No confirmation to expect.
@@ -68,7 +66,7 @@ pub trait MassaPrivate {
     /// Unbans given ip addr
     /// No confirmation to expect.
     #[rpc(name = "unban")]
-    fn unban(&self, _: IpAddr) -> BoxFuture<Result<(), PrivateApiError>>;
+    fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), PrivateApiError>>;
 }
 
 impl ApiMassaPrivate {
@@ -109,10 +107,6 @@ impl ApiMassaPrivate {
 }
 
 impl MassaPrivate for ApiMassaPrivate {
-    fn start_node(&self) -> Result<(), PrivateApiError> {
-        todo!()
-    }
-
     fn stop_node(&self) -> BoxFuture<Result<(), PrivateApiError>> {
         let stop = self.stop_node_channel.clone();
         let closure = async move || {
@@ -134,13 +128,19 @@ impl MassaPrivate for ApiMassaPrivate {
         Box::pin(closure())
     }
 
-    fn add_staking_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), PrivateApiError>> {
+    fn add_staking_private_keys(
+        &self,
+        keys: Vec<PrivateKey>,
+    ) -> BoxFuture<Result<(), PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
         let closure = async move || Ok(cmd_sender.register_staking_private_keys(keys).await?);
         Box::pin(closure())
     }
 
-    fn remove_staking_keys(&self, keys: Vec<Address>) -> BoxFuture<Result<(), PrivateApiError>> {
+    fn remove_staking_addresses(
+        &self,
+        keys: Vec<Address>,
+    ) -> BoxFuture<Result<(), PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
         let closure = async move || {
             Ok(cmd_sender
@@ -150,7 +150,7 @@ impl MassaPrivate for ApiMassaPrivate {
         Box::pin(closure())
     }
 
-    fn list_staking_keys(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>> {
+    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
         let closure = async move || Ok(cmd_sender.get_staking_addresses().await?);
         Box::pin(closure())
@@ -162,9 +162,14 @@ impl MassaPrivate for ApiMassaPrivate {
         Box::pin(closure())
     }
 
-    fn unban(&self, ip: IpAddr) -> BoxFuture<Result<(), PrivateApiError>> {
+    fn unban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
-        let closure = async move || Ok(network_command_sender.unban(ip).await?);
+        let closure = async move || {
+            for ip in ips {
+                network_command_sender.unban(ip).await?
+            }
+            Ok(())
+        };
         Box::pin(closure())
     }
 }

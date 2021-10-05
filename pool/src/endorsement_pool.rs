@@ -23,6 +23,10 @@ impl EndorsementPool {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.endorsements.len()
+    }
+
     /// Removes endorsements that are too old
     pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {
         self.endorsements.retain(
