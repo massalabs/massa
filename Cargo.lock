@@ -2200,19 +2200,23 @@ dependencies = [
 name = "rpc-client"
 version = "0.1.0"
 dependencies = [
+ "api-dto",
  "atty",
  "config",
  "console 0.14.1 (git+https://github.com/mitsuhiko/console)",
+ "crypto",
  "dialoguer",
  "futures 0.3.17",
  "human-panic",
  "jsonrpc-core-client",
+ "models",
  "paw",
  "serde 1.0.130",
  "serde_json",
  "structopt",
  "strum",
  "strum_macros",
+ "time 0.1.0",
  "tokio",
 ]
 

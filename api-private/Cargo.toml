@@ -10,14 +10,13 @@ displaydoc = "0.2"
 jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
+tokio = { version = "1.11", features = ["full"] }
+thiserror = "1.0"
 # custom modules
-crypto = {path = "../crypto"}
 api-dto = { path = "../api-dto" }
-models = {path = "../models"}
+crypto = {path = "../crypto"}
 communication = {path = "../communication"}
 consensus = {path = "../consensus"}
-time = {path = "../time"}
+models = {path = "../models"}
 rpc-server = {path = "../rpc-server"}
-thiserror = "1.0"
-
-tokio = { version = "1.11", features = ["full"] }
+time = {path = "../time"}
