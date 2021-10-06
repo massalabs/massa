@@ -7,8 +7,8 @@ use std::time::Duration;
 use super::tools;
 use super::tools::protocol_test;
 use crate::network::NetworkCommand;
-use crate::protocol::ProtocolPoolEvent;
-use models::{EndorsementHashMap, Slot};
+use crate::protocol::{ProtocolEvent, ProtocolPoolEvent};
+use models::{Address, BlockHashMap, EndorsementHashMap, Slot};
 use serial_test::serial;
 
 #[tokio::test]
@@ -266,6 +266,226 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                     Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
                 };
             }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration(
+) {
+    let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 1 node.
+            let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let serialization_context = models::get_serialization_context();
+            let thread = address.get_thread(serialization_context.parent_count);
+
+            let endorsement = tools::create_endorsement();
+            let endorsement_id = endorsement.compute_endorsement_id().unwrap();
+
+            let block = tools::create_block_with_endorsements(
+                &nodes[0].private_key,
+                &nodes[0].id.0,
+                Slot::new(1, thread),
+                vec![endorsement.clone()],
+            );
+            let block_id = block.header.compute_block_id().unwrap();
+
+            network_controller
+                .send_ask_for_block(nodes[0].id.clone(), vec![block_id.clone()])
+                .await;
+
+            // Wait for the event to be sure that the node is connected,
+            // and noted as interested in the block.
+            let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::GetBlocks { .. } => Some(evt),
+                    _ => None,
+                }
+            })
+            .await;
+
+            // Integrate the block,
+            // this should note the node as knowning about the endorsement.
+            protocol_command_sender
+                .integrated_block(
+                    block_id,
+                    block,
+                    Default::default(),
+                    vec![endorsement_id.clone()],
+                )
+                .await
+                .unwrap();
+
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::SendBlock { node, block }) => {
+                    assert_eq!(node, nodes[0].id);
+                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                }
+                Some(_) => panic!("Unpexted network command."),
+                None => panic!("Block not sent."),
+            };
+
+            // Send the endorsement to protocol
+            // it should not propagate to the node that already knows about it
+            // because of the previously integrated block.
+            let mut ops = EndorsementHashMap::default();
+            ops.insert(endorsement_id.clone(), endorsement);
+            protocol_command_sender
+                .propagate_endorsements(ops)
+                .await
+                .unwrap();
+
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
+                    let id = endorsements[0].compute_endorsement_id().unwrap();
+                    assert_eq!(id, endorsement_id);
+                    assert_eq!(nodes[0].id, node);
+                    panic!("Unexpected propagated of endorsement.");
+                }
+                None => {}
+                Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
+            };
+
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_get_block_results(
+) {
+    let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 1 node.
+            let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let serialization_context = models::get_serialization_context();
+            let thread = address.get_thread(serialization_context.parent_count);
+
+            let endorsement = tools::create_endorsement();
+            let endorsement_id = endorsement.compute_endorsement_id().unwrap();
+
+            let block = tools::create_block_with_endorsements(
+                &nodes[0].private_key,
+                &nodes[0].id.0,
+                Slot::new(1, thread),
+                vec![endorsement.clone()],
+            );
+            let block_id = block.header.compute_block_id().unwrap();
+
+            network_controller
+                .send_ask_for_block(nodes[0].id.clone(), vec![block_id.clone()])
+                .await;
+
+            // Wait for the event to be sure that the node is connected,
+            // and noted as interested in the block.
+            let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::GetBlocks { .. } => Some(evt),
+                    _ => None,
+                }
+            })
+            .await;
+
+            // Send the block as search results.
+            let mut results = BlockHashMap::default();
+            results.insert(
+                block_id.clone(),
+                Some((block.clone(), None, Some(vec![endorsement_id]))),
+            );
+
+            protocol_command_sender
+                .send_get_blocks_results(results)
+                .await
+                .unwrap();
+
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::SendBlock { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::SendBlock { node, block }) => {
+                    assert_eq!(node, nodes[0].id);
+                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                }
+                Some(_) => panic!("Unpexted network command."),
+                None => panic!("Block not sent."),
+            };
+
+            // Send the endorsement to protocol
+            // it should not propagate to the node that already knows about it
+            // because of the previously integrated block.
+            let mut ops = EndorsementHashMap::default();
+            ops.insert(endorsement_id.clone(), endorsement);
+            protocol_command_sender
+                .propagate_endorsements(ops)
+                .await
+                .unwrap();
+
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
+                    let id = endorsements[0].compute_endorsement_id().unwrap();
+                    assert_eq!(id, endorsement_id);
+                    assert_eq!(nodes[0].id, node);
+                    panic!("Unexpected propagated of endorsement.");
+                }
+                None => {}
+                Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
+            };
+
             (
                 network_controller,
                 protocol_event_receiver,
