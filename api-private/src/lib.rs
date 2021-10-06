@@ -164,12 +164,7 @@ impl MassaPrivate for ApiMassaPrivate {
 
     fn unban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
-        let closure = async move || {
-            for ip in ips {
-                network_command_sender.unban(ip).await?
-            }
-            Ok(())
-        };
+        let closure = async move || Ok(network_command_sender.unban(ips).await?);
         Box::pin(closure())
     }
 }

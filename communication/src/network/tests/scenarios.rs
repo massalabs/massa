@@ -278,7 +278,7 @@ async fn test_peer_ban() {
 
             //unban connection1.
             network_command_sender
-                .unban(mock_addr.ip())
+                .unban(vec![mock_addr.ip()])
                 .await
                 .expect("error during send unban command.");
 
