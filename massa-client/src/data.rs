@@ -220,6 +220,7 @@ pub enum WrappedBlockStatus {
     Active(WrapperBlock),
     Discarded(DiscardReason),
     Stored(WrapperBlock),
+    Final(WrapperBlock),
 }
 
 impl From<ExportBlockStatus> for WrappedBlockStatus {
@@ -231,7 +232,7 @@ impl From<ExportBlockStatus> for WrappedBlockStatus {
             ExportBlockStatus::Active(block) => WrappedBlockStatus::Active(block.into()),
             ExportBlockStatus::Discarded(reason) => WrappedBlockStatus::Discarded(reason),
             ExportBlockStatus::Stored(block) => WrappedBlockStatus::Stored(block.into()),
-            ExportBlockStatus::Final(_) => todo!(), // todo this should disappear with old client
+            ExportBlockStatus::Final(block) => WrappedBlockStatus::Final(block.into()),
         }
     }
 }
@@ -247,6 +248,7 @@ impl std::fmt::Display for WrappedBlockStatus {
             WrappedBlockStatus::Active(block) => write!(f, "status: Active, {}", block),
             WrappedBlockStatus::Discarded(reason) => write!(f, "status: Discarded({:?})", reason),
             WrappedBlockStatus::Stored(block) => write!(f, "status: Stored, {}", block),
+            WrappedBlockStatus::Final(block) => write!(f, "status: Final, {}", block),
         }
     }
 }
