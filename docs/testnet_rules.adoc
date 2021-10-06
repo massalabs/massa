@@ -2,9 +2,9 @@
 
 In order to help achieve our goal of a fully decentralized and scaled blockchain, we designed a staking rewards program during the testnet phase.
 
-People that consistently run a node (with a publicly routable IP) and stake (produce blocks) will be rewarded mainnet Massa tokens when mainnet launches.
+People that consistently run a node and produce blocks will be rewarded mainnet Massa tokens when mainnet launches.
 
-Staking is what improves the security of the network. By buying rolls (freezing your coins) and producing your share of the blocks, you help honest nodes to collectively protect against potential attackers, who must not reach 51% of the block production. On mainnet, staking is incentivized through block rewards: for each block produced, you get 1 Massa. On testnet however, you get testnet Massa which have no value, this is why we will reward you with mainnet Massa for learning to setup your node and stake right now, which also help us improve the staking user experience.
+Staking is what improves the security of the network. By buying rolls (freezing your coins) and producing your share of the blocks, you help honest nodes to collectively protect against potential attackers, who must not reach 51% of the block production. On mainnet, staking is incentivized through block rewards: for each block produced, you get some Massa. On testnet however, you get testnet Massa which have no value, this is why we will reward you with mainnet Massa for learning to setup your node and stake right now, which also helps us improve the staking user experience.
 
 On July 16th we launched a first public version of Massa, the first testnet.
 More than 350 nodes were connected at the same time after one week, which overloaded our bootstrap nodes which were the only nodes accepting connections.
@@ -26,7 +26,7 @@ At the end of the episode, all nodes will stop by themselves and become useless/
 
 The score of a node for a given episode is the following:
 ```
-Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 50 * (routable_samples / routability_trials) + 20 * average_maxim_factor
+Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 50 * (routable_cycles / nb_cycles) + 20 * total_maxim_factor / nb_cycles
 
 ```
 
@@ -38,40 +38,13 @@ Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 
 *** `selected_slots` is the number of final slots for which the staker was selected to create blocks during the episode. If `selected_slots` = 0, the staking score is set to 0.
 *** The maximum score is supposed to be reached if during the whole episode, the node has rolls and produces all blocks when it is selected to.
 * 50 points of the score are based on the routability of the node: how often the node can be reached by other nodes.
-** `routable_samples` / `random_routability_trials`
-*** `routability_trials` is the total number of random connection trials that we performed towards the node during the episode.
-*** `routable_samples` is the number of random connection trials that resulted in a successful connection.
+** `routable_cycles` / `nb_cycles`
+*** `routable_cycles` is the number of connection trials that resulted in a successful connection.
 *** Maximum score is achieved if the node can always be reached by other nodes.
-* 20 points of the score incentivize node diversity: the network is more decentralized if nodes are spread across countries and providers than if they are all hosted at the same location/provider
-** `average_maxim_factor` is the average `maxim_factor` value across routability samples. The following simplified pseudocode describes the computation of maxim factors for a set of IPV4s:
-+
-```python
-def maxim_factors(ipv4s):
-    if not ipv4s:
-        return []
-
-    binary_ips = []
-    for ip in ipv4s:
-        binary_ips.append("".join(["{0:b}".format(int(part)).rjust(8,"0") for part in ip.split(".")]))
-
-    scores = []
-    for bin_ip in binary_ips:
-        cnt = 0.0
-        for pow2 in range(1, 32):
-            cnt = cnt - (sum([1.0 for v in binary_ips if v.startswith(bin_ip[:(32-pow2)])])-1) / (4**(pow2 * 0.01))
-        scores.append(cnt)
-
-    min_score = min(scores)
-    span = (max(scores) - min_score)
-    if span != 0:
-        scores = [(s - min_score)/span for s in scores]
-    else
-        scores = [1 for _ in scores]
-    
-    return scores
-```
-+
-note that IPV6s are for now given max score
+* 20 points of the score incentivize node diversity: the network is more decentralized if nodes are spread across countries and providers than if they are all hosted at the same location/provider.
+** `total_maxim_factor` / `nb_cycles`
+*** `total_maxim_factor` is the total amount of `maxim_factor` accumulated at each cycle. The `maxim_factor` is a value between 0 and 1 representing the distance between this node IP address and the IP addresses of other nodes in a given cycle. 
+*** Maximum score is reached when running the node at home or with a provider that is not used to run other Massa nodes.
 
 We encourage every person to run only one node.
 Running multiple nodes with the same staking keys will result in roll slashing in the future.
@@ -90,4 +63,4 @@ By this time, people will be able to claim their rewards through a KYC process (
 
 The testnet score of a person will be the sum of all their episode scores. 
 
-The mainnet reward will be linked to the testnet score. More info on mainnet rewards will come later.
+The mainnet reward will depend on the testnet score. More info on mainnet rewards will come later.
