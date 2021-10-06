@@ -51,7 +51,7 @@ pub enum NetworkCommand {
     GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
-    Unban(IpAddr),
+    Unban(Vec<IpAddr>),
     BlockNotFound {
         node: NodeId,
         block_id: BlockId,

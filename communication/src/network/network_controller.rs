@@ -151,9 +151,9 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    pub async fn unban(&self, ip: IpAddr) -> Result<(), CommunicationError> {
+    pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::Unban(ip))
+            .send(NetworkCommand::Unban(ips))
             .await
             .map_err(|_| CommunicationError::ChannelError("could not send Unban command".into()))?;
         Ok(())

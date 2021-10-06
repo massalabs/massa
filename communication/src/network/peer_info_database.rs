@@ -310,11 +310,13 @@ impl PeerInfoDatabase {
         res
     }
 
-    pub async fn unban(&mut self, ip: IpAddr) -> Result<(), CommunicationError> {
-        if let Some(peer) = self.peers.get_mut(&ip) {
-            peer.banned = false;
-        } else {
-            return Ok(());
+    pub async fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), CommunicationError> {
+        for ip in ips.into_iter() {
+            if let Some(peer) = self.peers.get_mut(&ip) {
+                peer.banned = false;
+            } else {
+                return Ok(());
+            }
         }
         cleanup_peers(
             &self.cfg,
