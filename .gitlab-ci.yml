@@ -5,7 +5,6 @@ sanity:
   stage: build
   image: "rustlang/rust:nightly"
   script:
-    - cargo update
     - rustup component add rustfmt # TODO: clippy
     - cargo fmt -- --check
 #   - cargo clippy
@@ -14,21 +13,18 @@ build:
   stage: build
   image: "rustlang/rust:nightly"
   script:
-    - cargo update
     - RUSTFLAGS="-D warnings" cargo build
 
 test:
   stage: build
   image: "rustlang/rust:nightly"
   script:
-    - cargo update
     - cargo test --lib
 
 doctest:
   stage: build
   image: "rustlang/rust:nightly"
   script:
-    - cargo update
     - cargo test --doc
 
 coverage:
