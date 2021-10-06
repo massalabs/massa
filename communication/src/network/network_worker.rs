@@ -301,8 +301,31 @@ impl NetworkWorker {
 
         // wake up the controller at a regular interval to retry connections
         let mut wakeup_interval = tokio::time::interval(self.cfg.wakeup_interval.to_duration());
+        let mut need_connect_retry = true;
 
         loop {
+            if need_connect_retry {
+                // try to connect to candidate IPs
+                let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips()?;
+                for ip in candidate_ips {
+                    debug!("starting outgoing connection attempt towards ip={:?}", ip);
+                    massa_trace!("out_connection_attempt_start", { "ip": ip });
+                    self.peer_info_db.new_out_connection_attempt(&ip)?;
+                    let mut connector = self
+                        .establisher
+                        .get_connector(self.cfg.connect_timeout)
+                        .await?;
+                    let addr = SocketAddr::new(ip, self.cfg.protocol_port);
+                    out_connecting_futures.push(async move {
+                        match connector.connect(addr).await {
+                            Ok((reader, writer)) => (addr.ip(), Ok((reader, writer))),
+                            Err(e) => (addr.ip(), Err(e)),
+                        }
+                    });
+                }
+                need_connect_retry = false;
+            }
+
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
@@ -314,33 +337,16 @@ impl NetworkWorker {
 
                 // wake up interval
                 _ = wakeup_interval.tick() => {
-                    // try to connect to candidate IPs
-                    let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips()?;
-                    for ip in candidate_ips {
-                        debug!("starting outgoing connection attempt towards ip={:?}", ip);
-                        massa_trace!("out_connection_attempt_start", { "ip": ip });
-                        self.peer_info_db.new_out_connection_attempt(&ip)?;
-                        let mut connector = self
-                            .establisher
-                            .get_connector(self.cfg.connect_timeout)
-                            .await?;
-                        let addr = SocketAddr::new(ip, self.cfg.protocol_port);
-                        out_connecting_futures.push(async move {
-                            match connector.connect(addr).await {
-                                Ok((reader, writer)) => (addr.ip(), Ok((reader, writer))),
-                                Err(e) => (addr.ip(), Err(e)),
-                            }
-                        });
-                    }
+                    self.peer_info_db.update()?; // notify tick to peer db
 
-                    // notify tick to peer db
-                    self.peer_info_db.update()?;
+                    need_connect_retry = true; // retry out connections
                 }
 
                 // wait for a handshake future to complete
                 Some(res) = self.handshake_futures.next() => {
                     let (conn_id, outcome) = res?;
                     self.on_handshake_finished(conn_id, outcome).await?;
+                    need_connect_retry = true; // retry out connections
                 },
 
                 // event received from a node
@@ -382,6 +388,8 @@ impl NetworkWorker {
                         massa_trace!("protocol channel closed", {"node_id": node_id});
                         self.connection_closed(connection_id, reason).await?;
                     }
+
+                    need_connect_retry = true; // retry out connections
                 },
 
                 // peer feedback event
@@ -394,6 +402,7 @@ impl NetworkWorker {
 
                 // out-connector event
                 Some((ip_addr, res)) = out_connecting_futures.next() => {
+                    need_connect_retry = true; // retry out connections
                     self.manage_out_connections(
                         res,
                         ip_addr,
