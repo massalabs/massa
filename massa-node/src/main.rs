@@ -18,7 +18,6 @@ use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
 };
-use human_panic::setup_panic;
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
 use models::OperationHashMap;
@@ -689,7 +688,6 @@ async fn stop(
 
 #[tokio::main]
 async fn main() {
-    setup_panic!();
     // load config
     let config_path = "base_config/config.toml";
     let override_config_path = "config/config.toml";

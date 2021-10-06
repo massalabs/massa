@@ -12,7 +12,6 @@ console = { git = "https://github.com/mitsuhiko/console" }
 # needed until https://github.com/mitsuhiko/dialoguer/commit/8762a2e7c1ae7fe0db9eb8ed75a2c46a73f653b4 is push on crates.io
 dialoguer = { git = "https://github.com/mitsuhiko/dialoguer" }
 futures = "0.3"
-human-panic = "1.0.3"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
 lazy_static = "1"
 paw = "1.0"
