@@ -51,16 +51,18 @@ impl<'a> std::fmt::Display for WrapperOperationType<'a> {
             OperationType::Transaction {
                 recipient_address,
                 amount,
-            } => write!(
-                f,
-                "Transaction: \n\trecipient:{} \n\tamount:{}",
-                recipient_address, amount
-            ),
+            } => {
+                writeln!(f, "Transaction:")?;
+                writeln!(f, "    recipient:{}", recipient_address)?;
+                writeln!(f, "    amount:{}", amount)
+            }
             OperationType::RollBuy { roll_count } => {
-                write!(f, "RollBuy: \n\troll_count:{}", roll_count)
+                writeln!(f, "RollBuy")?;
+                write!(f, "    roll_count:{}", roll_count)
             }
             OperationType::RollSell { roll_count } => {
-                write!(f, "RollSell: \n\troll_count:{}", roll_count)
+                writeln!(f, "RollSell")?;
+                write!(f, "    roll_count:{}", roll_count)
             }
         }
     }
@@ -81,11 +83,12 @@ impl std::fmt::Display for WrapperOperation {
         let addr = Address::from_public_key(&self.0.content.sender_public_key)
             .map_err(|_| std::fmt::Error)?;
         let amount: String = self.0.content.fee.to_string();
-        write!(
+        writeln!(
             f,
-            "sender:{} \tfee:{} \texpire_period:{} \n{}",
-            addr, amount, self.0.content.expire_period, op_type
-        )
+            "sender: {}     fee: {}     expire_period: {}",
+            addr, amount, self.0.content.expire_period,
+        )?;
+        writeln!(f, "{}", op_type)
     }
 }
 
@@ -124,11 +127,11 @@ impl std::fmt::Display for GetOperationContent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(
             f,
-            " status:{} \tin pool:{} \nOperation: {} ",
+            " status:{}     in pool:{}",
             OperationSearchResultStatusWrapper(&self.status),
             self.in_pool,
-            self.op,
         )?;
+        writeln!(f, "Operation: {}", self.op)?;
         if !self.in_blocks.is_empty() {
             writeln!(
                 f,
@@ -199,7 +202,8 @@ impl<'a> std::fmt::Display for AddressStates {
         for addr in &self.order {
             writeln!(f, "Address: {}", addr)?;
             if let Some(state) = self.map.get(addr) {
-                write!(f, "State: \n{}", state)?;
+                writeln!(f, "State :")?;
+                writeln!(f, "{}", state)?;
             } else {
                 writeln!(f, "missing state")?;
             }
@@ -272,11 +276,11 @@ impl std::fmt::Display for WrapperBlock {
         } else {
             &signature
         };
-        write!(
+        writeln!(f, "{}", self.header)?;
+        writeln!(f, "signature : {}", signature)?;
+        writeln!(
             f,
-            "{} \nsignature:{} \noperations:{}",
-            self.header,
-            signature,
+            "operations:{}",
             self.operations
                 .iter()
                 .map(|op| format!("({}", op))
@@ -346,7 +350,7 @@ impl std::fmt::Display for WrappedBlockHeader {
             writeln!(f, "\t\t signature : {}", ed.signature)?;
         }
         if self.0.content.endorsements.is_empty() {
-            writeln!(f, "No endorsements found")?;
+            writeln!(f, "\tNo endorsements found")?;
         }
 
         Ok(())
