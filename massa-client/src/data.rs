@@ -53,14 +53,14 @@ impl<'a> std::fmt::Display for WrapperOperationType<'a> {
                 amount,
             } => write!(
                 f,
-                "Transaction: recipient:{} amount:{}",
+                "Transaction: \n\trecipient:{} \n\tamount:{}",
                 recipient_address, amount
             ),
             OperationType::RollBuy { roll_count } => {
-                write!(f, "RollBuy: roll_count:{}", roll_count)
+                write!(f, "RollBuy: \n\troll_count:{}", roll_count)
             }
             OperationType::RollSell { roll_count } => {
-                write!(f, "RollSell: roll_count:{}", roll_count)
+                write!(f, "RollSell: \n\troll_count:{}", roll_count)
             }
         }
     }
@@ -83,7 +83,7 @@ impl std::fmt::Display for WrapperOperation {
         let amount: String = self.0.content.fee.to_string();
         write!(
             f,
-            "sender:{} fee:{} expire_period:{} {}",
+            "sender:{} \tfee:{} \texpire_period:{} \n{}",
             addr, amount, self.0.content.expire_period, op_type
         )
     }
@@ -124,20 +124,24 @@ impl std::fmt::Display for GetOperationContent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(
             f,
-            "{} status:{} in pool:{}",
+            " status:{} \tin pool:{} \nOperation: {} ",
             OperationSearchResultStatusWrapper(&self.status),
+            self.in_pool,
             self.op,
-            self.in_pool
         )?;
-        writeln!(
-            f,
-            "block list:{}",
-            self.in_blocks
-                .iter()
-                .map(|(id, (_idx, f))| format!("({}, final:{})", id, f))
-                .collect::<Vec<String>>()
-                .join(" ")
-        )
+        if !self.in_blocks.is_empty() {
+            writeln!(
+                f,
+                "block list:{}",
+                self.in_blocks
+                    .iter()
+                    .map(|(id, (_idx, f))| format!("({}, final:{})", id, f))
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            )
+        } else {
+            writeln!(f, "operation not included in a block yet")
+        }
     }
 }
 
