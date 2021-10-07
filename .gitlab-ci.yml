@@ -1,8 +1,12 @@
 stages:
+  - sanity
   - build
+  - test
+  - coverage
+  - artifact
 
 sanity:
-  stage: build
+  stage: sanity
   image: "rustlang/rust:nightly"
   script:
     - rustup component add rustfmt # TODO: clippy
@@ -16,19 +20,19 @@ build:
     - RUSTFLAGS="-D warnings" cargo build
 
 test:
-  stage: build
+  stage: test
   image: "rustlang/rust:nightly"
   script:
     - cargo test --lib
 
 doctest:
-  stage: build
+  stage: test
   image: "rustlang/rust:nightly"
   script:
     - cargo test --doc
 
 coverage:
-  stage: build
+  stage: coverage
   image: "rustlang/rust:nightly"
   script:
     - cargo install cargo-tarpaulin -f
@@ -43,7 +47,7 @@ coverage:
   allow_failure: true
 
 build-linux:
-  stage: build
+  stage: artifact
   image: "massalabs/linux-ci"
   rules:
     - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
@@ -70,7 +74,7 @@ build-linux:
     - cp -rv ../massa-client/base_config ./massa-client/base_config
 
 build-darwin:
-  stage: build
+  stage: artifact
   image: "massalabs/linux-ci"
   rules:
     - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
@@ -97,7 +101,7 @@ build-darwin:
     - cp -rv ../massa-client/base_config ./massa-client/base_config
 
 build-windows:
-  stage: build
+  stage: artifact
   image: "massalabs/linux-ci"
   rules:
     - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
