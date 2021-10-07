@@ -404,6 +404,143 @@ async fn test_block_creation_mix_with_reception() {
 
 #[tokio::test]
 #[serial]
+async fn test_block_creation_mix_with_reception() {
+    let thread_count = 1;
+    // define addresses use for the test
+    // addresses a and b both in thread 0
+    let mut priv_1 = crypto::generate_random_private_key();
+    let mut pubkey_1 = crypto::derive_public_key(&priv_1);
+    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    while 0 != address_1.get_thread(thread_count) {
+        priv_1 = crypto::generate_random_private_key();
+        pubkey_1 = crypto::derive_public_key(&priv_1);
+        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    }
+    assert_eq!(0, address_1.get_thread(thread_count));
+
+    let mut priv_2 = crypto::generate_random_private_key();
+    let mut pubkey_2 = crypto::derive_public_key(&priv_2);
+    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    while 0 != address_2.get_thread(thread_count) {
+        priv_2 = crypto::generate_random_private_key();
+        pubkey_2 = crypto::derive_public_key(&priv_2);
+        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    }
+    assert_eq!(0, address_2.get_thread(thread_count));
+
+    let mut ledger = HashMap::new();
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_str("1000").unwrap()),
+    );
+    let ledger_file = generate_ledger_file(&ledger);
+
+    //init roll cont
+    let mut roll_counts = RollCounts::default();
+    let update = RollUpdate {
+        roll_purchases: 1,
+        roll_sales: 0,
+    };
+    let mut updates = RollUpdates::default();
+    updates.apply(&address_1, &update).unwrap();
+    updates.apply(&address_2, &update).unwrap();
+    roll_counts.apply_updates(&updates).unwrap();
+    let staking_file = tools::generate_staking_keys_file(&vec![priv_1]);
+
+    let roll_counts_file = tools::generate_roll_counts_file(&roll_counts);
+    let mut cfg = tools::default_consensus_config(
+        ledger_file.path(),
+        roll_counts_file.path(),
+        staking_file.path(),
+    );
+    cfg.t0 = 1000.into();
+    cfg.thread_count = thread_count;
+    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(1000.into()).unwrap();
+    cfg.disable_block_creation = false;
+
+    tools::consensus_without_pool_test(
+        cfg.clone(),
+        None,
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+            let mut parents = consensus_command_sender
+                .get_block_graph_status()
+                .await
+                .expect("could not get block graph status")
+                .genesis_blocks;
+
+            let draws: HashMap<_, _> = consensus_command_sender
+                .get_selection_draws(Slot::new(1, 0), Slot::new(11, 0))
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|(s, (b, _e))| (s, b))
+                .collect();
+
+            // check 10 draws
+            // only key1 is in consensus, so when it's key2 time, a block must be created outside
+            for i in 1..11 {
+                let cur_slot = Slot::new(i, 0);
+                println!("slot {}", cur_slot);
+                let creator = draws.get(&cur_slot).expect("missing slot in drawss");
+
+                let block_id = if *creator == address_1 {
+                    // wait block propagation
+                    let (header, id) = protocol_controller
+                        .wait_command(cfg.t0.saturating_add(150.into()), |cmd| match cmd {
+                            ProtocolCommand::IntegratedBlock {
+                                block, block_id, ..
+                            } => {
+                                if block.header.content.slot == cur_slot {
+                                    Some((block.header, block_id))
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        })
+                        .await
+                        .expect("block did not propagate in time");
+                    assert_eq!(
+                        *creator,
+                        Address::from_public_key(&header.content.creator).unwrap(),
+                        "wrong block creator"
+                    );
+                    id
+                } else if *creator == address_2 {
+                    // create block and propagate it
+                    let (block_id, block, _) = tools::create_block_with_operations(
+                        &cfg,
+                        cur_slot,
+                        &parents,
+                        priv_2,
+                        vec![],
+                    );
+                    tools::propagate_block(
+                        &mut protocol_controller,
+                        block,
+                        true,
+                        cfg.t0.to_millis() + 150,
+                    )
+                    .await;
+                    block_id
+                } else {
+                    panic!("unexpected block creator");
+                };
+                parents[0] = block_id;
+            }
+
+            (
+                protocol_controller,
+                consensus_command_sender,
+                consensus_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_order_of_inclusion() {
     // // setup logging
     // stderrlog::new()
