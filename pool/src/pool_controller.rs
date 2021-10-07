@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::pool_worker::PoolStats;
+
 use super::{
     config::{PoolConfig, CHANNEL_SIZE},
     error::PoolError,
@@ -8,7 +10,7 @@ use super::{
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use logging::{debug, massa_trace};
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, Operation, OperationHashMap,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use tokio::{
@@ -94,6 +96,22 @@ impl PoolCommandSender {
         res
     }
 
+    pub async fn get_pool_stats(&mut self) -> Result<PoolStats, PoolError> {
+        massa_trace!("pool.command_sender.get_pool_stats", {});
+        let (response_tx, response_rx) = oneshot::channel();
+
+        self.0
+            .send(PoolCommand::GetStats(response_tx))
+            .await
+            .map_err(|_| PoolError::ChannelError("get_pool_stats command send error".into()))?;
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_pool_stats {:?}",
+                e
+            ))
+        })
+    }
+
     pub async fn final_operations(
         &mut self,
         ops: OperationHashMap<(u64, u8)>,
@@ -162,7 +180,7 @@ impl PoolCommandSender {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<Endorsement>, PoolError> {
+    ) -> Result<Vec<(EndorsementId, Endorsement)>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements", {
             "target_slot": target_slot
         });

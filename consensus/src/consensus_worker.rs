@@ -16,8 +16,7 @@ use models::{hhasher::BuildHHasher, ledger::LedgerData};
 use models::{
     Address, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
-    StakersCycleProductionStats,
+    OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
 use serde::{Deserialize, Serialize};
@@ -491,14 +490,16 @@ impl ConsensusWorker {
 
         // get endorsements
         // it is assumed that only valid endorsements in that context are selected by pool
-        let endorsements = if thread_parent_period > 0 {
+        let (endorsement_ids, endorsements) = if thread_parent_period > 0 {
             let thread_parent_slot = Slot::new(thread_parent_period, cur_slot.thread);
             let endorsement_draws = self.pos.draw_endorsement_producers(thread_parent_slot)?;
             self.pool_command_sender
                 .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
                 .await?
+                .into_iter()
+                .unzip()
         } else {
-            Vec::new()
+            (Vec::new(), Vec::new())
         };
 
         massa_trace!("consensus.create_block.get_endorsements.result", {
@@ -655,6 +656,7 @@ impl ConsensusWorker {
             block_id,
             block,
             operation_set,
+            endorsement_ids,
             &mut self.pos,
             Some(cur_slot),
         )?;
@@ -736,24 +738,14 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_block_status",
                     {}
                 );
-
-                let mut found_block = self.block_db.get_export_block_status(&block_id);
-                // todo remove with old api
-                if found_block.is_none() {
-                    if let Some(storage) = &self.opt_storage_command_sender {
-                        found_block = storage
-                            .get_block(block_id)
-                            .await?
-                            .map(ExportBlockStatus::Stored);
-                    }
-                }
-
-                response_tx.send(found_block).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetBlock Status answer:{:?}",
-                        err
-                    ))
-                })
+                response_tx
+                    .send(self.block_db.get_export_block_status(&block_id))
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetBlock Status answer:{:?}",
+                            err
+                        ))
+                    })
             }
             ConsensusCommand::GetSelectionDraws {
                 start,
@@ -847,38 +839,14 @@ impl ConsensusWorker {
                     { "address": address }
                 );
 
-                let mut res: OperationHashMap<_> = self
-                    .pool_command_sender
-                    .get_operations_involving_address(address)
-                    .await?;
-
-                self.block_db
-                    .get_operations_involving_address(&address)?
-                    .into_iter()
-                    .for_each(|(op_id, search_new)| {
-                        res.entry(op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
-
-                if let Some(access) = &self.opt_storage_command_sender {
-                    access
-                        .get_operations_involving_address(&address)
-                        .await?
-                        .into_iter()
-                        .for_each(|(op_id, search_new)| {
-                            res.entry(op_id)
-                                .and_modify(|search_old| search_old.extend(&search_new))
-                                .or_insert(search_new);
-                        })
-                }
-
-                response_tx.send(res).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetRecentOPerations response: {:?}",
-                        err
-                    ))
-                })
+                response_tx
+                    .send(self.block_db.get_operations_involving_address(&address)?)
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetRecentOPerations response: {:?}",
+                            err
+                        ))
+                    })
             }
             ConsensusCommand::GetOperations {
                 operation_ids,
@@ -888,7 +856,7 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_operations",
                     { "operation_ids": operation_ids }
                 );
-                let res = self.get_operations(&operation_ids).await?;
+                let res = self.get_operations(&operation_ids).await;
                 response_tx.send(res).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send get operations response: {:?}",
@@ -1117,64 +1085,8 @@ impl ConsensusWorker {
     async fn get_operations(
         &mut self,
         operation_ids: &OperationHashSet,
-    ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
-        // todo move that to api
-        // get from pool
-        let mut res: OperationHashMap<OperationSearchResult> = self
-            .pool_command_sender
-            .get_operations(operation_ids.clone())
-            .await?
-            .into_iter()
-            .map(|(op_id, op)| {
-                (
-                    op_id,
-                    OperationSearchResult {
-                        op,
-                        in_pool: true,
-                        in_blocks: BlockHashMap::default(),
-                        status: OperationSearchResultStatus::Pending,
-                    },
-                )
-            })
-            .collect();
-
-        // extend with consensus
-        self.block_db
-            .get_operations(operation_ids)
-            .into_iter()
-            .for_each(|(op_id, search_new)| {
-                res.entry(op_id)
-                    .and_modify(|search_old| search_old.extend(&search_new))
-                    .or_insert(search_new);
-            });
-
-        // todo move that to api
-        // for those that have not been found in consensus, extend with storage
-        if let Some(storage) = &mut self.opt_storage_command_sender {
-            let to_gather: OperationHashSet = operation_ids
-                .iter()
-                .filter(|op_id| {
-                    if let Some(cur_search) = res.get(op_id) {
-                        if !cur_search.in_blocks.is_empty() {
-                            return false;
-                        }
-                    }
-                    true
-                })
-                .copied()
-                .collect();
-            storage
-                .get_operations(to_gather)
-                .await?
-                .into_iter()
-                .for_each(|(op_id, search_new)| {
-                    res.entry(op_id)
-                        .and_modify(|search_old| search_old.extend(&search_new))
-                        .or_insert(search_new);
-                });
-        }
-
-        Ok(res)
+    ) -> OperationHashMap<OperationSearchResult> {
+        self.block_db.get_operations(operation_ids)
     }
 
     /// Manages received protocolevents.
@@ -1187,12 +1099,14 @@ impl ConsensusWorker {
                 block_id,
                 block,
                 operation_set,
+                endorsement_ids,
             } => {
                 massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
                 self.block_db.incoming_block(
                     block_id,
                     block,
                     operation_set,
+                    endorsement_ids,
                     &mut self.pos,
                     self.previous_slot,
                 )?;
@@ -1217,11 +1131,18 @@ impl ConsensusWorker {
                 for block_hash in list {
                     if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
-                        results.insert(block_hash, Some(a_block.block.clone()));
+                        results.insert(
+                            block_hash,
+                            Some((
+                                a_block.block.clone(),
+                                Some(a_block.operation_set.keys().copied().collect()),
+                                Some(a_block.endorsement_ids.clone()),
+                            )),
+                        );
                     } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
                         if let Some(block) = storage_command_sender.get_block(block_hash).await? {
                             massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});
-                            results.insert(block_hash, Some(block));
+                            results.insert(block_hash, Some((block, None, None)));
                         } else {
                             // not found in given storage
                             massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_not_found", { "hash": block_hash});
@@ -1254,10 +1175,12 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
         // Propagate new blocks
-        for (block_id, block) in self.block_db.get_blocks_to_propagate().into_iter() {
+        for (block_id, (block, op_ids, endo_ids)) in
+            self.block_db.get_blocks_to_propagate().into_iter()
+        {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "block_id": block_id, "block": block });
             self.protocol_command_sender
-                .integrated_block(block_id, block)
+                .integrated_block(block_id, block, op_ids, endo_ids)
                 .await?;
         }
 

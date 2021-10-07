@@ -7,10 +7,12 @@ use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, Operation, OperationHashMap,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use tokio::sync::{mpsc, oneshot};
+
+use serde::{Deserialize, Serialize};
 
 /// Commands that can be processed by pool.
 #[derive(Debug)]
@@ -38,9 +40,16 @@ pub enum PoolCommand {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-        response_tx: oneshot::Sender<Vec<Endorsement>>,
+        response_tx: oneshot::Sender<Vec<(EndorsementId, Endorsement)>>,
     },
     AddEndorsements(EndorsementHashMap<Endorsement>),
+    GetStats(oneshot::Sender<PoolStats>),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PoolStats {
+    pub operation_count: u64,
+    pub endorsement_count: u64,
 }
 
 /// Events that are emitted by pool.
@@ -208,6 +217,12 @@ impl PoolWorker {
                         .await?;
                 }
             }
+            PoolCommand::GetStats(response_tx) => response_tx
+                .send(PoolStats {
+                    operation_count: self.operation_pool.len() as u64,
+                    endorsement_count: self.endorsement_pool.len() as u64,
+                })
+                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())
     }

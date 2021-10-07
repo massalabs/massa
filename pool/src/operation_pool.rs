@@ -6,7 +6,7 @@ use models::{
     OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, usize};
 
 struct OperationIndex(AddressHashMap<OperationHashSet>);
 
@@ -216,6 +216,10 @@ impl OperationPool {
 
     pub fn update_current_slot(&mut self, slot: Slot) {
         self.current_slot = Some(slot);
+    }
+
+    pub fn len(&self) -> usize {
+        self.ops.len()
     }
 
     fn prune(&mut self) -> Result<(), PoolError> {

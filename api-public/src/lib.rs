@@ -2,8 +2,8 @@
 
 #![feature(async_closure)]
 use api_dto::{
-    AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NetworkStats, NodeStatus,
-    OperationInfo, PoolStats, RollsInfo, TimeStats,
+    AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    RollsInfo, TimeStats,
 };
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
@@ -24,6 +24,7 @@ use models::clique::Clique;
 use models::operation::{Operation, OperationId};
 use models::BlockHashSet;
 use models::OperationHashMap;
+use models::OperationHashSet;
 use models::{Address, BlockId, Slot};
 use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
@@ -162,6 +163,7 @@ impl MassaPublic for ApiMassaPublic {
         let version = self.version.clone();
         let consensus_config = self.consensus_config.clone();
         let compensation_millis = self.compensation_millis;
+        let mut pool_command_sender = self.pool_command_sender.clone();
 
         let closure = async move || {
             let now = UTime::now(compensation_millis)?;
@@ -172,6 +174,8 @@ impl MassaPublic for ApiMassaPublic {
                 now,
             )?;
             let stats = consensus_command_sender.get_stats().await?;
+            let network_stats = network_command_sender.get_network_stats().await?;
+            let pool_stats = pool_command_sender.get_pool_stats().await?;
             Ok(NodeStatus {
                 node_id: NodeId(derive_public_key(&generate_random_private_key())),
                 node_ip: network_config.routable_ip,
@@ -202,17 +206,9 @@ impl MassaPublic for ApiMassaPublic {
                     stale_block_count: stats.stale_block_count,
                     final_operation_count: stats.final_operation_count,
                 },
-                pool_stats: PoolStats {
-                    operation_count: 0,
-                    endorsement_count: 0,
-                }, // todo add get pool stats command
-                network_stats: NetworkStats {
-                    in_connection_count: 0,
-                    out_connection_count: 0,
-                    known_peer_count: 0,
-                    banned_peer_count: 0,
-                    active_node_count: 0,
-                }, // todo add get network stats command
+
+                network_stats,
+                pool_stats,
             })
         };
 
@@ -259,21 +255,81 @@ impl MassaPublic for ApiMassaPublic {
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
-        // todo use that command sender after #267
-        let opt_storage_command_sender = self.storage_command_sender.clone();
+        let mut pool_command_sender = self.pool_command_sender.clone();
+        let storage_command_sender = self.storage_command_sender.clone();
         let closure = async move || {
-            Ok(consensus_command_sender
-                .get_operations(ops.into_iter().collect())
+            let mut res: OperationHashMap<OperationInfo> = pool_command_sender
+                .get_operations(ops.iter().cloned().collect())
                 .await?
                 .into_iter()
-                .map(|(id, op)| OperationInfo {
-                    id,
-                    in_pool: op.in_pool,
-                    in_blocks: op.in_blocks.keys().copied().collect(),
-                    is_final: op.in_blocks.iter().any(|(_, (_, is_final))| *is_final),
-                    operation: op.op,
+                .map(|(id, operation)| {
+                    (
+                        id,
+                        OperationInfo {
+                            operation,
+                            in_pool: true,
+                            in_blocks: Vec::new(),
+                            id,
+                            is_final: false,
+                        },
+                    )
                 })
-                .collect())
+                .collect();
+
+            consensus_command_sender
+                .get_operations(ops.iter().cloned().collect())
+                .await?
+                .into_iter()
+                .for_each(|(op_id, search_new)| {
+                    let search_new = OperationInfo {
+                        id: op_id,
+                        in_pool: search_new.in_pool,
+                        in_blocks: search_new.in_blocks.keys().copied().collect(),
+                        is_final: search_new
+                            .in_blocks
+                            .iter()
+                            .any(|(_, (_, is_final))| *is_final),
+                        operation: search_new.op,
+                    };
+                    res.entry(op_id)
+                        .and_modify(|search_old| search_old.extend(&search_new))
+                        .or_insert(search_new);
+                });
+            // for those that have not been found in consensus, extend with storage
+            if let Some(storage) = storage_command_sender {
+                let to_gather: OperationHashSet = ops
+                    .iter()
+                    .filter(|op_id| {
+                        if let Some(cur_search) = res.get(op_id) {
+                            if !cur_search.in_blocks.is_empty() {
+                                return false;
+                            }
+                        }
+                        true
+                    })
+                    .copied()
+                    .collect();
+                storage
+                    .get_operations(to_gather)
+                    .await?
+                    .into_iter()
+                    .for_each(|(op_id, search_new)| {
+                        let search_new = OperationInfo {
+                            id: op_id,
+                            in_pool: search_new.in_pool,
+                            in_blocks: search_new.in_blocks.keys().copied().collect(),
+                            is_final: search_new
+                                .in_blocks
+                                .iter()
+                                .any(|(_, (_, is_final))| *is_final),
+                            operation: search_new.op,
+                        };
+                        res.entry(op_id)
+                            .and_modify(|search_old| search_old.extend(&search_new))
+                            .or_insert(search_new);
+                    });
+            }
+            Ok(res.into_values().collect())
         };
 
         Box::pin(closure())
@@ -438,6 +494,7 @@ impl MassaPublic for ApiMassaPublic {
         let cfg = self.consensus_config.clone();
         let api_cfg = self.api_config.clone();
         let addrs = addresses.clone();
+        let mut pool_command_sender = self.pool_command_sender.clone();
         let compensation_millis = self.compensation_millis;
         let closure = async move || {
             let mut res = Vec::new();
@@ -501,8 +558,33 @@ impl MassaPublic for ApiMassaPublic {
             let mut ops = HashMap::new();
             let cloned = addrs.clone();
             for ad in cloned.iter() {
-                ops.insert(ad, cmd_sender.get_operations_involving_address(*ad).await?);
-                // todo wait for #266 and look into pool and storage
+                let mut res: OperationHashMap<_> = pool_command_sender
+                    .get_operations_involving_address(*ad)
+                    .await?;
+
+                cmd_sender
+                    .get_operations_involving_address(*ad)
+                    .await?
+                    .into_iter()
+                    .for_each(|(op_id, search_new)| {
+                        res.entry(op_id)
+                            .and_modify(|search_old| search_old.extend(&search_new))
+                            .or_insert(search_new);
+                    });
+
+                if let Some(access) = &storage_cmd_sender {
+                    access
+                        .get_operations_involving_address(&ad)
+                        .await?
+                        .into_iter()
+                        .for_each(|(op_id, search_new)| {
+                            res.entry(op_id)
+                                .and_modify(|search_old| search_old.extend(&search_new))
+                                .or_insert(search_new);
+                        })
+                }
+
+                ops.insert(ad, res);
             }
 
             // staking addrs

@@ -6,7 +6,7 @@
 extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
-use api_eth::{EthRpc, API as APIEth};
+// TODO: use api_eth::{EthRpc, API as APIEth};
 use api_private::ApiMassaPrivate;
 use api_public::ApiMassaPublic;
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
@@ -18,10 +18,13 @@ use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
 };
-use human_panic::setup_panic;
 use log::{error, info, trace};
 use logging::{massa_trace, warn};
-use models::{init_serialization_context, Address, SerializationContext};
+use models::OperationHashMap;
+use models::{
+    init_serialization_context, Address, BlockHashMap, OperationSearchResult,
+    OperationSearchResultStatus, SerializationContext,
+};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use storage::{start_storage, StorageManager};
 use time::UTime;
@@ -169,7 +172,7 @@ async fn launch(
 
     // spawn APIs
     let (api_private, api_private_stop_rx) = ApiMassaPrivate::create(
-        "127.0.0.1:33034",
+        &cfg.new_api.bind_private.to_string(),
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         cfg.new_api.clone(),
@@ -178,7 +181,7 @@ async fn launch(
     api_private.serve_massa_private();
 
     let api_public = ApiMassaPublic::create(
-        "127.0.0.1:33035",
+        &cfg.new_api.bind_public.to_string(),
         consensus_command_sender.clone(),
         cfg.new_api,
         cfg.consensus,
@@ -189,10 +192,11 @@ async fn launch(
         network_command_sender.clone(),
         clock_compensation,
     );
-    api_public.serve_massa_public(); // todo add needed command servers
+    api_public.serve_massa_public();
 
-    let api_eth = APIEth::from_url("127.0.0.1:33036");
-    api_eth.serve_eth_rpc(); // todo add needed command servers
+    // TODO: This will implemented later ...
+    // let api_eth = APIEth::from_url("127.0.0.1:33036");
+    // api_eth.serve_eth_rpc();
 
     (
         pool_command_sender,
@@ -435,15 +439,23 @@ async fn on_api_event(
                 "massa-node.main.run.select.api_event.get_operations_involving_address",
                 {}
             );
-            if response_tx
-                .send(
-                    consensus_command_sender
-                        .get_operations_involving_address(address)
-                        .await
-                        .expect("could not get recent operations"),
-                )
-                .is_err()
-            {
+            let mut res: OperationHashMap<_> = api_pool_command_sender
+                .get_operations_involving_address(address)
+                .await
+                .expect("could not get recent operations from pool");
+
+            consensus_command_sender
+                .get_operations_involving_address(address)
+                .await
+                .expect("could not retrieve recent operations from consensus")
+                .into_iter()
+                .for_each(|(op_id, search_new)| {
+                    res.entry(op_id)
+                        .and_modify(|search_old| search_old.extend(&search_new))
+                        .or_insert(search_new);
+                });
+
+            if response_tx.send(res).is_err() {
                 warn!("could not send get_operations_involving_address response in api_event_receiver.wait_event");
             }
         }
@@ -454,15 +466,35 @@ async fn on_api_event(
             massa_trace!("massa-node.main.run.select.api_event.get_operations", {
                 "operation_ids": operation_ids
             });
-            if response_tx
-                .send(
-                    consensus_command_sender
-                        .get_operations(operation_ids)
-                        .await
-                        .expect("could not get operations"),
-                )
-                .is_err()
-            {
+            let mut res: OperationHashMap<OperationSearchResult> = api_pool_command_sender
+                .get_operations(operation_ids.iter().cloned().collect())
+                .await
+                .expect("could not get operations from pool")
+                .into_iter()
+                .map(|(id, op)| {
+                    (
+                        id,
+                        OperationSearchResult {
+                            in_pool: true,
+                            in_blocks: BlockHashMap::default(),
+                            op,
+                            status: OperationSearchResultStatus::Pending,
+                        },
+                    )
+                })
+                .collect();
+
+            consensus_command_sender
+                .get_operations(operation_ids.iter().cloned().collect())
+                .await
+                .expect("could not get opeatrions frim consensus")
+                .into_iter()
+                .for_each(|(op_id, search_new)| {
+                    res.entry(op_id)
+                        .and_modify(|search_old| search_old.extend(&search_new))
+                        .or_insert(search_new);
+                });
+            if response_tx.send(res).is_err() {
                 warn!("could not send get_operations response in api_event_receiver.wait_event");
             }
         }
@@ -520,7 +552,7 @@ async fn on_api_event(
         ApiEvent::Unban(ip) => {
             massa_trace!("massa-node.main.run.select.api_event.unban", {});
             network_command_sender
-                .unban(ip)
+                .unban(vec![ip])
                 .await
                 .expect("unban failed in api_event_receiver.wait_event")
         }
@@ -656,7 +688,6 @@ async fn stop(
 
 #[tokio::main]
 async fn main() {
-    setup_panic!();
     // load config
     let config_path = "base_config/config.toml";
     let override_config_path = "config/config.toml";

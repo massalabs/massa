@@ -4,7 +4,7 @@ use super::{
     config::{NetworkConfig, CHANNEL_SIZE},
     establisher::Establisher,
     network_worker::{
-        NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker, Peers,
+        NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkStats, NetworkWorker, Peers,
     },
     peer_info_database::*,
     BootstrapPeers,
@@ -151,9 +151,9 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    pub async fn unban(&self, ip: IpAddr) -> Result<(), CommunicationError> {
+    pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), CommunicationError> {
         self.0
-            .send(NetworkCommand::Unban(ip))
+            .send(NetworkCommand::Unban(ips))
             .await
             .map_err(|_| CommunicationError::ChannelError("could not send Unban command".into()))?;
         Ok(())
@@ -204,6 +204,21 @@ impl NetworkCommandSender {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
+            .await
+            .map_err(|_| {
+                CommunicationError::ChannelError("could not send GetPeers command".into())
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            CommunicationError::ChannelError(
+                "could not send GetAdvertisablePeerListChannelError upstream".into(),
+            )
+        })?)
+    }
+
+    pub async fn get_network_stats(&self) -> Result<NetworkStats, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(NetworkCommand::GetStats { response_tx })
             .await
             .map_err(|_| {
                 CommunicationError::ChannelError("could not send GetPeers command".into())

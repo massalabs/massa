@@ -60,7 +60,7 @@ pub struct PeerInfoDatabase {
     /// Network configuration.
     cfg: NetworkConfig,
     /// Maps an ip address to peer's info
-    peers: HashMap<IpAddr, PeerInfo>,
+    pub peers: HashMap<IpAddr, PeerInfo>,
     /// Handle on the task managing the dump
     saver_join_handle: JoinHandle<()>,
     /// Monitor changed peers.
@@ -70,11 +70,11 @@ pub struct PeerInfoDatabase {
     /// Total number of active out non-bootstrap connection attempts.
     active_out_nonbootstrap_connection_attempts: usize,
     /// Total number of active bootstrap connections.
-    active_bootstrap_connections: usize,
+    active_bootstrap_connections: usize, // todo in or out connections ?
     /// Total number of active out non-bootstrap connections.
-    active_out_nonbootstrap_connections: usize,
+    pub active_out_nonbootstrap_connections: usize,
     /// Total number of active in non-bootstrap connections
-    active_in_nonbootstrap_connections: usize,
+    pub active_in_nonbootstrap_connections: usize,
     /// Every wakeup_interval we try to establish a connection with known inactive peers
     wakeup_interval: UTime,
     /// Clock compensation.
@@ -310,11 +310,13 @@ impl PeerInfoDatabase {
         res
     }
 
-    pub async fn unban(&mut self, ip: IpAddr) -> Result<(), CommunicationError> {
-        if let Some(peer) = self.peers.get_mut(&ip) {
-            peer.banned = false;
-        } else {
-            return Ok(());
+    pub async fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), CommunicationError> {
+        for ip in ips.into_iter() {
+            if let Some(peer) = self.peers.get_mut(&ip) {
+                peer.banned = false;
+            } else {
+                return Ok(());
+            }
         }
         cleanup_peers(
             &self.cfg,

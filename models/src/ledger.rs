@@ -17,6 +17,8 @@ impl Default for LedgerData {
     }
 }
 
+/// Checks performed:
+/// - Balance.
 impl SerializeCompact for LedgerData {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, crate::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -25,6 +27,8 @@ impl SerializeCompact for LedgerData {
     }
 }
 
+/// Checks performed:
+/// - Balance.
 impl DeserializeCompact for LedgerData {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         let mut cursor = 0usize;
@@ -107,6 +111,8 @@ impl LedgerChange {
     }
 }
 
+/// Checks performed:
+/// - Balance delta.
 impl SerializeCompact for LedgerChange {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, crate::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -116,6 +122,9 @@ impl SerializeCompact for LedgerChange {
     }
 }
 
+/// Checks performed:
+/// - Increment flag.
+/// - Balance delta.
 impl DeserializeCompact for LedgerChange {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         let mut cursor = 0usize;

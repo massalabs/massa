@@ -652,7 +652,9 @@ async fn test_roll_block_creation() {
     // wait for block
     let (_block_id, block) = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+            ProtocolCommand::IntegratedBlock {
+                block_id, block, ..
+            } => Some((block_id, block)),
             _ => None,
         })
         .await
@@ -712,7 +714,9 @@ async fn test_roll_block_creation() {
     // wait for block
     let (_block_id, block) = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+            ProtocolCommand::IntegratedBlock {
+                block_id, block, ..
+            } => Some((block_id, block)),
             _ => None,
         })
         .await
@@ -753,7 +757,9 @@ async fn test_roll_block_creation() {
     // wait for block
     let (_block_id, block) = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, block } => Some((block_id, block)),
+            ProtocolCommand::IntegratedBlock {
+                block_id, block, ..
+            } => Some((block_id, block)),
             _ => None,
         })
         .await

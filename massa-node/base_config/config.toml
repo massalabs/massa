@@ -9,7 +9,9 @@ version = "DEVE.0.0"
     bind = "127.0.0.1:33033"
 
 [new_api]
-    draw_lookahead_period_count =10
+    draw_lookahead_period_count = 10
+    bind_private = "127.0.0.1:33034"
+    bind_public = "[::]:33035"
 
 [consensus]
     genesis_timestamp = 1626440641000
@@ -63,18 +65,18 @@ version = "DEVE.0.0"
     bind = "[::]:31244"
     # routable_ip = "200.200.200.200" # Your ip
     protocol_port = 31244
-    connect_timeout = 5000
+    connect_timeout = 2000
     wakeup_interval = 5000
     peers_file = "storage/peers.json"
     target_bootstrap_connections = 1
     max_out_bootstrap_connection_attempts = 1
     target_out_nonbootstrap_connections = 10
-    max_in_nonbootstrap_connections = 50
+    max_in_nonbootstrap_connections = 20
     max_in_connections_per_ip = 5
-    max_out_nonbootstrap_connection_attempts = 5
+    max_out_nonbootstrap_connection_attempts = 10
     max_idle_peers = 10000
-    max_banned_peers = 10000
-    max_advertise_length = 100000
+    max_banned_peers = 100
+    max_advertise_length = 10000
     peers_file_dump_interval = 10000
     max_message_size = 1048576000
     message_timeout = 2000
@@ -90,7 +92,6 @@ version = "DEVE.0.0"
     max_stored_blocks= 1000
     path = "storage/block_store"
     cache_capacity = 10000
-    #flush_every_ms = 
     reset_at_startup = true
 
 [bootstrap]
