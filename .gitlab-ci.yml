@@ -1,3 +1,5 @@
+image: "rustlang/rust:nightly"
+
 cache: &global_cache
   key:
     files:
@@ -17,7 +19,6 @@ stages:
 
 sanity:
   stage: sanity
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
@@ -27,7 +28,6 @@ sanity:
 
 build:
   stage: build
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
@@ -35,7 +35,6 @@ build:
 
 test:
   stage: test
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
@@ -43,7 +42,6 @@ test:
 
 doctest:
   stage: test
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
@@ -51,7 +49,6 @@ doctest:
 
 coverage:
   stage: coverage
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
