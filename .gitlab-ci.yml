@@ -31,6 +31,21 @@ doctest:
     - cargo update
     - cargo test --doc
 
+coverage:
+  stage: build
+  image: "rustlang/rust:nightly"
+  script:
+    - cargo install cargo-tarpaulin -f
+    - cargo tarpaulin --out Xml
+  artifacts:
+    reports:
+      cobertura:
+        - cobertura.xml
+  coverage: '/^\d+.\d+% coverage/'
+  only:
+    - dev@massalabs/massa
+  allow_failure: true
+
 build-linux:
   stage: build
   image: "massalabs/linux-ci"
