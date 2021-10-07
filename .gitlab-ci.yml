@@ -71,8 +71,6 @@ coverage:
       cobertura:
         - cobertura.xml
   coverage: '/^\d+.\d+% coverage/'
-  only:
-    - dev@massalabs/massa
   allow_failure: true
 
 build-linux:
