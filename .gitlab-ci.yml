@@ -9,7 +9,6 @@ sanity:
     - cargo update
     - cargo fmt -- --check
 
-# Use cargo to build the project
 build:
   stage: build
   image: "rustlang/rust:nightly"
@@ -17,14 +16,19 @@ build:
     - cargo update
     - RUSTFLAGS="-D warnings" cargo build
 
-# Use tarpaulin to test the project
 test:
   stage: build
-  image: "xd009642/tarpaulin:develop-nightly"
+  image: "rustlang/rust:nightly"
   script:
     - cargo update
-    - cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests
-  coverage: /\d+.\d+% coverage/
+    - cargo test --lib
+
+doctest:
+  stage: build
+  image: "rustlang/rust:nightly"
+  script:
+    - cargo update
+    - cargo test --doc
 
 build-linux:
   stage: build
