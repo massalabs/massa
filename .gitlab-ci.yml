@@ -38,14 +38,26 @@ test:
   cache:
     <<: *global_cache
   script:
-    - cargo test --lib
+    - cargo install cargo2junit
+    - cargo test --lib -- -Z unstable-options --format json --report-time | tee results.json
+    - cat results.json | cargo2junit > results.xml
+  artifacts:
+    when: always
+    reports:
+      junit: results.xml
 
 doctest:
   stage: test
   cache:
     <<: *global_cache
   script:
-    - cargo test --doc
+    - cargo install cargo2junit
+    - cargo test --doc -- -Z unstable-options --format json --report-time | tee results.json
+    - cat results.json | cargo2junit > results.xml
+  artifacts:
+    when: always
+    reports:
+      junit: results.xml
 
 coverage:
   stage: coverage
