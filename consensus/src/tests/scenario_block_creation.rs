@@ -16,6 +16,7 @@ use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
+use tokio::time::sleep_until;
 
 #[tokio::test]
 #[serial]
@@ -339,6 +340,15 @@ async fn test_interleaving_block_creation_with_reception() {
                 .map(|(s, (b, _e))| (s, b))
                 .collect();
 
+            sleep_until(
+                cfg.genesis_timestamp
+                    .saturating_add(cfg.t0)
+                    .saturating_sub(150.into())
+                    .estimate_instant(0)
+                    .expect("could  not estimate instant for genesis timestamps"),
+            )
+            .await;
+
             // check 10 draws
             // Key1 and key2 can be drawn to produce block,
             // but consensus only has key1,
@@ -346,13 +356,12 @@ async fn test_interleaving_block_creation_with_reception() {
             // and sent to consensus through protocol
             for i in 1..11 {
                 let cur_slot = Slot::new(i, 0);
-                println!("slot {}", cur_slot);
                 let creator = draws.get(&cur_slot).expect("missing slot in drawss");
 
                 let block_id = if *creator == address_1 {
                     // wait block propagation
                     let (header, id) = protocol_controller
-                        .wait_command(cfg.t0.saturating_add(150.into()), |cmd| match cmd {
+                        .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
                             ProtocolCommand::IntegratedBlock {
                                 block, block_id, ..
                             } => {
@@ -385,7 +394,7 @@ async fn test_interleaving_block_creation_with_reception() {
                         &mut protocol_controller,
                         block,
                         true,
-                        cfg.t0.to_millis() + 150,
+                        cfg.t0.to_millis() + 300,
                     )
                     .await;
                     block_id
