@@ -817,7 +817,10 @@ impl NetworkWorker {
                     {}
                 );
                 let peer_list = self.peer_info_db.get_advertisable_peer_ips();
-                let _ = response_tx.send(BootstrapPeers(peer_list)); // ignoring error in case of bootstrap cancellatin
+                // ignoring error in case of bootstrap cancellatin
+                if response_tx.send(BootstrapPeers(peer_list)).is_err() {
+                    debug!("could not send peers to bootstrap");
+                };
             }
             NetworkCommand::BlockNotFound { node, block_id } => {
                 massa_trace!(

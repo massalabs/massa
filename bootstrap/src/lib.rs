@@ -350,7 +350,7 @@ impl BootstrapServer {
             Err(_) => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    "bootstrap clock send timed out",
+                    "bootstrap peers send timed out",
                 )
                 .into())
             }
