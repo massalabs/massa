@@ -641,7 +641,7 @@ impl ProofOfStake {
                 Err(_) => return None,
             }
             .iter()
-            .filter(|(&k, (b_addr, _))| *b_addr == address && k >= from_slot)
+            .filter(|(&k, (b_addr, _))| *b_addr == address && k > from_slot)
             .min_by_key(|(&k, _addr)| k);
             if let Some((next_slot, _next_addr)) = next_draw {
                 return Some(*next_slot);
