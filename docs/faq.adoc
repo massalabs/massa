@@ -31,7 +31,7 @@ We are planning some exciting features, such as self-wakeup, a bit like what is 
 
 === What ports does the MASSA use?
 
-By default Massa uses TCP port 33033 for local API listening, TCP port 31344 for protocol communication with other nodes, and 31245 to bootstrap other nodes.
+By default Massa uses TCP port 31244 for protocol communication with other nodes, and 31245 to bootstrap other nodes. Massa also uses TCP port 33033 for local API listening (API v1), 33034 for the new private API and 33035 for the new public API (API v2).
 
 === How to restart the Node?
 
