@@ -17,6 +17,7 @@ use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use std::convert::TryInto;
 use std::net::SocketAddr;
 use time::UTime;
+use tokio::time::timeout;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
 mod client_binder;
@@ -238,6 +239,7 @@ pub async fn start_bootstrap_server(
                 write_timeout: cfg.write_timeout,
                 compensation_millis,
                 version,
+                max_bootstrap_duration: cfg.max_bootstrap_duration,
             }
             .run()
             .await
@@ -262,6 +264,7 @@ struct BootstrapServer {
     write_timeout: UTime,
     compensation_millis: i64,
     version: Version,
+    max_bootstrap_duration: UTime,
 }
 
 impl BootstrapServer {
@@ -276,7 +279,7 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.lib.run.select.accept", {});
                     match res {
                         Ok(res)=> {
-                            if let Err(e) = self.manage_bootstrap(res).await {
+                            if let Err(e) = timeout(self.max_bootstrap_duration.to_duration(),self.manage_bootstrap(res)).await {
                                 debug!("error while managing bootstrap connection: {:?} - bootstrap attempt ignored", e.to_string());
                             }
                         },
@@ -347,7 +350,7 @@ impl BootstrapServer {
             Err(_) => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    "bootstrap clock send timed out",
+                    "bootstrap peers send timed out",
                 )
                 .into())
             }
