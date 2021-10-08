@@ -817,11 +817,7 @@ impl NetworkWorker {
                     {}
                 );
                 let peer_list = self.peer_info_db.get_advertisable_peer_ips();
-                response_tx.send(BootstrapPeers(peer_list)).map_err(|_| {
-                    CommunicationError::ChannelError(
-                        "could not send GetBootstrapPeers response upstream".into(),
-                    )
-                })?;
+                let _ = response_tx.send(BootstrapPeers(peer_list)); // ignoring error in case of bootstrap cancellatin
             }
             NetworkCommand::BlockNotFound { node, block_id } => {
                 massa_trace!(

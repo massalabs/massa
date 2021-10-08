@@ -806,12 +806,8 @@ impl ConsensusWorker {
                     self.pos.export(),
                     BootstrapableGraph::try_from(&self.block_db)?,
                 );
-                response_tx.send(resp).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetBootstrapState answer:{:?}",
-                        err
-                    ))
-                })
+                let _ = response_tx.send(resp); // Ignoring error in case of bootstrap cancellation
+                Ok(())
             }
             ConsensusCommand::GetAddressesInfo {
                 addresses,
