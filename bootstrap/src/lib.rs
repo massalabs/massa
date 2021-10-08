@@ -16,7 +16,6 @@ use models::Version;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use std::convert::TryInto;
 use std::net::SocketAddr;
-use std::time::Duration;
 use time::UTime;
 use tokio::time::timeout;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
@@ -265,7 +264,7 @@ struct BootstrapServer {
     write_timeout: UTime,
     compensation_millis: i64,
     version: Version,
-    max_bootstrap_duration: u64,
+    max_bootstrap_duration: UTime,
 }
 
 impl BootstrapServer {
@@ -280,7 +279,7 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.lib.run.select.accept", {});
                     match res {
                         Ok(res)=> {
-                            if let Err(e) = timeout(Duration::from_secs(self.max_bootstrap_duration),self.manage_bootstrap(res)).await {
+                            if let Err(e) = timeout(self.max_bootstrap_duration.to_duration(),self.manage_bootstrap(res)).await {
                                 debug!("error while managing bootstrap connection: {:?} - bootstrap attempt ignored", e.to_string());
                             }
                         },

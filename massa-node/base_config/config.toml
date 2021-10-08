@@ -115,7 +115,7 @@ version = "DEVE.0.0"
     max_bootstrap_pos_entries = 1000000000
     max_bootstrap_pos_cycles = 5
     enable_clock_synchronization = false
-    max_bootstrap_duration = 5
+    max_bootstrap_duration = 5000
 
 [pool]
     max_pool_size_per_thread = 100000
