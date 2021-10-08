@@ -1,3 +1,5 @@
+image: "rustlang/rust:nightly"
+
 cache: &global_cache
   key:
     files:
@@ -17,7 +19,6 @@ stages:
 
 sanity:
   stage: sanity
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
@@ -27,7 +28,6 @@ sanity:
 
 build:
   stage: build
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
@@ -35,23 +35,32 @@ build:
 
 test:
   stage: test
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
-    - cargo test --lib
+    - cargo install cargo2junit
+    - cargo test --lib -- -Z unstable-options --format json --report-time | tee results.json
+    - cat results.json | cargo2junit > results.xml
+  artifacts:
+    when: always
+    reports:
+      junit: results.xml
 
 doctest:
   stage: test
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
-    - cargo test --doc
+    - cargo install cargo2junit
+    - cargo test --doc -- -Z unstable-options --format json --report-time | tee results.json
+    - cat results.json | cargo2junit > results.xml
+  artifacts:
+    when: always
+    reports:
+      junit: results.xml
 
 coverage:
   stage: coverage
-  image: "rustlang/rust:nightly"
   cache:
     <<: *global_cache
   script:
@@ -62,8 +71,6 @@ coverage:
       cobertura:
         - cobertura.xml
   coverage: '/^\d+.\d+% coverage/'
-  only:
-    - dev@massalabs/massa
   allow_failure: true
 
 build-linux:
