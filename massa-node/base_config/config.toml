@@ -102,15 +102,15 @@ version = "DEVE.0.0"
         ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
     ]
     bind = "[::]:31245"
-    connect_timeout = 1000
+    connect_timeout = 15000
     retry_delay = 5000
     max_bootstrap_blocks = 1000000
     max_bootstrap_cliques = 1000
     max_bootstrap_deps = 1000
     max_bootstrap_children = 1000
-    max_ping = 5000
+    max_ping = 10000
     max_bootstrap_message_size = 1048576000
-    read_timeout = 100000
+    read_timeout = 10000
     write_timeout = 10000
     max_bootstrap_pos_entries = 1000000000
     max_bootstrap_pos_cycles = 5
