@@ -267,7 +267,7 @@ async fn test_block_creation_with_draw() {
 
 #[tokio::test]
 #[serial]
-async fn test_block_creation_mix_with_reception() {
+async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test
     // addresses a and b both in thread 0
@@ -340,7 +340,10 @@ async fn test_block_creation_mix_with_reception() {
                 .collect();
 
             // check 10 draws
-            // only key1 is in consensus, so when it's key2 time, a block must be created outside
+            // Key1 and key2 can be drawn to produce block,
+            // but consensus only has key1,
+            // so when key2 is selected a block must be produced by hand
+            // and sent to consensus through protocol
             for i in 1..11 {
                 let cur_slot = Slot::new(i, 0);
                 println!("slot {}", cur_slot);
