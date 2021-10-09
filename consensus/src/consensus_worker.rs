@@ -284,6 +284,20 @@ impl ConsensusWorker {
         loop {
             massa_trace!("consensus.consensus_worker.run_loop.select", {});
             tokio::select! {
+                // listen to manager commands
+                cmd = self.controller_manager_rx.recv() => {
+                    massa_trace!("consensus.consensus_worker.run_loop.select.manager", {});
+                    match cmd {
+                    None => break,
+                    Some(_) => {}
+                }}
+
+                // listen consensus commands
+                Some(cmd) = self.controller_command_rx.recv() => {
+                    massa_trace!("consensus.consensus_worker.run_loop.consensus_command", {});
+                    self.process_consensus_command(cmd).await?
+                },
+
                 // slot timer
                 _ = &mut next_slot_timer => {
                     massa_trace!("consensus.consensus_worker.run_loop.select.slot_tick", {});
@@ -309,12 +323,6 @@ impl ConsensusWorker {
                     prune_timer.set(sleep( self.cfg.block_db_prune_interval.to_duration()))
                 }
 
-                // listen consensus commands
-                Some(cmd) = self.controller_command_rx.recv() => {
-                    massa_trace!("consensus.consensus_worker.run_loop.consensus_command", {});
-                    self.process_consensus_command(cmd).await?
-                },
-
                 // receive protocol controller events
                 evt = self.protocol_event_receiver.wait_event() =>{
                     massa_trace!("consensus.consensus_worker.run_loop.select.protocol_event", {});
@@ -323,14 +331,6 @@ impl ConsensusWorker {
                         Err(err) => return Err(ConsensusError::CommunicationError(err))
                     }
                 },
-
-                // listen to manager commands
-                cmd = self.controller_manager_rx.recv() => {
-                    massa_trace!("consensus.consensus_worker.run_loop.select.manager", {});
-                    match cmd {
-                    None => break,
-                    Some(_) => {}
-                }}
             }
         }
         // end loop

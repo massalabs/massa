@@ -378,10 +378,13 @@ impl ProtocolWorker {
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             tokio::select! {
-                // block ask timer
-                _ = &mut block_ask_timer => {
-                    massa_trace!("protocol.protocol_worker.run_loop.block_ask_timer", { });
-                    self.update_ask_block(&mut block_ask_timer).await?;
+                // listen to management commands
+                cmd = self.controller_manager_rx.recv() => {
+                    massa_trace!("protocol.protocol_worker.run_loop.controller_manager_rx", { "cmd": cmd });
+                    match cmd {
+                        None => break,
+                        Some(_) => {}
+                    };
                 }
 
                 // listen to incoming commands
@@ -396,13 +399,10 @@ impl ProtocolWorker {
                     self.on_network_event(evt?, &mut block_ask_timer).await?;
                 }
 
-                // listen to management commands
-                cmd = self.controller_manager_rx.recv() => {
-                    massa_trace!("protocol.protocol_worker.run_loop.controller_manager_rx", { "cmd": cmd });
-                    match cmd {
-                        None => break,
-                        Some(_) => {}
-                    };
+                // block ask timer
+                _ = &mut block_ask_timer => {
+                    massa_trace!("protocol.protocol_worker.run_loop.block_ask_timer", { });
+                    self.update_ask_block(&mut block_ask_timer).await?;
                 }
             } //end select!
             massa_trace!("protocol.protocol_worker.run_loop.end", {});
