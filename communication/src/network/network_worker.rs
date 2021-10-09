@@ -329,11 +329,16 @@ impl NetworkWorker {
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
-                        match cmd {
-                            None => break,
-                            Some(_) => {}
-                        }
-                    },
+                    match cmd {
+                        None => break,
+                        Some(_) => {}
+                    }
+                },
+
+                // incoming command
+                Some(cmd) = self.controller_command_rx.recv() => {
+                    self.manage_network_command(cmd).await?;
+                },
 
                 // wake up interval
                 _ = wakeup_interval.tick() => {
@@ -347,13 +352,6 @@ impl NetworkWorker {
                     let (conn_id, outcome) = res?;
                     self.on_handshake_finished(conn_id, outcome).await?;
                     need_connect_retry = true; // retry out connections
-                },
-
-                // event received from a node
-                evt = self.node_event_rx.recv() => {
-                    self.on_node_event(
-                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
-                    ).await?
                 },
 
                 // node closed
@@ -392,14 +390,6 @@ impl NetworkWorker {
                     need_connect_retry = true; // retry out connections
                 },
 
-                // peer feedback event
-                Some(cmd) =
-                    self.controller_command_rx.recv() => {
-                        self.manage_network_command(
-                            cmd,
-                        ).await?
-                    },
-
                 // out-connector event
                 Some((ip_addr, res)) = out_connecting_futures.next() => {
                     need_connect_retry = true; // retry out connections
@@ -417,6 +407,13 @@ impl NetworkWorker {
                         &mut cur_connection_id,
                     ).await?
                 }
+
+                // event received from a node
+                evt = self.node_event_rx.recv() => {
+                    self.on_node_event(
+                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
+                    ).await?
+                },
             }
         }
 

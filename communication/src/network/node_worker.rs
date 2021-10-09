@@ -176,64 +176,29 @@ impl NodeWorker {
         let mut exit_reason = ConnectionClosureReason::Normal;
         'select_loop: loop {
             tokio::select! {
-                // incoming socket data
-                res = self.socket_reader.next() => match res {
-                    Ok(Some((index, msg))) => {
-                        massa_trace!(
-                            "node_worker.run_loop. receive self.socket_reader.next()", {"index": index});
-                        match msg {
-                            Message::Block(block) => {
-                                massa_trace!(
-                                    "node_worker.run_loop. receive Message::Block",
-                                    {"block_id": block.header.compute_block_id()?, "block": block, "node": self.node_id}
-                                );
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
-                            },
-                            Message::BlockHeader(header) => {
-                                massa_trace!(
-                                    "node_worker.run_loop. receive Message::BlockHeader",
-                                    {"block_id": header.compute_block_id()?, "header": header, "node": self.node_id}
-                                );
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
-                            },
-                            Message::AskForBlocks(list) => {
-                                massa_trace!("node_worker.run_loop. receive Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list))).await;
+                res = &mut node_writer_handle => {
+                    writer_joined = true;
+                    match res {
+                        Err(err) => {
+                            massa_trace!("node_worker.run_loop.node_writer_handle.panic", {"node": self.node_id, "err": format!("{:?}", err)});
+                            warn!("writer exited unexpectedly for node {:?}", self.node_id);
+                            if exit_reason != ConnectionClosureReason::Banned {
+                                exit_reason = ConnectionClosureReason::Failed;
                             }
-                            Message::PeerList(pl) =>  {
-                                massa_trace!("node_worker.run_loop. receive Message::PeerList", {"peerlist": pl, "node": self.node_id});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))).await;
+                            break;
+                        },
+                        Ok(Err(err)) => {
+                            massa_trace!("node_worker.run_loop.node_writer_handle.error", {"node": self.node_id, "err": format!("{:?}", err)});
+                            if exit_reason != ConnectionClosureReason::Banned {
+                                exit_reason = ConnectionClosureReason::Failed;
                             }
-                            Message::AskPeerList => {
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::AskedPeerList)).await;
-                            }
-                            Message::BlockNotFound(hash) => {
-                                massa_trace!("node_worker.run_loop. receive Message::BlockNotFound", {"hash": hash, "node": self.node_id});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
-                            }
-                            Message::Operations(operations) => {
-                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operations});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
-                            }
-                            Message::Endorsements(endorsements) => {
-                                massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedEndorsements(endorsements))).await;
-                            }
-                            _ => {
-                                // TODO: Write a more user-friendly warning / logout after several consecutive fails?
-                                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning", {});
-                            },
+                            break;
+                        },
+                        Ok(Ok(())) => {
+                            massa_trace!("node_worker.run_loop.node_writer_handle.clean_exit", {"node": self.node_id});
+                            break;
                         }
-                    },
-                    Ok(None)=> {
-                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error", {});
-                        break
-                    }, // peer closed cleanly
-                    Err(err) => {  //stream error
-                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{:?}", err)});
-                        exit_reason = ConnectionClosureReason::Failed;
-                        break;
-                    },
+                    }
                 },
 
                 // node command
@@ -304,29 +269,64 @@ impl NodeWorker {
                     };
                 },
 
-                res = &mut node_writer_handle => {
-                    writer_joined = true;
-                    match res {
-                        Err(err) => {
-                            massa_trace!("node_worker.run_loop.node_writer_handle.panic", {"node": self.node_id, "err": format!("{:?}", err)});
-                            warn!("writer exited unexpectedly for node {:?}", self.node_id);
-                            if exit_reason != ConnectionClosureReason::Banned {
-                                exit_reason = ConnectionClosureReason::Failed;
+                // incoming socket data
+                res = self.socket_reader.next() => match res {
+                    Ok(Some((index, msg))) => {
+                        massa_trace!(
+                            "node_worker.run_loop. receive self.socket_reader.next()", {"index": index});
+                        match msg {
+                            Message::Block(block) => {
+                                massa_trace!(
+                                    "node_worker.run_loop. receive Message::Block",
+                                    {"block_id": block.header.compute_block_id()?, "block": block, "node": self.node_id}
+                                );
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
+                            },
+                            Message::BlockHeader(header) => {
+                                massa_trace!(
+                                    "node_worker.run_loop. receive Message::BlockHeader",
+                                    {"block_id": header.compute_block_id()?, "header": header, "node": self.node_id}
+                                );
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
+                            },
+                            Message::AskForBlocks(list) => {
+                                massa_trace!("node_worker.run_loop. receive Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list))).await;
                             }
-                            break;
-                        },
-                        Ok(Err(err)) => {
-                            massa_trace!("node_worker.run_loop.node_writer_handle.error", {"node": self.node_id, "err": format!("{:?}", err)});
-                            if exit_reason != ConnectionClosureReason::Banned {
-                                exit_reason = ConnectionClosureReason::Failed;
+                            Message::PeerList(pl) =>  {
+                                massa_trace!("node_worker.run_loop. receive Message::PeerList", {"peerlist": pl, "node": self.node_id});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedPeerList(pl))).await;
                             }
-                            break;
-                        },
-                        Ok(Ok(())) => {
-                            massa_trace!("node_worker.run_loop.node_writer_handle.clean_exit", {"node": self.node_id});
-                            break;
+                            Message::AskPeerList => {
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::AskedPeerList)).await;
+                            }
+                            Message::BlockNotFound(hash) => {
+                                massa_trace!("node_worker.run_loop. receive Message::BlockNotFound", {"hash": hash, "node": self.node_id});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
+                            }
+                            Message::Operations(operations) => {
+                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operations});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
+                            }
+                            Message::Endorsements(endorsements) => {
+                                massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedEndorsements(endorsements))).await;
+                            }
+                            _ => {
+                                // TODO: Write a more user-friendly warning / logout after several consecutive fails?
+                                massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning", {});
+                            },
                         }
-                    }
+                    },
+                    Ok(None)=> {
+                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error", {});
+                        break
+                    }, // peer closed cleanly
+                    Err(err) => {  //stream error
+                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{:?}", err)});
+                        exit_reason = ConnectionClosureReason::Failed;
+                        break;
+                    },
                 },
 
                 _ = ask_peer_list_interval.tick() => {
