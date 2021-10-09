@@ -88,6 +88,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_bootstrap_pos_cycles: 5,
         bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
         enable_clock_synchronization: true,
+        cache_duration: 10000.into(),
+        max_simultaneous_bootstraps: 2,
     }
 }
 

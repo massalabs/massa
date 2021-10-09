@@ -34,4 +34,8 @@ pub struct BootstrapConfig {
     pub max_bootstrap_pos_entries: u32,
     /// Enable clock synchronization
     pub enable_clock_synchronization: bool,
+    // Cache duration
+    pub cache_duration: UTime,
+    // Max simultaneous bootstraps
+    pub max_simultaneous_bootstraps: u32,
 }
