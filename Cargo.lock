@@ -195,6 +195,7 @@ dependencies = [
  "consensus",
  "crypto",
  "displaydoc",
+ "futures 0.3.17",
  "log",
  "logging",
  "models",
