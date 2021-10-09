@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 displaydoc = "0.2"
+futures = { version = "0.3" }
 log = { version = "0.4" }
 num_enum = "0.5"
 rand = { version = "0.8"}
