@@ -15,9 +15,11 @@ use logging::massa_trace;
 use messages::BootstrapMessage;
 use models::Version;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
-use std::convert::TryInto;
+use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;
+use std::{convert::TryInto, net::IpAddr};
 use time::UTime;
+use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
 mod client_binder;
@@ -235,9 +237,10 @@ pub async fn start_bootstrap_server(
                 manager_rx,
                 bind,
                 private_key,
-                cfg,
                 compensation_millis,
                 version,
+                ip_hist_map: HashMap::with_capacity(cfg.ip_list_max_size),
+                cfg,
             }
             .run()
             .await
@@ -261,6 +264,7 @@ struct BootstrapServer {
     cfg: BootstrapConfig,
     compensation_millis: i64,
     version: Version,
+    ip_hist_map: HashMap<IpAddr, Instant>,
 }
 
 impl BootstrapServer {
@@ -273,6 +277,7 @@ impl BootstrapServer {
         let mut bootstrap_data: Option<(ExportProofOfStake, BootstrapableGraph, BootstrapPeers)> =
             None;
         let cache_timer = sleep(cache_timeout);
+        let per_ip_min_interval = self.cfg.per_ip_min_interval.to_duration();
         tokio::pin!(cache_timer);
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
@@ -297,6 +302,34 @@ impl BootstrapServer {
                 // listener
                 Ok((dplx, remote_addr)) = listener.accept(), if bootstrap_sessions.len() < self.cfg.max_simultaneous_bootstraps as usize => {
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
+                    let now = Instant::now();
+
+                    // clear IP history if necessary
+                    if self.ip_hist_map.len() > self.cfg.ip_list_max_size {
+                        self.ip_hist_map.retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
+                        if self.ip_hist_map.len() > self.cfg.ip_list_max_size {
+                            // too many IPs are spamming us: clear cache
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), self.cfg.per_ip_min_interval);
+                            self.ip_hist_map.clear();
+                        }
+                    }
+
+                    // check IP's bootstrap attempt history
+                    match self.ip_hist_map.entry(remote_addr.ip()) {
+                        hash_map::Entry::Occupied(mut occ) => {
+                            if now.duration_since(*occ.get()) <= per_ip_min_interval {
+                                // in list, non-expired => refuse
+                                massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
+                                continue;
+                            } else {
+                                // in list, expired
+                                occ.insert(now);
+                            }
+                        },
+                        hash_map::Entry::Vacant(vac) => {
+                            vac.insert(now);
+                        }
+                    }
 
                     // load cache if absent
                     if bootstrap_data.is_none() {
@@ -319,8 +352,8 @@ impl BootstrapServer {
                     let (data_pos, data_graph, data_peers) = bootstrap_data.clone().unwrap();  // will not panic (checked above)
                     bootstrap_sessions.push(async move {
                         match manage_bootstrap(cfg_copy, dplx, data_pos, data_graph, data_peers, private_key, compensation_millis, version).await {
-                            Ok(_) => debug!("successfully bootstrapped peer {}", remote_addr),
-                            Err(err) => debug!("bootstrap serving error (peer {}): {:?}", remote_addr, err),
+                            Ok(_) => info!("bootstrapped peer {}", remote_addr),
+                            Err(err) => debug!("bootstrap serving error for peer {}: {:?}", remote_addr, err),
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});

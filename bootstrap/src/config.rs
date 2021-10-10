@@ -38,4 +38,8 @@ pub struct BootstrapConfig {
     pub cache_duration: UTime,
     // Max simultaneous bootstraps
     pub max_simultaneous_bootstraps: u32,
+    // Minimum interval between two bootstrap attempts from a given IP
+    pub per_ip_min_interval: UTime,
+    // Max size of the IP list
+    pub ip_list_max_size: usize,
 }
