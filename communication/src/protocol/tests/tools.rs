@@ -101,6 +101,33 @@ pub fn create_block_with_operations(
     Block { header, operations }
 }
 
+pub fn create_block_with_endorsements(
+    private_key: &PrivateKey,
+    public_key: &PublicKey,
+    slot: Slot,
+    endorsements: Vec<Endorsement>,
+) -> Block {
+    let (_, header) = BlockHeader::new_signed(
+        private_key,
+        BlockHeaderContent {
+            creator: public_key.clone(),
+            slot,
+            parents: vec![
+                BlockId(Hash::hash("Genesis 0".as_bytes())),
+                BlockId(Hash::hash("Genesis 1".as_bytes())),
+            ],
+            operation_merkle_root: Hash::hash(&Vec::new()),
+            endorsements,
+        },
+    )
+    .unwrap();
+
+    Block {
+        header,
+        operations: Default::default(),
+    }
+}
+
 pub async fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
     block: Block,
