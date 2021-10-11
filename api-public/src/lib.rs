@@ -137,7 +137,7 @@ pub trait MassaPublic {
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
-    ) -> BoxFuture<Result<Vec<BlockSummary>, PublicApiError>>;
+    ) -> BoxFuture<Result<(Vec<BlockSummary>, UTime), PublicApiError>>;
 
     #[rpc(name = "get_addresses")]
     fn get_addresses(&self, _: Vec<Address>)
@@ -399,10 +399,11 @@ impl MassaPublic for ApiMassaPublic {
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
-    ) -> BoxFuture<Result<Vec<BlockSummary>, PublicApiError>> {
+    ) -> BoxFuture<Result<(Vec<BlockSummary>, UTime), PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
         let opt_storage_command_sender = self.storage_command_sender.clone();
         let consensus_config = self.consensus_config.clone();
+        let compensation_millis = self.compensation_millis;
         let closure = async move || {
             let graph = consensus_command_sender.get_block_graph_status().await?;
 
@@ -462,7 +463,8 @@ impl MassaPublic for ApiMassaPublic {
                     })
                 }
             }
-            Ok(res)
+
+            Ok((res, UTime::now(compensation_millis)?))
         };
 
         Box::pin(closure())
