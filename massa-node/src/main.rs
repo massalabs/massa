@@ -8,7 +8,7 @@ pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
 // TODO: use api_eth::{EthRpc, API as APIEth};
 use api_private::ApiMassaPrivate;
-use api_public::ApiMassaPublic;
+use api_public::{ApiMassaPublic, ApiMassaPublicStopHandle};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
     network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},
@@ -49,6 +49,7 @@ async fn launch(
     StorageManager,
     NetworkManager,
     mpsc::Receiver<()>,
+    ApiMassaPublicStopHandle,
 ) {
     info!("Node version : {}", cfg.version);
     if let Some(end) = cfg.consensus.end_timestamp {
@@ -158,6 +159,7 @@ async fn launch(
     .await
     .expect("could not start API controller");
 
+    // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
@@ -170,7 +172,7 @@ async fn launch(
     .await
     .unwrap();
 
-    // spawn APIs
+    // spawn private API
     let (api_private, api_private_stop_rx) = ApiMassaPrivate::create(
         &cfg.new_api.bind_private.to_string(),
         consensus_command_sender.clone(),
@@ -180,6 +182,7 @@ async fn launch(
     );
     api_private.serve_massa_private();
 
+    // spawn public API
     let api_public = ApiMassaPublic::create(
         &cfg.new_api.bind_public.to_string(),
         consensus_command_sender.clone(),
@@ -192,7 +195,7 @@ async fn launch(
         network_command_sender.clone(),
         clock_compensation,
     );
-    api_public.serve_massa_public();
+    let api_public_handle = api_public.serve_massa_public();
 
     // TODO: This will implemented later ...
     // let api_eth = APIEth::from_url("127.0.0.1:33036");
@@ -212,6 +215,7 @@ async fn launch(
         storage_manager,
         network_manager,
         api_private_stop_rx,
+        api_public_handle,
     )
 }
 
@@ -232,6 +236,7 @@ async fn run(cfg: node_config::Config) {
             storage_manager,
             network_manager,
             mut api_private_stop_rx,
+            api_public_handle,
         ) = launch(cfg.clone()).await;
 
         // interrupt signal listener
@@ -287,6 +292,7 @@ async fn run(cfg: node_config::Config) {
             protocol_manager,
             storage_manager,
             network_manager,
+            api_public_handle,
         )
         .await;
         if !restart {
@@ -643,6 +649,7 @@ async fn stop(
     protocol_manager: ProtocolManager,
     storage_manager: StorageManager,
     network_manager: NetworkManager,
+    api_public_handle: ApiMassaPublicStopHandle,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -657,6 +664,9 @@ async fn stop(
         .stop(api_event_receiver)
         .await
         .expect("API shutdown failed");
+
+    // stop public API
+    api_public_handle.stop();
 
     // stop consensus controller
     let protocol_event_receiver = consensus_manager

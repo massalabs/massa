@@ -109,6 +109,7 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
+ "log",
  "models",
  "pool",
  "rpc-server",
