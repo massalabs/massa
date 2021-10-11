@@ -9,10 +9,7 @@ use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
 use communication::NodeId;
 use consensus::ExportBlockStatus;
-use consensus::{
-    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
-    ConsensusCommandSender, ConsensusConfig, Status,
-};
+use consensus::{ConsensusCommandSender, ConsensusConfig, Status};
 use crypto::derive_public_key;
 use crypto::generate_random_private_key;
 use error::PublicApiError;
@@ -24,6 +21,9 @@ use log::{info, warn};
 use models::address::AddressHashMap;
 use models::clique::Clique;
 use models::operation::{Operation, OperationId};
+use models::timeslots::get_block_slot_timestamp;
+use models::timeslots::get_latest_block_slot_at_timestamp;
+use models::timeslots::time_range_to_slot_range;
 use models::BlockHashSet;
 use models::OperationHashMap;
 use models::OperationHashSet;
