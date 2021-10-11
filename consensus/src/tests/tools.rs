@@ -16,10 +16,12 @@ use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
+use models::hhasher::BuildHHasher;
 use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
+    EndorsementContent, Operation, OperationContent, OperationHashMap, OperationType,
+    SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use pool::PoolCommand;
@@ -825,6 +827,16 @@ pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
         if clique.block_ids.contains(&hash) {
             res.insert(i);
         }
+    }
+    res
+}
+
+pub fn get_operation_set(operations: &Vec<Operation>) -> OperationHashMap<(usize, u64)> {
+    let mut res =
+        OperationHashMap::with_capacity_and_hasher(operations.len(), BuildHHasher::default());
+    for (idx, op) in operations.iter().enumerate() {
+        let op_id = op.get_operation_id().unwrap();
+        res.insert(op_id, (idx, op.content.expire_period));
     }
     res
 }

@@ -276,14 +276,8 @@ impl Operation {
         start..=self.content.expire_period
     }
 
-    pub fn get_ledger_involved_addresses(
-        &self,
-        fee_target: Option<Address>,
-    ) -> Result<AddressHashSet, ModelsError> {
+    pub fn get_ledger_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
         let mut res = AddressHashSet::default();
-        if let Some(target) = fee_target {
-            res.insert(target);
-        }
         let emitter_address = Address::from_public_key(&self.content.sender_public_key)?;
         res.insert(emitter_address);
         match self.content.op {
