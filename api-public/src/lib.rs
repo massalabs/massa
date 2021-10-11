@@ -18,7 +18,9 @@ use crypto::generate_random_private_key;
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
+use jsonrpc_http_server::CloseHandle;
 use jsonrpc_http_server::ServerBuilder;
+use log::{info, warn};
 use models::address::AddressHashMap;
 use models::clique::Clique;
 use models::operation::{Operation, OperationId};
@@ -33,10 +35,27 @@ pub use rpc_server::API;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::thread;
+use std::thread::JoinHandle;
 use storage::StorageAccess;
 use time::UTime;
 
 mod error;
+
+pub struct ApiMassaPublicStopHandle {
+    close_handle: CloseHandle,
+    join_handle: JoinHandle<()>,
+}
+
+impl ApiMassaPublicStopHandle {
+    pub fn stop(self) {
+        self.close_handle.close();
+        if let Err(err) = self.join_handle.join() {
+            warn!("public API thread panicked: {:?}", err);
+        } else {
+            info!("public API finished cleanly");
+        }
+    }
+}
 
 pub struct ApiMassaPublic {
     pub url: String,
@@ -80,16 +99,23 @@ impl ApiMassaPublic {
     }
 
     /// Starts massa public server.
-    pub fn serve_massa_public(self) {
+    pub fn serve_massa_public(self) -> ApiMassaPublicStopHandle {
         let mut io = IoHandler::new();
         let url = self.url.parse().unwrap();
         io.extend_with(self.to_delegate());
 
         let server = ServerBuilder::new(io)
+            .event_loop_executor(tokio::runtime::Handle::current())
             .start_http(&url)
             .expect("Unable to start RPC server");
 
-        thread::spawn(|| server.wait());
+        let close_handle = server.close_handle();
+        let join_handle = thread::spawn(|| server.wait());
+
+        ApiMassaPublicStopHandle {
+            close_handle,
+            join_handle,
+        }
     }
 }
 
