@@ -7,7 +7,7 @@ extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
 // TODO: use api_eth::{EthRpc, API as APIEth};
-use api_private::ApiMassaPrivate;
+use api_private::{ApiMassaPrivate, ApiMassaPrivateStopHandle};
 use api_public::{ApiMassaPublic, ApiMassaPublicStopHandle};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use communication::{
@@ -49,6 +49,7 @@ async fn launch(
     StorageManager,
     NetworkManager,
     mpsc::Receiver<()>,
+    ApiMassaPrivateStopHandle,
     ApiMassaPublicStopHandle,
 ) {
     info!("Node version : {}", cfg.version);
@@ -180,7 +181,7 @@ async fn launch(
         cfg.new_api.clone(),
         cfg.consensus.clone(),
     );
-    api_private.serve_massa_private();
+    let api_private_handle = api_private.serve_massa_private();
 
     // spawn public API
     let api_public = ApiMassaPublic::create(
@@ -215,6 +216,7 @@ async fn launch(
         storage_manager,
         network_manager,
         api_private_stop_rx,
+        api_private_handle,
         api_public_handle,
     )
 }
@@ -236,6 +238,7 @@ async fn run(cfg: node_config::Config) {
             storage_manager,
             network_manager,
             mut api_private_stop_rx,
+            api_private_handle,
             api_public_handle,
         ) = launch(cfg.clone()).await;
 
@@ -292,6 +295,7 @@ async fn run(cfg: node_config::Config) {
             protocol_manager,
             storage_manager,
             network_manager,
+            api_private_handle,
             api_public_handle,
         )
         .await;
@@ -649,6 +653,7 @@ async fn stop(
     protocol_manager: ProtocolManager,
     storage_manager: StorageManager,
     network_manager: NetworkManager,
+    api_private_handle: ApiMassaPrivateStopHandle,
     api_public_handle: ApiMassaPublicStopHandle,
 ) {
     // stop bootstrap
@@ -667,6 +672,9 @@ async fn stop(
 
     // stop public API
     api_public_handle.stop();
+
+    // stop private API
+    api_private_handle.stop();
 
     // stop consensus controller
     let protocol_event_receiver = consensus_manager
