@@ -335,6 +335,13 @@ impl NetworkWorker {
                     }
                 },
 
+                // event received from a node
+                evt = self.node_event_rx.recv() => {
+                    self.on_node_event(
+                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
+                    ).await?
+                },
+
                 // incoming command
                 Some(cmd) = self.controller_command_rx.recv() => {
                     self.manage_network_command(cmd).await?;
@@ -407,13 +414,6 @@ impl NetworkWorker {
                         &mut cur_connection_id,
                     ).await?
                 }
-
-                // event received from a node
-                evt = self.node_event_rx.recv() => {
-                    self.on_node_event(
-                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
-                    ).await?
-                },
             }
         }
 

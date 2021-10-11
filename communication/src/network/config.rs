@@ -5,6 +5,7 @@ use std::net::{IpAddr, SocketAddr};
 use time::UTime;
 
 pub const CHANNEL_SIZE: usize = 256;
+pub const NODE_SEND_CHANNEL_SIZE: usize = 4096;
 
 /// Network configuration
 #[derive(Debug, Deserialize, Clone)]
