@@ -851,6 +851,7 @@ enum HeaderCheckOutcome {
     WaitForDependencies(BlockHashSet),
 }
 
+/// Possible outcomes of endorsements check
 #[derive(Debug)]
 enum EndorsementsCheckOutcome {
     Proceed,
@@ -2639,6 +2640,9 @@ impl BlockGraph {
         })
     }
 
+    /// check endorsements:
+    /// * endorser was selected for that (slot, index)
+    /// * endorsed slot is parent_in_own_thread slot
     fn check_endorsements(
         &self,
         header: &BlockHeader,
