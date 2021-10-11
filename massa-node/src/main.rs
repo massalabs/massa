@@ -267,10 +267,14 @@ async fn run(cfg: node_config::Config) {
                 evt = api_event_receiver.wait_event() =>{
                     massa_trace!("massa-node.main.run.select.api_event", {});
 
-                    if on_api_event(evt.map_err(|e|format!("api communication error: {:?}", e)).unwrap(),
-                    &mut api_pool_command_sender,
-                    &consensus_command_sender,
-                    &network_command_sender).await {break true}
+                    if on_api_event(evt.map_err(
+                        |e|format!("api communication error: {:?}", e)).unwrap(),
+                        &mut api_pool_command_sender,
+                        &consensus_command_sender,
+                        &network_command_sender
+                    ).await {
+                        break false;
+                    }
                 }
 
                 _ = &mut stop_signal => {
@@ -728,9 +732,15 @@ async fn main() {
         .module("consensus")
         .module("crypto")
         .module("logging")
+        .module("storage")
         .module("models")
         .module("time")
         .module("api")
+        .module("api_private")
+        .module("api_public")
+        .module("rpc_server")
+        .module("rpc_client")
+        .module("wallet")
         .module("pool")
         .verbosity(cfg.logging.level)
         .timestamp(stderrlog::Timestamp::Millisecond)
