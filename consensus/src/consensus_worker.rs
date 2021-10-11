@@ -316,7 +316,9 @@ impl ConsensusWorker {
                     // prune block db and send discarded final blocks to storage if present
                     let discarded_final_blocks = self.block_db.prune()?;
                     if let Some(storage_cmd) = &self.opt_storage_command_sender {
-                        storage_cmd.add_block_batch(discarded_final_blocks).await?;
+                        for (d_id, d_active_block) in discarded_final_blocks.into_iter() {
+                            storage_cmd.add_block(d_id, d_active_block.block, d_active_block.operation_set).await?;
+                        }
                     }
 
                     // reset timer

@@ -135,7 +135,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             .map(|endo| endo.compute_endorsement_id())
             .collect::<Result<_, _>>()?;
 
-        let addresses_to_operations = block.block.involved_addresses()?;
+        let addresses_to_operations = block.block.involved_addresses(&operation_set)?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&block.block.header.content.creator)?,
             block: block.block,
@@ -1072,7 +1072,7 @@ impl BlockGraph {
 
         // get roll updates
         let op_roll_updates = operation.get_roll_updates()?;
-        // get ledger changes
+        // get ledger changes (includes fee distribution)
         let op_ledger_changes = operation.get_ledger_changes(
             block_creator_address,
             state_accu.endorsers_addresses.clone(),
@@ -1081,7 +1081,6 @@ impl BlockGraph {
             self.cfg.roll_price,
             self.cfg.endorsement_count,
         )?;
-        // todo add reward
         // apply to block state accumulator
         self.block_state_try_apply(
             state_accu,
@@ -2191,7 +2190,8 @@ impl BlockGraph {
             }
         };
 
-        let valid_block_addresses_to_operations = valid_block.involved_addresses()?;
+        let valid_block_addresses_to_operations =
+            valid_block.involved_addresses(&valid_block_operation_set)?;
 
         // add block to graph
         self.add_block_to_graph(
@@ -3539,7 +3539,7 @@ impl BlockGraph {
     }
 
     // prune active blocks and return final blocks, return discarded final blocks
-    fn prune_active(&mut self) -> Result<BlockHashMap<Block>, ConsensusError> {
+    fn prune_active(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         // list all active blocks
         let active_blocks: BlockHashSet = self.active_index.clone();
         let mut retain_active: BlockHashSet =
@@ -3657,7 +3657,7 @@ impl BlockGraph {
         }
 
         // remove unused final active blocks
-        let mut discarded_finals: BlockHashMap<Block> = BlockHashMap::default();
+        let mut discarded_finals: BlockHashMap<ActiveBlock> = BlockHashMap::default();
         for discard_active_h in active_blocks.difference(&retain_active) {
             let discarded_active = if let Some(BlockStatus::Active(discarded_active)) =
                 self.block_statuses.remove(discard_active_h)
@@ -3690,7 +3690,7 @@ impl BlockGraph {
             );
             self.discarded_index.insert(*discard_active_h);
 
-            discarded_finals.insert(*discard_active_h, discarded_active.block);
+            discarded_finals.insert(*discard_active_h, discarded_active);
         }
 
         Ok(discarded_finals)
@@ -3935,7 +3935,7 @@ impl BlockGraph {
     }
 
     // prune and return final blocks, return discarded final blocks
-    pub fn prune(&mut self) -> Result<BlockHashMap<Block>, ConsensusError> {
+    pub fn prune(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active()?;

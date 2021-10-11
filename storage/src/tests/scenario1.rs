@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::{self, get_dummy_block_id};
-use crate::{StorageAccess, StorageConfig};
+use crate::{tests::tools::get_operation_set, StorageAccess, StorageConfig};
 use models::{SerializationContext, Slot};
 use serial_test::serial;
 
@@ -252,5 +252,6 @@ async fn add_block(slot: Slot, storage: &StorageAccess) {
     let mut block = tools::get_test_block();
     block.header.content.slot = slot;
     let hash = get_dummy_block_id(&format!("{}", slot));
-    storage.add_block(hash, block).await.unwrap();
+    let op_ids = get_operation_set(&block.operations);
+    storage.add_block(hash, block, op_ids).await.unwrap();
 }

@@ -8,7 +8,8 @@ use crypto::{
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
 use models::{
-    Amount, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Slot, Version,
+    hhasher::BuildHHasher, Amount, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId,
+    Operation, OperationHashMap, Slot, Version,
 };
 use num::rational::Ratio;
 use pool::PoolConfig;
@@ -237,6 +238,16 @@ pub fn get_dummy_staker() -> PublicKey {
     derive_public_key(&private_key)
 }
 
+pub fn get_operation_set(operations: &Vec<Operation>) -> OperationHashMap<(usize, u64)> {
+    let mut res =
+        OperationHashMap::with_capacity_and_hasher(operations.len(), BuildHHasher::default());
+    for (idx, op) in operations.iter().enumerate() {
+        let op_id = op.get_operation_id().unwrap();
+        res.insert(op_id, (idx, op.content.expire_period));
+    }
+    res
+}
+
 pub async fn get_test_storage(cfg: ConsensusConfig) -> (StorageAccess, (Block, Block, Block)) {
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
 
@@ -295,7 +306,13 @@ pub async fn get_test_storage(cfg: ConsensusConfig) -> (StorageAccess, (Block, B
     );
     blocks.insert(block_c.header.compute_block_id().unwrap(), block_c.clone());
 
-    storage_command_tx.add_block_batch(blocks).await.unwrap();
+    for (block_id, block) in blocks {
+        let ops = get_operation_set(&block.operations);
+        storage_command_tx
+            .add_block(block_id, block, ops)
+            .await
+            .unwrap();
+    }
 
     (storage_command_tx, (block_a, block_b, block_c))
 }

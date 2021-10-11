@@ -4,9 +4,9 @@ use crate::{
     address::{AddressHashMap, AddressHashSet},
     array_from_slice,
     hhasher::{HHashMap, HHashSet, PreHashed},
-    u8_from_slice, with_serialization_context, Address, DeserializeCompact, DeserializeMinBEInt,
-    DeserializeVarInt, Endorsement, ModelsError, Operation, OperationHashSet, SerializeCompact,
-    SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
+    u8_from_slice, with_serialization_context, DeserializeCompact, DeserializeMinBEInt,
+    DeserializeVarInt, Endorsement, ModelsError, Operation, OperationHashMap, OperationHashSet,
+    SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -95,30 +95,30 @@ impl Block {
         Ok(roll_involved_addrs)
     }
 
-    pub fn involved_addresses(&self) -> Result<AddressHashMap<OperationHashSet>, ModelsError> {
+    /// retrieves a mapping of addresses to the list of operation IDs they are involved with in terms of ledger
+    pub fn involved_addresses(
+        &self,
+        operation_set: &OperationHashMap<(usize, u64)>,
+    ) -> Result<AddressHashMap<OperationHashSet>, ModelsError> {
         let mut addresses_to_operations: AddressHashMap<OperationHashSet> =
             AddressHashMap::default();
-        self.operations
+        operation_set
             .iter()
-            .try_for_each::<_, Result<(), ModelsError>>(|op| {
-                let addrs = op
-                    .get_ledger_involved_addresses(Some(Address::from_public_key(
-                        &self.header.content.creator,
-                    )?))
-                    .map_err(|err| {
-                        ModelsError::DeserializeError(format!(
-                            "could not get involved addresses: {:?}",
-                            err
-                        ))
-                    })?;
-                let id = op.get_operation_id()?;
-                for ad in addrs.iter() {
-                    if let Some(entry) = addresses_to_operations.get_mut(ad) {
-                        entry.insert(id);
+            .try_for_each::<_, Result<(), ModelsError>>(|(op_id, (op_idx, _op_expiry))| {
+                let op = &self.operations[*op_idx];
+                let addrs = op.get_ledger_involved_addresses().map_err(|err| {
+                    ModelsError::DeserializeError(format!(
+                        "could not get involved addresses: {:?}",
+                        err
+                    ))
+                })?;
+                for ad in addrs.into_iter() {
+                    if let Some(entry) = addresses_to_operations.get_mut(&ad) {
+                        entry.insert(*op_id);
                     } else {
                         let mut set = OperationHashSet::default();
-                        set.insert(id);
-                        addresses_to_operations.insert(*ad, set);
+                        set.insert(*op_id);
+                        addresses_to_operations.insert(ad, set);
                     }
                 }
                 Ok(())
