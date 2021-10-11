@@ -252,5 +252,8 @@ async fn add_block(slot: Slot, storage: &StorageAccess) {
     let mut block = tools::get_test_block();
     block.header.content.slot = slot;
     let hash = get_dummy_block_id(&format!("{}", slot));
-    storage.add_block(hash, block).await.unwrap();
+    storage
+        .add_block(hash, block, Default::default())
+        .await
+        .unwrap();
 }

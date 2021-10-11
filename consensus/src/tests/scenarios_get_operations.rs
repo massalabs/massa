@@ -1,7 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
+    tests::tools::{
+        self, create_transaction, generate_ledger_file, get_export_active_test_block,
+        get_operation_set,
+    },
     BootstrapableGraph, LedgerSubset,
 };
 use crypto::{hash::Hash, signature::PublicKey};
@@ -127,7 +130,8 @@ async fn test_get_operation() {
     };
 
     let b3 = block.header.compute_block_id().unwrap();
-    storage_access.add_block(b3, block).await.unwrap();
+    let b_ops = get_operation_set(&block.operations);
+    storage_access.add_block(b3, block, b_ops).await.unwrap();
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(4).unwrap())
@@ -322,7 +326,8 @@ async fn test_consensus_and_storage() {
     // start storage, and add the block containing the "storage ops" to it.
     let storage_access = tools::start_storage();
     let b3 = block.header.compute_block_id().unwrap();
-    storage_access.add_block(b3, block).await.unwrap();
+    let b_ops = get_operation_set(&block.operations);
+    storage_access.add_block(b3, block, b_ops).await.unwrap();
 
     let (boot_graph, _, _) = get_bootgraph(
         pubkey_a.clone(),
