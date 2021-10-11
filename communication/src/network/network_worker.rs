@@ -335,6 +335,13 @@ impl NetworkWorker {
                     }
                 },
 
+                // event received from a node
+                evt = self.node_event_rx.recv() => {
+                    self.on_node_event(
+                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
+                    ).await?
+                },
+
                 // incoming command
                 Some(cmd) = self.controller_command_rx.recv() => {
                     self.manage_network_command(cmd).await?;
@@ -407,13 +414,6 @@ impl NetworkWorker {
                         &mut cur_connection_id,
                     ).await?
                 }
-
-                // event received from a node
-                evt = self.node_event_rx.recv() => {
-                    self.on_node_event(
-                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
-                    ).await?
-                },
             }
         }
 
@@ -1023,14 +1023,15 @@ impl NetworkWorker {
         match evt {
             // received a list of peers
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
-                debug!("node_id={:?} sent us a peer list: {:?}", from_node_id, lst);
+                debug!(
+                    "node_id={:?} sent us a peer list ({} ips)",
+                    from_node_id,
+                    lst.len()
+                );
                 massa_trace!("peer_list_received", {
                     "node_id": from_node_id,
                     "ips": lst
                 });
-
-                debug!("merging incoming peer list: {:?}", lst);
-                massa_trace!("merge_incoming_peer_list", { "ips": lst });
                 self.peer_info_db.merge_candidate_peers(&lst)?;
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {

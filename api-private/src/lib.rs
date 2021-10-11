@@ -6,16 +6,35 @@ use crypto::signature::{PrivateKey, PublicKey, Signature};
 use error::PrivateApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
+use jsonrpc_http_server::CloseHandle;
 use jsonrpc_http_server::ServerBuilder;
+use log::{info, warn};
 use models::address::{Address, AddressHashSet};
 use models::node::NodeId;
 use rpc_server::APIConfig;
 pub use rpc_server::API;
 use std::net::IpAddr;
 use std::thread;
+use std::thread::JoinHandle;
 use tokio::sync::mpsc;
 
 mod error;
+
+pub struct ApiMassaPrivateStopHandle {
+    close_handle: CloseHandle,
+    join_handle: JoinHandle<()>,
+}
+
+impl ApiMassaPrivateStopHandle {
+    pub fn stop(self) {
+        self.close_handle.close();
+        if let Err(err) = self.join_handle.join() {
+            warn!("private API thread panicked: {:?}", err);
+        } else {
+            info!("private API finished cleanly");
+        }
+    }
+}
 
 pub struct ApiMassaPrivate {
     pub url: String,
@@ -93,16 +112,23 @@ impl ApiMassaPrivate {
     }
 
     /// Starts massa private server.
-    pub fn serve_massa_private(self) {
+    pub fn serve_massa_private(self) -> ApiMassaPrivateStopHandle {
         let mut io = IoHandler::new();
         let url = self.url.parse().unwrap();
         io.extend_with(self.to_delegate());
 
         let server = ServerBuilder::new(io)
+            .event_loop_executor(tokio::runtime::Handle::current())
             .start_http(&url)
             .expect("Unable to start RPC server");
 
-        thread::spawn(|| server.wait());
+        let close_handle = server.close_handle();
+        let join_handle = thread::spawn(|| server.wait());
+
+        ApiMassaPrivateStopHandle {
+            close_handle,
+            join_handle,
+        }
     }
 }
 

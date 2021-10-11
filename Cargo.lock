@@ -90,6 +90,7 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
+ "log",
  "models",
  "rpc-server",
  "thiserror",
@@ -109,12 +110,14 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
+ "log",
  "models",
  "pool",
  "rpc-server",
  "storage",
  "thiserror",
  "time 0.1.0",
+ "tokio",
 ]
 
 [[package]]

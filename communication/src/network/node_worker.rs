@@ -2,14 +2,21 @@
 
 use super::{
     binders::{ReadBinder, WriteBinder},
-    config::{NetworkConfig, CHANNEL_SIZE},
+    config::{NetworkConfig, NODE_SEND_CHANNEL_SIZE},
     messages::Message,
 };
 use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use models::node::NodeId;
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use std::net::IpAddr;
-use tokio::{sync::mpsc, sync::mpsc::error::SendTimeoutError, time::timeout};
+use tokio::{
+    sync::mpsc,
+    sync::mpsc::{
+        error::{SendTimeoutError, TrySendError},
+        Sender,
+    },
+    time::timeout,
+};
 
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
@@ -122,9 +129,33 @@ impl NodeWorker {
         }
     }
 
+    /// Tries to send a message to a node
+    /// If the pipe is full, simply warn
+    /// If the channel dropped, return an error
+    pub fn try_send_to_node(
+        &self,
+        sender: &Sender<Message>,
+        msg: Message,
+    ) -> Result<(), CommunicationError> {
+        match sender.try_send(msg) {
+            Err(TrySendError::Full(_)) => {
+                debug!(
+                    "failed sending message to node {}: send channel full",
+                    self.node_id
+                );
+                Ok(())
+            }
+            Err(TrySendError::Closed(_)) => Err(CommunicationError::ChannelError(
+                "failed sending message to node: channel closed".into(),
+            )),
+            Ok(_) => Ok(()),
+        }
+    }
+
     /// node event loop. Consumes self.
     pub async fn run_loop(mut self) -> Result<ConnectionClosureReason, CommunicationError> {
-        let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(CHANNEL_SIZE);
+        let (writer_command_tx, mut writer_command_rx) =
+            mpsc::channel::<Message>(NODE_SEND_CHANNEL_SIZE);
         let mut socket_writer = self.socket_writer_opt.take().ok_or_else(|| {
             CommunicationError::GeneralProtocolError(
                 "NodeWorker call run_loop more than once".to_string(),
@@ -201,74 +232,6 @@ impl NodeWorker {
                     }
                 },
 
-                // node command
-                cmd = self.node_command_rx.recv() => {
-                    match cmd {
-                        Some(NodeCommand::Close(r)) => {
-                            exit_reason = r;
-                            break;
-                        },
-                        Some(NodeCommand::SendPeerList(ip_vec)) => {
-                            massa_trace!("node_worker.run_loop. send Message::PeerList", {"peerlist": ip_vec, "node": self.node_id});
-                            if writer_command_tx.send(Message::PeerList(ip_vec)).await.is_err() {
-                                break;
-                            }
-                        },
-                        Some(NodeCommand::SendBlockHeader(header)) => {
-                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.compute_block_id()?, "header": header, "node": self.node_id});
-                            if writer_command_tx.send(Message::BlockHeader(header)).await.is_err() {
-                                break;
-                            }
-                        },
-                        Some(NodeCommand::SendBlock(block)) => {
-                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.compute_block_id()?, "block": block, "node": self.node_id});
-                            if writer_command_tx.send(Message::Block(block)).await.is_err() {
-                                break;
-                            }
-                            trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");
-                        },
-                        Some(NodeCommand::AskForBlocks(list)) => {
-                            //cut hash list on sub list if exceed max_ask_blocks_per_message
-                            massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
-                            for to_send_list in list.chunks(self.cfg.max_ask_blocks_per_message as usize) {
-                                if writer_command_tx.send(Message::AskForBlocks(to_send_list.iter().copied().collect())).await.is_err() {
-                                    break 'select_loop;
-                                }
-                            }
-                        },
-                        Some(NodeCommand::BlockNotFound(hash)) => {
-                            massa_trace!("node_worker.run_loop. send Message::BlockNotFound", {"hash": hash, "node": self.node_id});
-                            if writer_command_tx.send(Message::BlockNotFound(hash)).await.is_err() {
-                                break;
-                            }
-                        },
-                        Some(NodeCommand::SendOperations(operations)) => {
-                            massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
-                            //cut operation list if it exceed max_operations_per_message
-                            for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
-                                if writer_command_tx.send(Message::Operations(to_send_list.to_vec())).await.is_err() {
-                                    break 'select_loop;
-                                }
-                            }
-                        },
-                        Some(NodeCommand::SendEndorsements(endorsements)) => {
-                            massa_trace!("node_worker.run_loop. send Message::SendEndorsements", {"node": self.node_id, "endorsements": endorsements});
-                            //cut endorsement list if it exceed max_endorsements_per_message
-                            for to_send_list in endorsements.chunks(self.cfg.max_endorsements_per_message as usize) {
-                                if writer_command_tx.send(Message::Endorsements(to_send_list.to_vec())).await.is_err() {
-                                    break 'select_loop;
-                                }
-                            }
-                        },
-                        None => {
-                            // Note: this should never happen,
-                            // since it implies the network worker dropped its node command sender
-                            // before having shut-down the node and joined on its handle.
-                            return Err(CommunicationError::UnexpectedNodeCommandChannelClosure);
-                        },
-                    };
-                },
-
                 // incoming socket data
                 res = self.socket_reader.next() => match res {
                     Ok(Some((index, msg))) => {
@@ -327,6 +290,74 @@ impl NodeWorker {
                         exit_reason = ConnectionClosureReason::Failed;
                         break;
                     },
+                },
+
+                // node command
+                cmd = self.node_command_rx.recv() => {
+                    match cmd {
+                        Some(NodeCommand::Close(r)) => {
+                            exit_reason = r;
+                            break;
+                        },
+                        Some(NodeCommand::SendPeerList(ip_vec)) => {
+                            massa_trace!("node_worker.run_loop. send Message::PeerList", {"peerlist": ip_vec, "node": self.node_id});
+                            if self.try_send_to_node(&writer_command_tx, Message::PeerList(ip_vec)).is_err() {
+                                break;
+                            }
+                        },
+                        Some(NodeCommand::SendBlockHeader(header)) => {
+                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.compute_block_id()?, "header": header, "node": self.node_id});
+                            if self.try_send_to_node(&writer_command_tx, Message::BlockHeader(header)).is_err() {
+                                break;
+                            }
+                        },
+                        Some(NodeCommand::SendBlock(block)) => {
+                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.compute_block_id()?, "block": block, "node": self.node_id});
+                            if self.try_send_to_node(&writer_command_tx, Message::Block(block)).is_err() {
+                                break;
+                            }
+                            trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");
+                        },
+                        Some(NodeCommand::AskForBlocks(list)) => {
+                            //cut hash list on sub list if exceed max_ask_blocks_per_message
+                            massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
+                            for to_send_list in list.chunks(self.cfg.max_ask_blocks_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::AskForBlocks(to_send_list.iter().copied().collect())).is_err() {
+                                    break 'select_loop;
+                                }
+                            }
+                        },
+                        Some(NodeCommand::BlockNotFound(hash)) => {
+                            massa_trace!("node_worker.run_loop. send Message::BlockNotFound", {"hash": hash, "node": self.node_id});
+                            if self.try_send_to_node(&writer_command_tx, Message::BlockNotFound(hash)).is_err() {
+                                break;
+                            }
+                        },
+                        Some(NodeCommand::SendOperations(operations)) => {
+                            massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
+                            //cut operation list if it exceed max_operations_per_message
+                            for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::Operations(to_send_list.to_vec())).is_err() {
+                                    break 'select_loop;
+                                }
+                            }
+                        },
+                        Some(NodeCommand::SendEndorsements(endorsements)) => {
+                            massa_trace!("node_worker.run_loop. send Message::SendEndorsements", {"node": self.node_id, "endorsements": endorsements});
+                            //cut endorsement list if it exceed max_endorsements_per_message
+                            for to_send_list in endorsements.chunks(self.cfg.max_endorsements_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::Endorsements(to_send_list.to_vec())).is_err() {
+                                    break 'select_loop;
+                                }
+                            }
+                        },
+                        None => {
+                            // Note: this should never happen,
+                            // since it implies the network worker dropped its node command sender
+                            // before having shut-down the node and joined on its handle.
+                            return Err(CommunicationError::UnexpectedNodeCommandChannelClosure);
+                        },
+                    };
                 },
 
                 _ = ask_peer_list_interval.tick() => {
