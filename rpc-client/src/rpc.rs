@@ -173,11 +173,11 @@ impl RpcClient {
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
-    ) -> RpcResult<Vec<BlockSummary>> {
+    ) -> RpcResult<(Vec<BlockSummary>, UTime)> {
         self.0
             .call_method(
                 "get_graph_interval",
-                "Vec<BlockSummary>",
+                "(Vec<BlockSummary>, UTime)",
                 (time_start, time_end),
             )
             .await
