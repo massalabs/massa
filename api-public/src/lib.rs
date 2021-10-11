@@ -105,6 +105,7 @@ impl ApiMassaPublic {
         io.extend_with(self.to_delegate());
 
         let server = ServerBuilder::new(io)
+            .event_loop_executor(tokio::runtime::Handle::current())
             .start_http(&url)
             .expect("Unable to start RPC server");
 

@@ -270,7 +270,7 @@ async fn run(cfg: node_config::Config) {
                     if on_api_event(evt.map_err(|e|format!("api communication error: {:?}", e)).unwrap(),
                     &mut api_pool_command_sender,
                     &consensus_command_sender,
-                    &network_command_sender).await {break false}
+                    &network_command_sender).await {break true}
                 }
 
                 _ = &mut stop_signal => {

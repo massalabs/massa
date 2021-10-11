@@ -117,6 +117,7 @@ dependencies = [
  "storage",
  "thiserror",
  "time 0.1.0",
+ "tokio",
 ]
 
 [[package]]
