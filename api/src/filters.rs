@@ -1038,7 +1038,7 @@ async fn get_graph_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(BlockId, Slot, Status, Vec<BlockId>)>, ApiError> {
+) -> Result<(Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime), ApiError> {
     massa_trace!("api.filters.get_graph_interval_process", {});
     //filter block from graph_export
     let graph = retrieve_graph_export(&event_tx).await?;
@@ -1079,7 +1079,7 @@ async fn get_graph_interval(
             ));
         }
     }
-    Ok(res)
+    Ok((res, UTime::now(0)?)) // todo add compensation_millis ?
 }
 
 /// Returns number of cliques and current cliques as `Vec<HashSet<(hash, (period, thread))>>`
