@@ -989,13 +989,13 @@ async fn get_block_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(BlockId, Slot)>, ApiError> {
+) -> Result<(Vec<(BlockId, Slot)>, UTime), ApiError> {
     massa_trace!("api.filters.get_block_interval", {});
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
         .is_some()
     {
-        return Ok(vec![]);
+        return Ok((vec![], UTime::now(0)?));
     }
 
     //filter block from graph_export
@@ -1022,8 +1022,7 @@ async fn get_block_interval(
                 )
             })?;
     }
-
-    Ok(res)
+    Ok((res, UTime::now(0)?)) // todo add compensation_millis ?
 }
 
 /// Returns all block info needed to reconstruct the graph found in the time interval.

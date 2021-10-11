@@ -1100,14 +1100,15 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format_url_with_to_from("blockinterval", data.node_ip, params)?;
     if let Some(resp) = request_data(data, &url)? {
-        let mut block: Vec<(data::WrappedHash, data::WrappedSlot)> =
-            data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
+        let (block, timestamp) = resp.json::<(Vec<(Hash, Slot)>, UTime)>()?;
+        let mut block = data::from_vec_hash_slot(&block);
         if block.is_empty() {
             println!("Block not found.");
         } else {
             block.sort_unstable_by_key(|v| (v.1, v.0));
             let formatted = format_node_hash(&mut block);
             println!("blocks: {:#?}", formatted);
+            println!("Current time : {}", timestamp.to_utc_string());
         }
     }
 
