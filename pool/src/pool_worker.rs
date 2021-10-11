@@ -114,11 +114,20 @@ impl PoolWorker {
         loop {
             massa_trace!("pool.pool_worker.run_loop.select", {});
             tokio::select! {
+                // listen to manager commands
+                cmd = self.controller_manager_rx.recv() => {
+                    massa_trace!("pool.pool_worker.run_loop.select.manager", {});
+                    match cmd {
+                    None => break,
+                    Some(_) => {}
+                }}
+
                 // listen pool commands
                 Some(cmd) = self.controller_command_rx.recv() => {
                     massa_trace!("pool.pool_worker.run_loop.pool_command", {});
                     self.process_pool_command(cmd).await?
                 },
+
                 // receive protocol controller pool events
                 evt = self.protocol_pool_event_receiver.wait_event() => {
                     massa_trace!("pool.pool_worker.run_loop.select.protocol_event", {});
@@ -128,13 +137,6 @@ impl PoolWorker {
                         Err(err) => return Err(PoolError::CommunicationError(err))
                     }
                 },
-                // listen to manager commands
-                cmd = self.controller_manager_rx.recv() => {
-                    massa_trace!("pool.pool_worker.run_loop.select.manager", {});
-                    match cmd {
-                    None => break,
-                    Some(_) => {}
-                }}
             }
         }
         // end loop

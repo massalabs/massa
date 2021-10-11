@@ -9,14 +9,17 @@ use consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use crypto::signature::{PrivateKey, PublicKey};
 use error::BootstrapError;
 pub use establisher::Establisher;
+use futures::{stream::FuturesUnordered, StreamExt};
 use log::{debug, info, warn};
 use logging::massa_trace;
 use messages::BootstrapMessage;
 use models::Version;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
-use std::convert::TryInto;
+use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;
+use std::{convert::TryInto, net::IpAddr};
 use time::UTime;
+use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 
 mod client_binder;
@@ -234,10 +237,10 @@ pub async fn start_bootstrap_server(
                 manager_rx,
                 bind,
                 private_key,
-                read_timeout: cfg.read_timeout,
-                write_timeout: cfg.write_timeout,
                 compensation_millis,
                 version,
+                ip_hist_map: HashMap::with_capacity(cfg.ip_list_max_size),
+                cfg,
             }
             .run()
             .await
@@ -258,10 +261,10 @@ struct BootstrapServer {
     manager_rx: mpsc::Receiver<()>,
     bind: SocketAddr,
     private_key: PrivateKey,
-    read_timeout: UTime,
-    write_timeout: UTime,
+    cfg: BootstrapConfig,
     compensation_millis: i64,
     version: Version,
+    ip_hist_map: HashMap<IpAddr, Instant>,
 }
 
 impl BootstrapServer {
@@ -269,113 +272,190 @@ impl BootstrapServer {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
+        let mut bootstrap_sessions = FuturesUnordered::new();
+        let cache_timeout = self.cfg.cache_duration.to_duration();
+        let mut bootstrap_data: Option<(ExportProofOfStake, BootstrapableGraph, BootstrapPeers)> =
+            None;
+        let cache_timer = sleep(cache_timeout);
+        let per_ip_min_interval = self.cfg.per_ip_min_interval.to_duration();
+        tokio::pin!(cache_timer);
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
-                res = listener.accept() => {
-                    massa_trace!("bootstrap.lib.run.select.accept", {});
-                    match res {
-                        Ok(res)=> {
-                            if let Err(e) = self.manage_bootstrap(res).await {
-                                debug!("error while managing bootstrap connection: {:?} - bootstrap attempt ignored", e.to_string());
-                            }
-                        },
-                        Err(e) => {
-                            debug!("error while accepting bootstrap connection: {:?} - connection attempt ignored", e.to_string());
-                        }
-                    }
-                },
+                // managed commands
                 _ = self.manager_rx.recv() => {
                     massa_trace!("bootstrap.lib.run.select.manager", {});
                     break
                 },
+
+                // cache cleanup timeout
+                _ = &mut cache_timer, if bootstrap_data.is_some() => {
+                    massa_trace!("bootstrap.lib.run.cache_unload", {});
+                    bootstrap_data = None;
+                }
+
+                // bootstrap session finished
+                Some(_) = bootstrap_sessions.next() => {
+                    massa_trace!("bootstrap.session.finished", {"active_count": bootstrap_sessions.len()});
+                }
+
+                // listener
+                Ok((dplx, remote_addr)) = listener.accept(), if bootstrap_sessions.len() < self.cfg.max_simultaneous_bootstraps as usize => {
+                    massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
+                    let now = Instant::now();
+
+                    // clear IP history if necessary
+                    if self.ip_hist_map.len() > self.cfg.ip_list_max_size {
+                        self.ip_hist_map.retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
+                        if self.ip_hist_map.len() > self.cfg.ip_list_max_size {
+                            // too many IPs are spamming us: clear cache
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), self.cfg.per_ip_min_interval);
+                            self.ip_hist_map.clear();
+                        }
+                    }
+
+                    // check IP's bootstrap attempt history
+                    match self.ip_hist_map.entry(remote_addr.ip()) {
+                        hash_map::Entry::Occupied(mut occ) => {
+                            if now.duration_since(*occ.get()) <= per_ip_min_interval {
+                                // in list, non-expired => refuse
+                                massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
+                                continue;
+                            } else {
+                                // in list, expired
+                                occ.insert(now);
+                            }
+                        },
+                        hash_map::Entry::Vacant(vac) => {
+                            vac.insert(now);
+                        }
+                    }
+
+                    // load cache if absent
+                    if bootstrap_data.is_none() {
+                        massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
+                        let get_peers = self.network_command_sender.get_bootstrap_peers();
+                        let get_pos_graph = self.consensus_command_sender.get_bootstrap_state();
+                        let (res_peers, res_pos_graph) = tokio::join!(get_peers, get_pos_graph);
+                        let peer_boot = res_peers?;
+                        let (pos_boot, graph_boot) = res_pos_graph?;
+                        bootstrap_data = Some((pos_boot, graph_boot, peer_boot));
+                        cache_timer.set(sleep(cache_timeout));
+                    }
+                    massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+
+                    // launch bootstrap
+                    let cfg_copy = self.cfg.clone();
+                    let private_key = self.private_key.clone();
+                    let compensation_millis = self.compensation_millis.clone();
+                    let version = self.version.clone();
+                    let (data_pos, data_graph, data_peers) = bootstrap_data.clone().unwrap();  // will not panic (checked above)
+                    bootstrap_sessions.push(async move {
+                        match manage_bootstrap(cfg_copy, dplx, data_pos, data_graph, data_peers, private_key, compensation_millis, version).await {
+                            Ok(_) => info!("bootstrapped peer {}", remote_addr),
+                            Err(err) => debug!("bootstrap serving error for peer {}: {:?}", remote_addr, err),
+                        }
+                    });
+                    massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
+                },
             }
         }
-        Ok(())
-    }
 
-    async fn manage_bootstrap(
-        &self,
-        (duplex, _remote_addr): (Duplex, SocketAddr),
-    ) -> Result<(), BootstrapError> {
-        massa_trace!("bootstrap.lib.manage_bootstrap", {});
-        let mut server = BootstrapServerBinder::new(duplex, self.private_key);
-
-        // handshake
-        match tokio::time::timeout(self.read_timeout.into(), server.handshake()).await {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap handshake timed out",
-                )
-                .into())
-            }
-            Ok(Err(e)) => return Err(e),
-            _ => {}
-        };
-
-        // First, sync clocks.
-        let server_time = UTime::now(self.compensation_millis)?;
-        match tokio::time::timeout(
-            self.write_timeout.into(),
-            server.send(messages::BootstrapMessage::BootstrapTime {
-                server_time,
-                version: self.version,
-            }),
-        )
-        .await
-        {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap clock send timed out",
-                )
-                .into())
-            }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(_)) => {}
-        }
-
-        // Second, send peers
-        let peers = self.network_command_sender.get_bootstrap_peers().await?;
-        match tokio::time::timeout(
-            self.write_timeout.into(),
-            server.send(messages::BootstrapMessage::BootstrapPeers { peers }),
-        )
-        .await
-        {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap clock send timed out",
-                )
-                .into())
-            }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(_)) => {}
-        }
-
-        // Third, send consensus state.
-        let (pos, graph) = self.consensus_command_sender.get_bootstrap_state().await?;
-        match tokio::time::timeout(
-            self.write_timeout.into(),
-            server.send(messages::BootstrapMessage::ConsensusState { pos, graph }),
-        )
-        .await
-        {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap graph send timed out",
-                )
-                .into())
-            }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(_)) => {}
-        }
+        // wait for bootstrap sessions to finish
+        while bootstrap_sessions.next().await.is_some() {}
 
         Ok(())
     }
+}
+
+async fn manage_bootstrap(
+    cfg: BootstrapConfig,
+    duplex: Duplex,
+    data_pos: ExportProofOfStake,
+    data_graph: BootstrapableGraph,
+    data_peers: BootstrapPeers,
+    private_key: PrivateKey,
+    compensation_millis: i64,
+    version: Version,
+) -> Result<(), BootstrapError> {
+    massa_trace!("bootstrap.lib.manage_bootstrap", {});
+    let mut server = BootstrapServerBinder::new(duplex, private_key);
+
+    // handshake
+    match tokio::time::timeout(cfg.read_timeout.into(), server.handshake()).await {
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap handshake timed out",
+            )
+            .into())
+        }
+        Ok(Err(e)) => return Err(e),
+        _ => {}
+    };
+
+    // First, sync clocks.
+    let server_time = UTime::now(compensation_millis)?;
+    match tokio::time::timeout(
+        cfg.write_timeout.into(),
+        server.send(messages::BootstrapMessage::BootstrapTime {
+            server_time,
+            version,
+        }),
+    )
+    .await
+    {
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap clock send timed out",
+            )
+            .into())
+        }
+        Ok(Err(e)) => return Err(e),
+        Ok(Ok(_)) => {}
+    }
+
+    // Second, send peers
+    match tokio::time::timeout(
+        cfg.write_timeout.into(),
+        server.send(messages::BootstrapMessage::BootstrapPeers { peers: data_peers }),
+    )
+    .await
+    {
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap clock send timed out",
+            )
+            .into())
+        }
+        Ok(Err(e)) => return Err(e),
+        Ok(Ok(_)) => {}
+    }
+
+    // Third, send consensus state.
+    match tokio::time::timeout(
+        cfg.write_timeout.into(),
+        server.send(messages::BootstrapMessage::ConsensusState {
+            pos: data_pos,
+            graph: data_graph,
+        }),
+    )
+    .await
+    {
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap graph send timed out",
+            )
+            .into())
+        }
+        Ok(Err(e)) => return Err(e),
+        Ok(Ok(_)) => {}
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
