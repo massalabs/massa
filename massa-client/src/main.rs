@@ -26,6 +26,7 @@ use models::address::AddressHashSet;
 use models::BlockHashMap;
 use models::OperationHashSet;
 use std::collections::HashMap;
+use time::UTime;
 
 use std::net::IpAddr;
 use std::net::SocketAddr;
@@ -1190,13 +1191,14 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
 
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
+            let (block, timestamp) =
+                resp.json::<(Vec<(Hash, Slot, String, Vec<Hash>)>, UTime)>()?;
             let mut block: Vec<(
                 data::WrappedHash,
                 data::WrappedSlot,
                 String,
                 Vec<data::WrappedHash>,
-            )> = resp
-                .json::<Vec<(Hash, Slot, String, Vec<Hash>)>>()?
+            )> = block
                 .into_iter()
                 .map(|(hash1, slot, status, hash2)| {
                     (
@@ -1213,6 +1215,7 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
                 println!("Block: {} Slot: {} Status:{}", hash, slot, state);
                 println!("Block parents: {:?}", parents);
                 println!();
+                println!("Current time : {}", timestamp.to_utc_string());
             });
         } else {
             println!("Empty graph found.");
