@@ -56,7 +56,7 @@ coverage:
   stage: coverage
   script:
     - cargo install cargo-tarpaulin -f
-    - cargo tarpaulin --out Xml
+    - cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests --out Xml
   artifacts:
     reports:
       cobertura:
