@@ -9,7 +9,14 @@ use crate::{error::CommunicationError, network::ConnectionClosureReason};
 use models::node::NodeId;
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use std::net::IpAddr;
-use tokio::{sync::mpsc, sync::mpsc::{Sender, error::{SendTimeoutError, TrySendError}}, time::timeout};
+use tokio::{
+    sync::mpsc,
+    sync::mpsc::{
+        error::{SendTimeoutError, TrySendError},
+        Sender,
+    },
+    time::timeout,
+};
 
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
@@ -125,22 +132,30 @@ impl NodeWorker {
     /// Tries to send a message to a node
     /// If the pipe is full, simply warn
     /// If the channel dropped, return an error
-    pub fn try_send_to_node(&self, sender: &Sender<Message>, msg: Message) -> Result<(), CommunicationError> {
+    pub fn try_send_to_node(
+        &self,
+        sender: &Sender<Message>,
+        msg: Message,
+    ) -> Result<(), CommunicationError> {
         match sender.try_send(msg) {
             Err(TrySendError::Full(_)) => {
-                debug!("failed sending message to node {}: send channel full", self.node_id);
+                debug!(
+                    "failed sending message to node {}: send channel full",
+                    self.node_id
+                );
                 Ok(())
-            },
-            Err(TrySendError::Closed(_)) => {
-                Err(CommunicationError::ChannelError("failed sending message to node: channel closed".into()))
-            },
-            Ok(_) => Ok(())
+            }
+            Err(TrySendError::Closed(_)) => Err(CommunicationError::ChannelError(
+                "failed sending message to node: channel closed".into(),
+            )),
+            Ok(_) => Ok(()),
         }
     }
 
     /// node event loop. Consumes self.
     pub async fn run_loop(mut self) -> Result<ConnectionClosureReason, CommunicationError> {
-        let (writer_command_tx, mut writer_command_rx) = mpsc::channel::<Message>(NODE_SEND_CHANNEL_SIZE);
+        let (writer_command_tx, mut writer_command_rx) =
+            mpsc::channel::<Message>(NODE_SEND_CHANNEL_SIZE);
         let mut socket_writer = self.socket_writer_opt.take().ok_or_else(|| {
             CommunicationError::GeneralProtocolError(
                 "NodeWorker call run_loop more than once".to_string(),
@@ -216,7 +231,7 @@ impl NodeWorker {
                         }
                     }
                 },
-                
+
                 // incoming socket data
                 res = self.socket_reader.next() => match res {
                     Ok(Some((index, msg))) => {

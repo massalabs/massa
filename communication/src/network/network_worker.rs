@@ -1023,7 +1023,11 @@ impl NetworkWorker {
         match evt {
             // received a list of peers
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
-                debug!("node_id={:?} sent us a peer list ({} ips)", from_node_id, lst.len());
+                debug!(
+                    "node_id={:?} sent us a peer list ({} ips)",
+                    from_node_id,
+                    lst.len()
+                );
                 massa_trace!("peer_list_received", {
                     "node_id": from_node_id,
                     "ips": lst
