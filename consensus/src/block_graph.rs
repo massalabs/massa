@@ -851,6 +851,14 @@ enum HeaderCheckOutcome {
     WaitForDependencies(BlockHashSet),
 }
 
+/// Possible outcomes of endorsements check
+#[derive(Debug)]
+enum EndorsementsCheckOutcome {
+    Proceed,
+    Discard(DiscardReason),
+    WaitForSlot,
+}
+
 #[derive(Debug)]
 enum BlockCheckOutcome {
     Proceed {
@@ -2303,7 +2311,7 @@ impl BlockGraph {
     /// - TODO: check for double staking.
     /// - Check parents are present.
     /// - Check the topological consistency of the parents.
-    /// - Check endorsements (note: separate into func?).
+    /// - Check endorsements.
     /// - Check thread incompatibility test.
     /// - Check grandpa incompatibility test.
     /// - Check if the block is incompatible with a parent.
@@ -2517,42 +2525,12 @@ impl BlockGraph {
         })?;
 
         // check endorsements
-        let endorsement_draws =
-            match pos.draw_endorsement_producers(parent_in_own_thread.block.header.content.slot) {
-                Ok(draws) => draws,
-                Err(ConsensusError::PosCycleUnavailable(_)) => {
-                    // slot is not available yet
-                    return Ok(HeaderCheckOutcome::WaitForSlot);
-                }
-                Err(err) => return Err(err),
-            };
-        for endorsement in header.content.endorsements.iter() {
-            // check that the draw is correct
-            if Address::from_public_key(&endorsement.content.sender_public_key)?
-                != endorsement_draws[endorsement.content.index as usize]
-            {
-                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!(
-                        "endorser draw mismatch for header in slot: {}",
-                        header.content.slot
-                    ),
-                )));
+        match self.check_endorsements(header, pos, parent_in_own_thread)? {
+            EndorsementsCheckOutcome::Proceed => {}
+            EndorsementsCheckOutcome::Discard(reason) => {
+                return Ok(HeaderCheckOutcome::Discard(reason))
             }
-            // check that the endorsement slot matches the endorsed block
-            if endorsement.content.slot != parent_in_own_thread.block.header.content.slot {
-                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
-                            parent_in_own_thread.block.header.content.slot, endorsement.content.slot),
-                )));
-            }
-
-            // note that the following aspects are checked in protocol
-            // * signature
-            // * intra block endorsement reuse
-            // * intra block index reuse
-            // * slot in the same thread as block's slot
-            // * slot is before the block's slot
-            // * the endorsed block is the parent in the same thread
+            EndorsementsCheckOutcome::WaitForSlot => return Ok(HeaderCheckOutcome::WaitForSlot),
         }
 
         // thread incompatibility test
@@ -2660,6 +2638,57 @@ impl BlockGraph {
             inherited_incompatibilities_count: inherited_incomp_count,
             production_events,
         })
+    }
+
+    /// check endorsements:
+    /// * endorser was selected for that (slot, index)
+    /// * endorsed slot is parent_in_own_thread slot
+    fn check_endorsements(
+        &self,
+        header: &BlockHeader,
+        pos: &mut ProofOfStake,
+        parent_in_own_thread: &ActiveBlock,
+    ) -> Result<EndorsementsCheckOutcome, ConsensusError> {
+        // check endorsements
+        let endorsement_draws =
+            match pos.draw_endorsement_producers(parent_in_own_thread.block.header.content.slot) {
+                Ok(draws) => draws,
+                Err(ConsensusError::PosCycleUnavailable(_)) => {
+                    // slot is not available yet
+                    return Ok(EndorsementsCheckOutcome::WaitForSlot);
+                }
+                Err(err) => return Err(err),
+            };
+        for endorsement in header.content.endorsements.iter() {
+            // check that the draw is correct
+            if Address::from_public_key(&endorsement.content.sender_public_key)?
+                != endorsement_draws[endorsement.content.index as usize]
+            {
+                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!(
+                        "endorser draw mismatch for header in slot: {}",
+                        header.content.slot
+                    ),
+                )));
+            }
+            // check that the endorsement slot matches the endorsed block
+            if endorsement.content.slot != parent_in_own_thread.block.header.content.slot {
+                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
+                            parent_in_own_thread.block.header.content.slot, endorsement.content.slot),
+                )));
+            }
+
+            // note that the following aspects are checked in protocol
+            // * signature
+            // * intra block endorsement reuse
+            // * intra block index reuse
+            // * slot in the same thread as block's slot
+            // * slot is before the block's slot
+            // * the endorsed block is the parent in the same thread
+        }
+
+        Ok(EndorsementsCheckOutcome::Proceed)
     }
 
     /// Process and incoming block.
