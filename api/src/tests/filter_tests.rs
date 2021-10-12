@@ -1422,8 +1422,10 @@ async fn test_get_block() {
     // block not found
     let other_hash = get_dummy_block_id("something else");
 
+    let test_block = get_test_block();
+    let test_ops = get_operation_set(&test_block.operations);
     storage_command_tx
-        .add_block(other_hash, get_test_block())
+        .add_block(other_hash, test_block, test_ops)
         .await
         .unwrap();
 

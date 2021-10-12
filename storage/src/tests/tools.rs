@@ -2,11 +2,12 @@
 
 use crate::{start_storage, StorageAccess, StorageConfig};
 use crypto::hash::Hash;
-use models::SerializeCompact;
+use models::hhasher::BuildHHasher;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Operation, OperationContent,
     OperationId, OperationType, SerializationContext, Slot,
 };
+use models::{OperationHashMap, SerializeCompact};
 use std::future::Future;
 
 /// Runs a storage test, passing the storage access to it.
@@ -131,4 +132,14 @@ pub fn get_test_block_id() -> BlockId {
 
 pub fn get_another_test_block_id() -> BlockId {
     get_dummy_block_id("another test")
+}
+
+pub fn get_operation_set(operations: &Vec<Operation>) -> OperationHashMap<(usize, u64)> {
+    let mut res =
+        OperationHashMap::with_capacity_and_hasher(operations.len(), BuildHHasher::default());
+    for (idx, op) in operations.iter().enumerate() {
+        let op_id = op.get_operation_id().unwrap();
+        res.insert(op_id, (idx, op.content.expire_period));
+    }
+    res
 }

@@ -160,7 +160,7 @@ impl OperationPool {
 
             // insert
             let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
-            let addrs = wrapped_op.op.get_ledger_involved_addresses(None)?;
+            let addrs = wrapped_op.op.get_ledger_involved_addresses()?;
 
             self.ops_by_thread_and_interest[wrapped_op.thread as usize].insert(interest);
             self.ops.insert(op_id, wrapped_op);
@@ -183,7 +183,7 @@ impl OperationPool {
                     .unwrap(); // will not panic because of the while condition. complexity = log or better
                 if let Some(removed_op) = self.ops.remove(&removed_id) {
                     // complexity: const
-                    let addrs = removed_op.op.get_ledger_involved_addresses(None)?;
+                    let addrs = removed_op.op.get_ledger_involved_addresses()?;
                     for addr in addrs {
                         self.ops_by_address
                             .remove_op_for_address(&addr, &removed_id);
@@ -204,7 +204,7 @@ impl OperationPool {
             if let Some(wrapped) = self.ops.remove(id) {
                 self.ops_by_thread_and_interest[wrapped.thread as usize]
                     .remove(&(std::cmp::Reverse(wrapped.get_fee_density()), *id));
-                let addrs = wrapped.op.get_ledger_involved_addresses(None)?;
+                let addrs = wrapped.op.get_ledger_involved_addresses()?;
                 for addr in addrs {
                     self.ops_by_address.remove_op_for_address(&addr, id);
                 }
@@ -262,7 +262,7 @@ impl OperationPool {
                 self.ops_by_thread_and_interest[wrapped_op.thread as usize].remove(&interest);
                 // complexity: log
 
-                let addrs = wrapped_op.op.get_ledger_involved_addresses(None)?;
+                let addrs = wrapped_op.op.get_ledger_involved_addresses()?;
                 for addr in addrs {
                     self.ops_by_address.remove_op_for_address(&addr, &op_id);
                 }
