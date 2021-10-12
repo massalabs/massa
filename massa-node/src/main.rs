@@ -258,7 +258,7 @@ async fn run(cfg: node_config::Config) {
                             break true;
                         },
                         Err(err) => {
-                            error!("consensus_event_receiver.wait_event error: {:?}", err);
+                            error!("consensus_event_receiver.wait_event error: {}", err);
                             break false ;
                         }
                     }
@@ -268,7 +268,7 @@ async fn run(cfg: node_config::Config) {
                     massa_trace!("massa-node.main.run.select.api_event", {});
 
                     if on_api_event(evt.map_err(
-                        |e|format!("api communication error: {:?}", e)).unwrap(),
+                        |e|format!("api communication error: {}", e)).unwrap(),
                         &mut api_pool_command_sender,
                         &consensus_command_sender,
                         &network_command_sender

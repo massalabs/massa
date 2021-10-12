@@ -106,7 +106,7 @@ pub async fn start_consensus_controller(
         .await;
         match res {
             Err(err) => {
-                error!("consensus worker crashed: {:?}", err);
+                error!("consensus worker crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {

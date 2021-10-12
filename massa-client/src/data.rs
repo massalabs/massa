@@ -9,32 +9,31 @@
 //!
 //! They're only deserialized when received from the REST call.
 
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
-
 // Massa type ares wrapped to define a client specific display behaviour.
 // The display method is only use to show the data REPL mode.
+
 use chrono::Local;
 use chrono::TimeZone;
-use models::address::AddressHashMap;
-use serde::Deserialize;
-
 use communication::network::PeerInfo;
 use consensus::DiscardReason;
 use consensus::ExportBlockStatus;
 use crypto::hash::Hash;
 use crypto::signature::Signature;
+use models::address::AddressHashMap;
 use models::node::NodeId;
 use models::{
     Address, Block, BlockHashMap, BlockHeader, Operation, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, OperationType, Slot,
 };
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 use time::UTime;
 use wallet::WrappedAddressState;
 
-pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true); //never set to zero.
+pub static FORMAT_SHORT_HASH: AtomicBool = AtomicBool::new(true); // never set to zero.
 
 #[derive(Debug, Clone)]
 pub struct WrapperOperationType<'a>(&'a OperationType);
@@ -167,6 +166,7 @@ impl From<Slot> for WrappedSlot {
         WrappedSlot(slot)
     }
 }
+
 impl From<&'_ Slot> for WrappedSlot {
     fn from(slot: &Slot) -> Self {
         WrappedSlot(*slot)
@@ -182,15 +182,6 @@ pub fn from_hash_slot((hash, slot): (Hash, Slot)) -> (WrappedHash, WrappedSlot) 
 pub fn from_vec_hash_slot(list: &[(Hash, Slot)]) -> Vec<(WrappedHash, WrappedSlot)> {
     list.iter().map(|v| from_hash_slot(*v)).collect()
 }
-
-/*
-    final balance: 2000
-    candidate balance: 2000
-    locked balance: 0
-    final rolls: 0
-    candidate rolls: 0
-    active rolls: 0
-*/
 
 pub struct AddressStates {
     pub map: AddressHashMap<WrappedAddressState>,
@@ -300,6 +291,7 @@ impl From<BlockHeader> for WrappedBlockHeader {
         WrappedBlockHeader(header)
     }
 }
+
 impl From<&'_ BlockHeader> for WrappedBlockHeader {
     fn from(header: &BlockHeader) -> Self {
         WrappedBlockHeader(header.clone())
@@ -369,6 +361,7 @@ pub struct State {
     nb_cliques: usize,
     nb_peers: usize,
 }
+
 impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let duration: Duration = self.time.into();
@@ -376,10 +369,10 @@ impl std::fmt::Display for State {
         let date = Local.timestamp(duration.as_secs() as i64, 0);
         writeln!(
             f,
-            "  Time: {:?} Latest:{} Cycle:{}",
+            "  Time: {} Latest:{} Cycle:{}",
             date,
             self.latest_slot
-                .map(|s| format!("Slot {:?}", s))
+                .map(|s| format!("Slot {}", s))
                 .unwrap_or_else(|| "None".to_string()),
             self.current_cycle
         )?;
@@ -401,7 +394,7 @@ impl std::fmt::Display for State {
             final_blocks
                 .iter()
                 .map(|(hash, slot, date)| format!(
-                    " {} slot:{:?} {:?}",
+                    " {} slot:{} {}",
                     hash,
                     slot,
                     Local.timestamp(Into::<Duration>::into(*date).as_secs() as i64, 0)
@@ -476,8 +469,8 @@ impl std::fmt::Display for WrappedPeerInfo {
         writeln!(f, "      Peer: bootstrap: {} banned: {} last_alive: {} last_failure: {} act_out_attempts: {} act_out: {} act_in: {} advertised:{}"
             , self.peer_info.bootstrap
             , self.peer_info.banned
-            , self.peer_info.last_alive.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
-            , self.peer_info.last_failure.map(|t| format!("{:?}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.last_alive.map(|t| format!("{}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
+            , self.peer_info.last_failure.map(|t| format!("{}",Local.timestamp(Into::<Duration>::into(t).as_secs() as i64, 0))).unwrap_or_else(||"None".to_string())
             , self.peer_info.active_out_connection_attempts
             , self.peer_info.active_out_connections
             , self.peer_info.active_in_connections
@@ -505,6 +498,7 @@ pub struct NetworkInfo {
     peers: HashMap<IpAddr, WrappedPeerInfo>,
     node_id: NodeId,
 }
+
 impl std::fmt::Display for NetworkInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "  Node Id:{}", self.node_id)?;
@@ -531,11 +525,13 @@ impl From<Hash> for WrappedHash {
         WrappedHash(hash)
     }
 }
+
 impl From<&'_ Hash> for WrappedHash {
     fn from(hash: &Hash) -> Self {
         WrappedHash(*hash)
     }
 }
+
 impl std::fmt::Display for WrappedHash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if FORMAT_SHORT_HASH.load(Ordering::Relaxed) {

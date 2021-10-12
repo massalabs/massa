@@ -64,7 +64,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         let res = storage_cleaner.run_loop().await;
         match res {
             Err(err) => {
-                error!("Storage cleaner crashed: {:?}", err);
+                error!("Storage cleaner crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {

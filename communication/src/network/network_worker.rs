@@ -140,16 +140,13 @@ impl SerializeCompact for BootstrapPeers {
 
         //peers
         let peers_count: u32 = self.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many peers blocks in BootstrapPeers: {:?}",
-                err
-            ))
+            ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
         })?;
         let max_peer_list_length =
             with_serialization_context(|context| context.max_peer_list_length);
         if peers_count > max_peer_list_length {
             return Err(ModelsError::SerializeError(format!(
-                "too many peers for serialization context in BootstrapPeers: {:?}",
+                "too many peers for serialization context in BootstrapPeers: {}",
                 peers_count
             )));
         }
@@ -172,7 +169,7 @@ impl DeserializeCompact for BootstrapPeers {
             with_serialization_context(|context| context.max_peer_list_length);
         if peers_count > max_peer_list_length {
             return Err(ModelsError::DeserializeError(format!(
-                "too many peers for deserialization context in BootstrapPeers: {:?}",
+                "too many peers for deserialization context in BootstrapPeers: {}",
                 peers_count
             )));
         }
@@ -308,7 +305,7 @@ impl NetworkWorker {
                 // try to connect to candidate IPs
                 let candidate_ips = self.peer_info_db.get_out_connection_candidate_ips()?;
                 for ip in candidate_ips {
-                    debug!("starting outgoing connection attempt towards ip={:?}", ip);
+                    debug!("starting outgoing connection attempt towards ip={}", ip);
                     massa_trace!("out_connection_attempt_start", { "ip": ip });
                     self.peer_info_db.new_out_connection_attempt(&ip)?;
                     let mut connector = self
@@ -375,7 +372,7 @@ impl NetworkWorker {
                         Err(err) => {
                             massa_trace!("network.network_worker.run_loop.node_worker_handles.err", {
                                 "node_id": node_id,
-                                "err": format!("{:?}", err)
+                                "err": format!("{}", err)
                             });
                             ConnectionClosureReason::Failed
                         }
@@ -451,11 +448,11 @@ impl NetworkWorker {
                 Ok((node_id, Err(err))) => {
                     massa_trace!("network.network_worker.cleanup.wait_node.err", {
                         "node_id": node_id,
-                        "err": format!("{:?}", err)
+                        "err": format!("{}", err)
                     });
                 }
                 Err(err) => {
-                    warn!("a node worker panicked: {:?}", err);
+                    warn!("a node worker panicked: {}", err);
                 }
             }
         }
@@ -484,7 +481,7 @@ impl NetworkWorker {
             // a handshake finished, and succeeded
             Ok((new_node_id, socket_reader, socket_writer)) => {
                 debug!(
-                    "handshake with connection_id={:?} succeeded => node_id={:?}",
+                    "handshake with connection_id={} succeeded => node_id={}",
                     new_connection_id, new_node_id
                 );
                 massa_trace!("handshake_ok", {
@@ -495,7 +492,7 @@ impl NetworkWorker {
                 // connection was banned in the meantime
                 if !self.running_handshakes.remove(&new_connection_id) {
                     debug!(
-                        "connection_id={:?}, node_id={:?} peer was banned while handshaking",
+                        "connection_id={}, node_id={} peer was banned while handshaking",
                         new_connection_id, new_node_id
                     );
                     massa_trace!("handshake_banned", {
@@ -511,7 +508,7 @@ impl NetworkWorker {
                     // we already have this node ID
                     hash_map::Entry::Occupied(_) => {
                         debug!(
-                            "connection_id={:?}, node_id={:?} protocol channel would be redundant",
+                            "connection_id={}, node_id={} protocol channel would be redundant",
                             new_connection_id, new_node_id
                         );
                         massa_trace!("node_redundant", {
@@ -578,7 +575,7 @@ impl NetworkWorker {
             // a handshake finished and failed
             Err(err) => {
                 debug!(
-                    "handshake failed with connection_id={:?}: {:?}",
+                    "handshake failed with connection_id={}: {}",
                     new_connection_id, err
                 );
                 massa_trace!("handshake_failed", {
@@ -608,7 +605,7 @@ impl NetworkWorker {
             ));
         }
 
-        debug!("starting handshake with connection_id={:?}", connection_id);
+        debug!("starting handshake with connection_id={}", connection_id);
         massa_trace!("network_worker.new_connection", {
             "connection_id": connection_id
         });
@@ -647,7 +644,7 @@ impl NetworkWorker {
             .remove(&id)
             .ok_or(CommunicationError::ActiveConnectionMissing(id))?;
         debug!(
-            "connection closed connection_id={:?}, ip={:?}, reason={:?}",
+            "connection closed connection_id={}, ip={}, reason={:?}",
             id, ip, reason
         );
         massa_trace!("network_worker.connection_closed", {
@@ -940,7 +937,7 @@ impl NetworkWorker {
                     // outgoing connection established
                     let connection_id = *cur_connection_id;
                     debug!(
-                        "out connection towards ip={:?} established => connection_id={:?}",
+                        "out connection towards ip={} established => connection_id={}",
                         ip_addr, connection_id
                     );
                     massa_trace!("out_connection_established", {
@@ -952,13 +949,13 @@ impl NetworkWorker {
                         .insert(connection_id, (ip_addr, true));
                     self.new_connection(connection_id, reader, writer)?;
                 } else {
-                    debug!("out connection towards ip={:?} refused", ip_addr);
+                    debug!("out connection towards ip={} refused", ip_addr);
                     massa_trace!("out_connection_refused", { "ip": ip_addr });
                 }
             }
             Err(err) => {
                 debug!(
-                    "outgoing connection attempt towards ip={:?} failed: {:?}",
+                    "outgoing connection attempt towards ip={} failed: {}",
                     ip_addr, err
                 );
                 massa_trace!("out_connection_attempt_failed", {
@@ -990,7 +987,7 @@ impl NetworkWorker {
                 if self.peer_info_db.try_new_in_connection(&remote_addr.ip())? {
                     let connection_id = *cur_connection_id;
                     debug!(
-                        "inbound connection from addr={:?} succeeded => connection_id={:?}",
+                        "inbound connection from addr={} succeeded => connection_id={}",
                         remote_addr, connection_id
                     );
                     massa_trace!("in_connection_established", {
@@ -1002,12 +999,12 @@ impl NetworkWorker {
                         .insert(connection_id, (remote_addr.ip(), false));
                     self.new_connection(connection_id, reader, writer)?;
                 } else {
-                    debug!("inbound connection from addr={:?} refused", remote_addr);
+                    debug!("inbound connection from addr={} refused", remote_addr);
                     massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
                 }
             }
             Err(err) => {
-                debug!("connection accept failed: {:?}", err);
+                debug!("connection accept failed: {}", err);
                 massa_trace!("in_connection_failed", {"err": err.to_string()});
             }
         }
@@ -1024,7 +1021,7 @@ impl NetworkWorker {
             // received a list of peers
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
                 debug!(
-                    "node_id={:?} sent us a peer list ({} ips)",
+                    "node_id={} sent us a peer list ({} ips)",
                     from_node_id,
                     lst.len()
                 );
@@ -1068,7 +1065,7 @@ impl NetworkWorker {
             }
             // asked peer list
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) => {
-                debug!("node_id={:?} asked us for peer list", from_node_id);
+                debug!("node_id={} asked us for peer list", from_node_id);
                 massa_trace!("node_asked_peer_list", { "node_id": from_node_id });
                 let peer_list = self.peer_info_db.get_advertisable_peer_ips();
                 if let Some((_, node_command_tx)) = self.active_nodes.get(&from_node_id) {

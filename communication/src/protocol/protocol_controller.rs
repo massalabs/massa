@@ -63,7 +63,7 @@ pub async fn start_protocol_controller(
         .await;
         match res {
             Err(err) => {
-                error!("protocol worker crashed: {:?}", err);
+                error!("protocol worker crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {

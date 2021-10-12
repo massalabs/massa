@@ -517,7 +517,7 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
         }
     );
     if let Some(resp) = request_data(data, &url)? {
-        //println!("resp {:?}", resp.text());
+        //println!("resp {}", resp.text());
         if resp.status() == StatusCode::OK {
             let ops = resp.json::<Vec<(OperationId, data::GetOperationContent)>>()?;
             for (op_id, op) in ops.into_iter() {
@@ -1300,7 +1300,7 @@ fn format_url_with_to_from(
 fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplError> {
     let resp = reqwest::blocking::get(url)?;
     if resp.status() != StatusCode::OK && resp.status() != StatusCode::NOT_FOUND {
-        //println!("resp.text(self):{:?}", resp.text());
+        //println!("resp.text(self):{}", resp.text());
         let status = resp.status();
         let message = resp
             .json::<data::ErrorMessage>()
@@ -1467,7 +1467,7 @@ impl ReplData {
         )
         .map_err(|err| {
             ReplError::GeneralError(format!(
-                "Error during current time slot computation: {:?}",
+                "Error during current time slot computation: {}",
                 err
             ))
         })?

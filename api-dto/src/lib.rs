@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use time::UTime;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TimeStats {
     pub time_start: UTime,
     pub time_end: Option<UTime>,
@@ -21,7 +21,20 @@ pub struct TimeStats {
     pub final_operation_count: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for TimeStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Start time: {}", self.time_start)?;
+        if self.time_end.is_some() {
+            writeln!(f, "End time: {}", self.time_end.unwrap())?;
+        }
+        writeln!(f, "Final block count: {}", self.final_block_count)?;
+        writeln!(f, "Stale block count: {}", self.stale_block_count)?;
+        writeln!(f, "Final operation count: {}", self.final_operation_count)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NodeStatus {
     pub node_id: NodeId,
     pub node_ip: Option<IpAddr>,
@@ -40,7 +53,13 @@ pub struct NodeStatus {
     pub network_stats: NetworkStats,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for NodeStatus {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OperationInfo {
     pub id: OperationId,
     pub in_pool: bool,
@@ -57,21 +76,45 @@ impl OperationInfo {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for OperationInfo {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BalanceInfo {
     pub final_balance: Amount,
     pub candidate_balance: Amount,
     pub locked_balance: Amount,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for BalanceInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Final balance: {}", self.final_balance)?;
+        writeln!(f, "Candidate balance: {}", self.candidate_balance)?;
+        writeln!(f, "Locked balance: {}", self.locked_balance)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RollsInfo {
     pub active_rolls: u64,
     pub final_rolls: u64,
     pub candidate_rolls: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for RollsInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Active rolls: {}", self.active_rolls)?;
+        writeln!(f, "Final rolls: {}", self.final_rolls)?;
+        writeln!(f, "Candidate rolls: {}", self.candidate_rolls)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
     pub address: Address,
     pub thread: u8,
@@ -85,7 +128,13 @@ pub struct AddressInfo {
     pub is_staking: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for AddressInfo {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct EndorsementInfo {
     id: EndorsementId,
     in_pool: bool,
@@ -94,7 +143,13 @@ pub struct EndorsementInfo {
     endorsement: Endorsement,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for EndorsementInfo {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BlockInfo {
     pub id: BlockId,
     pub is_final: bool,
@@ -103,7 +158,22 @@ pub struct BlockInfo {
     pub block: Block,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl std::fmt::Display for BlockInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Block's ID: {}{}{}{}",
+            self.id,
+            display_if_true(self.is_final, "final"),
+            display_if_true(self.is_stale, "stale"),
+            display_if_true(self.is_in_blockclique, "in blockclique"),
+        )?;
+        writeln!(f, "Block: {}", self.block)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BlockSummary {
     pub id: BlockId,
     pub is_final: bool,
@@ -112,4 +182,33 @@ pub struct BlockSummary {
     pub slot: Slot,
     pub creator: Address,
     pub parents: Vec<BlockId>,
+}
+
+impl std::fmt::Display for BlockSummary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Block's ID: {}{}{}{}",
+            self.id,
+            display_if_true(self.is_final, "final"),
+            display_if_true(self.is_stale, "stale"),
+            display_if_true(self.is_in_blockclique, "in blockclique"),
+        )?;
+        writeln!(f, "Slot: {}", self.slot)?;
+        writeln!(f, "Creator: {}", self.creator)?;
+        writeln!(f, "Parents' IDs:")?;
+        for parent in &self.parents {
+            writeln!(f, "\t- {}", parent)?;
+        }
+        Ok(())
+    }
+}
+
+/// Dumb utils function to display nicely boolean value
+fn display_if_true(value: bool, text: &str) -> String {
+    if value {
+        format!("[{}]", text)
+    } else {
+        String::from("")
+    }
 }

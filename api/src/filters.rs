@@ -624,7 +624,7 @@ async fn stop_node(evt_tx: mpsc::Sender<ApiEvent>) -> Result<(), ApiError> {
     Ok(evt_tx
         .send(ApiEvent::AskStop)
         .await
-        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
+        .map_err(|e| ApiError::SendChannelError(format!("{}", e)))?)
 }
 
 async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<(), ApiError> {
@@ -632,7 +632,7 @@ async fn unban(evt_tx: mpsc::Sender<ApiEvent>, ip: IpAddr) -> Result<(), ApiErro
     Ok(evt_tx
         .send(ApiEvent::Unban(ip))
         .await
-        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
+        .map_err(|e| ApiError::SendChannelError(format!("{}", e)))?)
 }
 
 async fn register_staking_private_keys(
@@ -644,7 +644,7 @@ async fn register_staking_private_keys(
     Ok(evt_tx
         .send(ApiEvent::RegisterStakingPrivateKeys(keys))
         .await
-        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
+        .map_err(|e| ApiError::SendChannelError(format!("{}", e)))?)
 }
 
 async fn remove_staking_addresses(
@@ -655,7 +655,7 @@ async fn remove_staking_addresses(
     Ok(evt_tx
         .send(ApiEvent::RemoveStakingAddresses(addrs))
         .await
-        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?)
+        .map_err(|e| ApiError::SendChannelError(format!("{}", e)))?)
 }
 
 /// This function sends the new transaction outside the Api and
@@ -682,7 +682,7 @@ async fn send_operations(
     evt_tx
         .send(ApiEvent::AddOperations(to_send))
         .await
-        .map_err(|e| ApiError::SendChannelError(format!("{:?}", e)))?;
+        .map_err(|e| ApiError::SendChannelError(format!("{}", e)))?;
     Ok(opid_list)
 }
 

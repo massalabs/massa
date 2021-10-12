@@ -514,7 +514,7 @@ async fn test_current_parents() {
         .path(&"/api/v1/current_parents/123")
         .matches(&filter)
         .await;
-    println!("matches:{:?}", matches);
+    println!("matches:{}", matches);
     assert!(!matches);
 
     //valid url with parents.
@@ -925,7 +925,7 @@ async fn test_last_final() {
         .path(&"/api/v1/last_final/123")
         .matches(&filter)
         .await;
-    println!("matches:{:?}", matches);
+    println!("matches:{}", matches);
     assert!(!matches);
 
     //valid url with final block.

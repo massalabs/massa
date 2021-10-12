@@ -151,7 +151,7 @@ pub async fn validate_does_not_ask_for_block(
     match param {
         Some(new) => {
             if new.contains(hash) {
-                panic!("unexpected ask for block {:?}", hash);
+                panic!("unexpected ask for block {}", hash);
             }
         }
         None => {}

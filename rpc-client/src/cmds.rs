@@ -2,9 +2,11 @@
 
 use crate::rpc::Client;
 use console::style;
+use crypto::signature::PrivateKey;
+use models::node::NodeId;
+use models::{Address, BlockId, EndorsementId, OperationId};
 use std::net::IpAddr;
 use std::process;
-use std::str::FromStr;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
 
@@ -34,6 +36,7 @@ pub enum Command {
     // TODO:
     // #[strum(ascii_case_insensitive, message = "start a node")]
     // node_start,
+    //
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
 
@@ -42,14 +45,14 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address"),
+        props(args = "[Addresses]"),
         message = "remove staking addresses"
     )]
     node_remove_staking_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PrivateKey"),
+        props(args = "[PrivateKeys]"),
         message = "add staking private keys"
     )]
     node_add_staking_private_keys,
@@ -130,34 +133,43 @@ pub enum Command {
     send_transaction,
 }
 
+// TODO: -> Result<Box<dyn std::fmt::Display + serde::Serialize<S>>>;
+type PrettyPrint = Box<dyn std::fmt::Display>;
+
+// TODO: Should be implement as a custom Err value (for JSON output compatibility)
 macro_rules! repl_err {
     ($err: expr) => {
-        style(format!("Error: {}", $err)).red().to_string()
+        Box::new(style(format!("Error: {:?}", $err)).red())
     };
 }
 
 macro_rules! repl_ok {
     ($ok: expr) => {
-        $ok.to_string()
+        Box::new($ok)
     };
+}
+
+// TODO: ugly utility function
+fn parse_args<T: std::str::FromStr>(args: &Vec<String>) -> Result<Vec<T>, T::Err> {
+    args.iter().map(|x| x.parse::<T>()).collect()
 }
 
 // TODO: Commands could also not be APIs calls (like Wallet ones)
 impl Command {
-    pub(crate) fn not_found() -> String {
-        repl_err!("Command not found!\ntype \"help\" to get the list of commands")
+    pub(crate) fn not_found() -> PrettyPrint {
+        repl_ok!("Command not found!\ntype \"help\" to get the list of commands")
     }
 
-    pub(crate) fn wrong_parameters(&self) -> String {
-        repl_err!(format!(
+    pub(crate) fn _wrong_parameters(&self) -> PrettyPrint {
+        repl_ok!(format!(
             "{} given is not well formed...\ntype \"help {}\" to more info",
             self.get_str("args").unwrap(),
             self.to_string()
         ))
     }
 
-    pub(crate) fn help(&self) -> String {
-        format!(
+    pub(crate) fn help(&self) -> PrettyPrint {
+        repl_ok!(format!(
             "- {}{}{}: {}",
             style(self.to_string()).green(),
             if self.get_str("args").is_some() {
@@ -167,14 +179,10 @@ impl Command {
             },
             style(self.get_str("args").unwrap_or("")).yellow(),
             self.get_message().unwrap()
-        )
+        ))
     }
 
-    // TODO: Return type should be something like:
-    // use std::fmt::Display;
-    // use serde_json::ser::Formatter;
-    // pub(crate) async fn run<T: Display + Formatter>(&self, client: &Client, parameters: &Vec<String>) -> T
-    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>) -> String {
+    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>) -> PrettyPrint {
         match self {
             Command::exit => process::exit(0),
 
@@ -186,30 +194,30 @@ impl Command {
                         Command::not_found()
                     }
                 } else {
-                    format!(
+                    repl_ok!(format!(
                         "HELP of Massa client (list of available commands):\n{}",
                         Command::iter()
-                            .map(|c| c.help())
+                            .map(|c| format!("{}", c.help()))
                             .collect::<Vec<String>>()
                             .join("\n")
-                    )
+                    ))
                 }
             }
 
-            Command::unban => match IpAddr::from_str(&parameters[0]) {
-                Ok(ip) => match &client.private.unban(&vec![ip]).await {
+            Command::unban => match parse_args::<IpAddr>(parameters) {
+                Ok(ips) => match client.private.unban(ips).await {
                     Ok(_) => repl_ok!("Request of unbanning successfully sent!"),
                     Err(e) => repl_err!(e),
                 },
-                Err(_) => self.wrong_parameters(),
+                Err(e) => repl_err!(e),
             },
 
-            Command::ban => match serde_json::from_str(&parameters[0]) {
-                Ok(node_id) => match &client.private.ban(node_id).await {
+            Command::ban => match parse_args::<NodeId>(parameters) {
+                Ok(node_ids) => match client.private.ban(node_ids[0]).await {
                     Ok(_) => repl_ok!("Request of banning successfully sent!"),
                     Err(e) => repl_err!(e),
                 },
-                Err(_) => self.wrong_parameters(),
+                Err(e) => repl_err!(e),
             },
 
             // TODO: process spawn should be detached
@@ -218,87 +226,74 @@ impl Command {
             //     Err(e) => repl_err!(e),
             // },
             //
-            Command::node_stop => match &client.private.stop_node().await {
+            Command::node_stop => match client.private.stop_node().await {
                 Ok(_) => repl_ok!("Request of stopping the Node successfully sent"),
                 Err(e) => repl_err!(e),
             },
 
             Command::node_get_staking_addresses => {
-                match &client.private.get_staking_addresses().await {
-                    Ok(output) => {
-                        serde_json::to_string(output).expect("failed to serialize command output")
-                    }
+                match client.private.get_staking_addresses().await {
+                    Ok(x) => repl_ok!(format!("{:?}", x)),
                     Err(e) => repl_err!(e),
                 }
             }
 
-            Command::node_remove_staking_addresses => match serde_json::from_str(&parameters[0]) {
-                Ok(addresses) => match &client.private.remove_staking_addresses(addresses).await {
+            Command::node_remove_staking_addresses => match parse_args::<Address>(parameters) {
+                Ok(addresses) => match client.private.remove_staking_addresses(addresses).await {
                     Ok(_) => repl_ok!("Addresses successfully removed!"),
                     Err(e) => repl_err!(e),
                 },
-                Err(_) => self.wrong_parameters(),
+                Err(e) => repl_err!(e),
             },
 
-            Command::node_add_staking_private_keys => match serde_json::from_str(&parameters[0]) {
+            Command::node_add_staking_private_keys => match parse_args::<PrivateKey>(parameters) {
                 Ok(private_keys) => {
-                    match &client.private.add_staking_private_keys(private_keys).await {
+                    match client.private.add_staking_private_keys(private_keys).await {
                         Ok(_) => repl_ok!("Private keys successfully added!"),
                         Err(e) => repl_err!(e),
                     }
                 }
-                Err(_) => self.wrong_parameters(),
+                Err(e) => repl_err!(e),
             },
 
             Command::node_testnet_rewards_program_ownership_proof => todo!(),
 
-            // TODO: format!("{:?}" ...) should be replaced by impl std::fmt::Display
-            Command::get_status => match serde_json::from_str(&parameters[0]) {
-                Ok(()) => match &client.public.get_status().await {
-                    Ok(status) => repl_ok!(format!("{:?}", status)),
-                    Err(e) => repl_err!(e),
-                },
-                Err(_) => self.wrong_parameters(),
+            Command::get_status => match client.public.get_status().await {
+                Ok(x) => repl_ok!(x),
+                Err(e) => repl_err!(e),
             },
 
-            // TODO: parameters parsing is fuzzy here, should be replace by .parse() trait impl
-            Command::get_addresses => {
-                match serde_json::from_str(&serde_json::to_string(parameters).unwrap()) {
-                    Ok(adresses) => match &client.public.get_addresses(adresses).await {
-                        Ok(adresses_info) => repl_ok!(format!("{:?}", adresses_info)),
-                        Err(e) => repl_err!(e),
-                    },
-                    Err(_) => self.wrong_parameters(),
-                }
-            }
-
-            Command::get_blocks => match serde_json::from_str(&parameters[0]) {
-                Ok(block_id) => match &client.public.get_block(block_id).await {
-                    Ok(block_info) => repl_ok!(format!("{:?}", block_info)),
+            Command::get_addresses => match parse_args::<Address>(parameters) {
+                Ok(addresses) => match client.public.get_addresses(addresses).await {
+                    Ok(x) => repl_ok!(format!("{:?}", x)),
                     Err(e) => repl_err!(e),
                 },
-                Err(_) => self.wrong_parameters(),
+                Err(e) => repl_err!(e),
             },
 
-            Command::get_endorsements => {
-                match serde_json::from_str(&serde_json::to_string(parameters).unwrap()) {
-                    Ok(endorsements) => match &client.public.get_endorsements(endorsements).await {
-                        Ok(endorsements_info) => repl_ok!(format!("{:?}", endorsements_info)),
-                        Err(e) => repl_err!(e),
-                    },
-                    Err(_) => self.wrong_parameters(),
-                }
-            }
+            Command::get_blocks => match parse_args::<BlockId>(parameters) {
+                Ok(block_ids) => match client.public.get_block(block_ids[0]).await {
+                    Ok(x) => repl_ok!(x),
+                    Err(e) => repl_err!(e),
+                },
+                Err(e) => repl_err!(e),
+            },
 
-            Command::get_operations => {
-                match serde_json::from_str(&serde_json::to_string(parameters).unwrap()) {
-                    Ok(operations) => match &client.public.get_operations(operations).await {
-                        Ok(operations_info) => repl_ok!(format!("{:?}", operations_info)),
-                        Err(e) => repl_err!(e),
-                    },
-                    Err(_) => self.wrong_parameters(),
-                }
-            }
+            Command::get_endorsements => match parse_args::<EndorsementId>(parameters) {
+                Ok(endorsements) => match client.public.get_endorsements(endorsements).await {
+                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Err(e) => repl_err!(e),
+                },
+                Err(e) => repl_err!(e),
+            },
+
+            Command::get_operations => match parse_args::<OperationId>(parameters) {
+                Ok(operations) => match client.public.get_operations(operations).await {
+                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Err(e) => repl_err!(e),
+                },
+                Err(e) => repl_err!(e),
+            },
 
             Command::wallet_info => todo!(),
 
