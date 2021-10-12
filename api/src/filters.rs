@@ -172,6 +172,7 @@ pub fn get_filter(
                 start,
                 end,
                 storage.clone(),
+                clock_compensation,
             ))
         });
 
@@ -207,6 +208,7 @@ pub fn get_filter(
                 start,
                 end,
                 storage.clone(),
+                clock_compensation,
             ))
         });
 
@@ -989,13 +991,14 @@ async fn get_block_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
+    clock_compensation: i64,
 ) -> Result<(Vec<(BlockId, Slot)>, UTime), ApiError> {
     massa_trace!("api.filters.get_block_interval", {});
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
         .is_some()
     {
-        return Ok((vec![], UTime::now(0)?));
+        return Ok((vec![], UTime::now(clock_compensation)?));
     }
 
     //filter block from graph_export
@@ -1037,6 +1040,7 @@ async fn get_graph_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
+    clock_compensation: i64,
 ) -> Result<(Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime), ApiError> {
     massa_trace!("api.filters.get_graph_interval_process", {});
     //filter block from graph_export
@@ -1078,7 +1082,7 @@ async fn get_graph_interval(
             ));
         }
     }
-    Ok((res, UTime::now(0)?)) // todo add compensation_millis ?
+    Ok((res, UTime::now(clock_compensation)?)) // todo add compensation_millis ?
 }
 
 /// Returns number of cliques and current cliques as `Vec<HashSet<(hash, (period, thread))>>`
