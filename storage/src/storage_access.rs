@@ -89,11 +89,13 @@ impl StorageAccess {
     pub async fn len(&self) -> Result<usize, StorageError> {
         self.0.len().await
     }
-    pub async fn add_block(&self, hash: BlockId, block: Block) -> Result<(), StorageError> {
-        self.0.add_block(hash, block).await
-    }
-    pub async fn add_block_batch(&self, blocks: BlockHashMap<Block>) -> Result<(), StorageError> {
-        self.0.add_block_batch(blocks).await
+    pub async fn add_block(
+        &self,
+        hash: BlockId,
+        block: Block,
+        operation_set: OperationHashMap<(usize, u64)>,
+    ) -> Result<bool, StorageError> {
+        self.0.add_block(hash, block, operation_set).await
     }
 
     pub async fn get_operations_involving_address(
