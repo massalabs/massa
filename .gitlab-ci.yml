@@ -1,37 +1,16 @@
 image: "rustlang/rust:nightly"
 
-cache:
-  key:
-    files:
-      - Cargo.lock
-  paths:
-    - /usr/local/cargo/bin
-    - /usr/local/cargo/registry/index
-    - /usr/local/cargo/registry/cache
-    - /usr/local/cargo/git/db
-    - ./target
-
-stages:
-  - sanity
-  - build
-  - test
-  - coverage
-  - artifact
-
 sanity:
-  stage: sanity
   script:
     - rustup component add rustfmt # TODO: clippy
     - cargo fmt -- --check
 #   - cargo clippy
 
 build:
-  stage: build
   script:
     - RUSTFLAGS="-D warnings" cargo build
 
 test:
-  stage: test
   script:
     - cargo install cargo2junit
     - cargo test --lib -- -Z unstable-options --format json --report-time | tee results.json
@@ -42,7 +21,6 @@ test:
       junit: results.xml
 
 doctest:
-  stage: test
   script:
     - cargo install cargo2junit
     - cargo test --doc -- -Z unstable-options --format json --report-time | tee results.json
@@ -53,7 +31,6 @@ doctest:
       junit: results.xml
 
 coverage:
-  stage: coverage
   script:
     - cargo install cargo-tarpaulin -f
     - cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests --out Xml
@@ -62,10 +39,12 @@ coverage:
       cobertura:
         - cobertura.xml
   coverage: '/^\d+.\d+% coverage/'
+  only:
+    - dev@massalabs/massa
+    - testnet@massalabs/massa
   allow_failure: true
 
 build-linux:
-  stage: artifact
   image: "massalabs/linux-ci"
   rules:
     - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
@@ -92,7 +71,6 @@ build-linux:
     - cp -rv ../massa-client/base_config ./massa-client/base_config
 
 build-darwin:
-  stage: artifact
   image: "massalabs/linux-ci"
   rules:
     - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
@@ -119,7 +97,6 @@ build-darwin:
     - cp -rv ../massa-client/base_config ./massa-client/base_config
 
 build-windows:
-  stage: artifact
   image: "massalabs/linux-ci"
   rules:
     - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
