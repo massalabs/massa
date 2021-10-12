@@ -12,9 +12,11 @@ jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
 # custom modules
 api-dto = { path = "../api-dto" }
+log = { version = "0.4" }
 models = {path = "../models"}
 rpc-server = {path = "../rpc-server"}
 time = {path = "../time"}
+tokio = { version = "1.11", features = ["full"] }
 consensus = {path = "../consensus"}
 thiserror = "1.0"
 communication = {path = "../communication"}
