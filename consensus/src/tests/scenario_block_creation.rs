@@ -351,9 +351,9 @@ async fn test_interleaving_block_creation_with_reception() {
 
             // check 10 draws
             // Key1 and key2 can be drawn to produce block,
-            // but consensus only has key1,
-            // so when key2 is selected a block must be produced by hand
-            // and sent to consensus through protocol
+            // but the local node only has key1,
+            // so when key2 is selected a block must be produced remotly
+            // and sent to the local node through protocol
             for i in 1..11 {
                 let cur_slot = Slot::new(i, 0);
                 let creator = draws.get(&cur_slot).expect("missing slot in drawss");
