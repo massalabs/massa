@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(async_closure)]
+use api_dto::TimestampedBlockSummarys;
 use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     RollsInfo, TimeStats,
@@ -163,7 +164,7 @@ pub trait MassaPublic {
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
-    ) -> BoxFuture<Result<(Vec<BlockSummary>, UTime), PublicApiError>>;
+    ) -> BoxFuture<Result<TimestampedBlockSummarys, PublicApiError>>;
 
     #[rpc(name = "get_addresses")]
     fn get_addresses(&self, _: Vec<Address>)
@@ -425,7 +426,7 @@ impl MassaPublic for ApiMassaPublic {
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
-    ) -> BoxFuture<Result<(Vec<BlockSummary>, UTime), PublicApiError>> {
+    ) -> BoxFuture<Result<TimestampedBlockSummarys, PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
         let opt_storage_command_sender = self.storage_command_sender.clone();
         let consensus_config = self.consensus_config.clone();
@@ -490,7 +491,10 @@ impl MassaPublic for ApiMassaPublic {
                 }
             }
 
-            Ok((res, UTime::now(compensation_millis)?))
+            Ok(TimestampedBlockSummarys {
+                blocks: res,
+                timestamp: UTime::now(compensation_millis)?,
+            })
         };
 
         Box::pin(closure())

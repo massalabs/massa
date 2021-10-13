@@ -1,7 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use api_dto::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
+    AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
+    TimestampedBlockSummarys,
 };
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use jsonrpc_core_client::transports::http;
@@ -173,11 +174,11 @@ impl RpcClient {
         &self,
         time_start: Option<UTime>,
         time_end: Option<UTime>,
-    ) -> RpcResult<(Vec<BlockSummary>, UTime)> {
+    ) -> RpcResult<TimestampedBlockSummarys> {
         self.0
             .call_method(
                 "get_graph_interval",
-                "(Vec<BlockSummary>, UTime)",
+                "TimestampedBlockSummarys",
                 (time_start, time_end),
             )
             .await
