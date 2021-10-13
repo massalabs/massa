@@ -15,17 +15,12 @@ use communication::network::Peer;
 use communication::network::Peers;
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 use consensus::error::ConsensusError;
-use consensus::time_range_to_slot_range;
 use consensus::ConsensusStats;
 use consensus::ExportBlockStatus;
 use consensus::Status;
-use consensus::{
-    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, BlockGraphExport,
-    ConsensusConfig, DiscardReason,
-};
+use consensus::{BlockGraphExport, ConsensusConfig, DiscardReason};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
 use logging::massa_trace;
-use models::crypto::PubkeySig;
 use models::node::NodeId;
 use models::Address;
 use models::Amount;
@@ -37,6 +32,12 @@ use models::StakersCycleProductionStats;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState, Addresses},
     BlockHashMap, BlockHashSet, OperationHashMap, OperationHashSet,
+};
+use models::{
+    crypto::PubkeySig,
+    timeslots::{
+        get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
+    },
 };
 use models::{BlockHeader, BlockId, Slot, Version};
 use pool::PoolConfig;
@@ -1395,7 +1396,7 @@ async fn get_staker_info(
         .collect::<Vec<(BlockId, DiscardReason, BlockHeader)>>();
     let cur_time = UTime::now(clock_compensation)?;
 
-    let start_slot = consensus::get_latest_block_slot_at_timestamp(
+    let start_slot = get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
@@ -1446,7 +1447,7 @@ async fn get_next_draws(
 ) -> Result<Vec<(Address, Slot)>, ApiError> {
     let cur_time = UTime::now(clock_compensation)?;
 
-    let start_slot = consensus::get_latest_block_slot_at_timestamp(
+    let start_slot = get_latest_block_slot_at_timestamp(
         consensus_cfg.thread_count,
         consensus_cfg.t0,
         consensus_cfg.genesis_timestamp,
