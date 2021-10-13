@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+pub mod config;
+
 use communication::network::NetworkStats;
 use models::node::NodeId;
 use models::{

@@ -14,7 +14,6 @@ jsonrpc-http-server = "18.0.0"
 api-dto = { path = "../api-dto" }
 log = { version = "0.4" }
 models = {path = "../models"}
-rpc-server = {path = "../rpc-server"}
 time = {path = "../time"}
 tokio = { version = "1.11", features = ["full"] }
 consensus = {path = "../consensus"}
