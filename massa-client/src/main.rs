@@ -104,6 +104,23 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("base_config")
+                .short("bc")
+                .long("base_config")
+                .value_name("Base config file path")
+                .help("Base config file to load.")
+                .required(false)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("config")
+                .long("config")
+                .value_name("Config file path")
+                .help("Config file to load.")
+                .required(false)
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("shorthash")
                 .short("s")
                 .long("shorthash")
@@ -112,20 +129,6 @@ fn main() {
                 .required(false)
                 .takes_value(true),
         );
-
-    // load config
-    let config_path = "base_config/config.toml";
-    let override_config_path = "config/config.toml";
-    let mut cfg = config::Config::default();
-    cfg.merge(config::File::with_name(config_path))
-        .expect("could not load main config file");
-    if std::path::Path::new(override_config_path).is_file() {
-        cfg.merge(config::File::with_name(override_config_path))
-            .expect("could not load override config file");
-    }
-    let cfg = cfg
-        .try_into::<client_config::Config>()
-        .expect("error structuring config");
 
     //add client commands that can be executed.
     // The Repl struct manage command registration for cli mode with clap and REPL mode with rustyline
@@ -337,8 +340,30 @@ fn main() {
 
 
     .split();
-
+    // load config
     let matches = app.get_matches();
+
+    let base_config_path = matches.value_of("base_config");
+    let file_name_base_config = match base_config_path {
+        Some(file_name_base_config) => file_name_base_config,
+        None => "base_config/config.toml",
+    };
+    let override_config_path = matches.value_of("config");
+    let file_name_config = match override_config_path {
+        Some(file_name_config) => file_name_config,
+        None => "config/config.toml",
+    };
+    let mut cfg = config::Config::default();
+    cfg.merge(config::File::with_name(file_name_base_config))
+        .expect("could not load main config file");
+    if std::path::Path::new(file_name_config).is_file() {
+        cfg.merge(config::File::with_name(file_name_config))
+            .expect("could not load override config file");
+    }
+    let cfg = cfg
+        .try_into::<client_config::Config>()
+        .expect("error structuring config");
+
 
     //cli or not cli output.
     let cli = matches

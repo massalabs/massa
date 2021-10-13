@@ -11,7 +11,6 @@ use core::convert::TryFrom;
 use rustyline::error::ReadlineError;
 use rustyline::Helper;
 use rustyline::{CompletionType, Config, Editor};
-
 pub use error::ReplError;
 
 mod error;
@@ -263,6 +262,7 @@ impl Repl {
 
     pub fn run(mut self) {
         let mut helper = helper::ReplHelper::new();
+        helper::ReplHelper::check_history();
         let config = Config::builder()
             //.completion_type(CompletionType::Circular)
             .completion_type(CompletionType::List)

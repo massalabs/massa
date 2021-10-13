@@ -12,7 +12,13 @@ use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::Helper;
 use rustyline::{Context, Result};
 
+use std::path::Path;
+use std::io::Write;
+use std::fs;
+
 pub const HISTORY_FILE: &str = "config/history.txt";
+
+
 
 ///the main struct that implements Rustyline traits.
 pub struct ReplHelper {
@@ -41,6 +47,16 @@ impl ReplHelper {
             min_nb_param,
         });
     }
+///Check if HISTORY_FILE exists
+    pub fn check_history() {
+      let if_exists = Path::new(HISTORY_FILE).exists();
+
+      if ! if_exists {
+          fs::create_dir("config");
+          let history_file = std::fs::File::create(HISTORY_FILE);
+      };
+    }
+
 }
 
 #[derive(Debug)]
