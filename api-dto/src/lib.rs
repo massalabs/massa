@@ -113,3 +113,9 @@ pub struct BlockSummary {
     pub creator: Address,
     pub parents: Vec<BlockId>,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TimestampedBlockSummarys {
+    pub blocks: Vec<BlockSummary>,
+    pub timestamp: UTime,
+}

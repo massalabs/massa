@@ -173,6 +173,7 @@ pub fn get_filter(
                 start,
                 end,
                 storage.clone(),
+                clock_compensation,
             ))
         });
 
@@ -208,6 +209,7 @@ pub fn get_filter(
                 start,
                 end,
                 storage.clone(),
+                clock_compensation,
             ))
         });
 
@@ -1010,13 +1012,14 @@ async fn get_block_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(BlockId, Slot)>, ApiError> {
+    clock_compensation: i64,
+) -> Result<(Vec<(BlockId, Slot)>, UTime), ApiError> {
     massa_trace!("api.filters.get_block_interval", {});
     if start_opt
         .and_then(|s| end_opt.and_then(|e| if s >= e { Some(()) } else { None }))
         .is_some()
     {
-        return Ok(vec![]);
+        return Ok((vec![], UTime::now(clock_compensation)?));
     }
 
     //filter block from graph_export
@@ -1043,8 +1046,13 @@ async fn get_block_interval(
                 )
             })?;
     }
+    Ok((res, UTime::now(0)?)) // todo add compensation_millis ?
+}
 
-    Ok(res)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TimestampedGraphInterval {
+    pub blocks: Vec<(BlockId, Slot, Status, Vec<BlockId>)>,
+    pub timestamp: UTime,
 }
 
 /// Returns all block info needed to reconstruct the most recent part of the block graph.
@@ -1084,7 +1092,8 @@ async fn get_graph_interval(
     start_opt: Option<UTime>,
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
-) -> Result<Vec<(BlockId, Slot, Status, Vec<BlockId>)>, ApiError> {
+    clock_compensation: i64,
+) -> Result<TimestampedGraphInterval, ApiError> {
     massa_trace!("api.filters.get_graph_interval_process", {});
     //filter block from graph_export
     let graph = retrieve_graph_export(&event_tx).await?;
@@ -1125,7 +1134,10 @@ async fn get_graph_interval(
             ));
         }
     }
-    Ok(res)
+    Ok(TimestampedGraphInterval {
+        blocks: res,
+        timestamp: UTime::now(clock_compensation)?,
+    })
 }
 
 /// Returns number of cliques and current cliques as `Vec<HashSet<(hash, (period, thread))>>`

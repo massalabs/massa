@@ -20,6 +20,7 @@ use crate::data::AddressStates;
 use crate::data::GetOperationContent;
 use crate::data::WrappedHash;
 use crate::repl::ReplError;
+use api::TimestampedGraphInterval;
 use api::{OperationIds, PrivateKeys};
 use models::address::AddressHashMap;
 use models::address::AddressHashSet;
@@ -27,6 +28,7 @@ use models::timeslots::get_current_latest_block_slot;
 use models::BlockHashMap;
 use models::OperationHashSet;
 use std::collections::HashMap;
+use time::UTime;
 
 use std::net::IpAddr;
 use std::net::SocketAddr;
@@ -1100,14 +1102,15 @@ fn cmd_last_final(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError
 fn cmd_blockinterval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     let url = format_url_with_to_from("blockinterval", data.node_ip, params)?;
     if let Some(resp) = request_data(data, &url)? {
-        let mut block: Vec<(data::WrappedHash, data::WrappedSlot)> =
-            data::from_vec_hash_slot(&resp.json::<Vec<(Hash, Slot)>>()?);
+        let (block, timestamp) = resp.json::<(Vec<(Hash, Slot)>, UTime)>()?;
+        let mut block = data::from_vec_hash_slot(&block);
         if block.is_empty() {
             println!("Block not found.");
         } else {
             block.sort_unstable_by_key(|v| (v.1, v.0));
             let formatted = format_node_hash(&mut block);
             println!("blocks: {:#?}", formatted);
+            println!("Current time : {}", timestamp.to_utc_string());
         }
     }
 
@@ -1191,29 +1194,31 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
 
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
+            let TimestampedGraphInterval { blocks, timestamp } =
+                resp.json::<TimestampedGraphInterval>()?;
             let mut block: Vec<(
                 data::WrappedHash,
                 data::WrappedSlot,
-                String,
+                Status,
                 Vec<data::WrappedHash>,
-            )> = resp
-                .json::<Vec<(Hash, Slot, String, Vec<Hash>)>>()?
+            )> = blocks
                 .into_iter()
                 .map(|(hash1, slot, status, hash2)| {
                     (
-                        hash1.into(),
+                        hash1.0.into(),
                         slot.into(),
                         status,
-                        hash2.iter().map(|h| h.into()).collect(),
+                        hash2.iter().map(|h| h.0.into()).collect(),
                     )
                 })
                 .collect();
 
             block.sort_unstable_by_key(|v| (v.1, v.0));
             block.iter().for_each(|(hash, slot, state, parents)| {
-                println!("Block: {} Slot: {} Status:{}", hash, slot, state);
+                println!("Block: {} Slot: {} Status:{:?}", hash, slot, state);
                 println!("Block parents: {:?}", parents);
                 println!();
+                println!("Current time : {}", timestamp.to_utc_string());
             });
         } else {
             println!("Empty graph found.");

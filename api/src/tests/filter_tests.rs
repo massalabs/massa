@@ -594,9 +594,9 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<BlockId>::new()).unwrap()).unwrap();
-    assert_eq!(obtained, expected);
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
+        serde_json::from_value(obtained).unwrap();
+    assert_eq!(obtained, Vec::new());
 
     handle.await.expect("handle failed");
 
@@ -634,6 +634,8 @@ async fn test_get_graph_interval() {
     assert_eq!(res.status(), 200);
     handle.await.expect("handle failed");
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
+        serde_json::from_value(obtained).unwrap();
     let block = expected.active_blocks.get(&get_test_block_id()).unwrap();
     let expected = vec![(
         get_test_block_id(),
@@ -641,8 +643,6 @@ async fn test_get_graph_interval() {
         Status::Active,
         block.block.content.parents.clone(),
     )];
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
@@ -669,7 +669,7 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
@@ -709,7 +709,7 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
@@ -754,7 +754,7 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     expected.push((
@@ -799,7 +799,7 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
 
@@ -829,7 +829,7 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
         serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
 
@@ -859,7 +859,7 @@ async fn test_get_graph_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot, Status, Vec<BlockId>)> =
+    let (obtained, _): (Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime) =
         serde_json::from_value(obtained).unwrap();
     let expected = Vec::<(BlockId, Slot, Status, Vec<BlockId>)>::new();
     assert_eq!(obtained, expected);
@@ -1127,10 +1127,9 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&Vec::<(BlockId, Slot)>::new()).unwrap())
-            .unwrap();
-    assert_eq!(obtained, expected);
+    let (obtained, _): (Vec<(BlockId, Slot)>, UTime) = serde_json::from_value(obtained).unwrap();
+
+    assert_eq!(obtained, Vec::<(BlockId, Slot)>::new());
     handle.await.unwrap();
 
     let (filter, mut rx_api) = mock_filter(None);
@@ -1159,10 +1158,9 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let (obtained, _): (Vec<(BlockId, Slot)>, UTime) = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::new();
     expected.push((get_test_block_id(), get_test_block().header.content.slot));
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
 
     drop(filter);
@@ -1191,9 +1189,8 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let (obtained, _): (Vec<(BlockId, Slot)>, UTime) = serde_json::from_value(obtained).unwrap();
     let expected = Vec::<(BlockId, Slot)>::new();
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 
@@ -1213,13 +1210,12 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
+    let (obtained, _): (Vec<(BlockId, Slot)>, UTime) = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_b.header.compute_block_id().unwrap(),
         block_b.header.content.slot,
     ));
-    let expected: serde_json::Value =
-        serde_json::from_str(&serde_json::to_string(&expected).unwrap()).unwrap();
     assert_eq!(obtained, expected);
     handle.await.unwrap();
 
@@ -1239,7 +1235,7 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
+    let (obtained, _): (Vec<(BlockId, Slot)>, UTime) = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_a.header.compute_block_id().unwrap(),
@@ -1277,7 +1273,7 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
+    let (obtained, _): (Vec<(BlockId, Slot)>, UTime) = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_c.header.compute_block_id().unwrap(),
@@ -1308,7 +1304,7 @@ async fn test_get_block_interval() {
         .await;
     assert_eq!(res.status(), 200);
     let obtained: serde_json::Value = serde_json::from_slice(res.body()).unwrap();
-    let obtained: Vec<(BlockId, Slot)> = serde_json::from_value(obtained).unwrap();
+    let (obtained, _): (Vec<(BlockId, Slot)>, UTime) = serde_json::from_value(obtained).unwrap();
     let mut expected = Vec::<(BlockId, Slot)>::new();
     expected.push((
         block_b.header.compute_block_id().unwrap(),
