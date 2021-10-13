@@ -6,7 +6,6 @@ use api_dto::{AddressInfo, EndorsementInfo, OperationInfo};
 use console::style;
 use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
-use models::node::NodeId;
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
@@ -28,15 +27,15 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "IpAddr"),
-        message = "unban a given IP address"
+        props(args = "[IpAddr]"),
+        message = "unban a given IP addresses"
     )]
     unban,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "NodeId"),
-        message = "ban a given IP address"
+        props(args = "[IpAddr]"),
+        message = "ban a given IP addresses"
     )]
     ban,
 
@@ -244,8 +243,8 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::ban => match parse_vec::<NodeId>(parameters) {
-                Ok(node_ids) => match client.private.ban(node_ids[0]).await {
+            Command::ban => match parse_vec::<IpAddr>(parameters) {
+                Ok(ips) => match client.private.ban(ips).await {
                     Ok(_) => repl_ok!("Request of banning successfully sent!"),
                     Err(e) => repl_err!(e),
                 },

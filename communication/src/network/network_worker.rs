@@ -52,6 +52,7 @@ pub enum NetworkCommand {
     GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
+    BanIp(Vec<IpAddr>),
     Unban(Vec<IpAddr>),
     BlockNotFound {
         node: NodeId,
@@ -686,6 +687,7 @@ impl NetworkWorker {
         cmd: NetworkCommand,
     ) -> Result<(), CommunicationError> {
         match cmd {
+            NetworkCommand::BanIp(_) => todo!(),
             NetworkCommand::Ban(node) => {
                 massa_trace!(
                     "network_worker.manage_network_command receive NetworkCommand::Ban",
