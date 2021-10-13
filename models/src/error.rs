@@ -28,4 +28,8 @@ pub enum ModelsError {
     InavalidVersionError(String),
     /// invalid ledger change: {0}
     InvalidLedgerChange(String),
+    /// Time overflow error
+    TimeOverflowError,
+    /// Time error {0}
+    TimeError(#[from] time::TimeError),
 }

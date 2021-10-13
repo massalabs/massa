@@ -23,10 +23,6 @@ pub use models::address::AddressState;
 pub use models::clique::Clique;
 pub use models::ledger::LedgerChange;
 pub use pos::{ExportProofOfStake, RollCounts, RollUpdate, RollUpdates, ThreadCycleState};
-pub use timeslots::{
-    get_block_slot_timestamp, get_current_latest_block_slot, get_latest_block_slot_at_timestamp,
-    time_range_to_slot_range,
-};
 
 mod block_graph;
 mod config;
@@ -35,7 +31,5 @@ mod consensus_worker;
 pub mod error;
 pub mod ledger;
 mod pos;
-mod timeslots;
-
 #[cfg(test)]
 mod tests;

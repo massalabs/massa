@@ -46,4 +46,5 @@ pub mod node;
 pub mod operation;
 mod serialization;
 pub mod slot;
+pub mod timeslots;
 mod version;

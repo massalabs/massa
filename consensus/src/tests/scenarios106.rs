@@ -3,7 +3,7 @@
 // RUST_BACKTRACE=1 cargo test scenarios106 -- --nocapture
 
 use crate::tests::tools::{self, generate_ledger_file};
-use crate::timeslots;
+use models::timeslots;
 use models::{BlockHashSet, BlockId, Slot};
 use serial_test::serial;
 use std::collections::{HashMap, HashSet};
