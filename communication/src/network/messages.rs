@@ -176,7 +176,7 @@ impl DeserializeCompact for Message {
                     array_from_slice(&buffer[cursor..])?;
                 cursor += HANDSHAKE_RANDOMNES_SIZE_BYTES;
 
-                //version
+                // version
                 let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 

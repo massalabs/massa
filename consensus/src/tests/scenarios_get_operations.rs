@@ -29,7 +29,7 @@ async fn test_get_operation() {
     //     .init()
     //     .unwrap();
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);
@@ -71,7 +71,7 @@ async fn test_get_operation() {
     cfg.max_operations_per_block = 50;
     cfg.disable_block_creation = true;
 
-    //to avoid timing pb for block in the future
+    // to avoid timing pb for block in the future
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
     let op2 = create_transaction(priv_a, pubkey_a, address_b, 2, 10, 1);
@@ -221,7 +221,7 @@ async fn test_get_operation() {
 #[serial]
 async fn test_consensus_and_storage() {
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);

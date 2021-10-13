@@ -136,7 +136,7 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("block"))
-        .and(warp::path::param::<BlockId>()) //block id
+        .and(warp::path::param::<BlockId>()) // block id
         .and(warp::path::end())
         .and_then(move |hash| wrap_api_call(get_block(evt_tx.clone(), hash, storage.clone())));
 
@@ -165,7 +165,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("blockinterval"))
         .and(warp::path::end())
-        .and(warp::query::<TimeInterval>()) //start, end
+        .and(warp::query::<TimeInterval>()) // start, end
         .and_then(move |TimeInterval { start, end }| {
             wrap_api_call(get_block_interval(
                 evt_tx.clone(),
@@ -200,7 +200,7 @@ pub fn get_filter(
         .and(warp::path("v1"))
         .and(warp::path("graph_interval"))
         .and(warp::path::end())
-        .and(warp::query::<TimeInterval>()) //start, end //end
+        .and(warp::query::<TimeInterval>()) // start, end
         .and_then(move |TimeInterval { start, end }| {
             wrap_api_call(get_graph_interval(
                 evt_tx.clone(),
@@ -698,7 +698,7 @@ async fn get_block(
     } else {
         if let Some(cmd_tx) = opt_storage_command_sender {
             match cmd_tx.get_block(block_id).await {
-                // todo this is blocking the removal of Stored variant.
+                // TODO: this is blocking the removal of Stored variant.
                 Ok(Some(block)) => Ok(Some(ExportBlockStatus::Stored(block))),
                 Ok(None) => Err(ApiError::NotFound),
                 Err(e) => Err(e.into()),
@@ -1019,7 +1019,7 @@ async fn get_block_interval(
         return Ok(vec![]);
     }
 
-    //filter block from graph_export
+    // filter block from graph_export
     let mut res = get_block_from_graph(event_tx, &consensus_cfg, start_opt, end_opt).await?;
 
     if let Some(ref storage) = opt_storage_command_sender {
@@ -1086,7 +1086,7 @@ async fn get_graph_interval(
     opt_storage_command_sender: Option<StorageAccess>,
 ) -> Result<Vec<(BlockId, Slot, Status, Vec<BlockId>)>, ApiError> {
     massa_trace!("api.filters.get_graph_interval_process", {});
-    //filter block from graph_export
+    // filter block from graph_export
     let graph = retrieve_graph_export(&event_tx).await?;
     let start = start_opt.unwrap_or_else(|| UTime::from(0));
     let end = end_opt.unwrap_or_else(|| UTime::from(u64::MAX));

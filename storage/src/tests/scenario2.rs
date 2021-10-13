@@ -87,7 +87,7 @@ async fn test_get() {
 async fn test_contains() {
     let cfg = get_test_config();
     storage_test(cfg, async move |command_sender| {
-        //test in an empty db that the contains return false.
+        // test in an empty db that the contains return false.
         assert!(!command_sender
             .contains(get_another_test_block_id())
             .await
@@ -102,10 +102,10 @@ async fn test_contains() {
             .await
             .unwrap();
 
-        //test the block is present in db
+        // test the block is present in db
         assert!(command_sender.contains(hash).await.unwrap());
 
-        //test that another block isn't present
+        // test that another block isn't present
         assert!(!command_sender
             .contains(get_another_test_block_id())
             .await

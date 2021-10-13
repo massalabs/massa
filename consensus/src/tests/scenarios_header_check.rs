@@ -35,14 +35,14 @@ async fn test_consensus_asks_for_block() {
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
                 staking_keys[0].clone(),
             );
-            //send header for block t0s1
+            // send header for block t0s1
             protocol_controller
                 .receive_header(t0s1.header.clone())
                 .await;
@@ -87,7 +87,7 @@ async fn test_consensus_does_not_ask_for_block() {
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
@@ -99,7 +99,7 @@ async fn test_consensus_does_not_ask_for_block() {
             // Send the actual block.
             protocol_controller.receive_block(t0s1).await;
 
-            //block t0s1 is propagated
+            // block t0s1 is propagated
             let hash_list = vec![hasht0s1];
             tools::validate_propagate_block_in_list(
                 &mut protocol_controller,

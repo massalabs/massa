@@ -52,7 +52,7 @@ async fn test_storage() {
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create a valids block for thread 0
+            // create a valids block for thread 0
             let valid_hasht0s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -63,7 +63,7 @@ async fn test_storage() {
                 staking_keys[0].clone(),
             )
             .await;
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let valid_hasht1s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -75,7 +75,7 @@ async fn test_storage() {
             )
             .await;
 
-            //Create other clique bock T0S2
+            // Create other clique bock T0S2
             let fork_block_hash = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -89,7 +89,7 @@ async fn test_storage() {
 
             assert!(!&storage_access.contains(fork_block_hash).await.unwrap());
 
-            //extend first clique
+            // extend first clique
             let mut parentt0sn_hash = valid_hasht0s1;
             let mut parentt1sn_hash = valid_hasht1s1;
             for period in 3..=12 {

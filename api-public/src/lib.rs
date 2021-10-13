@@ -365,7 +365,7 @@ impl MassaPublic for ApiMassaPublic {
         &self,
         _: Vec<EndorsementId>,
     ) -> jsonrpc_core::Result<Vec<EndorsementInfo>> {
-        todo!() // wait for !238
+        todo!() // TODO: wait for !238
     }
 
     fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, PublicApiError>> {
@@ -386,9 +386,9 @@ impl MassaPublic for ApiMassaPublic {
                     Some(ExportBlockStatus::Incoming) => None,
                     Some(ExportBlockStatus::WaitingForSlot) => None,
                     Some(ExportBlockStatus::WaitingForDependencies) => None,
-                    Some(ExportBlockStatus::Discarded(_)) => None, // todo get block if stale
+                    Some(ExportBlockStatus::Discarded(_)) => None, // TODO: get block if stale
                     Some(ExportBlockStatus::Final(block)) => Some((block, true)),
-                    Some(ExportBlockStatus::Stored(_)) => None, // todo remove with old api
+                    Some(ExportBlockStatus::Stored(_)) => None, // TODO: remove with old api
                     None => None,
                 }
             {
@@ -432,7 +432,7 @@ impl MassaPublic for ApiMassaPublic {
         let closure = async move || {
             let graph = consensus_command_sender.get_block_graph_status().await?;
 
-            //filter block from graph_export
+            // filter block from graph_export
             let start = time_start.unwrap_or_else(|| UTime::from(0));
             let end = time_end.unwrap_or_else(|| UTime::from(u64::MAX));
             let mut res = Vec::new();
@@ -457,7 +457,7 @@ impl MassaPublic for ApiMassaPublic {
                     res.push(BlockSummary {
                         id,
                         is_final: status == Status::Final,
-                        is_stale: false, // todo in the old api we considered only active blocks. Do we need to consider also discarded blocks ?
+                        is_stale: false, // TODO: in the old api we considered only active blocks. Do we need to consider also discarded blocks?
                         is_in_blockclique: block_clique.block_ids.contains(&id),
                         slot: header.content.slot,
                         creator: Address::from_public_key(&header.content.creator)?,
@@ -577,8 +577,7 @@ impl MassaPublic for ApiMassaPublic {
             }
 
             // endorsements info
-            // todo add get_endorsements_by_address consensus command
-            // wait for !238
+            // TODO: add get_endorsements_by_address consensus command -> wait for !238
 
             // operations info
             let mut ops = HashMap::new();
@@ -654,7 +653,7 @@ impl MassaPublic for ApiMassaPublic {
                         .into_iter()
                         .copied()
                         .collect(),
-                    involved_in_endorsements: HashSet::new().into_iter().collect(), // todo update wait for !238
+                    involved_in_endorsements: HashSet::new().into_iter().collect(), // TODO: update wait for !238
                     involved_in_operations: ops
                         .get(&address)
                         .ok_or(PublicApiError::NotFound)?

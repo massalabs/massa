@@ -48,7 +48,7 @@ async fn test_update_current_slot_cmd_notification() {
                 _ => None,
             };
 
-            //wait for UpdateCurrentSlot pool command
+            // wait for UpdateCurrentSlot pool command
             if let Some((slot_cmd, rec_time)) = pool_controller
                 .wait_command(1500.into(), slot_notification_filter)
                 .await
@@ -61,7 +61,7 @@ async fn test_update_current_slot_cmd_notification() {
                 }
             }
 
-            //wait for next UpdateCurrentSlot pool command
+            // wait for next UpdateCurrentSlot pool command
             if let Some((slot_cmd, rec_time)) = pool_controller
                 .wait_command(500.into(), slot_notification_filter)
                 .await
@@ -178,7 +178,7 @@ async fn test_new_final_ops() {
     cfg.disable_block_creation = true;
 
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);
@@ -296,7 +296,7 @@ async fn test_max_attempts_get_operations() {
     cfg.disable_block_creation = false;
 
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);
@@ -421,7 +421,7 @@ async fn test_max_batch_size_get_operations() {
     cfg.disable_block_creation = false;
 
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);

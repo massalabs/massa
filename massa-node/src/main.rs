@@ -221,7 +221,7 @@ async fn launch(
     )
 }
 
-// FIXME: IDEA identify it unreachable code?
+// TODO: IDEA identify it unreachable code?
 async fn run(cfg: node_config::Config) {
     loop {
         let (
@@ -695,7 +695,7 @@ async fn stop(
         .await
         .expect("protocol shutdown failed");
 
-    //stop storage controller
+    // stop storage controller
     storage_manager
         .stop()
         .await

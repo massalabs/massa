@@ -150,7 +150,7 @@ impl CommandValidator {
             for command in &self.cmd_list {
                 let params: Vec<&str> = input.split(' ').collect();
                 if command.name.starts_with(&params[0]) {
-                    //validate parameters
+                    // validate parameters
                     /*                    println!(
                         " params.len():{} command.max_nb_param:{}",
                         params.len(),
