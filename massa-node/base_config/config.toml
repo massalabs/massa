@@ -7,10 +7,10 @@ version = "DEVE.0.0"
     max_return_invalid_blocks = 10
     selection_return_periods = 10
     bind = "127.0.0.1:33033"
+    graph_latest_timespan = 132000
 
 [new_api]
     draw_lookahead_period_count = 10
-    graph_latest_timespan = 132000
     bind_private = "127.0.0.1:33034"
     bind_public = "[::]:33035"
 
