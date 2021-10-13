@@ -920,7 +920,7 @@ fn cmd_unban(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
     client
         .post(&format!("http://{}/api/v1/unban/{}", data.node_ip, ip))
         .send()?;
-    println!("Unbanning {}", ip);
+    println!("Successfully requested unban for {}", ip);
     Ok(())
 }
 
@@ -948,7 +948,7 @@ fn cmd_register_staking_keys(data: &mut ReplData, params: &[&str]) -> Result<(),
         ))
         .send()?;
     trace!("after sending request to client in cmd_register_staking_keys in massa-client main");
-    println!("Sent register staking keys command to node");
+    println!("Successfully requested staking keys registration");
     Ok(())
 }
 
@@ -1023,7 +1023,7 @@ fn cmd_remove_staking_addresses(data: &mut ReplData, params: &[&str]) -> Result<
         ))
         .send()?;
     trace!("after sending request to client in cmd_remove_staking_addresses in massa-client main");
-    println!("Sent remove staking keys commande to node");
+    println!("Successfully requested staking keys removal");
     Ok(())
 }
 
@@ -1246,7 +1246,7 @@ fn send_operation(operation: Operation, data: &ReplData) -> Result<(), ReplError
                 "Could not obtain the transaction ID".to_string(),
             ));
         }
-        println!("Operation created: {}", opid_list[0]);
+        println!("Operation created and sent to the node: {}", opid_list[0]);
     }
 
     Ok(())
