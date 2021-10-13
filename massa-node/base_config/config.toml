@@ -10,6 +10,7 @@ version = "DEVE.0.0"
 
 [new_api]
     draw_lookahead_period_count = 10
+    graph_latest_timespan = 132000
     bind_private = "127.0.0.1:33034"
     bind_public = "[::]:33035"
 

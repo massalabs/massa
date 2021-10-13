@@ -212,6 +212,24 @@ pub fn get_filter(
         });
 
     let evt_tx = event_tx.clone();
+    let consensus_cfg = consensus_config.clone();
+    let storage = opt_storage_command_sender.clone();
+    let graph_latest = warp::get()
+        .and(warp::path("api"))
+        .and(warp::path("v1"))
+        .and(warp::path("graph_latest"))
+        .and(warp::path::end()) //start, end //end
+        .and_then(move || {
+            wrap_api_call(get_graph_latest(
+                clock_compensation,
+                api_config.graph_latest_timespan,
+                evt_tx.clone(),
+                consensus_cfg.clone(),
+                storage.clone(),
+            ))
+        });
+
+    let evt_tx = event_tx.clone();
     let storage = opt_storage_command_sender.clone();
     let block_ids_by_creator = warp::get()
         .and(warp::path("api"))
@@ -488,6 +506,7 @@ pub fn get_filter(
         .or(current_parents)
         .or(last_final)
         .or(graph_interval)
+        .or(graph_latest)
         .or(cliques)
         .or(peers)
         .or(unban)
@@ -1025,6 +1044,31 @@ async fn get_block_interval(
     }
 
     Ok(res)
+}
+
+/// Returns all block info needed to reconstruct the most recent part of the block graph.
+/// The result is a vec of (hash, period, thread, status, parents hash) wrapped in a reply.
+///
+/// Note:
+/// * both start time is included and end time is excluded
+/// * status is in `["active", "final", "stale"]`
+async fn get_graph_latest(
+    clock_compensation: i64,
+    graph_latest_timespan: UTime,
+    event_tx: mpsc::Sender<ApiEvent>,
+    consensus_cfg: ConsensusConfig,
+    opt_storage_command_sender: Option<StorageAccess>,
+) -> Result<Vec<(BlockId, Slot, Status, Vec<BlockId>)>, ApiError> {
+    let time_end = UTime::now(clock_compensation)?;
+    let time_start = time_end.saturating_sub(graph_latest_timespan);
+    get_graph_interval(
+        event_tx,
+        consensus_cfg,
+        Some(time_start),
+        Some(time_end),
+        opt_storage_command_sender,
+    )
+    .await
 }
 
 /// Returns all block info needed to reconstruct the graph found in the time interval.
