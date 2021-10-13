@@ -1,10 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 //! warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
-use crate::error::ConsensusError;
-use models::Slot;
+
 use std::convert::TryInto;
 use time::UTime;
+
+use crate::{ModelsError, Slot};
 
 /// Gets timestamp in millis for given slot.
 ///
@@ -17,20 +18,20 @@ pub fn get_block_slot_timestamp(
     t0: UTime,
     genesis_timestamp: UTime,
     slot: Slot,
-) -> Result<UTime, ConsensusError> {
+) -> Result<UTime, ModelsError> {
     let base: UTime = t0
         .checked_div_u64(thread_count as u64)
-        .or(Err(ConsensusError::TimeOverflowError))?
+        .or(Err(ModelsError::TimeOverflowError))?
         .checked_mul(slot.thread as u64)
-        .or(Err(ConsensusError::TimeOverflowError))?;
+        .or(Err(ModelsError::TimeOverflowError))?;
     let shift: UTime = t0
         .checked_mul(slot.period)
-        .or(Err(ConsensusError::TimeOverflowError))?;
+        .or(Err(ModelsError::TimeOverflowError))?;
     genesis_timestamp
         .checked_add(base)
-        .or(Err(ConsensusError::TimeOverflowError))?
+        .or(Err(ModelsError::TimeOverflowError))?
         .checked_add(shift)
-        .or(Err(ConsensusError::TimeOverflowError))
+        .or(Err(ModelsError::TimeOverflowError))
 }
 
 /// Returns the thread and block period index of the latest block slot at a given timstamp (inclusive), if any happened
@@ -45,7 +46,7 @@ pub fn get_latest_block_slot_at_timestamp(
     t0: UTime,
     genesis_timestamp: UTime,
     timestamp: UTime,
-) -> Result<Option<Slot>, ConsensusError> {
+) -> Result<Option<Slot>, ModelsError> {
     if let Ok(time_since_genesis) = timestamp.checked_sub(genesis_timestamp) {
         let thread: u8 = time_since_genesis
             .checked_rem_time(t0)?
@@ -70,7 +71,7 @@ pub fn get_current_latest_block_slot(
     t0: UTime,
     genesis_timestamp: UTime,
     clock_compensation: i64,
-) -> Result<Option<Slot>, ConsensusError> {
+) -> Result<Option<Slot>, ModelsError> {
     get_latest_block_slot_at_timestamp(
         thread_count,
         t0,
@@ -96,7 +97,7 @@ pub fn time_range_to_slot_range(
     genesis_timestamp: UTime,
     start_time: Option<UTime>,
     end_time: Option<UTime>,
-) -> Result<(Option<Slot>, Option<Slot>), ConsensusError> {
+) -> Result<(Option<Slot>, Option<Slot>), ModelsError> {
     let start_slot = match start_time {
         None => None,
         Some(t) => {
@@ -109,12 +110,12 @@ pub fn time_range_to_slot_range(
             Some(Slot::new(
                 slot_number
                     .checked_div(thread_count as u64)
-                    .ok_or(ConsensusError::TimeOverflowError)?,
+                    .ok_or(ModelsError::TimeOverflowError)?,
                 slot_number
                     .checked_rem(thread_count as u64)
-                    .ok_or(ConsensusError::TimeOverflowError)?
+                    .ok_or(ModelsError::TimeOverflowError)?
                     .try_into()
-                    .map_err(|_| ConsensusError::ThreadOverflowError)?,
+                    .map_err(|_| ModelsError::ThreadOverflowError)?,
             ))
         }
     };
@@ -131,12 +132,12 @@ pub fn time_range_to_slot_range(
             Some(Slot::new(
                 slot_number
                     .checked_div(thread_count as u64)
-                    .ok_or(ConsensusError::TimeOverflowError)?,
+                    .ok_or(ModelsError::TimeOverflowError)?,
                 slot_number
                     .checked_rem(thread_count as u64)
-                    .ok_or(ConsensusError::TimeOverflowError)?
+                    .ok_or(ModelsError::TimeOverflowError)?
                     .try_into()
-                    .map_err(|_| ConsensusError::ThreadOverflowError)?,
+                    .map_err(|_| ModelsError::ThreadOverflowError)?,
             ))
         }
     };
@@ -148,7 +149,6 @@ pub fn time_range_to_slot_range(
 mod tests {
     use super::*;
     use serial_test::serial;
-    use time::UTime;
 
     #[test]
     #[serial]

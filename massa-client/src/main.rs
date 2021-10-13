@@ -23,6 +23,7 @@ use crate::repl::ReplError;
 use api::{OperationIds, PrivateKeys};
 use models::address::AddressHashMap;
 use models::address::AddressHashSet;
+use models::timeslots::get_current_latest_block_slot;
 use models::BlockHashMap;
 use models::OperationHashSet;
 use std::collections::HashMap;
@@ -1458,7 +1459,7 @@ impl ReplData {
             })?;
         let public_key = derive_public_key(private_key);
 
-        let slot = consensus::get_current_latest_block_slot(
+        let slot = get_current_latest_block_slot(
             consensus_cfg.thread_count,
             consensus_cfg.t0,
             consensus_cfg.genesis_timestamp,

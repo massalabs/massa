@@ -2,14 +2,14 @@
 
 use crate::{get_filter, ApiConfig, ApiEvent};
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-use consensus::{get_block_slot_timestamp, BlockGraphExport, ConsensusConfig, ExportCompiledBlock};
+use consensus::{BlockGraphExport, ConsensusConfig, ExportCompiledBlock};
 use crypto::{
     hash::Hash,
     signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
 };
 use models::{
-    hhasher::BuildHHasher, Amount, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId,
-    Operation, OperationHashMap, Slot, Version,
+    hhasher::BuildHHasher, timeslots::get_block_slot_timestamp, Amount, Block, BlockHashMap,
+    BlockHeader, BlockHeaderContent, BlockId, Operation, OperationHashMap, Slot, Version,
 };
 use num::rational::Ratio;
 use pool::PoolConfig;
