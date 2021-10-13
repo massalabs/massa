@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 use std::net::SocketAddr;
+use time::UTime;
 
 pub const CHANNEL_SIZE: usize = 256;
 
@@ -12,6 +13,8 @@ pub struct ApiConfig {
     pub max_return_invalid_blocks: usize,
     /// how many periods should be considered while retrieving staker's next slots
     pub selection_return_periods: u64,
+    /// timespan of the latest blocks graph
+    pub graph_latest_timespan: UTime,
     /// where is the api listening
     pub bind: SocketAddr,
 }
