@@ -345,7 +345,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                     assert_eq!(node, nodes[0].id);
                     assert_eq!(block.header.compute_block_id().unwrap(), block_id);
                 }
-                Some(_) => panic!("Unpexted network command."),
+                Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
             };
 
@@ -455,7 +455,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                     assert_eq!(node, nodes[0].id);
                     assert_eq!(block.header.compute_block_id().unwrap(), block_id);
                 }
-                Some(_) => panic!("Unpexted network command."),
+                Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
             };
 
@@ -547,7 +547,7 @@ async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_ins
                         assert_eq!(id, expected_endorsement_id);
                         panic!("Unexpected propagation of endorsement received inside header.")
                     }
-                    Some(_) => panic!("Unpexted network command."),
+                    Some(_) => panic!("Unexpected network command.."),
                     None => break,
                 };
             }
