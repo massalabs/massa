@@ -211,6 +211,7 @@ pub fn get_filter(
             ))
         });
 
+    let api_cfg = api_config.clone();
     let evt_tx = event_tx.clone();
     let consensus_cfg = consensus_config.clone();
     let storage = opt_storage_command_sender.clone();
@@ -218,11 +219,11 @@ pub fn get_filter(
         .and(warp::path("api"))
         .and(warp::path("v1"))
         .and(warp::path("graph_latest"))
-        .and(warp::path::end()) //start, end //end
+        .and(warp::path::end())
         .and_then(move || {
             wrap_api_call(get_graph_latest(
                 clock_compensation,
-                api_config.graph_latest_timespan,
+                api_cfg.graph_latest_timespan,
                 evt_tx.clone(),
                 consensus_cfg.clone(),
                 storage.clone(),
