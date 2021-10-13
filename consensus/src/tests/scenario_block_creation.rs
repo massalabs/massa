@@ -319,7 +319,7 @@ async fn test_interleaving_block_creation_with_reception() {
     );
     cfg.t0 = 1000.into();
     cfg.thread_count = thread_count;
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(1000.into()).unwrap();
+    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_add(1000.into()).unwrap();
     cfg.disable_block_creation = false;
 
     tools::consensus_without_pool_test(
