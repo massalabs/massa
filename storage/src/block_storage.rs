@@ -90,14 +90,6 @@ impl StorageCleaner {
                                     )),
                                 )
                             })?;
-                            let fee_addr = Address::from_public_key(&block.header.content.creator).map_err(|err| {
-                                sled::transaction::ConflictableTransactionError::Abort(
-                                    InternalError::TransactionError(format!(
-                                        "error computing fee address: {:?}",
-                                        err
-                                    )),
-                                )
-                            })?;
                             let mut addr_to_op_cache: AddressHashMap<OperationHashSet> = AddressHashMap::default();
                             for op in block.operations.into_iter() {
                                 // remove operation from op_id => block index
@@ -114,7 +106,7 @@ impl StorageCleaner {
                                 ops.remove(&op_id.to_bytes())?;
 
                                 // remove involved addrs from address => operation index
-                                let involved_addrs = op.get_ledger_involved_addresses(Some(fee_addr)).map_err(|err| {
+                                let involved_addrs = op.get_ledger_involved_addresses().map_err(|err| {
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError(format!(
                                             "error computing op-involved addresses: {:?}",
@@ -312,46 +304,21 @@ impl BlockStorage {
         Ok(res)
     }
 
-    pub async fn add_block(&self, block_id: BlockId, block: Block) -> Result<(), StorageError> {
-        //acquire W lock on block_count
-        massa_trace!("block_storage.add_block", {"block_id": block_id, "block": block});
-
-        //add the new block
-        if self.add_block_internal(block_id, block).await? {
-            self.block_count.fetch_add(1, Ordering::Release);
-            self.notify.notify_one();
-        };
-
-        Ok(())
-    }
-
-    pub async fn add_block_batch(&self, blocks: BlockHashMap<Block>) -> Result<(), StorageError> {
-        let mut newly_added = 0;
-
-        //add the new blocks
-        for (block_id, block) in blocks.into_iter() {
-            massa_trace!("block_storage.add_block_batch", {"block_id": block_id, "block": block});
-            if self.add_block_internal(block_id, block).await? {
-                newly_added += 1;
-            };
-        }
-
-        if newly_added > 0 {
-            self.block_count.fetch_add(newly_added, Ordering::Release);
-            self.notify.notify_one();
-        }
-
-        Ok(())
-    }
-
     /// Returns a boolean indicating whether the block was a new addition(true) or a replacement(false).
-    async fn add_block_internal(
+    pub async fn add_block(
         &self,
         block_id: BlockId,
         block: Block,
+        operation_set: OperationHashMap<(usize, u64)>,
     ) -> Result<bool, StorageError> {
+        massa_trace!("block_storage.add_block", {"block_id": block_id, "block": block});
+
+        // serialize block
+        let serialized_block = block.to_bytes_compact()?;
+        let s_block_id = block_id.to_bytes();
+
         //add the new block
-        (
+        let is_new = (
             &self.hash_to_block,
             &self.slot_to_hash,
             &self.op_to_block,
@@ -359,16 +326,6 @@ impl BlockStorage {
             &self.addr_to_block,
         )
             .transaction(|(hash_tx, slot_tx, op_tx, addr_tx, addr_to_block)| {
-                // add block
-                let serialized_block = block.to_bytes_compact().map_err(|err| {
-                    sled::transaction::ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(format!(
-                            "error serializing block: {:?}",
-                            err
-                        )),
-                    )
-                })?;
-                let s_block_id = block_id.to_bytes();
                 if hash_tx
                     .insert(&s_block_id, serialized_block.as_slice())?
                     .is_some()
@@ -376,52 +333,33 @@ impl BlockStorage {
                     return Ok(false);
                 }
 
-                let fee_target =
-                    Address::from_public_key(&block.header.content.creator).map_err(|err| {
-                        sled::transaction::ConflictableTransactionError::Abort(
-                            InternalError::TransactionError(format!(
-                                "error computing fee target address: {:?}",
-                                err
-                            )),
-                        )
-                    })?;
-
                 // slot
                 slot_tx.insert(&block.header.content.slot.to_bytes_key(), &s_block_id)?;
 
                 // operations
                 let mut addr_to_ops: AddressHashMap<OperationHashSet> = AddressHashMap::default();
-                for (idx, op) in block.operations.iter().enumerate() {
-                    let op_id = op.get_operation_id().map_err(|err| {
-                        sled::transaction::ConflictableTransactionError::Abort(
-                            InternalError::TransactionError(format!(
-                                "error getting op id block: {:?}",
-                                err
-                            )),
-                        )
-                    })?;
+                for (op_id, (idx, _op_expiry)) in operation_set.iter() {
+                    let op = &block.operations[*idx];
                     let s_op_id = op_id.to_bytes();
                     // add to ops
                     op_tx.insert(
                         &s_op_id,
-                        [&block_id.to_bytes()[..], &(idx as u64).to_be_bytes()[..]].concat(),
+                        [&block_id.to_bytes()[..], &(*idx as u64).to_be_bytes()[..]].concat(),
                     )?;
                     // add to involved addrs
-                    let involved_addrs = op
-                        .get_ledger_involved_addresses(Some(fee_target))
-                        .map_err(|err| {
-                            sled::transaction::ConflictableTransactionError::Abort(
-                                InternalError::TransactionError(format!(
-                                    "error getting involved addrs: {:?}",
-                                    err
-                                )),
-                            )
-                        })?;
+                    let involved_addrs = op.get_ledger_involved_addresses().map_err(|err| {
+                        sled::transaction::ConflictableTransactionError::Abort(
+                            InternalError::TransactionError(format!(
+                                "error getting involved addrs: {:?}",
+                                err
+                            )),
+                        )
+                    })?;
                     for involved_addr in involved_addrs.into_iter() {
                         // get current ops
                         match addr_to_ops.entry(involved_addr) {
                             hash_map::Entry::Occupied(mut occ) => {
-                                occ.get_mut().insert(op_id);
+                                occ.get_mut().insert(*op_id);
                             }
                             hash_map::Entry::Vacant(vac) => {
                                 let mut cur_ops =
@@ -437,7 +375,7 @@ impl BlockStorage {
                                     } else {
                                         OperationHashSet::default()
                                     };
-                                cur_ops.insert(op_id);
+                                cur_ops.insert(*op_id);
                                 vac.insert(cur_ops);
                             }
                         }
@@ -479,15 +417,7 @@ impl BlockStorage {
                     } else {
                         BlockHashSet::default()
                     };
-
-                ids.insert(block.header.compute_block_id().map_err(|err| {
-                    sled::transaction::ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(format!(
-                            "error computing block id: {:?}",
-                            err
-                        )),
-                    )
-                })?);
+                ids.insert(block_id);
 
                 let ivec = block_id_to_ivec(&ids).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
@@ -500,7 +430,17 @@ impl BlockStorage {
                 addr_to_block.insert(&creator_addr.to_bytes(), ivec)?;
                 Ok(true)
             })
-            .map_err(|err| StorageError::AddBlockError(format!("Error adding a block: {:?}", err)))
+            .map_err(|err| {
+                StorageError::AddBlockError(format!("Error adding a block: {:?}", err))
+            })?;
+
+        //add the new block
+        if is_new {
+            self.block_count.fetch_add(1, Ordering::Release);
+            self.notify.notify_one();
+        };
+
+        Ok(is_new)
     }
 
     pub async fn len(&self) -> Result<usize, StorageError> {

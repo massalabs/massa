@@ -135,7 +135,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             .map(|endo| endo.compute_endorsement_id())
             .collect::<Result<_, _>>()?;
 
-        let addresses_to_operations = block.block.involved_addresses()?;
+        let addresses_to_operations = block.block.involved_addresses(&operation_set)?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&block.block.header.content.creator)?,
             block: block.block,
@@ -851,6 +851,14 @@ enum HeaderCheckOutcome {
     WaitForDependencies(BlockHashSet),
 }
 
+/// Possible outcomes of endorsements check
+#[derive(Debug)]
+enum EndorsementsCheckOutcome {
+    Proceed,
+    Discard(DiscardReason),
+    WaitForSlot,
+}
+
 #[derive(Debug)]
 enum BlockCheckOutcome {
     Proceed {
@@ -1072,7 +1080,7 @@ impl BlockGraph {
 
         // get roll updates
         let op_roll_updates = operation.get_roll_updates()?;
-        // get ledger changes
+        // get ledger changes (includes fee distribution)
         let op_ledger_changes = operation.get_ledger_changes(
             block_creator_address,
             state_accu.endorsers_addresses.clone(),
@@ -1081,7 +1089,6 @@ impl BlockGraph {
             self.cfg.roll_price,
             self.cfg.endorsement_count,
         )?;
-        // todo add reward
         // apply to block state accumulator
         self.block_state_try_apply(
             state_accu,
@@ -2191,7 +2198,8 @@ impl BlockGraph {
             }
         };
 
-        let valid_block_addresses_to_operations = valid_block.involved_addresses()?;
+        let valid_block_addresses_to_operations =
+            valid_block.involved_addresses(&valid_block_operation_set)?;
 
         // add block to graph
         self.add_block_to_graph(
@@ -2303,7 +2311,7 @@ impl BlockGraph {
     /// - TODO: check for double staking.
     /// - Check parents are present.
     /// - Check the topological consistency of the parents.
-    /// - Check endorsements (note: separate into func?).
+    /// - Check endorsements.
     /// - Check thread incompatibility test.
     /// - Check grandpa incompatibility test.
     /// - Check if the block is incompatible with a parent.
@@ -2517,42 +2525,12 @@ impl BlockGraph {
         })?;
 
         // check endorsements
-        let endorsement_draws =
-            match pos.draw_endorsement_producers(parent_in_own_thread.block.header.content.slot) {
-                Ok(draws) => draws,
-                Err(ConsensusError::PosCycleUnavailable(_)) => {
-                    // slot is not available yet
-                    return Ok(HeaderCheckOutcome::WaitForSlot);
-                }
-                Err(err) => return Err(err),
-            };
-        for endorsement in header.content.endorsements.iter() {
-            // check that the draw is correct
-            if Address::from_public_key(&endorsement.content.sender_public_key)?
-                != endorsement_draws[endorsement.content.index as usize]
-            {
-                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!(
-                        "endorser draw mismatch for header in slot: {}",
-                        header.content.slot
-                    ),
-                )));
+        match self.check_endorsements(header, pos, parent_in_own_thread)? {
+            EndorsementsCheckOutcome::Proceed => {}
+            EndorsementsCheckOutcome::Discard(reason) => {
+                return Ok(HeaderCheckOutcome::Discard(reason))
             }
-            // check that the endorsement slot matches the endorsed block
-            if endorsement.content.slot != parent_in_own_thread.block.header.content.slot {
-                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
-                            parent_in_own_thread.block.header.content.slot, endorsement.content.slot),
-                )));
-            }
-
-            // note that the following aspects are checked in protocol
-            // * signature
-            // * intra block endorsement reuse
-            // * intra block index reuse
-            // * slot in the same thread as block's slot
-            // * slot is before the block's slot
-            // * the endorsed block is the parent in the same thread
+            EndorsementsCheckOutcome::WaitForSlot => return Ok(HeaderCheckOutcome::WaitForSlot),
         }
 
         // thread incompatibility test
@@ -2660,6 +2638,57 @@ impl BlockGraph {
             inherited_incompatibilities_count: inherited_incomp_count,
             production_events,
         })
+    }
+
+    /// check endorsements:
+    /// * endorser was selected for that (slot, index)
+    /// * endorsed slot is parent_in_own_thread slot
+    fn check_endorsements(
+        &self,
+        header: &BlockHeader,
+        pos: &mut ProofOfStake,
+        parent_in_own_thread: &ActiveBlock,
+    ) -> Result<EndorsementsCheckOutcome, ConsensusError> {
+        // check endorsements
+        let endorsement_draws =
+            match pos.draw_endorsement_producers(parent_in_own_thread.block.header.content.slot) {
+                Ok(draws) => draws,
+                Err(ConsensusError::PosCycleUnavailable(_)) => {
+                    // slot is not available yet
+                    return Ok(EndorsementsCheckOutcome::WaitForSlot);
+                }
+                Err(err) => return Err(err),
+            };
+        for endorsement in header.content.endorsements.iter() {
+            // check that the draw is correct
+            if Address::from_public_key(&endorsement.content.sender_public_key)?
+                != endorsement_draws[endorsement.content.index as usize]
+            {
+                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!(
+                        "endorser draw mismatch for header in slot: {}",
+                        header.content.slot
+                    ),
+                )));
+            }
+            // check that the endorsement slot matches the endorsed block
+            if endorsement.content.slot != parent_in_own_thread.block.header.content.slot {
+                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!("endorsement targets a block with wrong slot. Block's parent: {}, endorsement: {}",
+                            parent_in_own_thread.block.header.content.slot, endorsement.content.slot),
+                )));
+            }
+
+            // note that the following aspects are checked in protocol
+            // * signature
+            // * intra block endorsement reuse
+            // * intra block index reuse
+            // * slot in the same thread as block's slot
+            // * slot is before the block's slot
+            // * the endorsed block is the parent in the same thread
+        }
+
+        Ok(EndorsementsCheckOutcome::Proceed)
     }
 
     /// Process and incoming block.
@@ -3539,7 +3568,7 @@ impl BlockGraph {
     }
 
     // prune active blocks and return final blocks, return discarded final blocks
-    fn prune_active(&mut self) -> Result<BlockHashMap<Block>, ConsensusError> {
+    fn prune_active(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         // list all active blocks
         let active_blocks: BlockHashSet = self.active_index.clone();
         let mut retain_active: BlockHashSet =
@@ -3657,7 +3686,7 @@ impl BlockGraph {
         }
 
         // remove unused final active blocks
-        let mut discarded_finals: BlockHashMap<Block> = BlockHashMap::default();
+        let mut discarded_finals: BlockHashMap<ActiveBlock> = BlockHashMap::default();
         for discard_active_h in active_blocks.difference(&retain_active) {
             let discarded_active = if let Some(BlockStatus::Active(discarded_active)) =
                 self.block_statuses.remove(discard_active_h)
@@ -3690,7 +3719,7 @@ impl BlockGraph {
             );
             self.discarded_index.insert(*discard_active_h);
 
-            discarded_finals.insert(*discard_active_h, discarded_active.block);
+            discarded_finals.insert(*discard_active_h, discarded_active);
         }
 
         Ok(discarded_finals)
@@ -3935,7 +3964,7 @@ impl BlockGraph {
     }
 
     // prune and return final blocks, return discarded final blocks
-    pub fn prune(&mut self) -> Result<BlockHashMap<Block>, ConsensusError> {
+    pub fn prune(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active()?;
