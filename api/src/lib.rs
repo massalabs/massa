@@ -9,7 +9,7 @@ use consensus::ConsensusConfig;
 pub use error::ApiError;
 use filters::get_filter;
 use filters::ApiManagementCommand;
-pub use filters::{ApiEvent, OperationIds, PrivateKeys};
+pub use filters::{ApiEvent, OperationIds, PrivateKeys, TimestampedGraphInterval};
 use logging::massa_trace;
 pub use models::address::Addresses;
 pub use models::crypto::PubkeySig;

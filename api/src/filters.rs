@@ -1028,6 +1028,12 @@ async fn get_block_interval(
     Ok((res, UTime::now(0)?)) // todo add compensation_millis ?
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TimestampedGraphInterval {
+    pub blocks: Vec<(BlockId, Slot, Status, Vec<BlockId>)>,
+    pub timestamp: UTime,
+}
+
 /// Returns all block info needed to reconstruct the graph found in the time interval.
 /// The result is a vec of (hash, period, thread, status, parents hash) wrapped in a reply.
 ///
@@ -1041,7 +1047,7 @@ async fn get_graph_interval(
     end_opt: Option<UTime>,
     opt_storage_command_sender: Option<StorageAccess>,
     clock_compensation: i64,
-) -> Result<(Vec<(BlockId, Slot, Status, Vec<BlockId>)>, UTime), ApiError> {
+) -> Result<TimestampedGraphInterval, ApiError> {
     massa_trace!("api.filters.get_graph_interval_process", {});
     //filter block from graph_export
     let graph = retrieve_graph_export(&event_tx).await?;
@@ -1082,7 +1088,10 @@ async fn get_graph_interval(
             ));
         }
     }
-    Ok((res, UTime::now(clock_compensation)?)) // todo add compensation_millis ?
+    Ok(TimestampedGraphInterval {
+        blocks: res,
+        timestamp: UTime::now(clock_compensation)?,
+    })
 }
 
 /// Returns number of cliques and current cliques as `Vec<HashSet<(hash, (period, thread))>>`

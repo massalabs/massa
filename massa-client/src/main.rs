@@ -20,6 +20,7 @@ use crate::data::AddressStates;
 use crate::data::GetOperationContent;
 use crate::data::WrappedHash;
 use crate::repl::ReplError;
+use api::TimestampedGraphInterval;
 use api::{OperationIds, PrivateKeys};
 use models::address::AddressHashMap;
 use models::address::AddressHashSet;
@@ -1192,28 +1193,28 @@ fn cmd_graph_interval(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
 
     if let Some(resp) = request_data(data, &url)? {
         if resp.content_length().unwrap() > 0 {
-            let (block, timestamp) =
-                resp.json::<(Vec<(Hash, Slot, String, Vec<Hash>)>, UTime)>()?;
+            let TimestampedGraphInterval { blocks, timestamp } =
+                resp.json::<TimestampedGraphInterval>()?;
             let mut block: Vec<(
                 data::WrappedHash,
                 data::WrappedSlot,
-                String,
+                Status,
                 Vec<data::WrappedHash>,
-            )> = block
+            )> = blocks
                 .into_iter()
                 .map(|(hash1, slot, status, hash2)| {
                     (
-                        hash1.into(),
+                        hash1.0.into(),
                         slot.into(),
                         status,
-                        hash2.iter().map(|h| h.into()).collect(),
+                        hash2.iter().map(|h| h.0.into()).collect(),
                     )
                 })
                 .collect();
 
             block.sort_unstable_by_key(|v| (v.1, v.0));
             block.iter().for_each(|(hash, slot, state, parents)| {
-                println!("Block: {} Slot: {} Status:{}", hash, slot, state);
+                println!("Block: {} Slot: {} Status:{:?}", hash, slot, state);
                 println!("Block parents: {:?}", parents);
                 println!();
                 println!("Current time : {}", timestamp.to_utc_string());
