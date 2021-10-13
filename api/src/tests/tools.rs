@@ -181,6 +181,7 @@ pub fn get_api_config() -> ApiConfig {
         max_return_invalid_blocks: 5,
         selection_return_periods: 2,
         bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 3030),
+        graph_latest_timespan: 10000.into(),
     }
 }
 
