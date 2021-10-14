@@ -58,14 +58,22 @@ impl Wallet {
     }
 
     /// Adds a new private key to wallet, if it was missing
-    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), WalletError> {
+    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<Address, WalletError> {
         if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
             let pub_key = crypto::derive_public_key(&key);
-            self.keys
-                .insert(Address::from_public_key(&pub_key)?, (pub_key, key));
+            let ad = Address::from_public_key(&pub_key)?;
+            self.keys.insert(ad, (pub_key, key));
             self.save()?;
+            Ok(ad)
+        } else {
+            // key already in wallet
+            Ok(*self
+                .keys
+                .iter()
+                .find(|(_, (_, file_key))| file_key == &key)
+                .unwrap()
+                .0)
         }
-        Ok(())
     }
 
     pub fn remove_address(&mut self, address: Address) -> Option<(PublicKey, PrivateKey)> {

@@ -186,7 +186,7 @@ impl Command {
     pub(crate) async fn run(
         &self,
         client: &Client,
-        wallet: &Wallet,
+        wallet: &mut Wallet,
         parameters: &Vec<String>,
     ) -> PrettyPrint {
         match self {
@@ -310,7 +310,24 @@ impl Command {
                 }
             }
 
-            Command::wallet_add_private_keys => todo!(),
+            Command::wallet_add_private_keys => match parse_args::<PrivateKey>(parameters) {
+                Ok(x) => {
+                    let mut res = "".to_string();
+                    for key in x.into_iter() {
+                        match wallet.add_private_key(key) {
+                            Ok(ad) => {
+                                res.push_str(&format!(
+                                    "Derived and added address {:?} to the wallet\n",
+                                    ad
+                                ));
+                            }
+                            Err(e) => return repl_err!(e),
+                        }
+                    }
+                    repl_ok!(res)
+                }
+                Err(e) => repl_err!(e),
+            },
 
             Command::wallet_remove_addresses => todo!(),
 

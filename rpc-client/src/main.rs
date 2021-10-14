@@ -68,16 +68,18 @@ fn main(args: Args) {
                 None => settings.default_node.private_port,
             };
             // ...
-            let wallet = Wallet::new(args.wallet).unwrap(); // TODO
+            let mut wallet = Wallet::new(args.wallet).unwrap(); // TODO
             let client = Client::new(address, public_port, private_port).await;
             if atty::is(Stream::Stdout) && args.command == Command::help {
                 // Interactive mode
-                repl::run(&client, &wallet).await;
+                repl::run(&client, &mut wallet).await;
             } else {
                 // Non-Interactive mode
                 println!(
                     "{}",
-                    args.command.run(&client, &wallet, &args.parameters).await
+                    args.command
+                        .run(&client, &mut wallet, &args.parameters)
+                        .await
                 );
             }
         });
