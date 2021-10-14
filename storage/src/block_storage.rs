@@ -3,9 +3,10 @@
 use crate::error::{InternalError, StorageError};
 use models::{
     address::AddressHashMap, array_from_slice, hhasher::BuildHHasher, Address, Block, BlockHashMap,
-    BlockHashSet, BlockId, DeserializeCompact, OperationHashMap, OperationHashSet, OperationId,
-    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
-    SerializeCompact, Slot, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
+    BlockHashSet, BlockId, DeserializeCompact, Endorsement, EndorsementHashMap, EndorsementHashSet,
+    OperationHashMap, OperationHashSet, OperationId, OperationSearchResult,
+    OperationSearchResultBlockStatus, OperationSearchResultStatus, SerializeCompact, Slot,
+    BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES,
 };
 use sled::{self, transaction::TransactionalTree, IVec, Transactional};
 use std::{
@@ -646,5 +647,19 @@ impl BlockStorage {
                 Ok(BlockHashSet::default())
             }
         })?)
+    }
+
+    pub async fn get_endorsements_by_address(
+        &self,
+        address: &Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, StorageError> {
+        todo!()
+    }
+
+    pub async fn get_endorsements_by_id(
+        &self,
+        endorsements: &EndorsementHashSet,
+    ) -> Result<EndorsementHashMap<Endorsement>, StorageError> {
+        todo!()
     }
 }

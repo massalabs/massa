@@ -14,11 +14,12 @@ serde_json = { version = "1.0" }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 # custom modules
-communication = {path = "../communication"}
+api-dto = { path = "../api-dto"}
+communication = { path = "../communication"}
 crypto = { path = "../crypto" }
 logging = { path = "../logging" }
-models = {path = "../models"}
-time= { path = "../time"}
+models = { path = "../models"}
+time = { path = "../time"}
 
 [dev-dependencies]
 pretty_assertions = "0.7"

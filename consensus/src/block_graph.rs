@@ -19,9 +19,10 @@ use models::ledger::LedgerChange;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHashMap,
     BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, DeserializeVarInt,
-    EndorsementId, ModelsError, Operation, OperationHashMap, OperationHashSet,
-    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
-    SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES,
+    Endorsement, EndorsementHashMap, EndorsementHashSet, EndorsementId, ModelsError, Operation,
+    OperationHashMap, OperationHashSet, OperationSearchResult, OperationSearchResultBlockStatus,
+    OperationSearchResultStatus, SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
+    BLOCK_ID_SIZE_BYTES,
 };
 
 use crate::error::ConsensusError;
@@ -4051,6 +4052,20 @@ impl BlockGraph {
     // Must be called by the consensus worker within `block_db_changed`.
     pub fn get_new_stale_blocks(&mut self) -> BlockHashMap<Slot> {
         mem::take(&mut self.new_stale_blocks)
+    }
+
+    pub(crate) fn get_endorsement_by_address(
+        &self,
+        address: Address,
+    ) -> EndorsementHashMap<Endorsement> {
+        todo!()
+    }
+
+    pub(crate) fn get_endorsement_by_id(
+        &self,
+        endorsements: EndorsementHashSet,
+    ) -> EndorsementHashMap<Endorsement> {
+        todo!()
     }
 }
 

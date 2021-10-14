@@ -3,16 +3,16 @@
 use super::{config::PoolConfig, error::PoolError};
 use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
+use api_dto::EndorsementInfo;
 use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationId, OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementHashSet, EndorsementId,
+    Operation, OperationHashMap, OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
-use tokio::sync::{mpsc, oneshot};
-
 use serde::{Deserialize, Serialize};
+use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.
 #[derive(Debug)]
@@ -44,6 +44,14 @@ pub enum PoolCommand {
     },
     AddEndorsements(EndorsementHashMap<Endorsement>),
     GetStats(oneshot::Sender<PoolStats>),
+    GetEndorsementsByAddress {
+        address: Address,
+        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+    },
+    GetEndorsementsById {
+        endorsements: EndorsementHashSet,
+        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -224,6 +232,18 @@ impl PoolWorker {
                     operation_count: self.operation_pool.len() as u64,
                     endorsement_count: self.endorsement_pool.len() as u64,
                 })
+                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::GetEndorsementsByAddress {
+                response_tx,
+                address,
+            } => response_tx
+                .send(EndorsementInfo { /* TODO */ })
+                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::GetEndorsementsById {
+                response_tx,
+                endorsements,
+            } => response_tx
+                .send(EndorsementInfo { /* TODO */ })
                 .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
         }
         Ok(())
