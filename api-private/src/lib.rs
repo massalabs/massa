@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![feature(async_closure)]
-use api_dto::config::APIConfig;
+use api_dto::APIConfig;
 use communication::network::NetworkCommandSender;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
