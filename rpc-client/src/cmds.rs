@@ -186,7 +186,7 @@ impl Command {
     pub(crate) async fn run(
         &self,
         client: &Client,
-        _wallet: &Wallet,
+        wallet: &Wallet,
         parameters: &Vec<String>,
     ) -> PrettyPrint {
         match self {
@@ -301,7 +301,14 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::wallet_info => todo!(),
+            Command::wallet_info => {
+                let addrs = wallet.get_full_wallet().keys().copied().collect();
+                // TODO: maybe too much info in wallet_info
+                match client.public.get_addresses(addrs).await {
+                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Err(e) => repl_err!(e),
+                }
+            }
 
             Command::wallet_add_private_keys => todo!(),
 
