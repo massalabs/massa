@@ -9,6 +9,7 @@ use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
+use wallet::Wallet;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, ToString)]
@@ -182,7 +183,12 @@ impl Command {
         ))
     }
 
-    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>) -> PrettyPrint {
+    pub(crate) async fn run(
+        &self,
+        client: &Client,
+        _wallet: &Wallet,
+        parameters: &Vec<String>,
+    ) -> PrettyPrint {
         match self {
             Command::exit => process::exit(0),
 

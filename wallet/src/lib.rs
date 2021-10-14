@@ -9,6 +9,7 @@ use models::amount::Amount;
 use models::crypto::PubkeySig;
 use models::ledger::LedgerData;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use time::UTime;
 
 mod error;
@@ -17,15 +18,14 @@ mod error;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wallet {
     keys: AddressHashMap<(PublicKey, PrivateKey)>,
-    wallet_path: String,
+    wallet_path: PathBuf,
 }
 
 impl Wallet {
     /// Generates a new wallet initialized with the provided json file content
-    pub fn new(json_file: &str) -> Result<Wallet, WalletError> {
-        let path = std::path::Path::new(json_file);
+    pub fn new(path: PathBuf) -> Result<Wallet, WalletError> {
         let keys = if path.is_file() {
-            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(path)?)?
+            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(&path)?)?
         } else {
             Vec::new()
         };
@@ -38,7 +38,7 @@ impl Wallet {
             .collect::<Result<AddressHashMap<_>, WalletError>>()?;
         Ok(Wallet {
             keys,
-            wallet_path: json_file.to_string(),
+            wallet_path: path,
         })
     }
 

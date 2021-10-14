@@ -393,7 +393,7 @@ fn main() {
         Some(file_name) => file_name,
         None => "wallet.dat",
     };
-    match Wallet::new(file_name) {
+    match Wallet::new(file_name.parse().unwrap()) {
         Ok(wallet) => {
             repl.data.wallet = Some(wallet);
             repl.activate_command("wallet_info");
