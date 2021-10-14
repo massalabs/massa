@@ -1032,7 +1032,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            println!("res:{:?}", res);
+            println!("res: {:?}", res);
             assert!(false, "ToManyConnectionFailure error not return");
         }
 
@@ -1048,7 +1048,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
         } else {
-            println!("res:{:?}", res);
+            println!("res: {:?}", res);
             assert!(false, "PeerInfoNotFoundError error not return");
         }
         //peer with no attempt.
@@ -1060,7 +1060,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
         } else {
-            println!("res:{:?}", res);
+            println!("res: {:?}", res);
             assert!(false, "ToManyConnectionFailure error not return");
         }
 
@@ -1150,7 +1150,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
         } else {
-            println!("res:{:?}", res);
+            println!("res: {:?}", res);
             assert!(false, "PeerInfoNotFoundError error not return");
         }
 

@@ -551,7 +551,7 @@ impl ConsensusWorker {
                 .get_active_block(&ancestor_id)
                 .ok_or_else(|| {
                     ConsensusError::ContainerInconsistency(format!(
-                        "missing ancestor to check operation reuse for block creation: {:?}",
+                        "missing ancestor to check operation reuse for block creation: {}",
                         ancestor_id
                     ))
                 })?;
@@ -705,7 +705,7 @@ impl ConsensusWorker {
                     .send(BlockGraphExport::from(&self.block_db))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
-                            "could not send GetBlockGraphStatus answer:{:?}",
+                            "could not send GetBlockGraphStatus answer: {:?}",
                             err
                         ))
                     })
@@ -727,7 +727,7 @@ impl ConsensusWorker {
                     )
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
-                            "could not send GetBlock answer:{:?}",
+                            "could not send GetBlock answer: {:?}",
                             err
                         ))
                     })
@@ -745,7 +745,7 @@ impl ConsensusWorker {
                     .send(self.block_db.get_export_block_status(&block_id))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
-                            "could not send GetBlock Status answer:{:?}",
+                            "could not send GetBlock Status answer: {:?}",
                             err
                         ))
                     })
@@ -811,7 +811,7 @@ impl ConsensusWorker {
                 );
                 response_tx.send(resp).map_err(|err| {
                     ConsensusError::SendChannelError(format!(
-                        "could not send GetBootstrapState answer:{:?}",
+                        "could not send GetBootstrapState answer: {:?}",
                         err
                     ))
                 })

@@ -17,6 +17,7 @@ use crypto::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
 
 pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
@@ -76,12 +77,42 @@ pub struct Operation {
     pub signature: Signature,
 }
 
+impl std::fmt::Display for Operation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Content: {}", self.content)?;
+        writeln!(f, "Signature: {}", self.signature)?;
+        Ok(())
+        /* TODO
+        let op_type = WrapperOperationType::from(&self.0.content.op);
+        let addr = Address::from_public_key(&self.0.content.sender_public_key)
+            .map_err(|_| std::fmt::Error)?;
+        let amount: String = self.0.content.fee.to_string();
+        writeln!(
+            f,
+            "sender: {}     fee: {}     expire_period: {}",
+            addr, amount, self.0.content.expire_period,
+        )?;
+        writeln!(f, "{}", op_type)
+        */
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OperationContent {
     pub sender_public_key: PublicKey,
     pub fee: Amount,
     pub expire_period: u64,
     pub op: OperationType,
+}
+
+impl std::fmt::Display for OperationContent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Sender public key: {}", self.sender_public_key)?;
+        writeln!(f, "Fee: {}", self.fee)?;
+        writeln!(f, "Expire period: {}", self.expire_period)?;
+        writeln!(f, "Operation type: {}", self.op)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,6 +127,30 @@ pub enum OperationType {
     RollSell {
         roll_count: u64,
     },
+}
+
+impl std::fmt::Display for OperationType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationType::Transaction {
+                recipient_address,
+                amount,
+            } => {
+                writeln!(f, "Transaction:")?;
+                writeln!(f, "\t- Recipient:{}", recipient_address)?;
+                writeln!(f, "\t  Amount:{}", amount)?;
+            }
+            OperationType::RollBuy { roll_count } => {
+                writeln!(f, "Buy rolls:")?;
+                write!(f, "\t- Roll count:{}", roll_count)?;
+            }
+            OperationType::RollSell { roll_count } => {
+                writeln!(f, "Sell rolls:")?;
+                write!(f, "\t- Roll count:{}", roll_count)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Checks performed:
@@ -364,7 +419,7 @@ mod tests {
         };
         let ser_type = op.to_bytes_compact().unwrap();
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
-        assert_eq!(format!("{:?}", res_type), format!("{:?}", op));
+        assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = OperationContent {
             fee: Amount::from_str("20").unwrap(),
@@ -375,7 +430,7 @@ mod tests {
 
         let ser_content = content.to_bytes_compact().unwrap();
         let (res_content, _) = OperationContent::from_bytes_compact(&ser_content).unwrap();
-        assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
+        assert_eq!(format!("{}", res_content), format!("{}", content));
 
         let hash = Hash::hash(&content.to_bytes_compact().unwrap());
         let signature = crypto::sign(&hash, &sender_priv).unwrap();
@@ -387,7 +442,7 @@ mod tests {
 
         let ser_op = op.to_bytes_compact().unwrap();
         let (res_op, _) = Operation::from_bytes_compact(&ser_op).unwrap();
-        assert_eq!(format!("{:?}", res_op), format!("{:?}", op));
+        assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
     }

@@ -1,3 +1,5 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
 /// Unsafe but fast hasher that is used when the thing to hash is itself already a hash
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;

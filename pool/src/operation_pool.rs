@@ -289,7 +289,7 @@ impl OperationPool {
                 if let Some(w_op) = self.ops.get(id) {
                     if !w_op.op.get_validity_range(self.operation_validity_periods)
                         .contains(&block_slot.period) || w_op.byte_count > max_size {
-                            massa_trace!("pool get_operation_batch not added to batch w_op.op.get_validity_range incorrect not added", { 
+                            massa_trace!("pool get_operation_batch not added to batch w_op.op.get_validity_range incorrect not added", {
                                 "range": w_op.op.get_validity_range(self.operation_validity_periods),
                                 "block_slot.period": block_slot.period
                             });
@@ -298,7 +298,7 @@ impl OperationPool {
                     Some(Ok((*id, w_op.op.clone(), w_op.byte_count)))
                 } else {
                     Some(Err(PoolError::ContainerInconsistency(
-                        format!("operation pool get_ops inconsistency: op_id={:?} is in ops_by_thread_and_interest but not in ops", id)
+                        format!("operation pool get_ops inconsistency: op_id={} is in ops_by_thread_and_interest but not in ops", id)
                     )))
                 }
             })

@@ -107,10 +107,7 @@ async fn get_state_internal(
         let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
             BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
         })?;
-        debug!(
-            "Server clock compensation set to: {:?}",
-            compensation_millis
-        );
+        debug!("Server clock compensation set to: {}", compensation_millis);
         compensation_millis
     } else {
         0
@@ -190,7 +187,7 @@ pub async fn get_state(
 
             match get_state_internal(&cfg, addr, pub_key, &mut establisher, version).await {
                 Err(e) => {
-                    warn!("error while bootstrapping: {:?}", e);
+                    warn!("error while bootstrapping: {}", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
                 Ok((pos, graph, compensation, peers)) => {
@@ -353,7 +350,7 @@ impl BootstrapServer {
                     bootstrap_sessions.push(async move {
                         match manage_bootstrap(cfg_copy, dplx, data_pos, data_graph, data_peers, private_key, compensation_millis, version).await {
                             Ok(_) => info!("bootstrapped peer {}", remote_addr),
-                            Err(err) => debug!("bootstrap serving error for peer {}: {:?}", remote_addr, err),
+                            Err(err) => debug!("bootstrap serving error for peer {}: {}", remote_addr, err),
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});

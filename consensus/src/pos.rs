@@ -328,7 +328,7 @@ impl SerializeCompact for ExportProofOfStake {
         for thread_lst in self.cycle_states.iter() {
             let cycle_count: u32 = thread_lst.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
-                    "too many cycles when serializing ExportProofOfStake: {:?}",
+                    "too many cycles when serializing ExportProofOfStake: {}",
                     err
                 ))
             })?;
@@ -382,7 +382,7 @@ impl SerializeCompact for ThreadCycleState {
         // roll count
         let n_entries: u32 = self.roll_count.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState roll_count: {:?}",
+                "too many entries when serializing ExportThreadCycleState roll_count: {}",
                 err
             ))
         })?;
@@ -395,7 +395,7 @@ impl SerializeCompact for ThreadCycleState {
         // cycle updates
         let n_entries: u32 = self.cycle_updates.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState cycle_updates: {:?}",
+                "too many entries when serializing ExportThreadCycleState cycle_updates: {}",
                 err
             ))
         })?;
@@ -408,7 +408,7 @@ impl SerializeCompact for ThreadCycleState {
         // rng seed
         let n_entries: u32 = self.rng_seed.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState rng_seed: {:?}",
+                "too many entries when serializing ExportThreadCycleState rng_seed: {}",
                 err
             ))
         })?;
@@ -418,7 +418,7 @@ impl SerializeCompact for ThreadCycleState {
         // production stats
         let n_entries: u32 = self.production_stats.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState production_stats: {:?}",
+                "too many entries when serializing ExportThreadCycleState production_stats: {}",
                 err
             ))
         })?;

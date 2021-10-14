@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Address(Hash);
 
 pub type AddressHashMap<T> = HHashMap<Address, T>;

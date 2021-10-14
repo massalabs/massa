@@ -41,7 +41,7 @@ struct Args {
     )]
     _wallet: PathBuf, // TODO: use me with Wallet::new(args.wallet)
     #[structopt(short = "j", long = "json")]
-    json: bool,
+    _json: bool, // TODO: use me with serde::Serialize/Deserialize traits
 }
 
 #[paw::main]
@@ -52,6 +52,7 @@ fn main(args: Args) {
         .build()
         .unwrap()
         .block_on(async {
+            // TODO: Move settings loading in another crate
             let settings = Settings::load();
             let address = match args.ip {
                 Some(ip) => ip,
@@ -65,19 +66,14 @@ fn main(args: Args) {
                 Some(private_port) => private_port,
                 None => settings.default_node.private_port,
             };
+            // ...
             let client = Client::new(address, public_port, private_port).await;
             if atty::is(Stream::Stdout) && args.command == Command::help {
-                repl::run(&client).await; // Interactive mode
+                // Interactive mode
+                repl::run(&client).await;
             } else {
-                let output = args.command.run(&client, &args.parameters).await; // Non-Interactive mode
-                println!(
-                    "{}",
-                    if args.json {
-                        serde_json::to_string(&output).expect("failed to serialize command output")
-                    } else {
-                        output
-                    }
-                );
+                // Non-Interactive mode
+                println!("{}", args.command.run(&client, &args.parameters).await);
             }
         });
 }

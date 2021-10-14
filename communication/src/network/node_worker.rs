@@ -180,7 +180,7 @@ impl NodeWorker {
                             }
                             Ok(Err(err)) => {
                                 massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.error", {
-                                    "node": node_id_copy, "err":  format!("{:?}", err), "msg": msg
+                                    "node": node_id_copy, "err":  format!("{}", err), "msg": msg
                                 });
                                 return Err(err);
                             }
@@ -211,15 +211,15 @@ impl NodeWorker {
                     writer_joined = true;
                     match res {
                         Err(err) => {
-                            massa_trace!("node_worker.run_loop.node_writer_handle.panic", {"node": self.node_id, "err": format!("{:?}", err)});
-                            warn!("writer exited unexpectedly for node {:?}", self.node_id);
+                            massa_trace!("node_worker.run_loop.node_writer_handle.panic", {"node": self.node_id, "err": format!("{}", err)});
+                            warn!("writer exited unexpectedly for node {}", self.node_id);
                             if exit_reason != ConnectionClosureReason::Banned {
                                 exit_reason = ConnectionClosureReason::Failed;
                             }
                             break;
                         },
                         Ok(Err(err)) => {
-                            massa_trace!("node_worker.run_loop.node_writer_handle.error", {"node": self.node_id, "err": format!("{:?}", err)});
+                            massa_trace!("node_worker.run_loop.node_writer_handle.error", {"node": self.node_id, "err": format!("{}", err)});
                             if exit_reason != ConnectionClosureReason::Banned {
                                 exit_reason = ConnectionClosureReason::Failed;
                             }
@@ -286,7 +286,7 @@ impl NodeWorker {
                         break
                     }, // peer closed cleanly
                     Err(err) => {  //stream error
-                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{:?}", err)});
+                        massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{}", err)});
                         exit_reason = ConnectionClosureReason::Failed;
                         break;
                     },
@@ -361,7 +361,7 @@ impl NodeWorker {
                 },
 
                 _ = ask_peer_list_interval.tick() => {
-                    debug!("timer-based asking node_id={:?} for peer list", self.node_id);
+                    debug!("timer-based asking node_id={} for peer list", self.node_id);
                     massa_trace!("node_worker.run_loop. timer_ask_peer_list", {"node_id": self.node_id});
                     massa_trace!("node_worker.run_loop.select.timer send Message::AskPeerList", {"node": self.node_id});
                     writer_command_tx.send(Message::AskPeerList).await.map_err(
@@ -384,12 +384,12 @@ impl NodeWorker {
         if !writer_joined {
             match node_writer_handle.await {
                 Err(err) => {
-                    massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.panic", {"node": self.node_id, "err": format!("{:?}", err)});
-                    warn!("writer exited unexpectedly for node {:?}", self.node_id);
+                    massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.panic", {"node": self.node_id, "err": format!("{}", err)});
+                    warn!("writer exited unexpectedly for node {}", self.node_id);
                     exit_reason = ConnectionClosureReason::Failed;
                 }
                 Ok(Err(err)) => {
-                    massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.error", {"node": self.node_id, "err": format!("{:?}", err)});
+                    massa_trace!("node_worker.run_loop.cleanup.node_writer_handle.error", {"node": self.node_id, "err": format!("{}", err)});
                     exit_reason = ConnectionClosureReason::Failed;
                 }
                 Ok(Ok(())) => {

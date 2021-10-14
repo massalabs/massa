@@ -15,16 +15,10 @@ thread_local!(static SIGNATURE_ENGINE: SignatureEngine = SignatureEngine(Secp256
 
 /// Private Key used to sign messages
 /// Generated using SignatureEngine.
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct PrivateKey(secp256k1::SecretKey);
 
 impl std::fmt::Display for PrivateKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
-    }
-}
-
-impl std::fmt::Debug for PrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
     }
@@ -96,10 +90,7 @@ impl PrivateKey {
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                CryptoError::ParsingError(format!(
-                    "private key bs58_check parsing error: {:?}",
-                    err
-                ))
+                CryptoError::ParsingError(format!("private key bs58_check parsing error: {}", err))
             })
             .and_then(|key| {
                 PrivateKey::from_bytes(&key.try_into().map_err(|err| {
@@ -126,7 +117,7 @@ impl PrivateKey {
         secp256k1::SecretKey::from_slice(&data[..])
             .map(PrivateKey)
             .map_err(|err| {
-                CryptoError::ParsingError(format!("private key bytes parsing error: {:?}", err))
+                CryptoError::ParsingError(format!("private key bytes parsing error: {}", err))
             })
     }
 }
@@ -231,16 +222,10 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
 /// Public key used to check if a message was encoded
 /// by the corresponding PublicKey.
 /// Generated from the PrivateKey using SignatureEngine
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PublicKey(secp256k1::PublicKey);
 
 impl std::fmt::Display for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
-    }
-}
-
-impl std::fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
     }
@@ -320,7 +305,7 @@ impl PublicKey {
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                CryptoError::ParsingError(format!("public key bs58_check parsing error: {:?}", err))
+                CryptoError::ParsingError(format!("public key bs58_check parsing error: {}", err))
             })
             .and_then(|key| {
                 PublicKey::from_bytes(&key.try_into().map_err(|err| {
@@ -349,7 +334,7 @@ impl PublicKey {
         secp256k1::PublicKey::from_slice(&data[..])
             .map(PublicKey)
             .map_err(|err| {
-                CryptoError::ParsingError(format!("public key bytes parsing error: {:?}", err))
+                CryptoError::ParsingError(format!("public key bytes parsing error: {}", err))
             })
     }
 }
@@ -456,16 +441,10 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
 }
 
 /// Signature generated from a message and a privateKey.
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature(secp256k1::Signature);
 
 impl std::fmt::Display for Signature {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
-    }
-}
-
-impl std::fmt::Debug for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
     }
@@ -549,7 +528,7 @@ impl Signature {
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                CryptoError::ParsingError(format!("signature bs58_check parsing error: {:?}", err))
+                CryptoError::ParsingError(format!("signature bs58_check parsing error: {}", err))
             })
             .and_then(|signature| {
                 Signature::from_bytes(&signature.try_into().map_err(|err| {
@@ -579,7 +558,7 @@ impl Signature {
         secp256k1::Signature::from_compact(&data[..])
             .map(Signature)
             .map_err(|err| {
-                CryptoError::ParsingError(format!("signature bytes parsing error: {:?}", err))
+                CryptoError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
     }
 }

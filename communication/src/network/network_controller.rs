@@ -60,27 +60,27 @@ pub async fn start_network_controller(
             .map_err(|err| {
                 std::io::Error::new(
                     err.kind(),
-                    format!("could not load node private key file: {:?}", err),
+                    format!("could not load node private key file: {}", err),
                 )
             })?;
         PrivateKey::from_bs58_check(private_key_bs58_check.trim()).map_err(|err| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("node private key file corrupted: {:?}", err),
+                format!("node private key file corrupted: {}", err),
             )
         })?
     } else {
         // node file does not exist: generate the key and save it
         let priv_key = generate_random_private_key();
         if let Err(e) = tokio::fs::write(&cfg.private_key_file, &priv_key.to_bs58_check()).await {
-            warn!("could not generate node private key file: {:?}", e);
+            warn!("could not generate node private key file: {}", e);
         }
         priv_key
     };
     let public_key = derive_public_key(&private_key);
     let self_node_id = NodeId(public_key);
 
-    info!("The node_id of this node is: {:?}", self_node_id);
+    info!("The node_id of this node is: {}", self_node_id);
     massa_trace!("self_node_id", { "node_id": self_node_id });
 
     // create listener
@@ -116,7 +116,7 @@ pub async fn start_network_controller(
         .await;
         match res {
             Err(err) => {
-                error!("network worker crashed: {:?}", err);
+                error!("network worker crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {
