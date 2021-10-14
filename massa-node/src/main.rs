@@ -6,7 +6,6 @@
 extern crate logging;
 pub use api::ApiEvent;
 use api::{start_api_controller, ApiEventReceiver, ApiManager};
-// TODO: use api_eth::{EthRpc, API as APIEth};
 use api_private::{ApiMassaPrivate, ApiMassaPrivateStopHandle};
 use api_public::{ApiMassaPublic, ApiMassaPublicStopHandle};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
@@ -197,10 +196,6 @@ async fn launch(
         clock_compensation,
     );
     let api_public_handle = api_public.serve_massa_public();
-
-    // TODO: This will implemented later ...
-    // let api_eth = APIEth::from_url("127.0.0.1:33036");
-    // api_eth.serve_eth_rpc();
 
     (
         pool_command_sender,
@@ -738,7 +733,6 @@ async fn main() {
         .module("api")
         .module("api_private")
         .module("api_public")
-        .module("rpc_server")
         .module("rpc_client")
         .module("wallet")
         .module("pool")

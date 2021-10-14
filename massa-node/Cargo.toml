@@ -18,15 +18,14 @@ tokio-util = { version = "0.6", features = ["codec"] }
 # custom modules
 pool = { path = "../pool" }
 api = { path = "../api" }
-api-eth = { path = "../api-eth" }
 api-private = { path = "../api-private" }
 api-public = { path = "../api-public" }
+api-dto = { path = "../api-dto" }
 bootstrap = { path = "../bootstrap" }
 communication = { path = "../communication" }
 consensus = { path = "../consensus" }
 logging = { path = "../logging" }
 models = { path = "../models" }
-rpc-server = { path = "../rpc-server" }
 storage = { path = "../storage" }
 time = { path = "../time" }
 

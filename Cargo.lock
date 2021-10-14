@@ -68,17 +68,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-eth"
-version = "0.1.0"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-derive",
- "jsonrpc-http-server",
- "models",
- "rpc-server",
-]
-
-[[package]]
 name = "api-private"
 version = "0.1.0"
 dependencies = [
@@ -92,7 +81,6 @@ dependencies = [
  "jsonrpc-http-server",
  "log",
  "models",
- "rpc-server",
  "thiserror",
  "time 0.1.0",
  "tokio",
@@ -113,7 +101,6 @@ dependencies = [
  "log",
  "models",
  "pool",
- "rpc-server",
  "storage",
  "thiserror",
  "time 0.1.0",
@@ -1241,7 +1228,7 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "api",
- "api-eth",
+ "api-dto",
  "api-private",
  "api-public",
  "bootstrap",
@@ -1254,7 +1241,6 @@ dependencies = [
  "models",
  "pool",
  "pretty_assertions",
- "rpc-server",
  "serde 1.0.130",
  "serde_json",
  "serial_test",
@@ -2144,16 +2130,6 @@ dependencies = [
  "strum_macros",
  "time 0.1.0",
  "tokio",
-]
-
-[[package]]
-name = "rpc-server"
-version = "0.1.0"
-dependencies = [
- "communication",
- "consensus",
- "pool",
- "serde 1.0.130",
 ]
 
 [[package]]

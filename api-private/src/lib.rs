@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![feature(async_closure)]
+use api_dto::config::APIConfig;
 use communication::network::NetworkCommandSender;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
 use crypto::signature::{PrivateKey, PublicKey, Signature};
@@ -11,8 +12,6 @@ use jsonrpc_http_server::ServerBuilder;
 use log::{info, warn};
 use models::address::{Address, AddressHashSet};
 use models::node::NodeId;
-use rpc_server::APIConfig;
-pub use rpc_server::API;
 use std::net::IpAddr;
 use std::thread;
 use std::thread::JoinHandle;
