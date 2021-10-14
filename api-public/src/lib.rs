@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(async_closure)]
+use api_dto::config::APIConfig;
 use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     RollsInfo, TimeStats,
@@ -30,8 +31,6 @@ use models::OperationHashSet;
 use models::{Address, BlockId, Slot};
 use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
-use rpc_server::APIConfig;
-pub use rpc_server::API;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::thread;
