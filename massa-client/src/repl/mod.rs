@@ -304,7 +304,7 @@ impl Repl {
                     break;
                 }
                 Err(err) => {
-                    println!("Read input error: {:?}", err);
+                    println!("Read input error: {}", err);
                     continue;
                 }
             }

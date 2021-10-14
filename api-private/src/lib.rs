@@ -137,7 +137,7 @@ impl MassaPrivate for ApiMassaPrivate {
         let stop = self.stop_node_channel.clone();
         let closure = async move || {
             stop.send(()).await.map_err(|e| {
-                PrivateApiError::SendChannelError(format!("error sending stop signal {:?}", e))
+                PrivateApiError::SendChannelError(format!("error sending stop signal {}", e))
             })?;
             Ok(())
         };

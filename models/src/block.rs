@@ -17,6 +17,7 @@ use crypto::{
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use std::fmt::Formatter;
 use std::str::FromStr;
 
 pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
@@ -108,7 +109,7 @@ impl Block {
                 let op = &self.operations[*op_idx];
                 let addrs = op.get_ledger_involved_addresses().map_err(|err| {
                     ModelsError::DeserializeError(format!(
-                        "could not get involved addresses: {:?}",
+                        "could not get involved addresses: {}",
                         err
                     ))
                 })?;
@@ -127,6 +128,22 @@ impl Block {
     }
 }
 
+impl std::fmt::Display for Block {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.header)?;
+        writeln!(
+            f,
+            "Operations: {}",
+            self.operations
+                .iter()
+                .map(|op| format!("({}", op))
+                .collect::<Vec<String>>()
+                .join(" ")
+        )?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeaderContent {
     pub creator: PublicKey,
@@ -134,6 +151,44 @@ pub struct BlockHeaderContent {
     pub parents: Vec<BlockId>,
     pub operation_merkle_root: Hash, // all operations hash
     pub endorsements: Vec<Endorsement>,
+}
+
+impl std::fmt::Display for BlockHeaderContent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let pk = self.creator.to_string();
+        writeln!(f, "\tCreator: {}", pk)?;
+        writeln!(
+            f,
+            "\t(period: {}, thread: {})",
+            self.slot.period, self.slot.thread,
+        )?;
+        writeln!(f, "\tMerkle root: {}", self.operation_merkle_root,)?;
+        writeln!(f, "\tParents: ")?;
+        for id in self.parents.iter() {
+            let str_id = id.to_string();
+            writeln!(f, "\t\t{}", str_id)?;
+        }
+        if self.parents.is_empty() {
+            writeln!(f, "No parents found: This is a genesis header")?;
+        }
+        writeln!(f, "\tEndorsements:")?;
+        for ed in self.endorsements.iter() {
+            writeln!(f, "\t\t-----")?;
+            writeln!(f, "\t\tIndex: {}", ed.content.index)?;
+            writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
+            writeln!(
+                f,
+                "\t\tEndorser's public key: {}",
+                ed.content.sender_public_key
+            )?;
+            writeln!(f, "\t\tEndorsed block: {}", ed.content.endorsed_block)?;
+            writeln!(f, "\t\tSignature: {}", ed.signature)?;
+        }
+        if self.endorsements.is_empty() {
+            writeln!(f, "\tNo endorsements found")?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,15 +212,24 @@ impl SerializeCompact for Block {
             with_serialization_context(|context| context.max_block_operations);
 
         // operations
-        let operation_count: u32 = self.operations.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many operations: {:?}", err))
-        })?;
+        let operation_count: u32 =
+            self.operations.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!("too many operations: {}", err))
+            })?;
         res.extend(operation_count.to_be_bytes_min(max_block_operations)?);
         for operation in self.operations.iter() {
             res.extend(operation.to_bytes_compact()?);
         }
 
         Ok(res)
+    }
+}
+
+impl std::fmt::Display for BlockHeader {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Signature: {}", self.signature)?;
+        writeln!(f, "{}", self.content)?;
+        Ok(())
     }
 }
 
@@ -342,7 +406,7 @@ impl SerializeCompact for BlockHeaderContent {
 
         // endorsements
         let endorsements_count: u32 = self.endorsements.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many endorsements: {:?}", err))
+            ModelsError::SerializeError(format!("too many endorsements: {}", err))
         })?;
         res.extend(endorsements_count.to_varint_bytes());
         for endorsement in self.endorsements.iter() {

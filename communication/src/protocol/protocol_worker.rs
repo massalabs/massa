@@ -890,7 +890,7 @@ impl ProtocolWorker {
         let block_id = match header.compute_block_id() {
             Ok(id) => id,
             Err(err) => {
-                massa_trace!("protocol.protocol_worker.check_header.err_id", { "header": header, "err": format!("{:?}", err)});
+                massa_trace!("protocol.protocol_worker.check_header.err_id", { "header": header, "err": format!("{}", err)});
                 return Ok(None);
             }
         };
@@ -923,7 +923,7 @@ impl ProtocolWorker {
         {
             Err(_) => {
                 warn!(
-                    "node {:?} sent us a header containing critically incorrect endorsements",
+                    "node {} sent us a header containing critically incorrect endorsements",
                     source_node_id
                 );
                 return Ok(None);
@@ -942,7 +942,7 @@ impl ProtocolWorker {
 
         // check header signature
         if let Err(err) = header.check_signature() {
-            massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{:?}", err)});
+            massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };
 
@@ -1089,7 +1089,7 @@ impl ProtocolWorker {
                 }
                 Err(err) => {
                     massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_creator_address",
-                        { "node": source_node_id,"block_id":block_id, "block": block, "op": op, "err": format!("{:?}", err)});
+                        { "node": source_node_id,"block_id":block_id, "block": block, "op": op, "err": format!("{}", err)});
                     return Ok(None);
                 }
             }
@@ -1295,7 +1295,7 @@ impl ProtocolWorker {
                     .await;
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
-                    warn!("node {:?} sent us critically incorrect block", from_node_id);
+                    warn!("node {} sent us critically incorrect block", from_node_id);
                     let _ = self.ban_node(&from_node_id).await;
                 }
             }
@@ -1332,7 +1332,7 @@ impl ProtocolWorker {
                     self.update_ask_block(block_ask_timer).await?;
                 } else {
                     warn!(
-                        "node {:?} sent us critically incorrect header",
+                        "node {} sent us critically incorrect header",
                         source_node_id,
                     );
                     let _ = self.ban_node(&source_node_id).await;
@@ -1359,7 +1359,7 @@ impl ProtocolWorker {
                     .await
                     .is_err()
                 {
-                    warn!("node {:?} sent us critically incorrect operation", node,);
+                    warn!("node {} sent us critically incorrect operation", node,);
                     let _ = self.ban_node(&node).await;
                 }
             }
@@ -1370,7 +1370,7 @@ impl ProtocolWorker {
                     .await
                     .is_err()
                 {
-                    warn!("node {:?} sent us critically incorrect endorsements", node,);
+                    warn!("node {} sent us critically incorrect endorsements", node,);
                     let _ = self.ban_node(&node).await;
                 }
             }

@@ -76,6 +76,7 @@ impl RpcClient {
         &self,
         message: Vec<u8>,
     ) -> RpcResult<(PublicKey, Signature)> {
+        // TODO: wrapper type for (PublicKey, Signature)?
         self.0
             .call_method("node_sign_message", "(PublicKey, Signature)", message)
             .await
@@ -87,6 +88,7 @@ impl RpcClient {
         &self,
         private_keys: Vec<PrivateKey>,
     ) -> RpcResult<()> {
+        // TODO: wrapper type for Vec<PrivateKey>?
         self.0
             .call_method("add_staking_private_keys", "()", private_keys)
             .await
@@ -95,6 +97,7 @@ impl RpcClient {
     /// Remove a vec of addresses used to stake.
     /// No confirmation to expect.
     pub(crate) async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
+        // TODO: wrapper type for Vec<Address>?
         self.0
             .call_method("remove_staking_addresses", "()", addresses)
             .await
@@ -115,7 +118,8 @@ impl RpcClient {
 
     /// Unbans given ip addr
     /// No confirmation to expect.
-    pub(crate) async fn unban(&self, ip: &Vec<IpAddr>) -> RpcResult<()> {
+    pub(crate) async fn unban(&self, ip: Vec<IpAddr>) -> RpcResult<()> {
+        // TODO: wrapper type for IpAddr?
         self.0.call_method("unban", "()", ip).await
     }
 
@@ -131,6 +135,7 @@ impl RpcClient {
     }
 
     pub(crate) async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
+        // TODO: wrapper type for Vec<Clique>?
         self.0.call_method("get_cliques", "Vec<Clique>", ()).await
     }
 
@@ -138,6 +143,7 @@ impl RpcClient {
 
     /// Returns the active stakers and their roll counts for the current cycle.
     pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
+        // TODO: wrapper type for AddressHashMap<RollsInfo>?
         self.0
             .call_method("get_stakers", "AddressHashMap<RollsInfo>", ())
             .await
@@ -148,6 +154,8 @@ impl RpcClient {
         &self,
         operation_ids: Vec<OperationId>,
     ) -> RpcResult<Vec<OperationInfo>> {
+        // TODO: wrapper type for Vec<OperationId>?
+        // TODO: wrapper type for AddressHashMap<RollsInfo>?
         self.0
             .call_method("get_operations", "Vec<OperationInfo>", operation_ids)
             .await
@@ -157,6 +165,8 @@ impl RpcClient {
         &self,
         endorsement_ids: Vec<EndorsementId>,
     ) -> RpcResult<Vec<EndorsementInfo>> {
+        // TODO: wrapper type for Vec<EndorsementId>?
+        // TODO: wrapper type for Vec<EndorsementInfo>?
         self.0
             .call_method("get_endorsements", "Vec<EndorsementInfo>", endorsement_ids)
             .await
@@ -174,6 +184,7 @@ impl RpcClient {
         time_start: Option<UTime>,
         time_end: Option<UTime>,
     ) -> RpcResult<Vec<BlockSummary>> {
+        // TODO: wrapper type for Vec<BlockSummary>?
         self.0
             .call_method(
                 "get_graph_interval",
@@ -187,6 +198,8 @@ impl RpcClient {
         &self,
         addresses: Vec<Address>,
     ) -> RpcResult<Vec<AddressInfo>> {
+        // TODO: wrapper type for Vec<Address>?
+        // TODO: wrapper type for Vec<AddressInfo>>?
         self.0
             .call_method("get_addresses", "Vec<AddressInfo>", addresses)
             .await
@@ -199,6 +212,8 @@ impl RpcClient {
         &self,
         operations: Vec<Operation>,
     ) -> RpcResult<Vec<OperationId>> {
+        // TODO: wrapper type for Vec<Operation>?
+        // TODO: wrapper type for Vec<OperationId>?
         self.0
             .call_method("send_operations", "Vec<OperationId>", operations)
             .await

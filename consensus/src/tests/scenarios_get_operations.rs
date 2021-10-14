@@ -117,7 +117,7 @@ async fn test_get_operation() {
                     .flatten()
                     .collect::<Vec<_>>()[..]),
                 parents: vec![0,1].iter()
-                    .map(|idx| BlockId(Hash::hash(format!("parent {:?}", idx).as_bytes())))
+                    .map(|idx| BlockId(Hash::hash(format!("parent {}", idx).as_bytes())))
                     .collect(),
                 slot: Slot::new(1,1),
                 endorsements: Vec::new(),
@@ -311,7 +311,7 @@ async fn test_consensus_and_storage() {
                     .flatten()
                     .collect::<Vec<_>>()[..]),
                 parents: vec![0,1].iter()
-                    .map(|idx| BlockId(Hash::hash(format!("parent {:?}", idx).as_bytes())))
+                    .map(|idx| BlockId(Hash::hash(format!("parent {}", idx).as_bytes())))
                     .collect(),
                 slot: Slot::new(1,1),
                 endorsements: Vec::new(),

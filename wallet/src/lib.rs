@@ -1,27 +1,17 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-// TODO:
-//   * `wallet_info`: Shows wallet info
-//   * `wallet_new_privkey`: Generates a new private key and adds it to the wallet. Returns the associated address.
-//   * `send_transaction`: sends a transaction from <from_address> to <to_address> (from_address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <from_address> <to_address> <amount> <fee>
-//   * `wallet_add_privkey`: Adds a list of private keys to the wallet. Returns the associated addresses. Parameters: list of private keys separated by ,  (no space).
-//   * `buy_rolls`: buy roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
-//   * `sell_rolls`: sell roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
-//   * `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID>
-
-use serde::{Deserialize, Serialize};
-
+use crypto::derive_public_key;
 use crypto::hash::Hash;
 use crypto::signature::{PrivateKey, PublicKey};
+pub use error::WalletError;
 use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
 use models::crypto::PubkeySig;
 use models::ledger::LedgerData;
+use serde::{Deserialize, Serialize};
 use time::UTime;
 
 mod error;
-
-pub use error::WalletError;
 
 /// Contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
@@ -115,7 +105,6 @@ pub struct WalletInfo<'a> {
     pub balances: AddressHashMap<WrappedAddressState>,
 }
 
-// TODO: remove fmt::Display for WalletInfo?
 impl<'a> std::fmt::Display for WalletInfo<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "WARNING: do not share your private keys")?;
@@ -135,21 +124,21 @@ impl<'a> std::fmt::Display for WalletInfo<'a> {
     }
 }
 
-// FIXME: dead code...
-// impl std::fmt::Display for Wallet {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         writeln!(f)?;
-//         for key in &self.keys {
-//             let public_key = derive_public_key(key);
-//             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
-//             writeln!(f)?;
-//             writeln!(f, "Private key: {}", key)?;
-//             writeln!(f, "Public key: {}", public_key)?;
-//             writeln!(f, "Address: {}", addr)?;
-//         }
-//         Ok(())
-//     }
-// }
+impl std::fmt::Display for Wallet {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f)?;
+        for key in &self.keys {
+            let private_key = key.1 .1; // TODO: ugly ...
+            let public_key = derive_public_key(&private_key);
+            let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
+            writeln!(f)?;
+            writeln!(f, "Private key: {}", private_key)?;
+            writeln!(f, "Public key: {}", public_key)?;
+            writeln!(f, "Address: {}", addr)?;
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ConsensusConfigData {

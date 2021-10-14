@@ -217,7 +217,7 @@ async fn test_get_slot_range() {
             .get_slot_range(Some(Slot::new(4, 1)), Some(Slot::new(6, 1)))
             .await
             .unwrap();
-        //    println!("result:{:?}", result);
+        //    println!("result:{}", result);
         assert_eq!(0, result.len());
         //unique range be after
         let result = storage

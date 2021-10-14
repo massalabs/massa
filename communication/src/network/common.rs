@@ -3,22 +3,18 @@
 use serde::{Deserialize, Serialize};
 
 /// A unique connection id for a node
-#[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct ConnectionId(pub u64);
 
 impl std::fmt::Display for ConnectionId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        write!(f, "{}", self.0)
     }
 }
 
-impl std::fmt::Debug for ConnectionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ConnectionClosureReason {
     /// Connection was closed properly
     Normal,

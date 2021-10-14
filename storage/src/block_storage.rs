@@ -85,7 +85,7 @@ impl StorageCleaner {
                             .map_err(|err| {
                                 sled::transaction::ConflictableTransactionError::Abort(
                                     InternalError::TransactionError(format!(
-                                        "error deserializing block: {:?}",
+                                        "error deserializing block: {}",
                                         err
                                     )),
                                 )
@@ -97,7 +97,7 @@ impl StorageCleaner {
                                     |err| {
                                         sled::transaction::ConflictableTransactionError::Abort(
                                             InternalError::TransactionError(format!(
-                                                "error getting operation ID: {:?}",
+                                                "error getting operation ID: {}",
                                                 err
                                             )),
                                         )
@@ -109,7 +109,7 @@ impl StorageCleaner {
                                 let involved_addrs = op.get_ledger_involved_addresses().map_err(|err| {
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError(format!(
-                                            "error computing op-involved addresses: {:?}",
+                                            "error computing op-involved addresses: {}",
                                             err
                                         )),
                                     )
@@ -124,7 +124,7 @@ impl StorageCleaner {
                                                         |err| {
                                                             sled::transaction::ConflictableTransactionError::Abort(
                                                                 InternalError::TransactionError(format!(
-                                                                    "error loading operation IDs: {:?}",
+                                                                    "error loading operation IDs: {}",
                                                                     err
                                                                 )),
                                                             )
@@ -149,7 +149,7 @@ impl StorageCleaner {
                                         |err| {
                                             sled::transaction::ConflictableTransactionError::Abort(
                                                 InternalError::TransactionError(format!(
-                                                    "error serializing operation IDs: {:?}",
+                                                    "error serializing operation IDs: {}",
                                                     err
                                                 )),
                                             )
@@ -162,7 +162,7 @@ impl StorageCleaner {
                             let creator_addr = Address::from_public_key(&block.header.content.creator).map_err(|err| {
                                 sled::transaction::ConflictableTransactionError::Abort(
                                     InternalError::TransactionError(format!(
-                                        "error computing creator address: {:?}",
+                                        "error computing creator address: {}",
                                         err
                                     )),
                                 )
@@ -171,7 +171,7 @@ impl StorageCleaner {
                                 let mut ids = block_ids_from_ivec(ivec_blocks).map_err(|err| {
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError(format!(
-                                            "error deserializing block ids: {:?}",
+                                            "error deserializing block ids: {}",
                                             err
                                         )),
                                     )
@@ -179,7 +179,7 @@ impl StorageCleaner {
                                 ids.remove(&block.header.compute_block_id().map_err(|err| {
                                     sled::transaction::ConflictableTransactionError::Abort(
                                         InternalError::TransactionError(format!(
-                                            "error computing block id: {:?}",
+                                            "error computing block id: {}",
                                             err
                                         )),
                                     )
@@ -190,7 +190,7 @@ impl StorageCleaner {
                                     let ivec = block_id_to_ivec(&ids).map_err(|err| {
                                         sled::transaction::ConflictableTransactionError::Abort(
                                             InternalError::TransactionError(format!(
-                                                "error serializing block ids: {:?}",
+                                                "error serializing block ids: {}",
                                                 err
                                             )),
                                         )
@@ -350,7 +350,7 @@ impl BlockStorage {
                     let involved_addrs = op.get_ledger_involved_addresses().map_err(|err| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
-                                "error getting involved addrs: {:?}",
+                                "error getting involved addrs: {}",
                                 err
                             )),
                         )
@@ -367,7 +367,7 @@ impl BlockStorage {
                                         ops_from_ivec(ivec).map_err(|err| {
                                             sled::transaction::ConflictableTransactionError::Abort(
                                                 InternalError::TransactionError(format!(
-                                                    "error getting involved addrs: {:?}",
+                                                    "error getting involved addrs: {}",
                                                     err
                                                 )),
                                             )
@@ -386,7 +386,7 @@ impl BlockStorage {
                     let ivec = ops_to_ivec(&op_ids).map_err(|err| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
-                                "error serializing operation IDs: {:?}",
+                                "error serializing operation IDs: {}",
                                 err
                             )),
                         )
@@ -399,7 +399,7 @@ impl BlockStorage {
                     .map_err(|err| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
-                                "error computing creator address: {:?}",
+                                "error computing creator address: {}",
                                 err
                             )),
                         )
@@ -409,7 +409,7 @@ impl BlockStorage {
                         block_ids_from_ivec(ivec_blocks).map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
-                                    "error deserializing block ids: {:?}",
+                                    "error deserializing block ids: {}",
                                     err
                                 )),
                             )
@@ -422,7 +422,7 @@ impl BlockStorage {
                 let ivec = block_id_to_ivec(&ids).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!(
-                            "error serializing block ids: {:?}",
+                            "error serializing block ids: {}",
                             err
                         )),
                     )
@@ -430,9 +430,7 @@ impl BlockStorage {
                 addr_to_block.insert(&creator_addr.to_bytes(), ivec)?;
                 Ok(true)
             })
-            .map_err(|err| {
-                StorageError::AddBlockError(format!("Error adding a block: {:?}", err))
-            })?;
+            .map_err(|err| StorageError::AddBlockError(format!("Error adding a block: {}", err)))?;
 
         //add the new block
         if is_new {
@@ -487,7 +485,7 @@ impl BlockStorage {
                     .try_into()
                     .map_err(|err| {
                         StorageError::DeserializationError(format!(
-                            "wrong buffer size for hash deserialization: {:?}",
+                            "wrong buffer size for hash deserialization: {}",
                             err
                         ))
                     })
@@ -555,12 +553,12 @@ impl BlockStorage {
             .transaction(|(op_tx, hash_tx)| {
                 tx_func(op_tx, hash_tx).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(format!("transaction error: {:?}", err)),
+                        InternalError::TransactionError(format!("transaction error: {}", err)),
                     )
                 })
             })
             .map_err(|err| {
-                StorageError::OperationError(format!("error getting operation: {:?}", err))
+                StorageError::OperationError(format!("error getting operation: {}", err))
             })
     }
 
@@ -619,12 +617,12 @@ impl BlockStorage {
             .transaction(|(addr_tx, op_tx, hash_tx)| {
                 tx_func(addr_tx, op_tx, hash_tx).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(format!("transaction error: {:?}", err)),
+                        InternalError::TransactionError(format!("transaction error: {}", err)),
                     )
                 })
             })
             .map_err(|err| {
-                StorageError::OperationError(format!("error getting operation: {:?}", err))
+                StorageError::OperationError(format!("error getting operation: {}", err))
             })
     }
 
@@ -637,7 +635,7 @@ impl BlockStorage {
                 Ok(block_ids_from_ivec(ivec_blocks).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!(
-                            "error deserializing block ids: {:?}",
+                            "error deserializing block ids: {}",
                             err
                         )),
                     )

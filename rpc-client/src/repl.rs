@@ -5,7 +5,8 @@ use crate::cmds::Command;
 use crate::rpc::Client;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, History, Input};
-use std::{collections::VecDeque, fmt::Display};
+use std::collections::VecDeque;
+use std::fmt::Display;
 use strum::ParseError;
 
 macro_rules! massa_fancy_ascii_art_logo {
@@ -38,13 +39,10 @@ pub(crate) async fn run(client: &Client) {
             let cmd: Result<Command, ParseError> = input[0].parse();
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
-            println!(
-                "{}",
-                match cmd {
-                    Ok(command) => command.run(client, &parameters).await,
-                    Err(_) => Command::not_found(),
-                }
-            );
+            match cmd {
+                Ok(command) => println!("{}", command.run(client, &parameters).await),
+                Err(_) => println!("{}", Command::not_found()),
+            }
         }
     }
 }
