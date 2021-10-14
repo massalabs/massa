@@ -31,7 +31,7 @@ async fn test_queueing() {
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
-    //to avoid timing problems for block in the future
+    // to avoid timing problems for block in the future
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
@@ -47,7 +47,7 @@ async fn test_queueing() {
                 .genesis_blocks;
 
             // * create 30 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-            //create a valid block for slot 1
+            // create a valid block for slot 1
             let mut valid_hasht0 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -59,7 +59,7 @@ async fn test_queueing() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let mut valid_hasht1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -84,7 +84,7 @@ async fn test_queueing() {
                 )
                 .await;
 
-                //create a valid block on the other thread.
+                // create a valid block on the other thread.
                 valid_hasht1 = tools::create_and_test_block(
                     &mut protocol_controller,
                     &cfg,
@@ -104,7 +104,7 @@ async fn test_queueing() {
                 staking_keys[0].clone(),
             );
 
-            //create 1 block in thread 0 slot 33 with missed block as parent
+            // create 1 block in thread 0 slot 33 with missed block as parent
             valid_hasht0 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -129,7 +129,7 @@ async fn test_queueing() {
                 )
                 .await;
 
-                //create a valid block on the other thread.
+                // create a valid block on the other thread.
                 valid_hasht1 = tools::create_and_test_block(
                     &mut protocol_controller,
                     &cfg,
@@ -175,7 +175,7 @@ async fn test_doubles() {
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
-    //to avoid timing pb for block in the future
+    // to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
@@ -191,7 +191,7 @@ async fn test_doubles() {
                 .genesis_blocks;
 
             // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-            //create a valid block for slot 1
+            // create a valid block for slot 1
             let mut valid_hasht0 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -203,7 +203,7 @@ async fn test_doubles() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let mut valid_hasht1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -228,7 +228,7 @@ async fn test_doubles() {
                 )
                 .await;
 
-                //create a valid block on the other thread.
+                // create a valid block on the other thread.
                 valid_hasht1 = tools::create_and_test_block(
                     &mut protocol_controller,
                     &cfg,
@@ -241,7 +241,7 @@ async fn test_doubles() {
                 .await;
             }
 
-            //create 1 block in thread 0 slot 41 with missed block as parent
+            // create 1 block in thread 0 slot 41 with missed block as parent
             valid_hasht0 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -294,7 +294,7 @@ async fn test_double_staking() {
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
-    //to avoid timing pb for block in the future
+    // to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
@@ -310,7 +310,7 @@ async fn test_double_staking() {
                 .genesis_blocks;
 
             // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-            //create a valid block for slot 1
+            // create a valid block for slot 1
             let mut valid_hasht0 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -322,7 +322,7 @@ async fn test_double_staking() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let mut valid_hasht1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -347,7 +347,7 @@ async fn test_double_staking() {
                 )
                 .await;
 
-                //create a valid block on the other thread.
+                // create a valid block on the other thread.
                 valid_hasht1 = tools::create_and_test_block(
                     &mut protocol_controller,
                     &cfg,
@@ -424,7 +424,7 @@ async fn test_test_parents() {
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
-    //to avoid timing pb for block in the future
+    // to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
@@ -440,7 +440,7 @@ async fn test_test_parents() {
                 .genesis_blocks;
 
             // * create 2 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-            //create a valid block for slot 1
+            // create a valid block for slot 1
             let valid_hasht0s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -452,7 +452,7 @@ async fn test_test_parents() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let valid_hasht1s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -464,7 +464,7 @@ async fn test_test_parents() {
             )
             .await;
 
-            //create a valid block for slot 2
+            // create a valid block for slot 2
             let valid_hasht0s2 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -476,7 +476,7 @@ async fn test_test_parents() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -489,7 +489,7 @@ async fn test_test_parents() {
             .await;
 
             // * create 1 block in t0s3 with parents (t0s2, t1s0)
-            //create a valid block for slot 2
+            // create a valid block for slot 2
             tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,

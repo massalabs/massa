@@ -219,7 +219,7 @@ async fn test_roll() {
 
             // cycle 2
 
-            //miss block 4
+            // miss block 4
 
             let (id_4t1, block4t1, _) =
                 create_block_with_operations(&cfg, Slot::new(4, 1), &parents, priv_1, vec![]);
@@ -564,7 +564,7 @@ async fn test_roll_block_creation() {
     addresses.insert(address_2);
     let addresses = addresses;
 
-    //wait for first slot
+    // wait for first slot
     pool_controller
         .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
             PoolCommand::UpdateCurrentSlot(s) => {
@@ -880,7 +880,7 @@ async fn test_roll_deactivation() {
     let mut cycle_draws = HashMap::new();
     let mut draws_cycle = None;
     'outer: loop {
-        //wait for slot info
+        // wait for slot info
         let latest_slot = pool_controller
             .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
                 PoolCommand::UpdateCurrentSlot(s) => Some(s),

@@ -200,9 +200,9 @@ pub fn start_storage() -> StorageAccess {
         /// Max number of bytes we want to store
         max_stored_blocks: 50,
         /// path to db
-        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //defaut
+        path: tempdir.path().to_path_buf(), // in target to be ignored by git and different file between test.
+        cache_capacity: 256,  // little to force flush cache
+        flush_interval: None, // defaut
         reset_at_startup: true,
     };
     let (storage_command_tx, _storage_manager) = storage::start_storage(storage_config).unwrap();
@@ -295,10 +295,10 @@ pub async fn propagate_block(
     let block_hash = block.header.compute_block_id().unwrap();
     protocol_controller.receive_block(block).await;
     if valid {
-        //see if the block is propagated.
+        // see if the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, timeout_ms).await;
     } else {
-        //see if the block is propagated.
+        // see if the block is propagated.
         validate_notpropagate_block(protocol_controller, block_hash, timeout_ms).await;
     }
     block_hash

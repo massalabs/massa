@@ -68,10 +68,10 @@ mod repl;
 
 ///Start the massa-client.
 fn main() {
-    //client has to run mode:
+    // client has to run mode:
     // * cli mode where a command is provided in client parameters, the cmd is executed and the result return as a json data.
     // * a REPL moode where the command are typed and executed directly inside the client.
-    //declare client parameters common for all modes.
+    // declare client parameters common for all modes.
     let app = App::new("Massa CLI")
         .version("0.3")
         .author("Massa Labs <info@massa.net>")
@@ -127,10 +127,10 @@ fn main() {
         .try_into::<client_config::Config>()
         .expect("error structuring config");
 
-    //add client commands that can be executed.
+    // add client commands that can be executed.
     // The Repl struct manage command registration for cli mode with clap and REPL mode with rustyline
-    //A command can have parameters or not. The number of parameters (min/max) are decalared to detect bad command typing before its execution.
-    //Detection is done by clap for cli mode and rustlyline in REPL mode.
+    // A command can have parameters or not. The number of parameters (min/max) are decalared to detect bad command typing before its execution.
+    // Detection is done by clap for cli mode and rustlyline in REPL mode.
     let (mut repl, app) = repl::Repl::new().new_command(
         "set_short_hash",
         "shorten displayed hashes: Parameters: bool: true (short), false(long)",
@@ -154,7 +154,7 @@ fn main() {
         "block",
         "get the block with the specified hash. Parameters: block hash",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_get_block,
     )
@@ -171,7 +171,7 @@ fn main() {
         "graphinterval",
         "get the block graph within the specified time interval. Optional parameters: [from] <start> (included) and [to] <end> (excluded) millisecond timestamp",
         0,
-        2, //max nb parameters
+        2, // max nb parameters
         true,
         cmd_graph_interval,
     )
@@ -218,7 +218,7 @@ fn main() {
         "unban",
         "unban <ip address>",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_unban,
     )
@@ -226,7 +226,7 @@ fn main() {
         "staker_info",
         "staker info from staker address -> (blocks created, next slots in which the address will be selected). Parameter <Address>",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_staker_info,
     )
@@ -234,7 +234,7 @@ fn main() {
         "staker_stats",
         "production stats from staker address. Parameters: list of addresses separated by , (no space).",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_staker_stats,
     )
@@ -242,7 +242,7 @@ fn main() {
         "register_staking_keys",
         "add a new private key for the node to use to stake: Parameter: <PrivateKey>",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_register_staking_keys,
     )
@@ -250,7 +250,7 @@ fn main() {
         "remove_staking_addresses",
         "removes an address used to stake. Parameter : <Address>",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_remove_staking_addresses,
     )
@@ -258,7 +258,7 @@ fn main() {
         "next_draws",
         "next draws for given addresses (list of addresses separated by ,  (no space))-> vec (address, slot for which address is selected)",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_next_draws,
     )
@@ -266,14 +266,14 @@ fn main() {
         "operations_involving_address",
         "list operations involving the provided address. Note that old operations are forgotten. Parameter: <Address>",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_operations_involving_address,
     ).new_command(
         "block_ids_by_creator",
         "list blocks created by the provided address. Note that old blocks are forgotten. Parameter : <Address>",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_block_ids_by_creator,
     )
@@ -281,7 +281,7 @@ fn main() {
         "addresses_info",
         "returns the final and candidate balances for a list of addresses. Parameters: list of addresses separated by ,  (no space).",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         true,
         cmd_addresses_info,
     )
@@ -289,7 +289,7 @@ fn main() {
         "cmd_testnet_rewards_program",
         "Returns rewards id. Parameter: <staking_address> <discord_ID> ",
         2,
-        2, //max nb parameters
+        2, // max nb parameters
         false,
         cmd_testnet_rewards_program,
     )
@@ -299,14 +299,14 @@ fn main() {
         true,
         cmd_get_active_stakers,
     )
-    //non active wallet command
+    // non active wallet command
     .new_command_noargs("wallet_info", "Shows wallet info", false, wallet_info)
     .new_command_noargs("wallet_new_privkey", "Generates a new private key and adds it to the wallet. Returns the associated address.", false, wallet_new_privkey)
     .new_command(
         "send_transaction",
         "sends a transaction from <from_address> to <to_address> (from_address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <from_address> <to_address> <amount> <fee>",
         4,
-        4, //max nb parameters
+        4, // max nb parameters
         false,
         send_transaction,
     )
@@ -314,7 +314,7 @@ fn main() {
         "wallet_add_privkey",
         "Adds a list of private keys to the wallet. Returns the associated addresses. Parameters: list of private keys separated by ,  (no space).",
         1,
-        1, //max nb parameters
+        1, // max nb parameters
         false,
         wallet_add_privkey,
     )
@@ -322,7 +322,7 @@ fn main() {
         "buy_rolls",
         "buy roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>",
         3,
-        3, //max nb parameters
+        3, // max nb parameters
         false,
         send_buy_roll,
     )
@@ -330,7 +330,7 @@ fn main() {
         "sell_rolls",
         "sell roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>",
         3,
-        3, //max nb parameters
+        3, // max nb parameters
         false,
         send_sell_roll,
     )
@@ -340,7 +340,7 @@ fn main() {
 
     let matches = app.get_matches();
 
-    //cli or not cli output.
+    // cli or not cli output.
     let cli = matches
         .value_of("cli")
         .and_then(|val| {
@@ -356,7 +356,7 @@ fn main() {
         repl.data.cli = true;
     }
 
-    //ip address of the node to connect.
+    // ip address of the node to connect.
     let node_ip = matches
         .value_of("nodeip")
         .and_then(|node| {
@@ -370,7 +370,7 @@ fn main() {
         .unwrap_or(cfg.default_node);
     repl.data.node_ip = node_ip;
 
-    //shorthash is a global parameter that determine the way hash are shown (long (normal) or short).
+    // shorthash is a global parameter that determine the way hash are shown (long (normal) or short).
     let short_hash = matches
         .value_of("shorthash")
         .and_then(|val| {
@@ -387,7 +387,7 @@ fn main() {
         data::FORMAT_SHORT_HASH.swap(false, Ordering::Relaxed);
     }
 
-    //filename of the wallet file. There's no security around the wallet file.
+    // filename of the wallet file. There's no security around the wallet file.
     let wallet_file_param = matches.value_of("wallet");
     let file_name = match wallet_file_param {
         Some(file_name) => file_name,
@@ -486,7 +486,7 @@ fn send_sell_roll(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError>
 }
 
 fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    //convert specified ops to OperationId
+    // convert specified ops to OperationId
     let op_list = params[0]
         .split(',')
         .map(|str| OperationId::from_bs58_check(str.trim()))
@@ -517,7 +517,7 @@ fn cmd_get_operation(data: &mut ReplData, params: &[&str]) -> Result<(), ReplErr
         }
     );
     if let Some(resp) = request_data(data, &url)? {
-        //println!("resp {}", resp.text());
+        // println!("resp {:?}", resp.text());
         if resp.status() == StatusCode::OK {
             let ops = resp.json::<Vec<(OperationId, data::GetOperationContent)>>()?;
             for (op_id, op) in ops.into_iter() {
@@ -589,7 +589,7 @@ fn wallet_add_privkey(data: &mut ReplData, params: &[&str]) -> Result<(), ReplEr
 
 fn wallet_info(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
     if let Some(wallet) = &data.wallet {
-        //get wallet addresses balances
+        // get wallet addresses balances
         let mut ordered_addrs = wallet
             .get_wallet_address_list()
             .into_iter()
@@ -670,7 +670,7 @@ fn set_short_hash(_: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
 }
 
 fn cmd_addresses_info(data: &mut ReplData, params: &[&str]) -> Result<(), ReplError> {
-    //convert specified addresses to Address
+    // convert specified addresses to Address
     let addr_list = params[0]
         .split(',')
         .map(|str| Address::from_bs58_check(str.trim()))
@@ -1161,7 +1161,7 @@ fn cmd_cliques(data: &mut ReplData, _params: &[&str]) -> Result<(), ReplError> {
             .into_iter()
             .map(|clique| data::from_vec_hash_slot(&clique))
             .for_each(|mut clique| {
-                //use sort_unstable_by to prepare sort by slot
+                // use sort_unstable_by to prepare sort by slot
                 clique.sort_unstable_by_key(|v| (v.1, v.0));
                 let formatted = format_node_hash(&mut clique);
                 println!("{:#?}", formatted);
@@ -1300,7 +1300,7 @@ fn format_url_with_to_from(
 fn request_data(data: &ReplData, url: &str) -> Result<Option<Response>, ReplError> {
     let resp = reqwest::blocking::get(url)?;
     if resp.status() != StatusCode::OK && resp.status() != StatusCode::NOT_FOUND {
-        //println!("resp.text(self):{}", resp.text());
+        // println!("resp.text(self):{:?}", resp.text());
         let status = resp.status();
         let message = resp
             .json::<data::ErrorMessage>()
@@ -1407,7 +1407,7 @@ impl ReplData {
         fee: Amount,
         data: &ReplData,
     ) -> Result<Operation, ReplError> {
-        //get node serialisation context
+        // get node serialisation context
         let url = format!("http://{}/api/v1/node_config", self.node_ip);
         let resp = reqwest::blocking::get(&url)?;
         if resp.status() != StatusCode::OK {

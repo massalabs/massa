@@ -61,7 +61,7 @@ pub fn create_operation() -> Operation {
 async fn test_get_operations() {
     initialize_context();
 
-    //test no operation found
+    // test no operation found
     {
         let (filter, mut rx_api) = mock_filter(None);
 
@@ -90,7 +90,7 @@ async fn test_get_operations() {
             operation_ids: vec![].into_iter().collect(),
         };
 
-        //no provided op id.
+        // no provided op id.
         let url = format!(
             "/api/v1/get_operations?{}",
             serde_qs::to_string(&search_op_ids).unwrap(),
@@ -102,7 +102,7 @@ async fn test_get_operations() {
             .await;
         assert_eq!(res.status(), 500);
 
-        //op id provided but no op found.
+        // op id provided but no op found.
         let search_op_ids = OperationIds {
             operation_ids: vec![OperationId::from_bs58_check(
                 "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S",
@@ -126,7 +126,7 @@ async fn test_get_operations() {
         handle.await.unwrap();
     }
 
-    //test one operation found for several addresses
+    // test one operation found for several addresses
     {
         let (filter, mut rx_api) = mock_filter(None);
 
@@ -199,7 +199,7 @@ async fn test_get_addresses_info() {
     let search_address =
         Address::from_bs58_check("SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S").unwrap();
 
-    //test no balance found
+    // test no balance found
     {
         let (filter, mut rx_api) = mock_filter(None);
 
@@ -228,7 +228,7 @@ async fn test_get_addresses_info() {
             addrs: vec![].into_iter().collect(),
         };
 
-        //no provided address.
+        // no provided address.
         let url = format!(
             "/api/v1/addresses_info?{}",
             serde_qs::to_string(&search_addrs).unwrap(),
@@ -240,7 +240,7 @@ async fn test_get_addresses_info() {
             .await;
         assert_eq!(res.status(), 500);
 
-        //address provided but balance found.
+        // address provided but balance found.
         let search_addrs = Addresses {
             addrs: vec![search_address].into_iter().collect(),
         };
@@ -260,7 +260,7 @@ async fn test_get_addresses_info() {
         handle.await.unwrap();
     }
 
-    //test one operation found for several addresses
+    // test one operation found for several addresses
     {
         let mut addrs_info: AddressHashMap<AddressState> = Default::default();
         addrs_info.insert(
@@ -340,7 +340,7 @@ async fn test_get_addresses_info() {
 #[serial]
 async fn test_cliques() {
     {
-        //test with no cliques
+        // test with no cliques
         let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
             let evt = rx_api.recv().await;
@@ -372,7 +372,7 @@ async fn test_cliques() {
         drop(filter);
     }
 
-    //add default cliques
+    // add default cliques
     let mut graph = get_test_block_graph();
     let hash_set = (0..1)
         .map(|_| get_test_block_id())
@@ -423,7 +423,7 @@ async fn test_cliques() {
         .await;
     assert!(!matches);
 
-    //valid url with cliques.
+    // valid url with cliques.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/cliques")
@@ -448,7 +448,7 @@ async fn test_cliques() {
 #[tokio::test]
 #[serial]
 async fn test_current_parents() {
-    //test with empty parents
+    // test with empty parents
     {
         let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
@@ -480,7 +480,7 @@ async fn test_current_parents() {
         drop(filter);
     }
 
-    //add default parents
+    // add default parents
     let mut graph = get_test_block_graph();
     graph.best_parents = vec![(get_test_block_id(), 0), (get_test_block_id(), 0)];
     let mut active_blocks = BlockHashMap::default();
@@ -517,7 +517,7 @@ async fn test_current_parents() {
     println!("matches:{}", matches);
     assert!(!matches);
 
-    //valid url with parents.
+    // valid url with parents.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/current_parents")
@@ -869,7 +869,7 @@ async fn test_get_graph_interval() {
 #[tokio::test]
 #[serial]
 async fn test_last_final() {
-    //test with empty final block
+    // test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
@@ -928,7 +928,7 @@ async fn test_last_final() {
     println!("matches:{}", matches);
     assert!(!matches);
 
-    //valid url with final block.
+    // valid url with final block.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/last_final")
@@ -960,7 +960,7 @@ async fn test_last_final() {
 async fn test_peers() {
     let private_key = crypto::signature::generate_random_private_key();
     let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
-    //test with empty final peers
+    // test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
@@ -999,7 +999,7 @@ async fn test_peers() {
         drop(filter);
     }
 
-    //add default peers
+    // add default peers
 
     let peers = (0..2)
         .map(|index| {
@@ -1049,7 +1049,7 @@ async fn test_peers() {
         .await;
     assert!(!matches);
 
-    //valid url with peers.
+    // valid url with peers.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/peers")
@@ -1443,7 +1443,7 @@ async fn test_get_block() {
 async fn test_network_info() {
     let private_key = crypto::signature::generate_random_private_key();
     let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
-    //test with empty peer list
+    // test with empty peer list
     {
         let (filter, mut rx_api) = mock_filter(None);
 
@@ -1480,7 +1480,7 @@ async fn test_network_info() {
         drop(filter);
     }
 
-    //add default peers
+    // add default peers
 
     let peers = (0..2)
         .map(|index| {
@@ -1522,7 +1522,7 @@ async fn test_network_info() {
         }
     });
 
-    //valid url with peers.
+    // valid url with peers.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/network_info")
@@ -1545,7 +1545,7 @@ async fn test_network_info() {
 async fn test_state() {
     let private_key = crypto::signature::generate_random_private_key();
     let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
-    //test with empty final peers
+    // test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
 
@@ -1594,7 +1594,7 @@ async fn test_state() {
         drop(filter);
     }
 
-    //add default peers
+    // add default peers
 
     let peers = (0..2)
         .map(|index| {
@@ -1669,7 +1669,7 @@ async fn test_state() {
 async fn test_last_stale() {
     initialize_context();
 
-    //test with empty stale block
+    // test with empty stale block
     {
         let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
@@ -1700,7 +1700,7 @@ async fn test_last_stale() {
         drop(filter);
     }
 
-    //add default stale blocks
+    // add default stale blocks
     let mut graph = get_test_block_graph();
     graph.discarded_blocks.extend(vec![
         (
@@ -1754,7 +1754,7 @@ async fn test_last_stale() {
 async fn test_last_invalid() {
     initialize_context();
 
-    //test with empty final block
+    // test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
         let handle = tokio::spawn(async move {
@@ -1785,7 +1785,7 @@ async fn test_last_invalid() {
         drop(filter);
     }
 
-    //add default stale blocks
+    // add default stale blocks
     let mut graph = get_test_block_graph();
     graph.discarded_blocks.extend(vec![
         (
@@ -1816,7 +1816,7 @@ async fn test_last_invalid() {
         }
     });
 
-    //valid url with final block.
+    // valid url with final block.
     let res = warp::test::request()
         .method("GET")
         .path("/api/v1/last_invalid")
@@ -1848,7 +1848,7 @@ async fn test_staker_info() {
     let mut staker_stats: Vec<StakersCycleProductionStats> = Vec::with_capacity(1);
     staker_stats.insert(0, stats);
 
-    //test with empty final block
+    // test with empty final block
     {
         let (filter, mut rx_api) = mock_filter(None);
 
@@ -1905,7 +1905,7 @@ async fn test_staker_info() {
 
         drop(filter);
     }
-    //add default stale blocks
+    // add default stale blocks
     let mut graph = get_test_block_graph();
 
     let staker_s_discarded = vec![(
@@ -1969,7 +1969,7 @@ async fn test_staker_info() {
         }
     });
 
-    //valid url with final block.
+    // valid url with final block.
     let res = warp::test::request()
         .method("GET")
         .path(&format!(

@@ -276,7 +276,7 @@ impl NodeWorker {
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedEndorsements(endorsements))).await;
                             }
                             _ => {
-                                // TODO: Write a more user-friendly warning / logout after several consecutive fails?
+                                // TODO: Write a more user-friendly warning/logout after several consecutive fails?
                                 massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning", {});
                             },
                         }
@@ -285,7 +285,7 @@ impl NodeWorker {
                         massa_trace!("node_worker.run_loop.self.socket_reader.next(). Ok(None) Error", {});
                         break
                     }, // peer closed cleanly
-                    Err(err) => {  //stream error
+                    Err(err) => {  // stream error
                         massa_trace!("node_worker.run_loop.self.socket_reader.next(). receive error", {"error": format!("{}", err)});
                         exit_reason = ConnectionClosureReason::Failed;
                         break;
@@ -319,7 +319,7 @@ impl NodeWorker {
                             trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");
                         },
                         Some(NodeCommand::AskForBlocks(list)) => {
-                            //cut hash list on sub list if exceed max_ask_blocks_per_message
+                            // cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
                             for to_send_list in list.chunks(self.cfg.max_ask_blocks_per_message as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::AskForBlocks(to_send_list.iter().copied().collect())).is_err() {
@@ -335,7 +335,7 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
-                            //cut operation list if it exceed max_operations_per_message
+                            // cut operation list if it exceed max_operations_per_message
                             for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::Operations(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
@@ -344,7 +344,7 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendEndorsements(endorsements)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendEndorsements", {"node": self.node_id, "endorsements": endorsements});
-                            //cut endorsement list if it exceed max_endorsements_per_message
+                            // cut endorsement list if it exceed max_endorsements_per_message
                             for to_send_list in endorsements.chunks(self.cfg.max_endorsements_per_message as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::Endorsements(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;

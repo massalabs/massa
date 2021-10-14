@@ -14,9 +14,9 @@ async fn test_max_block_count() {
         /// Max number of bytes we want to store
         max_stored_blocks: 5,
         /// path to db
-        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //default
+        path: tempdir.path().to_path_buf(), // in target to be ignored by git and different file between test.
+        cache_capacity: 256,  // little to force flush cache
+        flush_interval: None, // default
         reset_at_startup: true,
     };
     models::init_serialization_context(SerializationContext {
@@ -40,7 +40,7 @@ async fn test_max_block_count() {
 
     tools::storage_test(config, async move |storage| {
         assert_eq!(0, storage.len().await.unwrap());
-        //write 6 block. 5 must be in db after. The (1,0) must be removed.
+        // write 6 block. 5 must be in db after. The (1,0) must be removed.
         add_block(Slot::new(2, 1), &storage).await;
         assert_eq!(1, storage.len().await.unwrap());
         add_block(Slot::new(1, 1), &storage).await;
@@ -86,9 +86,9 @@ async fn test_max_nb_blocks() {
         /// Max number of bytes we want to store
         max_stored_blocks: 5,
         /// path to db
-        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //default
+        path: tempdir.path().to_path_buf(), // in target to be ignored by git and different file between test.
+        cache_capacity: 256,  // little to force flush cache
+        flush_interval: None, // default
         reset_at_startup: true,
     };
     models::init_serialization_context(SerializationContext {
@@ -112,7 +112,7 @@ async fn test_max_nb_blocks() {
 
     tools::storage_test(config, async move |storage| {
         assert_eq!(0, storage.len().await.unwrap());
-        //write 6 block. 5 must be in db after. The (1,0) must be removed.
+        // write 6 block. 5 must be in db after. The (1,0) must be removed.
         add_block(Slot::new(2, 1), &storage).await;
         assert_eq!(1, storage.len().await.unwrap());
         add_block(Slot::new(1, 1), &storage).await;
@@ -158,9 +158,9 @@ async fn test_get_slot_range() {
         /// Max number of bytes we want to store
         max_stored_blocks: 10,
         /// path to db
-        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //default
+        path: tempdir.path().to_path_buf(), // in target to be ignored by git and different file between test.
+        cache_capacity: 256,  // little to force flush cache
+        flush_interval: None, // default
         reset_at_startup: true,
     };
     models::init_serialization_context(SerializationContext {
@@ -184,7 +184,7 @@ async fn test_get_slot_range() {
 
     tools::storage_test(config, async move |storage| {
         assert_eq!(0, storage.len().await.unwrap());
-        //add block in this order depending on their period and thread
+        // add block in this order depending on their period and thread
         add_block(Slot::new(2, 1), &storage).await;
         add_block(Slot::new(1, 0), &storage).await;
         add_block(Slot::new(1, 1), &storage).await;
@@ -198,7 +198,7 @@ async fn test_get_slot_range() {
             .get_slot_range(Some(Slot::new(1, 1)), Some(Slot::new(3, 1)))
             .await
             .unwrap();
-        //println!("result:{:#?}", result);
+        // println!("result:{:#?}", result);
         assert!(result.contains_key(&get_dummy_block_id("(period: 1, thread: 1)")));
         assert!(result.contains_key(&get_dummy_block_id("(period: 2, thread: 1)")));
         assert!(result.contains_key(&get_dummy_block_id("(period: 3, thread: 0)")));
@@ -206,39 +206,39 @@ async fn test_get_slot_range() {
         assert!(!result.contains_key(&get_dummy_block_id("(period: 1, thread: 0)")));
         assert!(!result.contains_key(&get_dummy_block_id("(period: 2, thread: 0)")));
 
-        //range too low
+        // range too low
         let result = storage
             .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 0)))
             .await
             .unwrap();
         assert_eq!(0, result.len());
-        //range too after
+        // range too after
         let result = storage
             .get_slot_range(Some(Slot::new(4, 1)), Some(Slot::new(6, 1)))
             .await
             .unwrap();
         //    println!("result:{}", result);
         assert_eq!(0, result.len());
-        //unique range be after
+        // unique range be after
         let result = storage
             .get_slot_range(Some(Slot::new(1, 1)), Some(Slot::new(1, 1)))
             .await
             .unwrap();
         assert_eq!(0, result.len());
-        //bad range
+        // bad range
         let result = storage
             .get_slot_range(Some(Slot::new(3, 1)), Some(Slot::new(1, 1)))
             .await
             .unwrap();
         assert_eq!(0, result.len());
 
-        //unique range inf out
+        // unique range inf out
         let result = storage
             .get_slot_range(Some(Slot::new(0, 0)), Some(Slot::new(1, 1)))
             .await
             .unwrap();
         assert!(result.contains_key(&get_dummy_block_id("(period: 1, thread: 0)")));
-        //unique range sup out
+        // unique range sup out
         let result = storage
             .get_slot_range(Some(Slot::new(4, 0)), Some(Slot::new(5, 1)))
             .await

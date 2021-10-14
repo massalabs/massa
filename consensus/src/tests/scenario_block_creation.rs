@@ -22,7 +22,7 @@ use tokio::time::sleep_until;
 #[serial]
 async fn test_genesis_block_creation() {
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     // addr 1 has 1 roll and 0 coins
     // addr 2 is in consensus and has 0 roll and 1000 coins
@@ -54,7 +54,7 @@ async fn test_genesis_block_creation() {
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
 
-    //init roll cont
+    // init roll cont
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
@@ -100,7 +100,7 @@ async fn test_genesis_block_creation() {
 #[serial]
 async fn test_block_creation_with_draw() {
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     // addr 1 has 1 roll and 0 coins
     // addr 2 is in consensus and has 0 roll and 1000 coins
@@ -132,7 +132,7 @@ async fn test_block_creation_with_draw() {
     let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<crypto::signature::PrivateKey> = vec![priv_1, priv_2];
 
-    //init roll cont
+    // init roll cont
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
@@ -424,7 +424,7 @@ async fn test_order_of_inclusion() {
     //     .init()
     //     .unwrap();
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);
@@ -467,7 +467,7 @@ async fn test_order_of_inclusion() {
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 3;
     cfg.max_operations_per_block = 50;
-    //to avoid timing pb for block in the future
+    // to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0).unwrap();
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
@@ -485,7 +485,7 @@ async fn test_order_of_inclusion() {
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver| {
-            //wait for first slot
+            // wait for first slot
             pool_controller
                 .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
                     PoolCommand::UpdateCurrentSlot(s) => {
@@ -591,7 +591,7 @@ async fn test_block_filling() {
     // .unwrap();
 
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);
@@ -691,7 +691,7 @@ async fn test_block_filling() {
                 prev_blocks.push(block_id);
             }
 
-            //wait for slot p2t0
+            // wait for slot p2t0
             pool_controller
                 .wait_command(cfg.t0, |cmd| match cmd {
                     PoolCommand::UpdateCurrentSlot(s) => {

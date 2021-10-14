@@ -416,7 +416,7 @@ where
         .expect("could not start network controller");
 
     // Call test func.
-    //force _mock_interface return to avoid to be dropped before the end of the test (network_manager.stop).
+    // force _mock_interface return to avoid to be dropped before the end of the test (network_manager.stop).
     let (network_event_receiver, network_manager, _mock_interface, conn_to_drain_list) = test(
         network_event_sender,
         network_event_receiver,
