@@ -329,7 +329,23 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::wallet_remove_addresses => todo!(),
+            Command::wallet_remove_addresses => match parse_args::<Address>(parameters) {
+                Ok(x) => {
+                    let mut res = "".to_string();
+                    for key in x.into_iter() {
+                        match wallet.remove_address(key) {
+                            Some(_) => {
+                                res.push_str(&format!("Removed address {:?} to the wallet\n", key));
+                            }
+                            None => {
+                                res.push_str(&format!("Address {:?} wasn't in the wallet\n", key));
+                            }
+                        }
+                    }
+                    repl_ok!(res)
+                }
+                Err(e) => repl_err!(e),
+            },
 
             Command::buy_rolls => todo!(),
 
