@@ -7,8 +7,8 @@ use crate::{
 };
 use logging::debug;
 use models::{
-    Address, Block, BlockHashMap, BlockHashSet, BlockId, OperationHashMap, OperationHashSet,
-    OperationSearchResult, Slot,
+    Address, Block, BlockHashMap, BlockHashSet, BlockId, Endorsement, EndorsementHashMap,
+    EndorsementHashSet, OperationHashMap, OperationHashSet, OperationSearchResult, Slot,
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -137,6 +137,20 @@ impl StorageAccess {
         address: &Address,
     ) -> Result<BlockHashSet, StorageError> {
         self.0.get_block_ids_by_creator(address).await
+    }
+
+    pub async fn get_endorsements_by_address(
+        &self,
+        address: &Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, StorageError> {
+        self.0.get_endorsements_by_address(address).await
+    }
+
+    pub async fn get_endorsements_by_id(
+        &self,
+        endorsements: &EndorsementHashSet,
+    ) -> Result<EndorsementHashMap<Endorsement>, StorageError> {
+        self.0.get_endorsements_by_id(endorsements).await
     }
 }
 

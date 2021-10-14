@@ -11,7 +11,7 @@ use crypto::{
 use models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
-    BlockHashSet,
+    BlockHashSet, EndorsementHashSet,
 };
 use models::{hhasher::BuildHHasher, ledger::LedgerData};
 use models::{
@@ -77,6 +77,14 @@ pub enum ConsensusCommand {
     GetBlockIdsByCreator {
         address: Address,
         response_tx: oneshot::Sender<BlockHashMap<Status>>,
+    },
+    GetEndorsementsByAddress {
+        address: Address,
+        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+    },
+    GetEndorsementsById {
+        endorsements: EndorsementHashSet,
+        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
     },
 }
 
@@ -950,6 +958,28 @@ impl ConsensusWorker {
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send get block ids by creator response: {:?}",
+                        err
+                    ))
+                }),
+            ConsensusCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
+            } => response_tx
+                .send(self.block_db.get_endorsement_by_address(address))
+                .map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get endorsement by address response: {:?}",
+                        err
+                    ))
+                }),
+            ConsensusCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
+            } => response_tx
+                .send(self.block_db.get_endorsement_by_id(endorsements))
+                .map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get endorsement by id response: {:?}",
                         err
                     ))
                 }),
