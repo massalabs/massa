@@ -1,6 +1,4 @@
-!massa-client/config/config.toml
 !massa-client/config/info.adoc
-!massa-node/config/config.toml
 !massa-node/config/info.adoc
 !massa-node/storage/info.adoc
 !massa-node/storage/peers.json
