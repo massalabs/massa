@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::rpc::Client;
+use api_dto::{AddressInfo, EndorsementInfo, OperationInfo};
 use console::style;
 use crypto::signature::PrivateKey;
 use models::node::NodeId;
@@ -149,12 +150,19 @@ macro_rules! repl_ok {
     };
 }
 
-// TODO: ugly utility function
-fn parse_args<T: std::str::FromStr>(args: &Vec<String>) -> Result<Vec<T>, T::Err> {
+// TODO: ugly utilities functions
+fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> Result<Vec<T>, T::Err> {
     args.iter().map(|x| x.parse::<T>()).collect()
 }
 
-// TODO: Commands could also not be APIs calls (like Wallet ones)
+fn format_vec<T: std::fmt::Display>(output: &Vec<T>) -> String {
+    output
+        .iter()
+        .map(|x| format!("{}", x))
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
 impl Command {
     pub(crate) fn not_found() -> PrettyPrint {
         repl_ok!("Command not found!\ntype \"help\" to get the list of commands")
@@ -204,7 +212,7 @@ impl Command {
                 }
             }
 
-            Command::unban => match parse_args::<IpAddr>(parameters) {
+            Command::unban => match parse_vec::<IpAddr>(parameters) {
                 Ok(ips) => match client.private.unban(ips).await {
                     Ok(_) => repl_ok!("Request of unbanning successfully sent!"),
                     Err(e) => repl_err!(e),
@@ -212,7 +220,7 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::ban => match parse_args::<NodeId>(parameters) {
+            Command::ban => match parse_vec::<NodeId>(parameters) {
                 Ok(node_ids) => match client.private.ban(node_ids[0]).await {
                     Ok(_) => repl_ok!("Request of banning successfully sent!"),
                     Err(e) => repl_err!(e),
@@ -233,12 +241,12 @@ impl Command {
 
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
-                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Ok(x) => repl_ok!(format!("{:?}", x)), // TODO
                     Err(e) => repl_err!(e),
                 }
             }
 
-            Command::node_remove_staking_addresses => match parse_args::<Address>(parameters) {
+            Command::node_remove_staking_addresses => match parse_vec::<Address>(parameters) {
                 Ok(addresses) => match client.private.remove_staking_addresses(addresses).await {
                     Ok(_) => repl_ok!("Addresses successfully removed!"),
                     Err(e) => repl_err!(e),
@@ -246,7 +254,7 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::node_add_staking_private_keys => match parse_args::<PrivateKey>(parameters) {
+            Command::node_add_staking_private_keys => match parse_vec::<PrivateKey>(parameters) {
                 Ok(private_keys) => {
                     match client.private.add_staking_private_keys(private_keys).await {
                         Ok(_) => repl_ok!("Private keys successfully added!"),
@@ -263,15 +271,15 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::get_addresses => match parse_args::<Address>(parameters) {
+            Command::get_addresses => match parse_vec::<Address>(parameters) {
                 Ok(addresses) => match client.public.get_addresses(addresses).await {
-                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Ok(x) => repl_ok!(format_vec::<AddressInfo>(&x)),
                     Err(e) => repl_err!(e),
                 },
                 Err(e) => repl_err!(e),
             },
 
-            Command::get_blocks => match parse_args::<BlockId>(parameters) {
+            Command::get_blocks => match parse_vec::<BlockId>(parameters) {
                 Ok(block_ids) => match client.public.get_block(block_ids[0]).await {
                     Ok(x) => repl_ok!(x),
                     Err(e) => repl_err!(e),
@@ -279,17 +287,17 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::get_endorsements => match parse_args::<EndorsementId>(parameters) {
+            Command::get_endorsements => match parse_vec::<EndorsementId>(parameters) {
                 Ok(endorsements) => match client.public.get_endorsements(endorsements).await {
-                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Ok(x) => repl_ok!(format_vec::<EndorsementInfo>(&x)),
                     Err(e) => repl_err!(e),
                 },
                 Err(e) => repl_err!(e),
             },
 
-            Command::get_operations => match parse_args::<OperationId>(parameters) {
+            Command::get_operations => match parse_vec::<OperationId>(parameters) {
                 Ok(operations) => match client.public.get_operations(operations).await {
-                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Ok(x) => repl_ok!(format_vec::<OperationInfo>(&x)),
                     Err(e) => repl_err!(e),
                 },
                 Err(e) => repl_err!(e),

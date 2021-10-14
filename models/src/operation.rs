@@ -79,21 +79,17 @@ pub struct Operation {
 
 impl std::fmt::Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Content: {}", self.content)?;
         writeln!(f, "Signature: {}", self.signature)?;
-        Ok(())
-        /* TODO
-        let op_type = WrapperOperationType::from(&self.0.content.op);
-        let addr = Address::from_public_key(&self.0.content.sender_public_key)
+        let addr = Address::from_public_key(&self.content.sender_public_key)
             .map_err(|_| std::fmt::Error)?;
-        let amount: String = self.0.content.fee.to_string();
+        let amount = self.content.fee.to_string();
         writeln!(
             f,
             "sender: {}     fee: {}     expire_period: {}",
-            addr, amount, self.0.content.expire_period,
+            addr, amount, self.content.expire_period,
         )?;
-        writeln!(f, "{}", op_type)
-        */
+        writeln!(f, "{}", self.content.op)?;
+        Ok(())
     }
 }
 

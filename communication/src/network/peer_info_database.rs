@@ -70,7 +70,7 @@ pub struct PeerInfoDatabase {
     /// Total number of active out non-bootstrap connection attempts.
     active_out_nonbootstrap_connection_attempts: usize,
     /// Total number of active bootstrap connections.
-    active_bootstrap_connections: usize, // TODO: in or out connections ?
+    active_bootstrap_connections: usize, // TODO: in or out connections?
     /// Total number of active out non-bootstrap connections.
     pub active_out_nonbootstrap_connections: usize,
     /// Total number of active in non-bootstrap connections
