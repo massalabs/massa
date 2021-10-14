@@ -8,6 +8,9 @@ use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
 use models::crypto::PubkeySig;
 use models::ledger::LedgerData;
+use models::Operation;
+use models::OperationContent;
+use models::SerializeCompact;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use time::UTime;
@@ -85,6 +88,11 @@ impl Wallet {
         self.keys.get(&address).map(|(_pub_key, priv_key)| priv_key)
     }
 
+    /// Finds the public key associated with given address
+    pub fn find_associated_public_key(&self, address: Address) -> Option<&PublicKey> {
+        self.keys.get(&address).map(|(pub_key, _priv_key)| pub_key)
+    }
+
     pub fn get_wallet_address_list(&self) -> AddressHashSet {
         self.keys.keys().copied().collect()
     }
@@ -103,6 +111,19 @@ impl Wallet {
     /// Export keys to json string
     pub fn get_full_wallet(&self) -> &AddressHashMap<(PublicKey, PrivateKey)> {
         &self.keys
+    }
+
+    pub fn create_operation(
+        &self,
+        content: OperationContent,
+        address: Address,
+    ) -> Result<Operation, WalletError> {
+        let hash = Hash::hash(&content.to_bytes_compact()?);
+        let sender_priv = self
+            .find_associated_private_key(address)
+            .ok_or(WalletError::MissingKeyError(address))?;
+        let signature = crypto::sign(&hash, &sender_priv)?;
+        Ok(Operation { content, signature })
     }
 }
 

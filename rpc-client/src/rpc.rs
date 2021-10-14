@@ -208,7 +208,7 @@ impl RpcClient {
     // User (interaction with the node)
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    pub(crate) async fn _send_operations(
+    pub(crate) async fn send_operations(
         &self,
         operations: Vec<Operation>,
     ) -> RpcResult<Vec<OperationId>> {
