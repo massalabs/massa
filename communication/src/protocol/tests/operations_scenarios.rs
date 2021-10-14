@@ -346,7 +346,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                     assert_eq!(node, nodes[0].id);
                     assert_eq!(block.header.compute_block_id().unwrap(), block_id);
                 }
-                Some(_) => panic!("Unpexted network command."),
+                Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
             };
 
@@ -455,7 +455,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                     assert_eq!(node, nodes[0].id);
                     assert_eq!(block.header.compute_block_id().unwrap(), block_id);
                 }
-                Some(_) => panic!("Unpexted network command."),
+                Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
             };
 
