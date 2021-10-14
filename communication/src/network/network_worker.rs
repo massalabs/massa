@@ -47,7 +47,7 @@ pub enum NetworkCommand {
         node: NodeId,
         header: BlockHeader,
     },
-    //(PeerInfo, Vec<(NodeId, bool)>) peer info + liste des nodes Id associés en connexoin out (true)
+    // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connexion out (true)
     GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
@@ -138,7 +138,7 @@ impl SerializeCompact for BootstrapPeers {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
-        //peers
+        // peers
         let peers_count: u32 = self.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
         })?;
@@ -163,7 +163,7 @@ impl DeserializeCompact for BootstrapPeers {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), models::ModelsError> {
         let mut cursor = 0usize;
 
-        //peers
+        // peers
         let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         let max_peer_list_length =
             with_serialization_context(|context| context.max_peer_list_length);
@@ -424,7 +424,7 @@ impl NetworkWorker {
         // drop sender
         drop(self.node_event_tx);
         for (_, (_, node_tx)) in self.active_nodes.drain() {
-            //close opened connection.
+            // close opened connection.
             trace!("before sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
             node_tx
                 .send(NodeCommand::Close(ConnectionClosureReason::Normal))
@@ -759,7 +759,7 @@ impl NetworkWorker {
                     {}
                 );
 
-                //for each peer get all node id associated to this peer ip.
+                // for each peer get all node id associated to this peer ip.
                 let peers: HashMap<IpAddr, Peer> = self
                     .peer_info_db
                     .get_peers()
@@ -793,7 +793,7 @@ impl NetworkWorker {
                     })
                     .collect();
 
-                //HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>)
+                // HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>)
                 response_tx
                     .send(Peers {
                         peers,
@@ -867,9 +867,9 @@ impl NetworkWorker {
             NetworkCommand::GetStats { response_tx } => {
                 let res = NetworkStats {
                     in_connection_count: self.peer_info_db.active_in_nonbootstrap_connections
-                        as u64, // todo add bootstrap connections
+                        as u64, // TODO: add bootstrap connections
                     out_connection_count: self.peer_info_db.active_out_nonbootstrap_connections
-                        as u64, // todo add bootstrap connections
+                        as u64, // TODO: add bootstrap connections
                     known_peer_count: self.peer_info_db.peers.len() as u64,
                     banned_peer_count: self
                         .peer_info_db

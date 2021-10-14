@@ -242,7 +242,7 @@ async fn test_reward_split() {
                         // endorsement rewards
                         .saturating_add(
                             third // creator of ed 1
-                                .saturating_add(third), //creator of ed 3
+                                .saturating_add(third), // creator of ed 3
                         )
                 } else {
                     Default::default()
@@ -279,7 +279,7 @@ async fn test_reward_split() {
                         // endorsement rewards
                         .saturating_add(
                             third // creator of ed 1
-                                .saturating_add(third), //creator of ed 3
+                                .saturating_add(third), // creator of ed 3
                         )
                 } else {
                     Default::default()

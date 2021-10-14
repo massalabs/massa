@@ -160,17 +160,16 @@ impl SerializeCompact for ExportActiveBlock {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
-        //is_final
+        // is_final
         if self.is_final {
             res.push(1);
         } else {
             res.push(0);
         }
 
-        //block
+        // block
         res.extend(self.block.to_bytes_compact()?);
 
-        //parents
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
             res.push(0);
@@ -182,7 +181,7 @@ impl SerializeCompact for ExportActiveBlock {
             res.extend(period.to_varint_bytes());
         }
 
-        //children
+        // children
         let children_count: u32 = self.children.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many children in ActiveBlock: {}", err))
         })?;
@@ -201,7 +200,7 @@ impl SerializeCompact for ExportActiveBlock {
             }
         }
 
-        //dependencies
+        // dependencies
         let dependencies_count: u32 = self.dependencies.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many dependencies in ActiveBlock: {}", err))
         })?;
@@ -210,7 +209,7 @@ impl SerializeCompact for ExportActiveBlock {
             res.extend(&dep.to_bytes());
         }
 
-        //block_ledger_change
+        // block_ledger_change
         let block_ledger_change_count: u32 =
             self.block_ledger_changes
                 .0
@@ -270,12 +269,12 @@ impl DeserializeCompact for ExportActiveBlock {
                 )
             });
 
-        //is_final
+        // is_final
         let is_final_u8 = u8_from_slice(buffer)?;
         cursor += 1;
         let is_final = !(is_final_u8 == 0);
 
-        //block
+        // block
         let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
@@ -301,7 +300,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         };
 
-        //children
+        // children
         let (children_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         let parent_count_u32: u32 = parent_count.into();
         if children_count > parent_count_u32 {
@@ -331,7 +330,7 @@ impl DeserializeCompact for ExportActiveBlock {
             children.push(map);
         }
 
-        //dependencies
+        // dependencies
         let (dependencies_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if dependencies_count > max_bootstrap_deps {
             return Err(ModelsError::DeserializeError(
@@ -349,9 +348,9 @@ impl DeserializeCompact for ExportActiveBlock {
             dependencies.insert(dep);
         }
 
-        //block_ledger_changes
+        // block_ledger_changes
         let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO count check
+        // TODO: count check
         cursor += delta;
         let mut block_ledger_changes = LedgerChanges(AddressHashMap::with_capacity_and_hasher(
             block_ledger_change_count as usize,
@@ -387,7 +386,7 @@ impl DeserializeCompact for ExportActiveBlock {
 
         // production_events
         let (production_events_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO count check
+        // TODO: count check
         cursor += delta;
         let mut production_events: Vec<(u64, Address, bool)> =
             Vec::with_capacity(production_events_count as usize);
@@ -461,7 +460,7 @@ pub enum ExportBlockStatus {
     Active(Block),
     Final(Block),
     Discarded(DiscardReason),
-    Stored(Block), // todo remove with old api
+    Stored(Block), // TODO: remove with old api
 }
 
 impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
@@ -630,7 +629,7 @@ impl SerializeCompact for BootstrapableGraph {
             (context.max_bootstrap_blocks, context.max_bootstrap_cliques)
         });
 
-        //active_blocks
+        // active_blocks
         let blocks_count: u32 = self.active_blocks.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
                 "too many active blocks in BootstrapableGraph: {}",
@@ -646,19 +645,19 @@ impl SerializeCompact for BootstrapableGraph {
             res.extend(block.to_bytes_compact()?);
         }
 
-        //best_parents
+        // best_parents
         for (parent_h, parent_period) in self.best_parents.iter() {
             res.extend(&parent_h.to_bytes());
             res.extend(&parent_period.to_varint_bytes());
         }
 
-        //latest_final_blocks_periods
+        // latest_final_blocks_periods
         for (hash, period) in self.latest_final_blocks_periods.iter() {
             res.extend(&hash.to_bytes());
             res.extend(period.to_varint_bytes());
         }
 
-        //gi_head
+        // gi_head
         let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!("too many gi_head in BootstrapableGraph: {}", err))
         })?;
@@ -677,7 +676,7 @@ impl SerializeCompact for BootstrapableGraph {
             }
         }
 
-        //max_cliques
+        // max_cliques
         let max_cliques_count: u32 = self.max_cliques.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
                 "too many max_cliques in BootstrapableGraph (format): {}",
@@ -714,7 +713,7 @@ impl DeserializeCompact for BootstrapableGraph {
                 )
             });
 
-        //active_blocks
+        // active_blocks
         let (active_blocks_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if active_blocks_count > max_bootstrap_blocks {
             return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {}", active_blocks_count)));
@@ -732,7 +731,7 @@ impl DeserializeCompact for BootstrapableGraph {
             active_blocks.insert(hash, block);
         }
 
-        //best_parents
+        // best_parents
         let mut best_parents: Vec<(BlockId, u64)> = Vec::with_capacity(parent_count as usize);
         for _ in 0..parent_count {
             let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
@@ -742,7 +741,7 @@ impl DeserializeCompact for BootstrapableGraph {
             best_parents.push((parent_h, parent_period));
         }
 
-        //latest_final_blocks_periods
+        // latest_final_blocks_periods
         let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
             Vec::with_capacity(parent_count as usize);
         for _ in 0..parent_count {
@@ -753,7 +752,7 @@ impl DeserializeCompact for BootstrapableGraph {
             latest_final_blocks_periods.push((hash, period));
         }
 
-        //gi_head
+        // gi_head
         let (gi_head_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if gi_head_count > max_bootstrap_blocks {
             return Err(ModelsError::DeserializeError(format!(
@@ -782,7 +781,7 @@ impl DeserializeCompact for BootstrapableGraph {
             gi_head.insert(gihash, set);
         }
 
-        //max_cliques
+        // max_cliques
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if max_cliques_count > max_bootstrap_cliques {
             return Err(ModelsError::DeserializeError(format!(
@@ -2811,7 +2810,7 @@ impl BlockGraph {
 
             let mut current_block_id = block_to_check.header.content.parents[op_thread as usize]; // non-genesis => has parents
             loop {
-                //get block to process.
+                // get block to process.
                 let current_block = match self.block_statuses.get(&current_block_id) {
                     Some(block) => match block {
                         BlockStatus::Active(block) => block,
@@ -2845,7 +2844,7 @@ impl BlockGraph {
                 dependencies.insert(current_block_id);
 
                 if current_block.parents.is_empty() {
-                    //genesis block found
+                    // genesis block found
                     break;
                 }
 
@@ -3183,7 +3182,7 @@ impl BlockGraph {
                     "consensus.block_graph.add_block_to_graph.clique_full_computing more than one clique",
                     { "cliques": self.max_cliques, "gi_head": self.gi_head }
                 );
-                //gi_head
+                // gi_head
                 debug!(
                     "clique number went from {} to {} after adding {}",
                     before, after, add_block_id
@@ -4168,7 +4167,7 @@ mod tests {
         let mut cfg = example_consensus_config(ledger_file.path());
 
         cfg.block_reward = Amount::from_str("1").unwrap();
-        //to generate address and public keys
+        // to generate address and public keys
         /*        let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
 
@@ -4181,7 +4180,7 @@ mod tests {
             add.get_thread(thread_count)
         ); */
 
-        //define addresses use for the test
+        // define addresses use for the test
         let pubkey_a =
             PublicKey::from_bs58_check("5UvFn66yoQerrEmikCxDVvhkLvCo9R2hJAYFMh2pZfYUQDMuCE")
                 .unwrap();
@@ -4223,15 +4222,15 @@ mod tests {
             roll_updates: Default::default(),
             production_events: vec![],
         };
-        //update ledger with initial content.
+        // update ledger with initial content.
         //   Thread 0  [at the output of block p0t0]:
         //   A 1000000000
         // Thread 1 [at the output of block p2t1]:
         //   B: 2000000000
 
-        //block reward: 1
+        // block reward: 1
 
-        //create block p1t0
+        // create block p1t0
         // block p1t0 [NON-FINAL]: creator A, parents [p0t0, p0t1] operations:
         //   A -> B : 2, fee 4
         //   => counted as [A += +1 - 2 - 4 + 4, B += +2]
@@ -4464,7 +4463,7 @@ mod tests {
 
         let block_graph = BlockGraph::new(cfg, Some(export_graph)).await.unwrap();
 
-        //Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
+        // Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
         let res = block_graph
             .get_ledger_at_parents(
                 &vec![
@@ -4493,7 +4492,7 @@ mod tests {
         assert_eq!(res.0[&address_c].balance, Amount::from_str("2048").unwrap());
         assert_eq!(res.0[&address_d].balance, Amount::from_str("0").unwrap());
 
-        //ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
+        // ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
         let res = block_graph
             .get_ledger_at_parents(
                 &vec![
@@ -4514,7 +4513,7 @@ mod tests {
             Amount::from_str("1000000160").unwrap()
         );
 
-        //ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
+        // ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
         let res = block_graph.get_ledger_at_parents(
             &vec![
                 get_dummy_block_id("blockp1t0"),
@@ -4531,7 +4530,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_bootsrapable_graph_serialize_compact() {
-        //test with 2 thread
+        // test with 2 thread
         models::init_serialization_context(models::SerializationContext {
             max_block_operations: 1024,
             parent_count: 2,

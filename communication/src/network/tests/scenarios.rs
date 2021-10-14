@@ -90,7 +90,7 @@ async fn test_multiple_connections_to_controller() {
     .init()
     .unwrap();*/
 
-    //test config
+    // test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
     let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
@@ -189,11 +189,11 @@ async fn test_peer_ban() {
         .init()
         .unwrap();*/
 
-    //test config
+    // test config
     let bind_port: u16 = 50_000;
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
-    //add advertised peer to controller
+    // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
@@ -243,7 +243,7 @@ async fn test_peer_ban() {
             let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
             trace!("test_peer_ban second connection done");
 
-            //ban connection1.
+            // ban connection1.
             network_command_sender
                 .ban(conn1_id)
                 .await
@@ -276,7 +276,7 @@ async fn test_peer_ban() {
             )
             .await;
 
-            //unban connection1.
+            // unban connection1.
             network_command_sender
                 .unban(vec![mock_addr.ip()])
                 .await
@@ -454,11 +454,11 @@ async fn test_block_not_found() {
     .init()
     .unwrap();*/
 
-    //test config
+    // test config
     let bind_port: u16 = 50_000;
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
-    //add advertised peer to controller
+    // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
@@ -497,7 +497,7 @@ async fn test_block_not_found() {
                 1_000u64,
             )
             .await;
-            //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
+            // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
@@ -527,7 +527,7 @@ async fn test_block_not_found() {
                 .await
                 .unwrap();
 
-            //let mut  conn1_r = conn1_drain.0.await.unwrap();
+            // let mut  conn1_r = conn1_drain.0.await.unwrap();
             // assert that block not found is sent to node
 
             let timer = sleep(Duration::from_millis(500));
@@ -544,7 +544,7 @@ async fn test_block_not_found() {
                 }
             }
 
-            //test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
+            // test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
             let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
             let mut hash_list = vec![];
             hash_list.push(get_dummy_block_id("default_val1"));
@@ -557,7 +557,7 @@ async fn test_block_not_found() {
                 .ask_for_block_list(block_list)
                 .await
                 .unwrap();
-            //receive 2 list
+            // receive 2 list
             let timer = sleep(Duration::from_millis(100));
             tokio::pin!(timer);
             loop {
@@ -590,7 +590,7 @@ async fn test_block_not_found() {
                 }
             }
 
-            //test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
+            // test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
             // the message is rejected by the receiver.
             let wanted_hash1 = get_dummy_block_id("default_val1");
             let wanted_hash2 = get_dummy_block_id("default_val2");
@@ -633,11 +633,11 @@ async fn test_retry_connection_closed() {
     .init()
     .unwrap();*/
 
-    //test config
+    // test config
     let bind_port: u16 = 50_000;
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
-    //add advertised peer to controller
+    // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
@@ -730,11 +730,11 @@ async fn test_operation_messages() {
     .init()
     .unwrap();*/
 
-    //test config
+    // test config
     let bind_port: u16 = 50_000;
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
-    //add advertised peer to controller
+    // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
@@ -773,7 +773,7 @@ async fn test_operation_messages() {
                 1_000u64,
             )
             .await;
-            //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
+            // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
             // Send transaction message from connected peer
             let (transaction, _) = get_transaction(50, 10);
@@ -810,7 +810,7 @@ async fn test_operation_messages() {
                 .await
                 .unwrap();
 
-            //let mut  conn1_r = conn1_drain.0.await.unwrap();
+            // let mut  conn1_r = conn1_drain.0.await.unwrap();
             // assert that transaction is sent to node
 
             let timer = sleep(Duration::from_millis(500));
@@ -852,11 +852,11 @@ async fn test_endorsements_messages() {
     .init()
     .unwrap();*/
 
-    //test config
+    // test config
     let bind_port: u16 = 50_000;
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
-    //add advertised peer to controller
+    // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
@@ -895,7 +895,7 @@ async fn test_endorsements_messages() {
                 1_000u64,
             )
             .await;
-            //let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
+            // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
             let sender_priv = crypto::generate_random_private_key();
             let sender_public_key = crypto::derive_public_key(&sender_priv);

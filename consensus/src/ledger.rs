@@ -701,7 +701,7 @@ impl DeserializeCompact for LedgerSubset {
         let mut cursor = 0usize;
 
         let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        //TODO add entry_count checks
+        // TODO: add entry_count checks
         cursor += delta;
 
         let mut ledger_subset = LedgerSubset(AddressHashMap::with_capacity_and_hasher(

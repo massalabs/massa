@@ -172,12 +172,12 @@ mod nodeinfo {
                 self.known_blocks.insert(*block_id, (val, instant));
             }
             while self.known_blocks.len() > max_node_known_blocks_size {
-                //remove oldest item
+                // remove oldest item
                 let (&h, _) = self
                     .known_blocks
                     .iter()
                     .min_by_key(|(h, (_, t))| (*t, *h))
-                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
+                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
                 self.known_blocks.remove(&h);
             }
         }
@@ -229,12 +229,12 @@ mod nodeinfo {
         ) {
             self.wanted_blocks.insert(block_id, Instant::now());
             while self.known_blocks.len() > max_node_wanted_blocks_size {
-                //remove oldest item
+                // remove oldest item
                 let (&h, _) = self
                     .known_blocks
                     .iter()
                     .min_by_key(|(h, t)| (*t, *h))
-                    .unwrap(); //never None because is the collection is empty, while loop isn't executed.
+                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
                 self.known_blocks.remove(&h);
             }
         }
@@ -404,9 +404,9 @@ impl ProtocolWorker {
                     massa_trace!("protocol.protocol_worker.run_loop.block_ask_timer", { });
                     self.update_ask_block(&mut block_ask_timer).await?;
                 }
-            } //end select!
+            } // end select!
             massa_trace!("protocol.protocol_worker.run_loop.end", {});
-        } //end loop
+        } // end loop
 
         Ok(self.network_event_receiver)
     }
@@ -669,7 +669,7 @@ impl ProtocolWorker {
             let mut needs_ask = true;
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                //map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
+                // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
                 let ask_time_opt = node_info.asked_blocks.get(hash).copied();
                 let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
                     let t = ask_time
@@ -815,7 +815,7 @@ impl ProtocolWorker {
             }
         }
 
-        //send AskBlockEvents
+        // send AskBlockEvents
         if !ask_block_list.is_empty() {
             massa_trace!("protocol.protocol_worker.update_ask_block", {
                 "list": ask_block_list
@@ -1416,7 +1416,7 @@ mod tests {
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }
 
-        //re insert the oldest to update its timestamp.
+        // re insert the oldest to update its timestamp.
         nodeinfo.insert_known_blocks(
             &vec![hash_test],
             false,
@@ -1424,7 +1424,7 @@ mod tests {
             max_node_known_blocks_size,
         );
 
-        //add hash that triggers container pruning
+        // add hash that triggers container pruning
         nodeinfo.insert_known_blocks(
             &vec![get_dummy_block_id("test2")],
             true,
@@ -1432,15 +1432,15 @@ mod tests {
             max_node_known_blocks_size,
         );
 
-        //test should be present
+        // test should be present
         assert!(nodeinfo
             .get_known_block(&get_dummy_block_id("test"))
             .is_some());
-        //0 should be remove because it's the oldest.
+        // 0 should be remove because it's the oldest.
         assert!(nodeinfo
             .get_known_block(&get_dummy_block_id(&0.to_string()))
             .is_none());
-        //the other are still present.
+        // the other are still present.
         for index in 1..9 {
             let hash = get_dummy_block_id(&index.to_string());
             assert!(nodeinfo.get_known_block(&hash).is_some());
@@ -1468,16 +1468,16 @@ mod tests {
 
         // change the oldest time to now
         assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&0.to_string())));
-        //add hash that triggers container pruning
+        // add hash that triggers container pruning
         nodeinfo.insert_wanted_blocks(get_dummy_block_id("test2"), max_node_wanted_blocks_size);
 
-        //0 is present because because its timestamp has been updated with contains_wanted_block
+        // 0 is present because because its timestamp has been updated with contains_wanted_block
         assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&0.to_string())));
 
-        //1 has been removed because it's the oldest.
+        // 1 has been removed because it's the oldest.
         assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&1.to_string())));
 
-        //Other blocks are present.
+        // Other blocks are present.
         for index in 2..9 {
             let hash = get_dummy_block_id(&index.to_string());
             assert!(nodeinfo.contains_wanted_block(&hash));

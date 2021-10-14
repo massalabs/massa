@@ -33,7 +33,7 @@ async fn test_ti() {
     );
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
-    //to avoid timing pb for block in the future
+    // to avoid timing pb for block in the future
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
@@ -48,7 +48,7 @@ async fn test_ti() {
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create a valid block for thread 0
+            // create a valid block for thread 0
             let valid_hasht0s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -60,7 +60,7 @@ async fn test_ti() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let valid_hasht1s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -72,7 +72,7 @@ async fn test_ti() {
             )
             .await;
 
-            //one click with 2 block compatible
+            // one click with 2 block compatible
             let block_graph = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -83,7 +83,7 @@ async fn test_ti() {
             assert_eq!(1, block2_clic.len());
             assert_eq!(block1_clic, block2_clic);
 
-            //Create other clique bock T0S2
+            // Create other clique bock T0S2
             let (fork_block_hash, block, _) = tools::create_block_with_merkle_root(
                 &cfg,
                 Hash::hash("Other hash!".as_bytes()),
@@ -94,8 +94,8 @@ async fn test_ti() {
 
             protocol_controller.receive_block(block).await;
             tools::validate_propagate_block(&mut protocol_controller, fork_block_hash, 1000).await;
-            //two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
-            //test the first clique hasn't changed.
+            // two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
+            // test the first clique hasn't changed.
             let block_graph = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -105,13 +105,13 @@ async fn test_ti() {
             assert_eq!(1, block1_clic.len());
             assert_eq!(2, block2_clic.len());
             assert!(block2_clic.intersection(&block1_clic).next().is_some());
-            //test the new click
+            // test the new click
             let fork_clic = tools::get_cliques(&block_graph, fork_block_hash);
             assert_eq!(1, fork_clic.len());
             assert!(fork_clic.intersection(&block1_clic).next().is_none());
             assert!(fork_clic.intersection(&block2_clic).next().is_some());
 
-            //extend first clique
+            // extend first clique
             let mut parentt0sn_hash = valid_hasht0s1;
             for period in 3..=35 {
                 let block_hash = tools::create_and_test_block(
@@ -124,7 +124,7 @@ async fn test_ti() {
                     staking_keys[0].clone(),
                 )
                 .await;
-                //validate the added block isn't in the forked block click.
+                // validate the added block isn't in the forked block click.
                 let block_graph = consensus_command_sender
                     .get_block_graph_status()
                     .await
@@ -136,7 +136,7 @@ async fn test_ti() {
                 parentt0sn_hash = block_hash;
             }
 
-            //create new block in other clique
+            // create new block in other clique
             let (invalid_block_hasht1s2, block, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 1),
@@ -152,7 +152,7 @@ async fn test_ti() {
                 )
                 .await
             );
-            //verify that the clique has been pruned.
+            // verify that the clique has been pruned.
             let block_graph = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -209,7 +209,7 @@ async fn test_gpi() {
                 .genesis_blocks;
 
             // * create 1 normal block in each thread (t0s1 and t1s1) with genesis parents
-            //create a valids block for thread 0
+            // create a valids block for thread 0
             let valid_hasht0s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -221,7 +221,7 @@ async fn test_gpi() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let valid_hasht1s1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -233,7 +233,7 @@ async fn test_gpi() {
             )
             .await;
 
-            //one click with 2 block compatible
+            // one click with 2 block compatible
             let block_graph = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -244,7 +244,7 @@ async fn test_gpi() {
             assert_eq!(1, block2_clic.len());
             assert_eq!(block1_clic, block2_clic);
 
-            //create 2 clique
+            // create 2 clique
             // * create 1 block in t0s2 with parents of slots (t0s1, t1s0)
             let valid_hasht0s2 = tools::create_and_test_block(
                 &mut protocol_controller,
@@ -319,7 +319,7 @@ async fn test_gpi() {
 
             // * after processing the 33 blocks, one clique is removed (too late),
             //   the block of minimum hash becomes final, the one of maximum hash becomes stale
-            //verify that the clique has been pruned.
+            // verify that the clique has been pruned.
             let block_graph = consensus_command_sender
                 .get_block_graph_status()
                 .await
@@ -363,7 +363,7 @@ async fn test_old_stale() {
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
 
-    //to avoid timing problems for blocks in the future
+    // to avoid timing problems for blocks in the future
     cfg.genesis_timestamp = UTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
@@ -379,7 +379,7 @@ async fn test_old_stale() {
                 .genesis_blocks;
 
             // * create 40 normal blocks in each thread: in slot 1 they have genesis parents, in slot 2 they have slot 1 parents
-            //create a valid block for slot 1
+            // create a valid block for slot 1
             let mut valid_hasht0 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -391,7 +391,7 @@ async fn test_old_stale() {
             )
             .await;
 
-            //create a valid block on the other thread.
+            // create a valid block on the other thread.
             let mut valid_hasht1 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -416,7 +416,7 @@ async fn test_old_stale() {
                 )
                 .await;
 
-                //create a valid block on the other thread.
+                // create a valid block on the other thread.
                 valid_hasht1 = tools::create_and_test_block(
                     &mut protocol_controller,
                     &cfg,
@@ -429,7 +429,7 @@ async fn test_old_stale() {
                 .await;
             }
 
-            //create 1 block in thread 0 slot 1 with genesis parents
+            // create 1 block in thread 0 slot 1 with genesis parents
             let _valid_hasht0s2 = tools::create_and_test_block(
                 &mut protocol_controller,
                 &cfg,

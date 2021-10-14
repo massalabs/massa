@@ -710,7 +710,7 @@ impl ConsensusWorker {
                         ))
                     })
             }
-            //return full block with specified hash
+            // return full block with specified hash
             ConsensusCommand::GetActiveBlock {
                 block_id,
                 response_tx,
@@ -732,7 +732,7 @@ impl ConsensusWorker {
                         ))
                     })
             }
-            //return full block and status with specified hash
+            // return full block and status with specified hash
             ConsensusCommand::GetBlockStatus {
                 block_id,
                 response_tx,

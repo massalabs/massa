@@ -142,7 +142,7 @@ impl<'a, 'b> BuilderRepl<'a, 'b> {
 ///        1,
 ///        2,
 ///        cmd1_call_function,
-///        app //Clap structure
+///        app // Clap structure
 ///    )
 ///    .new_command_noargs("cmd2", "help cmd2", cmd2_call_function)
 ///    .split();
@@ -264,11 +264,11 @@ impl Repl {
     pub fn run(mut self) {
         let mut helper = helper::ReplHelper::new();
         let config = Config::builder()
-            //.completion_type(CompletionType::Circular)
+            // .completion_type(CompletionType::Circular)
             .completion_type(CompletionType::List)
             .build();
 
-        //declare all cmd
+        // declare all cmd
         self.cmd_list
             .iter()
             .filter(|cmd| cmd.active)
@@ -311,14 +311,14 @@ impl Repl {
         }
     }
 
-    //execute a cmd in cli mode.
+    // execute a cmd in cli mode.
     pub fn run_cmd(&mut self, cmd: &str, args: &[&str]) {
         let mut helper = helper::ReplHelper::new();
         let config = Config::builder()
-            //.completion_type(CompletionType::Circular)
+            // .completion_type(CompletionType::Circular)
             .completion_type(CompletionType::List)
             .build();
-        //declare all cmd
+        // declare all cmd
         self.cmd_list
             .iter()
             .filter(|cmd| cmd.active)
@@ -339,11 +339,11 @@ impl Repl {
         }
     }
 
-    //execute a command using a taped line or client parameters.
+    // execute a command using a taped line or client parameters.
     fn readline<H: Helper>(&mut self, line: String, rl: &mut Editor<H>) -> Result<bool, ReplError> {
         rl.add_history_entry(line.as_str());
         rl.save_history(HISTORY_FILE).unwrap();
-        //println!("Line: {}", line);
+        // println!("Line: {}", line);
         let typed_command = TypedCommand::try_from(&*line)?;
         let command = self
             .cmd_list

@@ -317,7 +317,7 @@ impl BlockStorage {
         let serialized_block = block.to_bytes_compact()?;
         let s_block_id = block_id.to_bytes();
 
-        //add the new block
+        // add the new block
         let is_new = (
             &self.hash_to_block,
             &self.slot_to_hash,
@@ -432,7 +432,7 @@ impl BlockStorage {
             })
             .map_err(|err| StorageError::AddBlockError(format!("Error adding a block: {}", err)))?;
 
-        //add the new block
+        // add the new block
         if is_new {
             self.block_count.fetch_add(1, Ordering::Release);
             self.notify.notify_one();
