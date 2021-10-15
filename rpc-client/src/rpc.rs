@@ -156,6 +156,13 @@ impl RpcClient {
             .await
     }
 
+    /// Returns the compensation_millis.
+    pub(crate) async fn get_compensation_millis(&self) -> RpcResult<i64> {
+        self.0
+            .call_method("get_compensation_millis", "i64", ())
+            .await
+    }
+
     /// Returns operations information associated to a given list of operations' IDs.
     pub(crate) async fn get_operations(
         &self,

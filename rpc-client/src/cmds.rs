@@ -369,15 +369,28 @@ impl Command {
 
                     let op = OperationType::RollBuy { roll_count };
 
-                    // TODO: fix magic numbers -> add config into the client
-                    let slot = match get_current_latest_block_slot(32, 2.into(), 0.into(), 0) {
+                    let cfg = match client.public.get_algo_config().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let compensation_millis = match client.public.get_compensation_millis().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let slot = match get_current_latest_block_slot(
+                        cfg.thread_count,
+                        cfg.t0,
+                        cfg.genesis_timestamp,
+                        compensation_millis,
+                    ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
                     };
 
-                    let mut expire_period = slot.period + 20;
-                    // TODO: fix magic numbers -> add config into the client
-                    if slot.thread >= addr.get_thread(2) {
+                    let mut expire_period = slot.period + cfg.operation_validity_periods;
+                    if slot.thread >= addr.get_thread(cfg.thread_count) {
                         expire_period += 1;
                     };
                     let sender_public_key = match wallet.find_associated_public_key(addr) {
