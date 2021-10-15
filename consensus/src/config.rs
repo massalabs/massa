@@ -3,7 +3,7 @@
 use crypto::signature::PrivateKey;
 use models::Amount;
 use num::rational::Ratio;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{default::Default, path::PathBuf, usize};
 use time::UTime;
 
@@ -11,7 +11,7 @@ pub const CHANNEL_SIZE: usize = 256;
 
 /// Consensus configuration
 /// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusConfig {
     /// Time in millis when the blockclqieu started.
     pub genesis_timestamp: UTime,

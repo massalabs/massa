@@ -149,6 +149,13 @@ impl RpcClient {
             .await
     }
 
+    /// Returns the conensus config.
+    pub(crate) async fn get_consensus_config(&self) -> RpcResult<ConsensusConfig> {
+        self.0
+            .call_method("get_consensus_config", "ConsensusConfig", ())
+            .await
+    }
+
     /// Returns operations information associated to a given list of operations' IDs.
     pub(crate) async fn get_operations(
         &self,

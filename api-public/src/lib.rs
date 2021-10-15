@@ -136,6 +136,10 @@ pub trait MassaPublic {
     // Debug (specific information) //
     //////////////////////////////////
 
+    /// Returns the consensus Config.
+    #[rpc(name = "get_consensus_config")]
+    fn get_consensus_config(&self) -> BoxFuture<Result<ConsensusConfig, PublicApiError>>;
+
     /// Returns the active stakers and their roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
     fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<RollsInfo>, PublicApiError>>;
@@ -666,6 +670,12 @@ impl MassaPublic for ApiMassaPublic {
 
             Ok(res)
         };
+        Box::pin(closure())
+    }
+
+    fn get_consensus_config(&self) -> BoxFuture<Result<ConsensusConfig, PublicApiError>> {
+        let cfg = self.consensus_config.clone();
+        let closure = async move || Ok(cfg);
         Box::pin(closure())
     }
 }
