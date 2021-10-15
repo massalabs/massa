@@ -1,7 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-pub mod config;
-
 use communication::network::NetworkStats;
 use models::node::NodeId;
 use models::{
@@ -11,7 +9,7 @@ use models::{
 use pool::PoolStats;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use time::UTime;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -213,4 +211,17 @@ fn display_if_true(value: bool, text: &str) -> String {
     } else {
         String::from("")
     }
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, Serialize)]
+pub struct TimeInterval {
+    pub start: Option<UTime>,
+    pub end: Option<UTime>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct APIConfig {
+    pub draw_lookahead_period_count: u64,
+    pub bind_private: SocketAddr,
+    pub bind_public: SocketAddr,
 }
