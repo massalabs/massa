@@ -358,11 +358,11 @@ impl Command {
                         Ok(a) => a,
                         Err(e) => return repl_err!(e),
                     };
-                    let roll_count = match parameters[0].parse::<u64>() {
+                    let roll_count = match parameters[1].parse::<u64>() {
                         Ok(a) => a,
                         Err(e) => return repl_err!(e),
                     };
-                    let fee = match parameters[0].parse::<Amount>() {
+                    let fee = match parameters[2].parse::<Amount>() {
                         Ok(a) => a,
                         Err(e) => return repl_err!(e),
                     };
@@ -424,11 +424,11 @@ impl Command {
                         Ok(a) => a,
                         Err(e) => return repl_err!(e),
                     };
-                    let roll_count = match parameters[0].parse::<u64>() {
+                    let roll_count = match parameters[1].parse::<u64>() {
                         Ok(a) => a,
                         Err(e) => return repl_err!(e),
                     };
-                    let fee = match parameters[0].parse::<Amount>() {
+                    let fee = match parameters[2].parse::<Amount>() {
                         Ok(a) => a,
                         Err(e) => return repl_err!(e),
                     };
@@ -482,7 +482,80 @@ impl Command {
                 }
             }
 
-            Command::send_transaction => todo!(),
+            Command::send_transaction => {
+                if parameters.len() != 4 {
+                    return repl_err!("Wrong param numbers"); // TODO: print help transaction
+                } else {
+                    let addr = match parameters[0].parse::<Address>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+                    let recipient_address = match parameters[1].parse::<Address>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let amount = match parameters[2].parse::<Amount>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let fee = match parameters[3].parse::<Amount>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let op = OperationType::Transaction {
+                        recipient_address,
+                        amount,
+                    };
+
+                    let cfg = match client.public.get_algo_config().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let compensation_millis = match client.public.get_compensation_millis().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let slot = match get_current_latest_block_slot(
+                        cfg.thread_count,
+                        cfg.t0,
+                        cfg.genesis_timestamp,
+                        compensation_millis,
+                    ) {
+                        Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let mut expire_period = slot.period + cfg.operation_validity_periods;
+                    if slot.thread >= addr.get_thread(cfg.thread_count) {
+                        expire_period += 1;
+                    };
+                    let sender_public_key = match wallet.find_associated_public_key(addr) {
+                        Some(pk) => *pk,
+                        None => return repl_err!("Missing public key"),
+                    };
+
+                    let content = OperationContent {
+                        sender_public_key,
+                        fee,
+                        expire_period,
+                        op,
+                    };
+                    let op = match wallet.create_operation(content, addr) {
+                        Ok(op) => op,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    match client.public.send_operations(vec![op]).await {
+                        Ok(x) => repl_ok!(format!("Sent operation id : {:?}", x)),
+                        Err(e) => repl_err!(e),
+                    }
+                }
+            }
         }
     }
 }
