@@ -2131,6 +2131,7 @@ dependencies = [
  "strum_macros",
  "time 0.1.0",
  "tokio",
+ "wallet",
 ]
 
 [[package]]

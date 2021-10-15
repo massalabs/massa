@@ -8,6 +8,7 @@ use dialoguer::{theme::ColorfulTheme, History, Input};
 use std::collections::VecDeque;
 use std::fmt::Display;
 use strum::ParseError;
+use wallet::Wallet;
 
 macro_rules! massa_fancy_ascii_art_logo {
     () => {
@@ -22,7 +23,7 @@ macro_rules! massa_fancy_ascii_art_logo {
     };
 }
 
-pub(crate) async fn run(client: &Client) {
+pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
@@ -40,7 +41,7 @@ pub(crate) async fn run(client: &Client) {
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
             match cmd {
-                Ok(command) => println!("{}", command.run(client, &parameters).await),
+                Ok(command) => println!("{}", command.run(client, wallet, &parameters).await),
                 Err(_) => println!("{}", Command::not_found()),
             }
         }

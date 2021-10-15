@@ -12,6 +12,7 @@ pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
 };
+pub use config::AlgoConfig;
 pub use context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
     SerializationContext,
@@ -36,6 +37,7 @@ pub mod amount;
 mod block;
 pub mod clique;
 mod composite;
+mod config;
 mod context;
 pub mod crypto;
 mod endorsement;
