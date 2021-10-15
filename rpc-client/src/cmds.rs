@@ -321,7 +321,7 @@ impl Command {
                 }
             }
 
-            Command::wallet_add_private_keys => match parse_args::<PrivateKey>(parameters) {
+            Command::wallet_add_private_keys => match parse_vec::<PrivateKey>(parameters) {
                 Ok(x) => {
                     let mut res = "".to_string();
                     for key in x.into_iter() {
@@ -340,7 +340,7 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::wallet_remove_addresses => match parse_args::<Address>(parameters) {
+            Command::wallet_remove_addresses => match parse_vec::<Address>(parameters) {
                 Ok(x) => {
                     let mut res = "".to_string();
                     for key in x.into_iter() {
