@@ -21,6 +21,7 @@ use models::{
 };
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use serde::{Deserialize, Serialize};
+use std::fmt::Formatter;
 use std::{
     collections::{hash_map, HashMap, HashSet},
     convert::TryInto,
@@ -80,6 +81,16 @@ pub struct NetworkStats {
     pub known_peer_count: u64,
     pub banned_peer_count: u64,
     pub active_node_count: u64,
+}
+impl std::fmt::Display for NetworkStats {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "In connections: {}", self.in_connection_count)?;
+        writeln!(f, "Out connections: {}", self.out_connection_count)?;
+        writeln!(f, "Known peers: {}", self.known_peer_count)?;
+        writeln!(f, "Banned peers: {}", self.banned_peer_count)?;
+        writeln!(f, "Active nodes: {}", self.active_node_count)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

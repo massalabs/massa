@@ -13,6 +13,7 @@ use models::{
 use tokio::sync::{mpsc, oneshot};
 
 use serde::{Deserialize, Serialize};
+use std::fmt::Formatter;
 
 /// Commands that can be processed by pool.
 #[derive(Debug)]
@@ -50,6 +51,14 @@ pub enum PoolCommand {
 pub struct PoolStats {
     pub operation_count: u64,
     pub endorsement_count: u64,
+}
+
+impl std::fmt::Display for PoolStats {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Operations: {}", self.operation_count)?;
+        writeln!(f, "Endorsements: {}", self.endorsement_count)?;
+        Ok(())
+    }
 }
 
 /// Events that are emitted by pool.
