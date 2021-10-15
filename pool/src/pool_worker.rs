@@ -55,8 +55,9 @@ pub struct PoolStats {
 
 impl std::fmt::Display for PoolStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Operations: {}", self.operation_count)?;
-        writeln!(f, "Endorsements: {}", self.endorsement_count)?;
+        writeln!(f, "Pool stats:")?;
+        writeln!(f, "\tOperations: {}", self.operation_count)?;
+        writeln!(f, "\tEndorsements: {}", self.endorsement_count)?;
         Ok(())
     }
 }
