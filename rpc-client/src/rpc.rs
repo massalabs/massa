@@ -9,7 +9,7 @@ use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
 use models::node::NodeId;
-use models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
 use std::net::IpAddr;
 use time::UTime;
 
@@ -149,10 +149,10 @@ impl RpcClient {
             .await
     }
 
-    /// Returns the conensus config.
-    pub(crate) async fn get_consensus_config(&self) -> RpcResult<ConsensusConfig> {
+    /// Returns the algo config.
+    pub(crate) async fn get_algo_config(&self) -> RpcResult<AlgoConfig> {
         self.0
-            .call_method("get_consensus_config", "ConsensusConfig", ())
+            .call_method("get_algo_config", "AlgoConfig", ())
             .await
     }
 

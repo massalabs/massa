@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crypto::signature::PrivateKey;
-use models::Amount;
+use models::{AlgoConfig, Amount};
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 use std::{default::Default, path::PathBuf, usize};
@@ -75,4 +75,22 @@ pub struct ConsensusConfig {
     /// Parameter that shouldn't be defined in prod.
     #[serde(skip, default = "Default::default")]
     pub disable_block_creation: bool,
+}
+
+impl ConsensusConfig {
+    pub fn to_algo_config(&self) -> AlgoConfig {
+        AlgoConfig {
+            genesis_timestamp: self.genesis_timestamp,
+            end_timestamp: self.end_timestamp,
+            thread_count: self.thread_count,
+            t0: self.t0,
+            delta_f0: self.delta_f0,
+            operation_validity_periods: self.operation_validity_periods,
+            periods_per_cycle: self.periods_per_cycle,
+            pos_lookback_cycles: self.pos_lookback_cycles,
+            pos_lock_cycles: self.pos_lock_cycles,
+            block_reward: self.block_reward,
+            roll_price: self.roll_price,
+        }
+    }
 }
