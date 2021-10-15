@@ -21,9 +21,6 @@ serde_qs = {version= "0.8"}
 serial_test = "0.5"
 thiserror = "1.0"
 # custom modules
-api = {path = "../api"}
-consensus = {path = "../consensus"}
-##
 crypto = {path = "../crypto"}
 models = {path = "../models"}
 time = { path = "../time" }
