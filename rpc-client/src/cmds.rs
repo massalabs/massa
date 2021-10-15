@@ -5,11 +5,15 @@ use api_dto::{AddressInfo, EndorsementInfo, OperationInfo};
 use console::style;
 use crypto::signature::PrivateKey;
 use models::node::NodeId;
-use models::{Address, BlockId, EndorsementId, OperationId};
+use models::timeslots::get_current_latest_block_slot;
+use models::{
+    Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
+};
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
+use wallet::Wallet;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, ToString)]
@@ -190,7 +194,12 @@ impl Command {
         ))
     }
 
-    pub(crate) async fn run(&self, client: &Client, parameters: &Vec<String>) -> PrettyPrint {
+    pub(crate) async fn run(
+        &self,
+        client: &Client,
+        wallet: &mut Wallet,
+        parameters: &Vec<String>,
+    ) -> PrettyPrint {
         match self {
             Command::exit => process::exit(0),
 
@@ -303,17 +312,258 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::wallet_info => todo!(),
+            Command::wallet_info => {
+                let addrs = wallet.get_full_wallet().keys().copied().collect();
+                // TODO: maybe too much info in wallet_info
+                match client.public.get_addresses(addrs).await {
+                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Err(e) => repl_err!(e),
+                }
+            }
 
-            Command::wallet_add_private_keys => todo!(),
+            Command::wallet_add_private_keys => match parse_args::<PrivateKey>(parameters) {
+                Ok(x) => {
+                    let mut res = "".to_string();
+                    for key in x.into_iter() {
+                        match wallet.add_private_key(key) {
+                            Ok(ad) => {
+                                res.push_str(&format!(
+                                    "Derived and added address {:?} to the wallet\n",
+                                    ad
+                                ));
+                            }
+                            Err(e) => return repl_err!(e),
+                        }
+                    }
+                    repl_ok!(res)
+                }
+                Err(e) => repl_err!(e),
+            },
 
-            Command::wallet_remove_addresses => todo!(),
+            Command::wallet_remove_addresses => match parse_args::<Address>(parameters) {
+                Ok(x) => {
+                    let mut res = "".to_string();
+                    for key in x.into_iter() {
+                        match wallet.remove_address(key) {
+                            Some(_) => {
+                                res.push_str(&format!("Removed address {:?} to the wallet\n", key));
+                            }
+                            None => {
+                                res.push_str(&format!("Address {:?} wasn't in the wallet\n", key));
+                            }
+                        }
+                    }
+                    repl_ok!(res)
+                }
+                Err(e) => repl_err!(e),
+            },
 
-            Command::buy_rolls => todo!(),
+            Command::buy_rolls => {
+                if parameters.len() != 3 {
+                    return repl_err!("Wrong param numbers"); // TODO: print help buy roll
+                } else {
+                    let addr = match parameters[0].parse::<Address>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+                    let roll_count = match parameters[1].parse::<u64>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+                    let fee = match parameters[2].parse::<Amount>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
 
-            Command::sell_rolls => todo!(),
+                    let op = OperationType::RollBuy { roll_count };
 
-            Command::send_transaction => todo!(),
+                    let cfg = match client.public.get_algo_config().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let compensation_millis = match client.public.get_compensation_millis().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let slot = match get_current_latest_block_slot(
+                        cfg.thread_count,
+                        cfg.t0,
+                        cfg.genesis_timestamp,
+                        compensation_millis,
+                    ) {
+                        Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let mut expire_period = slot.period + cfg.operation_validity_periods;
+                    if slot.thread >= addr.get_thread(cfg.thread_count) {
+                        expire_period += 1;
+                    };
+                    let sender_public_key = match wallet.find_associated_public_key(addr) {
+                        Some(pk) => *pk,
+                        None => return repl_err!("Missing public key"),
+                    };
+
+                    let content = OperationContent {
+                        sender_public_key,
+                        fee,
+                        expire_period,
+                        op,
+                    };
+                    let op = match wallet.create_operation(content, addr) {
+                        Ok(op) => op,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    match client.public.send_operations(vec![op]).await {
+                        Ok(x) => repl_ok!(format!("Sent operation id : {:?}", x)),
+                        Err(e) => repl_err!(e),
+                    }
+                }
+            }
+
+            Command::sell_rolls => {
+                if parameters.len() != 3 {
+                    return repl_err!("Wrong param numbers"); // TODO: print help sell roll
+                } else {
+                    let addr = match parameters[0].parse::<Address>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+                    let roll_count = match parameters[1].parse::<u64>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+                    let fee = match parameters[2].parse::<Amount>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let op = OperationType::RollSell { roll_count };
+
+                    let cfg = match client.public.get_algo_config().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let compensation_millis = match client.public.get_compensation_millis().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let slot = match get_current_latest_block_slot(
+                        cfg.thread_count,
+                        cfg.t0,
+                        cfg.genesis_timestamp,
+                        compensation_millis,
+                    ) {
+                        Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let mut expire_period = slot.period + cfg.operation_validity_periods;
+                    if slot.thread >= addr.get_thread(cfg.thread_count) {
+                        expire_period += 1;
+                    };
+                    let sender_public_key = match wallet.find_associated_public_key(addr) {
+                        Some(pk) => *pk,
+                        None => return repl_err!("Missing public key"),
+                    };
+
+                    let content = OperationContent {
+                        sender_public_key,
+                        fee,
+                        expire_period,
+                        op,
+                    };
+                    let op = match wallet.create_operation(content, addr) {
+                        Ok(op) => op,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    match client.public.send_operations(vec![op]).await {
+                        Ok(x) => repl_ok!(format!("Sent operation id : {:?}", x)),
+                        Err(e) => repl_err!(e),
+                    }
+                }
+            }
+
+            Command::send_transaction => {
+                if parameters.len() != 4 {
+                    return repl_err!("Wrong param numbers"); // TODO: print help transaction
+                } else {
+                    let addr = match parameters[0].parse::<Address>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+                    let recipient_address = match parameters[1].parse::<Address>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let amount = match parameters[2].parse::<Amount>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let fee = match parameters[3].parse::<Amount>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let op = OperationType::Transaction {
+                        recipient_address,
+                        amount,
+                    };
+
+                    let cfg = match client.public.get_algo_config().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let compensation_millis = match client.public.get_compensation_millis().await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let slot = match get_current_latest_block_slot(
+                        cfg.thread_count,
+                        cfg.t0,
+                        cfg.genesis_timestamp,
+                        compensation_millis,
+                    ) {
+                        Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    let mut expire_period = slot.period + cfg.operation_validity_periods;
+                    if slot.thread >= addr.get_thread(cfg.thread_count) {
+                        expire_period += 1;
+                    };
+                    let sender_public_key = match wallet.find_associated_public_key(addr) {
+                        Some(pk) => *pk,
+                        None => return repl_err!("Missing public key"),
+                    };
+
+                    let content = OperationContent {
+                        sender_public_key,
+                        fee,
+                        expire_period,
+                        op,
+                    };
+                    let op = match wallet.create_operation(content, addr) {
+                        Ok(op) => op,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    match client.public.send_operations(vec![op]).await {
+                        Ok(x) => repl_ok!(format!("Sent operation id : {:?}", x)),
+                        Err(e) => repl_err!(e),
+                    }
+                }
+            }
         }
     }
 }

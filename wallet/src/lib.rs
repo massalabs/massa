@@ -8,7 +8,11 @@ use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
 use models::crypto::PubkeySig;
 use models::ledger::LedgerData;
+use models::Operation;
+use models::OperationContent;
+use models::SerializeCompact;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use time::UTime;
 
 mod error;
@@ -17,15 +21,14 @@ mod error;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wallet {
     keys: AddressHashMap<(PublicKey, PrivateKey)>,
-    wallet_path: String,
+    wallet_path: PathBuf,
 }
 
 impl Wallet {
     /// Generates a new wallet initialized with the provided json file content
-    pub fn new(json_file: &str) -> Result<Wallet, WalletError> {
-        let path = std::path::Path::new(json_file);
+    pub fn new(path: PathBuf) -> Result<Wallet, WalletError> {
         let keys = if path.is_file() {
-            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(path)?)?
+            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(&path)?)?
         } else {
             Vec::new()
         };
@@ -38,7 +41,7 @@ impl Wallet {
             .collect::<Result<AddressHashMap<_>, WalletError>>()?;
         Ok(Wallet {
             keys,
-            wallet_path: json_file.to_string(),
+            wallet_path: path,
         })
     }
 
@@ -58,14 +61,22 @@ impl Wallet {
     }
 
     /// Adds a new private key to wallet, if it was missing
-    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), WalletError> {
+    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<Address, WalletError> {
         if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
             let pub_key = crypto::derive_public_key(&key);
-            self.keys
-                .insert(Address::from_public_key(&pub_key)?, (pub_key, key));
+            let ad = Address::from_public_key(&pub_key)?;
+            self.keys.insert(ad, (pub_key, key));
             self.save()?;
+            Ok(ad)
+        } else {
+            // key already in wallet
+            Ok(*self
+                .keys
+                .iter()
+                .find(|(_, (_, file_key))| file_key == &key)
+                .unwrap()
+                .0)
         }
-        Ok(())
     }
 
     pub fn remove_address(&mut self, address: Address) -> Option<(PublicKey, PrivateKey)> {
@@ -75,6 +86,11 @@ impl Wallet {
     /// Finds the private key associated with given address
     pub fn find_associated_private_key(&self, address: Address) -> Option<&PrivateKey> {
         self.keys.get(&address).map(|(_pub_key, priv_key)| priv_key)
+    }
+
+    /// Finds the public key associated with given address
+    pub fn find_associated_public_key(&self, address: Address) -> Option<&PublicKey> {
+        self.keys.get(&address).map(|(pub_key, _priv_key)| pub_key)
     }
 
     pub fn get_wallet_address_list(&self) -> AddressHashSet {
@@ -95,6 +111,19 @@ impl Wallet {
     /// Export keys to json string
     pub fn get_full_wallet(&self) -> &AddressHashMap<(PublicKey, PrivateKey)> {
         &self.keys
+    }
+
+    pub fn create_operation(
+        &self,
+        content: OperationContent,
+        address: Address,
+    ) -> Result<Operation, WalletError> {
+        let hash = Hash::hash(&content.to_bytes_compact()?);
+        let sender_priv = self
+            .find_associated_private_key(address)
+            .ok_or(WalletError::MissingKeyError(address))?;
+        let signature = crypto::sign(&hash, &sender_priv)?;
+        Ok(Operation { content, signature })
     }
 }
 

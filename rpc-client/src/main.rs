@@ -9,6 +9,7 @@ use cmds::Command;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use wallet::Wallet;
 
 mod cfg;
 mod cmds;
@@ -39,7 +40,7 @@ struct Args {
         parse(from_os_str),
         default_value = "wallet.dat"
     )]
-    _wallet: PathBuf, // TODO: use me with Wallet::new(args.wallet)
+    wallet: PathBuf,
     #[structopt(short = "j", long = "json")]
     _json: bool, // TODO: use me with serde::Serialize/Deserialize traits
 }
@@ -67,13 +68,19 @@ fn main(args: Args) {
                 None => settings.default_node.private_port,
             };
             // ...
+            let mut wallet = Wallet::new(args.wallet).unwrap(); // TODO
             let client = Client::new(address, public_port, private_port).await;
             if atty::is(Stream::Stdout) && args.command == Command::help {
                 // Interactive mode
-                repl::run(&client).await;
+                repl::run(&client, &mut wallet).await;
             } else {
                 // Non-Interactive mode
-                println!("{}", args.command.run(&client, &args.parameters).await);
+                println!(
+                    "{}",
+                    args.command
+                        .run(&client, &mut wallet, &args.parameters)
+                        .await
+                );
             }
         });
 }
