@@ -254,6 +254,24 @@ mod nodeinfo {
     }
 }
 
+/// Info about a block we've seen
+struct BlockInfo {
+    /// Endorsements contained in the block header.
+    endorsements: Vec<EndorsementId>,
+    /// Operations contained in the block,
+    /// if we've received them already, and none otherwise.
+    operations: Option<Vec<OperationId>>,
+}
+
+impl BlockInfo {
+    fn new(endorsements: Vec<EndorsementId>, operations: Option<Vec<OperationId>>) -> Self {
+        BlockInfo {
+            endorsements,
+            operations,
+        }
+    }
+}
+
 pub struct ProtocolWorker {
     /// Protocol configuration.
     cfg: ProtocolConfig,
@@ -280,7 +298,7 @@ pub struct ProtocolWorker {
     /// List of processed operations
     checked_operations: OperationHashSet,
     /// List of processed headers
-    checked_headers: BlockHashMap<Vec<EndorsementId>>,
+    checked_headers: BlockHashMap<BlockInfo>,
 }
 
 impl ProtocolWorker {
@@ -897,7 +915,7 @@ impl ProtocolWorker {
 
         // check if this header was already verified
         let now = Instant::now();
-        if let Some(e_ids) = self.checked_headers.get(&block_id) {
+        if let Some(block_info) = self.checked_headers.get(&block_id) {
             if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
                 node_info.insert_known_blocks(
                     &header.content.parents,
@@ -911,10 +929,18 @@ impl ProtocolWorker {
                     now,
                     self.cfg.max_node_known_blocks_size,
                 );
-                node_info
-                    .insert_known_endorsements(e_ids.clone(), self.cfg.max_known_endorsements_size)
+                node_info.insert_known_endorsements(
+                    block_info.endorsements.clone(),
+                    self.cfg.max_known_endorsements_size,
+                );
+                if let Some(operations) = block_info.operations.as_ref() {
+                    node_info.insert_known_ops(
+                        operations.iter().cloned().collect(),
+                        self.cfg.max_known_ops_size,
+                    );
+                }
             }
-            return Ok(Some((block_id, e_ids.clone(), false)));
+            return Ok(Some((block_id, block_info.endorsements.clone(), false)));
         }
 
         let (endorsement_ids, endorsements_reused) = match self
@@ -973,7 +999,10 @@ impl ProtocolWorker {
 
         if self
             .checked_headers
-            .insert(block_id, endorsement_ids.clone())
+            .insert(
+                block_id,
+                BlockInfo::new(endorsement_ids.clone(), Default::default()),
+            )
             .is_none()
         {
             self.prune_checked_headers();
@@ -1105,6 +1134,13 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_root_hash",
                     { "node": source_node_id,"block_id":block_id, "block": block });
                 return Ok(None);
+            }
+        }
+
+        // Add operations to block info if found in the cache.
+        if let Some(mut block_info) = self.checked_headers.get_mut(&block_id) {
+            if block_info.operations.is_none() {
+                block_info.operations = Some(received_operations_ids.keys().cloned().collect());
             }
         }
 

@@ -500,6 +500,95 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
+async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
+) {
+    let protocol_config = tools::create_protocol_config();
+    protocol_test(
+        protocol_config,
+        async move |mut network_controller,
+                    mut protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 2 nodes.
+            let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
+
+            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let serialization_context = models::get_serialization_context();
+            let thread = address.get_thread(serialization_context.parent_count);
+
+            let endorsement = tools::create_endorsement();
+            let endorsement_id = endorsement.compute_endorsement_id().unwrap();
+
+            let block = tools::create_block_with_endorsements(
+                &nodes[0].private_key,
+                &nodes[0].id.0,
+                Slot::new(1, thread),
+                vec![endorsement.clone()],
+            );
+
+            // Node 2 sends block, resulting in endorsements noted in block info.
+            network_controller
+                .send_block(nodes[1].id.clone(), block.clone())
+                .await;
+
+            // Node 1 sends header, resulting in protocol using the block info to determine
+            // the node knows about the endorsements contained in the block header.
+            network_controller
+                .send_header(nodes[0].id.clone(), block.header.clone())
+                .await;
+
+            // Wait for the event to be sure that the node is connected,
+            // and noted as knowing the block and its endorsements.
+            let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                match evt {
+                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    _ => None,
+                }
+            })
+            .await;
+
+            // Send the endorsement to protocol
+            // it should not propagate to the node that already knows about it
+            // because of the previously received header.
+            let mut ops = EndorsementHashMap::default();
+            ops.insert(endorsement_id.clone(), endorsement);
+            protocol_command_sender
+                .propagate_endorsements(ops)
+                .await
+                .unwrap();
+
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::SendEndorsements { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
+                    let id = endorsements[0].compute_endorsement_id().unwrap();
+                    assert_eq!(id, endorsement_id);
+                    assert_eq!(nodes[0].id, node);
+                    panic!("Unexpected propagated of endorsement.");
+                }
+                None => {}
+                Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
+            };
+
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_inside_a_header() {
     let protocol_config = tools::create_protocol_config();
     protocol_test(
