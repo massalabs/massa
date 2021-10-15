@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(async_closure)]
-use api_dto::config::APIConfig;
+use api_dto::{APIConfig, TimeInterval};
 use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     RollsInfo, TimeStats,
@@ -160,8 +160,7 @@ pub trait MassaPublic {
     #[rpc(name = "get_graph_interval")]
     fn get_graph_interval(
         &self,
-        time_start: Option<UTime>,
-        time_end: Option<UTime>,
+        _: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, PublicApiError>>;
 
     #[rpc(name = "get_addresses")]
@@ -422,8 +421,7 @@ impl MassaPublic for ApiMassaPublic {
 
     fn get_graph_interval(
         &self,
-        time_start: Option<UTime>,
-        time_end: Option<UTime>,
+        time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
         let opt_storage_command_sender = self.storage_command_sender.clone();
@@ -432,8 +430,8 @@ impl MassaPublic for ApiMassaPublic {
             let graph = consensus_command_sender.get_block_graph_status().await?;
 
             // filter block from graph_export
-            let start = time_start.unwrap_or_else(|| UTime::from(0));
-            let end = time_end.unwrap_or_else(|| UTime::from(u64::MAX));
+            let start = time.start.unwrap_or_else(|| UTime::from(0));
+            let end = time.end.unwrap_or_else(|| UTime::from(u64::MAX));
             let mut res = Vec::new();
             let block_clique = graph
                 .max_cliques
@@ -470,8 +468,8 @@ impl MassaPublic for ApiMassaPublic {
                     consensus_config.thread_count,
                     consensus_config.t0,
                     consensus_config.genesis_timestamp,
-                    time_start,
-                    time_end,
+                    time.start,
+                    time.end,
                 )?;
 
                 let blocks = storage.get_slot_range(start_slot, end_slot).await?;

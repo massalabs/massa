@@ -11,6 +11,7 @@ use serde_json::json;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
 
+use api_dto::TimeInterval;
 use communication::network::Peer;
 use communication::network::Peers;
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
@@ -99,12 +100,6 @@ pub enum ApiEvent {
 }
 
 pub enum ApiManagementCommand {}
-
-#[derive(Debug, Deserialize, Clone, Copy)]
-struct TimeInterval {
-    start: Option<UTime>,
-    end: Option<UTime>,
-}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct OperationIds {
