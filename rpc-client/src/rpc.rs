@@ -10,7 +10,7 @@ use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
 use models::node::NodeId;
-use models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
 use std::net::IpAddr;
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
@@ -143,6 +143,20 @@ impl RpcClient {
             .await
     }
 
+    /// Returns the algo config.
+    pub(crate) async fn get_algo_config(&self) -> RpcResult<AlgoConfig> {
+        self.0
+            .call_method("get_algo_config", "AlgoConfig", ())
+            .await
+    }
+
+    /// Returns the compensation_millis.
+    pub(crate) async fn get_compensation_millis(&self) -> RpcResult<i64> {
+        self.0
+            .call_method("get_compensation_millis", "i64", ())
+            .await
+    }
+
     /// Returns operations information associated to a given list of operations' IDs.
     pub(crate) async fn get_operations(
         &self,
@@ -190,7 +204,7 @@ impl RpcClient {
     // User (interaction with the node)
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    pub(crate) async fn _send_operations(
+    pub(crate) async fn send_operations(
         &self,
         operations: Vec<Operation>,
     ) -> RpcResult<Vec<OperationId>> {

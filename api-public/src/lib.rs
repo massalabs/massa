@@ -25,10 +25,10 @@ use models::operation::{Operation, OperationId};
 use models::timeslots::get_block_slot_timestamp;
 use models::timeslots::get_latest_block_slot_at_timestamp;
 use models::timeslots::time_range_to_slot_range;
-use models::BlockHashSet;
 use models::OperationHashMap;
 use models::OperationHashSet;
 use models::{Address, BlockId, Slot};
+use models::{AlgoConfig, BlockHashSet};
 use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
 use std::collections::hash_map::Entry;
@@ -135,6 +135,14 @@ pub trait MassaPublic {
     //////////////////////////////////
     // Debug (specific information) //
     //////////////////////////////////
+
+    /// Returns the consensus Config.
+    #[rpc(name = "get_consensus_config")]
+    fn get_consensus_config(&self) -> BoxFuture<Result<AlgoConfig, PublicApiError>>;
+
+    /// Returns the compensation_millis.
+    #[rpc(name = "get_compensation_millis")]
+    fn get_compensation_millis(&self) -> BoxFuture<Result<i64, PublicApiError>>;
 
     /// Returns the active stakers and their roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
@@ -663,6 +671,18 @@ impl MassaPublic for ApiMassaPublic {
 
             Ok(res)
         };
+        Box::pin(closure())
+    }
+
+    fn get_consensus_config(&self) -> BoxFuture<Result<AlgoConfig, PublicApiError>> {
+        let cfg = self.consensus_config.clone();
+        let closure = async move || Ok(cfg.to_algo_config());
+        Box::pin(closure())
+    }
+
+    fn get_compensation_millis(&self) -> BoxFuture<Result<i64, PublicApiError>> {
+        let cfg = self.compensation_millis.clone();
+        let closure = async move || Ok(cfg);
         Box::pin(closure())
     }
 }

@@ -26,3 +26,4 @@ api-dto = { path = "../api-dto" }
 crypto = { path = "../crypto" }
 models = {path = "../models"}
 time = {path = "../time"}
+wallet = {path = "../wallet"}
