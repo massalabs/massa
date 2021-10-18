@@ -141,7 +141,7 @@ impl RpcClient {
             .await
     }
 
-    /// Returns the algo config.
+    /// Returns the algo config. // TODO: rename me please ... it hurts
     pub(crate) async fn get_algo_config(&self) -> RpcResult<AlgoConfig> {
         self.0
             .call_method("get_algo_config", "AlgoConfig", ())
@@ -161,7 +161,7 @@ impl RpcClient {
         operation_ids: Vec<OperationId>,
     ) -> RpcResult<Vec<OperationInfo>> {
         self.0
-            .call_method("get_operations", "Vec<OperationInfo>", operation_ids)
+            .call_method("get_operations", "Vec<OperationInfo>", vec![operation_ids])
             .await
     }
 
@@ -170,7 +170,11 @@ impl RpcClient {
         endorsement_ids: Vec<EndorsementId>,
     ) -> RpcResult<Vec<EndorsementInfo>> {
         self.0
-            .call_method("get_endorsements", "Vec<EndorsementInfo>", endorsement_ids)
+            .call_method(
+                "get_endorsements",
+                "Vec<EndorsementInfo>",
+                vec![endorsement_ids],
+            )
             .await
     }
 
