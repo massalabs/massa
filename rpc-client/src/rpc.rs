@@ -86,7 +86,7 @@ impl RpcClient {
         private_keys: Vec<PrivateKey>,
     ) -> RpcResult<()> {
         self.0
-            .call_method("add_staking_private_keys", "()", private_keys)
+            .call_method("add_staking_private_keys", "()", vec![private_keys])
             .await
     }
 
