@@ -767,7 +767,7 @@ pub async fn node_sign_msg(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<PubkeySig, ApiError> {
     massa_trace!("api.filters.node_sign_msg", { "msg": msg });
-     Ok(do_node_sign_msg(msg, &event_tx).await?)
+    Ok(do_node_sign_msg(msg, &event_tx).await?)
 }
 
 /// Returns our ip address

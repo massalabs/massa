@@ -55,10 +55,7 @@ pub trait MassaPrivate {
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
     #[rpc(name = "node_sign_message")]
-    fn node_sign_message(
-        &self,
-        _: Vec<u8>,
-    ) -> BoxFuture<Result<PubkeySig, PrivateApiError>>;
+    fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, PrivateApiError>>;
 
     /// Add a vec of new private keys for the node to use to stake.
     /// No confirmation to expect.
@@ -145,10 +142,7 @@ impl MassaPrivate for ApiMassaPrivate {
         Box::pin(closure())
     }
 
-    fn node_sign_message(
-        &self,
-        message: Vec<u8>,
-    ) -> BoxFuture<Result<PubkeySig, PrivateApiError>> {
+    fn node_sign_message(&self, message: Vec<u8>) -> BoxFuture<Result<PubkeySig, PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
         let closure = async move || Ok(network_command_sender.node_sign_message(message).await?);
         Box::pin(closure())

@@ -10,9 +10,7 @@ use super::{
     BootstrapPeers,
 };
 use crate::error::CommunicationError;
-use crypto::signature::{
-    derive_public_key, generate_random_private_key, PrivateKey,
-};
+use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use models::{crypto::PubkeySig, node::NodeId};
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use std::{
@@ -289,10 +287,7 @@ impl NetworkCommandSender {
     }
 
     /// Sign a message using the node's private key
-    pub async fn node_sign_message(
-        &self,
-        msg: Vec<u8>,
-    ) -> Result<PubkeySig, CommunicationError> {
+    pub async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, CommunicationError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::NodeSignMessage { msg, response_tx })

@@ -868,11 +868,16 @@ impl NetworkWorker {
                 );
                 let signature = sign(&Hash::hash(&msg), &self.private_key)?;
                 let public_key = derive_public_key(&self.private_key);
-                response_tx.send(PubkeySig{public_key, signature }).map_err(|_| {
-                    CommunicationError::ChannelError(
-                        "could not send NodeSignMessage response upstream".into(),
-                    )
-                })?;
+                response_tx
+                    .send(PubkeySig {
+                        public_key,
+                        signature,
+                    })
+                    .map_err(|_| {
+                        CommunicationError::ChannelError(
+                            "could not send NodeSignMessage response upstream".into(),
+                        )
+                    })?;
             }
             NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
             NetworkCommand::GetStats { response_tx } => {
