@@ -361,13 +361,13 @@ impl Command {
                 let full_wallet = wallet.get_full_wallet();
                 // TODO: maybe too much info in wallet_info
 
+                let mut res = "WARNING: do not share your private key\n".to_string();
                 match client
                     .public
                     .get_addresses(full_wallet.keys().copied().collect())
                     .await
                 {
                     Ok(x) => {
-                        let mut res = "WARNING: do not share your private key\n".to_string();
                         for info in x.into_iter() {
                             let keys = match full_wallet.get(&info.address) {
                                 Some(keys) => keys,
@@ -380,7 +380,16 @@ impl Command {
                         }
                         repl_ok!(res)
                     }
-                    Err(e) => repl_err!(e),
+                    Err(e) => {
+                        res.push_str(&format!("Error retrieving addresses info: {:?}\n", e));
+                        for (ad, (publ, priva)) in full_wallet.into_iter() {
+                            res.push_str(&format!(
+                                "Private key: {}\nPublic key{}\n{}\n\n=====\n\n",
+                                priva, publ, ad
+                            ));
+                        }
+                        repl_ok!(res)
+                    }
                 }
             }
 
