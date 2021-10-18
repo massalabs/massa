@@ -313,14 +313,25 @@ impl Command {
             },
 
             Command::wallet_info => {
-                let addrs = wallet.get_full_wallet().keys().copied().collect();
+                let full_wallet = wallet.get_full_wallet();
                 // TODO: maybe too much info in wallet_info
 
-                match client.public.get_addresses(addrs).await {
+                match client
+                    .public
+                    .get_addresses(full_wallet.keys().copied().collect())
+                    .await
+                {
                     Ok(x) => {
-                        let mut res = "".to_string();
+                        let mut res = "WARNING: do not share your private key\n".to_string();
                         for info in x.into_iter() {
-                            res.push_str(&format!("{}\n   =====", info));
+                            let keys = match full_wallet.get(&info.address) {
+                                Some(keys) => keys,
+                                None => return repl_err!("Missing keys in wallet"),
+                            };
+                            res.push_str(&format!(
+                                "Private key: {}\nPublic key{}\n{}\n\n=====\n\n",
+                                keys.1, keys.0, info
+                            ));
                         }
                         repl_ok!(res)
                     }
