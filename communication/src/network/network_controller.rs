@@ -84,6 +84,7 @@ pub async fn start_network_controller(
     // create listener
     let listener = establisher.get_listener(cfg.bind).await?;
 
+    debug!("Loading peer database");
     // load peer info database
     let mut peer_info_db = PeerInfoDatabase::new(&cfg, clock_compensation).await?;
 
