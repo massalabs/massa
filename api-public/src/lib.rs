@@ -4,7 +4,7 @@
 use api_dto::{APIConfig, TimeInterval};
 use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    RollsInfo, TimeStats,
+    RollsInfo,
 };
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
@@ -205,7 +205,7 @@ impl MassaPublic for ApiMassaPublic {
                 consensus_config.genesis_timestamp,
                 now,
             )?;
-            let stats = consensus_command_sender.get_stats().await?;
+            let consensus_stats = consensus_command_sender.get_stats().await?;
             let network_stats = network_command_sender.get_network_stats().await?;
             let pool_stats = pool_command_sender.get_pool_stats().await?;
             Ok(NodeStatus {
@@ -231,14 +231,7 @@ impl MassaPublic for ApiMassaPublic {
                 next_slot: last_slot
                     .unwrap_or(Slot::new(0, 0))
                     .get_next_slot(consensus_config.thread_count)?,
-                time_stats: TimeStats {
-                    time_start: consensus_config.genesis_timestamp,
-                    time_end: consensus_config.end_timestamp,
-                    final_block_count: stats.final_block_count,
-                    stale_block_count: stats.stale_block_count,
-                    final_operation_count: stats.final_operation_count,
-                },
-
+                consensus_stats,
                 network_stats,
                 pool_stats,
             })
