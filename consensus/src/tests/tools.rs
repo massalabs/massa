@@ -34,12 +34,13 @@ use std::{
 use storage::{StorageAccess, StorageConfig};
 use tempfile::NamedTempFile;
 use time::UTime;
+use tracing::info;
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::hash(s.as_bytes()))
 }
 
-//return true if another block has been seen
+/// return true if another block has been seen
 pub async fn validate_notpropagate_block(
     protocol_controller: &mut MockProtocolController,
     not_propagated: BlockId,
@@ -57,7 +58,7 @@ pub async fn validate_notpropagate_block(
     }
 }
 
-//return true if another block has been seen
+/// return true if another block has been seen
 pub async fn validate_notpropagate_block_in_list(
     protocol_controller: &mut MockProtocolController,
     not_propagated: &Vec<BlockId>,

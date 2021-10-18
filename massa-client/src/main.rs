@@ -36,9 +36,9 @@ use std::sync::atomic::Ordering;
 
 use clap::App;
 use clap::Arg;
-use log::trace;
 use reqwest::blocking::Response;
 use reqwest::StatusCode;
+use tracing::trace;
 
 use communication::network::Peer;
 use communication::network::Peers;

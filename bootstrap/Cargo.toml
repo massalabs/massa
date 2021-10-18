@@ -9,13 +9,13 @@ edition = "2018"
 [dependencies]
 displaydoc = "0.2"
 futures = { version = "0.3" }
-log = { version = "0.4" }
 num_enum = "0.5"
 rand = { version = "0.8"}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
+tracing = "0.1"
 # custom modules
 communication = {path = "../communication"}
 consensus = { path = "../consensus" }
@@ -28,4 +28,3 @@ time = {path = "../time"}
 bitvec = { version = "0.22", features = ["serde"] }
 pretty_assertions = "0.7"
 serial_test = "0.5"
-stderrlog = { version = "0.5" }

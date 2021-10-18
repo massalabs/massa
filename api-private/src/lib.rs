@@ -8,7 +8,6 @@ use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::CloseHandle;
 use jsonrpc_http_server::ServerBuilder;
-use log::{info, warn};
 use models::address::{Address, AddressHashSet};
 use models::api::APIConfig;
 use models::crypto::PubkeySig;
@@ -16,6 +15,7 @@ use std::net::IpAddr;
 use std::thread;
 use std::thread::JoinHandle;
 use tokio::sync::mpsc;
+use tracing::{info, warn};
 
 mod error;
 

@@ -2,17 +2,6 @@
 
 #![feature(async_closure)]
 
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
-use std::thread;
-use std::thread::JoinHandle;
-
-use jsonrpc_core::{BoxFuture, IoHandler};
-use jsonrpc_derive::rpc;
-use jsonrpc_http_server::CloseHandle;
-use jsonrpc_http_server::ServerBuilder;
-use log::{info, warn};
-
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
 use communication::NodeId;
@@ -21,6 +10,10 @@ use consensus::{ConsensusCommandSender, ConsensusConfig, Status};
 use crypto::derive_public_key;
 use crypto::generate_random_private_key;
 use error::PublicApiError;
+use jsonrpc_core::{BoxFuture, IoHandler};
+use jsonrpc_derive::rpc;
+use jsonrpc_http_server::CloseHandle;
+use jsonrpc_http_server::ServerBuilder;
 use models::address::AddressHashMap;
 use models::api::{
     APIConfig, AddressInfo, BalanceInfo, BlockInfo, BlockInfoContent, BlockSummary,
@@ -37,8 +30,13 @@ use models::{Address, BlockId, Slot};
 use models::{AlgoConfig, BlockHashSet};
 use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
+use std::thread;
+use std::thread::JoinHandle;
 use storage::StorageAccess;
 use time::UTime;
+use tracing::{info, warn};
 
 mod error;
 

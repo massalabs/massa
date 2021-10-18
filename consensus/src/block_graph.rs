@@ -1,20 +1,17 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 //! All information concerning blocks, the block graph and cliques is managed here.
-use std::mem;
-use std::{collections::HashSet, convert::TryInto, usize};
-use std::{
-    collections::{hash_map, BTreeSet, VecDeque},
-    convert::TryFrom,
+use super::config::ConsensusConfig;
+use crate::error::ConsensusError;
+use crate::{
+    ledger::{Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
+    pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
-
-use models::address::{AddressHashMap, AddressHashSet};
-use models::hhasher::BuildHHasher;
-use serde::{Deserialize, Serialize};
-
 use crypto::hash::Hash;
 use crypto::signature::derive_public_key;
+use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
+use models::hhasher::BuildHHasher;
 use models::ledger::LedgerChange;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHashMap,
@@ -23,14 +20,14 @@ use models::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES,
 };
-
-use crate::error::ConsensusError;
-use crate::{
-    ledger::{Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
-    pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
+use serde::{Deserialize, Serialize};
+use std::mem;
+use std::{collections::HashSet, convert::TryInto, usize};
+use std::{
+    collections::{hash_map, BTreeSet, VecDeque},
+    convert::TryFrom,
 };
-
-use super::config::ConsensusConfig;
+use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
