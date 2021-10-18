@@ -197,7 +197,7 @@ impl RpcClient {
         addresses: Vec<Address>,
     ) -> RpcResult<Vec<AddressInfo>> {
         self.0
-            .call_method("get_addresses", "Vec<AddressInfo>", addresses)
+            .call_method("get_addresses", "Vec<AddressInfo>", vec![addresses])
             .await
     }
 

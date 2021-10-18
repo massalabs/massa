@@ -315,8 +315,16 @@ impl Command {
             Command::wallet_info => {
                 let addrs = wallet.get_full_wallet().keys().copied().collect();
                 // TODO: maybe too much info in wallet_info
+
                 match client.public.get_addresses(addrs).await {
-                    Ok(x) => repl_ok!(format!("{:?}", x)),
+                    Ok(x) => {
+
+                    let mut res = "".to_string();
+                    for info in x.into_iter() {
+                        res.push_str(&format!("{}\n   =====", info));
+                    }
+                    repl_ok!(res)
+                    },
                     Err(e) => repl_err!(e),
                 }
             }
