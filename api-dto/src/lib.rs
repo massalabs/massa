@@ -23,13 +23,14 @@ pub struct TimeStats {
 
 impl std::fmt::Display for TimeStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Start time: {}", self.time_start)?;
+        writeln!(f, "Time stats:")?;
+        writeln!(f, "\tStart time: {}", self.time_start.to_utc_string())?;
         if self.time_end.is_some() {
-            writeln!(f, "End time: {}", self.time_end.unwrap())?;
+            writeln!(f, "\tEnd time: {}", self.time_end.unwrap().to_utc_string())?;
         }
-        writeln!(f, "Final block count: {}", self.final_block_count)?;
-        writeln!(f, "Stale block count: {}", self.stale_block_count)?;
-        writeln!(f, "Final operation count: {}", self.final_operation_count)?;
+        writeln!(f, "\tFinal block count: {}", self.final_block_count)?;
+        writeln!(f, "\tStale block count: {}", self.stale_block_count)?;
+        writeln!(f, "\tFinal operation count: {}", self.final_operation_count)?;
         Ok(())
     }
 }
@@ -58,21 +59,40 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f, "Node's ID: {}", self.node_id)?;
         if self.node_ip.is_some() {
             writeln!(f, "Node's IP: {}", self.node_ip.unwrap())?;
+        } else {
+            writeln!(f, "No routable IP set")?;
         }
+        writeln!(f)?;
+
         writeln!(f, "Version: {}", self.version)?;
-        writeln!(f, "Genesis timestamp: {}", self.genesis_timestamp)?;
-        writeln!(f, "t0={} / delta f0={}", self.t0, self.delta_f0)?;
+        writeln!(
+            f,
+            "Genesis timestamp: {}",
+            self.genesis_timestamp.to_utc_string()
+        )?;
+        writeln!(f, "t0: {}ms", self.t0.to_duration().as_millis())?;
+        writeln!(f, "delta f0: {}", self.delta_f0)?;
         writeln!(f, "Roll price: {}", self.roll_price)?;
         writeln!(f, "Thread count: {}", self.thread_count)?;
-        writeln!(f, "Current time: {}", self.current_time)?;
-        writeln!(f, "Connected nodes: {:?}", self.connected_nodes)?; // TODO
+        writeln!(f)?;
+
+        writeln!(f, "Current time: {}", self.current_time.to_utc_string())?;
         if self.last_slot.is_some() {
             writeln!(f, "Last slot: {}", self.last_slot.unwrap())?;
         }
         writeln!(f, "Next slot: {}", self.next_slot)?;
-        writeln!(f, "Time stats:\n{}", self.time_stats)?;
-        writeln!(f, "Pool stats:\n{}", self.pool_stats)?;
-        writeln!(f, "Network stats:\n{}", self.network_stats)?;
+        writeln!(f)?;
+
+        writeln!(f, "{}", self.time_stats)?;
+
+        writeln!(f, "{}", self.pool_stats)?;
+
+        writeln!(f, "{}", self.network_stats)?;
+
+        writeln!(f, "Connected nodes:")?;
+        for (node_id, ip_addr) in &self.connected_nodes {
+            writeln!(f, "\tNode's ID: {} / IP address: {}", node_id, ip_addr)?;
+        }
         Ok(())
     }
 }

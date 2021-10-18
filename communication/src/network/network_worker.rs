@@ -84,11 +84,12 @@ pub struct NetworkStats {
 }
 impl std::fmt::Display for NetworkStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "In connections: {}", self.in_connection_count)?;
-        writeln!(f, "Out connections: {}", self.out_connection_count)?;
-        writeln!(f, "Known peers: {}", self.known_peer_count)?;
-        writeln!(f, "Banned peers: {}", self.banned_peer_count)?;
-        writeln!(f, "Active nodes: {}", self.active_node_count)?;
+        writeln!(f, "Network stats:")?;
+        writeln!(f, "\tIn connections: {}", self.in_connection_count)?;
+        writeln!(f, "\tOut connections: {}", self.out_connection_count)?;
+        writeln!(f, "\tKnown peers: {}", self.known_peer_count)?;
+        writeln!(f, "\tBanned peers: {}", self.banned_peer_count)?;
+        writeln!(f, "\tActive nodes: {}", self.active_node_count)?;
         Ok(())
     }
 }
