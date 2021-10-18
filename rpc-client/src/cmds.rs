@@ -122,19 +122,23 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[...]"),
+        props(args = "Address RollCount Fee"),
         message = "buy rolls with wallet address"
     )]
     buy_rolls,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[...]"),
+        props(args = "Address RollCount Fee"),
         message = "sell rolls sell rolls with wallet address"
     )]
     sell_rolls,
 
-    #[strum(ascii_case_insensitive, message = "send coins from a wallet address")]
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "SenderAddress ReceiverAddress Amount Fee"),
+        message = "send coins from a wallet address"
+    )]
     send_transaction,
 }
 
