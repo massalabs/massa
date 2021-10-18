@@ -64,7 +64,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[...]"),
+        props(args = "Address discord_id"),
         message = "generates the testnet rewards program node/staker ownership proof"
     )]
     node_testnet_rewards_program_ownership_proof,
@@ -273,7 +273,41 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::node_testnet_rewards_program_ownership_proof => todo!(),
+            Command::node_testnet_rewards_program_ownership_proof => {
+                if parameters.len() != 2 {
+                    repl_err!("Wrong param numbers") // TODO: print help
+                } else {
+                    // parse
+                    let addr = match parameters[0].parse::<Address>() {
+                        Ok(a) => a,
+                        Err(e) => return repl_err!(e),
+                    };
+                    let msg = parameters[1].as_bytes().to_vec();
+
+                    // get address signature
+                    let addr_sig = match wallet.sign_message(addr, msg.clone()) {
+                        Some(sig) => sig,
+                        None => {
+                            return repl_err!("Address not found");
+                        }
+                    };
+
+                    // get node signature
+                    let node_sig = match client.private.node_sign_message(msg).await {
+                        Ok(x) => x,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    // print concatenation
+                    repl_ok!(format!(
+                        "Enter the following in discord: {}/{}/{}/{}",
+                        node_sig.public_key,
+                        node_sig.signature,
+                        addr_sig.public_key,
+                        addr_sig.signature
+                    ))
+                }
+            }
 
             Command::get_status => match client.public.get_status().await {
                 Ok(x) => repl_ok!(x),

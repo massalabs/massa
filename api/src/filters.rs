@@ -20,7 +20,7 @@ use consensus::ConsensusStats;
 use consensus::ExportBlockStatus;
 use consensus::Status;
 use consensus::{BlockGraphExport, ConsensusConfig, DiscardReason};
-use crypto::signature::{PrivateKey, PublicKey, Signature};
+use crypto::signature::PrivateKey;
 use logging::massa_trace;
 use models::node::NodeId;
 use models::Address;
@@ -86,7 +86,7 @@ pub enum ApiEvent {
     GetStakingAddresses(oneshot::Sender<AddressHashSet>),
     NodeSignMessage {
         message: Vec<u8>,
-        response_tx: oneshot::Sender<(PublicKey, Signature)>,
+        response_tx: oneshot::Sender<PubkeySig>,
     },
     GetStakersProductionStats {
         addrs: AddressHashSet,
@@ -743,7 +743,7 @@ async fn get_operations(
 async fn do_node_sign_msg(
     message: Vec<u8>,
     event_tx: &mpsc::Sender<ApiEvent>,
-) -> Result<(PublicKey, Signature), ApiError> {
+) -> Result<PubkeySig, ApiError> {
     let (response_tx, response_rx) = oneshot::channel();
     event_tx
         .send(ApiEvent::NodeSignMessage {
@@ -767,12 +767,7 @@ pub async fn node_sign_msg(
     event_tx: mpsc::Sender<ApiEvent>,
 ) -> Result<PubkeySig, ApiError> {
     massa_trace!("api.filters.node_sign_msg", { "msg": msg });
-    let (public_key, signature) = do_node_sign_msg(msg, &event_tx).await?;
-
-    Ok(PubkeySig {
-        public_key,
-        signature,
-    })
+    Ok(do_node_sign_msg(msg, &event_tx).await?)
 }
 
 /// Returns our ip address

@@ -12,9 +12,9 @@ use super::{
 use crate::error::{CommunicationError, HandshakeErrorType};
 use crate::logging::debug;
 use crypto::hash::Hash;
-use crypto::signature::{derive_public_key, sign, PrivateKey, PublicKey, Signature};
+use crypto::signature::{derive_public_key, sign, PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
-use models::node::NodeId;
+use models::{crypto::PubkeySig, node::NodeId};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,
@@ -67,7 +67,7 @@ pub enum NetworkCommand {
     },
     NodeSignMessage {
         msg: Vec<u8>,
-        response_tx: oneshot::Sender<(PublicKey, Signature)>,
+        response_tx: oneshot::Sender<PubkeySig>,
     },
     GetStats {
         response_tx: oneshot::Sender<NetworkStats>,
@@ -867,13 +867,18 @@ impl NetworkWorker {
                     "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
                     { "mdg": msg }
                 );
-                let sig = sign(&Hash::hash(&msg), &self.private_key)?;
-                let pubkey = derive_public_key(&self.private_key);
-                response_tx.send((pubkey, sig)).map_err(|_| {
-                    CommunicationError::ChannelError(
-                        "could not send NodeSignMessage response upstream".into(),
-                    )
-                })?;
+                let signature = sign(&Hash::hash(&msg), &self.private_key)?;
+                let public_key = derive_public_key(&self.private_key);
+                response_tx
+                    .send(PubkeySig {
+                        public_key,
+                        signature,
+                    })
+                    .map_err(|_| {
+                        CommunicationError::ChannelError(
+                            "could not send NodeSignMessage response upstream".into(),
+                        )
+                    })?;
             }
             NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
             NetworkCommand::GetStats { response_tx } => {
