@@ -4,11 +4,12 @@ use api_dto::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
     TimeInterval,
 };
-use crypto::signature::{PrivateKey, PublicKey, Signature};
+use crypto::signature::PrivateKey;
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
+use models::crypto::PubkeySig;
 use models::node::NodeId;
 use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
 use std::net::IpAddr;
@@ -72,12 +73,9 @@ impl RpcClient {
 
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
-    pub(crate) async fn _node_sign_message(
-        &self,
-        message: Vec<u8>,
-    ) -> RpcResult<(PublicKey, Signature)> {
+    pub(crate) async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
         self.0
-            .call_method("node_sign_message", "(PublicKey, Signature)", message)
+            .call_method("node_sign_message", "PubkeySig", vec![message])
             .await
     }
 

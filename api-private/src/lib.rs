@@ -3,7 +3,7 @@
 use api_dto::APIConfig;
 use communication::network::NetworkCommandSender;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
-use crypto::signature::{PrivateKey, PublicKey, Signature};
+use crypto::signature::PrivateKey;
 use error::PrivateApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
@@ -11,6 +11,7 @@ use jsonrpc_http_server::CloseHandle;
 use jsonrpc_http_server::ServerBuilder;
 use log::{info, warn};
 use models::address::{Address, AddressHashSet};
+use models::crypto::PubkeySig;
 use models::node::NodeId;
 use std::net::IpAddr;
 use std::thread;
@@ -57,7 +58,7 @@ pub trait MassaPrivate {
     fn node_sign_message(
         &self,
         _: Vec<u8>,
-    ) -> BoxFuture<Result<(PublicKey, Signature), PrivateApiError>>;
+    ) -> BoxFuture<Result<PubkeySig, PrivateApiError>>;
 
     /// Add a vec of new private keys for the node to use to stake.
     /// No confirmation to expect.
@@ -147,7 +148,7 @@ impl MassaPrivate for ApiMassaPrivate {
     fn node_sign_message(
         &self,
         message: Vec<u8>,
-    ) -> BoxFuture<Result<(PublicKey, Signature), PrivateApiError>> {
+    ) -> BoxFuture<Result<PubkeySig, PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
         let closure = async move || Ok(network_command_sender.node_sign_message(message).await?);
         Box::pin(closure())

@@ -11,9 +11,9 @@ use super::{
 };
 use crate::error::CommunicationError;
 use crypto::signature::{
-    derive_public_key, generate_random_private_key, PrivateKey, PublicKey, Signature,
+    derive_public_key, generate_random_private_key, PrivateKey,
 };
-use models::node::NodeId;
+use models::{crypto::PubkeySig, node::NodeId};
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use std::{
     collections::{HashMap, VecDeque},
@@ -292,8 +292,8 @@ impl NetworkCommandSender {
     pub async fn node_sign_message(
         &self,
         msg: Vec<u8>,
-    ) -> Result<(PublicKey, Signature), CommunicationError> {
-        let (response_tx, response_rx) = oneshot::channel::<(PublicKey, Signature)>();
+    ) -> Result<PubkeySig, CommunicationError> {
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::NodeSignMessage { msg, response_tx })
             .await
