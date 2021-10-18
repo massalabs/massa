@@ -18,7 +18,7 @@ communication = {path = "../communication"}
 crypto = { path = "../crypto" }
 logging = { path = "../logging" }
 models = {path = "../models"}
-time= { path = "../time"}
+time = { path = "../time"}
 
 [dev-dependencies]
 pretty_assertions = "0.7"
