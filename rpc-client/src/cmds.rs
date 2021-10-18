@@ -22,7 +22,7 @@ pub enum Command {
     #[strum(ascii_case_insensitive, message = "exit the client gracefully")]
     exit,
 
-    #[strum(ascii_case_insensitive, message = "display this Help")]
+    #[strum(ascii_case_insensitive, message = "display this help")]
     help,
 
     #[strum(
@@ -46,19 +46,19 @@ pub enum Command {
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
 
-    #[strum(ascii_case_insensitive, message = "list staking addresses")]
+    #[strum(ascii_case_insensitive, message = "show staking addresses")]
     node_get_staking_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[Addresses]"),
+        props(args = "Address1 Address2 ..."),
         message = "remove staking addresses"
     )]
     node_remove_staking_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[PrivateKeys]"),
+        props(args = "PrivateKey1 PrivateKey2 ..."),
         message = "add staking private keys"
     )]
     node_add_staking_private_keys,
@@ -72,57 +72,60 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        message = "gets the status of the node (reachable? number of peers connected, consensus, version, config parameter summaries...)"
+        message = "show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)"
     )]
     get_status,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[Addresses]"),
-        message = "gets info about a list of addresses"
+        props(args = "Address1 Address2 ..."),
+        message = "get info about a list of addresses (balances, block creation, ...)"
     )]
     get_addresses,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[BlockIds]"),
-        message = "gets info about a list of blocks"
+        props(args = "BlockId1 BlockId2 ..."),
+        message = "show info about a list of blocks (content, finality ...)"
     )]
     get_blocks,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[EndorsementIds]"),
-        message = "gets info about a list of endorsements"
+        props(args = "EndorsementId1 EndorsementId2 ..."),
+        message = "show info about a list of endorsements (content, finality ...)"
     )]
     get_endorsements,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[OperationIds]"),
-        message = "gets info about a list of operations"
+        props(args = "OperationId1 OperationId2 ..."),
+        message = "show info about a list of operations(content, finality ...) "
     )]
     get_operations,
 
-    #[strum(ascii_case_insensitive, message = "prints wallet info")]
+    #[strum(
+        ascii_case_insensitive,
+        message = "show wallet info (private keys, public keys, addresses, balances ...)"
+    )]
     wallet_info,
 
     #[strum(
         ascii_case_insensitive,
-        message = "generate a private keys and store it to the wallet"
+        message = "generate a private key and add it into the wallet"
     )]
     wallet_generate_private_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[PrivateKeys]"),
-        message = "adds a list of private keys to the wallet"
+        props(args = "PrivateKey1 PrivateKey2 ..."),
+        message = "add a list of private keys to the wallet"
     )]
     wallet_add_private_keys,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[Addresses]"),
+        props(args = "Address1 Address2 ..."),
         message = "remove a list of addresses from the wallet"
     )]
     wallet_remove_addresses,
@@ -137,7 +140,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "Address RollCount Fee"),
-        message = "sell rolls sell rolls with wallet address"
+        message = "sell rolls with wallet address"
     )]
     sell_rolls,
 
