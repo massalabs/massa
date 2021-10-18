@@ -322,7 +322,7 @@ impl Command {
                     .await
                 {
                     Ok(x) => {
-                        let mut res = "WARNING: do not share your private key".to_string();
+                        let mut res = "WARNING: do not share your private key\n".to_string();
                         for info in x.into_iter() {
                             let keys = match full_wallet.get(&info.address) {
                                 Some(keys) => keys,
