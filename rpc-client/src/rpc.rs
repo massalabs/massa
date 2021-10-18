@@ -115,8 +115,8 @@ impl RpcClient {
 
     /// Unbans given ip addr
     /// No confirmation to expect.
-    pub(crate) async fn unban(&self, ip: Vec<IpAddr>) -> RpcResult<()> {
-        self.0.call_method("unban", "()", ip).await
+    pub(crate) async fn unban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.0.call_method("unban", "()", vec![ips]).await
     }
 
     ////////////////
