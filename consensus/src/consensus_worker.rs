@@ -93,8 +93,16 @@ pub struct ConsensusStats {
 impl std::fmt::Display for ConsensusStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Consensus stats:")?;
-        writeln!(f, "\tStart stats timespan time: {}", self.start_timespan.to_utc_string())?;
-        writeln!(f, "\tEnd stats timespan time: {}", self.end_timespan.to_utc_string())?;
+        writeln!(
+            f,
+            "\tStart stats timespan time: {}",
+            self.start_timespan.to_utc_string()
+        )?;
+        writeln!(
+            f,
+            "\tEnd stats timespan time: {}",
+            self.end_timespan.to_utc_string()
+        )?;
         writeln!(f, "\tFinal block count: {}", self.final_block_count)?;
         writeln!(f, "\tStale block count: {}", self.stale_block_count)?;
         writeln!(f, "\tFinal operation count: {}", self.final_operation_count)?;

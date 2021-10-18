@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::network::NetworkStats;
+use consensus::ConsensusStats;
 use models::node::NodeId;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
@@ -11,8 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 use time::UTime;
-use consensus::ConsensusStats;
-
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NodeStatus {
