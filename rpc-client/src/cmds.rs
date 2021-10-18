@@ -320,7 +320,7 @@ impl Command {
                     Ok(x) => {
                         let mut res = "".to_string();
                         for info in x.into_iter() {
-                            res.push_str(&format!("{}\n   =====", info));
+                            res.push_str(&format!("{}\n\n=====\n\n", info));
                         }
                         repl_ok!(res)
                     }
