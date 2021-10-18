@@ -318,13 +318,12 @@ impl Command {
 
                 match client.public.get_addresses(addrs).await {
                     Ok(x) => {
-
-                    let mut res = "".to_string();
-                    for info in x.into_iter() {
-                        res.push_str(&format!("{}\n   =====", info));
+                        let mut res = "".to_string();
+                        for info in x.into_iter() {
+                            res.push_str(&format!("{}\n   =====", info));
+                        }
+                        repl_ok!(res)
                     }
-                    repl_ok!(res)
-                    },
                     Err(e) => repl_err!(e),
                 }
             }
