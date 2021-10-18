@@ -12,3 +12,4 @@ communication = {path = "../communication"}
 models = {path = "../models"}
 pool = {path = "../pool"}
 time = {path = "../time"}
+consensus = {path = "../consensus"}
