@@ -3,6 +3,7 @@
 use crate::rpc::Client;
 use api_dto::{AddressInfo, EndorsementInfo, OperationInfo};
 use console::style;
+use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
 use models::node::NodeId;
 use models::timeslots::get_current_latest_block_slot;
@@ -105,6 +106,12 @@ pub enum Command {
 
     #[strum(ascii_case_insensitive, message = "prints wallet info")]
     wallet_info,
+
+    #[strum(
+        ascii_case_insensitive,
+        message = "generate a private keys and store it to the wallet"
+    )]
+    wallet_generate_private_key,
 
     #[strum(
         ascii_case_insensitive,
@@ -324,6 +331,13 @@ impl Command {
                         }
                         repl_ok!(res)
                     }
+                    Err(e) => repl_err!(e),
+                }
+            }
+
+            Command::wallet_generate_private_key => {
+                match wallet.add_private_key(generate_random_private_key()) {
+                    Ok(ad) => repl_ok!(ad),
                     Err(e) => repl_err!(e),
                 }
             }
