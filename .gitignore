@@ -1,7 +1,6 @@
 !massa-client/config/info.adoc
 !massa-node/config/info.adoc
 !massa-node/storage/info.adoc
-!massa-node/storage/peers.json
 .direnv
 .DS_Store
 .envrc
