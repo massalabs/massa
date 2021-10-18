@@ -82,11 +82,33 @@ pub enum ConsensusCommand {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusStats {
-    pub timespan: UTime,
+    pub start_timespan: UTime,
+    pub end_timespan: UTime,
     pub final_block_count: u64,
     pub final_operation_count: u64,
     pub stale_block_count: u64,
     pub clique_count: u64,
+}
+
+impl std::fmt::Display for ConsensusStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Consensus stats:")?;
+        writeln!(
+            f,
+            "\tStart stats timespan time: {}",
+            self.start_timespan.to_utc_string()
+        )?;
+        writeln!(
+            f,
+            "\tEnd stats timespan time: {}",
+            self.end_timespan.to_utc_string()
+        )?;
+        writeln!(f, "\tFinal block count: {}", self.final_block_count)?;
+        writeln!(f, "\tStale block count: {}", self.stale_block_count)?;
+        writeln!(f, "\tFinal operation count: {}", self.final_operation_count)?;
+        writeln!(f, "\tClique count: {}", self.clique_count)?;
+        Ok(())
+    }
 }
 
 /// Events that are emitted by consensus.
@@ -998,11 +1020,12 @@ impl ConsensusWorker {
             .count() as u64;
         let clique_count = self.block_db.get_clique_count() as u64;
         Ok(ConsensusStats {
-            timespan: timespan_end.saturating_sub(timespan_start),
             final_block_count,
             final_operation_count,
             stale_block_count,
             clique_count,
+            start_timespan: timespan_start,
+            end_timespan: timespan_end,
         })
     }
 

@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use communication::network::NetworkStats;
+use consensus::ConsensusStats;
 use models::node::NodeId;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
@@ -11,29 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 use time::UTime;
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TimeStats {
-    pub time_start: UTime,
-    pub time_end: Option<UTime>,
-    pub final_block_count: u64,
-    pub stale_block_count: u64,
-    pub final_operation_count: u64,
-}
-
-impl std::fmt::Display for TimeStats {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Time stats:")?;
-        writeln!(f, "\tStart time: {}", self.time_start.to_utc_string())?;
-        if self.time_end.is_some() {
-            writeln!(f, "\tEnd time: {}", self.time_end.unwrap().to_utc_string())?;
-        }
-        writeln!(f, "\tFinal block count: {}", self.final_block_count)?;
-        writeln!(f, "\tStale block count: {}", self.stale_block_count)?;
-        writeln!(f, "\tFinal operation count: {}", self.final_operation_count)?;
-        Ok(())
-    }
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NodeStatus {
@@ -49,7 +27,7 @@ pub struct NodeStatus {
     pub connected_nodes: HashMap<NodeId, IpAddr>,
     pub last_slot: Option<Slot>,
     pub next_slot: Slot,
-    pub time_stats: TimeStats,
+    pub consensus_stats: ConsensusStats,
     pub pool_stats: PoolStats,
     pub network_stats: NetworkStats,
 }
@@ -83,7 +61,7 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f, "Next slot: {}", self.next_slot)?;
         writeln!(f)?;
 
-        writeln!(f, "{}", self.time_stats)?;
+        writeln!(f, "{}", self.consensus_stats)?;
 
         writeln!(f, "{}", self.pool_stats)?;
 
