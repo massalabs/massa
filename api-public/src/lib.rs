@@ -136,9 +136,9 @@ pub trait MassaPublic {
     // Debug (specific information) //
     //////////////////////////////////
 
-    /// Returns the consensus Config.
-    #[rpc(name = "get_consensus_config")]
-    fn get_consensus_config(&self) -> BoxFuture<Result<AlgoConfig, PublicApiError>>;
+    /// Returns the algo Config.
+    #[rpc(name = "get_algo_config")]
+    fn get_algo_config(&self) -> BoxFuture<Result<AlgoConfig, PublicApiError>>;
 
     /// Returns the compensation_millis.
     #[rpc(name = "get_compensation_millis")]
@@ -667,7 +667,7 @@ impl MassaPublic for ApiMassaPublic {
         Box::pin(closure())
     }
 
-    fn get_consensus_config(&self) -> BoxFuture<Result<AlgoConfig, PublicApiError>> {
+    fn get_algo_config(&self) -> BoxFuture<Result<AlgoConfig, PublicApiError>> {
         let cfg = self.consensus_config.clone();
         let closure = async move || Ok(cfg.to_algo_config());
         Box::pin(closure())
