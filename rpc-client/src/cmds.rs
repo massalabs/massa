@@ -369,7 +369,7 @@ impl Command {
                         match wallet.add_private_key(key) {
                             Ok(ad) => {
                                 res.push_str(&format!(
-                                    "Derived and added address {:?} to the wallet\n",
+                                    "Derived and added address {} to the wallet\n",
                                     ad
                                 ));
                             }
