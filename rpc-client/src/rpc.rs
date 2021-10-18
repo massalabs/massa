@@ -94,7 +94,7 @@ impl RpcClient {
     /// No confirmation to expect.
     pub(crate) async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
         self.0
-            .call_method("remove_staking_addresses", "()", addresses)
+            .call_method("remove_staking_addresses", "()", vec![addresses])
             .await
     }
 
@@ -207,7 +207,7 @@ impl RpcClient {
         operations: Vec<Operation>,
     ) -> RpcResult<Vec<OperationId>> {
         self.0
-            .call_method("send_operations", "Vec<OperationId>", operations)
+            .call_method("send_operations", "Vec<OperationId>", vec![operations])
             .await
     }
 }
