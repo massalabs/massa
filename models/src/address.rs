@@ -8,7 +8,6 @@ use crypto::{
     signature::PublicKey,
 };
 use serde::{Deserialize, Serialize};
-use std::fmt::Formatter;
 use std::str::FromStr;
 
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
@@ -18,18 +17,6 @@ pub struct Address(Hash);
 
 pub type AddressHashMap<T> = HHashMap<Address, T>;
 pub type AddressHashSet = HHashSet<Address>;
-
-#[derive(Deserialize, Serialize)]
-pub struct AddressHashSetWrapper(pub AddressHashSet);
-
-impl std::fmt::Display for AddressHashSetWrapper {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for address in &self.0 {
-            writeln!(f, "{}", address)?;
-        }
-        Ok(())
-    }
-}
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

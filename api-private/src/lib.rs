@@ -10,7 +10,7 @@ use jsonrpc_derive::rpc;
 use jsonrpc_http_server::CloseHandle;
 use jsonrpc_http_server::ServerBuilder;
 use log::{info, warn};
-use models::address::{Address, AddressHashSetWrapper};
+use models::address::{Address, AddressHashSet};
 use models::crypto::PubkeySig;
 use models::node::NodeId;
 use std::net::IpAddr;
@@ -72,7 +72,7 @@ pub trait MassaPrivate {
 
     /// Return hashset of staking addresses.
     #[rpc(name = "get_staking_addresses")]
-    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSetWrapper, PrivateApiError>>;
+    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>>;
 
     /// Bans given node id
     /// No confirmation to expect.
@@ -170,13 +170,9 @@ impl MassaPrivate for ApiMassaPrivate {
         Box::pin(closure())
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSetWrapper, PrivateApiError>> {
+    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, PrivateApiError>> {
         let cmd_sender = self.consensus_command_sender.clone();
-        let closure = async move || {
-            Ok(AddressHashSetWrapper(
-                cmd_sender.get_staking_addresses().await?,
-            ))
-        };
+        let closure = async move || Ok(cmd_sender.get_staking_addresses().await?);
         Box::pin(closure())
     }
 

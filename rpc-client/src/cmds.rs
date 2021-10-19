@@ -264,7 +264,12 @@ impl Command {
 
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
-                    Ok(x) => repl_ok!(format!("{}", x)),
+                    Ok(x) => repl_ok!(format!(
+                        "{}",
+                        x.into_iter()
+                            .fold("".to_string(), |acc, a| format!("{}{}\n", acc, a)
+                                .to_string())
+                    )), // TODO
                     Err(e) => repl_err!(e),
                 }
             }
