@@ -14,6 +14,7 @@ use crate::logging::debug;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, sign, PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
+use models::stats::NetworkStats;
 use models::{crypto::PubkeySig, node::NodeId};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
@@ -21,7 +22,6 @@ use models::{
 };
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use serde::{Deserialize, Serialize};
-use std::fmt::Formatter;
 use std::{
     collections::{hash_map, HashMap, HashSet},
     convert::TryInto,
@@ -72,26 +72,6 @@ pub enum NetworkCommand {
     GetStats {
         response_tx: oneshot::Sender<NetworkStats>,
     },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct NetworkStats {
-    pub in_connection_count: u64,
-    pub out_connection_count: u64,
-    pub known_peer_count: u64,
-    pub banned_peer_count: u64,
-    pub active_node_count: u64,
-}
-impl std::fmt::Display for NetworkStats {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Network stats:")?;
-        writeln!(f, "\tIn connections: {}", self.in_connection_count)?;
-        writeln!(f, "\tOut connections: {}", self.out_connection_count)?;
-        writeln!(f, "\tKnown peers: {}", self.known_peer_count)?;
-        writeln!(f, "\tBanned peers: {}", self.banned_peer_count)?;
-        writeln!(f, "\tActive nodes: {}", self.active_node_count)?;
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

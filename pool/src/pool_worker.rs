@@ -6,14 +6,12 @@ use crate::operation_pool::OperationPool;
 use communication::protocol::{
     ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
+use models::stats::PoolStats;
 use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use tokio::sync::{mpsc, oneshot};
-
-use serde::{Deserialize, Serialize};
-use std::fmt::Formatter;
 
 /// Commands that can be processed by pool.
 #[derive(Debug)]
@@ -45,21 +43,6 @@ pub enum PoolCommand {
     },
     AddEndorsements(EndorsementHashMap<Endorsement>),
     GetStats(oneshot::Sender<PoolStats>),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PoolStats {
-    pub operation_count: u64,
-    pub endorsement_count: u64,
-}
-
-impl std::fmt::Display for PoolStats {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Pool stats:")?;
-        writeln!(f, "\tOperations: {}", self.operation_count)?;
-        writeln!(f, "\tEndorsements: {}", self.endorsement_count)?;
-        Ok(())
-    }
 }
 
 /// Events that are emitted by pool.

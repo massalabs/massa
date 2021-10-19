@@ -1,25 +1,30 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{
-    config::{NetworkConfig, CHANNEL_SIZE},
-    establisher::Establisher,
-    network_worker::{
-        NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkStats, NetworkWorker, Peers,
-    },
-    peer_info_database::*,
-    BootstrapPeers,
-};
-use crate::error::CommunicationError;
-use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey};
-use models::{crypto::PubkeySig, node::NodeId};
-use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use std::{
     collections::{HashMap, VecDeque},
     net::IpAddr,
 };
+
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
+};
+
+use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use models::stats::NetworkStats;
+use models::{crypto::PubkeySig, node::NodeId};
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
+
+use crate::error::CommunicationError;
+
+use super::{
+    config::{NetworkConfig, CHANNEL_SIZE},
+    establisher::Establisher,
+    network_worker::{
+        NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker, Peers,
+    },
+    peer_info_database::*,
+    BootstrapPeers,
 };
 
 /// Starts a new NetworkWorker in a spawned task

@@ -8,6 +8,7 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
+use models::stats::ConsensusStats;
 use models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
@@ -20,7 +21,6 @@ use models::{
     OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
-use serde::{Deserialize, Serialize};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
 use storage::StorageAccess;
 use time::UTime;
@@ -78,37 +78,6 @@ pub enum ConsensusCommand {
         address: Address,
         response_tx: oneshot::Sender<BlockHashMap<Status>>,
     },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConsensusStats {
-    pub start_timespan: UTime,
-    pub end_timespan: UTime,
-    pub final_block_count: u64,
-    pub final_operation_count: u64,
-    pub stale_block_count: u64,
-    pub clique_count: u64,
-}
-
-impl std::fmt::Display for ConsensusStats {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Consensus stats:")?;
-        writeln!(
-            f,
-            "\tStart stats timespan time: {}",
-            self.start_timespan.to_utc_string()
-        )?;
-        writeln!(
-            f,
-            "\tEnd stats timespan time: {}",
-            self.end_timespan.to_utc_string()
-        )?;
-        writeln!(f, "\tFinal block count: {}", self.final_block_count)?;
-        writeln!(f, "\tStale block count: {}", self.stale_block_count)?;
-        writeln!(f, "\tFinal operation count: {}", self.final_operation_count)?;
-        writeln!(f, "\tClique count: {}", self.clique_count)?;
-        Ok(())
-    }
 }
 
 /// Events that are emitted by consensus.

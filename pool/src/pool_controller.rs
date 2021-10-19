@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::pool_worker::PoolStats;
+use models::stats::PoolStats;
 
 use super::{
     config::{PoolConfig, CHANNEL_SIZE},
