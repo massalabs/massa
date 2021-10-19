@@ -110,7 +110,7 @@ impl std::fmt::Display for OperationInfo {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize,Clone, Copy)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct BalanceInfo {
     pub final_balance: Amount,
     pub candidate_balance: Amount,
