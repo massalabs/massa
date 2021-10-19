@@ -276,6 +276,15 @@ impl BootstrapServer {
         let cache_timer = sleep(cache_timeout);
         let per_ip_min_interval = self.cfg.per_ip_min_interval.to_duration();
         tokio::pin!(cache_timer);
+        /*
+            select! without the "biased" modifier will randomly select the 1st branch to check,
+            then will check the next ones in the order they are written.
+            We choose this order:
+                * manager commands to avoid waiting too long to stop in case of contention
+                * cache timeout to avoid skipping timeouts cleanup tasks (they are relatively rare)
+                * bootstrap sessions (rare)
+                * listener: most frequent => last
+        */
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
