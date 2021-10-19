@@ -364,7 +364,7 @@ impl Command {
                 let full_wallet = wallet.get_full_wallet();
                 // TODO: maybe too much info in wallet_info
 
-                let mut res = "WARNING: do not share your private key\n".to_string();
+                let mut res = "WARNING: do not share your private key\n\n".to_string();
                 match client
                     .public
                     .get_addresses(full_wallet.keys().copied().collect())
@@ -377,17 +377,22 @@ impl Command {
                                 None => return repl_err!("Missing keys in wallet"),
                             };
                             res.push_str(&format!(
-                                "Private key: {}\nPublic key{}\n{}\n\n=====\n\n",
-                                keys.1, keys.0, info
+                                "Private key: {}\nPublic key: {}\n{}\n\n=====\n\n",
+                                keys.1,
+                                keys.0,
+                                info.compact()
                             ));
                         }
                         repl_ok!(res)
                     }
                     Err(e) => {
-                        res.push_str(&format!("Error retrieving addresses info: {:?}\n", e));
+                        res.push_str(&format!(
+                            "Error retrieving addresses info: {:?}\nIs your node running ?\n\n",
+                            e
+                        ));
                         for (ad, (publ, priva)) in full_wallet.into_iter() {
                             res.push_str(&format!(
-                                "Private key: {}\nPublic key{}\n{}\n\n=====\n\n",
+                                "Private key: {}\nPublic key: {}\nAddress: {}\n\n=====\n\n",
                                 priva, publ, ad
                             ));
                         }

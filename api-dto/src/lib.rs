@@ -110,7 +110,7 @@ impl std::fmt::Display for OperationInfo {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct BalanceInfo {
     pub final_balance: Amount,
     pub candidate_balance: Amount,
@@ -126,7 +126,7 @@ impl std::fmt::Display for BalanceInfo {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct RollsInfo {
     pub active_rolls: u64,
     pub final_rolls: u64,
@@ -180,6 +180,41 @@ impl std::fmt::Display for AddressInfo {
             "Involved in operations: {:?}",
             self.involved_in_operations
         )?; // TODO
+        Ok(())
+    }
+}
+
+impl AddressInfo {
+    pub fn compact(&self) -> CompactAddressInfo {
+        CompactAddressInfo {
+            address: self.address,
+            thread: self.thread,
+            balance: self.balance,
+            rolls: self.rolls,
+            is_staking: self.is_staking,
+        }
+    }
+}
+
+pub struct CompactAddressInfo {
+    pub address: Address,
+    pub thread: u8,
+    pub balance: BalanceInfo,
+    pub rolls: RollsInfo,
+    pub is_staking: bool,
+}
+
+impl std::fmt::Display for CompactAddressInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Address: {}{}",
+            self.address,
+            display_if_true(self.is_staking, "staking"),
+        )?;
+        writeln!(f, "Thread: {}", self.thread)?;
+        writeln!(f, "Balance:\n{}", self.balance)?;
+        writeln!(f, "Rolls:\n{}", self.rolls)?;
         Ok(())
     }
 }
