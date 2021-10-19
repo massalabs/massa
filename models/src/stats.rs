@@ -1,7 +1,7 @@
-use std::fmt::Formatter;
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use serde::{Deserialize, Serialize};
-
+use std::fmt::Formatter;
 use time::UTime;
 
 #[derive(Serialize, Deserialize, Debug)]

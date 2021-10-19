@@ -34,6 +34,7 @@ pub use version::Version;
 
 pub mod address;
 pub mod amount;
+pub mod api;
 mod block;
 pub mod clique;
 mod composite;

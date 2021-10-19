@@ -1,11 +1,18 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(async_closure)]
-use api_dto::{APIConfig, BlockInfoContent, TimeInterval};
-use api_dto::{
-    AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    RollsInfo,
-};
+
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
+use std::thread;
+use std::thread::JoinHandle;
+
+use jsonrpc_core::{BoxFuture, IoHandler};
+use jsonrpc_derive::rpc;
+use jsonrpc_http_server::CloseHandle;
+use jsonrpc_http_server::ServerBuilder;
+use log::{info, warn};
+
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
 use communication::NodeId;
@@ -14,12 +21,11 @@ use consensus::{ConsensusCommandSender, ConsensusConfig, Status};
 use crypto::derive_public_key;
 use crypto::generate_random_private_key;
 use error::PublicApiError;
-use jsonrpc_core::{BoxFuture, IoHandler};
-use jsonrpc_derive::rpc;
-use jsonrpc_http_server::CloseHandle;
-use jsonrpc_http_server::ServerBuilder;
-use log::{info, warn};
 use models::address::AddressHashMap;
+use models::api::{
+    APIConfig, AddressInfo, BalanceInfo, BlockInfo, BlockInfoContent, BlockSummary,
+    EndorsementInfo, NodeStatus, OperationInfo, RollsInfo, TimeInterval,
+};
 use models::clique::Clique;
 use models::operation::{Operation, OperationId};
 use models::timeslots::get_block_slot_timestamp;
@@ -31,10 +37,6 @@ use models::{Address, BlockId, Slot};
 use models::{AlgoConfig, BlockHashSet};
 use models::{EndorsementId, Version};
 use pool::PoolCommandSender;
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
-use std::thread;
-use std::thread::JoinHandle;
 use storage::StorageAccess;
 use time::UTime;
 

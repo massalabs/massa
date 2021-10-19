@@ -13,7 +13,6 @@ jsonrpc-http-server = "18.0.0"
 tokio = { version = "1.11", features = ["full"] }
 thiserror = "1.0"
 # custom modules
-api-dto = { path = "../api-dto" }
 log = { version = "0.4" }
 crypto = {path = "../crypto"}
 communication = {path = "../communication"}

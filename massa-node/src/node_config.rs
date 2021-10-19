@@ -1,11 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use api::ApiConfig;
-use api_dto::APIConfig;
 use bootstrap::config::BootstrapConfig;
 use communication::network::NetworkConfig;
 use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
+use models::api::APIConfig;
 use models::Version;
 use pool::PoolConfig;
 use serde::Deserialize;
