@@ -1,33 +1,37 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{
-    block_graph::*,
-    config::{ConsensusConfig, CHANNEL_SIZE},
-    consensus_worker::{
-        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusStats,
-        ConsensusWorker,
-    },
-    pos::ProofOfStake,
+use std::{collections::VecDeque, path::Path};
+
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
 };
-use crate::error::ConsensusError;
-use crate::pos::ExportProofOfStake;
+
 use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::{
     derive_public_key,
     signature::{PrivateKey, PublicKey},
 };
 use logging::debug;
+use models::stats::ConsensusStats;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashMap, OperationHashMap, OperationHashSet,
 };
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
-use std::{collections::VecDeque, path::Path};
 use storage::StorageAccess;
-use tokio::{
-    sync::{mpsc, oneshot},
-    task::JoinHandle,
+
+use crate::error::ConsensusError;
+use crate::pos::ExportProofOfStake;
+
+use super::{
+    block_graph::*,
+    config::{ConsensusConfig, CHANNEL_SIZE},
+    consensus_worker::{
+        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusWorker,
+    },
+    pos::ProofOfStake,
 };
 
 /// Creates a new consensus controller.

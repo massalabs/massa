@@ -1,13 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::network::NetworkStats;
-use consensus::ConsensusStats;
 use models::node::NodeId;
+use models::stats::ConsensusStats;
+use models::stats::NetworkStats;
+use models::stats::PoolStats;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
     Operation, OperationHashSet, OperationId, Slot, Version,
 };
-use pool::PoolStats;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
