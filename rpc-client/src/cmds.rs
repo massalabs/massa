@@ -428,10 +428,10 @@ impl Command {
                     for key in x.into_iter() {
                         match wallet.remove_address(key) {
                             Some(_) => {
-                                res.push_str(&format!("Removed address {:?} to the wallet\n", key));
+                                res.push_str(&format!("Removed address {} from the wallet\n", key));
                             }
                             None => {
-                                res.push_str(&format!("Address {:?} wasn't in the wallet\n", key));
+                                res.push_str(&format!("Address {} wasn't in the wallet\n", key));
                             }
                         }
                     }
