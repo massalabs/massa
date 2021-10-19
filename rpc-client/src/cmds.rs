@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::rpc::Client;
+use api_dto::BlockInfo;
 use api_dto::{AddressInfo, EndorsementInfo, OperationInfo};
 use console::style;
 use crypto::generate_random_private_key;
@@ -337,8 +338,8 @@ impl Command {
             },
 
             Command::get_blocks => match parse_vec::<BlockId>(parameters) {
-                Ok(block_ids) => match client.public.get_block(block_ids[0]).await {
-                    Ok(x) => repl_ok!(x),
+                Ok(block_ids) => match client.public.get_blocks(block_ids).await {
+                    Ok(x) => repl_ok!(format_vec::<BlockInfo>(&x)),
                     Err(e) => repl_err!(e),
                 },
                 Err(e) => repl_err!(e),

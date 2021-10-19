@@ -79,6 +79,14 @@ pub struct Operation {
 
 impl std::fmt::Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Id: {}",
+            match self.get_operation_id() {
+                Ok(id) => format!("{}", id),
+                Err(e) => format!("error computing id: {}", e),
+            }
+        )?;
         writeln!(f, "Signature: {}", self.signature)?;
         let addr = Address::from_public_key(&self.content.sender_public_key)
             .map_err(|_| std::fmt::Error)?;

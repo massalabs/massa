@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(async_closure)]
-use api_dto::{APIConfig, TimeInterval};
+use api_dto::{APIConfig, BlockInfoContent, TimeInterval};
 use api_dto::{
     AddressInfo, BalanceInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     RollsInfo,
@@ -160,8 +160,8 @@ pub trait MassaPublic {
         -> jsonrpc_core::Result<Vec<EndorsementInfo>>;
 
     /// Get information on a block given its hash
-    #[rpc(name = "get_block")]
-    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, PublicApiError>>;
+    #[rpc(name = "get_blocks")]
+    fn get_blocks(&self, _: Vec<BlockId>) -> BoxFuture<Result<Vec<BlockInfo>, PublicApiError>>;
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from <time_start> (included) and to <time_end> (excluded) millisecond timestamp
@@ -367,10 +367,11 @@ impl MassaPublic for ApiMassaPublic {
         todo!() // TODO: wait for !238
     }
 
-    fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, PublicApiError>> {
+    fn get_blocks(&self, ids: Vec<BlockId>) -> BoxFuture<Result<Vec<BlockInfo>, PublicApiError>> {
         let consensus_command_sender = self.consensus_command_sender.clone();
         let opt_storage_command_sender = self.storage_command_sender.clone();
         let closure = async move || {
+            let mut res = Vec::new();
             let graph = consensus_command_sender.get_block_graph_status().await?;
             let block_clique = graph
                 .max_cliques
@@ -379,42 +380,49 @@ impl MassaPublic for ApiMassaPublic {
                 .ok_or(PublicApiError::InconsistencyError(
                     "Missing block clique".to_string(),
                 ))?;
-            if let Some((block, is_final)) =
-                match consensus_command_sender.get_block_status(id).await? {
-                    Some(ExportBlockStatus::Active(block)) => Some((block, false)),
-                    Some(ExportBlockStatus::Incoming) => None,
-                    Some(ExportBlockStatus::WaitingForSlot) => None,
-                    Some(ExportBlockStatus::WaitingForDependencies) => None,
-                    Some(ExportBlockStatus::Discarded(_)) => None, // TODO: get block if stale
-                    Some(ExportBlockStatus::Final(block)) => Some((block, true)),
-                    Some(ExportBlockStatus::Stored(_)) => None, // TODO: remove with old api
-                    None => None,
-                }
-            {
-                Ok(BlockInfo {
-                    id,
-                    is_final,
-                    is_stale: false,
-                    is_in_blockclique: block_clique.block_ids.contains(&id),
-                    block,
-                })
-            } else {
-                if let Some(cmd_tx) = opt_storage_command_sender {
-                    match cmd_tx.get_block(id).await {
-                        Ok(Some(block)) => Ok(BlockInfo {
-                            id,
-                            is_final: true,
+            for id in ids.into_iter() {
+                if let Some((block, is_final)) =
+                    match consensus_command_sender.get_block_status(id).await? {
+                        Some(ExportBlockStatus::Active(block)) => Some((block, false)),
+                        Some(ExportBlockStatus::Incoming) => None,
+                        Some(ExportBlockStatus::WaitingForSlot) => None,
+                        Some(ExportBlockStatus::WaitingForDependencies) => None,
+                        Some(ExportBlockStatus::Discarded(_)) => None, // TODO: get block if stale
+                        Some(ExportBlockStatus::Final(block)) => Some((block, true)),
+                        Some(ExportBlockStatus::Stored(_)) => None, // TODO: remove with old api
+                        None => None,
+                    }
+                {
+                    res.push(BlockInfo {
+                        id,
+                        content: Some(BlockInfoContent {
+                            is_final,
                             is_stale: false,
                             is_in_blockclique: block_clique.block_ids.contains(&id),
                             block,
                         }),
-                        Ok(None) => Err(PublicApiError::NotFound),
-                        Err(e) => Err(e.into()),
-                    }
+                    })
                 } else {
-                    Err(PublicApiError::NotFound)
+                    if let Some(ref cmd_tx) = opt_storage_command_sender {
+                        match cmd_tx.get_block(id).await {
+                            Ok(Some(block)) => res.push(BlockInfo {
+                                id,
+                                content: Some(BlockInfoContent {
+                                    is_final: true,
+                                    is_stale: false,
+                                    is_in_blockclique: block_clique.block_ids.contains(&id),
+                                    block,
+                                }),
+                            }),
+                            Ok(None) => res.push(BlockInfo { id, content: None }),
+                            Err(e) => return Err(e.into()),
+                        }
+                    } else {
+                        return Err(PublicApiError::NotFound);
+                    }
                 }
             }
+            Ok(res)
         };
 
         Box::pin(closure())
