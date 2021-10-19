@@ -275,6 +275,16 @@ impl ConsensusWorker {
 
         loop {
             massa_trace!("consensus.consensus_worker.run_loop.select", {});
+            /*
+                select! without the "biased" modifier will randomly select the 1st branch to check,
+                then will check the next ones in the order they are written.
+                We choose this order:
+                    * manager commands: low freq, avoid having to wait to stop
+                    * consensus commands (low to medium freq): respond quickly
+                    * slot timer (low freq, timing is important but does not have to be perfect either)
+                    * prune timer: low freq, timing not important but should not wait too long
+                    * receive protocol events (high freq)
+            */
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
