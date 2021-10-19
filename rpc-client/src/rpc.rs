@@ -108,7 +108,7 @@ impl RpcClient {
     /// Bans given node id
     /// No confirmation to expect.
     pub(crate) async fn ban(&self, node_id: NodeId) -> RpcResult<()> {
-        self.0.call_method("ban", "()", node_id).await
+        self.0.call_method("ban", "()", vec![node_id]).await
     }
 
     /// Unbans given ip addr
