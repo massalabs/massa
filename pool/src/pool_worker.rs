@@ -106,6 +106,14 @@ impl PoolWorker {
     pub async fn run_loop(mut self) -> Result<ProtocolPoolEventReceiver, PoolError> {
         loop {
             massa_trace!("pool.pool_worker.run_loop.select", {});
+            /*
+                select! without the "biased" modifier will randomly select the 1st branch to check,
+                then will check the next ones in the order they are written.
+                We choose this order:
+                    * manager commands: low freq, avoid having to wait to stop
+                    * pool commands (low to medium freq): respond quickly to consensus to avoid blocking it
+                    * protocol commands (high frequency): process incoming protocol objects
+            */
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
