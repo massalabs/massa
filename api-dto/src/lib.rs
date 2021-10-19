@@ -237,6 +237,11 @@ impl std::fmt::Display for EndorsementInfo {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BlockInfo {
     pub id: BlockId,
+    pub content: Option<BlockInfoContent>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BlockInfoContent {
     pub is_final: bool,
     pub is_stale: bool,
     pub is_in_blockclique: bool,
@@ -245,15 +250,19 @@ pub struct BlockInfo {
 
 impl std::fmt::Display for BlockInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Block's ID: {}{}{}{}",
-            self.id,
-            display_if_true(self.is_final, "final"),
-            display_if_true(self.is_stale, "stale"),
-            display_if_true(self.is_in_blockclique, "in blockclique"),
-        )?;
-        writeln!(f, "Block: {}", self.block)?;
+        if let Some(content) = &self.content {
+            writeln!(
+                f,
+                "Block's ID: {}{}{}{}",
+                self.id,
+                display_if_true(content.is_final, "final"),
+                display_if_true(content.is_stale, "stale"),
+                display_if_true(content.is_in_blockclique, "in blockclique"),
+            )?;
+            writeln!(f, "Block: {}", content.block)?;
+        } else {
+            writeln!(f, "Block {} not found", self.id)?;
+        }
         Ok(())
     }
 }
