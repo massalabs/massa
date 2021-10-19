@@ -403,7 +403,10 @@ impl Command {
 
             Command::wallet_generate_private_key => {
                 match wallet.add_private_key(generate_random_private_key()) {
-                    Ok(ad) => repl_ok!(ad),
+                    Ok(ad) => repl_ok!(format!(
+                        "Generated {} address and added it to the wallet",
+                        ad
+                    )),
                     Err(e) => repl_err!(e),
                 }
             }
