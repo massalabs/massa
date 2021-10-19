@@ -180,7 +180,9 @@ impl RpcClient {
 
     /// Get information on a block given its hash
     pub(crate) async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
-        self.0.call_method("get_block", "BlockInfo", block_id).await
+        self.0
+            .call_method("get_block", "BlockInfo", vec![block_id])
+            .await
     }
 
     /// Get the block graph within the specified time interval.

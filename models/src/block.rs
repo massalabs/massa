@@ -136,7 +136,7 @@ impl std::fmt::Display for Block {
             "Operations: {}",
             self.operations
                 .iter()
-                .map(|op| format!("({}", op))
+                .map(|op| format!("{}", op))
                 .collect::<Vec<String>>()
                 .join(" ")
         )?;
