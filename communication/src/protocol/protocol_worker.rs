@@ -401,7 +401,7 @@ impl ProtocolWorker {
                 We choose this order:
                     * manager commands: low freq, avoid havign to wait to stop
                     * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
-                    * network events (high frequency): process incoming events 
+                    * network events (high frequency): process incoming events
                     * ask for blocks (timing not important)
             */
             tokio::select! {
