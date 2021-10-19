@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![feature(async_closure)]
-use api_dto::APIConfig;
 use communication::network::NetworkCommandSender;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
 use crypto::signature::PrivateKey;
@@ -11,6 +10,7 @@ use jsonrpc_http_server::CloseHandle;
 use jsonrpc_http_server::ServerBuilder;
 use log::{info, warn};
 use models::address::{Address, AddressHashSet};
+use models::api::APIConfig;
 use models::crypto::PubkeySig;
 use models::node::NodeId;
 use std::net::IpAddr;

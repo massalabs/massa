@@ -1,21 +1,23 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::rpc::Client;
-use api_dto::BlockInfo;
-use api_dto::{AddressInfo, EndorsementInfo, OperationInfo};
+use std::net::IpAddr;
+use std::process;
+
 use console::style;
+use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
+use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
+
 use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
+use models::api::{AddressInfo, BlockInfo, EndorsementInfo, OperationInfo};
 use models::node::NodeId;
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
-use std::net::IpAddr;
-use std::process;
-use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
-use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
 use wallet::Wallet;
+
+use crate::rpc::Client;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, ToString)]

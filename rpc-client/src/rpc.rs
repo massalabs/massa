@@ -1,18 +1,20 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use api_dto::{
+use std::net::IpAddr;
+
+use jsonrpc_core_client::transports::http;
+use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
+
+use crypto::signature::PrivateKey;
+use models::address::{AddressHashMap, AddressHashSet};
+use models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
     TimeInterval,
 };
-use crypto::signature::PrivateKey;
-use jsonrpc_core_client::transports::http;
-use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
 use models::crypto::PubkeySig;
 use models::node::NodeId;
 use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
-use std::net::IpAddr;
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!

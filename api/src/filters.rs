@@ -11,7 +11,6 @@ use serde_json::json;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
 
-use api_dto::TimeInterval;
 use communication::network::Peer;
 use communication::network::Peers;
 use communication::{network::NetworkConfig, protocol::ProtocolConfig};
@@ -21,6 +20,7 @@ use consensus::Status;
 use consensus::{BlockGraphExport, ConsensusConfig, DiscardReason};
 use crypto::signature::PrivateKey;
 use logging::massa_trace;
+use models::api::TimeInterval;
 use models::node::NodeId;
 use models::stats::ConsensusStats;
 use models::Address;
