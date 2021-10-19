@@ -378,14 +378,16 @@ impl Command {
                             };
                             res.push_str(&format!(
                                 "Private key: {}\nPublic key: {}\n{}\n\n=====\n\n",
-                                keys.1, keys.0, info
+                                keys.1,
+                                keys.0,
+                                info.compact()
                             ));
                         }
                         repl_ok!(res)
                     }
                     Err(e) => {
                         res.push_str(&format!(
-                            "Error retrieving addresses info: {:?}\n\nIs your node running ?\n",
+                            "Error retrieving addresses info: {:?}\nIs your node running ?\n\n",
                             e
                         ));
                         for (ad, (publ, priva)) in full_wallet.into_iter() {
