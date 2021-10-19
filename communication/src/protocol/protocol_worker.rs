@@ -395,6 +395,15 @@ impl ProtocolWorker {
         tokio::pin!(block_ask_timer);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
+            /*
+                select! without the "biased" modifier will randomly select the 1st branch to check,
+                then will check the next ones in the order they are written.
+                We choose this order:
+                    * manager commands: low freq, avoid havign to wait to stop
+                    * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
+                    * network events (high frequency): process incoming events
+                    * ask for blocks (timing not important)
+            */
             tokio::select! {
                 // listen to management commands
                 cmd = self.controller_manager_rx.recv() => {
