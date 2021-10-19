@@ -7,7 +7,7 @@ use api_dto::{
 use crypto::signature::PrivateKey;
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-use models::address::{AddressHashMap, AddressHashSet};
+use models::address::{AddressHashMap, AddressHashSetWrapper};
 use models::clique::Clique;
 use models::crypto::PubkeySig;
 use models::node::NodeId;
@@ -99,7 +99,7 @@ impl RpcClient {
     }
 
     /// Return hashset of staking addresses.
-    pub(crate) async fn get_staking_addresses(&self) -> RpcResult<AddressHashSet> {
+    pub(crate) async fn get_staking_addresses(&self) -> RpcResult<AddressHashSetWrapper> {
         self.0
             .call_method("get_staking_addresses", "AddressHashSet", ())
             .await
