@@ -68,7 +68,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "Address discord_id"),
-        message = "generates the testnet rewards program node/staker ownership proof"
+        message = "generate the testnet rewards program node/staker ownership proof"
     )]
     node_testnet_rewards_program_ownership_proof,
 
@@ -94,7 +94,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "EndorsementId1 EndorsementId2 ..."),
+        props(args = "EndorsementId1 EndorsementId2 ...", implem = ""),
         message = "show info about a list of endorsements (content, finality ...)"
     )]
     get_endorsements,
@@ -198,14 +198,18 @@ impl Command {
 
     pub(crate) fn help(&self) -> PrettyPrint {
         repl_ok!(format!(
-            "- {}{}{}: {}",
+            "- {} {}: {}{}",
             style(self.to_string()).green(),
             if self.get_str("args").is_some() {
-                " "
+                style(self.get_str("args").unwrap_or("")).yellow()
             } else {
-                ""
+                style("no args").color256(8).italic() //grey
             },
-            style(self.get_str("args").unwrap_or("")).yellow(),
+            if self.get_str("implem").is_some() {
+                style("[not yet implemented]").red()
+            } else {
+                style("")
+            },
             self.get_message().unwrap()
         ))
     }
