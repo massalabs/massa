@@ -52,6 +52,7 @@ pub enum NetworkCommand {
     GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
+    BanIp(Vec<IpAddr>),
     Unban(Vec<IpAddr>),
     BlockNotFound {
         node: NodeId,
@@ -673,6 +674,27 @@ impl NetworkWorker {
         Ok(())
     }
 
+    async fn ban_connection_ids(&mut self, ban_connection_ids: HashSet<ConnectionId>) {
+        for ban_conn_id in ban_connection_ids.iter() {
+            // remove the connectionId entry in running_handshakes
+            self.running_handshakes.remove(ban_conn_id);
+        }
+        for (conn_id, node_command_tx) in self.active_nodes.values() {
+            if ban_connection_ids.contains(conn_id) {
+                let res = node_command_tx
+                    .send(NodeCommand::Close(ConnectionClosureReason::Banned))
+                    .await;
+                if res.is_err() {
+                    massa_trace!(
+                        "network.network_worker.manage_network_command", {"err": CommunicationError::ChannelError(
+                            "close node command send failed".into(),
+                        ).to_string()}
+                    );
+                }
+            };
+        }
+    }
+
     /// Manages network commands
     /// Only used inside worker's run_loop
     ///
@@ -686,6 +708,29 @@ impl NetworkWorker {
         cmd: NetworkCommand,
     ) -> Result<(), CommunicationError> {
         match cmd {
+            NetworkCommand::BanIp(ips) => {
+                massa_trace!(
+                    "network_worker.manage_network_command receive NetworkCommand::BanIp",
+                    { "ips": ips }
+                );
+                for ip in ips.iter() {
+                    self.peer_info_db.peer_banned(ip)?;
+                }
+                let ban_connection_ids = self
+                    .active_connections
+                    .iter()
+                    .filter_map(|(conn_id, (ip, _))| {
+                        if ips.contains(ip) {
+                            Some(conn_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .copied()
+                    .collect::<HashSet<_>>();
+
+                self.ban_connection_ids(ban_connection_ids).await
+            }
             NetworkCommand::Ban(node) => {
                 massa_trace!(
                     "network_worker.manage_network_command receive NetworkCommand::Ban",
@@ -706,24 +751,7 @@ impl NetworkWorker {
                         }
                     }
                 }
-                for ban_conn_id in ban_connection_ids.iter() {
-                    // remove the connectionId entry in running_handshakes
-                    self.running_handshakes.remove(ban_conn_id);
-                }
-                for (conn_id, node_command_tx) in self.active_nodes.values() {
-                    if ban_connection_ids.contains(conn_id) {
-                        let res = node_command_tx
-                            .send(NodeCommand::Close(ConnectionClosureReason::Banned))
-                            .await;
-                        if res.is_err() {
-                            massa_trace!(
-                                "network.network_worker.manage_network_command", {"err": CommunicationError::ChannelError(
-                                    "close node command send failed".into(),
-                                ).to_string()}
-                            );
-                        }
-                    };
-                }
+                self.ban_connection_ids(ban_connection_ids).await
             }
             NetworkCommand::SendBlockHeader { node, header } => {
                 massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.compute_block_id()?, "header": header, "node": node});
