@@ -12,7 +12,6 @@ use log::{info, warn};
 use models::address::{Address, AddressHashSet};
 use models::api::APIConfig;
 use models::crypto::PubkeySig;
-use models::node::NodeId;
 use std::net::IpAddr;
 use std::thread;
 use std::thread::JoinHandle;
@@ -77,7 +76,7 @@ pub trait MassaPrivate {
     /// Bans given node id
     /// No confirmation to expect.
     #[rpc(name = "ban")]
-    fn ban(&self, _: NodeId) -> BoxFuture<Result<(), PrivateApiError>>;
+    fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), PrivateApiError>>;
 
     /// Unbans given ip addr
     /// No confirmation to expect.
@@ -176,9 +175,9 @@ impl MassaPrivate for ApiMassaPrivate {
         Box::pin(closure())
     }
 
-    fn ban(&self, node_id: NodeId) -> BoxFuture<Result<(), PrivateApiError>> {
+    fn ban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), PrivateApiError>> {
         let network_command_sender = self.network_command_sender.clone();
-        let closure = async move || Ok(network_command_sender.ban(node_id).await?);
+        let closure = async move || Ok(network_command_sender.ban_ip(ips).await?);
         Box::pin(closure())
     }
 

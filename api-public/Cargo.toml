@@ -10,13 +10,13 @@ displaydoc = "0.2"
 jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
+thiserror = "1.0"
 # custom modules
 log = { version = "0.4" }
 models = {path = "../models"}
 time = {path = "../time"}
 tokio = { version = "1.11", features = ["full"] }
 consensus = {path = "../consensus"}
-thiserror = "1.0"
 communication = {path = "../communication"}
 crypto = {path = "../crypto"}
 pool = {path = "../pool"}
