@@ -12,7 +12,6 @@ use crypto::{
     derive_public_key,
     signature::{PrivateKey, PublicKey},
 };
-use logging::debug;
 use models::stats::ConsensusStats;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
@@ -33,6 +32,7 @@ use super::{
     },
     pos::ProofOfStake,
 };
+use tracing::{debug, error, info};
 
 /// Creates a new consensus controller.
 ///

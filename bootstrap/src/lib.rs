@@ -10,7 +10,6 @@ use crypto::signature::{PrivateKey, PublicKey};
 use error::BootstrapError;
 pub use establisher::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
-use log::{debug, info, warn};
 use logging::massa_trace;
 use messages::BootstrapMessage;
 use models::Version;
@@ -21,6 +20,7 @@ use std::{convert::TryInto, net::IpAddr};
 use time::UTime;
 use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
+use tracing::{debug, info, warn};
 
 mod client_binder;
 pub mod config;

@@ -22,6 +22,7 @@ use time::UTime;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
 use tools::{get_dummy_block_id, get_transaction};
+use tracing::trace;
 
 /// Test that a node worker can shutdown even if the event channel is full,
 /// and that sending additional node commands during shutdown does not deadlock.

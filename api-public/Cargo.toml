@@ -11,8 +11,8 @@ jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
 thiserror = "1.0"
+tracing = "0.1"
 # custom modules
-log = { version = "0.4" }
 models = {path = "../models"}
 time = {path = "../time"}
 tokio = { version = "1.11", features = ["full"] }

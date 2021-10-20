@@ -5,7 +5,6 @@ use crate::{
     config::StorageConfig,
     error::StorageError,
 };
-use logging::debug;
 use models::{
     Address, Block, BlockHashMap, BlockHashSet, BlockId, OperationHashMap, OperationHashSet,
     OperationSearchResult, Slot,
@@ -14,6 +13,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Notify};
 use tokio::task::JoinHandle;
+use tracing::{debug, error, info};
 
 pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManager), StorageError> {
     debug!("starting storage controller");

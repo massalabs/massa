@@ -16,4 +16,3 @@ tokio = { version = "1.11", features = ["full"] }
 [dev-dependencies]
 pretty_assertions = "0.7"
 serial_test = "0.5"
-stderrlog = { version = "0.5" }

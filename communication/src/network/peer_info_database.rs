@@ -13,6 +13,7 @@ use time::UTime;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
+use tracing::{trace, warn};
 
 /// All information concerning a peer is here
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]

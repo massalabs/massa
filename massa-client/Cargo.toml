@@ -13,7 +13,6 @@ chrono = "0.4"
 clap = "2.33"
 config = { version = "0.11" }
 displaydoc = "0.2"
-log = { version = "0.4" }
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 rustyline = "7.1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -21,6 +20,7 @@ serde_json = { version = "1.0" }
 serde_qs = {version= "0.8"}
 serial_test = "0.5"
 thiserror = "1.0"
+tracing = "0.1"
 # custom modules
 api = { path = "../api" }
 communication = {path = "../communication"}
