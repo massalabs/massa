@@ -1617,6 +1617,9 @@ impl BlockGraph {
     ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
         let mut res: OperationHashMap<OperationSearchResult> = Default::default();
         for b_id in self.active_index.iter() {
+            if res.len() > self.cfg.max_nb_query_item {
+                break;
+            }
             if let Some(BlockStatus::Active(ActiveBlock {
                 addresses_to_operations,
                 is_final,
@@ -4776,6 +4779,7 @@ mod tests {
             max_send_wait: 500.into(),
             endorsement_count: 8,
             block_db_prune_interval: 1000.into(),
+            max_nb_query_item: 1000,
         }
     }
 }
