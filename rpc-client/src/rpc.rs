@@ -13,7 +13,6 @@ use models::api::{
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
-use models::node::NodeId;
 use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
@@ -109,8 +108,8 @@ impl RpcClient {
 
     /// Bans given node id
     /// No confirmation to expect.
-    pub(crate) async fn ban(&self, node_id: NodeId) -> RpcResult<()> {
-        self.0.call_method("ban", "()", vec![node_id]).await
+    pub(crate) async fn ban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.0.call_method("ban", "()", vec![ips]).await
     }
 
     /// Unbans given ip addr

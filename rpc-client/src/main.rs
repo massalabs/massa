@@ -41,9 +41,10 @@ struct Args {
         default_value = "wallet.dat"
     )]
     wallet: PathBuf,
-    #[structopt(short = "j", long = "json")]
-    _json: bool, // TODO: use me with serde::Serialize/Deserialize traits
 }
+// TODO: use me with serde::Serialize/Deserialize traits
+// #[structopt(short = "j", long = "json")]
+// json: bool,
 
 #[paw::main]
 fn main(args: Args) {
