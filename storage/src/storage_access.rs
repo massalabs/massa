@@ -47,6 +47,7 @@ pub fn start_storage(cfg: StorageConfig) -> Result<(StorageAccess, StorageManage
         addr_to_block.clone(),
         block_count.clone(),
         notify.clone(),
+        cfg.clone(),
     )?;
 
     let storage_cleaner = StorageCleaner::new(

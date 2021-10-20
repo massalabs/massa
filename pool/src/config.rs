@@ -13,4 +13,5 @@ pub struct PoolConfig {
     pub max_operation_future_validity_start_periods: u64,
     /// max endorsement we keep in pool
     pub max_endorsement_count: u64,
+    pub max_item_return_count: usize,
 }

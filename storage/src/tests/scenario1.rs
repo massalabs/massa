@@ -18,6 +18,7 @@ async fn test_max_block_count() {
         cache_capacity: 256,  // little to force flush cache
         flush_interval: None, // default
         reset_at_startup: true,
+        max_item_return_count: 1000,
     };
     models::init_serialization_context(SerializationContext {
         max_block_size: 1024 * 1024,
@@ -90,6 +91,7 @@ async fn test_max_nb_blocks() {
         cache_capacity: 256,  // little to force flush cache
         flush_interval: None, // default
         reset_at_startup: true,
+        max_item_return_count: 1000,
     };
     models::init_serialization_context(SerializationContext {
         max_block_size: 1024 * 1024,
@@ -162,6 +164,7 @@ async fn test_get_slot_range() {
         cache_capacity: 256,  // little to force flush cache
         flush_interval: None, // default
         reset_at_startup: true,
+        max_item_return_count: 1000,
     };
     models::init_serialization_context(SerializationContext {
         max_block_size: 1024 * 1024,
