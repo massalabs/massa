@@ -319,6 +319,7 @@ impl OperationPool {
     ) -> Result<OperationHashMap<OperationSearchResult>, PoolError> {
         if let Some(ids) = self.ops_by_address.get_ops_for_address(address) {
             ids.iter()
+                .take(self.cfg.max_item_return_count)
                 .map(|op_id| {
                     self.ops
                         .get(op_id)
@@ -390,6 +391,7 @@ mod tests {
                 max_pool_size_per_thread: 100000,
                 max_operation_future_validity_start_periods: 200,
                 max_endorsement_count: 1000,
+                max_item_return_count: 1000,
             },
             thread_count,
             operation_validity_periods,

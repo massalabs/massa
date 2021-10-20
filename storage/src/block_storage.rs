@@ -1,6 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::error::{InternalError, StorageError};
+use crate::{
+    error::{InternalError, StorageError},
+    StorageConfig,
+};
 use models::{
     address::AddressHashMap, array_from_slice, hhasher::BuildHHasher, Address, Block, BlockHashMap,
     BlockHashSet, BlockId, DeserializeCompact, OperationHashMap, OperationHashSet, OperationId,
@@ -267,6 +270,7 @@ fn block_id_to_ivec(block_ids: &BlockHashSet) -> Result<IVec, StorageError> {
 }
 #[derive(Clone)]
 pub struct BlockStorage {
+    cfg: StorageConfig,
     block_count: Arc<AtomicUsize>,
     /// BlockId -> Block
     hash_to_block: sled::Tree,
@@ -290,6 +294,7 @@ impl BlockStorage {
         addr_to_block: sled::Tree,
         block_count: Arc<AtomicUsize>,
         notify: Arc<Notify>,
+        cfg: StorageConfig,
     ) -> Result<BlockStorage, StorageError> {
         let res = BlockStorage {
             block_count,
@@ -299,6 +304,7 @@ impl BlockStorage {
             addr_to_op, // address -> Vec<operationId>
             addr_to_block,
             notify,
+            cfg,
         };
 
         Ok(res)
@@ -573,6 +579,7 @@ impl BlockStorage {
             if let Some(ops) = addr_to_op.get(address.to_bytes())? {
                 Ok(ops_from_ivec(ops)?
                     .into_iter()
+                    .take(self.cfg.max_item_return_count)
                     .map(|id| {
                         let ser_op_id = id.to_bytes();
                         let (block_id, idx) = if let Some(buf) = op_to_block.get(&ser_op_id)? {

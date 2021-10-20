@@ -1404,6 +1404,7 @@ async fn test_get_block() {
         cache_capacity: 256,    // little to force flush cache
         flush_interval: None,   // default
         reset_at_startup: true, // if there was something in storage, it is not the case anymore
+        max_item_return_count: 1000,
     };
     let (storage_command_tx, _storage_manager) = start_storage(storage_config).unwrap();
     let (filter, mut rx_api) = mock_filter(None);
