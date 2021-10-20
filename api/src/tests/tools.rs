@@ -99,6 +99,7 @@ pub fn get_consensus_config() -> ConsensusConfig {
         max_send_wait: 500.into(),
         endorsement_count: 8,
         block_db_prune_interval: 1000.into(),
+        max_item_return_count: 1000,
     }
 }
 
@@ -118,6 +119,7 @@ pub fn get_pool_config() -> PoolConfig {
         max_pool_size_per_thread: 100000,
         max_operation_future_validity_start_periods: 200,
         max_endorsement_count: 1000,
+        max_item_return_count: 1000,
     }
 }
 
@@ -260,6 +262,7 @@ pub async fn get_test_storage(cfg: ConsensusConfig) -> (StorageAccess, (Block, B
         cache_capacity: 256,  // little to force flush cache
         flush_interval: None, // default
         reset_at_startup: true,
+        max_item_return_count: 1000,
     };
     let (storage_command_tx, _storage_manager) = start_storage(storage_config).unwrap();
 

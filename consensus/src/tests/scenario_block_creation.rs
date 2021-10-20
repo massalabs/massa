@@ -467,8 +467,8 @@ async fn test_order_of_inclusion() {
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 3;
     cfg.max_operations_per_block = 50;
-    // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = UTime::now(0).unwrap();
+    // Increase timestamp a bit to avoid missing the first slot.
+    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_add(1000.into()).unwrap();
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
     let op2 = create_transaction(priv_a, pubkey_a, address_b, 50, 10, 10);

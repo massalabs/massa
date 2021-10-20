@@ -123,6 +123,7 @@ pub fn get_test_config() -> StorageConfig {
         cache_capacity: 1000000,
         flush_interval: Some(200.into()),
         reset_at_startup: true,
+        max_item_return_count: 1000,
     }
 }
 

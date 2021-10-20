@@ -1,10 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use models::node::NodeId;
-use models::stats::ConsensusStats;
-use models::stats::NetworkStats;
-use models::stats::PoolStats;
-use models::{
+use crate::node::NodeId;
+use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
+use crate::{
     Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
     Operation, OperationHashSet, OperationId, Slot, Version,
 };
