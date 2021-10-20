@@ -579,7 +579,7 @@ impl BlockStorage {
             if let Some(ops) = addr_to_op.get(address.to_bytes())? {
                 Ok(ops_from_ivec(ops)?
                     .into_iter()
-                    .take(self.cfg.max_nb_query_item)
+                    .take(self.cfg.max_item_return_count)
                     .map(|id| {
                         let ser_op_id = id.to_bytes();
                         let (block_id, idx) = if let Some(buf) = op_to_block.get(&ser_op_id)? {
