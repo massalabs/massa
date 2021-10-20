@@ -519,7 +519,7 @@ impl Command {
                     };
 
                     match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(format!("Sent operation id : {:?}", x)),
+                        Ok(x) => repl_ok!(format!("Sent operation id : {}", format_vec(&x))),
                         Err(e) => repl_err!(e),
                     }
                 }
@@ -585,7 +585,7 @@ impl Command {
                     };
 
                     match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(format!("Sent operation id : {:?}", x)),
+                        Ok(x) => repl_ok!(format!("Sent operation id : {}", format_vec(&x))),
                         Err(e) => repl_err!(e),
                     }
                 }
@@ -660,7 +660,7 @@ impl Command {
                     };
 
                     match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(format!("Sent operation id : {:?}", x)),
+                        Ok(x) => repl_ok!(format!("Sent operation id : {}", format_vec(&x))),
                         Err(e) => repl_err!(e),
                     }
                 }
