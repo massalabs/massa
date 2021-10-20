@@ -33,7 +33,6 @@ dependencies = [
 name = "api"
 version = "0.1.0"
 dependencies = [
- "api-dto",
  "communication",
  "consensus",
  "crypto",
@@ -58,19 +57,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-dto"
-version = "0.1.0"
-dependencies = [
- "models",
- "serde 1.0.130",
- "time 0.1.0",
-]
-
-[[package]]
 name = "api-private"
 version = "0.1.0"
 dependencies = [
- "api-dto",
  "communication",
  "consensus",
  "crypto",
@@ -89,7 +78,6 @@ dependencies = [
 name = "api-public"
 version = "0.1.0"
 dependencies = [
- "api-dto",
  "communication",
  "consensus",
  "crypto",
@@ -1227,7 +1215,6 @@ name = "massa-node"
 version = "0.1.0"
 dependencies = [
  "api",
- "api-dto",
  "api-private",
  "api-public",
  "bootstrap",
@@ -2111,7 +2098,6 @@ dependencies = [
 name = "rpc-client"
 version = "0.1.0"
 dependencies = [
- "api-dto",
  "atty",
  "config",
  "console 0.14.1 (git+https://github.com/mitsuhiko/console)",

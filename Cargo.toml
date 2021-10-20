@@ -2,7 +2,6 @@
 
 members = [
 	"api",
-    "api-dto",
     "api-public",
     "api-private",
     "bootstrap",

@@ -20,7 +20,6 @@ pool = { path = "../pool" }
 api = { path = "../api" }
 api-private = { path = "../api-private" }
 api-public = { path = "../api-public" }
-api-dto = { path = "../api-dto" }
 bootstrap = { path = "../bootstrap" }
 communication = { path = "../communication" }
 consensus = { path = "../consensus" }

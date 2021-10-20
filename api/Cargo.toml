@@ -16,7 +16,6 @@ thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 warp = "0.3"
 # custom modules
-api-dto = {path = "../api-dto"}
 communication = {path = "../communication"}
 consensus = {path = "../consensus"}
 crypto = {path = "../crypto"}
