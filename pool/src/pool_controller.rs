@@ -8,7 +8,7 @@ use super::{
     pool_worker::{PoolCommand, PoolManagementCommand, PoolWorker},
 };
 use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
-use logging::{debug, massa_trace};
+use logging::massa_trace;
 use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
@@ -17,6 +17,7 @@ use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use tracing::{debug, error, info};
 
 /// Creates a new pool controller.
 ///

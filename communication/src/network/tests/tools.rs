@@ -26,6 +26,7 @@ use tempfile::NamedTempFile;
 use time::UTime;
 use tokio::time::sleep;
 use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
+use tracing::trace;
 
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 

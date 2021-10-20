@@ -9,12 +9,12 @@ edition = "2018"
 [dependencies]
 config = { version = "0.11" }
 futures = { version = "0.3" }
-log = { version = "0.4" }
+tracing = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-stderrlog = { version = "0.5" }
 tokio = { version = "1.11", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
+tracing-subscriber = "0.2"
 # custom modules
 pool = { path = "../pool" }
 api = { path = "../api" }
@@ -31,4 +31,3 @@ time = { path = "../time" }
 [dev-dependencies]
 pretty_assertions = "0.7"
 serial_test = "0.5"
-stderrlog = { version = "0.5" }

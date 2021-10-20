@@ -37,7 +37,6 @@ dependencies = [
  "consensus",
  "crypto",
  "displaydoc",
- "log",
  "logging",
  "models",
  "num",
@@ -47,12 +46,12 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "serial_test",
- "stderrlog",
  "storage",
  "tempfile",
  "thiserror",
  "time 0.1.0",
  "tokio",
+ "tracing",
  "warp",
 ]
 
@@ -67,11 +66,11 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
- "log",
  "models",
  "thiserror",
  "time 0.1.0",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -85,13 +84,13 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
- "log",
  "models",
  "pool",
  "storage",
  "thiserror",
  "time 0.1.0",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -173,7 +172,6 @@ dependencies = [
  "crypto",
  "displaydoc",
  "futures 0.3.17",
- "log",
  "logging",
  "models",
  "num_enum",
@@ -182,10 +180,10 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
- "stderrlog",
  "thiserror",
  "time 0.1.0",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -297,7 +295,6 @@ dependencies = [
  "displaydoc",
  "futures 0.3.17",
  "itertools",
- "log",
  "logging",
  "models",
  "num_enum",
@@ -313,6 +310,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "toml",
+ "tracing",
 ]
 
 [[package]]
@@ -340,7 +338,6 @@ dependencies = [
  "crypto",
  "displaydoc",
  "futures 0.3.17",
- "log",
  "logging",
  "models",
  "num",
@@ -359,6 +356,7 @@ dependencies = [
  "time 0.1.0",
  "tokio",
  "tokio-util",
+ "tracing",
 ]
 
 [[package]]
@@ -466,7 +464,6 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
- "stderrlog",
  "thiserror",
 ]
 
@@ -1175,11 +1172,10 @@ dependencies = [
 name = "logging"
 version = "0.1.0"
 dependencies = [
- "log",
  "pretty_assertions",
  "serde_json",
  "serial_test",
- "stderrlog",
+ "tracing",
 ]
 
 [[package]]
@@ -1196,7 +1192,6 @@ dependencies = [
  "consensus",
  "crypto",
  "displaydoc",
- "log",
  "models",
  "pool",
  "reqwest",
@@ -1207,6 +1202,7 @@ dependencies = [
  "serial_test",
  "thiserror",
  "time 0.1.0",
+ "tracing",
  "wallet",
 ]
 
@@ -1222,7 +1218,6 @@ dependencies = [
  "config",
  "consensus",
  "futures 0.3.17",
- "log",
  "logging",
  "models",
  "pool",
@@ -1230,11 +1225,21 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
- "stderrlog",
  "storage",
  "time 0.1.0",
  "tokio",
  "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "matchers"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f099785f7595cc4b4553a174ce30dd7589ef93391ff414dbb67f62392b9e0ce1"
+dependencies = [
+ "regex-automata",
 ]
 
 [[package]]
@@ -1314,7 +1319,6 @@ dependencies = [
  "serde_qs",
  "serial_test",
  "sled",
- "stderrlog",
  "thiserror",
  "time 0.1.0",
  "tokio",
@@ -1692,7 +1696,6 @@ dependencies = [
  "crypto",
  "displaydoc",
  "futures 0.3.17",
- "log",
  "logging",
  "models",
  "num",
@@ -1700,10 +1703,10 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
- "stderrlog",
  "thiserror",
  "time 0.1.0",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2041,6 +2044,15 @@ checksum = "d07a8629359eb56f1e2fb1652bb04212c072a87ba68546a04065d525673ac461"
 dependencies = [
  "aho-corasick",
  "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
+dependencies = [
  "regex-syntax",
 ]
 
@@ -2383,6 +2395,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sharded-slab"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2454,7 +2475,6 @@ version = "0.1.0"
 dependencies = [
  "crypto",
  "displaydoc",
- "log",
  "logging",
  "models",
  "pretty_assertions",
@@ -2467,6 +2487,7 @@ dependencies = [
  "thiserror",
  "time 0.1.0",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2615,7 +2636,6 @@ dependencies = [
  "pretty_assertions",
  "serde 1.0.130",
  "serial_test",
- "stderrlog",
  "thiserror",
  "tokio",
 ]
@@ -2773,6 +2793,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-log"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6923477a48e41c1951f1999ef8bb5a3023eb723ceadafe78ffb65dc366761e3"
+dependencies = [
+ "lazy_static",
+ "log",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-serde"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb65ea441fbb84f9f6748fd496cf7f63ec9af5bca94dd86456978d055e8eb28b"
+dependencies = [
+ "serde 1.0.130",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-subscriber"
+version = "0.2.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e0d2eaa99c3c2e41547cfa109e910a68ea03823cccad4a0525dcbc9b01e8c71"
+dependencies = [
+ "ansi_term 0.12.1",
+ "chrono",
+ "lazy_static",
+ "matchers",
+ "regex",
+ "serde 1.0.130",
+ "serde_json",
+ "sharded-slab",
+ "smallvec",
+ "thread_local",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
+ "tracing-serde",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2925,6 +2988,7 @@ dependencies = [
  "serde_qs",
  "thiserror",
  "time 0.1.0",
+ "tracing",
 ]
 
 [[package]]

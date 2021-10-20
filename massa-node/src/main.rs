@@ -17,8 +17,7 @@ use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
 };
-use log::{error, info, trace};
-use logging::{massa_trace, warn};
+use logging::massa_trace;
 use models::OperationHashMap;
 use models::{
     init_serialization_context, Address, BlockHashMap, OperationSearchResult,
@@ -29,6 +28,8 @@ use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
 use tokio::sync::mpsc;
+use tracing::{error, info, trace, warn, Level};
+use tracing_subscriber;
 
 mod node_config;
 
@@ -720,26 +721,15 @@ async fn main() {
         .expect("error structuring config");
 
     // setup logging
-    stderrlog::new()
-        .module(module_path!())
-        .module("bootstrap")
-        .module("communication")
-        .module("consensus")
-        .module("crypto")
-        .module("logging")
-        .module("storage")
-        .module("models")
-        .module("time")
-        .module("api")
-        .module("api_private")
-        .module("api_public")
-        .module("rpc_client")
-        .module("wallet")
-        .module("pool")
-        .verbosity(cfg.logging.level)
-        .timestamp(stderrlog::Timestamp::Millisecond)
-        .init()
-        .unwrap();
+    tracing_subscriber::fmt()
+        .with_max_level(match cfg.logging.level {
+            4 => Level::TRACE,
+            3 => Level::DEBUG,
+            2 => Level::INFO,
+            1 => Level::WARN,
+            _ => Level::ERROR,
+        })
+        .init();
 
     run(cfg).await
 }

@@ -10,7 +10,6 @@ use super::{
     peer_info_database::*,
 };
 use crate::error::{CommunicationError, HandshakeErrorType};
-use crate::logging::debug;
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, sign, PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
@@ -30,6 +29,7 @@ use std::{
 use tokio::sync::mpsc::error::SendTimeoutError;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
+use tracing::{debug, trace, warn};
 
 /// Commands that the worker can execute
 #[derive(Debug)]
