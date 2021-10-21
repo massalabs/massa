@@ -207,9 +207,12 @@ impl MassaPublic for ApiMassaPublic {
                 consensus_config.genesis_timestamp,
                 now,
             )?;
-            let consensus_stats = consensus_command_sender.get_stats().await?;
-            let network_stats = network_command_sender.get_network_stats().await?;
-            let pool_stats = pool_command_sender.get_pool_stats().await?;
+            let (consensus_stats, network_stats, pool_stats, peers) = tokio::join!(
+                consensus_command_sender.get_stats(),
+                network_command_sender.get_network_stats(),
+                pool_command_sender.get_pool_stats(),
+                network_command_sender.get_peers()
+            );
             Ok(NodeStatus {
                 node_id,
                 node_ip: network_config.routable_ip,
@@ -220,9 +223,7 @@ impl MassaPublic for ApiMassaPublic {
                 roll_price: consensus_config.roll_price,
                 thread_count: consensus_config.thread_count,
                 current_time: now,
-                connected_nodes: network_command_sender
-                    .get_peers()
-                    .await?
+                connected_nodes: peers?
                     .peers
                     .iter()
                     .map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
@@ -233,9 +234,9 @@ impl MassaPublic for ApiMassaPublic {
                 next_slot: last_slot
                     .unwrap_or(Slot::new(0, 0))
                     .get_next_slot(consensus_config.thread_count)?,
-                consensus_stats,
-                network_stats,
-                pool_stats,
+                consensus_stats: consensus_stats?,
+                network_stats: network_stats?,
+                pool_stats: pool_stats?,
             })
         };
 
