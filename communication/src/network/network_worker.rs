@@ -1110,7 +1110,7 @@ impl NetworkWorker {
                         .send(NodeCommand::SendPeerList(peer_list))
                         .await;
                     if res.is_err() {
-                        warn!(
+                        debug!(
                             "{}",
                             CommunicationError::ChannelError(
                                 "node command send send_peer_list failed".into(),
