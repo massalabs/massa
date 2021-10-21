@@ -2,7 +2,7 @@
 name = "models"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
