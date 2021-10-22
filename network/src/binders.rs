@@ -2,8 +2,8 @@
 
 //! Flexbuffer layer between raw data and our objects.
 use super::messages::Message;
-use crate::error::CommunicationError;
-use crate::network::{ReadHalf, WriteHalf};
+use crate::error::NetworkError;
+use crate::establisher::{ReadHalf, WriteHalf};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeCompact,
     SerializeMinBEInt,
@@ -35,14 +35,14 @@ impl WriteBinder {
     ///
     /// # Argument
     /// * msg: date to transmit.
-    pub async fn send(&mut self, msg: &Message) -> Result<u64, CommunicationError> {
+    pub async fn send(&mut self, msg: &Message) -> Result<u64, NetworkError> {
         //        massa_trace!("binder.send", { "msg": msg });
         // serialize
         let bytes_vec = msg.to_bytes_compact()?;
         let msg_size: u32 = bytes_vec
             .len()
             .try_into()
-            .map_err(|_| CommunicationError::GeneralProtocolError("message too long".into()))?;
+            .map_err(|_| NetworkError::GeneralProtocolError("message too long".into()))?;
 
         // send length
         let max_message_size = with_serialization_context(|context| context.max_message_size);
@@ -87,7 +87,7 @@ impl ReadBinder {
     }
 
     /// Awaits the next incoming message and deserializes it. Async cancel-safe.
-    pub async fn next(&mut self) -> Result<Option<(u64, Message)>, CommunicationError> {
+    pub async fn next(&mut self) -> Result<Option<(u64, Message)>, NetworkError> {
         let max_message_size = with_serialization_context(|context| context.max_message_size);
 
         // read message size

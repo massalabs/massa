@@ -2,9 +2,9 @@
 
 use super::tools;
 use super::tools::protocol_test;
-use crate::network::NetworkCommand;
-use crate::protocol::ProtocolEvent;
+use crate::ProtocolEvent;
 use models::BlockHashSet;
+use network::NetworkCommand;
 use serial_test::serial;
 use tools::{asked_list, assert_hash_asked_to_node};
 

@@ -11,9 +11,9 @@ use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, assert_eq_thread_cycle_states},
 };
-use communication::network::{NetworkCommand, NetworkCommandSender};
 use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::Version;
+use network::{NetworkCommand, NetworkCommandSender};
 use serial_test::serial;
 use std::str::FromStr;
 use time::UTime;

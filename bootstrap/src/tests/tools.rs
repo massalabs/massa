@@ -7,7 +7,6 @@ use bitvec::prelude::*;
 use consensus::ledger::LedgerChanges;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
-use communication::network::{BootstrapPeers, NetworkCommand};
 use consensus::{
     BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
     RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
@@ -21,6 +20,7 @@ use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
+use network::{BootstrapPeers, NetworkCommand};
 use time::UTime;
 
 use super::mock_establisher::Duplex;

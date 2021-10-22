@@ -5,7 +5,8 @@ use super::{
     config::{NetworkConfig, NODE_SEND_CHANNEL_SIZE},
     messages::Message,
 };
-use crate::{error::CommunicationError, network::ConnectionClosureReason};
+use crate::{error::NetworkError, ConnectionClosureReason};
+use logging::massa_trace;
 use models::node::NodeId;
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use std::net::IpAddr;
@@ -137,7 +138,7 @@ impl NodeWorker {
         &self,
         sender: &Sender<Message>,
         msg: Message,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         match sender.try_send(msg) {
             Err(TrySendError::Full(_)) => {
                 debug!(
@@ -146,7 +147,7 @@ impl NodeWorker {
                 );
                 Ok(())
             }
-            Err(TrySendError::Closed(_)) => Err(CommunicationError::ChannelError(
+            Err(TrySendError::Closed(_)) => Err(NetworkError::ChannelError(
                 "failed sending message to node: channel closed".into(),
             )),
             Ok(_) => Ok(()),
@@ -154,11 +155,11 @@ impl NodeWorker {
     }
 
     /// node event loop. Consumes self.
-    pub async fn run_loop(mut self) -> Result<ConnectionClosureReason, CommunicationError> {
+    pub async fn run_loop(mut self) -> Result<ConnectionClosureReason, NetworkError> {
         let (writer_command_tx, mut writer_command_rx) =
             mpsc::channel::<Message>(NODE_SEND_CHANNEL_SIZE);
         let mut socket_writer = self.socket_writer_opt.take().ok_or_else(|| {
-            CommunicationError::GeneralProtocolError(
+            NetworkError::GeneralProtocolError(
                 "NodeWorker call run_loop more than once".to_string(),
             )
         })?;
@@ -365,7 +366,7 @@ impl NodeWorker {
                             // Note: this should never happen,
                             // since it implies the network worker dropped its node command sender
                             // before having shut-down the node and joined on its handle.
-                            return Err(CommunicationError::UnexpectedNodeCommandChannelClosure);
+                            return Err(NetworkError::UnexpectedNodeCommandChannelClosure);
                         },
                     };
                 },
@@ -375,7 +376,7 @@ impl NodeWorker {
                     massa_trace!("node_worker.run_loop. timer_ask_peer_list", {"node_id": self.node_id});
                     massa_trace!("node_worker.run_loop.select.timer send Message::AskPeerList", {"node": self.node_id});
                     writer_command_tx.send(Message::AskPeerList).await.map_err(
-                        |_| CommunicationError::ChannelError("writer send ask peer list failed".into())
+                        |_| NetworkError::ChannelError("writer send ask peer list failed".into())
                     )?;
                     trace!("after sending Message::AskPeerList from writer_command_tx in node_worker run_loop");
                 }

@@ -3,7 +3,6 @@
 use crate::client_binder::BootstrapClientBinder;
 use crate::establisher::Duplex;
 use crate::server_binder::BootstrapServerBinder;
-use communication::network::{BootstrapPeers, NetworkCommandSender};
 use config::BootstrapConfig;
 use consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use crypto::signature::{PrivateKey, PublicKey};
@@ -13,6 +12,7 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use logging::massa_trace;
 use messages::BootstrapMessage;
 use models::Version;
+use network::{BootstrapPeers, NetworkCommandSender};
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;

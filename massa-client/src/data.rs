@@ -14,7 +14,6 @@
 
 use chrono::Local;
 use chrono::TimeZone;
-use communication::network::PeerInfo;
 use consensus::DiscardReason;
 use consensus::ExportBlockStatus;
 use crypto::hash::Hash;
@@ -25,6 +24,7 @@ use models::{
     Address, Block, BlockHashMap, BlockHeader, Operation, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, OperationType, Slot,
 };
+use network::PeerInfo;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::net::IpAddr;

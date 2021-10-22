@@ -1,14 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{network::ConnectionId, protocol::ProtocolEvent};
+use crate::ProtocolEvent;
 use displaydoc::Display;
 use models::ModelsError;
+use network::ConnectionId;
+use network::NetworkError;
 use std::net::IpAddr;
 use thiserror::Error;
 
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub enum CommunicationError {
+pub enum ProtocolError {
     /// wrong signature
     WrongSignature,
     /// Protocol err:{0}
@@ -45,6 +47,8 @@ pub enum CommunicationError {
     MissingPeersError,
     /// models error: {0}
     ModelsError(#[from] ModelsError),
+    /// network error: {0}
+    NetworkError(#[from] NetworkError),
     /// container inconsistency error: {0}
     ContainerInconsistencyError(String),
 }

@@ -2,7 +2,6 @@
 
 #![recursion_limit = "256"]
 
-use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 pub use config::ApiConfig;
 use config::CHANNEL_SIZE;
 use consensus::ConsensusConfig;
@@ -12,7 +11,9 @@ use filters::ApiManagementCommand;
 pub use filters::{ApiEvent, OperationIds, PrivateKeys};
 use logging::massa_trace;
 use models::Version;
+use network::NetworkConfig;
 use pool::PoolConfig;
+use protocol::ProtocolConfig;
 use std::collections::VecDeque;
 use storage::StorageAccess;
 use tokio::sync::mpsc;

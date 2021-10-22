@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::messages::BootstrapMessage;
-use communication::CommunicationError;
 use consensus::error::ConsensusError;
 use crypto::CryptoError;
 use displaydoc::Display;
+use network::NetworkError;
 use thiserror::Error;
 use time::TimeError;
 
@@ -27,8 +27,8 @@ pub enum BootstrapError {
     TimeError(#[from] TimeError),
     /// consensus error: {0}
     ConsensusError(#[from] ConsensusError),
-    /// communication error: {0}
-    CommunicationError(#[from] CommunicationError),
+    /// network error: {0}
+    NetworkError(#[from] NetworkError),
     /// join error: {0}
     JoinError(#[from] tokio::task::JoinError),
     /// missing private key file
