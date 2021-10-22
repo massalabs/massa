@@ -4,7 +4,7 @@
 
 use super::tools;
 use super::tools::protocol_test;
-use crate::protocol::ProtocolEvent;
+use crate::ProtocolEvent;
 use models::{self, Address, Slot};
 use serial_test::serial;
 

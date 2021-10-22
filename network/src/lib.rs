@@ -1,8 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![feature(async_closure)]
+#![feature(drain_filter)]
+#![feature(ip)]
+
 //! Manages a connection with a node
 pub use common::{ConnectionClosureReason, ConnectionId};
 pub use config::NetworkConfig;
+pub use error::NetworkError;
 pub use establisher::Establisher;
 pub use establisher::*;
 pub use network_controller::{
@@ -14,6 +19,7 @@ pub use peer_info_database::PeerInfo;
 mod binders;
 mod common;
 mod config;
+mod error;
 mod establisher;
 mod handshake_worker;
 mod messages;

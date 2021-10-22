@@ -2,8 +2,6 @@
 
 #![feature(async_closure)]
 
-use communication::network::NetworkCommandSender;
-use communication::network::NetworkConfig;
 use consensus::ExportBlockStatus;
 use consensus::{ConsensusCommandSender, ConsensusConfig, Status};
 use crypto::derive_public_key;
@@ -29,6 +27,8 @@ use models::OperationHashSet;
 use models::{Address, BlockId, Slot};
 use models::{AlgoConfig, BlockHashSet};
 use models::{EndorsementId, Version};
+use network::NetworkCommandSender;
+use network::NetworkConfig;
 use pool::PoolCommandSender;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};

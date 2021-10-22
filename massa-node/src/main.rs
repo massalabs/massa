@@ -9,10 +9,6 @@ use api::{start_api_controller, ApiEventReceiver, ApiManager};
 use api_private::{ApiMassaPrivate, ApiMassaPrivateStopHandle};
 use api_public::{ApiMassaPublic, ApiMassaPublicStopHandle};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
-use communication::{
-    network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager},
-    protocol::{start_protocol_controller, ProtocolManager},
-};
 use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
@@ -23,7 +19,9 @@ use models::{
     init_serialization_context, Address, BlockHashMap, OperationSearchResult,
     OperationSearchResultStatus, SerializationContext,
 };
+use network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager};
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
+use protocol::{start_protocol_controller, ProtocolManager};
 use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;

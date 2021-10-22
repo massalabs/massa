@@ -1,8 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::mock_network_controller::MockNetworkController;
-use crate::network::NetworkCommand;
-use crate::protocol::{
+use crate::{
     start_protocol_controller, ProtocolCommandSender, ProtocolConfig, ProtocolEvent,
     ProtocolEventReceiver, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
@@ -16,6 +15,7 @@ use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
 };
 use models::{Endorsement, EndorsementContent, Operation, OperationContent, OperationType};
+use network::NetworkCommand;
 use std::collections::HashMap;
 use time::UTime;
 use tokio::time::sleep;

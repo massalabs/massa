@@ -6,8 +6,8 @@ use super::{
     messages::Message,
 };
 use crate::{
-    error::{CommunicationError, HandshakeErrorType},
-    network::{ReadHalf, WriteHalf},
+    error::{HandshakeErrorType, NetworkError},
+    ReadHalf, WriteHalf,
 };
 use crypto::{
     hash::Hash,
@@ -21,7 +21,7 @@ use time::UTime;
 use tokio::time::timeout;
 
 /// Type alias for more readability
-pub type HandshakeReturnType = Result<(NodeId, ReadBinder, WriteBinder), CommunicationError>;
+pub type HandshakeReturnType = Result<(NodeId, ReadBinder, WriteBinder), NetworkError>;
 
 /// Manages handshakes.
 pub struct HandshakeWorker {
@@ -93,13 +93,13 @@ impl HandshakeWorker {
         .await
         {
             Err(_) => {
-                return Err(CommunicationError::HandshakeError(
+                return Err(NetworkError::HandshakeError(
                     HandshakeErrorType::HandshakeTimeoutError,
                 ))
             }
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => {
-                return Err(CommunicationError::HandshakeError(
+                return Err(NetworkError::HandshakeError(
                     HandshakeErrorType::HandshakeInterruptionError("init".into()),
                 ))
             }
@@ -110,7 +110,7 @@ impl HandshakeWorker {
                     version,
                 } => (NodeId(pk), rb, version),
                 _ => {
-                    return Err(CommunicationError::HandshakeError(
+                    return Err(NetworkError::HandshakeError(
                         HandshakeErrorType::HandshakeWrongMessageError,
                     ))
                 }
@@ -119,14 +119,14 @@ impl HandshakeWorker {
 
         // check if remote node ID is the same as ours
         if other_node_id == self.self_node_id {
-            return Err(CommunicationError::HandshakeError(
+            return Err(NetworkError::HandshakeError(
                 HandshakeErrorType::HandshakeKeyError,
             ));
         }
 
         // check if version is compatible with ours
         if !self.version.is_compatible(&other_version) {
-            return Err(CommunicationError::HandshakeError(
+            return Err(NetworkError::HandshakeError(
                 HandshakeErrorType::IncompatibleVersionError,
             ));
         }
@@ -152,20 +152,20 @@ impl HandshakeWorker {
         .await
         {
             Err(_) => {
-                return Err(CommunicationError::HandshakeError(
+                return Err(NetworkError::HandshakeError(
                     HandshakeErrorType::HandshakeTimeoutError,
                 ))
             }
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => {
-                return Err(CommunicationError::HandshakeError(
+                return Err(NetworkError::HandshakeError(
                     HandshakeErrorType::HandshakeInterruptionError("repl".into()),
                 ))
             }
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeReply { signature: sig } => sig,
                 _ => {
-                    return Err(CommunicationError::HandshakeError(
+                    return Err(NetworkError::HandshakeError(
                         HandshakeErrorType::HandshakeWrongMessageError,
                     ))
                 }
@@ -174,11 +174,7 @@ impl HandshakeWorker {
 
         // check their signature
         verify_signature(&self_random_hash, &other_signature, &other_node_id.0).map_err(
-            |_err| {
-                CommunicationError::HandshakeError(
-                    HandshakeErrorType::HandshakeInvalidSignatureError,
-                )
-            },
+            |_err| NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignatureError),
         )?;
 
         Ok((other_node_id, self.reader, self.writer))

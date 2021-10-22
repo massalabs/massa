@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use super::tools;
 use super::tools::protocol_test;
-use crate::network::NetworkCommand;
-use crate::protocol::{ProtocolEvent, ProtocolPoolEvent};
+use crate::{ProtocolEvent, ProtocolPoolEvent};
 use models::{Address, BlockHashMap, EndorsementHashMap, Slot};
+use network::NetworkCommand;
 use serial_test::serial;
 
 #[tokio::test]

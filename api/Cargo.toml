@@ -16,7 +16,8 @@ tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
 warp = "0.3"
 # custom modules
-communication = {path = "../communication"}
+network = {path = "../network"}
+protocol = {path = "../protocol"}
 consensus = {path = "../consensus"}
 crypto = {path = "../crypto"}
 logging = { path = "../logging" }

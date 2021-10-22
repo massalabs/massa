@@ -23,7 +23,7 @@ thiserror = "1.0"
 tracing = "0.1"
 # custom modules
 api = { path = "../api" }
-communication = {path = "../communication"}
+network = {path = "../network"}
 consensus = {path = "../consensus"}
 crypto = {path = "../crypto"}
 models = {path = "../models"}

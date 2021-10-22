@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::CommunicationError;
 use displaydoc::Display;
 use models::ModelsError;
+use protocol::ProtocolError;
 use thiserror::Error;
 
 #[non_exhaustive]
@@ -10,8 +10,8 @@ use thiserror::Error;
 pub enum PoolError {
     /// there was an inconsistency between containers
     ContainerInconsistency(String),
-    /// Communication error {0}
-    CommunicationError(#[from] CommunicationError),
+    /// Protocol error {0}
+    ProtocolError(#[from] ProtocolError),
     /// channel error : {0}
     ChannelError(String),
     /// Join error {0}
