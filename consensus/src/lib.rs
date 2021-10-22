@@ -20,10 +20,6 @@ pub use consensus_controller::{
 pub use consensus_worker::{ConsensusCommand, ConsensusEvent};
 pub use error::ConsensusError;
 pub use ledger::LedgerSubset;
-pub use models::address::AddressState;
-pub use models::clique::Clique;
-pub use models::ledger::LedgerChange;
-pub use models::stats::ConsensusStats;
 pub use pos::{ExportProofOfStake, RollCounts, RollUpdate, RollUpdates, ThreadCycleState};
 
 mod block_graph;

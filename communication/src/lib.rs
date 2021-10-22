@@ -13,5 +13,4 @@ pub mod network;
 pub mod protocol;
 
 pub use error::{CommunicationError, HandshakeErrorType};
-pub use models::node::NodeId;
 pub use network::PeerInfo;

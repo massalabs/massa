@@ -8,7 +8,6 @@ extern crate logging;
 
 pub use config::PoolConfig;
 pub use error::PoolError;
-pub use models::stats::PoolStats;
 pub use pool_controller::{start_pool_controller, PoolCommandSender, PoolManager};
 pub use pool_worker::PoolCommand;
 

@@ -4,7 +4,6 @@
 
 use communication::network::NetworkCommandSender;
 use communication::network::NetworkConfig;
-use communication::NodeId;
 use consensus::ExportBlockStatus;
 use consensus::{ConsensusCommandSender, ConsensusConfig, Status};
 use crypto::derive_public_key;
@@ -20,6 +19,7 @@ use models::api::{
     EndorsementInfo, NodeStatus, OperationInfo, RollsInfo, TimeInterval,
 };
 use models::clique::Clique;
+use models::node::NodeId;
 use models::operation::{Operation, OperationId};
 use models::timeslots::get_block_slot_timestamp;
 use models::timeslots::get_latest_block_slot_at_timestamp;
