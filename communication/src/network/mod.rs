@@ -5,7 +5,6 @@ pub use common::{ConnectionClosureReason, ConnectionId};
 pub use config::NetworkConfig;
 pub use establisher::Establisher;
 pub use establisher::*;
-pub use models::stats::NetworkStats;
 pub use network_controller::{
     start_network_controller, NetworkCommandSender, NetworkEventReceiver, NetworkManager,
 };

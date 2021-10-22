@@ -13,6 +13,7 @@ use models::address::AddressHashMap;
 use models::address::{AddressState, Addresses};
 use models::clique::Clique;
 use models::ledger::LedgerData;
+use models::node::NodeId;
 use models::BlockHashMap;
 use models::BlockHashSet;
 use models::OperationHashMap;
@@ -959,7 +960,7 @@ async fn test_last_final() {
 #[serial]
 async fn test_peers() {
     let private_key = crypto::signature::generate_random_private_key();
-    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
+    let node_id = NodeId(crypto::signature::derive_public_key(&private_key));
     // test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1443,7 +1444,7 @@ async fn test_get_block() {
 #[serial]
 async fn test_network_info() {
     let private_key = crypto::signature::generate_random_private_key();
-    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
+    let node_id = NodeId(crypto::signature::derive_public_key(&private_key));
     // test with empty peer list
     {
         let (filter, mut rx_api) = mock_filter(None);
@@ -1545,7 +1546,7 @@ async fn test_network_info() {
 #[serial]
 async fn test_state() {
     let private_key = crypto::signature::generate_random_private_key();
-    let node_id = communication::NodeId(crypto::signature::derive_public_key(&private_key));
+    let node_id = NodeId(crypto::signature::derive_public_key(&private_key));
     // test with empty final peers
     {
         let (filter, mut rx_api) = mock_filter(None);
