@@ -4,9 +4,9 @@ use crate::cfg::Settings;
 use crate::cmds::Command;
 use crate::rpc::Client;
 use console::style;
-use dialoguer::{theme::ColorfulTheme, History, Input};
+use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use std::collections::VecDeque;
-use std::fmt::Display;
+use strum::IntoEnumIterator;
 use strum::ParseError;
 use wallet::Wallet;
 
@@ -29,10 +29,12 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
     println!("Use the Up/Down arrows to scroll through history");
     println!();
     let mut history = MyHistory::default();
+    let completion = MyCompletion::default();
     loop {
         if let Ok(input) = Input::<String>::with_theme(&ColorfulTheme::default())
             .with_prompt("command")
             .history_with(&mut history)
+            .completion_with(&completion)
             .interact_text()
         {
             // User input parsing
@@ -63,18 +65,40 @@ impl Default for MyHistory {
     }
 }
 
-impl<T> History<T> for MyHistory {
+impl<T: ToString> History<T> for MyHistory {
     fn read(&self, pos: usize) -> Option<String> {
         self.history.get(pos).cloned()
     }
 
-    fn write(&mut self, val: &T)
-    where
-        T: Clone + Display,
-    {
+    fn write(&mut self, val: &T) {
         if self.history.len() == self.max {
             self.history.pop_back();
         }
         self.history.push_front(val.to_string());
+    }
+}
+
+struct MyCompletion {
+    options: Vec<String>,
+}
+
+impl Default for MyCompletion {
+    fn default() -> Self {
+        MyCompletion {
+            options: Command::iter().map(|x| x.to_string()).collect(),
+        }
+    }
+}
+
+impl Completion for MyCompletion {
+    /// Simple completion implementation based on substring
+    fn get(&self, input: &str) -> Option<String> {
+        let s = input.to_string();
+        let ss: Vec<&String> = self.options.iter().filter(|x| s == x[..s.len()]).collect();
+        if ss.len() == 1 {
+            Some(ss[0].to_string())
+        } else {
+            None
+        }
     }
 }
