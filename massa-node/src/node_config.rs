@@ -2,12 +2,12 @@
 
 use api::ApiConfig;
 use bootstrap::config::BootstrapConfig;
-use communication::network::NetworkConfig;
-use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
 use models::api::APIConfig;
 use models::Version;
+use network::NetworkConfig;
 use pool::PoolConfig;
+use protocol::ProtocolConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
 

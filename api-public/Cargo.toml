@@ -17,7 +17,7 @@ models = {path = "../models"}
 time = {path = "../time"}
 tokio = { version = "1.11", features = ["full"] }
 consensus = {path = "../consensus"}
-communication = {path = "../communication"}
+network = {path = "../network"}
 crypto = {path = "../crypto"}
 pool = {path = "../pool"}
 storage = {path = "../storage"}

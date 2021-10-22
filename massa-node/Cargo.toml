@@ -21,7 +21,8 @@ api = { path = "../api" }
 api-private = { path = "../api-private" }
 api-public = { path = "../api-public" }
 bootstrap = { path = "../bootstrap" }
-communication = { path = "../communication" }
+network = { path = "../network" }
+protocol = { path = "../protocol" }
 consensus = { path = "../consensus" }
 logging = { path = "../logging" }
 models = { path = "../models" }

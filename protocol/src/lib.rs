@@ -4,7 +4,10 @@ mod config;
 mod protocol_controller;
 mod protocol_worker;
 
+mod error;
+
 pub use config::ProtocolConfig;
+pub use error::ProtocolError;
 pub use protocol_controller::{
     start_protocol_controller, ProtocolCommandSender, ProtocolEventReceiver, ProtocolManager,
     ProtocolPoolEventReceiver,

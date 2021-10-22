@@ -11,9 +11,6 @@ use serde_json::json;
 use tokio::sync::{mpsc, oneshot};
 use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
 
-use communication::network::Peer;
-use communication::network::Peers;
-use communication::{network::NetworkConfig, protocol::ProtocolConfig};
 use consensus::error::ConsensusError;
 use consensus::ExportBlockStatus;
 use consensus::Status;
@@ -41,7 +38,11 @@ use models::{
     },
 };
 use models::{BlockHeader, BlockId, Slot, Version};
+use network::NetworkConfig;
+use network::Peer;
+use network::Peers;
 use pool::PoolConfig;
+use protocol::ProtocolConfig;
 use storage::StorageAccess;
 use time::UTime;
 

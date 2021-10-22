@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![feature(async_closure)]
-use communication::network::NetworkCommandSender;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
 use crypto::signature::PrivateKey;
 use error::PrivateApiError;
@@ -11,6 +10,7 @@ use jsonrpc_http_server::ServerBuilder;
 use models::address::{Address, AddressHashSet};
 use models::api::APIConfig;
 use models::crypto::PubkeySig;
+use network::NetworkCommandSender;
 use std::net::IpAddr;
 use std::thread;
 use std::thread::JoinHandle;
