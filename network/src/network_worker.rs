@@ -9,10 +9,11 @@ use super::{
     node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
     peer_info_database::*,
 };
-use crate::error::{CommunicationError, HandshakeErrorType};
+use crate::error::{HandshakeErrorType, NetworkError};
 use crypto::hash::Hash;
 use crypto::signature::{derive_public_key, sign, PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
+use logging::massa_trace;
 use models::stats::NetworkStats;
 use models::{crypto::PubkeySig, node::NodeId};
 use models::{
@@ -210,7 +211,7 @@ pub struct NetworkWorker {
     active_nodes: HashMap<NodeId, (ConnectionId, mpsc::Sender<NodeCommand>)>,
     /// Node worker handles
     node_worker_handles:
-        FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, CommunicationError>)>>,
+        FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, NetworkError>)>>,
     /// Map of connection to ip, is_outgoing.
     active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
     version: Version,
@@ -261,7 +262,7 @@ impl NetworkWorker {
         }
     }
 
-    async fn send_network_event(&self, event: NetworkEvent) -> Result<(), CommunicationError> {
+    async fn send_network_event(&self, event: NetworkEvent) -> Result<(), NetworkError> {
         let result = self
             .controller_event_tx
             .send_timeout(event, self.cfg.max_send_wait.to_duration())
@@ -278,14 +279,12 @@ impl NetworkWorker {
                 debug!("Failed to send NetworkEvent due to timeout: {:?}.", event);
             }
         }
-        Err(CommunicationError::ChannelError(
-            "Failed to send event.".into(),
-        ))
+        Err(NetworkError::ChannelError("Failed to send event.".into()))
     }
 
     /// Runs the main loop of the network_worker
     /// There is a tokio::select! inside the loop
-    pub async fn run_loop(mut self) -> Result<(), CommunicationError> {
+    pub async fn run_loop(mut self) -> Result<(), NetworkError> {
         let mut out_connecting_futures = FuturesUnordered::new();
         let mut cur_connection_id = ConnectionId::default();
 
@@ -340,7 +339,7 @@ impl NetworkWorker {
                 // event received from a node
                 evt = self.node_event_rx.recv() => {
                     self.on_node_event(
-                        evt.ok_or_else(|| CommunicationError::ChannelError("node event rx failed".into()))?
+                        evt.ok_or_else(|| NetworkError::ChannelError("node event rx failed".into()))?
                     ).await?
                 },
 
@@ -434,9 +433,7 @@ impl NetworkWorker {
             node_tx
                 .send(NodeCommand::Close(ConnectionClosureReason::Normal))
                 .await
-                .map_err(|_| {
-                    CommunicationError::ChannelError("node close command send failed".into())
-                })?;
+                .map_err(|_| NetworkError::ChannelError("node close command send failed".into()))?;
             trace!("after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
         }
         // drain incoming node events
@@ -478,7 +475,7 @@ impl NetworkWorker {
         &mut self,
         new_connection_id: ConnectionId,
         outcome: HandshakeReturnType,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         massa_trace!("network_worker.on_handshake_finished.", {
             "node": new_connection_id
         });
@@ -531,9 +528,10 @@ impl NetworkWorker {
                         });
 
                         // Note connection alive.
-                        let (ip, _) = self.active_connections.get(&new_connection_id).ok_or(
-                            CommunicationError::ActiveConnectionMissing(new_connection_id),
-                        )?;
+                        let (ip, _) = self
+                            .active_connections
+                            .get(&new_connection_id)
+                            .ok_or(NetworkError::ActiveConnectionMissing(new_connection_id))?;
                         self.peer_info_db.peer_alive(ip)?;
 
                         // spawn node_controller_fn
@@ -568,7 +566,7 @@ impl NetworkWorker {
                                 .await;
                             if res.is_err() {
                                 massa_trace!(
-                                    "network.network_worker.on_handshake_finished", {"err": CommunicationError::ChannelError(
+                                    "network.network_worker.on_handshake_finished", {"err": NetworkError::ChannelError(
                                         "close node command send failed".into(),
                                     ).to_string()}
                                 );
@@ -600,12 +598,12 @@ impl NetworkWorker {
         connection_id: ConnectionId,
         reader: ReadHalf,
         writer: WriteHalf,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         // add connection ID to running_handshakes
         // launch async handshake_fn(connectionId, socket)
         // add its handle to handshake_futures
         if !self.running_handshakes.insert(connection_id) {
-            return Err(CommunicationError::HandshakeError(
+            return Err(NetworkError::HandshakeError(
                 HandshakeErrorType::HandshakeIdAlreadyExistError(format!("{}", connection_id)),
             ));
         }
@@ -643,11 +641,11 @@ impl NetworkWorker {
         &mut self,
         id: ConnectionId,
         reason: ConnectionClosureReason,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         let (ip, is_outgoing) = self
             .active_connections
             .remove(&id)
-            .ok_or(CommunicationError::ActiveConnectionMissing(id))?;
+            .ok_or(NetworkError::ActiveConnectionMissing(id))?;
         debug!(
             "connection closed connection_id={}, ip={}, reason={:?}",
             id, ip, reason
@@ -686,7 +684,7 @@ impl NetworkWorker {
                     .await;
                 if res.is_err() {
                     massa_trace!(
-                        "network.network_worker.manage_network_command", {"err": CommunicationError::ChannelError(
+                        "network.network_worker.manage_network_command", {"err": NetworkError::ChannelError(
                             "close node command send failed".into(),
                         ).to_string()}
                     );
@@ -703,10 +701,7 @@ impl NetworkWorker {
     /// * peer_info_db: Database with peer information.
     /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
     /// * event_tx: channel to send network events out.
-    async fn manage_network_command(
-        &mut self,
-        cmd: NetworkCommand,
-    ) -> Result<(), CommunicationError> {
+    async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
         match cmd {
             NetworkCommand::BanIp(ips) => {
                 massa_trace!(
@@ -832,7 +827,7 @@ impl NetworkWorker {
                         our_node_id: self.self_node_id,
                     })
                     .map_err(|_| {
-                        CommunicationError::ChannelError(
+                        NetworkError::ChannelError(
                             "could not send GetPeersChannelError upstream".into(),
                         )
                     })?;
@@ -844,7 +839,7 @@ impl NetworkWorker {
                 );
                 let peer_list = self.peer_info_db.get_advertisable_peer_ips();
                 response_tx.send(BootstrapPeers(peer_list)).map_err(|_| {
-                    CommunicationError::ChannelError(
+                    NetworkError::ChannelError(
                         "could not send GetBootstrapPeers response upstream".into(),
                     )
                 })?;
@@ -895,7 +890,7 @@ impl NetworkWorker {
                         signature,
                     })
                     .map_err(|_| {
-                        CommunicationError::ChannelError(
+                        NetworkError::ChannelError(
                             "could not send NodeSignMessage response upstream".into(),
                         )
                     })?;
@@ -917,7 +912,7 @@ impl NetworkWorker {
                     active_node_count: self.active_nodes.len() as u64,
                 };
                 response_tx.send(res).map_err(|_| {
-                    CommunicationError::ChannelError(
+                    NetworkError::ChannelError(
                         "could not send NodeSignMessage response upstream".into(),
                     )
                 })?;
@@ -936,9 +931,7 @@ impl NetworkWorker {
             if node_command_tx.send(message).await.is_err() {
                 warn!(
                     "{}",
-                    CommunicationError::ChannelError(
-                        "error forwarding message to node worker".into(),
-                    )
+                    NetworkError::ChannelError("error forwarding message to node worker".into(),)
                 )
             };
         } else {
@@ -964,7 +957,7 @@ impl NetworkWorker {
         res: tokio::io::Result<(ReadHalf, WriteHalf)>,
         ip_addr: IpAddr,
         cur_connection_id: &mut ConnectionId,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         match res {
             Ok((reader, writer)) => {
                 if self
@@ -1018,7 +1011,7 @@ impl NetworkWorker {
         &mut self,
         res: std::io::Result<(ReadHalf, WriteHalf, SocketAddr)>,
         cur_connection_id: &mut ConnectionId,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         match res {
             Ok((reader, writer, remote_addr)) => {
                 if self.peer_info_db.try_new_in_connection(&remote_addr.ip())? {
@@ -1053,7 +1046,7 @@ impl NetworkWorker {
     ///
     /// # Argument
     /// * evt: optional node event to process.
-    async fn on_node_event(&mut self, evt: NodeEvent) -> Result<(), CommunicationError> {
+    async fn on_node_event(&mut self, evt: NodeEvent) -> Result<(), NetworkError> {
         match evt {
             // received a list of peers
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
@@ -1112,7 +1105,7 @@ impl NetworkWorker {
                     if res.is_err() {
                         debug!(
                             "{}",
-                            CommunicationError::ChannelError(
+                            NetworkError::ChannelError(
                                 "node command send send_peer_list failed".into(),
                             )
                         );

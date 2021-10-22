@@ -5,6 +5,7 @@ use std::{
     net::IpAddr,
 };
 
+use logging::massa_trace;
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -16,7 +17,7 @@ use models::stats::NetworkStats;
 use models::{crypto::PubkeySig, node::NodeId};
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 
-use crate::error::CommunicationError;
+use crate::error::NetworkError;
 
 use super::{
     config::{NetworkConfig, CHANNEL_SIZE},
@@ -45,14 +46,14 @@ pub async fn start_network_controller(
         NetworkManager,
         PrivateKey,
     ),
-    CommunicationError,
+    NetworkError,
 > {
     debug!("starting network controller");
 
     // check that local IP is routable
     if let Some(self_ip) = cfg.routable_ip {
         if !self_ip.is_global() {
-            return Err(CommunicationError::InvalidIpError(self_ip));
+            return Err(NetworkError::InvalidIpError(self_ip));
         }
     }
 
@@ -148,38 +149,36 @@ pub async fn start_network_controller(
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
-    pub async fn ban(&self, node_id: NodeId) -> Result<(), CommunicationError> {
+    pub async fn ban(&self, node_id: NodeId) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Ban(node_id))
             .await
-            .map_err(|_| CommunicationError::ChannelError("could not send Ban command".into()))?;
+            .map_err(|_| NetworkError::ChannelError("could not send Ban command".into()))?;
         Ok(())
     }
 
-    pub async fn ban_ip(&self, ips: Vec<IpAddr>) -> Result<(), CommunicationError> {
+    pub async fn ban_ip(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::BanIp(ips))
             .await
-            .map_err(|_| CommunicationError::ChannelError("could not send Ban command".into()))?;
+            .map_err(|_| NetworkError::ChannelError("could not send Ban command".into()))?;
         Ok(())
     }
 
-    pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), CommunicationError> {
+    pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Unban(ips))
             .await
-            .map_err(|_| CommunicationError::ChannelError("could not send Unban command".into()))?;
+            .map_err(|_| NetworkError::ChannelError("could not send Unban command".into()))?;
         Ok(())
     }
 
     /// Send the order to send block.
-    pub async fn send_block(&self, node: NodeId, block: Block) -> Result<(), CommunicationError> {
+    pub async fn send_block(&self, node: NodeId, block: Block) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendBlock { node, block })
             .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("could not send SendBlock command".into())
-            })?;
+            .map_err(|_| NetworkError::ChannelError("could not send SendBlock command".into()))?;
         Ok(())
     }
 
@@ -187,13 +186,11 @@ impl NetworkCommandSender {
     pub async fn ask_for_block_list(
         &self,
         list: HashMap<NodeId, Vec<BlockId>>,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::AskForBlocks { list })
             .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("could not send AskForBlock command".into())
-            })?;
+            .map_err(|_| NetworkError::ChannelError("could not send AskForBlock command".into()))?;
         Ok(())
     }
 
@@ -202,60 +199,54 @@ impl NetworkCommandSender {
         &self,
         node: NodeId,
         header: BlockHeader,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendBlockHeader { node, header })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("could not send SendBlockHeader command".into())
+                NetworkError::ChannelError("could not send SendBlockHeader command".into())
             })?;
         Ok(())
     }
 
     /// Send the order to get peers.
-    pub async fn get_peers(&self) -> Result<Peers, CommunicationError> {
+    pub async fn get_peers(&self) -> Result<Peers, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetPeers(response_tx))
             .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("could not send GetPeers command".into())
-            })?;
+            .map_err(|_| NetworkError::ChannelError("could not send GetPeers command".into()))?;
         Ok(response_rx.await.map_err(|_| {
-            CommunicationError::ChannelError(
+            NetworkError::ChannelError(
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
             )
         })?)
     }
 
-    pub async fn get_network_stats(&self) -> Result<NetworkStats, CommunicationError> {
+    pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetStats { response_tx })
             .await
-            .map_err(|_| {
-                CommunicationError::ChannelError("could not send GetPeers command".into())
-            })?;
+            .map_err(|_| NetworkError::ChannelError("could not send GetPeers command".into()))?;
         Ok(response_rx.await.map_err(|_| {
-            CommunicationError::ChannelError(
+            NetworkError::ChannelError(
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
             )
         })?)
     }
 
     /// Send the order to get bootstrap peers.
-    pub async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, CommunicationError> {
+    pub async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel::<BootstrapPeers>();
         self.0
             .send(NetworkCommand::GetBootstrapPeers(response_tx))
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("could not send GetBootstrapPeers command".into())
+                NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
         Ok(response_rx.await.map_err(|_| {
-            CommunicationError::ChannelError(
-                "could not send GetBootstrapPeers response upstream".into(),
-            )
+            NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })?)
     }
 
@@ -263,12 +254,12 @@ impl NetworkCommandSender {
         &self,
         node: NodeId,
         block_id: BlockId,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::BlockNotFound { node, block_id })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("could not send block_not_found command".into())
+                NetworkError::ChannelError("could not send block_not_found command".into())
             })?;
         Ok(())
     }
@@ -277,12 +268,12 @@ impl NetworkCommandSender {
         &self,
         node: NodeId,
         operations: Vec<Operation>,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("could not send SendOperations command".into())
+                NetworkError::ChannelError("could not send SendOperations command".into())
             })?;
         Ok(())
     }
@@ -291,29 +282,27 @@ impl NetworkCommandSender {
         &self,
         node: NodeId,
         endorsements: Vec<Endorsement>,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendEndorsements { node, endorsements })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("could not send send_endorsement command".into())
+                NetworkError::ChannelError("could not send send_endorsement command".into())
             })?;
         Ok(())
     }
 
     /// Sign a message using the node's private key
-    pub async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, CommunicationError> {
+    pub async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::NodeSignMessage { msg, response_tx })
             .await
             .map_err(|_| {
-                CommunicationError::ChannelError("could not send GetBootstrapPeers command".into())
+                NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
         Ok(response_rx.await.map_err(|_| {
-            CommunicationError::ChannelError(
-                "could not send GetBootstrapPeers response upstream".into(),
-            )
+            NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
         })?)
     }
 }
@@ -321,12 +310,12 @@ impl NetworkCommandSender {
 pub struct NetworkEventReceiver(pub mpsc::Receiver<NetworkEvent>);
 
 impl NetworkEventReceiver {
-    pub async fn wait_event(&mut self) -> Result<NetworkEvent, CommunicationError> {
+    pub async fn wait_event(&mut self) -> Result<NetworkEvent, NetworkError> {
         let res = self
             .0
             .recv()
             .await
-            .ok_or_else(|| CommunicationError::ChannelError("could not receive event".into()));
+            .ok_or_else(|| NetworkError::ChannelError("could not receive event".into()));
         res
     }
 
@@ -342,7 +331,7 @@ impl NetworkEventReceiver {
 }
 
 pub struct NetworkManager {
-    join_handle: JoinHandle<Result<(), CommunicationError>>,
+    join_handle: JoinHandle<Result<(), NetworkError>>,
     manager_tx: mpsc::Sender<NetworkManagementCommand>,
 }
 
@@ -350,7 +339,7 @@ impl NetworkManager {
     pub async fn stop(
         self,
         network_event_receiver: NetworkEventReceiver,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), NetworkError> {
         drop(self.manager_tx);
         let _remaining_events = network_event_receiver.drain().await;
         let _ = self.join_handle.await?;

@@ -1,8 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::config::NetworkConfig;
-use crate::error::{CommunicationError, NetworkConnectionErrorType};
+use crate::error::{NetworkConnectionErrorType, NetworkError};
 use itertools::Itertools;
+use logging::massa_trace;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
@@ -90,7 +91,7 @@ pub struct PeerInfoDatabase {
 async fn dump_peers(
     peers: &HashMap<IpAddr, PeerInfo>,
     file_path: &Path,
-) -> Result<(), CommunicationError> {
+) -> Result<(), NetworkError> {
     let peer_vec: Vec<Value> = peers
         .values()
         .filter(|v| v.banned || v.advertised || v.bootstrap)
@@ -127,7 +128,7 @@ fn cleanup_peers(
     opt_new_peers: Option<&Vec<IpAddr>>,
     clock_compensation: i64,
     ban_timeout: UTime,
-) -> Result<(), CommunicationError> {
+) -> Result<(), NetworkError> {
     // filter and map new peers, remove duplicates
     let mut res_new_peers: Vec<PeerInfo> = if let Some(new_peers) = opt_new_peers {
         new_peers
@@ -223,10 +224,7 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * cfg : network configuration
-    pub async fn new(
-        cfg: &NetworkConfig,
-        clock_compensation: i64,
-    ) -> Result<Self, CommunicationError> {
+    pub async fn new(cfg: &NetworkConfig, clock_compensation: i64) -> Result<Self, NetworkError> {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
 
@@ -290,7 +288,7 @@ impl PeerInfoDatabase {
 
     /// Refreshes the peer list. Should be called at regular intervals.
     /// Performs multiple cleanup tasks e.g. remove old banned peers
-    pub fn update(&mut self) -> Result<(), CommunicationError> {
+    pub fn update(&mut self) -> Result<(), NetworkError> {
         cleanup_peers(
             &self.cfg,
             &mut self.peers,
@@ -302,16 +300,17 @@ impl PeerInfoDatabase {
     }
 
     /// Request peers dump to file
-    fn request_dump(&self) -> Result<(), CommunicationError> {
+    fn request_dump(&self) -> Result<(), NetworkError> {
         trace!("before sending self.peers.clone() from saver_watch_tx in peer_info_database request_dump");
-        let res = self.saver_watch_tx.send(self.peers.clone()).map_err(|_| {
-            CommunicationError::ChannelError("could not send on saver_watch_tx".into())
-        });
+        let res = self
+            .saver_watch_tx
+            .send(self.peers.clone())
+            .map_err(|_| NetworkError::ChannelError("could not send on saver_watch_tx".into()));
         trace!("before sending self.peers.clone() from saver_watch_tx in peer_info_database request_dump");
         res
     }
 
-    pub async fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), CommunicationError> {
+    pub async fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         for ip in ips.into_iter() {
             if let Some(peer) = self.peers.get_mut(&ip) {
                 peer.banned = false;
@@ -331,7 +330,7 @@ impl PeerInfoDatabase {
 
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.
     /// A warning is raised on dump failure.
-    pub async fn stop(self) -> Result<(), CommunicationError> {
+    pub async fn stop(self) -> Result<(), NetworkError> {
         drop(self.saver_watch_tx);
         self.saver_join_handle.await?;
         if let Err(e) = dump_peers(&self.peers, &self.cfg.peers_file).await {
@@ -369,7 +368,7 @@ impl PeerInfoDatabase {
 
     /// Sorts peers by ( last_failure, rev(last_success) )
     /// and returns as many peers as there are available slots to attempt outgoing connections to.
-    pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, CommunicationError> {
+    pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, NetworkError> {
         /*
             get_connect_candidate_ips must return the full sorted list where:
                 advertised && !banned && out_connection_attempts==0 && out_connections==0 && in_connections=0
@@ -480,25 +479,25 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// ip: ipAddr we are now connected to
-    pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+    pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         if !ip.is_global() {
-            return Err(CommunicationError::InvalidIpError(*ip));
+            return Err(NetworkError::InvalidIpError(*ip));
         }
         let (available_bootstrap_conns, available_nonbootstrap_conns) =
             self.get_available_out_connection_attempts();
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-            )
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
+                *ip,
+            ))
         })?;
         if peer.bootstrap {
             if available_bootstrap_conns == 0 {
-                return Err(CommunicationError::PeerConnectionError(
+                return Err(NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
                 ));
             }
         } else if available_nonbootstrap_conns == 0 {
-            return Err(CommunicationError::PeerConnectionError(
+            return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
@@ -516,10 +515,7 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// new_peers: peers we are trying to merge
-    pub fn merge_candidate_peers(
-        &mut self,
-        new_peers: &Vec<IpAddr>,
-    ) -> Result<(), CommunicationError> {
+    pub fn merge_candidate_peers(&mut self, new_peers: &Vec<IpAddr>) -> Result<(), NetworkError> {
         if new_peers.is_empty() {
             return Ok(());
         }
@@ -538,11 +534,11 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn peer_alive(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+    pub fn peer_alive(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         self.peers
             .get_mut(ip)
             .ok_or_else(|| {
-                CommunicationError::PeerConnectionError(
+                NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
                 )
             })?
@@ -555,11 +551,11 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn peer_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+    pub fn peer_failed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         self.peers
             .get_mut(ip)
             .ok_or_else(|| {
-                CommunicationError::PeerConnectionError(
+                NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
                 )
             })?
@@ -573,11 +569,11 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+    pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-            )
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
+                *ip,
+            ))
         })?;
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.banned {
@@ -602,17 +598,17 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+    pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-            )
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
+                *ip,
+            ))
         })?;
         if (peer.bootstrap && self.active_bootstrap_connections == 0)
             || (!peer.bootstrap && self.active_out_nonbootstrap_connections == 0)
             || peer.active_out_connections == 0
         {
-            return Err(CommunicationError::PeerConnectionError(
+            return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
@@ -644,18 +640,18 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+    pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-            )
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
+                *ip,
+            ))
         })?;
 
         if (peer.bootstrap && self.active_bootstrap_connections == 0)
             || (!peer.bootstrap && self.active_in_nonbootstrap_connections == 0)
             || peer.active_in_connections == 0
         {
-            return Err(CommunicationError::PeerConnectionError(
+            return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
@@ -690,20 +686,20 @@ impl PeerInfoDatabase {
     pub fn try_out_connection_attempt_success(
         &mut self,
         ip: &IpAddr,
-    ) -> Result<bool, CommunicationError> {
+    ) -> Result<bool, NetworkError> {
         // a connection attempt succeeded
         // remove out connection attempt and add out connection
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-            )
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
+                *ip,
+            ))
         })?;
 
         if (peer.bootstrap && self.active_out_bootstrap_connection_attempts == 0)
             || (!peer.bootstrap && self.active_out_nonbootstrap_connection_attempts == 0)
             || (peer.active_out_connection_attempts == 0)
         {
-            return Err(CommunicationError::PeerConnectionError(
+            return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
@@ -752,17 +748,17 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), CommunicationError> {
+    pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            CommunicationError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-            )
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
+                *ip,
+            ))
         })?;
         if (peer.bootstrap && self.active_out_bootstrap_connection_attempts == 0)
             || (!peer.bootstrap && self.active_out_nonbootstrap_connection_attempts == 0)
             || peer.active_out_connection_attempts == 0
         {
-            return Err(CommunicationError::PeerConnectionError(
+            return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::ToManyConnectionFailure(*ip),
             ));
         }
@@ -793,7 +789,7 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<bool, CommunicationError> {
+    pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<bool, NetworkError> {
         // try to create a new input connection, return false if no slots
         if !ip.is_global() || self.cfg.max_in_connections_per_ip == 0 {
             return Ok(false);
@@ -918,7 +914,7 @@ mod tests {
 
         // test with no connection attempt before
         let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
         )) = res
         {
@@ -947,7 +943,7 @@ mod tests {
 
         // test with a not connected peer
         let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
         )) = res
         {
@@ -958,7 +954,7 @@ mod tests {
 
         // test with a not connected peer
         let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
         )) = res
         {
@@ -970,7 +966,7 @@ mod tests {
         db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
             .unwrap();
         let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
         )) = res
         {
@@ -1027,7 +1023,7 @@ mod tests {
         // test with no connection attempt before
         let res =
             db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
         )) = res
         {
@@ -1043,7 +1039,7 @@ mod tests {
         // peer not found.
         let res =
             db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
         )) = res
         {
@@ -1055,7 +1051,7 @@ mod tests {
         // peer with no attempt.
         let res =
             db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
         )) = res
         {
@@ -1071,7 +1067,7 @@ mod tests {
 
         let res =
             db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
         )) = res
         {
@@ -1129,7 +1125,7 @@ mod tests {
         let res = db.try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
             169, 202, 0, 11,
         )));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
         )) = res
         {
@@ -1145,7 +1141,7 @@ mod tests {
         let res = db.try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
             169, 202, 0, 13,
         )));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
         )) = res
         {
@@ -1165,7 +1161,7 @@ mod tests {
         let res = db.try_out_connection_attempt_success(&IpAddr::V4(std::net::Ipv4Addr::new(
             169, 202, 0, 12,
         )));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
         )) = res
         {
@@ -1223,7 +1219,7 @@ mod tests {
 
         //
         let res = db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
         )) = res
         {
@@ -1246,7 +1242,7 @@ mod tests {
         assert!(res, "try_out_connection_attempt_success failed");
 
         let res = db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
         )) = res
         {
@@ -1258,7 +1254,7 @@ mod tests {
         db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
             .unwrap();
         let res = db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip_err),
         )) = res
         {
@@ -1304,7 +1300,7 @@ mod tests {
         // test with no peers.
         let res =
             db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)));
-        if let Err(CommunicationError::InvalidIpError(ip_err)) = res {
+        if let Err(NetworkError::InvalidIpError(ip_err)) = res {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)), ip_err);
         } else {
             assert!(false, "InvalidIpError not return");
@@ -1312,7 +1308,7 @@ mod tests {
 
         let res =
             db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::PeerInfoNotFoundError(ip_err),
         )) = res
         {
@@ -1327,7 +1323,7 @@ mod tests {
         });
         let res =
             db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        if let Err(CommunicationError::PeerConnectionError(
+        if let Err(NetworkError::PeerConnectionError(
             NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
         )) = res
         {

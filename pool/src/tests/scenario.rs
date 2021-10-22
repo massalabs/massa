@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::ProtocolCommand;
 use models::Address;
 use models::EndorsementHashMap;
 use models::Operation;
@@ -9,6 +8,7 @@ use models::OperationHashSet;
 use models::OperationId;
 use models::SerializeCompact;
 use models::Slot;
+use protocol::ProtocolCommand;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::sleep;

@@ -1,8 +1,8 @@
-use communication::CommunicationError;
 use consensus::ConsensusError;
 use crypto::CryptoError;
 use displaydoc::Display;
 use models::ModelsError;
+use network::NetworkError;
 use thiserror::Error;
 use time::TimeError;
 
@@ -17,8 +17,8 @@ pub enum PrivateApiError {
     CryptoError(#[from] CryptoError),
     /// consensus error : {0}
     ConsensusError(#[from] ConsensusError),
-    /// communication error : {0}
-    CommunicationError(#[from] CommunicationError),
+    /// network error : {0}
+    NetworkError(#[from] NetworkError),
     /// models error : {0}
     ModelsError(#[from] ModelsError),
     /// time error : {0}

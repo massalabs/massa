@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::network::BootstrapPeers;
 use consensus::{BootstrapableGraph, ExportProofOfStake};
 use models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
+use network::BootstrapPeers;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;

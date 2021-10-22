@@ -4,9 +4,9 @@
 
 use super::tools;
 use super::tools::protocol_test;
-use crate::network::NetworkCommand;
-use crate::protocol::{ProtocolEvent, ProtocolPoolEvent};
+use crate::{ProtocolEvent, ProtocolPoolEvent};
 use models::{self, Address, Amount, BlockHashMap, OperationHashMap, OperationHashSet, Slot};
+use network::NetworkCommand;
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;

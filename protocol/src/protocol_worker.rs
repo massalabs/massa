@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::config::ProtocolConfig;
-use crate::error::CommunicationError;
-use crate::network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+use crate::error::ProtocolError;
 use crypto::hash::Hash;
 use itertools::Itertools;
+use logging::massa_trace;
 use models::hhasher::BuildHHasher;
 use models::node::NodeId;
 use models::{
@@ -12,6 +12,7 @@ use models::{
     EndorsementHashSet, Operation, OperationHashMap, OperationHashSet, OperationId,
 };
 use models::{Endorsement, EndorsementId};
+use network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
@@ -95,7 +96,7 @@ mod nodeinfo {
     };
     use tokio::time::Instant;
 
-    use crate::protocol::ProtocolConfig;
+    use crate::config::ProtocolConfig;
 
     /// Information about a node we are connected to,
     /// essentially our view of its state.
@@ -391,7 +392,7 @@ impl ProtocolWorker {
     /// And at the end every thing is closed properly
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
-    pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, CommunicationError> {
+    pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         let block_ask_timer = sleep(self.cfg.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
         loop {
@@ -443,7 +444,7 @@ impl ProtocolWorker {
         &mut self,
         cmd: ProtocolCommand,
         timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.process_command.begin", {
             "cmd": cmd
         });
@@ -476,7 +477,7 @@ impl ProtocolWorker {
                             .send_block(*node_id, block.clone())
                             .await
                             .map_err(|_| {
-                                CommunicationError::ChannelError(
+                                ProtocolError::ChannelError(
                                     "send block node command send failed".into(),
                                 )
                             })?;
@@ -490,7 +491,7 @@ impl ProtocolWorker {
                                 .send_block_header(*node_id, block.header.clone())
                                 .await
                                 .map_err(|_| {
-                                    CommunicationError::ChannelError(
+                                    ProtocolError::ChannelError(
                                         "send block header network command send failed".into(),
                                     )
                                 })?;
@@ -563,7 +564,7 @@ impl ProtocolWorker {
                                         .send_block(*node_id, block.clone())
                                         .await
                                         .map_err(|_| {
-                                            CommunicationError::ChannelError(
+                                            ProtocolError::ChannelError(
                                                 "send block node command send failed".into(),
                                             )
                                         })?;
@@ -659,10 +660,7 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    fn stop_asking_blocks(
-        &mut self,
-        remove_hashes: BlockHashSet,
-    ) -> Result<(), CommunicationError> {
+    fn stop_asking_blocks(&mut self, remove_hashes: BlockHashSet) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
             "remove": remove_hashes
         });
@@ -678,7 +676,7 @@ impl ProtocolWorker {
     async fn update_ask_block(
         &mut self,
         ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
 
         let now = Instant::now();
@@ -852,9 +850,7 @@ impl ProtocolWorker {
                 .ask_for_block_list(ask_block_list)
                 .await
                 .map_err(|_| {
-                    CommunicationError::ChannelError(
-                        "ask for block node command send failed".into(),
-                    )
+                    ProtocolError::ChannelError("ask for block node command send failed".into())
                 })?;
         }
 
@@ -865,13 +861,13 @@ impl ProtocolWorker {
     }
 
     /// Ban a node.
-    async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), CommunicationError> {
+    async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
         self.network_command_sender
             .ban(*node_id)
             .await
-            .map_err(|_| CommunicationError::ChannelError("Ban node command send failed".into()))?;
+            .map_err(|_| ProtocolError::ChannelError("Ban node command send failed".into()))?;
         Ok(())
     }
 
@@ -896,7 +892,7 @@ impl ProtocolWorker {
         &mut self,
         header: &BlockHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, Vec<EndorsementId>, bool)>, CommunicationError> {
+    ) -> Result<Option<(BlockId, Vec<EndorsementId>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
@@ -1074,10 +1070,8 @@ impl ProtocolWorker {
         &mut self,
         block: &Block,
         source_node_id: &NodeId,
-    ) -> Result<
-        Option<(BlockId, OperationHashMap<(usize, u64)>, Vec<EndorsementId>)>,
-        CommunicationError,
-    > {
+    ) -> Result<Option<(BlockId, OperationHashMap<(usize, u64)>, Vec<EndorsementId>)>, ProtocolError>
+    {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
@@ -1175,7 +1169,7 @@ impl ProtocolWorker {
         operations: Vec<Operation>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(Vec<OperationId>, OperationHashMap<(usize, u64)>, bool), CommunicationError> {
+    ) -> Result<(Vec<OperationId>, OperationHashMap<(usize, u64)>, bool), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
         let mut has_duplicate_operations = false;
@@ -1243,7 +1237,7 @@ impl ProtocolWorker {
         endorsements: Vec<Endorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(Vec<EndorsementId>, bool), CommunicationError> {
+    ) -> Result<(Vec<EndorsementId>, bool), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut contains_duplicates = false;
@@ -1297,7 +1291,7 @@ impl ProtocolWorker {
         &mut self,
         evt: NetworkEvent,
         block_ask_timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), CommunicationError> {
+    ) -> Result<(), ProtocolError> {
         match evt {
             NetworkEvent::NewConnection(node_id) => {
                 info!("Connected to node {}", node_id);
@@ -1427,12 +1421,15 @@ impl ProtocolWorker {
 
 #[cfg(test)]
 mod tests {
+    use crate::tests::tools::create_protocol_config;
+
     use super::nodeinfo::NodeInfo;
     use super::*;
-    use crate::network::tests::tools::get_dummy_block_id;
-    use crate::protocol::tests::tools::create_protocol_config;
     use serial_test::serial;
 
+    pub fn get_dummy_block_id(s: &str) -> BlockId {
+        BlockId(Hash::hash(s.as_bytes()))
+    }
     #[test]
     #[serial]
     fn test_node_info_know_block() {

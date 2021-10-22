@@ -3,7 +3,6 @@
 use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
-use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
@@ -21,6 +20,7 @@ use models::{
     OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
+use protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
 use storage::StorageAccess;
 use time::UTime;
@@ -333,7 +333,7 @@ impl ConsensusWorker {
                     massa_trace!("consensus.consensus_worker.run_loop.select.protocol_event", {});
                     match evt {
                         Ok(event) => self.process_protocol_event(event).await?,
-                        Err(err) => return Err(ConsensusError::CommunicationError(err))
+                        Err(err) => return Err(ConsensusError::ProtocolError(err))
                     }
                 },
             }

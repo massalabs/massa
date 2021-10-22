@@ -15,7 +15,7 @@ thiserror = "1.0"
 tracing = "0.1"
 # custom modules
 crypto = {path = "../crypto"}
-communication = {path = "../communication"}
+network = {path = "../network"}
 consensus = {path = "../consensus"}
 models = {path = "../models"}
 time = {path = "../time"}

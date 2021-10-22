@@ -3,14 +3,12 @@
 use super::{config::PoolConfig, error::PoolError};
 use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
-use communication::protocol::{
-    ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-};
 use models::stats::PoolStats;
 use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
+use protocol::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.
@@ -135,7 +133,7 @@ impl PoolWorker {
                     match evt {
                         Ok(event) => {
                             self.process_protocol_pool_event(event).await?},
-                        Err(err) => return Err(PoolError::CommunicationError(err))
+                        Err(err) => return Err(PoolError::ProtocolError(err))
                     }
                 },
             }

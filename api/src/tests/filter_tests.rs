@@ -3,9 +3,6 @@
 use super::tools::*;
 use crate::ApiEvent;
 use crate::OperationIds;
-use communication::network::Peer;
-use communication::network::PeerInfo;
-use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use consensus::{DiscardReason, ExportCompiledBlock, Status};
 use crypto::hash::Hash;
@@ -24,6 +21,9 @@ use models::{
     Operation, OperationContent, OperationId, OperationSearchResult, OperationSearchResultStatus,
     OperationType,
 };
+use network::Peer;
+use network::PeerInfo;
+use network::Peers;
 use serde_json::json;
 use serial_test::serial;
 use std::str::FromStr;

@@ -40,8 +40,6 @@ use reqwest::blocking::Response;
 use reqwest::StatusCode;
 use tracing::trace;
 
-use communication::network::Peer;
-use communication::network::Peers;
 use consensus::ExportBlockStatus;
 use consensus::Status;
 use crypto::signature::PrivateKey;
@@ -58,6 +56,8 @@ use models::SerializeCompact;
 use models::Slot;
 use models::StakersCycleProductionStats;
 use models::Version;
+use network::Peer;
+use network::Peers;
 use wallet::ConsensusConfigData;
 use wallet::WrappedAddressState;
 use wallet::{Wallet, WalletInfo};

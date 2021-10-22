@@ -7,7 +7,6 @@ use tokio::{
     task::JoinHandle,
 };
 
-use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use crypto::{
     derive_public_key,
     signature::{PrivateKey, PublicKey},
@@ -19,6 +18,7 @@ use models::{
 };
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
+use protocol::{ProtocolCommandSender, ProtocolEventReceiver};
 use storage::StorageAccess;
 
 use crate::error::ConsensusError;
