@@ -6,12 +6,12 @@ use crate::{
         self, create_endorsement, create_roll_transaction, create_transaction, generate_ledger_file,
     },
 };
-use communication::protocol::ProtocolCommand;
 use crypto::hash::Hash;
 use models::{ledger::LedgerData, EndorsementId};
 use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use models::{Endorsement, SerializeCompact};
 use pool::PoolCommand;
+use protocol::ProtocolCommand;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;

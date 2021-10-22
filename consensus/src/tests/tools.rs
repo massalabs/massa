@@ -11,7 +11,6 @@ use crate::{
     start_consensus_controller, BootstrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
     ExportProofOfStake,
 };
-use communication::protocol::ProtocolCommand;
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
@@ -25,6 +24,7 @@ use models::{
 };
 use num::rational::Ratio;
 use pool::PoolCommand;
+use protocol::ProtocolCommand;
 use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},

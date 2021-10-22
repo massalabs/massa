@@ -3,10 +3,10 @@
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
-use crate::network::handshake_worker::HandshakeWorker;
-use crate::network::messages::Message;
-use crate::network::start_network_controller;
-use crate::network::{
+use crate::handshake_worker::HandshakeWorker;
+use crate::messages::Message;
+use crate::start_network_controller;
+use crate::{
     NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, NetworkManager,
     PeerInfo,
 };

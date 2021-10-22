@@ -1421,12 +1421,15 @@ impl ProtocolWorker {
 
 #[cfg(test)]
 mod tests {
+    use crate::tests::tools::create_protocol_config;
+
     use super::nodeinfo::NodeInfo;
     use super::*;
-    use crate::network::tests::tools::get_dummy_block_id;
-    use crate::protocol::tests::tools::create_protocol_config;
     use serial_test::serial;
 
+    pub fn get_dummy_block_id(s: &str) -> BlockId {
+        BlockId(Hash::hash(s.as_bytes()))
+    }
     #[test]
     #[serial]
     fn test_node_info_know_block() {

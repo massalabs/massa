@@ -2,9 +2,10 @@
 
 use super::tools;
 use super::tools::protocol_test;
-use crate::protocol::ProtocolEvent;
-use crate::{network::NetworkCommand, protocol::ProtocolPoolEvent};
+use crate::ProtocolEvent;
+use crate::ProtocolPoolEvent;
 use models::{BlockHashMap, BlockHashSet, Slot};
+use network::NetworkCommand;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;

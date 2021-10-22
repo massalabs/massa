@@ -1,5 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![feature(async_closure)]
+#![feature(drain_filter)]
+#![feature(ip)]
+
 mod config;
 mod protocol_controller;
 mod protocol_worker;

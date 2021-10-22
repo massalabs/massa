@@ -2,18 +2,20 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools;
-use crate::network::NetworkCommand;
-use crate::protocol::tests::tools::protocol_test;
-use crate::protocol::ProtocolEvent;
+use super::tools::{create_protocol_config, protocol_test};
+use crate::{
+    tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
+    ProtocolEvent,
+};
 use models::{BlockHashMap, BlockHashSet};
+use network::NetworkCommand;
 use serial_test::serial;
 use std::collections::HashSet;
 
 #[tokio::test]
 #[serial]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
-    let protocol_config = tools::create_protocol_config();
+    let protocol_config = create_protocol_config();
 
     protocol_test(
         protocol_config,
@@ -26,7 +28,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
                 _ => None,
             };
-            let mut nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
+            let mut nodes = create_and_connect_nodes(3, &mut network_controller).await;
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -34,7 +36,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             network_controller.close_connection(nodes[0].id).await;
 
             // 2. Create a block coming from node creator_node.
-            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.private_key, &creator_node.id.0);
 
             // 3. Send header to protocol.
             network_controller
@@ -42,18 +44,19 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 .await;
 
             // Check protocol sends header to consensus.
-            let received_hash =
-                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                    match evt {
-                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                        _ => None,
-                    }
-                })
-                .await
-                {
-                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
-                    _ => panic!("Unexpected or no protocol event."),
-                };
+            let received_hash = match wait_protocol_event(
+                &mut protocol_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                Some(ProtocolEvent::ReceivedBlockHeader { block_id, .. }) => block_id,
+                _ => panic!("Unexpected or no protocol event."),
+            };
 
             // 4. Check that protocol sent the right header to consensus.
             let expected_hash = block.header.compute_block_id().unwrap();
@@ -104,7 +107,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_blocks_when_asked_for() {
-    let protocol_config = tools::create_protocol_config();
+    let protocol_config = create_protocol_config();
     protocol_test(
         protocol_config,
         async move |mut network_controller,
@@ -118,7 +121,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
                 _ => None,
             };
 
-            let mut nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
+            let mut nodes = create_and_connect_nodes(4, &mut network_controller).await;
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
@@ -126,7 +129,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             network_controller.close_connection(nodes[2].id).await;
 
             // 2. Create a block coming from creator_node.
-            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.private_key, &creator_node.id.0);
 
             let expected_hash = block.header.compute_block_id().unwrap();
 
@@ -137,21 +140,20 @@ async fn test_protocol_sends_blocks_when_asked_for() {
                     .await;
 
                 // Check protocol sends get block event to consensus.
-                let received_hash = match tools::wait_protocol_event(
-                    &mut protocol_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-                        _ => None,
-                    },
-                )
-                .await
-                {
-                    Some(ProtocolEvent::GetBlocks(mut list)) => {
-                        list.pop().expect("Empty list of hashes.")
-                    }
-                    _ => panic!("Unexpected or no protocol event."),
-                };
+                let received_hash =
+                    match wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
+                        match evt {
+                            evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
+                            _ => None,
+                        }
+                    })
+                    .await
+                    {
+                        Some(ProtocolEvent::GetBlocks(mut list)) => {
+                            list.pop().expect("Empty list of hashes.")
+                        }
+                        _ => panic!("Unexpected or no protocol event."),
+                    };
 
                 // Check that protocol sent the right hash to consensus.
                 assert_eq!(expected_hash, received_hash);
@@ -214,7 +216,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
-    let protocol_config = tools::create_protocol_config();
+    let protocol_config = create_protocol_config();
     protocol_test(
         protocol_config,
         async move |mut network_controller,
@@ -223,7 +225,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                     protocol_manager,
                     protocol_pool_event_receiver| {
             // Create 4 nodes.
-            let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
+            let nodes = create_and_connect_nodes(4, &mut network_controller).await;
             let (node_a, node_b, node_c, node_d) = (
                 nodes[0].clone(),
                 nodes[1].clone(),
@@ -237,7 +239,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
             network_controller.close_connection(node_d.id).await;
 
             // 2. Create a block coming from one node.
-            let ref_block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let ref_block = create_block(&creator_node.private_key, &creator_node.id.0);
 
             // 3. Send header to protocol.
             network_controller
@@ -247,30 +249,27 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
             // node[1] asks for that block
 
             // Check protocol sends header to consensus.
-            let (ref_hash, _) =
-                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                    match evt {
-                        evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                        _ => None,
-                    }
-                })
-                .await
-                {
-                    Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => {
-                        (block_id, header)
-                    }
-                    _ => panic!("Unexpected or no protocol event."),
-                };
+            let (ref_hash, _) = match wait_protocol_event(
+                &mut protocol_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                Some(ProtocolEvent::ReceivedBlockHeader { block_id, header }) => (block_id, header),
+                _ => panic!("Unexpected or no protocol event."),
+            };
 
             network_controller
                 .send_ask_for_block(node_b.id, vec![ref_hash])
                 .await;
 
-            match tools::wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-                    _ => None,
-                }
+            match wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| match evt {
+                evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
+                _ => None,
             })
             .await
             {
@@ -350,7 +349,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
-    let protocol_config = tools::create_protocol_config();
+    let protocol_config = create_protocol_config();
 
     protocol_test(
         protocol_config,
@@ -360,12 +359,12 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                     protocol_manager,
                     protocol_pool_event_receiver| {
             // Create 1 node.
-            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.private_key, &creator_node.id.0);
 
             let expected_hash = block.header.compute_block_id().unwrap();
 
@@ -374,12 +373,14 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 
             // Check protocol sends block to consensus.
             let hash =
-                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                    match evt {
+                match wait_protocol_event(
+                    &mut protocol_event_receiver,
+                    1000.into(),
+                    |evt| match evt {
                         evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                         _ => None,
-                    }
-                })
+                    },
+                )
                 .await
                 {
                     Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
@@ -402,7 +403,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_block_not_found() {
-    let protocol_config = tools::create_protocol_config();
+    let protocol_config = create_protocol_config();
     protocol_test(
         protocol_config,
         async move |mut network_controller,
@@ -411,12 +412,12 @@ async fn test_protocol_block_not_found() {
                     protocol_manager,
                     protocol_pool_event_receiver| {
             // Create 1 node.
-            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+            let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.private_key, &creator_node.id.0);
 
             let expected_hash = block.header.compute_block_id().unwrap();
 
@@ -427,12 +428,14 @@ async fn test_protocol_block_not_found() {
 
             // Check protocol sends ask block to consensus.
             let hash =
-                match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                    match evt {
+                match wait_protocol_event(
+                    &mut protocol_event_receiver,
+                    1000.into(),
+                    |evt| match evt {
                         evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
                         _ => None,
-                    }
-                })
+                    },
+                )
                 .await
                 {
                     Some(ProtocolEvent::GetBlocks(mut list)) => {

@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::ProtocolCommand;
 use models::address::AddressHashSet;
 use models::{Address, Amount, BlockId, Slot};
 use num::rational::Ratio;
 use pool::PoolCommand;
+use protocol::ProtocolCommand;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
 use std::collections::HashMap;
