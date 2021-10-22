@@ -1006,6 +1006,7 @@ impl ConsensusWorker {
             clique_count,
             start_timespan: timespan_start,
             end_timespan: timespan_end,
+            staker_count: self.pos.get_stakers_count(),
         })
     }
 
