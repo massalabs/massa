@@ -63,10 +63,10 @@ jobs:
         cat results.json | cargo2junit > results.xml
 
     - name: Archive junit results
-        uses: actions/upload-artifact@v2
-        with:
-          name: junit-report
-          path: results.xml
+      uses: actions/upload-artifact@v2
+      with:
+        name: junit-report
+        path: results.xml
 
   doctest:
     runs-on: ubuntu-latest
@@ -88,10 +88,10 @@ jobs:
         cat results.json | cargo2junit > results.xml
 
     - name: Archive junit results
-        uses: actions/upload-artifact@v2
-        with:
-          name: junit-report
-          path: results.xml
+      uses: actions/upload-artifact@v2
+      with:
+        name: junit-report
+        path: results.xml
 
   coverage:
     runs-on: ubuntu-latest
@@ -114,9 +114,9 @@ jobs:
         cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests --out Xml
 
     - name: Archive coverage results
-        uses: actions/upload-artifact@v2
-        with:
-          name: code-coverage-report
-          path: cobertura.xml
+      uses: actions/upload-artifact@v2
+      with:
+        name: code-coverage-report
+        path: cobertura.xml
 
 
