@@ -135,6 +135,7 @@ jobs:
         target: x86_64-unknown-linux-musl
     - name: Cargo build
       run: |
+        apt-get install musl-tools -y
         cargo update
         cargo build --release --target x86_64-unknown-linux-musl
         rm -rf massa/*
