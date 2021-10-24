@@ -20,7 +20,7 @@ jobs:
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
         profile: minimal
         override: true
         components: rustfmt, rust-src
@@ -37,7 +37,7 @@ jobs:
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
         profile: minimal
         override: true
     - name: Cargo build
@@ -53,7 +53,7 @@ jobs:
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
         profile: minimal
         override: true
     - name: Cargo test
@@ -78,7 +78,7 @@ jobs:
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
         profile: minimal
         override: true
     - name: Cargo doc test
@@ -105,7 +105,7 @@ jobs:
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
         profile: minimal
         override: true
     - name: Coverage
