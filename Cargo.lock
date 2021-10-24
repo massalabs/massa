@@ -42,6 +42,7 @@ dependencies = [
  "models",
  "network",
  "pool",
+ "protocol-exports",
  "storage",
  "thiserror",
  "time 0.1.0",
@@ -262,7 +263,7 @@ dependencies = [
  "num",
  "pool",
  "pretty_assertions",
- "protocol",
+ "protocol-exports",
  "rand 0.8.4",
  "rand_xoshiro",
  "serde 1.0.130",
@@ -991,9 +992,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.105"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "869d572136620d55835903746bcb5cdc54cb2851fd0aeec53220b4bb65ef3013"
+checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
 
 [[package]]
 name = "linked-hash-map"
@@ -1067,7 +1068,8 @@ dependencies = [
  "network",
  "pool",
  "pretty_assertions",
- "protocol",
+ "protocol-exports",
+ "protocol-worker",
  "serde 1.0.130",
  "serde_json",
  "serial_test",
@@ -1251,9 +1253,9 @@ dependencies = [
 
 [[package]]
 name = "num-bigint"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74e768dff5fb39a41b3bcd30bb25cf989706c90d028d1ad71971987aa309d535"
+checksum = "f93ab6289c7b344a8a9f60f88d80aa20032336fe78da341afc91c8a2341fc75f"
 dependencies = [
  "autocfg 1.0.1",
  "num-integer",
@@ -1369,9 +1371,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "openssl"
-version = "0.10.37"
+version = "0.10.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bc6b9e4403633698352880b22cbe2f0e45dd0177f6fabe4585536e56a3e4f75"
+checksum = "0c7ae222234c30df141154f159066c5093ff73b63204dcda7121eb082fc56a95"
 dependencies = [
  "bitflags",
  "cfg-if 1.0.0",
@@ -1389,9 +1391,9 @@ checksum = "28988d872ab76095a6e6ac88d99b54fd267702734fd7ffe610ca27f533ddb95a"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.68"
+version = "0.9.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c571f25d3f66dd427e417cebf73dbe2361d6125cf6e3a70d143fdf97c9f5150"
+checksum = "c6517987b3f8226b5da3661dad65ff7f300cc59fb5ea8333ca191fc65fde3edf"
 dependencies = [
  "autocfg 1.0.1",
  "cc",
@@ -1511,7 +1513,7 @@ dependencies = [
  "models",
  "num",
  "pretty_assertions",
- "protocol",
+ "protocol-exports",
  "serde 1.0.130",
  "serde_json",
  "serial_test",
@@ -1604,7 +1606,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "protocol"
+name = "protocol-exports"
 version = "0.1.0"
 dependencies = [
  "crypto",
@@ -1616,6 +1618,34 @@ dependencies = [
  "network",
  "num_enum",
  "pretty_assertions",
+ "rand 0.8.4",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "stderrlog",
+ "tempfile",
+ "thiserror",
+ "time 0.1.0",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tracing",
+]
+
+[[package]]
+name = "protocol-worker"
+version = "0.1.0"
+dependencies = [
+ "crypto",
+ "displaydoc",
+ "futures 0.3.17",
+ "itertools",
+ "logging",
+ "models",
+ "network",
+ "num_enum",
+ "pretty_assertions",
+ "protocol-exports",
  "rand 0.8.4",
  "serde 1.0.130",
  "serde_json",
@@ -2417,9 +2447,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2c2416fdedca8443ae44b4527de1ea633af61d8f7169ffa6e72c5b53d24efcc"
+checksum = "588b2d10a336da58d877567cd8fb8a14b463e2104910f8132cd054b4b96e29ee"
 dependencies = [
  "autocfg 1.0.1",
  "bytes",
@@ -2437,9 +2467,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2dd85aeaba7b68df939bd357c6afb36c87951be9e80bf9c859f2fc3e9fca0fd"
+checksum = "114383b041aa6212c579467afa0075fbbdd0718de036100bc0ba7961d8cb9095"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2458,9 +2488,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b2f3f698253f03119ac0102beaa64f67a67e08074d03a22d18784104543727f"
+checksum = "50145484efff8818b5ccd256697f36863f587da82cf8b409c53adf1e840798e3"
 dependencies = [
  "futures-core",
  "pin-project-lite",
@@ -2469,9 +2499,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.6.8"
+version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d3725d3efa29485e87311c5b699de63cde14b00ed4d256b8318aa30ca452cd"
+checksum = "9e99e1983e5d376cd8eb4b66604d2e99e79f5bd988c3055891dcd8c9e2604cc0"
 dependencies = [
  "bytes",
  "futures-core",

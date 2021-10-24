@@ -18,7 +18,7 @@ use models::{
 };
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
-use protocol::{ProtocolCommandSender, ProtocolEventReceiver};
+use protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
 use storage::StorageAccess;
 
 use crate::error::ConsensusError;

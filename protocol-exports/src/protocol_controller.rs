@@ -1,89 +1,80 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{
-    config::{ProtocolConfig, CHANNEL_SIZE},
-    protocol_worker::{
-        ProtocolCommand, ProtocolEvent, ProtocolManagementCommand, ProtocolPoolEvent,
-        ProtocolWorker,
-    },
-};
 use crate::error::ProtocolError;
 use logging::massa_trace;
-use network::{NetworkCommandSender, NetworkEventReceiver};
+use network::NetworkEventReceiver;
 
 use models::{
-    Block, BlockHashMap, BlockHashSet, BlockId, Endorsement, EndorsementHashMap, EndorsementId,
-    Operation, OperationHashMap, OperationHashSet,
+    Block, BlockHashMap, BlockHashSet, BlockHeader, BlockId, Endorsement, EndorsementHashMap,
+    EndorsementId, Operation, OperationHashMap, OperationHashSet,
 };
+use serde::Serialize;
 use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};
-use tracing::{debug, error, info};
+use tracing::debug;
 
-/// start a new ProtocolController from a ProtocolConfig
-/// - generate public / private key
-/// - create protocol_command/protocol_event channels
-/// - launch protocol_controller_fn in an other task
-///
-/// # Arguments
-/// * cfg : protocol configuration
-/// * network_command_sender: the NetworkCommandSender we interact with
-/// * network_event_receiver: the NetworkEventReceiver we interact with
-pub async fn start_protocol_controller(
-    cfg: ProtocolConfig,
-    operation_validity_periods: u64,
-    network_command_sender: NetworkCommandSender,
-    network_event_receiver: NetworkEventReceiver,
-) -> Result<
-    (
-        ProtocolCommandSender,
-        ProtocolEventReceiver,
-        ProtocolPoolEventReceiver,
-        ProtocolManager,
-    ),
-    ProtocolError,
-> {
-    debug!("starting protocol controller");
-
-    // launch worker
-    let (event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
-    let (pool_event_tx, pool_event_rx) = mpsc::channel::<ProtocolPoolEvent>(CHANNEL_SIZE);
-    let (command_tx, command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
-    let (manager_tx, manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
-    let join_handle = tokio::spawn(async move {
-        let res = ProtocolWorker::new(
-            cfg,
-            operation_validity_periods,
-            network_command_sender,
-            network_event_receiver,
-            event_tx,
-            pool_event_tx,
-            command_rx,
-            manager_rx,
-        )
-        .run_loop()
-        .await;
-        match res {
-            Err(err) => {
-                error!("protocol worker crashed: {}", err);
-                Err(err)
-            }
-            Ok(v) => {
-                info!("protocol worker finished cleanly");
-                Ok(v)
-            }
-        }
-    });
-    debug!("protocol controller ready");
-    Ok((
-        ProtocolCommandSender(command_tx),
-        ProtocolEventReceiver(event_rx),
-        ProtocolPoolEventReceiver(pool_event_rx),
-        ProtocolManager {
-            join_handle,
-            manager_tx,
-        },
-    ))
+/// Possible types of events that can happen.
+#[derive(Debug, Serialize)]
+pub enum ProtocolEvent {
+    /// A block with a valid signature has been received.
+    ReceivedBlock {
+        block_id: BlockId,
+        block: Block,
+        operation_set: OperationHashMap<(usize, u64)>, // (index, validity end period)
+        endorsement_ids: Vec<EndorsementId>,
+    },
+    /// A block header with a valid signature has been received.
+    ReceivedBlockHeader {
+        block_id: BlockId,
+        header: BlockHeader,
+    },
+    /// Ask for a list of blocks from consensus.
+    GetBlocks(Vec<BlockId>),
 }
+/// Possible types of pool events that can happen.
+#[derive(Debug, Serialize)]
+pub enum ProtocolPoolEvent {
+    /// Operations were received
+    ReceivedOperations {
+        operations: OperationHashMap<Operation>,
+        propagate: bool, // whether or not to propagate operations
+    },
+    /// Endorsements were received
+    ReceivedEndorsements {
+        endorsements: EndorsementHashMap<Endorsement>,
+        propagate: bool, // whether or not to propagate endorsements
+    },
+}
+
+/// Commands that protocol worker can process
+#[derive(Debug, Serialize)]
+pub enum ProtocolCommand {
+    /// Notify block integration of a given block.
+    IntegratedBlock {
+        block_id: BlockId,
+        block: Block,
+        operation_ids: OperationHashSet,
+        endorsement_ids: Vec<EndorsementId>,
+    },
+    /// A block, or it's header, amounted to an attempted attack.
+    AttackBlockDetected(BlockId),
+    /// Wishlist delta
+    WishlistDelta {
+        new: BlockHashSet,
+        remove: BlockHashSet,
+    },
+    /// The response to a ProtocolEvent::GetBlocks.
+    GetBlocksResults(
+        BlockHashMap<Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>>,
+    ),
+    /// Propagate operations
+    PropagateOperations(OperationHashMap<Operation>),
+    /// Propagate endorsements
+    PropagateEndorsements(EndorsementHashMap<Endorsement>),
+}
+
+#[derive(Debug, Serialize)]
+pub enum ProtocolManagementCommand {}
 
 #[derive(Clone)]
 pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
@@ -265,6 +256,16 @@ pub struct ProtocolManager {
 }
 
 impl ProtocolManager {
+    pub fn new(
+        join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
+        manager_tx: mpsc::Sender<ProtocolManagementCommand>,
+    ) -> Self {
+        ProtocolManager {
+            join_handle,
+            manager_tx,
+        }
+    }
+
     /// Stop the protocol controller
     pub async fn stop(
         self,

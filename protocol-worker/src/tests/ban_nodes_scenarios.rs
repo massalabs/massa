@@ -1,11 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::tools;
 use super::tools::protocol_test;
-use crate::ProtocolEvent;
-use crate::ProtocolPoolEvent;
 use models::{BlockHashMap, BlockHashSet, Slot};
 use network::NetworkCommand;
+use protocol_exports::tests::tools;
+use protocol_exports::ProtocolEvent;
+use protocol_exports::ProtocolPoolEvent;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;

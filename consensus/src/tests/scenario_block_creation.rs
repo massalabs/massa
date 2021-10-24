@@ -11,7 +11,7 @@ use models::{ledger::LedgerData, EndorsementId};
 use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use models::{Endorsement, SerializeCompact};
 use pool::PoolCommand;
-use protocol::ProtocolCommand;
+use protocol_exports::ProtocolCommand;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
