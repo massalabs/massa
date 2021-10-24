@@ -136,7 +136,9 @@ jobs:
     - name: Cargo build
       run: |
         sudo apt update -y
-        sudo apt-get install musl-tools pkg-config libssl-dev -y
+        sudo apt-get install musl-tools -y
+        sudo apt-get install pkg-config -y
+        sudo apt-get install libssl-dev -y
         cargo update
         cargo build --release --target x86_64-unknown-linux-musl
         rm -rf massa/*
