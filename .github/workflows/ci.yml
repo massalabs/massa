@@ -152,5 +152,5 @@ jobs:
     - name: Archive coverage results
       uses: actions/upload-artifact@v2
       with:
-        name: build_linux_${{.github.ref}}
+        name: TODO
         path: massa/
