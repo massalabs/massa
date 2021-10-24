@@ -154,13 +154,12 @@ jobs:
         export OPENSSL_DIR=/musl
         
         cargo update
-        cargo build --release --target x86_64-unknown-linux-musl
         rm -rf massa/*
         mkdir -p massa/massa-node/
+        cargo build --release --target x86_64-unknown-linux-musl
+        ls -la
         cd massa/
-        ls -la ..
-        echo "In target"
-        ls -la ../target
+        ls -la .
         mkdir massa-client
         cp -v ../target/x86_64-unknown-linux-musl/release/massa-node ./massa-node/massa-node
         cp -rv ../massa-node/config ./massa-node/config
