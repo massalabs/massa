@@ -71,6 +71,15 @@ jobs:
 
   build_windows:
     runs-on: ubuntu-latest
+    container:
+      image: massalabs/linux-ci
+    # env:
+    #   OSX_SDK_VERSION: 11.3
+    #   ZLIB_VERSION: 1.2.11
+    #   OSX_SDK_SUM: 9adc1373d3879e1973d28ad9f17c9051b02931674a3ec2a2498128989ece2cb1
+    #   OSX_VERSION_MIN: 10.14
+    #   OSX_CROSS_COMMIT: de6c72eff2d6013f5af46fba1fa205654c5cf5e2
+    #   OPENSSL_VERSION: 1.1.1j
     steps:
     - uses: actions/checkout@v2
       with:
@@ -83,6 +92,7 @@ jobs:
         profile: minimal
         override: true
         target: x86_64-pc-windows-gnu
+
     - name: Cargo build
       run: |
         sudo apt update -y
@@ -91,9 +101,8 @@ jobs:
         rm -rf massa/*
         mkdir -p massa/massa-node/
         cargo build --release --target x86_64-pc-windows-gnu
-        ls -la
+        ls -la target
         cd massa/
-        ls -la .
         mkdir massa-client
         cp -v ../target/x86_64-pc-windows-gnu/release/massa-node ./massa-node/massa-node
         cp -rv ../massa-node/config ./massa-node/config
@@ -109,6 +118,8 @@ jobs:
 
   build_darwin:
     runs-on: ubuntu-latest
+    container:
+      image: massalabs/linux-ci
     steps:
     - uses: actions/checkout@v2
       with:
@@ -123,13 +134,6 @@ jobs:
         target: x86_64-apple-darwin
     - name: Cargo build
       run: |
-        sudo apt update -y
-        sudo apt-get install clang gcc g++ cmake patch llvm-dev uuid-dev libssl-dev libbz2-dev libmpc-dev zlib1g-dev libmpfr-dev libgmp-dev -y
-        git clone https://github.com/tpoechtrager/osxcross.git
-        cd osxcross
-        UNATTENDED=1 OCDEBUG=1 ./build_clang.sh
-        UNATTENDED=1 ./build.sh
-        cd ..
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
