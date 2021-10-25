@@ -127,8 +127,8 @@ jobs:
         sudo apt-get install clang gcc g++ cmake patch llvm-dev uuid-dev libssl-dev libbz2-dev libmpc-dev zlib1g-dev libmpfr-dev libgmp-dev -y
         git clone https://github.com/tpoechtrager/osxcross.git
         cd osxcross
-        OCDEBUG=1 sudo ./build_clang.sh
-        UNATTENDED=1 sudo ./build.sh
+        UNATTENDED=1 OCDEBUG=1 ./build_clang.sh
+        UNATTENDED=1 ./build.sh
         cd ..
         cargo update
         rm -rf massa/*
