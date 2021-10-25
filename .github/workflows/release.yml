@@ -89,6 +89,7 @@ jobs:
       run: |
         export HOME=/root
         rustup update
+        rustup target add x86_64-pc-windows-gnu
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
@@ -121,6 +122,7 @@ jobs:
       run: |
         export HOME=/root
         rustup update
+        rustup target add x86_64-apple-darwin
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
