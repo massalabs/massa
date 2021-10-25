@@ -2,7 +2,7 @@ name: Release
 on:
     push:
       tags:
-      - 'TEST.[0-9]+.[0-9]+'
+      - TEST.[0-9]+.[0-9]+
 
 env:
   CARGO_TERM_COLOR: always
