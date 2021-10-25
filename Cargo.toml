@@ -12,7 +12,7 @@ members = [
     "models",
     "pool",
     "protocol",
-    "rpc-client",
+    "massa-client",
     "storage",
     "time",
     "wallet",

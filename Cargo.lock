@@ -1048,6 +1048,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa-client"
+version = "0.1.0"
+dependencies = [
+ "atty",
+ "config",
+ "console",
+ "crypto",
+ "dialoguer",
+ "futures 0.3.17",
+ "jsonrpc-core-client",
+ "lazy_static",
+ "models",
+ "paw",
+ "serde 1.0.130",
+ "serde_json",
+ "structopt",
+ "strum",
+ "strum_macros",
+ "time 0.1.0",
+ "tokio",
+ "wallet",
+]
+
+[[package]]
 name = "massa-node"
 version = "0.1.0"
 dependencies = [
@@ -1922,30 +1946,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "winreg",
-]
-
-[[package]]
-name = "rpc-client"
-version = "0.1.0"
-dependencies = [
- "atty",
- "config",
- "console",
- "crypto",
- "dialoguer",
- "futures 0.3.17",
- "jsonrpc-core-client",
- "lazy_static",
- "models",
- "paw",
- "serde 1.0.130",
- "serde_json",
- "structopt",
- "strum",
- "strum_macros",
- "time 0.1.0",
- "tokio",
- "wallet",
 ]
 
 [[package]]
