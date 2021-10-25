@@ -120,16 +120,19 @@ jobs:
       with:
         # Artifact name
         name: release_darwin
+        path: release_linux
     - name: Download a Build Artifact
       uses: actions/download-artifact@v2.0.10
       with:
         # Artifact name
         name: release_windows
+        path: release_linux
     - name: Download a Build Artifact
       uses: actions/download-artifact@v2.0.10
       with:
         # Artifact name
         name: release_linux
+        path: release_linux
     - name: Display structure of downloaded files
       run: ls -lRa
     #- name: Release
