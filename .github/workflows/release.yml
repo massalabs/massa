@@ -85,6 +85,8 @@ jobs:
         target: x86_64-pc-windows-gnu
     - name: Cargo build
       run: |
+        sudo apt update -y
+        sudo apt-get install x86_64-w64-mingw32-gcc -y
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
@@ -121,6 +123,8 @@ jobs:
         target: x86_64-apple-darwin
     - name: Cargo build
       run: |
+        sudo apt update -y
+        sudo apt-get install o64-clang -y
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
