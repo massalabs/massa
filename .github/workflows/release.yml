@@ -86,7 +86,7 @@ jobs:
     - name: Cargo build
       run: |
         sudo apt update -y
-        sudo apt-get install x86_64-w64-mingw32-gcc -y
+        sudo apt-get install mingw-w64 mingw-w64-common mingw-w64-tools mingw-w64-x86-64-dev -y
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
@@ -124,7 +124,7 @@ jobs:
     - name: Cargo build
       run: |
         sudo apt update -y
-        sudo apt-get install o64-clang -y
+        sudo apt-get install clang llvm-dev uuid-dev libssl-dev libbz2-dev -y
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
