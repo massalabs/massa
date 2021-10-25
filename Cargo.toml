@@ -1,8 +1,7 @@
 [workspace]
 
 members = [
-    "api-public",
-    "api-private",
+    "api",
     "bootstrap",
     "network",
     "consensus",

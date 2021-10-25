@@ -1,5 +1,5 @@
 [package]
-name = "api-private"
+name = "api"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,12 +10,14 @@ displaydoc = "0.2"
 jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
-tokio = { version = "1.11", features = ["full"] }
 thiserror = "1.0"
 tracing = "0.1"
 # custom modules
-crypto = {path = "../crypto"}
-network = {path = "../network"}
-consensus = {path = "../consensus"}
 models = {path = "../models"}
 time = {path = "../time"}
+tokio = { version = "1.11", features = ["full"] }
+consensus = {path = "../consensus"}
+network = {path = "../network"}
+crypto = {path = "../crypto"}
+pool = {path = "../pool"}
+storage = {path = "../storage"}

@@ -30,25 +30,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "api-private"
-version = "0.1.0"
-dependencies = [
- "consensus",
- "crypto",
- "displaydoc",
- "jsonrpc-core",
- "jsonrpc-derive",
- "jsonrpc-http-server",
- "models",
- "network",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "api-public"
+name = "api"
 version = "0.1.0"
 dependencies = [
  "consensus",
@@ -1075,8 +1057,7 @@ dependencies = [
 name = "massa-node"
 version = "0.1.0"
 dependencies = [
- "api-private",
- "api-public",
+ "api",
  "bootstrap",
  "config",
  "consensus",

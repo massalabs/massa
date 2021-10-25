@@ -5,8 +5,8 @@
 #![doc = include_str!("../../README.md")]
 
 extern crate logging;
-use api_private::{ApiMassaPrivate, ApiMassaPrivateStopHandle};
-use api_public::{ApiMassaPublic, ApiMassaPublicStopHandle};
+
+use api::{ApiMassaPrivate, ApiMassaPrivateStopHandle, ApiMassaPublic, ApiMassaPublicStopHandle};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,

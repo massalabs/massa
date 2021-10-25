@@ -17,8 +17,7 @@ tokio-util = { version = "0.6", features = ["codec"] }
 tracing-subscriber = "0.2"
 # custom modules
 pool = { path = "../pool" }
-api-private = { path = "../api-private" }
-api-public = { path = "../api-public" }
+api = { path = "../api" }
 bootstrap = { path = "../bootstrap" }
 network = { path = "../network" }
 protocol = { path = "../protocol" }
