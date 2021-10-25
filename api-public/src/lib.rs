@@ -4,8 +4,6 @@
 
 use consensus::ExportBlockStatus;
 use consensus::{ConsensusCommandSender, ConsensusConfig, Status};
-use crypto::derive_public_key;
-use crypto::generate_random_private_key;
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
@@ -17,7 +15,6 @@ use models::api::{
     EndorsementInfo, NodeStatus, OperationInfo, RollsInfo, TimeInterval,
 };
 use models::clique::Clique;
-use models::node::NodeId;
 use models::operation::{Operation, OperationId};
 use models::timeslots::get_block_slot_timestamp;
 use models::timeslots::get_latest_block_slot_at_timestamp;
@@ -209,7 +206,7 @@ impl MassaPublic for ApiMassaPublic {
             let network_stats = network_command_sender.get_network_stats().await?;
             let pool_stats = pool_command_sender.get_pool_stats().await?;
             Ok(NodeStatus {
-                node_id: NodeId(derive_public_key(&generate_random_private_key())),
+                node_id: todo!(),
                 node_ip: network_config.routable_ip,
                 version,
                 genesis_timestamp: consensus_config.genesis_timestamp,
