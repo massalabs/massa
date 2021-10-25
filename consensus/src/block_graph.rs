@@ -457,7 +457,6 @@ pub enum ExportBlockStatus {
     Active(Block),
     Final(Block),
     Discarded(DiscardReason),
-    Stored(Block), // TODO: remove with old api
 }
 
 impl<'a> From<&'a BlockStatus> for ExportBlockStatus {

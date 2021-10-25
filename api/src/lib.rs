@@ -397,7 +397,6 @@ impl MassaPublic for ApiMassaPublic {
                         Some(ExportBlockStatus::WaitingForDependencies) => None,
                         Some(ExportBlockStatus::Discarded(_)) => None, // TODO: get block if stale
                         Some(ExportBlockStatus::Final(block)) => Some((block, true)),
-                        Some(ExportBlockStatus::Stored(_)) => None, // TODO: remove with old api
                         None => None,
                     }
                 {
