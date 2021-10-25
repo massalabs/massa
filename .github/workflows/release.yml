@@ -87,7 +87,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
-        cp -r /root/src/* .
+        export HOME=/root
         rustup update
         cargo update
         rm -rf massa/*
@@ -119,7 +119,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
-        cp -r /root/src/* .
+        export HOME=/root
         rustup update
         cargo update
         rm -rf massa/*
