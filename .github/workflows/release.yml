@@ -89,6 +89,7 @@ jobs:
       run: |
         export HOME=/root
         rustup update
+        rustup default nightly
         rustup target add x86_64-pc-windows-gnu
         cargo update
         rm -rf massa/*
@@ -122,6 +123,7 @@ jobs:
       run: |
         export HOME=/root
         rustup update
+        rustup default nightly
         rustup target add x86_64-apple-darwin
         cargo update
         rm -rf massa/*
