@@ -124,7 +124,7 @@ jobs:
     - name: Cargo build
       run: |
         sudo apt update -y
-        sudo apt-get install clang llvm-dev uuid-dev libssl-dev libbz2-dev -y
+        sudo apt-get install clang gcc g++ llvm-dev uuid-dev libssl-dev libbz2-dev libmpc-dev zlib1g-dev libmpfr-dev libgmp-dev -y
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
