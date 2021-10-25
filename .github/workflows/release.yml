@@ -85,14 +85,6 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 20
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-        override: true
-        target: x86_64-pc-windows-gnu
-
     - name: Cargo build
       run: |
         sudo apt update -y
@@ -125,13 +117,6 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 20
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-        override: true
-        target: x86_64-apple-darwin
     - name: Cargo build
       run: |
         cargo update
