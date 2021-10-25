@@ -87,8 +87,6 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
-        sudo apt update -y
-        sudo apt-get install mingw-w64 mingw-w64-common mingw-w64-tools mingw-w64-x86-64-dev -y
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
