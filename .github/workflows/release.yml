@@ -1,9 +1,8 @@
 name: Release
 on:
     push:
-      branches: ['dev']
-      #tags:
-      #- 'TEST.[0-9]+\.[0-9]+'
+      tags:
+      - 'TEST.[0-9]+\.[0-9]+'
 
 env:
   CARGO_TERM_COLOR: always
@@ -120,24 +119,28 @@ jobs:
       with:
         # Artifact name
         name: release_darwin
-        path: release_linux
+        path: release_darwin
     - name: Download a Build Artifact
       uses: actions/download-artifact@v2.0.10
       with:
         # Artifact name
         name: release_windows
-        path: release_linux
+        path: release_windows
     - name: Download a Build Artifact
       uses: actions/download-artifact@v2.0.10
       with:
         # Artifact name
         name: release_linux
         path: release_linux
-    - name: Display structure of downloaded files
-      run: ls -lRa
-    #- name: Release
-    #  uses: softprops/action-gh-release@v1
-    #  with:
-    #    files: |
-    #      Release.txt
-    #      LICENSE
+    - name: Compress and zip releases
+      run: |
+        tar -czvf release_linux.tar.gz release_linux
+        tar -czvf release_windows.tar.gz release_windows
+        tar -czvf release_darwin.tar.gz release_darwin
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release_linux.tar.gz
+          release_darwin.tar.gz
+          release_windows.tar.gz
