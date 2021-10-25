@@ -8,14 +8,14 @@ Staking is what improves the security of the network. By buying rolls (freezing 
 
 On July 16th we launched a first public version of Massa, the first testnet.
 More than 350 nodes were connected at the same time after one week, which overloaded our bootstrap nodes which were the only nodes accepting connections.
-By setting your node up to be routable (with a public IP), you become a real peer in the peer-to-peer network: you not only connect to existing routable nodes, but you offer other people the possibility to access the network through your connection. 
+By setting your node up to be routable (with a public IP), you become a real peer in the peer-to-peer network: you not only connect to existing routable nodes, but you offer other people the possibility to access the network through your connection.
 We will therefore also reward how often your node is publicly accessible.
 
 
 ## Episodes
 
 We will have release cycles of 1 month each, called "episodes", the first one starting in August, 2021.
-At the beginning of an episode, participants will have a few days to setup their nodes with the newest version before scoring starts.
+At the beginning of an episode, participants will have a few days to setup their nodes with the newest version before scoring starts, but it's also possible to join anytime during the episode.
 
 Throughout the episode, you can ask for coins in the Discord faucet (on channel testnet-token-request). No need to abuse the faucet, we don't reward you based on the number of rolls.
 
@@ -43,7 +43,7 @@ Score = 50 * (active_cycles / nb_cycles) * (produced_blocks / selected_slots) + 
 *** Maximum score is achieved if the node can always be reached by other nodes.
 * 20 points of the score incentivize node diversity: the network is more decentralized if nodes are spread across countries and providers than if they are all hosted at the same location/provider.
 ** `total_maxim_factor` / `nb_cycles`
-*** `total_maxim_factor` is the total amount of `maxim_factor` accumulated at each cycle. The `maxim_factor` is a value between 0 and 1 representing the distance between this node IP address and the IP addresses of other nodes in a given cycle. 
+*** `total_maxim_factor` is the total amount of `maxim_factor` accumulated at each cycle. The `maxim_factor` is a value between 0 and 1 representing the distance between this node IP address and the IP addresses of other nodes in a given cycle.
 *** Maximum score is reached when running the node at home or with a provider that is not used to run other Massa nodes.
 
 We encourage every person to run only one node.
@@ -61,6 +61,6 @@ The launch of mainnet is currently planned for Q2 2022.
 
 By this time, people will be able to claim their rewards through a KYC process (most likely including video/liveness) to ensure that the same people don't do multiple claims, and in compliance with KYC/AML laws.
 
-The testnet score of a person will be the sum of all their episode scores. 
+The testnet score of a person will be the sum of all their episode scores.
 
 The mainnet reward will depend on the testnet score. More info on mainnet rewards will come later.
