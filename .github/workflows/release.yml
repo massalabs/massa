@@ -87,6 +87,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
+        export PATH=/root/.cargo/bin:/usr/local/musl/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/osxcross/target/bin
         rustup update
         cargo update
         rm -rf massa/*
@@ -118,6 +119,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
+        export PATH=/root/.cargo/bin:/usr/local/musl/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/osxcross/target/bin
         rustup update
         cargo update
         rm -rf massa/*
