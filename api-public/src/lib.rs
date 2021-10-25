@@ -4,8 +4,6 @@
 
 use consensus::ExportBlockStatus;
 use consensus::{ConsensusCommandSender, ConsensusConfig, Status};
-use crypto::derive_public_key;
-use crypto::generate_random_private_key;
 use error::PublicApiError;
 use jsonrpc_core::{BoxFuture, IoHandler};
 use jsonrpc_derive::rpc;
@@ -67,6 +65,7 @@ pub struct ApiMassaPublic {
     pub version: Version,
     pub network_command_sender: NetworkCommandSender,
     pub compensation_millis: i64,
+    pub node_id: NodeId,
 }
 
 impl ApiMassaPublic {
@@ -82,6 +81,7 @@ impl ApiMassaPublic {
         version: Version,
         network_command_sender: NetworkCommandSender,
         compensation_millis: i64,
+        node_id: NodeId,
     ) -> Self {
         ApiMassaPublic {
             url: url.to_string(),
@@ -94,6 +94,7 @@ impl ApiMassaPublic {
             version,
             network_command_sender,
             compensation_millis,
+            node_id,
         }
     }
 
@@ -196,6 +197,7 @@ impl MassaPublic for ApiMassaPublic {
         let consensus_config = self.consensus_config.clone();
         let compensation_millis = self.compensation_millis;
         let mut pool_command_sender = self.pool_command_sender.clone();
+        let node_id = self.node_id.clone();
 
         let closure = async move || {
             let now = UTime::now(compensation_millis)?;
@@ -209,7 +211,7 @@ impl MassaPublic for ApiMassaPublic {
             let network_stats = network_command_sender.get_network_stats().await?;
             let pool_stats = pool_command_sender.get_pool_stats().await?;
             Ok(NodeStatus {
-                node_id: NodeId(derive_public_key(&generate_random_private_key())),
+                node_id,
                 node_ip: network_config.routable_ip,
                 version,
                 genesis_timestamp: consensus_config.genesis_timestamp,

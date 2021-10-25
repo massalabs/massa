@@ -45,6 +45,7 @@ pub async fn start_network_controller(
         NetworkEventReceiver,
         NetworkManager,
         PrivateKey,
+        NodeId,
     ),
     NetworkError,
 > {
@@ -142,6 +143,7 @@ pub async fn start_network_controller(
             manager_tx,
         },
         private_key,
+        self_node_id,
     ))
 }
 
