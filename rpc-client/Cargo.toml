@@ -9,7 +9,7 @@ edition = "2021"
 atty = "0.2"
 config = "0.11"
 console = "0.15"
-dialoguer = { version = "0.10.0", git = "https://github.com/yvan-sraka/dialoguer.git", branch="completion-feature", features = ["history", "completion"] }
+dialoguer = { version = "0.9.0", git = "https://github.com/yvan-sraka/dialoguer.git", branch="completion-feature", features = ["history", "completion"] }
 futures = "0.3"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
 lazy_static = "1"
