@@ -87,6 +87,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
+        rustup update
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
@@ -117,6 +118,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
+        rustup update
         cargo update
         rm -rf massa/*
         mkdir -p massa/massa-node/
