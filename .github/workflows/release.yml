@@ -87,7 +87,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
-        bash
+        echo $PATH
         rustup update
         cargo update
         rm -rf massa/*
@@ -119,7 +119,7 @@ jobs:
         fetch-depth: 20
     - name: Cargo build
       run: |
-        bash
+        echo $PATH
         rustup update
         cargo update
         rm -rf massa/*
