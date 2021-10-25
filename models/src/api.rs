@@ -311,7 +311,7 @@ pub struct TimeInterval {
     pub end: Option<UTime>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct APIConfig {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
