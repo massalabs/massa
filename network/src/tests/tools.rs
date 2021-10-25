@@ -405,7 +405,7 @@ where
     let (establisher, mock_interface) = mock_establisher::new();
 
     // launch network controller
-    let (network_event_sender, network_event_receiver, network_manager, _private_key) =
+    let (network_event_sender, network_event_receiver, network_manager, _private_key, _node_id) =
         start_network_controller(
             cfg.clone(),
             establisher,

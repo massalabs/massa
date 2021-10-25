@@ -88,7 +88,7 @@ async fn launch(
     .unwrap();
 
     // launch network controller
-    let (network_command_sender, network_event_receiver, network_manager, private_key) =
+    let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
             cfg.network.clone(),
             Establisher::new(),
@@ -193,6 +193,7 @@ async fn launch(
         cfg.version,
         network_command_sender.clone(),
         clock_compensation,
+        node_id,
     );
     let api_public_handle = api_public.serve_massa_public();
 
