@@ -66,5 +66,77 @@ jobs:
     - name: Archive compilation results
       uses: actions/upload-artifact@v2
       with:
-        name: release
+        name: release_linux
+        path: massa/
+
+  build_windows:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 20
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+        target: x86_64-pc-windows-gnu
+    - name: Cargo build
+      run: |
+        cargo update
+        rm -rf massa/*
+        mkdir -p massa/massa-node/
+        cargo build --release --target x86_64-pc-windows-gnu
+        ls -la
+        cd massa/
+        ls -la .
+        mkdir massa-client
+        cp -v ../target/x86_64-pc-windows-gnu/release/massa-node ./massa-node/massa-node
+        cp -rv ../massa-node/config ./massa-node/config
+        cp -rv ../massa-node/base_config ./massa-node/base_config
+        cp -rv ../massa-node/storage ./massa-node/storage
+        cp -v ../target/x86_64-pc-windows-gnu/release/massa-client ./massa-client/massa-client
+        cp -rv ../massa-client/base_config ./massa-client/base_config
+    - name: Archive compilation results
+      uses: actions/upload-artifact@v2
+      with:
+        name: release_windows
+        path: massa/
+
+  build_darwin:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 20
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+        target: x86_64-apple-darwin
+    - name: Cargo build
+      run: |
+        cargo update
+        rm -rf massa/*
+        mkdir -p massa/massa-node/
+        CC=o64-clang CXX=o64-clang++ cargo build --release --target x86_64-apple-darwin
+        ls -la
+        cd massa/
+        ls -la .
+        mkdir massa-client
+        cp -v ../target/x86_64-apple-darwin/release/massa-node ./massa-node/massa-node
+        cp -rv ../massa-node/config ./massa-node/config
+        cp -rv ../massa-node/base_config ./massa-node/base_config
+        cp -rv ../massa-node/storage ./massa-node/storage
+        cp -v ../target/x86_64-apple-darwin/release/massa-client ./massa-client/massa-client
+        cp -rv ../massa-client/base_config ./massa-client/base_config
+    - name: Archive compilation results
+      uses: actions/upload-artifact@v2
+      with:
+        name: release_darwin
         path: massa/
