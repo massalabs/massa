@@ -1,14 +1,8 @@
 name: Release
-
-# on:
-#     push:
-#       tags:
-#       - 'TEST.[0-9]+\.[0-9]+'
 on:
-  push:
-    branches: [dev]
-  pull_request:
-    branches: [dev]
+    push:
+      tags:
+      - 'TEST.[0-9]+\.[0-9]+'
 
 env:
   CARGO_TERM_COLOR: always
