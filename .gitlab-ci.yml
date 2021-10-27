@@ -44,6 +44,13 @@ coverage:
     - testnet@massalabs/massa
   allow_failure: true
 
+docs:
+   script:
+     - cargo doc --no-deps
+     - sshpass -p $DOCS_SECRET rsync -azP --delete target/doc/* docs@docs.massa.net:/var/www/html/docs
+   only:
+     - dev@massalabs/massa
+
 build-linux:
   image: "massalabs/linux-ci"
   rules:
