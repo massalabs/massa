@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![doc = include_str!("../../docs/wallet.md")]
+
 use crypto::derive_public_key;
 use crypto::hash::Hash;
 use crypto::signature::{PrivateKey, PublicKey};

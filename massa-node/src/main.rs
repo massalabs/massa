@@ -2,6 +2,7 @@
 
 #![feature(ip)]
 #![feature(destructuring_assignment)]
+#![doc = include_str!("../../README.md")]
 
 extern crate logging;
 pub use api::ApiEvent;
