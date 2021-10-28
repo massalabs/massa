@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use api::ApiConfig;
 use bootstrap::config::BootstrapConfig;
 use consensus::ConsensusConfig;
 use models::api::APIConfig;
@@ -22,7 +21,6 @@ pub struct Config {
     pub protocol: ProtocolConfig,
     pub network: NetworkConfig,
     pub consensus: ConsensusConfig,
-    pub api: ApiConfig,
     pub new_api: APIConfig,
     pub storage: StorageConfig,
     pub bootstrap: BootstrapConfig,
