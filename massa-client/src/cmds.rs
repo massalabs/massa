@@ -371,6 +371,7 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
+            // TODO: why are we not using std::fmt::Display of WalletInfo here?!
             Command::wallet_info => {
                 let full_wallet = wallet.get_full_wallet();
                 // TODO: maybe too much info in wallet_info

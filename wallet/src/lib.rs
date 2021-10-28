@@ -133,7 +133,7 @@ impl Wallet {
 #[derive(Debug)]
 pub struct WalletInfo<'a> {
     pub wallet: &'a Wallet,
-    pub balances: AddressHashMap<WrappedAddressState>,
+    pub balances: AddressHashMap<AddressState>,
 }
 
 impl<'a> std::fmt::Display for WalletInfo<'a> {
@@ -183,30 +183,28 @@ pub struct ConsensusConfigData {
     pub roll_price: Amount,
 }
 
-impl<'a> std::fmt::Display for WrappedAddressState {
+impl<'a> std::fmt::Display for AddressState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
+        writeln!(f, "\tfinal balance: {}", self.final_ledger_data.balance)?;
         writeln!(
             f,
-            "    candidate balance: {}",
+            "\tcandidate balance: {}",
             self.candidate_ledger_data.balance
         )?;
-        writeln!(f, "    locked balance: {}", self.locked_balance)?;
-        writeln!(f, "    final rolls: {}", self.final_rolls)?;
-        writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
-
+        writeln!(f, "\tlocked balance: {}", self.locked_balance)?;
+        writeln!(f, "\tfinal rolls: {}", self.final_rolls)?;
+        writeln!(f, "\tcandidate rolls: {}", self.candidate_rolls)?;
         if let Some(active) = self.active_rolls {
-            writeln!(f, "    active rolls: {}", active)?;
+            writeln!(f, "\tactive rolls: {}", active)?;
         } else {
-            writeln!(f, "    No active roll")?;
+            writeln!(f, "\tNo active roll")?;
         }
-
         Ok(())
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WrappedAddressState {
+pub struct AddressState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,
     pub candidate_rolls: u64,
