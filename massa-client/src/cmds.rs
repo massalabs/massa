@@ -1,12 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::net::IpAddr;
-use std::process;
-
+use crate::cfg::Settings;
 use console::style;
-use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
-use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
-
 use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
 use models::api::{AddressInfo, BlockInfo, EndorsementInfo, OperationInfo};
@@ -14,6 +9,10 @@ use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
+use std::net::IpAddr;
+use std::process;
+use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
+use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
 use wallet::Wallet;
 
 use crate::rpc::Client;
@@ -478,21 +477,18 @@ impl Command {
 
                     let op = OperationType::RollBuy { roll_count };
 
-                    let cfg = match client.public.get_algo_config().await {
-                        Ok(x) => x,
+                    let cfg = match client.public.get_status().await {
+                        Ok(x) => x.algo_config,
                         Err(e) => return repl_err!(e),
                     };
 
-                    let compensation_millis = match client.public.get_compensation_millis().await {
-                        Ok(x) => x,
-                        Err(e) => return repl_err!(e),
-                    };
+                    let settings = Settings::load();
 
                     let slot = match get_current_latest_block_slot(
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        compensation_millis,
+                        settings.compensation_millis,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
@@ -544,21 +540,18 @@ impl Command {
 
                     let op = OperationType::RollSell { roll_count };
 
-                    let cfg = match client.public.get_algo_config().await {
-                        Ok(x) => x,
+                    let cfg = match client.public.get_status().await {
+                        Ok(x) => x.algo_config,
                         Err(e) => return repl_err!(e),
                     };
 
-                    let compensation_millis = match client.public.get_compensation_millis().await {
-                        Ok(x) => x,
-                        Err(e) => return repl_err!(e),
-                    };
+                    let settings = Settings::load();
 
                     let slot = match get_current_latest_block_slot(
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        compensation_millis,
+                        settings.compensation_millis,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
@@ -619,21 +612,18 @@ impl Command {
                         amount,
                     };
 
-                    let cfg = match client.public.get_algo_config().await {
-                        Ok(x) => x,
+                    let cfg = match client.public.get_status().await {
+                        Ok(x) => x.algo_config,
                         Err(e) => return repl_err!(e),
                     };
 
-                    let compensation_millis = match client.public.get_compensation_millis().await {
-                        Ok(x) => x,
-                        Err(e) => return repl_err!(e),
-                    };
+                    let settings = Settings::load();
 
                     let slot = match get_current_latest_block_slot(
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        compensation_millis,
+                        settings.compensation_millis,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),

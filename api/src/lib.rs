@@ -20,8 +20,6 @@
 //!         - [`Endpoints::get_status`] Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.
 //!         - [`Endpoints::get_cliques`] Get cliques.
 //!     - Debug (specific information)
-//!         - [`Endpoints::get_algo_config`] Returns the configuration used by consensus algorithm.
-//!         - [`Endpoints::get_compensation_millis`] Returns the compensation_millis.
 //!         - [`Endpoints::get_stakers`] Returns the active stakers and their roll counts for the current cycle.
 //!         - [`Endpoints::get_operations`] Returns operations information associated to a given list of operations' IDs.
 //!         - [`Endpoints::get_endorsements`] Get endorsements (not yet implemented)
@@ -55,7 +53,7 @@ use models::clique::Clique;
 use models::crypto::PubkeySig;
 use models::node::NodeId;
 use models::operation::{Operation, OperationId};
-use models::{Address, AlgoConfig, BlockId, EndorsementId, Version};
+use models::{Address, BlockId, EndorsementId, Version};
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
 use std::net::{IpAddr, SocketAddr};
@@ -172,14 +170,6 @@ pub trait Endpoints {
     /// Get cliques.
     #[rpc(name = "get_cliques")]
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>>;
-
-    /// Returns the configuration used by consensus algorithm.
-    #[rpc(name = "get_algo_config")]
-    fn get_algo_config(&self) -> BoxFuture<Result<AlgoConfig, ApiError>>;
-
-    /// Returns the compensation_millis.
-    #[rpc(name = "get_compensation_millis")]
-    fn get_compensation_millis(&self) -> BoxFuture<Result<i64, ApiError>>;
 
     /// Returns the active stakers and their roll counts for the current cycle.
     #[rpc(name = "get_stakers")]

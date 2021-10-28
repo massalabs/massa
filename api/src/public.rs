@@ -18,8 +18,8 @@ use models::timeslots::{
     get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
 };
 use models::{
-    Address, AlgoConfig, BlockHashSet, BlockId, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationId, Slot, Version,
+    Address, BlockHashSet, BlockId, EndorsementId, Operation, OperationHashMap, OperationHashSet,
+    OperationId, Slot, Version,
 };
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
@@ -109,6 +109,7 @@ impl Endpoints for API<Public> {
         let compensation_millis = self.0.compensation_millis;
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
+        let algo_config = consensus_config.to_algo_config();
         let closure = async move || {
             let now = UTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
@@ -145,6 +146,7 @@ impl Endpoints for API<Public> {
                 consensus_stats,
                 network_stats,
                 pool_stats,
+                algo_config,
             })
         };
         Box::pin(closure())
@@ -158,18 +160,6 @@ impl Endpoints for API<Public> {
                 .await?
                 .max_cliques)
         };
-        Box::pin(closure())
-    }
-
-    fn get_algo_config(&self) -> BoxFuture<Result<AlgoConfig, ApiError>> {
-        let cfg = self.0.consensus_config.clone();
-        let closure = async move || Ok(cfg.to_algo_config());
-        Box::pin(closure())
-    }
-
-    fn get_compensation_millis(&self) -> BoxFuture<Result<i64, ApiError>> {
-        let cfg = self.0.compensation_millis;
-        let closure = async move || Ok(cfg);
         Box::pin(closure())
     }
 

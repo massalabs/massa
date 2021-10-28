@@ -14,7 +14,7 @@ use models::api::{
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
-use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
+use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use network::NetworkCommandSender;
 use std::net::{IpAddr, SocketAddr};
 
@@ -104,16 +104,6 @@ impl Endpoints for API<Private> {
     }
 
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
-    }
-
-    fn get_algo_config(&self) -> BoxFuture<Result<AlgoConfig, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
-    }
-
-    fn get_compensation_millis(&self) -> BoxFuture<Result<i64, ApiError>> {
         let closure = async move || Err(WrongAPI);
         Box::pin(closure())
     }
