@@ -47,6 +47,7 @@ coverage:
 docs:
    script:
      - cargo doc --no-deps
+     - apt install sshpass
      - sshpass -p $DOCS_SECRET rsync -azP --delete target/doc/* docs@docs.massa.net:/var/www/html/docs
    only:
      - dev@massalabs/massa
