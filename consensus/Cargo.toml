@@ -21,11 +21,12 @@ tokio = { version = "1.11", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"
 # custom modules
-protocol = {path = "../protocol"}
+consensus_traits = {path = "../consensus_traits"}
 crypto = {path = "../crypto"}
 logging = { path = "../logging" }
 models = {path = "../models"}
 pool = { path = "../pool"}
+protocol = {path = "../protocol"}
 storage = { path = "../storage"}
 time = { path = "../time"}
 

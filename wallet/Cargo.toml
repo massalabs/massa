@@ -13,6 +13,9 @@ serde_qs = "0.8"
 thiserror = "1.0"
 tracing = "0.1"
 # custom modules
+api = {path = "../api"}
+consensus = {path = "../consensus"} # TODO: Should be removed
+consensus_traits = {path = "../consensus_traits"}
 crypto = {path = "../crypto"}
 models = {path = "../models"}
 time = { path = "../time" }
