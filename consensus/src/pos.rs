@@ -611,7 +611,7 @@ impl ProofOfStake {
         self.watched_addresses = addrs;
     }
 
-    /// stakers count at latest final cycle
+    /// stakers count at latest final blocks
     pub fn get_stakers_count(&self) -> u64 {
         self.cycle_states.iter().fold(0, |acc, cycle_states| {
             let state = &cycle_states[0];
