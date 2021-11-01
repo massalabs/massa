@@ -6,7 +6,7 @@
 
 extern crate logging;
 
-use api::{ApiMassaPrivate, ApiMassaPrivateStopHandle, ApiMassaPublic, ApiMassaPublicStopHandle};
+use api::{Private, Public, RpcServer, StopHandle, API};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
@@ -39,8 +39,8 @@ async fn launch(
     StorageManager,
     NetworkManager,
     mpsc::Receiver<()>,
-    ApiMassaPrivateStopHandle,
-    ApiMassaPublicStopHandle,
+    StopHandle,
+    StopHandle,
 ) {
     info!("Node version : {}", cfg.version);
     if let Some(end) = cfg.consensus.end_timestamp {
@@ -150,30 +150,28 @@ async fn launch(
     .unwrap();
 
     // spawn private API
-    let (api_private, api_private_stop_rx) = ApiMassaPrivate::create(
-        &cfg.new_api.bind_private.to_string(),
+    let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        cfg.new_api.clone(),
+        cfg.api,
         cfg.consensus.clone(),
     );
-    let api_private_handle = api_private.serve_massa_private();
+    let api_private_handle = api_private.serve(&cfg.api.bind_private);
 
     // spawn public API
-    let api_public = ApiMassaPublic::create(
-        &cfg.new_api.bind_public.to_string(),
+    let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
-        cfg.new_api,
+        cfg.api,
         cfg.consensus,
         pool_command_sender.clone(),
-        Some(storage_command_sender),
+        storage_command_sender,
         cfg.network,
         cfg.version,
         network_command_sender.clone(),
         clock_compensation,
         node_id,
     );
-    let api_public_handle = api_public.serve_massa_public();
+    let api_public_handle = api_public.serve(&cfg.api.bind_public);
 
     (
         pool_command_sender,
@@ -270,8 +268,8 @@ async fn stop(
     protocol_manager: ProtocolManager,
     storage_manager: StorageManager,
     network_manager: NetworkManager,
-    api_private_handle: ApiMassaPrivateStopHandle,
-    api_public_handle: ApiMassaPublicStopHandle,
+    api_private_handle: StopHandle,
+    api_public_handle: StopHandle,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
