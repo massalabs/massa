@@ -10,7 +10,7 @@ use jsonrpc_http_server::tokio::sync::mpsc;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
     APIConfig, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    RollsInfo, TimeInterval,
+    TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
@@ -108,7 +108,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<RollsInfo>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>> {
         let closure = async move || Err(WrongAPI);
         Box::pin(closure())
     }

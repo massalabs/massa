@@ -47,7 +47,7 @@ use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
     APIConfig, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    RollsInfo, TimeInterval,
+    TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
@@ -171,9 +171,9 @@ pub trait Endpoints {
     #[rpc(name = "get_cliques")]
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>>;
 
-    /// Returns the active stakers and their roll counts for the current cycle.
+    /// Returns the active stakers and their active roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<RollsInfo>, ApiError>>;
+    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]
