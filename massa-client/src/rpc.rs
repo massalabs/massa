@@ -8,8 +8,7 @@ use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use crypto::signature::PrivateKey;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
-    TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
@@ -136,9 +135,9 @@ impl RpcClient {
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
+    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<u64>> {
         self.0
-            .call_method("get_stakers", "AddressHashMap<RollsInfo>", ())
+            .call_method("get_stakers", "AddressHashMap<u64>", ())
             .await
     }
 
