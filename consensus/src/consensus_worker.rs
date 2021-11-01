@@ -67,7 +67,7 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<Option<AddressHashMap<u64>>>),
+    GetActiveStakers(oneshot::Sender<AddressHashMap<u64>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(AddressHashSet),
     GetStakingAddressses(oneshot::Sender<AddressHashSet>),
@@ -1010,7 +1010,7 @@ impl ConsensusWorker {
         })
     }
 
-    fn get_active_stakers(&self) -> Result<Option<AddressHashMap<u64>>, ConsensusError> {
+    fn get_active_stakers(&self) -> Result<AddressHashMap<u64>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let mut res: AddressHashMap<u64> = AddressHashMap::default();
         for thread in 0..self.cfg.thread_count {
@@ -1018,11 +1018,10 @@ impl ConsensusWorker {
                 Ok(rolls) => {
                     res.extend(&rolls.0);
                 }
-                Err(ConsensusError::PosCycleUnavailable(_)) => return Ok(None),
                 Err(err) => return Err(err),
             }
         }
-        Ok(Some(res))
+        Ok(res)
     }
 
     fn get_addresses_info(
@@ -1038,6 +1037,10 @@ impl ConsensusWorker {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
         for thread in 0..thread_count {
+            if addresses_by_thread[thread as usize].is_empty() {
+                continue;
+            }
+
             let lookback_data = match self.pos.get_lookback_roll_count(cur_cycle, thread) {
                 Ok(rolls) => Some(rolls),
                 Err(ConsensusError::PosCycleUnavailable(_)) => None,

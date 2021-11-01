@@ -163,25 +163,9 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<RollsInfo>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || {
-            let addrs = consensus_command_sender.get_staking_addresses().await?;
-            let info = consensus_command_sender.get_addresses_info(addrs).await?;
-            Ok(info
-                .into_iter()
-                .map(|(ad, state)| {
-                    (
-                        ad,
-                        RollsInfo {
-                            active_rolls: state.active_rolls.unwrap_or_default(),
-                            final_rolls: state.final_rolls,
-                            candidate_rolls: state.candidate_rolls,
-                        },
-                    )
-                })
-                .collect())
-        };
+        let closure = async move || Ok(consensus_command_sender.get_active_stakers().await?);
         Box::pin(closure())
     }
 

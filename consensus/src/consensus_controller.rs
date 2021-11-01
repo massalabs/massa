@@ -402,7 +402,7 @@ impl ConsensusCommandSender {
         })
     }
 
-    pub async fn get_active_stakers(&self) -> Result<Option<AddressHashMap<u64>>, ConsensusError> {
+    pub async fn get_active_stakers(&self) -> Result<AddressHashMap<u64>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_active_stakers", {});
         self.0
