@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::cfg::Settings;
 use console::style;
 use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
@@ -482,13 +481,11 @@ impl Command {
                         Err(e) => return repl_err!(e),
                     };
 
-                    let settings = Settings::load();
-
                     let slot = match get_current_latest_block_slot(
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        settings.compensation_millis,
+                        0,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
@@ -545,13 +542,11 @@ impl Command {
                         Err(e) => return repl_err!(e),
                     };
 
-                    let settings = Settings::load();
-
                     let slot = match get_current_latest_block_slot(
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        settings.compensation_millis,
+                        0,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
@@ -617,13 +612,11 @@ impl Command {
                         Err(e) => return repl_err!(e),
                     };
 
-                    let settings = Settings::load();
-
                     let slot = match get_current_latest_block_slot(
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        settings.compensation_millis,
+                        0,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
