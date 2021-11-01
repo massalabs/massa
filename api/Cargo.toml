@@ -1,33 +1,23 @@
 [package]
 name = "api"
 version = "0.1.0"
-authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 displaydoc = "0.2"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-serde_qs = {version= "0.8", features = ["warp"]}
+jsonrpc-core = "18.0.0"
+jsonrpc-derive = "18.0.0"
+jsonrpc-http-server = "18.0.0"
 thiserror = "1.0"
-tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
-warp = "0.3"
 # custom modules
-network = {path = "../network"}
-protocol = {path = "../protocol"}
-consensus = {path = "../consensus"}
-crypto = {path = "../crypto"}
-logging = { path = "../logging" }
 models = {path = "../models"}
+time = {path = "../time"}
+tokio = { version = "1.11", features = ["full"] }
+consensus = {path = "../consensus"}
+network = {path = "../network"}
+crypto = {path = "../crypto"}
 pool = {path = "../pool"}
 storage = {path = "../storage"}
-time = {path = "../time"}
-
-[dev-dependencies]
-num = "0.4"
-pretty_assertions = "0.7"
-serial_test = "0.5"
-tempfile = "3.2"

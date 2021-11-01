@@ -1,20 +1,17 @@
 [workspace]
 
 members = [
-	"api",
-    "api-public",
-    "api-private",
+    "api",
     "bootstrap",
     "network",
     "consensus",
     "crypto",
     "logging",
-    "massa-client",
     "massa-node",
     "models",
     "pool",
     "protocol",
-    "rpc-client",
+    "massa-client",
     "storage",
     "time",
     "wallet",
