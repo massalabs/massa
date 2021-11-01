@@ -6,7 +6,7 @@ use time::UTime;
 pub const CHANNEL_SIZE: usize = 256;
 
 /// Protocol Configuration
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolConfig {
     pub ask_block_timeout: UTime,
     pub max_node_known_blocks_size: usize,

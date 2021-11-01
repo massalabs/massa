@@ -10,7 +10,7 @@ use protocol::ProtocolConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct LoggingConfig {
     pub level: usize,
 }
@@ -21,7 +21,7 @@ pub struct Config {
     pub protocol: ProtocolConfig,
     pub network: NetworkConfig,
     pub consensus: ConsensusConfig,
-    pub new_api: APIConfig,
+    pub api: APIConfig,
     pub storage: StorageConfig,
     pub bootstrap: BootstrapConfig,
     pub pool: PoolConfig,

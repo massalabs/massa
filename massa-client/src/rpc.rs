@@ -13,7 +13,7 @@ use models::api::{
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
-use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
+use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!
@@ -139,20 +139,6 @@ impl RpcClient {
     pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
         self.0
             .call_method("get_stakers", "AddressHashMap<RollsInfo>", ())
-            .await
-    }
-
-    /// Returns the algo config. // TODO: rename me please ... it hurts
-    pub(crate) async fn get_algo_config(&self) -> RpcResult<AlgoConfig> {
-        self.0
-            .call_method("get_algo_config", "AlgoConfig", ())
-            .await
-    }
-
-    /// Returns the compensation_millis.
-    pub(crate) async fn get_compensation_millis(&self) -> RpcResult<i64> {
-        self.0
-            .call_method("get_compensation_millis", "i64", ())
             .await
     }
 
