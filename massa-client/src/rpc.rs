@@ -8,8 +8,7 @@ use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use crypto::signature::PrivateKey;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
-    TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
