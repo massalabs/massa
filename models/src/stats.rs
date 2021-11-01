@@ -33,6 +33,7 @@ pub struct ConsensusStats {
     pub final_operation_count: u64,
     pub stale_block_count: u64,
     pub clique_count: u64,
+    pub staker_count: u64,
 }
 
 impl std::fmt::Display for ConsensusStats {
@@ -52,6 +53,7 @@ impl std::fmt::Display for ConsensusStats {
         writeln!(f, "\tStale block count: {}", self.stale_block_count)?;
         writeln!(f, "\tFinal operation count: {}", self.final_operation_count)?;
         writeln!(f, "\tClique count: {}", self.clique_count)?;
+        writeln!(f, "\tStaker count: {}", self.staker_count)?;
         Ok(())
     }
 }
