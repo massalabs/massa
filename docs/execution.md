@@ -1,87 +1,121 @@
-# Smart contract execution
+# Smart contracts
 
-## How are smart contracts registered with the system?
+## Smart Contract Engine
 
-A smart contract can be created by way of an operation, and when the block including that operation is deemed ready for execution, the contract will be sent to the execution system to be registered. 
+### Rationale
+
+The smart contract engine (SCE) is decoupled from the consensus system (CSS); they maintain separate ledgers: the SCE ledger and the CSS ledger.
+
+The CSS informs the SCE whenever a block becomes final, and whenever the blockclique changes in any way.
+
+The SCE executes the blockclique operations after sorting them by increasing block slot: this provides an absolute order of execution.
+
+A special feedback loop is required to send coins from the SCE to the CSS.
+
+A unit of "gas" represents a unit of computational cost. Different instructions might cost different amounts of gas.
+
+### The ExecuteSC operation
+
+The following new operation type is defined:
 
 ```rust
-/// Operation to execute a smart-contract.
-ExecuteSC {
-    data: Vec<u8>,
+OperationType::ExecuteSC {
     max_gas: u32,
-    gas_price: Amount
+    gas_price: Amount,
+    coins: Amount,
+    bytecode: Vec<u8>,
 }
 ```
 
-An executing smart contract can also register new contracts directly from within the execution system, by issuing `ExecuteSC` directly.
+Where:
+* `bytecode` is smart contract bytecode that is understood by the SCE but not the CSS
+* `max_gas` is the maximum amount of gas that the execution of `bytecode` is allowed to cost
+* `gas_price` is the price per unit of gas that the caller is willing to pay for the execution
+* `coins` are extra coins that are spent by tge CSS and are available in the execution context of `bytecode`
 
-## How are smart contracts executed?
+Blocks that include ExecuteSC operations must respect the followin criteria, or else they are invalid:
+* ExecuteSC spends `max_gas * gas_price + coins` from the sender address in the CSS ledger, which must therefore be available
+* all ExecuteSC operations included in the block must be ordered by decreasing `gas_price`
+* the sum of the max_gas values of all ExecuteSC operations in the block must not be higher than a protocol constant `max_block_gas`
 
-Contracts are executed on a per-block basis, where `consensus` will notify `execution` of the block being ready for execution. `execution` will then execute all contracts included in the block, in their order of inclusion.
+When included in a block, from the CSS point of view, an ExecuteSC operation will only spend `max_gas * gas_price + coins` coins from the sender address and do nothing else.
 
-when `execution` receives a `BlockCliqueChanged` message:
-- reset the SC candidate state to the Final state
-- sort all blockclique blocks by slot (increasing order)
-- for each block B in that order, run the machine sequentially:
-    - for each operation in B (in the order in which they appear):
-    - execute the operation(see below for details)
+When observing an ExecuteSC operation, the SCE will:
+* if any of the following steps fail, the bytecode is not executed and all its changes to the SCE ledger are rollbacked. The sender loses `max_gas * gas_price + coins`.
+* parse `bytecode` as smart contract bytecode
+* execute the bytecode in `bytecode`:
+  * if engine resource limits are hit (e.g. too much RAM used), execution fails
+  * if the execution gas usage exceeds `max_gas`, execution fails
+
+### SCE/CSS pipeline
+
+The SCE and CSS modules are separate.
+
+There is a FIFO message pipe from the CSS to the SCE, and another from the SCE to the CSS. 
+
+Whenever the blockclique changes in any way, the CSS notifies the SCE of all the blocks of the current blockclique using the `BlockCliqueChanged(BlockHashMap<Block>)` message.
+
+Whenever some blocks become final, the CSS notifies the SCE of all new final blocks of using the `BlocksFinal(BlockHashMap<Block>)` message.
+
+The SCE locally maintains a Final ledger and a Candidate ledger.
+Addresses in the CSS ledger are also part of the SCE ledgers.
+Smart-contract specific addresses are also part of SCE ledgers. 
+
+When an SCE block execution requests a coin transfer form the SCE ledger to the CSS ledger, a `TransferToConsensus{target_addr: Address, origin_slot: Slot, amount: Amount}` message is sent from the SCE to the CSS.
+
+When the SCE receives a `BlockCliqueChanged` message:
+* the SCE reset its Candidate state to the Final state
+* the SCE sorts all blockclique blocks by increasing slot
+* for each block B in that order, the SCE processes the ExecuteSC operations in the block in the order they appear in the block. For each such operation `op`:
+  * credit the block creator in the SCE ledger with `op.max_gas * op.gas_price`
+  * execute the smart contract bytecode (rollback and ignore in case of failure, but to not reimburse gas fees)
     
-When receiving a `BlocksFinal` message:
-- consider a consensus-final block as SC-final if:
-    - Its immediate predecessor in terms of slots is SC-final
-    - if the immediate predecessor is missing, the block is only considered SC-final if there is a consensus-final block in the thread of the missing block, at a later period
+When the SCE receives a `BlocksFinal` message:
+* this message notifies the SCE about new CSS-final blocks
+* a slot is SCE-final if its immediate predecessor slot contains a block that is CSS-final or is empty but followed in its own thread by a CSS-final block. This ensures that no new block executions can be inserted in-between existing final block executions in the SCE
 
-When a block becomes SC-final:
-- if the block causes a TransferToConsensus, send a ExecuteSC message to consensus with:
-    - target_addr = the SC emitter of the TransferToConsensus
-    - origin_slot = the slot of the SC-final block causing the TransferToConsensus
-    - amount = amount to transfer from SC to consensus
-    
-When executing an operation:
-- If the operation is `TransferToSC`, credit the spending address with massa coins in the SCLedger
-- if the operation is `ExecuteSC`, atomically execute or rollback in case of failure.
+When a block B becomes SCE-final:
+* update the Final ledger of the SCE
+* if the block B requires transferring coins from the SCE ledger to the CSS ledeger, send a TransferToConsensus to the CSS:
+  * fields:
+    * target_addr = the emitter of the operation that caused the TransferToConsensus
+    * origin_slot = the slot of the SCE-final block causing the TransferToConsensus
+    * amount = amount of coins to transfer
+  * this will cause the spending of "amount" coins on the SCE side
 
-## Communication between consensus and execution
+When the CSS receives a TransferToConsensus message:
+* it registers that `target_addr` needs to be credited of `amount` coins in the CSS ledger at slot `target_slot = origin_slot + 1 period`
+* the credit is performed at the beginning of the first block that comes at `target_slot` (or later in case of misses)
 
-- Whenever the blockclique changes, send the new blockclique to SC with a `BlockCliqueChanged(clique)` message.
-- Whenever a block becomes final, notify SC with a `BlocksFinal(Block, Slot)` mmessage.
 
-## Structure of the execution component
+### Structure of the SCE
 
-One thread to handle incoming messages from `consensus`, manage the queue of blocks to execute. 
+* Holds separate Final and Candidate SCE ledgers, that match each address to a balance, database, and program area
+  * the `database` is a key-value map where the key is a sha256 hash, and the value contains arbitrary bytes
+  * the `program` area contains bytecode with decorated public/private functions
+* Contains an execution engine that will be fed the sorted and ExecuteSC operations with the block they belong to:
+  * Bytecode is interpreted as WASM and executed
+  * massa-specific "systcalls" are made available to the execution engine
+  * the execution engine is fully deterministic
+  * the execution engine is metered to measure and limit resource and gas usage in realtime during bytecode execution
 
-Another thread to continuously execute blocks from the queue.
+### SCE WASM execution engine syscalls
 
-## Statefulness of the execution system
-
-The execution system:
-- Holds a separate ledger, the `SCLedger`, that matches addresses to a balance, storage area, and program area.
-- Holds a `FinalState` and a `CandidateState`.
-
-## Communication between execution and the rest of the system
-
-A smart-contract will be able to call into Massa-specific API's, providing by the "Massa runtime". We could use "host functions" in wasmer to provide these API's to a running contract. See https://gitlab.com/massalabs/massa/-/issues/360
+A smart-contract will be able to call into Massa-specific API's, providing by the "Massa runtime".
+We could use "host functions" in wasmer to provide these API's to a running contract. See https://gitlab.com/massalabs/massa/-/issues/360
 
 Available "syscalls":
 
 - `Call(SC_addr, function_name, parameters)`: synchronously calls a function in the same, or another smart contract
-- `TransferToConsensus(amount)`: transfers massa coins from SC to consensus. On the SC side, this just burns the coins.
-- `WriteDatabase(key, value)`: writes in the current database
-- `ReadDatabase(SC_addr, key, value)`: reads a value from an arbitrary database
-- `GetContext -> Context`: returns the call context (block, stack, etc...)
-- `NewSC(balance, data, program) -> SC_addr` : create a new smart contract with initial balance, data and program. Returns its automatically generated address on success.
+- `TransferToConsensus(amount)`: transfers massa coins from SCE ledger to the consensus ledger. On the SCE side, this just burns the coins.
+- `WriteDatabase(key, value)`: writes in the database of the current smart contract
+- `ReadDatabase(SC_addr, key)`: reads a value from an arbitrary database
+- `GetContext -> Context`: returns the call context (block, stack, available coins, max_gas, etc...)
+- `NewSC(balance, data, program) -> SC_addr` : creates a new smart contract with initial balance, data and program. Returns its automatically generated address (SCE ledger) on success.
 
-## Metering:
+## Smart contract usage
 
-- If the total gas usage goes above the max_gas of the operation, cancel the execution of the operation
-- If gas usage for a block goes above max_block_gas, cancel the execution of the remainder of the block
-
-## Compilation and storage of modules
-
-I assume contracts will propagate over the network as bytes, and that when those are received by a node we'll have to compile those into a wasm module. We could store the compiled modules in `execution`, so that they are ready to be executed when `consensus` notifies their finality. If contracts are only received as operations in a block, then they would probably be compiled just when `consensus` notifies their finality.
-
-
-## Example smart-contract
+### A python example
 
 ```python
 # main code sc.py
