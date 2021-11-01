@@ -3,8 +3,8 @@
 use crate::node::NodeId;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
-    Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
-    Operation, OperationHashSet, OperationId, Slot, Version,
+    Address, AlgoConfig, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet,
+    EndorsementId, Operation, OperationHashSet, OperationId, Slot, Version,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -28,6 +28,7 @@ pub struct NodeStatus {
     pub consensus_stats: ConsensusStats,
     pub pool_stats: PoolStats,
     pub network_stats: NetworkStats,
+    pub algo_config: AlgoConfig,
 }
 
 impl std::fmt::Display for NodeStatus {
@@ -311,7 +312,7 @@ pub struct TimeInterval {
     pub end: Option<UTime>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct APIConfig {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
