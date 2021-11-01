@@ -136,9 +136,9 @@ impl RpcClient {
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
+    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<u64>> {
         self.0
-            .call_method("get_stakers", "AddressHashMap<RollsInfo>", ())
+            .call_method("get_stakers", "AddressHashMap<u64>", ())
             .await
     }
 
