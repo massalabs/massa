@@ -24,6 +24,7 @@ lazy_static::lazy_static! {
 pub struct Settings {
     pub default_node: DefaultNode,
     pub history: usize,
+    pub(crate) compensation_millis: i64,
 }
 
 #[derive(Debug, Deserialize, Clone)]

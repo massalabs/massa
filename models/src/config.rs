@@ -6,7 +6,7 @@ use time::UTime;
 
 /// Algo configuration
 /// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct AlgoConfig {
     /// Time in millis when the blockclqieu started.
     pub genesis_timestamp: UTime,
