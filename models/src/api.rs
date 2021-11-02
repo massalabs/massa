@@ -148,7 +148,7 @@ pub struct AddressInfo {
     pub balance: BalanceInfo,
     pub rolls: RollsInfo,
     pub block_draws: HashSet<Slot>,
-    pub endorsement_draws: HashMap<Slot, u64>, // u64 is the index
+    //pub endorsement_draws: HashMap<Slot, u64>, // u64 is the index
     pub blocks_created: BlockHashSet,
     pub involved_in_endorsements: EndorsementHashSet,
     pub involved_in_operations: OperationHashSet,
@@ -167,7 +167,7 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(f, "Block draws: {:?}", self.block_draws)?; // TODO
-        writeln!(f, "Endorsement draws: {:?}", self.endorsement_draws)?; // TODO
+        //writeln!(f, "Endorsement draws: {:?}", self.endorsement_draws)?; // TODO
         writeln!(f, "Blocks created: {:?}", self.blocks_created)?; // TODO
         writeln!(
             f,

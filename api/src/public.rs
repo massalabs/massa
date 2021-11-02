@@ -482,18 +482,18 @@ impl Endpoints for API<Public> {
                         .filter(|(_, (ad, _))| *ad == address)
                         .map(|(slot, _)| *slot)
                         .collect(),
-                    endorsement_draws: next_draws
-                        .iter()
-                        .filter(|(_, (_, ads))| ads.contains(&address))
-                        .map(|(slot, (_, ads))| {
-                            ads.iter()
-                                .enumerate()
-                                .filter(|(_, ad)| **ad == address)
-                                .map(|(i, _)| (*slot, i as u64))
-                                .collect::<Vec<(Slot, u64)>>()
-                        })
-                        .flatten()
-                        .collect(),
+                    // endorsement_draws: next_draws
+                    //     .iter()
+                    //     .filter(|(_, (_, ads))| ads.contains(&address))
+                    //     .map(|(slot, (_, ads))| {
+                    //         ads.iter()
+                    //             .enumerate()
+                    //             .filter(|(_, ad)| **ad == address)
+                    //             .map(|(i, _)| (*slot, i as u64))
+                    //             .collect::<Vec<(Slot, u64)>>()
+                    //     })
+                    //     .flatten()
+                    //     .collect(),
                     blocks_created: blocks
                         .get(&address)
                         .ok_or(ApiError::NotFound)?
