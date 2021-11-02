@@ -51,41 +51,35 @@ struct Args {
 // json: bool,
 
 #[paw::main]
-fn main(args: Args) {
-    // `#[tokio::main]` macro expanded!
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            // TODO: Move settings loading in another crate
-            let settings = Settings::load();
-            let address = match args.ip {
-                Some(ip) => ip,
-                None => settings.default_node.ip,
-            };
-            let public_port = match args.public_port {
-                Some(public_port) => public_port,
-                None => settings.default_node.public_port,
-            };
-            let private_port = match args.private_port {
-                Some(private_port) => private_port,
-                None => settings.default_node.private_port,
-            };
-            // ...
-            let mut wallet = Wallet::new(args.wallet).unwrap(); // TODO
-            let client = Client::new(address, public_port, private_port).await;
-            if atty::is(Stream::Stdout) && args.command == Command::help {
-                // Interactive mode
-                repl::run(&client, &mut wallet).await;
-            } else {
-                // Non-Interactive mode
-                println!(
-                    "{}",
-                    args.command
-                        .run(&client, &mut wallet, &args.parameters, false)
-                        .await
-                );
-            }
-        });
+#[tokio::main]
+async fn main(args: Args) {
+    // TODO: Move settings loading in another crate
+    let settings = Settings::load();
+    let address = match args.ip {
+        Some(ip) => ip,
+        None => settings.default_node.ip,
+    };
+    let public_port = match args.public_port {
+        Some(public_port) => public_port,
+        None => settings.default_node.public_port,
+    };
+    let private_port = match args.private_port {
+        Some(private_port) => private_port,
+        None => settings.default_node.private_port,
+    };
+    // ...
+    let mut wallet = Wallet::new(args.wallet).unwrap(); // TODO
+    let client = Client::new(address, public_port, private_port).await;
+    if atty::is(Stream::Stdout) && args.command == Command::help {
+        // Interactive mode
+        repl::run(&client, &mut wallet).await;
+    } else {
+        // Non-Interactive mode
+        println!(
+            "{}",
+            args.command
+                .run(&client, &mut wallet, &args.parameters, false)
+                .await
+        );
+    }
 }
