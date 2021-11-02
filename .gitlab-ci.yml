@@ -11,23 +11,11 @@ build:
 
 test:
   script:
-    - cargo install cargo2junit
-    - cargo test --lib -- -Z unstable-options --format json --report-time | tee results.json
-    - cat results.json | cargo2junit > results.xml
-  artifacts:
-    when: always
-    reports:
-      junit: results.xml
+    - cargo test --lib
 
 doctest:
   script:
-    - cargo install cargo2junit
-    - cargo test --doc -- -Z unstable-options --format json --report-time | tee results.json
-    - cat results.json | cargo2junit > results.xml
-  artifacts:
-    when: always
-    reports:
-      junit: results.xml
+    - cargo test --doc
 
 coverage:
   script:
