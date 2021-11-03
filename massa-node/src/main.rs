@@ -95,10 +95,11 @@ async fn launch(
     let (storage_command_sender, storage_manager) = if cfg.storage.disable_storage {
         (None, None)
     } else {
-        let (storage_access, storage_manager) = start_storage(cfg.storage.clone()).expect("could not start storage controller");
+        let (storage_access, storage_manager) =
+            start_storage(cfg.storage.clone()).expect("could not start storage controller");
         (Some(storage_access), Some(storage_manager))
     };
-    
+
     // launch protocol controller
     let (
         protocol_command_sender,
@@ -307,9 +308,9 @@ async fn stop(
     // stop storage controller
     if let Some(storage_manager) = storage_manager {
         storage_manager
-        .stop()
-        .await
-        .expect("storage shutdown failed");
+            .stop()
+            .await
+            .expect("storage shutdown failed");
     }
 
     // stop network controller

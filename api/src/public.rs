@@ -227,24 +227,25 @@ impl Endpoints for API<Public> {
                 .copied()
                 .collect();
             if let Some(storage_command_sender) = storage_command_sender {
-                storage_command_sender.get_operations(to_gather)
-                .await?
-                .into_iter()
-                .for_each(|(op_id, search_new)| {
-                    let search_new = OperationInfo {
-                        id: op_id,
-                        in_pool: search_new.in_pool,
-                        in_blocks: search_new.in_blocks.keys().copied().collect(),
-                        is_final: search_new
-                            .in_blocks
-                            .iter()
-                            .any(|(_, (_, is_final))| *is_final),
-                        operation: search_new.op,
-                    };
-                    res.entry(op_id)
-                        .and_modify(|search_old| search_old.extend(&search_new))
-                        .or_insert(search_new);
-                });
+                storage_command_sender
+                    .get_operations(to_gather)
+                    .await?
+                    .into_iter()
+                    .for_each(|(op_id, search_new)| {
+                        let search_new = OperationInfo {
+                            id: op_id,
+                            in_pool: search_new.in_pool,
+                            in_blocks: search_new.in_blocks.keys().copied().collect(),
+                            is_final: search_new
+                                .in_blocks
+                                .iter()
+                                .any(|(_, (_, is_final))| *is_final),
+                            operation: search_new.op,
+                        };
+                        res.entry(op_id)
+                            .and_modify(|search_old| search_old.extend(&search_new))
+                            .or_insert(search_new);
+                    });
             }
             Ok(res.into_values().collect())
         };
@@ -290,7 +291,8 @@ impl Endpoints for API<Public> {
                             block,
                         }),
                     })
-                } else if let Some(opt_storage_command_sender) = opt_storage_command_sender.clone() {
+                } else if let Some(opt_storage_command_sender) = opt_storage_command_sender.clone()
+                {
                     match opt_storage_command_sender.get_block(id).await {
                         Ok(Some(block)) => res.push(BlockInfo {
                             id,
@@ -359,8 +361,8 @@ impl Endpoints for API<Public> {
             )?;
             if let Some(opt_storage_command_sender) = opt_storage_command_sender {
                 let blocks = opt_storage_command_sender
-                .get_slot_range(start_slot, end_slot)
-                .await?;
+                    .get_slot_range(start_slot, end_slot)
+                    .await?;
                 for (id, block) in blocks {
                     res.push(BlockSummary {
                         id,
@@ -439,7 +441,6 @@ impl Endpoints for API<Public> {
             // endorsements info
             // TODO: add get_endorsements_by_address consensus command -> wait for !238
 
-            
             // operations info
             let mut ops = HashMap::new();
             let cloned = addrs.clone();
@@ -458,14 +459,14 @@ impl Endpoints for API<Public> {
                     });
                 if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
                     storage_cmd_sender
-                    .get_operations_involving_address(&ad)
-                    .await?
-                    .into_iter()
-                    .for_each(|(op_id, search_new)| {
-                        res.entry(op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
+                        .get_operations_involving_address(&ad)
+                        .await?
+                        .into_iter()
+                        .for_each(|(op_id, search_new)| {
+                            res.entry(op_id)
+                                .and_modify(|search_old| search_old.extend(&search_new))
+                                .or_insert(search_new);
+                        });
                 }
                 ops.insert(ad, res);
             }
