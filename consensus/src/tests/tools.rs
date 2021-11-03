@@ -206,6 +206,7 @@ pub fn start_storage() -> StorageAccess {
         flush_interval: None, // defaut
         reset_at_startup: true,
         max_item_return_count: 1000,
+        disable_storage: false,
     };
     let (storage_command_tx, _storage_manager) = storage::start_storage(storage_config).unwrap();
     storage_command_tx

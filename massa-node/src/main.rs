@@ -36,7 +36,7 @@ async fn launch(
     ConsensusManager,
     PoolManager,
     ProtocolManager,
-    StorageManager,
+    Option<StorageManager>,
     NetworkManager,
     mpsc::Receiver<()>,
     StopHandle,
@@ -92,9 +92,13 @@ async fn launch(
         .expect("could not start network controller");
 
     // start storage
-    let (storage_command_sender, storage_manager) =
-        start_storage(cfg.storage.clone()).expect("could not start storage controller");
-
+    let (storage_command_sender, storage_manager) = if cfg.storage.disable_storage {
+        (None, None)
+    } else {
+        let (storage_access, storage_manager) = start_storage(cfg.storage.clone()).expect("could not start storage controller");
+        (Some(storage_access), Some(storage_manager))
+    };
+    
     // launch protocol controller
     let (
         protocol_command_sender,
@@ -128,7 +132,7 @@ async fn launch(
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
-            Some(storage_command_sender.clone()),
+            storage_command_sender.clone(),
             boot_pos,
             boot_graph,
             clock_compensation,
@@ -164,7 +168,7 @@ async fn launch(
         cfg.api,
         cfg.consensus,
         pool_command_sender.clone(),
-        storage_command_sender,
+        storage_command_sender.clone(),
         cfg.network,
         cfg.version,
         network_command_sender.clone(),
@@ -266,7 +270,7 @@ async fn stop(
     consensus_event_receiver: ConsensusEventReceiver,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
-    storage_manager: StorageManager,
+    storage_manager: Option<StorageManager>,
     network_manager: NetworkManager,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -301,10 +305,12 @@ async fn stop(
         .expect("protocol shutdown failed");
 
     // stop storage controller
-    storage_manager
+    if let Some(storage_manager) = storage_manager {
+        storage_manager
         .stop()
         .await
         .expect("storage shutdown failed");
+    }
 
     // stop network controller
     network_manager

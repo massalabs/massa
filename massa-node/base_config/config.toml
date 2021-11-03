@@ -90,6 +90,7 @@ version = "DEVE.0.0"
     cache_capacity = 10000
     reset_at_startup = true
     max_item_return_count = 1000
+    disable_storage = false
 
 [bootstrap]
     bootstrap_list = [
