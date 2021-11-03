@@ -5,7 +5,7 @@ version = "DEVE.0.0"
 
 [api]
     draw_lookahead_period_count = 10
-    bind_private = "127.0.0.1:33034"
+    bind_private = "[::1]:33034"
     bind_public = "[::]:33035"
 
 [consensus]
