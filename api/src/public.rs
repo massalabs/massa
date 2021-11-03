@@ -424,8 +424,11 @@ impl Endpoints for API<Public> {
                 .await?;
             // block info
             let mut blocks = HashMap::new();
-            let cloned = addrs.clone();
-            for ad in cloned.iter() {
+            // endorsements info
+            // TODO: add get_endorsements_by_address consensus command -> wait for !238
+            // operations info
+            let mut ops = HashMap::new();
+            for ad in addrs.iter() {
                 blocks.insert(
                     ad,
                     cmd_sender
@@ -443,14 +446,6 @@ impl Endpoints for API<Public> {
                         }
                     }
                 }
-            }
-            // endorsements info
-            // TODO: add get_endorsements_by_address consensus command -> wait for !238
-
-            // operations info
-            let mut ops = HashMap::new();
-            let cloned = addrs.clone();
-            for ad in cloned.iter() {
                 let mut res: OperationHashMap<_> = pool_command_sender
                     .get_operations_involving_address(*ad)
                     .await?;
@@ -478,10 +473,10 @@ impl Endpoints for API<Public> {
             }
             // staking addrs
             let staking_addrs = cmd_sender.get_staking_addresses().await?;
-            for address in addrs.into_iter() {
+            for address in addrs.iter() {
                 let state = states.get(&address).ok_or(ApiError::NotFound)?;
                 res.push(AddressInfo {
-                    address,
+                    address: *address,
                     thread: address.get_thread(cfg.thread_count),
                     balance: BalanceInfo {
                         final_balance: state.final_ledger_data.balance,
@@ -495,7 +490,7 @@ impl Endpoints for API<Public> {
                     },
                     block_draws: next_draws
                         .iter()
-                        .filter(|(_, (ad, _))| *ad == address)
+                        .filter(|(_, (ad, _))| ad == address)
                         .map(|(slot, _)| *slot)
                         .collect(),
                     endorsement_draws: next_draws
@@ -504,7 +499,7 @@ impl Endpoints for API<Public> {
                         .map(|(slot, (_, ads))| {
                             ads.iter()
                                 .enumerate()
-                                .filter(|(_, ad)| **ad == address)
+                                .filter(|(_, ad)| *ad == address)
                                 .map(|(i, _)| (slot.to_string(), i as u64))
                                 .collect::<Vec<(String, u64)>>()
                         })
@@ -513,7 +508,7 @@ impl Endpoints for API<Public> {
                     blocks_created: blocks
                         .get(&address)
                         .ok_or(ApiError::NotFound)?
-                        .into_iter()
+                        .iter()
                         .copied()
                         .collect(),
                     involved_in_endorsements: HashSet::new().into_iter().collect(), // TODO: update wait for !238
