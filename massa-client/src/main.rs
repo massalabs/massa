@@ -15,6 +15,7 @@ mod cfg;
 mod cmds;
 mod repl;
 mod rpc;
+mod utils;
 
 #[derive(StructOpt)]
 struct Args {
