@@ -46,6 +46,7 @@ slot, timestamp), clique count, connected nodes count.
         "final_operation_count": Number,
         "stale_block_count": Number,
         "clique_count": Number,
+        "staker_count": Number, // current number of active stakers
     },
     "pool_stats": {
         "operation_count": Number,
@@ -99,11 +100,7 @@ Returns the active stakers and their roll counts for the current cycle.
 - Return:
 
 ```javascript
-[Address: {
-    "active_rolls": Number, // rolls that are taken in account right now
-    "final_rolls": Number, // rolls according to last final blocks
-    "candidate_rolls": Number, // rolls acccording to last blocks
- }, ... ]
+{Address: Number, ... } // Dictionnary associating staker addresses to their active roll counts
 ```
 
 ### `get_operations`
@@ -130,6 +127,7 @@ Returns operations information associated to a given list of operations' IDs.
             "fee": Number, // in coins
             "expire_period": Number,
             "op": OperationType, // TODO not sure how this go in JSON
+
         }
         "signature": String,
     }
@@ -163,7 +161,7 @@ Get endorsements (not yet implemented)
         }
         "signature": String
     }
- }, ... ]
+ }, ... ] // TODO
 ```
 
 ### `get_blocks`
@@ -200,7 +198,7 @@ Get information on a block given its hash.
                             "endorsed_block": String // BlockId,
                         }
                         "signature": String
-                     }, ... ],
+                     }, ... ], // TODO
                 },
                 "signature": Signature,
             },
@@ -212,10 +210,10 @@ Get information on a block given its hash.
                     "op": OperationType, // TODO not sure how this go in JSON
                 }
                 "signature": String,
-             }, ... ],
+             }, ... ], // TODO
         },
     },
- }, ... ]
+ }, ... ] // TODO
 ```
 
 ### `get_graph_interval`
@@ -242,7 +240,7 @@ Get the block graph within the specified time interval.
     "slot": {"period": Number, "thread", Number},
     "creator":  String // Address,
     "parents": [String] // BlockId,
- }, ... ]
+ }, ... ] // TODO
 ```
 
 ### `get_addresses`
@@ -277,7 +275,7 @@ Get addresses.
      "involved_in_endorsements": [String], // Endorsement ids,
      "involved_in_operations": [String], // Operation ids,
      "is_staking": bool,
- }, ... ]
+ }, ... ]  // TODO
 ```
 
 ### `send_operations`
@@ -296,7 +294,7 @@ pool.
         "op": OperationType, // TODO not sure how this go in JSON
     }
     "signature": String,
-  }, ... ]
+  }, ... ] // TODO
 ```
 
 -   Return:
@@ -313,7 +311,7 @@ Gracefully stop the node.
 
 -   No parameters.
 
--   No return. 
+-   No return.
 
 ### `node_sign_message`
 
@@ -332,7 +330,7 @@ Sign message with node's key.
 ```
 
 Where public_key is the public key used to sign the input and signature,
-the resulting signature. 
+the resulting signature.
 
 ### `add_staking_private_keys`
 
@@ -346,7 +344,7 @@ Add a vec of new private keys for the node to use to stake.
 
 The strings must be private keys.
 
--   No return. 
+-   No return.
 
 ### `remove_staking_addresses`
 
@@ -360,7 +358,7 @@ Remove a vec of addresses used to stake.
 
 The strings must be addresses.
 
--   No return. 
+-   No return.
 
 ### `get_staking_addresses`
 
@@ -374,7 +372,7 @@ Return hashset of staking addresses.
 [String]
 ```
 
-The strings are addresses. 
+The strings are addresses.
 
 ### `ban`
 
@@ -388,7 +386,7 @@ Bans given IP addresses.
 
 The strings must be ip addresses.
 
--   No return. 
+-   No return.
 
 ### `unban`
 
