@@ -92,7 +92,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "EndorsementId1 EndorsementId2 ...", implem = ""),
+        props(args = "EndorsementId1 EndorsementId2 ...", todo = ""),
         message = "show info about a list of endorsements (content, finality ...)"
     )]
     get_endorsements,
@@ -201,10 +201,10 @@ impl Command {
             if self.get_str("args").is_some() {
                 style(self.get_str("args").unwrap_or("")).yellow()
             } else {
-                style("no args").color256(8).italic() //grey
+                style("no args").color256(8).italic() // grey
             },
-            if self.get_str("implem").is_some() {
-                style("[not yet implemented]").red()
+            if self.get_str("todo").is_some() {
+                style("[not yet implemented] ").red()
             } else {
                 style("")
             },

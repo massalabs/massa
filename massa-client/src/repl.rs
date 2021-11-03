@@ -3,6 +3,7 @@
 use crate::cfg::Settings;
 use crate::cmds::Command;
 use crate::rpc::Client;
+use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use std::collections::VecDeque;
@@ -27,6 +28,8 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
     massa_fancy_ascii_art_logo!();
     println!("Use 'exit' to quit the prompt");
     println!("Use the Up/Down arrows to scroll through history");
+    println!("Use the Right arrow or Tab to complete your command");
+    println!("Use the Enter key to execute your command");
     println!();
     let mut history = MyHistory::default();
     let completion = MyCompletion::default();
@@ -93,10 +96,19 @@ impl Default for MyCompletion {
 impl Completion for MyCompletion {
     /// Simple completion implementation based on substring
     fn get(&self, input: &str) -> Option<String> {
-        let s = input.to_string();
-        let ss: Vec<&String> = self.options.iter().filter(|x| s == x[..s.len()]).collect();
-        if ss.len() == 1 {
-            Some(ss[0].to_string())
+        let input = input.to_string();
+        let suggestions: Vec<&str> = self
+            .options
+            .iter()
+            .filter(|s| s.len() >= input.len() && input == s[..input.len()])
+            .map(|s| &s[..])
+            .collect();
+        if !suggestions.is_empty() {
+            println!();
+            for suggestion in &suggestions {
+                println!("{}", style(suggestion).dim());
+            }
+            Some(String::from(longest_common_prefix(suggestions)))
         } else {
             None
         }
