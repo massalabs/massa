@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
@@ -24,8 +24,10 @@ pub struct Client {
 
 impl Client {
     pub(crate) async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
-        let public_url = format!("http://{}:{}", ip, public_port);
-        let private_url = format!("http://{}:{}", ip, private_port);
+        let public_socket_addr = SocketAddr::new(ip, public_port);
+        let private_socket_addr = SocketAddr::new(ip, private_port);
+        let public_url = format!("http://{}", public_socket_addr);
+        let private_url = format!("http://{}", private_socket_addr);
         Client {
             public: RpcClient::from_url(&public_url).await,
             private: RpcClient::from_url(&private_url).await,
