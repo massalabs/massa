@@ -8,7 +8,7 @@ use models::OperationHashSet;
 use models::OperationId;
 use models::SerializeCompact;
 use models::Slot;
-use protocol::ProtocolCommand;
+use protocol_exports::ProtocolCommand;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::sleep;

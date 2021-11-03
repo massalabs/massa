@@ -24,7 +24,7 @@ use models::{
 };
 use num::rational::Ratio;
 use pool::PoolCommand;
-use protocol::ProtocolCommand;
+use protocol_exports::ProtocolCommand;
 use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},

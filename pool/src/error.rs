@@ -2,7 +2,7 @@
 
 use displaydoc::Display;
 use models::ModelsError;
-use protocol::ProtocolError;
+use protocol_exports::ProtocolError;
 use thiserror::Error;
 
 #[non_exhaustive]

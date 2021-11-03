@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use models::{Endorsement, EndorsementHashMap, Operation, OperationHashMap};
-use protocol::{
+use protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use time::UTime;

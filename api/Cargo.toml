@@ -11,13 +11,14 @@ jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
 thiserror = "1.0"
+tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
 # custom modules
-models = {path = "../models"}
-time = {path = "../time"}
-tokio = { version = "1.11", features = ["full"] }
 consensus = {path = "../consensus"}
-network = {path = "../network"}
 crypto = {path = "../crypto"}
+models = {path = "../models"}
+network = {path = "../network"}
 pool = {path = "../pool"}
+protocol-exports = {path = "../protocol-exports"}
 storage = {path = "../storage"}
+time = {path = "../time"}

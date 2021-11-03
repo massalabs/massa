@@ -21,7 +21,7 @@ tokio = { version = "1.11", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"
 # custom modules
-protocol = {path = "../protocol"}
+protocol-exports = {path = "../protocol-exports"}
 crypto = {path = "../crypto"}
 logging = { path = "../logging" }
 models = {path = "../models"}
