@@ -1,13 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
-use super::tools::{
-    create_and_connect_nodes, create_block_with_operations, create_operation_with_expire_period,
-    create_protocol_config, send_and_propagate_block,
-};
 use crypto::hash::Hash;
 use models::{
     get_serialization_context, Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot,
+};
+use protocol_exports::tests::tools::{
+    create_and_connect_nodes, create_block_with_operations, create_operation_with_expire_period,
+    create_protocol_config, send_and_propagate_block,
 };
 use serial_test::serial;
 use std::str::FromStr;

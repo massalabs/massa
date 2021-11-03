@@ -2,13 +2,15 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::{create_protocol_config, protocol_test};
-use crate::{
-    tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
-    ProtocolEvent,
-};
+use super::tools::protocol_test;
 use models::{BlockHashMap, BlockHashSet};
 use network::NetworkCommand;
+use protocol_exports::{
+    tests::tools::{
+        create_and_connect_nodes, create_block, create_protocol_config, wait_protocol_event,
+    },
+    ProtocolEvent,
+};
 use serial_test::serial;
 use std::collections::HashSet;
 

@@ -6,7 +6,7 @@ use models::api::APIConfig;
 use models::Version;
 use network::NetworkConfig;
 use pool::PoolConfig;
-use protocol::ProtocolConfig;
+use protocol_exports::ProtocolConfig;
 use serde::Deserialize;
 use storage::StorageConfig;
 

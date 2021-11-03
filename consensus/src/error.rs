@@ -3,7 +3,7 @@
 use crate::consensus_worker::ConsensusEvent;
 use displaydoc::Display;
 use models::ModelsError;
-use protocol::ProtocolError;
+use protocol_exports::ProtocolError;
 use rand::distributions::WeightedError;
 use std::array::TryFromSliceError;
 use thiserror::Error;

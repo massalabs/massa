@@ -2,11 +2,11 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools;
 use super::tools::protocol_test;
-use crate::{ProtocolEvent, ProtocolPoolEvent};
 use models::{self, Address, Amount, BlockHashMap, OperationHashMap, OperationHashSet, Slot};
 use network::NetworkCommand;
+use protocol_exports::tests::tools;
+use protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;

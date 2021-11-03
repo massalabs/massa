@@ -4,11 +4,11 @@
 
 use std::time::Duration;
 
-use super::tools;
 use super::tools::protocol_test;
-use crate::{ProtocolEvent, ProtocolPoolEvent};
 use models::{Address, BlockHashMap, EndorsementHashMap, Slot};
 use network::NetworkCommand;
+use protocol_exports::tests::tools;
+use protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
 
 #[tokio::test]

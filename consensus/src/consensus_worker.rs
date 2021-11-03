@@ -20,7 +20,7 @@ use models::{
     OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
-use protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
+use protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
 use storage::StorageAccess;
 use time::UTime;
