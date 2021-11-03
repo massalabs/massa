@@ -35,7 +35,7 @@ impl API<Public> {
         api_config: APIConfig,
         consensus_config: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
-        storage_command_sender: StorageAccess,
+        storage_command_sender: Option<StorageAccess>,
         network_config: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
@@ -229,25 +229,27 @@ impl Endpoints for API<Public> {
                 })
                 .copied()
                 .collect();
-            storage_command_sender
-                .get_operations(to_gather)
-                .await?
-                .into_iter()
-                .for_each(|(op_id, search_new)| {
-                    let search_new = OperationInfo {
-                        id: op_id,
-                        in_pool: search_new.in_pool,
-                        in_blocks: search_new.in_blocks.keys().copied().collect(),
-                        is_final: search_new
-                            .in_blocks
-                            .iter()
-                            .any(|(_, (_, is_final))| *is_final),
-                        operation: search_new.op,
-                    };
-                    res.entry(op_id)
-                        .and_modify(|search_old| search_old.extend(&search_new))
-                        .or_insert(search_new);
-                });
+            if let Some(storage_command_sender) = storage_command_sender {
+                storage_command_sender
+                    .get_operations(to_gather)
+                    .await?
+                    .into_iter()
+                    .for_each(|(op_id, search_new)| {
+                        let search_new = OperationInfo {
+                            id: op_id,
+                            in_pool: search_new.in_pool,
+                            in_blocks: search_new.in_blocks.keys().copied().collect(),
+                            is_final: search_new
+                                .in_blocks
+                                .iter()
+                                .any(|(_, (_, is_final))| *is_final),
+                            operation: search_new.op,
+                        };
+                        res.entry(op_id)
+                            .and_modify(|search_old| search_old.extend(&search_new))
+                            .or_insert(search_new);
+                    });
+            }
             Ok(res.into_values().collect())
         };
         Box::pin(closure())
@@ -292,7 +294,8 @@ impl Endpoints for API<Public> {
                             block,
                         }),
                     })
-                } else {
+                } else if let Some(opt_storage_command_sender) = opt_storage_command_sender.clone()
+                {
                     match opt_storage_command_sender.get_block(id).await {
                         Ok(Some(block)) => res.push(BlockInfo {
                             id,
@@ -359,19 +362,21 @@ impl Endpoints for API<Public> {
                 time.start,
                 time.end,
             )?;
-            let blocks = opt_storage_command_sender
-                .get_slot_range(start_slot, end_slot)
-                .await?;
-            for (id, block) in blocks {
-                res.push(BlockSummary {
-                    id,
-                    is_final: true,
-                    is_stale: false,         // because in storage
-                    is_in_blockclique: true, // because in storage
-                    slot: block.header.content.slot,
-                    creator: Address::from_public_key(&block.header.content.creator)?,
-                    parents: block.header.content.parents,
-                })
+            if let Some(opt_storage_command_sender) = opt_storage_command_sender {
+                let blocks = opt_storage_command_sender
+                    .get_slot_range(start_slot, end_slot)
+                    .await?;
+                for (id, block) in blocks {
+                    res.push(BlockSummary {
+                        id,
+                        is_final: true,
+                        is_stale: false,         // because in storage
+                        is_in_blockclique: true, // because in storage
+                        slot: block.header.content.slot,
+                        creator: Address::from_public_key(&block.header.content.creator)?,
+                        parents: block.header.content.parents,
+                    })
+                }
             }
             Ok(res)
         };
@@ -426,16 +431,19 @@ impl Endpoints for API<Public> {
                         .into_keys()
                         .collect::<BlockHashSet>(),
                 );
-                let new = storage_cmd_sender.get_block_ids_by_creator(ad).await?;
-                match blocks.entry(ad) {
-                    Entry::Occupied(mut occ) => occ.get_mut().extend(new),
-                    Entry::Vacant(vac) => {
-                        vac.insert(new);
+                if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
+                    let new = storage_cmd_sender.get_block_ids_by_creator(ad).await?;
+                    match blocks.entry(ad) {
+                        Entry::Occupied(mut occ) => occ.get_mut().extend(new),
+                        Entry::Vacant(vac) => {
+                            vac.insert(new);
+                        }
                     }
                 }
             }
             // endorsements info
             // TODO: add get_endorsements_by_address consensus command -> wait for !238
+
             // operations info
             let mut ops = HashMap::new();
             let cloned = addrs.clone();
@@ -452,15 +460,17 @@ impl Endpoints for API<Public> {
                             .and_modify(|search_old| search_old.extend(&search_new))
                             .or_insert(search_new);
                     });
-                storage_cmd_sender
-                    .get_operations_involving_address(&ad)
-                    .await?
-                    .into_iter()
-                    .for_each(|(op_id, search_new)| {
-                        res.entry(op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
+                if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
+                    storage_cmd_sender
+                        .get_operations_involving_address(&ad)
+                        .await?
+                        .into_iter()
+                        .for_each(|(op_id, search_new)| {
+                            res.entry(op_id)
+                                .and_modify(|search_old| search_old.extend(&search_new))
+                                .or_insert(search_new);
+                        });
+                }
                 ops.insert(ad, res);
             }
             // staking addrs

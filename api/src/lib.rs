@@ -35,7 +35,7 @@ mod public;
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     pub pool_command_sender: PoolCommandSender,
-    pub storage_command_sender: StorageAccess,
+    pub storage_command_sender: Option<StorageAccess>,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
     pub network_config: NetworkConfig,
