@@ -489,8 +489,8 @@ impl Endpoints for API<Public> {
                             ads.iter()
                                 .enumerate()
                                 .filter(|(_, ad)| **ad == address)
-                                .map(|(i, _)| (*slot, i as u64))
-                                .collect::<Vec<(Slot, u64)>>()
+                                .map(|(i, _)| (slot.to_string(), i as u64))
+                                .collect::<Vec<(String, u64)>>()
                         })
                         .flatten()
                         .collect(),
