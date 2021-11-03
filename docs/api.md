@@ -35,6 +35,7 @@ slot, timestamp), clique count, connected nodes count.
     "roll_price": Number, // price in coins of a roll
     "thread_count": Number, // number of threads in the network
     "current_time": Number, // current time in millis since 1st january 1970
+    "current_cycle": Number,
     "connected_nodes": Object{NodeId, IpAddr},
     "last_slot": Null or {"period": Number, "thread", Number}, // last slot if avaible
     "next_slot": {"period": Number, "thread", Number},
