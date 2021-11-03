@@ -45,6 +45,7 @@ slot, timestamp), clique count, connected nodes count.
         "final_operation_count": Number,
         "stale_block_count": Number,
         "clique_count": Number,
+        "staker_count": Number, // current number of active stakers
     },
     "pool_stats": {
         "operation_count": Number,
@@ -98,11 +99,7 @@ Returns the active stakers and their roll counts for the current cycle.
 - Return:
 
 ```javascript
-[Address: {
-    "active_rolls": Number, // rolls that are taken in account right now
-    "final_rolls": Number, // rolls according to last final blocks
-    "candidate_rolls": Number, // rolls acccording to last blocks
- }, ... ]
+{Address: Number, ... } // Dictionnary associating staker addresses to their active roll counts
 ```
 
 ### `get_operations`
