@@ -124,6 +124,7 @@ pub fn get_test_config() -> StorageConfig {
         flush_interval: Some(200.into()),
         reset_at_startup: true,
         max_item_return_count: 1000,
+        disable_storage: false,
     }
 }
 

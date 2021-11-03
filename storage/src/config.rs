@@ -14,4 +14,5 @@ pub struct StorageConfig {
     pub flush_interval: Option<UTime>,
     pub reset_at_startup: bool,
     pub max_item_return_count: usize,
+    pub disable_storage: bool,
 }
