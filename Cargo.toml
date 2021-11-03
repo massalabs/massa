@@ -6,6 +6,7 @@ members = [
     "network",
     "consensus",
     "massa_hash",
+    "execution",
     "logging",
     "massa-node",
     "models",

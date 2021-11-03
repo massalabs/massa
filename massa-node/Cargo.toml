@@ -25,6 +25,7 @@ network = { path = "../network" }
 protocol-exports = { path = "../protocol-exports" }
 protocol-worker = { path = "../protocol-worker" }
 consensus = { path = "../consensus" }
+execution = { path = "../execution" }
 logging = { path = "../logging" }
 models = { path = "../models" }
 time = { path = "../time" }

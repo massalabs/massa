@@ -20,8 +20,9 @@ thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
 # custom modules
-massa_hash = { path = "../massa_hash" }
+execution = { path = "../execution" }
 logging = { path = "../logging" }
+massa_hash = { path = "../massa_hash" }
 models = {path = "../models"}
 pool = { path = "../pool"}
 protocol-exports = { path = "../protocol-exports" }
