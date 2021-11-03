@@ -22,6 +22,7 @@ pub struct NodeStatus {
     pub roll_price: Amount,
     pub thread_count: u8,
     pub current_time: UTime,
+    pub current_cycle: u64,
     pub connected_nodes: HashMap<NodeId, IpAddr>,
     pub last_slot: Option<Slot>,
     pub next_slot: Slot,
@@ -54,6 +55,7 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "Current time: {}", self.current_time.to_utc_string())?;
+        writeln!(f, "Current cycle: {}", self.current_cycle)?;
         if self.last_slot.is_some() {
             writeln!(f, "Last slot: {}", self.last_slot.unwrap())?;
         }
