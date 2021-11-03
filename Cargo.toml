@@ -6,6 +6,7 @@ members = [
     "network",
     "consensus",
     "crypto",
+    "execution",
     "logging",
     "massa-node",
     "models",
