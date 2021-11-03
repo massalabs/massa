@@ -46,7 +46,7 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
             match cmd {
-                Ok(command) => println!("{}", command.run(client, wallet, &parameters).await),
+                Ok(command) => println!("{}", command.run(client, wallet, &parameters, true).await),
                 Err(_) => println!("{}", Command::not_found()),
             }
         }

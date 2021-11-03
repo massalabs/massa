@@ -80,7 +80,7 @@ fn main(args: Args) {
                 println!(
                     "{}",
                     args.command
-                        .run(&client, &mut wallet, &args.parameters)
+                        .run(&client, &mut wallet, &args.parameters, false)
                         .await
                 );
             }

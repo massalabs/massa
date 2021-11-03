@@ -217,6 +217,7 @@ impl Command {
         client: &Client,
         wallet: &mut Wallet,
         parameters: &Vec<String>,
+        is_interactive: bool,
     ) -> PrettyPrint {
         match self {
             Command::exit => process::exit(0),
@@ -643,7 +644,11 @@ impl Command {
                     };
 
                     match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(format!("Sent operation id : {}", format_vec(&x))),
+                        Ok(x) => repl_ok!(if is_interactive {
+                            format!("Sent operation id : {}", format_vec(&x))
+                        } else {
+                            format_vec(&x)
+                        }),
                         Err(e) => repl_err!(e),
                     }
                 }
