@@ -275,6 +275,7 @@ impl OperationRollInterface for Operation {
                     },
                 )?;
             }
+            models::OperationType::ExecuteSC { .. } => {}
         }
         Ok(res)
     }

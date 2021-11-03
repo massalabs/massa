@@ -2,15 +2,11 @@
 
 use std::{collections::VecDeque, path::Path};
 
-use tokio::{
-    sync::{mpsc, oneshot},
-    task::JoinHandle,
-};
-
 use crypto::{
     derive_public_key,
     signature::{PrivateKey, PublicKey},
 };
+use execution::ExecutionCommandSender;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashMap, OperationHashMap, OperationHashSet,
@@ -19,6 +15,10 @@ use models::{clique::Clique, stats::ConsensusStats};
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
@@ -41,6 +41,7 @@ use tracing::{debug, error, info};
 /// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
+    _execution_command_sender: ExecutionCommandSender,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,

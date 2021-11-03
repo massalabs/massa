@@ -257,6 +257,7 @@ dependencies = [
  "bitvec",
  "crypto",
  "displaydoc",
+ "execution",
  "futures 0.3.17",
  "logging",
  "models",
@@ -463,6 +464,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a74ea89a0a1b98f6332de42c95baff457ada66d1cb4030f9ff151b2041a1c746"
 dependencies = [
  "cfg-if 1.0.0",
+]
+
+[[package]]
+name = "execution"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "models",
+ "serde 1.0.130",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -1061,6 +1073,7 @@ dependencies = [
  "bootstrap",
  "config",
  "consensus",
+ "execution",
  "futures 0.3.17",
  "logging",
  "models",

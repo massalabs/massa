@@ -12,6 +12,7 @@ use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
 };
+use execution::ExecutionManager;
 use logging::massa_trace;
 use models::{init_serialization_context, SerializationContext};
 use network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager};
@@ -34,6 +35,7 @@ async fn launch(
     NetworkCommandSender,
     Option<BootstrapManager>,
     ConsensusManager,
+    ExecutionManager,
     PoolManager,
     ProtocolManager,
     NetworkManager,
@@ -116,10 +118,17 @@ async fn launch(
     .await
     .expect("could not start pool controller");
 
+    // Launch execution controller.
+    let (execution_command_sender, execution_manager) =
+        execution::start_controller(execution::ExecutionConfig {})
+            .await
+            .expect("Could not start execution controller.");
+
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.consensus.clone(),
+            execution_command_sender,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
@@ -173,6 +182,7 @@ async fn launch(
         network_command_sender,
         bootstrap_manager,
         consensus_manager,
+        execution_manager,
         pool_manager,
         protocol_manager,
         network_manager,
@@ -192,6 +202,7 @@ async fn run(cfg: node_config::Config) {
             _network_command_sender,
             bootstrap_manager,
             consensus_manager,
+            execution_manager,
             pool_manager,
             protocol_manager,
             network_manager,
@@ -237,6 +248,7 @@ async fn run(cfg: node_config::Config) {
             bootstrap_manager,
             consensus_manager,
             consensus_event_receiver,
+            execution_manager,
             pool_manager,
             protocol_manager,
             network_manager,
@@ -254,6 +266,7 @@ async fn stop(
     bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: ConsensusManager,
     consensus_event_receiver: ConsensusEventReceiver,
+    execution_manager: ExecutionManager,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
@@ -279,6 +292,12 @@ async fn stop(
         .stop(consensus_event_receiver)
         .await
         .expect("consensus shutdown failed");
+
+    // Stop execution controller.
+    execution_manager
+        .stop()
+        .await
+        .expect("Failed to shutdown execution.");
 
     // stop pool controller
     let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
