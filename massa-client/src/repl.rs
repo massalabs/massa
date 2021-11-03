@@ -3,6 +3,7 @@
 use crate::cfg::Settings;
 use crate::cmds::Command;
 use crate::rpc::Client;
+use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use std::collections::VecDeque;
@@ -95,14 +96,19 @@ impl Default for MyCompletion {
 impl Completion for MyCompletion {
     /// Simple completion implementation based on substring
     fn get(&self, input: &str) -> Option<String> {
-        let s = input.to_string();
-        let ss: Vec<&String> = self
+        let input = input.to_string();
+        let suggestions: Vec<&str> = self
             .options
             .iter()
-            .filter(|x| x.len() > s.len() && s == x[..s.len()])
+            .filter(|s| s.len() >= input.len() && input == s[..input.len()])
+            .map(|s| &s[..])
             .collect();
-        if ss.len() == 1 {
-            Some(ss[0].to_string())
+        if !suggestions.is_empty() {
+            println!();
+            for suggestion in &suggestions {
+                println!("{}", style(suggestion).dim());
+            }
+            Some(String::from(longest_common_prefix(suggestions)))
         } else {
             None
         }
