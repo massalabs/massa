@@ -31,7 +31,7 @@ created.
 Now generate a new private key (and associated public key/address):
 
 ```plain
-wallet_new_privkey
+wallet_generate_private_key
 ```
 
 The list of addresses and keys of your wallet can be accessed with:
