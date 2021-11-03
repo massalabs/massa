@@ -150,6 +150,9 @@ impl Endpoints for API<Public> {
                 pool_stats: pool_stats?,
 
                 algo_config,
+                current_cycle: last_slot
+                    .unwrap_or(Slot::new(0, 0))
+                    .get_cycle(consensus_config.periods_per_cycle),
             })
         };
         Box::pin(closure())
