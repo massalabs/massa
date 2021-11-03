@@ -3,6 +3,7 @@
 #![feature(async_closure)]
 #![doc = include_str!("../../docs/api.md")]
 
+use crate::error::ApiError::WrongAPI;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
 use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};
@@ -169,6 +170,11 @@ pub trait Endpoints {
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
+}
+
+fn wrong_api<T>() -> BoxFuture<Result<T, ApiError>> {
+    let closure = async move || Err(WrongAPI);
+    Box::pin(closure())
 }
 
 fn _jsonrpc_assert(_method: &str, _request: Value, _response: Value) {
