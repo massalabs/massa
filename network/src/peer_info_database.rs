@@ -571,28 +571,17 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
-        if !self.peers.contains_key(ip) {
-            debug!("Adding unknown banned peer {}", ip);
-            self.peers.insert(
-                *ip,
-                PeerInfo {
-                    ip: *ip,
-                    banned: true,
-                    bootstrap: false,
-                    last_alive: None,
-                    last_failure: None,
-                    advertised: false,
-                    active_out_connection_attempts: 0,
-                    active_out_connections: 0,
-                    active_in_connections: 0,
-                },
-            );
-        }
-        let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
+        let peer = self.peers.entry(*ip).or_insert_with(|| PeerInfo {
+            ip: *ip,
+            banned: true,
+            bootstrap: false,
+            last_alive: None,
+            last_failure: None,
+            advertised: false,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
+        });
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.banned {
             peer.banned = true;
