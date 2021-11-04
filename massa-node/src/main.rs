@@ -18,6 +18,8 @@ use network::{start_network_controller, Establisher, NetworkCommandSender, Netwo
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use protocol_exports::ProtocolManager;
 use protocol_worker::start_protocol_controller;
+use std::fs;
+use std::path::Path;
 use time::UTime;
 use tokio::signal;
 use tokio::sync::mpsc;
@@ -296,6 +298,8 @@ async fn stop(
         .expect("network shutdown failed");
 }
 
+const LOCK_FILE: &str = "/var/massa/lock";
+
 #[tokio::main]
 async fn main() {
     // load config
@@ -323,5 +327,10 @@ async fn main() {
         })
         .init();
 
-    run(cfg).await
+    if Path::new(LOCK_FILE).exists() {
+        panic!("it's forbidden to run several massa nodes on the same machine")
+    }
+    fs::create_dir_all(LOCK_FILE).unwrap();
+    run(cfg).await;
+    fs::remove_dir(LOCK_FILE).unwrap();
 }
