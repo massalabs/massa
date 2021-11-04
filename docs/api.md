@@ -93,11 +93,13 @@ Get cliques.
 - Return:
 
 ```javascript
-[{
-       "block_ids": [String], // strings are block ids
-       "fitness": Number,
-       "is_blockclique": Bool,
- }, ... ].
+[
+  {
+    "block_ids": [String],
+    "fitness": Number,
+    "is_blockclique": Boolean
+  }
+]
 ```
 
 ### `get_stakers`
@@ -109,7 +111,9 @@ Returns the active stakers and their roll counts for the current cycle.
 - Return:
 
 ```javascript
-{Address: Number, ... } // Dictionnary associating staker addresses to their active roll counts
+{
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": Number
+} // Dictionnary associating staker addresses to their active roll counts
 ```
 
 ### `get_operations`
@@ -259,32 +263,45 @@ Get addresses.
 - Parameters:
 
 ```javascript
-[String]
+[
+  [String] // Addresses
+]
+
 ```
 
 - Return:
 
 ```javascript
-[{
-    "address": String // Address,
-    "thread": Number,
+[
+  {
+    "address": String,
     "balance": {
-        "final_balance": Number,
-        "candidate_balance": Number,
-        "locked_balance": Number,
-     },
-     "rolls": {
-        "active_rolls": Number,
-        "final_rolls": Number,
-        "candidate_rolls": Number,
-     },
-     "block_draws": [{"period": Number, "thread", Number }, ... ],
-     "endorsement_draws": {Slot: Number}, // number is the index
-     "blocks_created": [String], // Block ids
-     "involved_in_endorsements": [String], // Endorsement ids,
-     "involved_in_operations": [String], // Operation ids,
-     "is_staking": bool,
- }, ... ]  // TODO
+      "candidate_balance": String, // represent an Amount in coins
+      "final_balance": String, // represent an Amount in coins
+      "locked_balance": String, // represent an Amount in coins
+    },
+    "block_draws": [
+      {
+        "period": Number,
+        "thread": Number
+      }
+    ],
+    "blocks_created": [String], // Block ids
+    "endorsement_draws": {
+      "(period: 4836, thread: 10)": 6 // TODO #447
+    },
+    "involved_in_endorsements": [String], // Endorsement ids
+    "involved_in_operations": [String], // Endorsement ids
+    "is_staking": Boolean,
+    "rolls": {
+      "active_rolls": Number,
+      "candidate_rolls": Number,
+      "final_rolls": Number
+    },
+    "thread": Number
+  }
+]
+
 ```
 
 ### `send_operations`
