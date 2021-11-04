@@ -25,54 +25,63 @@ slot, timestamp), clique count, connected nodes count.
 - Return:
 
 ```javascript
-{
-    "node_id": String, // identifies the node
-    "node_ip": String or Null, // node's ip address, if provided
-    "version": String,
-    "genesis_timestamp": Number, // start of the network, in millis since 1st january 1970
-    "t0": Number, // number of millis between two slots in a thread (depends on thread_count)
-    "delta_f0": Number, // used to compute finality threshold
-    "roll_price": Number, // price in coins of a roll
-    "thread_count": Number, // number of threads in the network
-    "current_time": Number, // current time in millis since 1st january 1970
-    "current_cycle": Number,
-    "connected_nodes": Object{NodeId, IpAddr},
-    "last_slot": Null or {"period": Number, "thread", Number}, // last slot if avaible
-    "next_slot": {"period": Number, "thread", Number},
-    "consensus_stats": {
-        "start_timespan": Number, // start in millis since 1st january 1970 of that measurement
-        "end_timespan": Number, // end in millis since 1st january 1970 of that measurement
-        "final_block_count": Number,
-        "final_operation_count": Number,
-        "stale_block_count": Number,
-        "clique_count": Number,
-        "staker_count": Number, // current number of active stakers
-    },
-    "pool_stats": {
-        "operation_count": Number,
-        "endorsement_count": Number,
-    },
-    "network_stats": {
-        "in_connection_count": Number,
-        "out_connection_count": Number,
-        "known_peer_count": Number,
-        "banned_peer_count": Number,
-        "active_node_count": Number,
-     },
-     "algo_config": {
-        "genesis_timestamp": Number,
-        "end_timestamp": Null or Number,
-        "thread_count": Number,
-        "t0": Number,
-        "delta_f0": Number,
-        "operation_validity_periods": Number,
-        "periods_per_cycle": Number,
-        "pos_lookback_cycles": Number, // Proof of Stake lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1
-        "pos_lock_cycles": Number, // Proof of Stake lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
-        "block_reward": Amount,
-        "roll_price": Amount,
-    },
+ {
+  "algo_config": {
+    "block_reward": String, // represent an Amount in coins
+    "delta_f0": Number, // Used to compute finality thresold
+    "end_timestamp": null or Number, // millis since 1970-01-01 (only in tesnets)
+    "genesis_timestamp": Number, // millis since 1970-01-01
+    "operation_validity_periods": Number,
+    "periods_per_cycle": Number,
+    "pos_lock_cycles": Number,
+    "pos_lookback_cycles": Number,
+    "roll_price": String, // represent an Amount in coins
+    "t0": Number, // millis between to slots in the same thread
+    "thread_count": Number
+  },
+  "connected_nodes": {
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": String // Node id -> ip address
+  },
+  "consensus_stats": {
+    "clique_count": Number,
+    "end_timespan": Number,// stats time interval, millis since 1970-01-01
+    "final_block_count": Number,
+    "final_operation_count": Number,
+    "staker_count": Number,
+    "stale_block_count": Number,
+    "start_timespan": // stats time interval, millis since 1970-01-01
+  },
+  "current_cycle": Number,
+  "current_time": Number, // millis since 1970-01-01
+  "delta_f0": Number, // Used to compute finality thresold
+  "genesis_timestamp": Number, // millis since 1970-01-01
+  "last_slot": {
+    "period": Number,
+    "thread": Number
+  },
+  "network_stats": {
+    "active_node_count": Number,
+    "banned_peer_count": Number,
+    "in_connection_count": Number,
+    "known_peer_count": Number,
+    "out_connection_count": Number
+  },
+  "next_slot": {
+    "period": Number,
+    "thread": Number
+  },
+  "node_id": String,
+  "node_ip": null or String, // ip address if provided
+  "pool_stats": {
+    "endorsement_count": Number,
+    "operation_count": Number
+  },
+  "roll_price": String, // represent an Amount in coins
+  "t0": Number,
+  "thread_count": Number,
+  "version": String
 }
+
 ```
 
 ### `get_cliques`
