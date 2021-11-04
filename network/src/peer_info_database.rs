@@ -14,6 +14,7 @@ use time::UTime;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
+use tracing::debug;
 use tracing::{trace, warn};
 
 /// All information concerning a peer is here
@@ -570,8 +571,24 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        if !self.peers.contains_key(ip) {
+            debug!("Adding unknown banned peer {}", ip);
+            self.peers.insert(
+                *ip,
+                PeerInfo {
+                    ip: *ip,
+                    banned: true,
+                    bootstrap: false,
+                    last_alive: None,
+                    last_failure: None,
+                    advertised: false,
+                    active_out_connection_attempts: 0,
+                    active_out_connections: 0,
+                    active_in_connections: 0,
+                },
+            );
+        }
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            warn!("Cannot ban an unknown peer");
             NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
                 *ip,
             ))

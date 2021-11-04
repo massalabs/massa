@@ -709,9 +709,7 @@ impl NetworkWorker {
                     { "ips": ips }
                 );
                 for ip in ips.iter() {
-                    if let Err(err) = self.peer_info_db.peer_banned(ip) {
-                        warn!("Trying to ban peer has returned: {}", err);
-                    }
+                    self.peer_info_db.peer_banned(ip)?;
                 }
                 let ban_connection_ids = self
                     .active_connections
