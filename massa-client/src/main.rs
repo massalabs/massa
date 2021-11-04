@@ -45,10 +45,10 @@ struct Args {
         default_value = "wallet.dat"
     )]
     wallet: PathBuf,
+    /// Enable a mode where input/output are serialized as JSON
+    #[structopt(short = "j", long = "json")]
+    json: bool,
 }
-// TODO: use me with serde::Serialize/Deserialize traits
-// #[structopt(short = "j", long = "json")]
-// json: bool,
 
 #[paw::main]
 #[tokio::main]
@@ -70,16 +70,19 @@ async fn main(args: Args) {
     // ...
     let mut wallet = Wallet::new(args.wallet).unwrap(); // TODO
     let client = Client::new(address, public_port, private_port).await;
-    if atty::is(Stream::Stdout) && args.command == Command::help {
+    if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&client, &mut wallet).await;
     } else {
         // Non-Interactive mode
-        println!(
-            "{}",
-            args.command
-                .run(&client, &mut wallet, &args.parameters, false)
-                .await
-        );
+        let output = args
+            .command
+            .run(&client, &mut wallet, &args.parameters, false)
+            .await;
+        if args.json {
+            println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        } else {
+            println!("{}", output);
+        }
     }
 }
