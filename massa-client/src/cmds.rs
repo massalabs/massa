@@ -49,6 +49,9 @@ pub enum Command {
     )]
     ban,
 
+    #[strum(ascii_case_insensitive, message = "start a node")]
+    node_start,
+
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
 
@@ -402,6 +405,12 @@ impl Command {
                 };
                 Ok(Box::new(()))
             }
+
+            // TODO: process spawn should be detached
+            Command::node_start => match process::Command::new("massa-node").spawn() {
+                Ok(_) => repl_ok!("Node successfully started!"),
+                Err(e) => repl_err!(e),
+            },
 
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
