@@ -148,23 +148,26 @@ impl PoolWorker {
     /// * cmd: consensus command to process
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
-            PoolCommand::AddOperations(mut operations) => {
-                let newly_added = self.operation_pool.add_operations(operations.clone())?;
-                operations.retain(|op_id, _op| newly_added.contains(op_id));
-                if !operations.is_empty() {
+            PoolCommand::AddOperations(mut ops) => {
+                massa_trace!("pool worker process_pool_command AddOperations", {});
+                let newly_added = self.operation_pool.add_operations(ops.clone())?;
+                ops.retain(|op_id, _op| newly_added.contains(op_id));
+                if !ops.is_empty() {
+                    massa_trace!("pool worker process_pool_command propagate_operations", {
+                        "ops": ops
+                    });
                     self.protocol_command_sender
                         .propagate_operations(operations)
                         .await?;
                 }
             }
             PoolCommand::UpdateCurrentSlot(slot) => {
-                self.operation_pool.update_current_slot(slot);
-                self.endorsement_pool.update_current_slot(slot)
+                massa_trace!("pool worker process_pool_command AddOperations", {});
+                self.operation_pool.update_current_slot(slot)?
             }
             PoolCommand::UpdateLatestFinalPeriods(periods) => {
-                self.operation_pool
-                    .update_latest_final_periods(periods.clone())?;
-                self.endorsement_pool.update_latest_final_periods(periods)
+                massa_trace!("pool worker process_pool_command AddOperations", {});
+                self.operation_pool.update_latest_final_periods(periods)?
             }
             PoolCommand::GetOperationBatch {
                 target_slot,
@@ -172,58 +175,42 @@ impl PoolWorker {
                 batch_size,
                 max_size,
                 response_tx,
-            } => response_tx
-                .send(self.operation_pool.get_operation_batch(
-                    target_slot,
-                    exclude,
-                    batch_size,
-                    max_size,
-                )?)
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            } => {
+                massa_trace!("pool worker process_pool_command AddOperations", {});
+                response_tx
+                    .send(self.operation_pool.get_operation_batch(
+                        target_slot,
+                        exclude,
+                        batch_size,
+                        max_size,
+                    )?)
+                    .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?
+            }
             PoolCommand::GetOperations {
                 operation_ids,
                 response_tx,
-            } => response_tx
-                .send(self.operation_pool.get_operations(&operation_ids))
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            } => {
+                massa_trace!("pool worker process_pool_command AddOperations", {});
+                response_tx
+                    .send(self.operation_pool.get_operations(&operation_ids))
+                    .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?
+            }
             PoolCommand::GetRecentOperations {
                 address,
                 response_tx,
-            } => response_tx
-                .send(
-                    self.operation_pool
-                        .get_operations_involving_address(&address)?,
-                )
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
-            PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops)?,
-            PoolCommand::GetEndorsements {
-                target_slot,
-                parent,
-                creators,
-                response_tx,
-            } => response_tx
-                .send(
-                    self.endorsement_pool
-                        .get_endorsements(target_slot, parent, creators)?,
-                )
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
-            PoolCommand::AddEndorsements(mut endorsements) => {
-                let newly_added = self
-                    .endorsement_pool
-                    .add_endorsements(endorsements.clone())?;
-                endorsements.retain(|e_id, _e| newly_added.contains(e_id));
-                if !endorsements.is_empty() {
-                    self.protocol_command_sender
-                        .propagate_endorsements(endorsements)
-                        .await?;
-                }
+            } => {
+                massa_trace!("pool worker process_pool_command AddOperations", {});
+                response_tx
+                    .send(
+                        self.operation_pool
+                            .get_operations_involving_address(&address)?,
+                    )
+                    .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?
             }
-            PoolCommand::GetStats(response_tx) => response_tx
-                .send(PoolStats {
-                    operation_count: self.operation_pool.len() as u64,
-                    endorsement_count: self.endorsement_pool.len() as u64,
-                })
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::FinalOperations(ops) => {
+                massa_trace!("pool worker process_pool_command AddOperations", {});
+                self.operation_pool.new_final_operations(ops)?
+            }
         }
         Ok(())
     }
@@ -236,6 +223,9 @@ impl PoolWorker {
         &mut self,
         event: ProtocolPoolEvent,
     ) -> Result<(), PoolError> {
+        massa_trace!("pool worker process_protocol_pool_event", {
+            "event": event
+        });
         match event {
             ProtocolPoolEvent::ReceivedOperations {
                 mut operations,

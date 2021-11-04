@@ -1,8 +1,15 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake};
-use crate::error::ConsensusError;
-use crate::pos::ExportProofOfStake;
+use crate::{
+    ledger::{LedgerChange, LedgerData, LedgerSubset, OperationLedgerInterface},
+    pos::{ExportProofOfStake, OperationRollInterface},
+    RollUpdates,
+};
+
+use super::{
+    block_graph::*, config::ConsensusConfig, error::ConsensusError, pos::ProofOfStake, timeslots::*,
+};
+use communication::protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
@@ -13,15 +20,20 @@ use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashSet,
 };
-use models::{hhasher::BuildHHasher, ledger::LedgerData};
-use models::{
-    Address, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
-};
+use pool::PoolCommandSender;
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
+use serde::{Deserialize, Serialize};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
+use std::{
+    collections::{hash_map, VecDeque},
+    convert::TryFrom,
+    path::Path,
+};
+use std::{
+    collections::{HashMap, HashSet},
+    usize,
+};
 use storage::StorageAccess;
 use time::UTime;
 use tokio::{
@@ -566,20 +578,84 @@ impl ConsensusWorker {
             }
             ancestor_id = ancestor.parents[cur_slot.thread as usize].0;
         }
+        massa_trace!("consensus create_block", {
+            "ancestor ops": exclude_operations
+        });
 
-        // init block state accumulator
-        let mut state_accu = self
+        // get thread ledger and apply block reward
+        let mut thread_ledger = LedgerSubset::new(self.cfg.thread_count);
+        if creator_addr.get_thread(self.cfg.thread_count) == cur_slot.thread {
+            let mut fee_ledger = self
+                .block_db
+                .get_ledger_at_parents(parents, &vec![*creator_addr].into_iter().collect())?;
+            fee_ledger.apply_change((
+                creator_addr,
+                &LedgerChange {
+                    balance_delta: self.cfg.block_reward,
+                    balance_increment: true,
+                },
+            ))?;
+            thread_ledger.extend(fee_ledger);
+        }
+        let mut roll_involved_addresses: HashSet<Address> = HashSet::new();
+        let (mut roll_counts, mut cycle_roll_updates) = self.block_db.get_roll_data_at_parent(
+            parents[cur_slot.thread as usize],
+            Some(&roll_involved_addresses),
+            &self.pos,
+        )?;
+
+        // if needed credit roll sales after a lock cycle
+
+        let parent_cycle = self
             .block_db
-            .block_state_accumulator_init(&block.header, &mut self.pos)?;
+            .get_active_block(&parents[cur_slot.thread as usize])
+            .unwrap()
+            .block
+            .header
+            .content
+            .slot
+            .get_cycle(self.cfg.periods_per_cycle);
 
+        if cur_slot.get_cycle(self.cfg.periods_per_cycle) != parent_cycle {
+            // if parent is from a different cycle: reset roll updates
+            // (step 3.1 in consensus/pos.md)
+            cycle_roll_updates = RollUpdates::new();
+        }
+        if cur_slot.get_cycle(self.cfg.periods_per_cycle) != parent_cycle {
+            let thread = cur_slot.thread;
+            let credits = self
+                .pos
+                .get_roll_sell_credit(cur_slot)?
+                .into_iter()
+                .filter_map(|(addr, amount)| {
+                    if addr.get_thread(self.cfg.thread_count) == thread {
+                        Some((
+                            addr,
+                            LedgerChange {
+                                balance_delta: amount,
+                                balance_increment: true,
+                            },
+                        ))
+                    } else {
+                        None
+                    }
+                });
+
+            for (addr, change) in credits {
+                if let Err(err) = thread_ledger.apply_change((&addr, &change)) {
+                    warn!("block graph check_operations error, can't apply cycle sell credit to block current_ledger :{}", err);
+                    continue; // todo i'm not sure about that
+                }
+            }
+        }
+
+        let mut block_roll_updates = RollUpdates::new();
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
-        let mut operation_set: OperationHashMap<(usize, u64)> = OperationHashMap::default(); // (index, validity end period)
-        let mut finished = remaining_block_space == 0
-            || remaining_operation_count == 0
-            || self.cfg.max_operations_fill_attempts == 0;
-        let mut attempts = 0;
+        let mut operation_set: HashMap<OperationId, (usize, u64)> = HashMap::new(); // (index, validity end period)
+        let mut finished = remaining_block_space == 0 || remaining_operation_count == 0;
+        massa_trace!("consensus create_block before loop", {"remaining_block_space": remaining_block_space,"remaining_operation_count": remaining_operation_count });
         while !finished {
             // get a batch of operations
             let operation_batch = self
@@ -591,30 +667,109 @@ impl ConsensusWorker {
                     remaining_block_space,
                 )
                 .await?;
-
-            attempts += 1;
-
-            // Finish once we receive a batch that isn't full,
-            // or if the maximum number of attempts has been reached.
-            finished = operation_batch.len() < self.cfg.operation_batch_size
-                || self.cfg.max_operations_fill_attempts == attempts;
-
+            finished = operation_batch.len() < self.cfg.operation_batch_size;
+            massa_trace!("consensus create_block operation batch", {
+                "batch": operation_batch
+            });
             for (op_id, op, op_size) in operation_batch.into_iter() {
                 // exclude operation from future batches
                 exclude_operations.insert(op_id);
 
                 // check that the operation fits in size
                 if op_size > remaining_block_space {
+                    massa_trace!("consensus create_block rejected too big op", {
+                        "op_id": op_id
+                    });
                     continue;
                 }
 
-                // try to apply operation to block state
-                // on failure, the block state is not modified
-                if self
-                    .block_db
-                    .block_state_try_apply_op(&mut state_accu, &block.header, &op, &mut self.pos)
-                    .is_err()
-                {
+                // roll changes
+                let op_roll_updates = op.get_roll_updates()?;
+                if let Err(_) = roll_counts.apply_subset(&op_roll_updates, None) {
+                    massa_trace!("could not apply roll update in block", {});
+                    continue;
+                }
+
+                if let Err(_) = block_roll_updates.chain_subset(&op_roll_updates, None) {
+                    massa_trace!("could not chain roll update in block", {});
+                    continue;
+                }
+
+                // get the ledger changes caused by the op in the block's thread
+                let mut thread_changes: Vec<HashMap<Address, LedgerChange>> =
+                    vec![HashMap::new(); self.cfg.thread_count as usize];
+                thread_changes[cur_slot.thread as usize] = op
+                    .get_ledger_changes(creator_addr, self.cfg.thread_count, self.cfg.roll_price)?
+                    .swap_remove(cur_slot.thread as usize);
+
+                match cycle_roll_updates.chain_subset(&op_roll_updates, None) {
+                    Ok(compensations) => {
+                        for (compensation_addr, compensation_count) in compensations.into_iter() {
+                            let balance_delta =
+                                match compensation_count.0.checked_mul(self.cfg.roll_price) {
+                                    Some(v) => v,
+                                    None => {
+                                        continue;
+                                    }
+                                };
+                            let compensation_ledger_change = LedgerChange {
+                                balance_delta,
+                                balance_increment: true,
+                            };
+
+                            // try apply compensations to current_ledger
+                            // (step 6.3.1 in consensus/pos.md)
+                            let compensation_change =
+                                (&compensation_addr, &compensation_ledger_change);
+                            if let Err(_) = thread_ledger.apply_change(compensation_change) {
+                                massa_trace!("block graph check_operations error, can't apply compensation_change to block current_ledger: {}", {});
+                                continue;
+                            }
+
+                            // try apply compensations to block_ledger_changes
+                            // (step 6.3.2 in consensus/pos.md)
+                            match thread_changes
+                                [compensation_addr.get_thread(self.cfg.thread_count) as usize]
+                                .entry(compensation_addr)
+                            {
+                                hash_map::Entry::Occupied(mut occ) => {
+                                    if let Err(_) = occ.get_mut().chain(&compensation_ledger_change)
+                                    {
+                                        massa_trace!(
+                                            "block graph check_operations error, can't chain roll compensation change", {}
+                                        );
+                                        continue;
+                                    }
+                                }
+                                hash_map::Entry::Vacant(vac) => {
+                                    vac.insert(compensation_ledger_change);
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        massa_trace!("could not chain roll update in block", {});
+                        continue;
+                    }
+                }
+
+                // add missing entries to the ledger
+                let missing_entries = self.block_db.get_ledger_at_parents(
+                    parents,
+                    &thread_changes[cur_slot.thread as usize]
+                        .keys()
+                        .filter(|addr| !thread_ledger.contains(addr, self.cfg.thread_count))
+                        .copied()
+                        .collect(),
+                )?;
+                thread_ledger.extend(missing_entries);
+
+                // try to apply the changes caused by the op in the block's thread
+                if let Err(err) = thread_ledger.try_apply_changes(&thread_changes) {
+                    massa_trace!("create block thread_ledger.try_apply_changes error", {
+                        "error:": err.to_string(),
+                        "ledger:": thread_ledger,
+                    });
                     continue;
                 };
 
@@ -627,6 +782,7 @@ impl ConsensusWorker {
 
                 // check if the block still has some space
                 if remaining_block_space == 0 || remaining_operation_count == 0 {
+                    massa_trace!("consensus create block nor more space left", {});
                     finished = true;
                     break;
                 }
