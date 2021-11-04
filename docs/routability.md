@@ -42,9 +42,13 @@ operation to be made routable.
     `ufw allow 31244 && ufw allow 31245` on ubuntu, or set up the
     windows firewall on windows)
 -   create/edit file `massa-node/config/config.toml` with the following
-    contents: `toml     routable_ip = "AAA.BBB.CCC.DDD"` where
-    AAA.BBB.CCC.DDD should be replaced with your public IP address (not
-    the local one !)
+    contents:
+    ```toml
+        [network]
+            routable_ip = "AAA.BBB.CCC.DDD"
+    ```
+    where AAA.BBB.CCC.DDD should be replaced with your public IP address (not
+    the local one !). IPV6 is supported.
 -   run the massa node
 -   you can then test if your ports are open by typing your public IP
     address and port 31244 in
