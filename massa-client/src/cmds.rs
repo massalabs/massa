@@ -39,10 +39,9 @@ pub enum Command {
     )]
     ban,
 
-    // TODO:
-    // #[strum(ascii_case_insensitive, message = "start a node")]
-    // node_start,
-    //
+    #[strum(ascii_case_insensitive, message = "start a node")]
+    node_start,
+
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
 
@@ -257,11 +256,11 @@ impl Command {
             },
 
             // TODO: process spawn should be detached
-            // Command::node_start => match process::Command::new("massa-node").spawn() {
-            //     Ok(_) => repl_ok!("Node successfully started!"),
-            //     Err(e) => repl_err!(e),
-            // },
-            //
+            Command::node_start => match process::Command::new("massa-node").spawn() {
+                Ok(_) => repl_ok!("Node successfully started!"),
+                Err(e) => repl_err!(e),
+            },
+
             Command::node_stop => match client.private.stop_node().await {
                 Ok(_) => repl_ok!("Request of stopping the Node successfully sent"),
                 Err(e) => repl_err!(e),
