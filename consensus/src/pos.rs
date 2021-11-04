@@ -611,12 +611,13 @@ impl ProofOfStake {
         self.watched_addresses = addrs;
     }
 
-    /// stakers count at latest final blocks
-    pub fn get_stakers_count(&self) -> u64 {
-        self.cycle_states.iter().fold(0, |acc, cycle_states| {
-            let state = &cycle_states[0];
-            acc + state.roll_count.len() as u64
-        })
+    /// active stakers count
+    pub fn get_stakers_count(&self, target_cycle: u64) -> Result<u64, ConsensusError> {
+        let mut res: u64 = 0;
+        for thread in 0..self.cfg.thread_count {
+            res += self.get_lookback_roll_count(target_cycle, thread)?.0.len() as u64;
+        }
+        Ok(res)
     }
 
     async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {

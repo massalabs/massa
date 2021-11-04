@@ -999,6 +999,7 @@ impl ConsensusWorker {
             .filter(|t| **t >= timespan_start && **t < timespan_end)
             .count() as u64;
         let clique_count = self.block_db.get_clique_count() as u64;
+        let target_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         Ok(ConsensusStats {
             final_block_count,
             final_operation_count,
@@ -1006,7 +1007,7 @@ impl ConsensusWorker {
             clique_count,
             start_timespan: timespan_start,
             end_timespan: timespan_end,
-            staker_count: self.pos.get_stakers_count(),
+            staker_count: self.pos.get_stakers_count(target_cycle)?,
         })
     }
 
