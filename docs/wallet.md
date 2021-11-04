@@ -28,10 +28,16 @@ cargo run
 It loads the wallet file `wallet.dat`. If it does not exist, it is
 created.
 
-Now generate a new private key (and associated public key/address):
+Now you can either generate a new private key (and associated public key/address):
 
 ```plain
 wallet_generate_private_key
+```
+
+or add manually an existing private key:
+
+```plain
+wallet_add_private_keys <your_private_key>
 ```
 
 The list of addresses and keys of your wallet can be accessed with:
