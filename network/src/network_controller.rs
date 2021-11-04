@@ -163,7 +163,7 @@ impl NetworkCommandSender {
         self.0
             .send(NetworkCommand::BanIp(ips))
             .await
-            .map_err(|_| NetworkError::ChannelError("could not send Ban command".into()))?;
+            .map_err(|_| NetworkError::ChannelError("could not send BanIp command".into()))?;
         Ok(())
     }
 
