@@ -108,7 +108,7 @@ async fn launch(
         protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
-        cfg.protocol.clone(),
+        cfg.protocol,
         cfg.consensus.operation_validity_periods,
         network_command_sender.clone(),
         network_event_receiver,
@@ -118,7 +118,7 @@ async fn launch(
 
     // launch pool controller
     let (pool_command_sender, pool_manager) = start_pool_controller(
-        cfg.pool.clone(),
+        cfg.pool,
         cfg.consensus.thread_count,
         cfg.consensus.operation_validity_periods,
         protocol_command_sender.clone(),

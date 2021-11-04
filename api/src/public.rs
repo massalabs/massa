@@ -458,9 +458,10 @@ impl Endpoints for API<Public> {
                             .and_modify(|search_old| search_old.extend(&search_new))
                             .or_insert(search_new);
                     });
+
                 if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
                     storage_cmd_sender
-                        .get_operations_involving_address(&ad)
+                        .get_operations_involving_address(ad)
                         .await?
                         .into_iter()
                         .for_each(|(op_id, search_new)| {
@@ -474,7 +475,7 @@ impl Endpoints for API<Public> {
             // staking addrs
             let staking_addrs = cmd_sender.get_staking_addresses().await?;
             for address in addrs.iter() {
-                let state = states.get(&address).ok_or(ApiError::NotFound)?;
+                let state = states.get(address).ok_or(ApiError::NotFound)?;
                 res.push(AddressInfo {
                     address: *address,
                     thread: address.get_thread(cfg.thread_count),
@@ -495,7 +496,7 @@ impl Endpoints for API<Public> {
                         .collect(),
                     endorsement_draws: next_draws
                         .iter()
-                        .filter(|(_, (_, ads))| ads.contains(&address))
+                        .filter(|(_, (_, ads))| ads.contains(address))
                         .map(|(slot, (_, ads))| {
                             ads.iter()
                                 .enumerate()
@@ -518,7 +519,7 @@ impl Endpoints for API<Public> {
                         .keys()
                         .copied()
                         .collect(),
-                    is_staking: staking_addrs.contains(&address),
+                    is_staking: staking_addrs.contains(address),
                 })
             }
             Ok(res)
