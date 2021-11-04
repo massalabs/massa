@@ -571,7 +571,7 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer = self.peers.get_mut(ip).ok_or_else(|| {
-            warn!("WARNING: Cannot ban an unknown peer");
+            warn!("Cannot ban an unknown peer");
             NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
                 *ip,
             ))
