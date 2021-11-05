@@ -94,6 +94,14 @@ On a second window:
 
 ## Update
 
+If you use the binaries, simply download the latest binaries. Otherwise:
+
+Update Rust:
+
+    rustup update
+
+Update Massa:
+
     cd massa/
     git stash
     git checkout testnet
