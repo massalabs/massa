@@ -274,7 +274,15 @@ Get addresses.
      "blocks_created": [String], // Block ids
      "involved_in_endorsements": [String], // Endorsement ids,
      "involved_in_operations": [String], // Operation ids,
-     "is_staking": bool,
+     "production_stats": [
+         {
+             "cycle": Number,
+             "is_final": bool, // is this cycle final
+             "ok_count": Number, // number of blocks successfully produced and finalized in the cycle
+             "nok_count": Number, // number of blocks not produced or that failed to finalize in the cycle
+         },
+         ...
+     ]
  }, ... ]  // TODO
 ```
 

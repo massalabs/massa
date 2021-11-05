@@ -979,7 +979,7 @@ impl ProofOfStake {
 
     pub fn get_stakers_production_stats(
         &self,
-        addrs: AddressHashSet,
+        addrs: &AddressHashSet,
     ) -> Vec<StakersCycleProductionStats> {
         let mut res: HashMap<u64, StakersCycleProductionStats> = HashMap::new();
         let mut completeness: HashMap<u64, u8> = HashMap::new();
@@ -1007,7 +1007,7 @@ impl ProofOfStake {
                     false
                 };
 
-                for addr in &addrs {
+                for addr in addrs {
                     let (n_ok, n_nok) = thread_cycle_info
                         .production_stats
                         .get(&addr)
