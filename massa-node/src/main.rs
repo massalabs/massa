@@ -298,7 +298,7 @@ async fn stop(
         .expect("network shutdown failed");
 }
 
-const LOCK_FILE: &str = "/var/massa/lock";
+const LOCK_FILE: &str = "~/.cache/massa/lock";
 
 #[tokio::main]
 async fn main() {
