@@ -1,125 +1,117 @@
-version = "DEVE.0.0"
+version = "TEST.4.1"
 
 [logging]
-    level = 2
+level = 2
 
 [api]
-    draw_lookahead_period_count = 10
-    bind_private = "[::1]:33034"
-    bind_public = "[::]:33035"
+draw_lookahead_period_count = 10
+bind_private = "[::1]:33034"
+bind_public = "[::]:33035"
 
 [consensus]
-    genesis_timestamp = 1626440641000
-    end_timestamp = 1626440641000
-    t0 = 16000
-    thread_count = 32
-    genesis_key = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
-    max_discarded_blocks = 500
-    future_block_processing_max_periods = 100
-    max_future_processing_blocks = 400
-    max_dependency_blocks = 2048
-    endorsement_count = 9
-    delta_f0 = 640
-    max_operations_per_block = 102400
-    max_operations_fill_attempts = 102400
-    max_block_size = 102400
-    operation_validity_periods = 10
-    ledger_path = "storage/ledger"
-    ledger_cache_capacity = 1048576
-    ledger_flush_interval = 10000
-    ledger_reset_at_startup = true
-    block_reward = "0.3"
-    initial_ledger_path = "base_config/initial_ledger.json"
-    operation_batch_size = 1024
-    max_send_wait = 500
-    #POS
-    initial_rolls_path = "base_config/initial_rolls.json"
-    initial_draw_seed = "massa_genesis_seed"
-    periods_per_cycle = 128
-    pos_lookback_cycles = 2
-    pos_lock_cycles = 1
-    pos_draw_cached_cycles = 10
-    pos_miss_rate_deactivation_threshold = [7, 10]
-    staking_keys_path = "config/staking_keys.json"
-    roll_price = "100"
-    #stats
-    stats_timespan = 60000
-    block_db_prune_interval = 5000
-    max_item_return_count = 1000
+genesis_timestamp = 1636056000000
+end_timestamp = 1638282600000
+t0 = 16000
+thread_count = 32
+genesis_key = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
+max_discarded_blocks = 500
+future_block_processing_max_periods = 100
+max_future_processing_blocks = 400
+max_dependency_blocks = 2048
+endorsement_count = 9
+delta_f0 = 640
+max_operations_per_block = 102400
+max_operations_fill_attempts = 102400
+max_block_size = 102400
+operation_validity_periods = 10
+ledger_path = "storage/ledger"
+ledger_cache_capacity = 1048576
+ledger_flush_interval = 10000
+ledger_reset_at_startup = true
+block_reward = "0.3"
+initial_ledger_path = "base_config/initial_ledger.json"
+operation_batch_size = 1024
+max_send_wait = 500
+initial_rolls_path = "base_config/initial_rolls.json"
+initial_draw_seed = "massa_genesis_seed"
+periods_per_cycle = 128
+pos_lookback_cycles = 2
+pos_lock_cycles = 1
+pos_draw_cached_cycles = 10
+pos_miss_rate_deactivation_threshold = [ 7, 10,]
+staking_keys_path = "config/staking_keys.json"
+roll_price = "100"
+stats_timespan = 60000
+block_db_prune_interval = 5000
+max_item_return_count = 1000
 
 [protocol]
-    message_timeout = 5000
-    ask_block_timeout = 10000
-    max_node_known_blocks_size = 1024
-    max_node_wanted_blocks_size = 1024
-    max_simultaneous_ask_blocks_per_node = 2048
-    max_send_wait = 500
-    max_known_ops_size = 10024
-    max_known_endorsements_size = 1024
+message_timeout = 5000
+ask_block_timeout = 10000
+max_node_known_blocks_size = 1024
+max_node_wanted_blocks_size = 1024
+max_simultaneous_ask_blocks_per_node = 2048
+max_send_wait = 500
+max_known_ops_size = 10024
+max_known_endorsements_size = 1024
 
 [network]
-    bind = "[::]:31244"
-    # routable_ip = "200.200.200.200" # Your ip
-    protocol_port = 31244
-    connect_timeout = 3000
-    wakeup_interval = 5000
-    peers_file = "storage/peers.json"
-    target_bootstrap_connections = 1
-    max_out_bootstrap_connection_attempts = 1
-    target_out_nonbootstrap_connections = 10
-    max_in_nonbootstrap_connections = 15
-    max_in_connections_per_ip = 5
-    max_out_nonbootstrap_connection_attempts = 10
-    max_idle_peers = 10000
-    max_banned_peers = 100
-    max_advertise_length = 10000
-    peers_file_dump_interval = 10000
-    max_message_size = 1048576000
-    message_timeout = 5000
-    ask_peer_list_interval = 30000
-    private_key_file="config/node_privkey.key"
-    max_ask_blocks_per_message = 128
-    max_operations_per_message = 1024
-    max_endorsements_per_message = 1024
-    max_send_wait = 500
-    ban_timeout = 3600000
+bind = "[::]:31244"
+protocol_port = 31244
+connect_timeout = 3000
+wakeup_interval = 5000
+peers_file = "storage/peers.json"
+target_bootstrap_connections = 1
+max_out_bootstrap_connection_attempts = 1
+target_out_nonbootstrap_connections = 10
+max_in_nonbootstrap_connections = 15
+max_in_connections_per_ip = 5
+max_out_nonbootstrap_connection_attempts = 10
+max_idle_peers = 10000
+max_banned_peers = 100
+max_advertise_length = 10000
+peers_file_dump_interval = 10000
+max_message_size = 1048576000
+message_timeout = 5000
+ask_peer_list_interval = 30000
+private_key_file = "config/node_privkey.key"
+max_ask_blocks_per_message = 128
+max_operations_per_message = 1024
+max_endorsements_per_message = 1024
+max_send_wait = 500
+ban_timeout = 3600000
 
 [storage]
-    max_stored_blocks= 1000
-    path = "storage/block_store"
-    cache_capacity = 10000
-    reset_at_startup = true
-    max_item_return_count = 1000
-    disable_storage = false
+max_stored_blocks = 1000
+path = "storage/block_store"
+cache_capacity = 10000
+reset_at_startup = true
+max_item_return_count = 1000
+disable_storage = false
 
 [bootstrap]
-    bootstrap_list = [
-        ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
-        ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
-        ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
-        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
-    ]
-    bind = "[::]:31245"
-    connect_timeout = 15000
-    retry_delay = 5000
-    max_bootstrap_blocks = 1000000
-    max_bootstrap_cliques = 1000
-    max_bootstrap_deps = 1000
-    max_bootstrap_children = 1000
-    max_ping = 10000
-    max_bootstrap_message_size = 1048576000
-    read_timeout = 10000
-    write_timeout = 10000
-    max_bootstrap_pos_entries = 1000000000
-    max_bootstrap_pos_cycles = 5
-    enable_clock_synchronization = false
-    cache_duration = 15000
-    max_simultaneous_bootstraps = 2
-    ip_list_max_size = 10000
-    per_ip_min_interval = 300000
+bootstrap_list = [ [ "149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj",], [ "149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm",], [ "158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c",], [ "158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq",],]
+bind = "[::]:31245"
+connect_timeout = 15000
+retry_delay = 5000
+max_bootstrap_blocks = 1000000
+max_bootstrap_cliques = 1000
+max_bootstrap_deps = 1000
+max_bootstrap_children = 1000
+max_ping = 10000
+max_bootstrap_message_size = 1048576000
+read_timeout = 10000
+write_timeout = 10000
+max_bootstrap_pos_entries = 1000000000
+max_bootstrap_pos_cycles = 5
+enable_clock_synchronization = false
+cache_duration = 15000
+max_simultaneous_bootstraps = 2
+ip_list_max_size = 10000
+per_ip_min_interval = 300000
 
 [pool]
-    max_pool_size_per_thread = 100000
-    max_operation_future_validity_start_periods = 100
-    max_endorsement_count = 10000
-    max_item_return_count = 1000
+max_pool_size_per_thread = 100000
+max_operation_future_validity_start_periods = 100
+max_endorsement_count = 10000
+max_item_return_count = 1000
