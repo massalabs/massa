@@ -7,11 +7,11 @@
 **/Cargo.lock
 **/target
 lcov.info
-massa-client/config/
+massa-client/config/*
 massa-client/wallet.dat
-massa-node/config/
+massa-node/config/*
 massa-node/logs.txt
-massa-node/storage/
+massa-node/storage/*
 shell.nix
 !massa-client/config/info.md
 !massa-node/config/info.md
