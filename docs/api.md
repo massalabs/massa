@@ -208,43 +208,69 @@ Get information on a block given its hash.
 - Return:
 
 ```javascript
-[{
-    "id": String // BlockId,
-    "content": Null or {
-        "is_final": bool,
-        "is_stale": bool,
-        "is_in_blockclique": bool,
-        "block": {
-            "header": {
+[
+  {
+    "content": {
+      "block": {
+        "header": {
+          "content": {
+            "creator": String, // Public key
+            "endorsements": [ // At most endorsement_count items
+              {
                 "content": {
-                    "creator": String // PublicKey,
-                    "slot": {"period": Number, "thread", Number},
-                    "parents": [String] // BlockId,
-                    "operation_merkle_root": String, // all operations hash
-                    "endorsements": [{
-                        "content":{
-                            "sender_public_key": PublicKey,
-                            "slot": {"period": Number, "thread", Number},
-                            "index": Number,
-                            "endorsed_block": String // BlockId,
-                        }
-                        "signature": String
-                     }, ... ], // TODO
+                  "endorsed_block": String, // Block id
+                  "index": Number,
+                  "sender_public_key": String, 
+                  "slot": { // endorsed block slot: deifferent from block's slot
+                    "period": Number,
+                    "thread": Number
+                  }
                 },
-                "signature": Signature,
-            },
-            operations: [{
-                "content": {
-                    "sender_public_key": String // string is a PublicKey,
-                    "fee": Number, // in coins
-                    "expire_period": Number,
-                    "op": OperationType, // TODO not sure how this go in JSON
-                }
-                "signature": String,
-             }, ... ], // TODO
+                "signature": String
+              }
+            ],
+            "operation_merkle_root": String, // Hash of all operations
+            "parents": [String], // Block ids, as many as thread count
+            "slot": {
+              "period": Number,
+              "thread": Number
+            }
+          },
+          "signature": String
         },
+        "operations": [
+          {
+            "content": {
+              "expire_period": Number,
+              "fee": String, // represent an Amount in coins
+              "op": {
+                "Transaction": {
+                  "amount": String, // represent an Amount in coins
+                  "recipient_address": String
+                }
+                OR
+                "RollBuy": {
+                  "roll_count": Number
+                }
+                OR
+                "RollSell": {
+                  "roll_count": Number
+                }
+              },
+              "sender_public_key": String
+            },
+            "signature": String
+          }
+        ]
+      },
+      "is_final": Boolean,
+      "is_in_blockclique": Boolean,
+      "is_stale": Boolean
     },
- }, ... ] // TODO
+    "id": String // Block id
+  }
+]
+
 ```
 
 ### `get_graph_interval`
