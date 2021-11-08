@@ -177,19 +177,22 @@ Get endorsements (not yet implemented)
 ```javascript
 [{
     "id": String, // EndorsementId,
-    "in_pool": bool,
+    "in_pool": Boolean,
     "in_blocks": [String], // BlockId,
-    "is_final": bool,
+    "is_final": Boolean,
     "endorsement": {
         "content":{
-            "sender_public_key": PublicKey,
-            "slot": {"period": Number, "thread", Number},
+            "sender_public_key": String,
+            "slot": {
+                "period": Number,
+                "thread": Number
+            },
             "index": Number,
             "endorsed_block": String // BlockId,
         }
         "signature": String
     }
- }, ... ] // TODO
+ }]
 ```
 
 ### `get_blocks`
