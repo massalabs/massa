@@ -173,6 +173,6 @@ pub trait Endpoints {
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
 }
 
-fn jsonrpc_assert(method: &str, request: Value, response: Value) {
+fn _jsonrpc_assert(_method: &str, _request: Value, _response: Value) {
     // TODO: jsonrpc_client_transports::RawClient::call_method
 }
