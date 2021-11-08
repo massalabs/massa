@@ -94,7 +94,7 @@ async fn test_roll() {
                     consensus_command_sender,
                     consensus_event_receiver| {
             let mut parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -873,7 +873,7 @@ async fn test_roll_deactivation() {
 
     let mut cur_slot = Slot::new(0, 0);
     let mut best_parents = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .unwrap()
         .genesis_blocks;

@@ -99,7 +99,7 @@ async fn test_operations_check() {
         .expect("could not start consensus controller");
 
     let genesis_ids = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .expect("could not get block graph status")
         .genesis_blocks;

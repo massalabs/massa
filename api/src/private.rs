@@ -129,7 +129,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn get_blocks(&self, _: Vec<BlockId>) -> BoxFuture<Result<Vec<BlockInfo>, ApiError>> {
+    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
         let closure = async move || Err(WrongAPI);
         Box::pin(closure())
     }
