@@ -4,8 +4,10 @@
 
 use crate::cfg::Settings;
 use crate::rpc::Client;
+use anyhow::Result;
 use atty::Stream;
 use cmds::Command;
+use console::style;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -52,7 +54,7 @@ struct Args {
 
 #[paw::main]
 #[tokio::main]
-async fn main(args: Args) {
+async fn main(args: Args) -> Result<()> {
     // TODO: Move settings loading in another crate
     let settings = Settings::load();
     let address = match args.ip {
@@ -68,21 +70,30 @@ async fn main(args: Args) {
         None => settings.default_node.private_port,
     };
     // ...
-    let mut wallet = Wallet::new(args.wallet).unwrap();
+    let mut wallet = Wallet::new(args.wallet)?;
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&client, &mut wallet).await;
     } else {
         // Non-Interactive mode
-        let output = args
+        match args
             .command
-            .run(&client, &mut wallet, &args.parameters, false)
-            .await;
-        if args.json {
-            output.json();
-        } else {
-            output.display();
+            .run(&client, &mut wallet, &args.parameters)
+            .await
+        {
+            Ok(output) => {
+                if args.json {
+                    output
+                        .json()
+                        .expect("fail to serialize to JSON command output")
+                } else {
+                    output.display();
+                }
+            }
+            // TODO: Error should be also handled in JSON format
+            Err(e) => println!("{}", style(format!("Error: {}", e)).red()),
         }
     }
+    Ok(())
 }
