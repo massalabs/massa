@@ -281,23 +281,28 @@ Get the block graph within the specified time interval.
 
 ```javascript
 {
-    "start": Null or Number, // in millis since 1970-01-01
-    "end": Null or Number,// in millis since 1970-01-01
+    "start": null or Number, // in millis since 1970-01-01, field may be omitted
+    "end": null or Number,// in millis since 1970-01-01, field may be omitted
 }
 ```
 
 -   Return:
 
 ```javascript
-[{
-    "id": String // BlockId,
-    "is_final": bool,
-    "is_stale": bool,
-    "is_in_blockclique": bool,
-    "slot": {"period": Number, "thread", Number},
-    "creator":  String // Address,
-    "parents": [String] // BlockId,
- }, ... ] // TODO
+[
+  {
+    "creator": String, // public key
+    "id": String, // Block Id
+    "is_final": Boolean,
+    "is_in_blockclique": Boolean,
+    "is_stale": Boolean,
+    "parents": [String], // as many block Ids as there are threads
+    "slot": {
+      "period": Number,
+      "thread": Number
+    }
+  }
+]
 ```
 
 ### `get_addresses`
