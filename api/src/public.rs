@@ -5,6 +5,7 @@ use crate::error::ApiError::WrongAPI;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use consensus::{ConsensusCommandSender, ConsensusConfig, ExportBlockStatus, Status};
 use crypto::signature::PrivateKey;
+use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
@@ -13,18 +14,15 @@ use models::api::{
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
+use models::hhasher::BuildHHasher;
 use models::node::NodeId;
-use models::timeslots::{
-    get_block_slot_timestamp, get_latest_block_slot_at_timestamp, time_range_to_slot_range,
-};
+use models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use models::{
     Address, BlockHashSet, BlockId, EndorsementId, Operation, OperationHashMap, OperationHashSet,
     OperationId, Slot, Version,
 };
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 use storage::StorageAccess;
 use time::UTime;
@@ -160,12 +158,7 @@ impl Endpoints for API<Public> {
 
     fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || {
-            Ok(consensus_command_sender
-                .get_block_graph_status()
-                .await?
-                .max_cliques)
-        };
+        let closure = async move || Ok(consensus_command_sender.get_cliques().await?);
         Box::pin(closure())
     }
 
@@ -181,79 +174,57 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let mut pool_command_sender = self.0.pool_command_sender.clone();
-        let storage_command_sender = self.0.storage_command_sender.clone();
         let closure = async move || {
-            let mut res: OperationHashMap<OperationInfo> = pool_command_sender
-                .get_operations(ops.iter().cloned().collect())
-                .await?
-                .into_iter()
-                .map(|(id, operation)| {
-                    (
+            let operation_ids: OperationHashSet = ops.iter().cloned().collect();
+
+            // simultaneously ask pool and consensus
+            let (pool_res, consensus_res) = tokio::join!(
+                pool_command_sender.get_operations(operation_ids.clone()),
+                consensus_command_sender.get_operations(operation_ids)
+            );
+            let (pool_res, consensus_res) = (pool_res?, consensus_res?);
+            let mut res: OperationHashMap<OperationInfo> =
+                OperationHashMap::with_capacity_and_hasher(
+                    pool_res.len() + consensus_res.len(),
+                    BuildHHasher::default(),
+                );
+
+            // add pool info
+            res.extend(pool_res.into_iter().map(|(id, operation)| {
+                (
+                    id,
+                    OperationInfo {
+                        operation,
+                        in_pool: true,
+                        in_blocks: Vec::new(),
                         id,
-                        OperationInfo {
-                            operation,
-                            in_pool: true,
-                            in_blocks: Vec::new(),
-                            id,
-                            is_final: false,
-                        },
-                    )
-                })
-                .collect();
-            consensus_command_sender
-                .get_operations(ops.iter().cloned().collect())
-                .await?
+                        is_final: false,
+                    },
+                )
+            }));
+
+            // add consensus info
+            consensus_res.into_iter().for_each(|(op_id, search_new)| {
+                let search_new = OperationInfo {
+                    id: op_id,
+                    in_pool: search_new.in_pool,
+                    in_blocks: search_new.in_blocks.keys().copied().collect(),
+                    is_final: search_new
+                        .in_blocks
+                        .iter()
+                        .any(|(_, (_, is_final))| *is_final),
+                    operation: search_new.op,
+                };
+                res.entry(op_id)
+                    .and_modify(|search_old| search_old.extend(&search_new))
+                    .or_insert(search_new);
+            });
+
+            // return values in the right order
+            Ok(ops
                 .into_iter()
-                .for_each(|(op_id, search_new)| {
-                    let search_new = OperationInfo {
-                        id: op_id,
-                        in_pool: search_new.in_pool,
-                        in_blocks: search_new.in_blocks.keys().copied().collect(),
-                        is_final: search_new
-                            .in_blocks
-                            .iter()
-                            .any(|(_, (_, is_final))| *is_final),
-                        operation: search_new.op,
-                    };
-                    res.entry(op_id)
-                        .and_modify(|search_old| search_old.extend(&search_new))
-                        .or_insert(search_new);
-                });
-            // for those that have not been found in consensus, extend with storage
-            let to_gather: OperationHashSet = ops
-                .iter()
-                .filter(|op_id| {
-                    if let Some(cur_search) = res.get(op_id) {
-                        if !cur_search.in_blocks.is_empty() {
-                            return false;
-                        }
-                    }
-                    true
-                })
-                .copied()
-                .collect();
-            if let Some(storage_command_sender) = storage_command_sender {
-                storage_command_sender
-                    .get_operations(to_gather)
-                    .await?
-                    .into_iter()
-                    .for_each(|(op_id, search_new)| {
-                        let search_new = OperationInfo {
-                            id: op_id,
-                            in_pool: search_new.in_pool,
-                            in_blocks: search_new.in_blocks.keys().copied().collect(),
-                            is_final: search_new
-                                .in_blocks
-                                .iter()
-                                .any(|(_, (_, is_final))| *is_final),
-                            operation: search_new.op,
-                        };
-                        res.entry(op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
-            }
-            Ok(res.into_values().collect())
+                .filter_map(|op_id| res.remove(&op_id))
+                .collect())
         };
         Box::pin(closure())
     }
@@ -265,99 +236,54 @@ impl Endpoints for API<Public> {
         todo!() // TODO: wait for !238
     }
 
-    fn get_blocks(&self, ids: Vec<BlockId>) -> BoxFuture<Result<Vec<BlockInfo>, ApiError>> {
+    /// gets a block. Returns None if not found
+    /// only active blocks are returned
+    fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let opt_storage_command_sender = self.0.storage_command_sender.clone();
         let closure = async move || {
-            let mut res = Vec::new();
-            let graph = consensus_command_sender.get_block_graph_status().await?;
-            let block_clique = graph
-                .max_cliques
+            let cliques = consensus_command_sender.get_cliques().await?;
+            let blockclique = cliques
                 .iter()
                 .find(|clique| clique.is_blockclique)
                 .ok_or_else(|| ApiError::InconsistencyError("Missing block clique".to_string()))?;
-            for id in ids.into_iter() {
-                if let Some((block, is_final)) =
-                    match consensus_command_sender.get_block_status(id).await? {
-                        Some(ExportBlockStatus::Active(block)) => Some((block, false)),
-                        Some(ExportBlockStatus::Incoming) => None,
-                        Some(ExportBlockStatus::WaitingForSlot) => None,
-                        Some(ExportBlockStatus::WaitingForDependencies) => None,
-                        Some(ExportBlockStatus::Discarded(_)) => None, // TODO: get block if stale
-                        Some(ExportBlockStatus::Final(block)) => Some((block, true)),
-                        None => None,
-                    }
-                {
-                    res.push(BlockInfo {
-                        id,
-                        content: Some(BlockInfoContent {
-                            is_final,
-                            is_stale: false,
-                            is_in_blockclique: block_clique.block_ids.contains(&id),
-                            block,
-                        }),
-                    })
-                } else if let Some(opt_storage_command_sender) = opt_storage_command_sender.clone()
-                {
-                    match opt_storage_command_sender.get_block(id).await {
-                        Ok(Some(block)) => res.push(BlockInfo {
-                            id,
-                            content: Some(BlockInfoContent {
-                                is_final: true,
-                                is_stale: false,
-                                is_in_blockclique: block_clique.block_ids.contains(&id),
-                                block,
-                            }),
-                        }),
-                        Ok(None) => res.push(BlockInfo { id, content: None }),
-                        Err(e) => return Err(e.into()),
-                    }
+
+            if let Some((block, is_final)) =
+                match consensus_command_sender.get_block_status(id).await? {
+                    Some(ExportBlockStatus::Active(block)) => Some((block, false)),
+                    Some(ExportBlockStatus::Incoming) => None,
+                    Some(ExportBlockStatus::WaitingForSlot) => None,
+                    Some(ExportBlockStatus::WaitingForDependencies) => None,
+                    Some(ExportBlockStatus::Discarded(_)) => None, // TODO: get block if stale
+                    Some(ExportBlockStatus::Final(block)) => Some((block, true)),
+                    None => None,
                 }
+            {
+                Ok(BlockInfo {
+                    id,
+                    content: Some(BlockInfoContent {
+                        is_final,
+                        is_stale: false,
+                        is_in_blockclique: blockclique.block_ids.contains(&id),
+                        block,
+                    }),
+                })
+            } else {
+                Ok(BlockInfo { id, content: None })
             }
-            Ok(res)
         };
         Box::pin(closure())
     }
 
+    /// gets an interval of the block graph from consensus, with time filtering
+    /// time filtering is done consensus-side to prevent communication overhead
     fn get_graph_interval(
         &self,
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let opt_storage_command_sender = self.0.storage_command_sender.clone();
         let consensus_config = self.0.consensus_config.clone();
         let closure = async move || {
-            let graph = consensus_command_sender.get_block_graph_status().await?;
-            // filter block from graph_export
-            let start = time.start.unwrap_or_else(|| UTime::from(0));
-            let end = time.end.unwrap_or_else(|| UTime::from(u64::MAX));
-            let mut res = Vec::new();
-            let block_clique = graph
-                .max_cliques
-                .iter()
-                .find(|clique| clique.is_blockclique)
-                .ok_or_else(|| ApiError::InconsistencyError("Missing block clique".to_string()))?;
-            for (id, exported_block) in graph.active_blocks.into_iter() {
-                let header = exported_block.block;
-                let status = exported_block.status;
-                let time = get_block_slot_timestamp(
-                    consensus_config.thread_count,
-                    consensus_config.t0,
-                    consensus_config.genesis_timestamp,
-                    header.content.slot,
-                )?;
-                if start <= time && time < end {
-                    res.push(BlockSummary {
-                        id,
-                        is_final: status == Status::Final,
-                        is_stale: false, // TODO: in the old api we considered only active blocks. Do we need to consider also discarded blocks?
-                        is_in_blockclique: block_clique.block_ids.contains(&id),
-                        slot: header.content.slot,
-                        creator: Address::from_public_key(&header.content.creator)?,
-                        parents: header.content.parents,
-                    })
-                }
-            }
+            // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
                 consensus_config.thread_count,
                 consensus_config.t0,
@@ -365,21 +291,36 @@ impl Endpoints for API<Public> {
                 time.start,
                 time.end,
             )?;
-            if let Some(opt_storage_command_sender) = opt_storage_command_sender {
-                let blocks = opt_storage_command_sender
-                    .get_slot_range(start_slot, end_slot)
-                    .await?;
-                for (id, block) in blocks {
-                    res.push(BlockSummary {
-                        id,
-                        is_final: true,
-                        is_stale: false,         // because in storage
-                        is_in_blockclique: true, // because in storage
-                        slot: block.header.content.slot,
-                        creator: Address::from_public_key(&block.header.content.creator)?,
-                        parents: block.header.content.parents,
-                    })
-                }
+            let graph = consensus_command_sender
+                .get_block_graph_status(start_slot, end_slot)
+                .await?;
+            let mut res = Vec::with_capacity(graph.active_blocks.len());
+            let blockclique = graph
+                .max_cliques
+                .iter()
+                .find(|clique| clique.is_blockclique)
+                .ok_or_else(|| ApiError::InconsistencyError("missing blockclique".to_string()))?;
+            for (id, exported_block) in graph.active_blocks.into_iter() {
+                res.push(BlockSummary {
+                    id,
+                    is_final: exported_block.status == Status::Final,
+                    is_stale: false,
+                    is_in_blockclique: blockclique.block_ids.contains(&id),
+                    slot: exported_block.header.content.slot,
+                    creator: Address::from_public_key(&exported_block.header.content.creator)?,
+                    parents: exported_block.header.content.parents,
+                });
+            }
+            for (id, (_reason, header)) in graph.discarded_blocks.into_iter() {
+                res.push(BlockSummary {
+                    id,
+                    is_final: false,
+                    is_stale: true,
+                    is_in_blockclique: false,
+                    slot: header.content.slot,
+                    creator: Address::from_public_key(&header.content.creator)?,
+                    parents: header.content.parents,
+                });
             }
             Ok(res)
         };
@@ -391,19 +332,13 @@ impl Endpoints for API<Public> {
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
-        let storage_cmd_sender = self.0.storage_command_sender.clone();
         let cfg = self.0.consensus_config.clone();
         let api_cfg = self.0.api_config;
-        let addrs = addresses;
-        let mut pool_command_sender = self.0.pool_command_sender.clone();
+        let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;
         let closure = async move || {
-            let mut res = Vec::new();
-            // roll and balance info
-            let cloned = addrs.clone();
-            let states = cmd_sender
-                .get_addresses_info(cloned.into_iter().collect())
-                .await?;
+            let mut res = Vec::with_capacity(addresses.len());
+
             // next draws info
             let now = UTime::now(compensation_millis)?;
             let current_slot = get_latest_block_slot_at_timestamp(
@@ -413,72 +348,74 @@ impl Endpoints for API<Public> {
                 now,
             )?
             .unwrap_or_else(|| Slot::new(0, 0));
-            let next_draws = cmd_sender
-                .get_selection_draws(
-                    current_slot,
-                    Slot::new(
-                        current_slot.period + api_cfg.draw_lookahead_period_count,
-                        current_slot.thread,
-                    ),
-                )
-                .await?;
-            // block info
-            let mut blocks = HashMap::new();
-            let cloned = addrs.clone();
-            for ad in cloned.iter() {
-                blocks.insert(
-                    ad,
-                    cmd_sender
-                        .get_block_ids_by_creator(*ad)
-                        .await?
-                        .into_keys()
-                        .collect::<BlockHashSet>(),
-                );
-                if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
-                    let new = storage_cmd_sender.get_block_ids_by_creator(ad).await?;
-                    match blocks.entry(ad) {
-                        Entry::Occupied(mut occ) => occ.get_mut().extend(new),
-                        Entry::Vacant(vac) => {
-                            vac.insert(new);
-                        }
-                    }
-                }
+            let next_draws = cmd_sender.get_selection_draws(
+                current_slot,
+                Slot::new(
+                    current_slot.period + api_cfg.draw_lookahead_period_count,
+                    current_slot.thread,
+                ),
+            );
+
+            // roll and balance info
+            let states = cmd_sender.get_addresses_info(addresses.iter().copied().collect());
+
+            // wait for both simultaneously
+            let (next_draws, states) = tokio::join!(next_draws, states);
+            let (next_draws, mut states) = (next_draws?, states?);
+
+            // list created blocks
+            let mut blocks: AddressHashMap<BlockHashSet> =
+                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
+            let mut block_futs = FuturesUnordered::new();
+
+            for &ad in addresses.iter() {
+                let cmd_snd = cmd_sender.clone();
+                block_futs.push(async move {
+                    Result::<(Address, BlockHashSet), ApiError>::Ok((
+                        ad,
+                        cmd_snd
+                            .get_block_ids_by_creator(ad)
+                            .await?
+                            .into_keys()
+                            .collect::<BlockHashSet>(),
+                    ))
+                });
             }
+            while let Some(res) = block_futs.next().await {
+                let (a, blks) = res?;
+                blocks.insert(a, blks);
+            }
+
             // endorsements info
             // TODO: add get_endorsements_by_address consensus command -> wait for !238
 
             // operations info
-            let mut ops = HashMap::new();
-            let cloned = addrs.clone();
-            for ad in cloned.iter() {
-                let mut res: OperationHashMap<_> = pool_command_sender
-                    .get_operations_involving_address(*ad)
-                    .await?;
-                cmd_sender
-                    .get_operations_involving_address(*ad)
-                    .await?
-                    .into_iter()
-                    .for_each(|(op_id, search_new)| {
-                        res.entry(op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
-                if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
-                    storage_cmd_sender
-                        .get_operations_involving_address(&ad)
-                        .await?
-                        .into_iter()
-                        .for_each(|(op_id, search_new)| {
-                            res.entry(op_id)
-                                .and_modify(|search_old| search_old.extend(&search_new))
-                                .or_insert(search_new);
-                        });
-                }
-                ops.insert(ad, res);
+            let mut ops: AddressHashMap<OperationHashSet> =
+                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
+            let mut op_futs = FuturesUnordered::new();
+            for &ad in addresses.iter() {
+                let cmd_snd = cmd_sender.clone();
+                let mut pool_cmd_snd = pool_command_sender.clone();
+                op_futs.push(async move {
+                    let get_pool_ops = pool_cmd_snd.get_operations_involving_address(ad);
+                    let get_consensus_ops = cmd_snd.get_operations_involving_address(ad);
+                    let (get_pool_ops, get_consensus_ops) =
+                        tokio::join!(get_pool_ops, get_consensus_ops);
+                    let gathered: OperationHashSet = get_pool_ops?
+                        .into_keys()
+                        .chain(get_consensus_ops?.into_keys())
+                        .collect();
+                    Result::<(Address, OperationHashSet), ApiError>::Ok((ad, gathered))
+                });
             }
-            // staking addrs
-            for address in addrs.into_iter() {
-                let state = states.get(&address).ok_or(ApiError::NotFound)?;
+            while let Some(res) = op_futs.next().await {
+                let (a, op_set) = res?;
+                ops.insert(a, op_set);
+            }
+
+            // compile everything per address
+            for address in addresses.into_iter() {
+                let state = states.remove(&address).ok_or(ApiError::NotFound)?;
                 res.push(AddressInfo {
                     address,
                     thread: address.get_thread(cfg.thread_count),
@@ -497,32 +434,11 @@ impl Endpoints for API<Public> {
                         .filter(|(_, (ad, _))| *ad == address)
                         .map(|(slot, _)| *slot)
                         .collect(),
-                    endorsement_draws: next_draws
-                        .iter()
-                        .filter(|(_, (_, ads))| ads.contains(&address))
-                        .map(|(slot, (_, ads))| {
-                            ads.iter()
-                                .enumerate()
-                                .filter(|(_, ad)| **ad == address)
-                                .map(|(i, _)| (slot.to_string(), i as u64))
-                                .collect::<Vec<(String, u64)>>()
-                        })
-                        .flatten()
-                        .collect(),
-                    blocks_created: blocks
-                        .get(&address)
-                        .ok_or(ApiError::NotFound)?
-                        .into_iter()
-                        .copied()
-                        .collect(),
-                    involved_in_endorsements: HashSet::new().into_iter().collect(), // TODO: update wait for !238
-                    involved_in_operations: ops
-                        .get(&address)
-                        .ok_or(ApiError::NotFound)?
-                        .keys()
-                        .copied()
-                        .collect(),
-                    production_stats: state.production_stats.clone(),
+                    endorsement_draws: Default::default(), // TODO: update wait for !238
+                    blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
+                    involved_in_endorsements: Default::default(), // TODO: update wait for !238
+                    involved_in_operations: ops.remove(&address).ok_or(ApiError::NotFound)?,
+                    production_stats: state.production_stats,
                 })
             }
             Ok(res)

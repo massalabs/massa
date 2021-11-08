@@ -80,7 +80,7 @@ async fn test_genesis_block_creation() {
         None,
         async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let _genesis_ids = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -174,7 +174,7 @@ async fn test_block_creation_with_draw() {
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_ids = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -327,7 +327,7 @@ async fn test_interleaving_block_creation_with_reception() {
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let mut parents = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;

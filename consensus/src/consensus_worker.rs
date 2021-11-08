@@ -7,11 +7,14 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
-use models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashSet,
+};
+use models::{
+    clique::Clique,
+    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
 };
 use models::{hhasher::BuildHHasher, ledger::LedgerData};
 use models::{
@@ -34,7 +37,11 @@ use tracing::{debug, info, warn};
 #[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
-    GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
+    GetBlockGraphStatus {
+        slot_start: Option<Slot>,
+        slot_end: Option<Slot>,
+        response_tx: oneshot::Sender<BlockGraphExport>,
+    },
     /// Returns through a channel full block with specified hash.
     GetActiveBlock {
         block_id: BlockId,
@@ -79,6 +86,7 @@ pub enum ConsensusCommand {
         address: Address,
         response_tx: oneshot::Sender<BlockHashMap<Status>>,
     },
+    GetCliques(oneshot::Sender<Vec<Clique>>),
 }
 
 /// Events that are emitted by consensus.
@@ -698,13 +706,21 @@ impl ConsensusWorker {
         cmd: ConsensusCommand,
     ) -> Result<(), ConsensusError> {
         match cmd {
-            ConsensusCommand::GetBlockGraphStatus(response_tx) => {
+            ConsensusCommand::GetBlockGraphStatus {
+                slot_start,
+                slot_end,
+                response_tx,
+            } => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_block_graph_status",
                     {}
                 );
                 response_tx
-                    .send(BlockGraphExport::from(&self.block_db))
+                    .send(BlockGraphExport::extract_from(
+                        &self.block_db,
+                        slot_start,
+                        slot_end,
+                    ))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBlockGraphStatus answer: {:?}",
@@ -748,6 +764,20 @@ impl ConsensusWorker {
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBlock Status answer: {:?}",
+                            err
+                        ))
+                    })
+            }
+            ConsensusCommand::GetCliques(response_tx) => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_cliques",
+                    {}
+                );
+                response_tx
+                    .send(self.block_db.get_cliques())
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetSelectionDraws response: {:?}",
                             err
                         ))
                     })

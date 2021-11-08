@@ -30,7 +30,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
         None,
         async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -54,7 +54,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
 
             // Old stale block was discarded.
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.len(), 1);
@@ -92,7 +92,7 @@ async fn test_block_not_processed_multiple_times() {
         None,
         async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -114,7 +114,7 @@ async fn test_block_not_processed_multiple_times() {
 
             // Block was not discarded.
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.len(), 0);
@@ -151,7 +151,7 @@ async fn test_queuing() {
         None,
         async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -173,7 +173,7 @@ async fn test_queuing() {
 
             // Blocks were queued, not discarded.
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.len(), 0);
@@ -210,7 +210,7 @@ async fn test_double_staking_does_not_propagate() {
         None,
         async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -233,7 +233,7 @@ async fn test_double_staking_does_not_propagate() {
 
             // Block was not discarded.
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.len(), 0);
