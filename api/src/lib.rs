@@ -24,7 +24,6 @@ use pool::PoolCommandSender;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 use std::thread::JoinHandle;
-use storage::StorageAccess;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
@@ -35,7 +34,6 @@ mod public;
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     pub pool_command_sender: PoolCommandSender,
-    pub storage_command_sender: Option<StorageAccess>,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
     pub network_config: NetworkConfig,

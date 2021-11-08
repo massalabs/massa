@@ -25,7 +25,6 @@ use models::{
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
-use storage::StorageAccess;
 use time::UTime;
 use tokio::{
     sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
@@ -111,8 +110,6 @@ pub struct ConsensusWorker {
     protocol_event_receiver: ProtocolEventReceiver,
     /// Associated Pool command sender.
     pool_command_sender: PoolCommandSender,
-    /// Associated storage command sender. If we want to have long term final blocks storage.
-    opt_storage_command_sender: Option<StorageAccess>,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
     /// Channel receiving consensus commands.
@@ -161,7 +158,6 @@ impl ConsensusWorker {
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
         pool_command_sender: PoolCommandSender,
-        opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
         pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
@@ -229,7 +225,6 @@ impl ConsensusWorker {
             genesis_public_key,
             protocol_command_sender,
             protocol_event_receiver,
-            opt_storage_command_sender,
             block_db,
             controller_command_rx,
             controller_event_tx,
@@ -324,13 +319,8 @@ impl ConsensusWorker {
                 // prune timer
                 _ = &mut prune_timer=> {
                     massa_trace!("consensus.consensus_worker.run_loop.prune_timer", {});
-                    // prune block db and send discarded final blocks to storage if present
-                    let discarded_final_blocks = self.block_db.prune()?;
-                    if let Some(storage_cmd) = &self.opt_storage_command_sender {
-                        for (d_id, d_active_block) in discarded_final_blocks.into_iter() {
-                            storage_cmd.add_block(d_id, d_active_block.block, d_active_block.operation_set).await?;
-                        }
-                    }
+                    // prune block db
+                    let _discarded_final_blocks = self.block_db.prune()?;
 
                     // reset timer
                     prune_timer.set(sleep( self.cfg.block_db_prune_interval.to_duration()))
@@ -1198,17 +1188,8 @@ impl ConsensusWorker {
                                 Some(a_block.endorsement_ids.clone()),
                             )),
                         );
-                    } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
-                        if let Some(block) = storage_command_sender.get_block(block_hash).await? {
-                            massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});
-                            results.insert(block_hash, Some((block, None, None)));
-                        } else {
-                            // not found in given storage
-                            massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_not_found", { "hash": block_hash});
-                            results.insert(block_hash, None);
-                        }
                     } else {
-                        // not found in consensus and no storage provided
+                        // not found in consensus
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
                         results.insert(block_hash, None);
                     }

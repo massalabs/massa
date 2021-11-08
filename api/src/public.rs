@@ -24,7 +24,6 @@ use models::{
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
 use std::net::{IpAddr, SocketAddr};
-use storage::StorageAccess;
 use time::UTime;
 
 impl API<Public> {
@@ -33,7 +32,6 @@ impl API<Public> {
         api_config: APIConfig,
         consensus_config: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
-        storage_command_sender: Option<StorageAccess>,
         network_config: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
@@ -45,7 +43,6 @@ impl API<Public> {
             consensus_config,
             api_config,
             pool_command_sender,
-            storage_command_sender,
             network_config,
             version,
             network_command_sender,

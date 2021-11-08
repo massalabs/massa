@@ -29,7 +29,6 @@ async fn test_wishlist_delta_with_empty_remove() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -94,7 +93,6 @@ async fn test_wishlist_delta_remove() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)

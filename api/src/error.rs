@@ -6,7 +6,6 @@ use displaydoc::Display;
 use models::ModelsError;
 use network::NetworkError;
 use pool::PoolError;
-use storage::StorageError;
 use thiserror::Error;
 use time::TimeError;
 
@@ -15,8 +14,6 @@ use time::TimeError;
 pub enum ApiError {
     /// pool error: {0}
     PoolError(#[from] PoolError),
-    /// storage error: {0}
-    StorageError(#[from] StorageError),
     /// send channel error: {0}
     SendChannelError(String),
     /// receive channel error: {0}
