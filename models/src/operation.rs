@@ -71,6 +71,7 @@ enum OperationTypeId {
     RollBuy = 1,
     RollSell = 2,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
     pub content: OperationContent,

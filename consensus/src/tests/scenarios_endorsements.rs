@@ -98,7 +98,7 @@ async fn test_endorsement_check() {
             };
 
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap()
                 .best_parents

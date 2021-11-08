@@ -51,7 +51,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         .expect("could not start consensus controller");
 
     let parents: Vec<BlockId> = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .expect("could not get block graph status")
         .best_parents
@@ -121,7 +121,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         .expect("could not start consensus controller");
 
     let parents: Vec<BlockId> = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .expect("could not get block graph status")
         .best_parents
