@@ -6,7 +6,7 @@
 
 The smart contract engine (SCE) is decoupled from the consensus system (CSS); they maintain separate ledgers: the SCE ledger and the CSS ledger.
 
-The CSS informs the SCE whenever a block becomes final, and whenever the blockclique changes in any way.
+The CSS informs the SCE whenever a block becomes CSS-final, and whenever the blockclique changes in any way.
 
 The SCE executes the blockclique operations after sorting them by increasing block slot: this provides an absolute order of execution.
 
@@ -33,7 +33,7 @@ Where:
 * `gas_price` is the price per unit of gas that the caller is willing to pay for the execution
 * `coins` are extra coins that are spent by tge CSS and are available in the execution context of `bytecode`
 
-Blocks that include ExecuteSC operations must respect the followin criteria, or else they are invalid:
+Blocks that include ExecuteSC operations must respect the following criteria, or else they are invalid:
 * ExecuteSC spends `max_gas * gas_price + coins` from the sender address in the CSS ledger, which must therefore be available
 * all ExecuteSC operations included in the block must be ordered by decreasing `gas_price`
 * the sum of the max_gas values of all ExecuteSC operations in the block must not be higher than a protocol constant `max_block_gas`
@@ -44,8 +44,8 @@ When observing an ExecuteSC operation, the SCE will:
 * if any of the following steps fail, the bytecode is not executed and all its changes to the SCE ledger are rollbacked. The sender loses `max_gas * gas_price + coins`.
 * parse `bytecode` as smart contract bytecode
 * execute the bytecode in `bytecode`:
-  * if engine resource limits are hit (e.g. too much RAM used), execution fails
-  * if the execution gas usage exceeds `max_gas`, execution fails
+  * if hard config-defined engine resource limits are hit (e.g. too much RAM used), execution fails
+  * if the execution gas usage exceeds `max_gas` (defined inside the ExecuteSC operation call), execution fails
 
 ### SCE/CSS pipeline
 
@@ -57,14 +57,15 @@ Whenever the blockclique changes in any way, the CSS notifies the SCE of all the
 
 Whenever some blocks become final, the CSS notifies the SCE of all new final blocks of using the `BlocksFinal(BlockHashMap<Block>)` message.
 
-The SCE locally maintains a Final ledger and a Candidate ledger.
+The SCE locally maintains a Final SCE ledger and a Candidate SCE ledger.
 Addresses in the CSS ledger are also part of the SCE ledgers.
-Smart-contract specific addresses are also part of SCE ledgers. 
+Smart-contract specific addresses are also part of the SCE ledger (but not CSS ledgers). 
 
 When an SCE block execution requests a coin transfer form the SCE ledger to the CSS ledger, a `TransferToConsensus{target_addr: Address, origin_slot: Slot, amount: Amount}` message is sent from the SCE to the CSS.
+`origin_slot` is the slot of the block causing the `TransferToConsensus`.
 
 When the SCE receives a `BlockCliqueChanged` message:
-* the SCE reset its Candidate state to the Final state
+* the SCE reset its Candidate SCE ledger to the Final SCE ledger
 * the SCE sorts all blockclique blocks by increasing slot
 * for each block B in that order, the SCE processes the ExecuteSC operations in the block in the order they appear in the block. For each such operation `op`:
   * credit the block creator in the SCE ledger with `op.max_gas * op.gas_price`
@@ -75,7 +76,7 @@ When the SCE receives a `BlocksFinal` message:
 * a slot is SCE-final if its immediate predecessor slot contains a block that is CSS-final or is empty but followed in its own thread by a CSS-final block. This ensures that no new block executions can be inserted in-between existing final block executions in the SCE
 
 When a block B becomes SCE-final:
-* update the Final ledger of the SCE
+* update the Final SCE ledger by VM-executing the newly SCE-final block on top of the current Final SCE ledger 
 * if the block B requires transferring coins from the SCE ledger to the CSS ledeger, send a TransferToConsensus to the CSS:
   * fields:
     * target_addr = the emitter of the operation that caused the TransferToConsensus
@@ -97,7 +98,12 @@ When the CSS receives a TransferToConsensus message:
   * Bytecode is interpreted as WASM and executed
   * massa-specific "systcalls" are made available to the execution engine
   * the execution engine is fully deterministic
-  * the execution engine is metered to measure and limit resource and gas usage in realtime during bytecode execution
+  * the execution engine measures and limits resource and gas usage during realtime during bytecode execution
+
+* the SCE ledger is basically a `HashMap<Address, SCELedgerEntry>` where SCELedgerEntry has the fields:
+  * sce_balance: `Amount`
+  * database: `HashMap<Hash, Vec<u8>>`
+  * program_data: `Vec<u8>` // to be better defined in followup issues
 
 ### SCE WASM execution engine syscalls
 
