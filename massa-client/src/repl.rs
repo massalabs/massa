@@ -30,11 +30,7 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
     println!("Use the Up/Down arrows to scroll through history");
     println!("Use the Right arrow or Tab to complete your command");
     println!("Use the Enter key to execute your command");
-    println!(
-        "{}",
-        Command::help.run(client, wallet, &Vec::new(), false).await
-    );
-    println!();
+    println!("{}\n", crate::cmds::help());
     let mut history = MyHistory::default();
     let completion = MyCompletion::default();
     loop {
@@ -50,8 +46,11 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
             let parameters = input[1..].to_vec();
             // Print result of evaluated command
             match cmd {
-                Ok(command) => println!("{}", command.run(client, wallet, &parameters, true).await),
-                Err(_) => println!("{}", Command::not_found()),
+                Ok(command) => match command.run(client, wallet, &parameters).await {
+                    Ok(output) => println!("{}", output),
+                    Err(e) => println!("{}", style(format!("Error: {}", e)).red()),
+                },
+                Err(_) => println!("Command not found!\ntype \"help\" to get the list of commands"),
             }
         }
     }
