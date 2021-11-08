@@ -5,6 +5,7 @@ use crate::error::ApiError::WrongAPI;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use consensus::{ConsensusCommandSender, ConsensusConfig, ExportBlockStatus, Status};
 use crypto::signature::PrivateKey;
+use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
@@ -22,8 +23,6 @@ use models::{
 };
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 use storage::StorageAccess;
 use time::UTime;
@@ -333,19 +332,13 @@ impl Endpoints for API<Public> {
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
-        let storage_cmd_sender = self.0.storage_command_sender.clone();
         let cfg = self.0.consensus_config.clone();
         let api_cfg = self.0.api_config;
-        let addrs = addresses;
-        let mut pool_command_sender = self.0.pool_command_sender.clone();
+        let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;
         let closure = async move || {
-            let mut res = Vec::new();
-            // roll and balance info
-            let cloned = addrs.clone();
-            let states = cmd_sender
-                .get_addresses_info(cloned.into_iter().collect())
-                .await?;
+            let mut res = Vec::with_capacity(addresses.len());
+
             // next draws info
             let now = UTime::now(compensation_millis)?;
             let current_slot = get_latest_block_slot_at_timestamp(
@@ -355,72 +348,74 @@ impl Endpoints for API<Public> {
                 now,
             )?
             .unwrap_or_else(|| Slot::new(0, 0));
-            let next_draws = cmd_sender
-                .get_selection_draws(
-                    current_slot,
-                    Slot::new(
-                        current_slot.period + api_cfg.draw_lookahead_period_count,
-                        current_slot.thread,
-                    ),
-                )
-                .await?;
-            // block info
-            let mut blocks = HashMap::new();
-            let cloned = addrs.clone();
-            for ad in cloned.iter() {
-                blocks.insert(
-                    ad,
-                    cmd_sender
-                        .get_block_ids_by_creator(*ad)
-                        .await?
-                        .into_keys()
-                        .collect::<BlockHashSet>(),
-                );
-                if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
-                    let new = storage_cmd_sender.get_block_ids_by_creator(ad).await?;
-                    match blocks.entry(ad) {
-                        Entry::Occupied(mut occ) => occ.get_mut().extend(new),
-                        Entry::Vacant(vac) => {
-                            vac.insert(new);
-                        }
-                    }
-                }
+            let next_draws = cmd_sender.get_selection_draws(
+                current_slot,
+                Slot::new(
+                    current_slot.period + api_cfg.draw_lookahead_period_count,
+                    current_slot.thread,
+                ),
+            );
+
+            // roll and balance info
+            let states = cmd_sender.get_addresses_info(addresses.iter().copied().collect());
+
+            // wait for both simultaneously
+            let (next_draws, states) = tokio::join!(next_draws, states);
+            let (next_draws, mut states) = (next_draws?, states?);
+
+            // list created blocks
+            let mut blocks: AddressHashMap<BlockHashSet> =
+                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
+            let mut block_futs = FuturesUnordered::new();
+
+            for &ad in addresses.iter() {
+                let cmd_snd = cmd_sender.clone();
+                block_futs.push(async move {
+                    Result::<(Address, BlockHashSet), ApiError>::Ok((
+                        ad,
+                        cmd_snd
+                            .get_block_ids_by_creator(ad)
+                            .await?
+                            .into_keys()
+                            .collect::<BlockHashSet>(),
+                    ))
+                });
             }
+            while let Some(res) = block_futs.next().await {
+                let (a, blks) = res?;
+                blocks.insert(a, blks);
+            }
+
             // endorsements info
             // TODO: add get_endorsements_by_address consensus command -> wait for !238
 
             // operations info
-            let mut ops = HashMap::new();
-            let cloned = addrs.clone();
-            for ad in cloned.iter() {
-                let mut res: OperationHashMap<_> = pool_command_sender
-                    .get_operations_involving_address(*ad)
-                    .await?;
-                cmd_sender
-                    .get_operations_involving_address(*ad)
-                    .await?
-                    .into_iter()
-                    .for_each(|(op_id, search_new)| {
-                        res.entry(op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
-                if let Some(storage_cmd_sender) = storage_cmd_sender.clone() {
-                    storage_cmd_sender
-                        .get_operations_involving_address(&ad)
-                        .await?
-                        .into_iter()
-                        .for_each(|(op_id, search_new)| {
-                            res.entry(op_id)
-                                .and_modify(|search_old| search_old.extend(&search_new))
-                                .or_insert(search_new);
-                        });
-                }
-                ops.insert(ad, res);
+            let mut ops: AddressHashMap<OperationHashSet> =
+                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
+            let mut op_futs = FuturesUnordered::new();
+            for &ad in addresses.iter() {
+                let cmd_snd = cmd_sender.clone();
+                let mut pool_cmd_snd = pool_command_sender.clone();
+                op_futs.push(async move {
+                    let get_pool_ops = pool_cmd_snd.get_operations_involving_address(ad);
+                    let get_consensus_ops = cmd_snd.get_operations_involving_address(ad);
+                    let (get_pool_ops, get_consensus_ops) =
+                        tokio::join!(get_pool_ops, get_consensus_ops);
+                    let gathered: OperationHashSet = get_pool_ops?
+                        .into_keys()
+                        .chain(get_consensus_ops?.into_keys())
+                        .collect();
+                    Result::<(Address, OperationHashSet), ApiError>::Ok((ad, gathered))
+                });
             }
-            // staking addrs
-            for address in addrs.into_iter() {
-                let state = states.get(&address).ok_or(ApiError::NotFound)?;
+            while let Some(res) = op_futs.next().await {
+                let (a, op_set) = res?;
+                ops.insert(a, op_set);
+            }
+
+            // compile everything per address
+            for address in addresses.into_iter() {
+                let state = states.remove(&address).ok_or(ApiError::NotFound)?;
                 res.push(AddressInfo {
                     address,
                     thread: address.get_thread(cfg.thread_count),
@@ -439,32 +434,11 @@ impl Endpoints for API<Public> {
                         .filter(|(_, (ad, _))| *ad == address)
                         .map(|(slot, _)| *slot)
                         .collect(),
-                    endorsement_draws: next_draws
-                        .iter()
-                        .filter(|(_, (_, ads))| ads.contains(&address))
-                        .map(|(slot, (_, ads))| {
-                            ads.iter()
-                                .enumerate()
-                                .filter(|(_, ad)| **ad == address)
-                                .map(|(i, _)| (slot.to_string(), i as u64))
-                                .collect::<Vec<(String, u64)>>()
-                        })
-                        .flatten()
-                        .collect(),
-                    blocks_created: blocks
-                        .get(&address)
-                        .ok_or(ApiError::NotFound)?
-                        .into_iter()
-                        .copied()
-                        .collect(),
-                    involved_in_endorsements: HashSet::new().into_iter().collect(), // TODO: update wait for !238
-                    involved_in_operations: ops
-                        .get(&address)
-                        .ok_or(ApiError::NotFound)?
-                        .keys()
-                        .copied()
-                        .collect(),
-                    production_stats: state.production_stats.clone(),
+                    endorsement_draws: Default::default(), // TODO: update wait for !238
+                    blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
+                    involved_in_endorsements: Default::default(), // TODO: update wait for !238
+                    involved_in_operations: ops.remove(&address).ok_or(ApiError::NotFound)?,
+                    production_stats: state.production_stats,
                 })
             }
             Ok(res)
