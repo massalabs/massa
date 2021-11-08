@@ -54,6 +54,8 @@ The SCE and CSS modules are separate.
 There is a FIFO message pipe from the CSS to the SCE, and another from the SCE to the CSS. 
 
 Whenever the blockclique changes in any way, the CSS notifies the SCE of all the blocks of the current blockclique using the `BlockCliqueChanged(BlockHashMap<Block>)` message.
+Note that this behevior is "theoretical" and will be optimized to avoid sending/recomputing everything at every blockclique change.
+Possible optimizations include caching, checkpointing, incremental updates, etc... but are beyond the scope of this document.
 
 Whenever some blocks become final, the CSS notifies the SCE of all new final blocks of using the `BlocksFinal(BlockHashMap<Block>)` message.
 
