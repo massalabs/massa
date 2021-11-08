@@ -36,6 +36,7 @@ dependencies = [
  "consensus",
  "crypto",
  "displaydoc",
+ "futures 0.3.17",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",

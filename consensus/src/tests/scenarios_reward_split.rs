@@ -103,7 +103,7 @@ async fn test_reward_split() {
 
             // Create, and propagate, block 1.
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap()
                 .best_parents
@@ -126,7 +126,7 @@ async fn test_reward_split() {
 
             // Create, and propagate, block 2.
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap()
                 .best_parents

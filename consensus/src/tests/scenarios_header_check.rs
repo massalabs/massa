@@ -30,7 +30,7 @@ async fn test_consensus_asks_for_block() {
         None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -82,7 +82,7 @@ async fn test_consensus_does_not_ask_for_block() {
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;

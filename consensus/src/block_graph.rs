@@ -482,7 +482,7 @@ impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub block: BlockHeader,
+    pub header: BlockHeader,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
@@ -498,43 +498,71 @@ pub enum Status {
     Final,
 }
 
-impl<'a> From<&'a BlockGraph> for BlockGraphExport {
+impl<'a> BlockGraphExport {
     /// Conversion from blockgraph.
-    fn from(block_graph: &'a BlockGraph) -> Self {
+    pub fn extract_from(
+        block_graph: &'a BlockGraph,
+        slot_start: Option<Slot>,
+        slot_end: Option<Slot>,
+    ) -> Self {
         let mut export = BlockGraphExport {
             genesis_blocks: block_graph.genesis_hashes.clone(),
-            active_blocks: Default::default(),
-            discarded_blocks: Default::default(),
+            active_blocks: BlockHashMap::with_capacity_and_hasher(
+                block_graph.block_statuses.len(),
+                BuildHHasher::default(),
+            ),
+            discarded_blocks: BlockHashMap::with_capacity_and_hasher(
+                block_graph.block_statuses.len(),
+                BuildHHasher::default(),
+            ),
             best_parents: block_graph.best_parents.clone(),
             latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
             gi_head: block_graph.gi_head.clone(),
             max_cliques: block_graph.max_cliques.clone(),
         };
 
+        let filter = |s| {
+            if let Some(s_start) = slot_start {
+                if s < s_start {
+                    return false;
+                }
+            }
+            if let Some(s_end) = slot_end {
+                if s >= s_end {
+                    return false;
+                }
+            }
+            true
+        };
+
         for (hash, block) in block_graph.block_statuses.iter() {
             match block {
                 BlockStatus::Discarded { header, reason, .. } => {
-                    export
-                        .discarded_blocks
-                        .insert(*hash, (reason.clone(), header.clone()));
+                    if *reason == DiscardReason::Stale && filter(header.content.slot) {
+                        export
+                            .discarded_blocks
+                            .insert(*hash, (reason.clone(), header.clone()));
+                    }
                 }
-                BlockStatus::Active(block) => {
-                    export.active_blocks.insert(
-                        *hash,
-                        ExportCompiledBlock {
-                            block: block.block.header.clone(),
-                            children: block
-                                .children
-                                .iter()
-                                .map(|thread| thread.keys().copied().collect::<BlockHashSet>())
-                                .collect(),
-                            status: if block.is_final {
-                                Status::Final
-                            } else {
-                                Status::Active
+                BlockStatus::Active(a_block) => {
+                    if filter(a_block.block.header.content.slot) {
+                        export.active_blocks.insert(
+                            *hash,
+                            ExportCompiledBlock {
+                                header: a_block.block.header.clone(),
+                                children: a_block
+                                    .children
+                                    .iter()
+                                    .map(|thread| thread.keys().copied().collect::<BlockHashSet>())
+                                    .collect(),
+                                status: if a_block.is_final {
+                                    Status::Final
+                                } else {
+                                    Status::Active
+                                },
                             },
-                        },
-                    );
+                        );
+                    }
                 }
                 _ => continue,
             }
@@ -1428,6 +1456,11 @@ impl BlockGraph {
     /// Gets best parents.
     pub fn get_best_parents(&self) -> &Vec<(BlockId, u64)> {
         &self.best_parents
+    }
+
+    /// Gets the list of cliques.
+    pub fn get_cliques(&self) -> Vec<Clique> {
+        self.max_cliques.clone()
     }
 
     /// Returns the list of block IDs created by a given address, and their finality statuses

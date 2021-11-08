@@ -156,7 +156,7 @@ pub trait Endpoints {
 
     /// Get information on a block given its hash.
     #[rpc(name = "get_blocks")]
-    fn get_blocks(&self, _: Vec<BlockId>) -> BoxFuture<Result<Vec<BlockInfo>, ApiError>>;
+    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>>;
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp
