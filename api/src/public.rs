@@ -477,7 +477,6 @@ impl Endpoints for API<Public> {
                 ops.insert(ad, res);
             }
             // staking addrs
-            let staking_addrs = cmd_sender.get_staking_addresses().await?;
             for address in addrs.into_iter() {
                 let state = states.get(&address).ok_or(ApiError::NotFound)?;
                 res.push(AddressInfo {
@@ -523,7 +522,7 @@ impl Endpoints for API<Public> {
                         .keys()
                         .copied()
                         .collect(),
-                    is_staking: staking_addrs.contains(&address),
+                    production_stats: state.production_stats.clone(),
                 })
             }
             Ok(res)

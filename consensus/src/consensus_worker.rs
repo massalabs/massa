@@ -7,8 +7,8 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
-use models::stats::ConsensusStats;
 use models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
+use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashSet,
@@ -936,7 +936,7 @@ impl ConsensusWorker {
                     {}
                 );
                 response_tx
-                    .send(self.pos.get_stakers_production_stats(addrs))
+                    .send(self.pos.get_stakers_production_stats(&addrs))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send get_staking addresses response: {:?}",
@@ -999,6 +999,7 @@ impl ConsensusWorker {
             .filter(|t| **t >= timespan_start && **t < timespan_end)
             .count() as u64;
         let clique_count = self.block_db.get_clique_count() as u64;
+        let target_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         Ok(ConsensusStats {
             final_block_count,
             final_operation_count,
@@ -1006,7 +1007,7 @@ impl ConsensusWorker {
             clique_count,
             start_timespan: timespan_start,
             end_timespan: timespan_end,
-            staker_count: self.pos.get_stakers_count(),
+            staker_count: self.pos.get_stakers_count(target_cycle)?,
         })
     }
 
@@ -1036,6 +1037,7 @@ impl ConsensusWorker {
         let mut states = AddressHashMap::default();
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
+        let prod_stats = self.pos.get_stakers_production_stats(&addresses);
         for thread in 0..thread_count {
             if addresses_by_thread[thread as usize].is_empty() {
                 continue;
@@ -1085,6 +1087,23 @@ impl ConsensusWorker {
                             .0
                             .get(&addr)
                             .map_or_else(|| LedgerData::default(), |v| v.clone()),
+                        production_stats: prod_stats
+                            .iter()
+                            .map(|cycle_stats| AddressCycleProductionStats {
+                                cycle: cycle_stats.cycle,
+                                is_final: cycle_stats.is_final,
+                                ok_count: cycle_stats
+                                    .ok_nok_counts
+                                    .get(&addr)
+                                    .unwrap_or_else(|| &(0, 0))
+                                    .0,
+                                nok_count: cycle_stats
+                                    .ok_nok_counts
+                                    .get(&addr)
+                                    .unwrap_or_else(|| &(0, 0))
+                                    .1,
+                            })
+                            .collect(),
                     },
                 );
             }

@@ -276,32 +276,30 @@ Get addresses.
   {
     "address": String,
     "balance": {
-      "candidate_balance": String, // represent an Amount in coins
-      "final_balance": String, // represent an Amount in coins
-      "locked_balance": String, // represent an Amount in coins
-    },
-    "block_draws": [
-      {
-        "period": Number,
-        "thread": Number
-      }
-    ],
-    "blocks_created": [String], // Block ids
-    "endorsement_draws": {
-      "(period: 4836, thread: 10)": 6 // TODO #447
-    },
-    "involved_in_endorsements": [String], // Endorsement ids
-    "involved_in_operations": [String], // Endorsement ids
-    "is_staking": Boolean,
-    "rolls": {
-      "active_rolls": Number,
-      "candidate_rolls": Number,
-      "final_rolls": Number
-    },
-    "thread": Number
-  }
-]
-
+        "final_balance": Number,
+        "candidate_balance": Number,
+        "locked_balance": Number,
+     },
+     "rolls": {
+        "active_rolls": Number,
+        "final_rolls": Number,
+        "candidate_rolls": Number,
+     },
+     "block_draws": [{"period": Number, "thread", Number }, ... ],
+     "endorsement_draws": {Slot: Number}, // number is the index
+     "blocks_created": [String], // Block ids
+     "involved_in_endorsements": [String], // Endorsement ids,
+     "involved_in_operations": [String], // Operation ids,
+     "production_stats": [
+         {
+             "cycle": Number,
+             "is_final": bool, // is this cycle final
+             "ok_count": Number, // number of blocks successfully produced and finalized in the cycle
+             "nok_count": Number, // number of blocks not produced or that failed to finalize in the cycle
+         },
+         ...
+     ]
+ }, ... ]  // TODO
 ```
 
 ### `send_operations`

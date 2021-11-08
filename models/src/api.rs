@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::address::AddressCycleProductionStats;
 use crate::node::NodeId;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
@@ -154,17 +155,12 @@ pub struct AddressInfo {
     pub blocks_created: BlockHashSet,
     pub involved_in_endorsements: EndorsementHashSet,
     pub involved_in_operations: OperationHashSet,
-    pub is_staking: bool,
+    pub production_stats: Vec<AddressCycleProductionStats>,
 }
 
 impl std::fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Address: {}{}",
-            self.address,
-            display_if_true(self.is_staking, "staking"),
-        )?;
+        writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
@@ -204,6 +200,24 @@ impl std::fmt::Display for AddressInfo {
                 .iter()
                 .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
         )?;
+        writeln!(f, "Production stats:")?;
+        let mut sorted_production_stats = self.production_stats.clone();
+        sorted_production_stats.sort_unstable_by_key(|v| v.cycle);
+        for cycle_stat in sorted_production_stats.into_iter() {
+            writeln!(
+                f,
+                "\t produced {} and failed {} at cycle {} {}",
+                cycle_stat.ok_count,
+                cycle_stat.nok_count,
+                cycle_stat.cycle,
+                if cycle_stat.is_final {
+                    "(final)"
+                } else {
+                    "(non-final)"
+                }
+            )?;
+        }
+
         Ok(())
     }
 }
@@ -215,7 +229,6 @@ impl AddressInfo {
             thread: self.thread,
             balance: self.balance,
             rolls: self.rolls,
-            is_staking: self.is_staking,
         }
     }
 }
@@ -225,17 +238,11 @@ pub struct CompactAddressInfo {
     pub thread: u8,
     pub balance: BalanceInfo,
     pub rolls: RollsInfo,
-    pub is_staking: bool,
 }
 
 impl std::fmt::Display for CompactAddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Address: {}{}",
-            self.address,
-            display_if_true(self.is_staking, "staking"),
-        )?;
+        writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
