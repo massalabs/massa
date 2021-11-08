@@ -129,22 +129,37 @@ Returns operations information associated to a given list of operations' IDs.
 - Return:
 
 ```javascript
-[{
-    "id": String, // string is an OperationId,
-    "in_pool": bool,
-    "in_blocks": [String], // string is a BlockId,
-    "is_final": bool,
+[
+  {
+    "id": String, // Operation id
+    "in_blocks": [String], // Block ids
+    "in_pool": Boolean,
+    "is_final": Boolean,
     "operation": {
-        "content":
-            "sender_public_key": String // string is a PublicKey,
-            "fee": Number, // in coins
-            "expire_period": Number,
-            "op": OperationType, // TODO not sure how this go in JSON
-
-        }
-        "signature": String,
+      "content": {
+        "expire_period": Number,
+        "fee": String, // represent an Amount in coins
+        "op": {
+          "Transaction": {
+            "amount": String, // represent an Amount in coins
+            "recipient_address": String
+          }
+          OR
+          "RollBuy": {
+            "roll_count": Number
+          }
+          OR
+          "RollSell": {
+            "roll_count": Number
+          }
+        },
+        "sender_public_key": String
+      },
+      "signature": String
     }
- }, ... ].
+  }
+]
+
 ```
 
 ### `get_endorsements`
