@@ -1,20 +1,66 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::rpc::Client;
 use console::style;
 use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
-use models::api::{AddressInfo, EndorsementInfo, OperationInfo};
+use erased_serde::{Serialize, Serializer};
+use models::api::{AddressInfo, EndorsementInfo, NodeStatus, OperationInfo};
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
+use std::fmt::Display;
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
 use wallet::Wallet;
 
-use crate::rpc::Client;
+pub trait Output: Serialize + Display {}
+impl dyn Output {
+    pub(crate) fn display(&self) {
+        println!("{}", self);
+    }
+    pub(crate) fn json(&self) {
+        let json = &mut serde_json::Serializer::new(std::io::stdout());
+        let mut format: Box<dyn Serializer> = Box::new(<dyn Serializer>::erase(json));
+        self.erased_serialize(&mut format).unwrap();
+    }
+}
+
+impl Output for String {}
+impl Output for &str {}
+
+// TODO: move them close to types definition
+impl Output for NodeStatus {}
+
+// TODO: Should be implement as a custom Err value (for JSON output compatibility)
+macro_rules! repl_err {
+    ($err: expr) => {
+        //Box::new(style(format!("Error: {:?}", $err)).red())
+        Box::new(format!("Error: {:?}", $err))
+    };
+}
+
+macro_rules! repl_ok {
+    ($ok: expr) => {
+        Box::new($ok)
+    };
+}
+
+// TODO: ugly utilities functions
+fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> Result<Vec<T>, T::Err> {
+    args.iter().map(|x| x.parse::<T>()).collect()
+}
+
+fn format_vec<T: std::fmt::Display>(output: &Vec<T>) -> String {
+    output
+        .iter()
+        .map(|x| format!("{}", x))
+        .collect::<Vec<String>>()
+        .join("\n")
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, ToString)]
@@ -152,41 +198,12 @@ pub enum Command {
     send_transaction,
 }
 
-// TODO: -> Result<Box<dyn std::fmt::Display + serde::Serialize<S>>>;
-type PrettyPrint = Box<dyn std::fmt::Display>;
-
-// TODO: Should be implement as a custom Err value (for JSON output compatibility)
-macro_rules! repl_err {
-    ($err: expr) => {
-        Box::new(style(format!("Error: {:?}", $err)).red())
-    };
-}
-
-macro_rules! repl_ok {
-    ($ok: expr) => {
-        Box::new($ok)
-    };
-}
-
-// TODO: ugly utilities functions
-fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> Result<Vec<T>, T::Err> {
-    args.iter().map(|x| x.parse::<T>()).collect()
-}
-
-fn format_vec<T: std::fmt::Display>(output: &Vec<T>) -> String {
-    output
-        .iter()
-        .map(|x| format!("{}", x))
-        .collect::<Vec<String>>()
-        .join("\n")
-}
-
 impl Command {
-    pub(crate) fn not_found() -> PrettyPrint {
+    pub(crate) fn not_found() -> Box<dyn Output> {
         repl_ok!("Command not found!\ntype \"help\" to get the list of commands")
     }
 
-    pub(crate) fn _wrong_parameters(&self) -> PrettyPrint {
+    pub(crate) fn _wrong_parameters(&self) -> Box<dyn Output> {
         repl_ok!(format!(
             "{} given is not well formed...\ntype \"help {}\" to more info",
             self.get_str("args").unwrap(),
@@ -194,7 +211,7 @@ impl Command {
         ))
     }
 
-    pub(crate) fn help(&self) -> PrettyPrint {
+    pub(crate) fn help(&self) -> Box<dyn Output> {
         repl_ok!(format!(
             "- {} {}: {}{}",
             style(self.to_string()).green(),
@@ -218,7 +235,7 @@ impl Command {
         wallet: &mut Wallet,
         parameters: &Vec<String>,
         is_interactive: bool,
-    ) -> PrettyPrint {
+    ) -> Box<dyn Output> {
         match self {
             Command::exit => process::exit(0),
 

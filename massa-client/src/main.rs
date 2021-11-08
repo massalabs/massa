@@ -65,7 +65,7 @@ async fn main(args: Args) {
         None => settings.default_node.private_port,
     };
     // ...
-    let mut wallet = Wallet::new(args.wallet).unwrap(); // TODO
+    let mut wallet = Wallet::new(args.wallet).unwrap();
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
@@ -77,9 +77,9 @@ async fn main(args: Args) {
             .run(&client, &mut wallet, &args.parameters, false)
             .await;
         if args.json {
-            println!("{}", serde_json::to_string_pretty(&output).unwrap());
+            output.json();
         } else {
-            println!("{}", output);
+            output.display();
         }
     }
 }
