@@ -88,7 +88,6 @@ async fn test_roll() {
         cfg.clone(),
         None,
         None,
-        None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
@@ -550,7 +549,6 @@ async fn test_roll_block_creation() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
@@ -863,7 +861,6 @@ async fn test_roll_deactivation() {
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
-            None,
             None,
             None,
             0,

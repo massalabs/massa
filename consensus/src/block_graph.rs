@@ -538,7 +538,7 @@ impl<'a> BlockGraphExport {
         for (hash, block) in block_graph.block_statuses.iter() {
             match block {
                 BlockStatus::Discarded { header, reason, .. } => {
-                    if *reason == DiscardReason::Stale && filter(header.content.slot) {
+                    if filter(header.content.slot) {
                         export
                             .discarded_blocks
                             .insert(*hash, (reason.clone(), header.clone()));

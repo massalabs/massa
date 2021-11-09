@@ -18,7 +18,6 @@ use network::{start_network_controller, Establisher, NetworkCommandSender, Netwo
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use protocol_exports::ProtocolManager;
 use protocol_worker::start_protocol_controller;
-use storage::{start_storage, StorageManager};
 use time::UTime;
 use tokio::signal;
 use tokio::sync::mpsc;
@@ -37,7 +36,6 @@ async fn launch(
     ConsensusManager,
     PoolManager,
     ProtocolManager,
-    Option<StorageManager>,
     NetworkManager,
     mpsc::Receiver<()>,
     StopHandle,
@@ -92,15 +90,6 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-    // start storage
-    let (storage_command_sender, storage_manager) = if cfg.storage.disable_storage {
-        (None, None)
-    } else {
-        let (storage_access, storage_manager) =
-            start_storage(cfg.storage.clone()).expect("could not start storage controller");
-        (Some(storage_access), Some(storage_manager))
-    };
-
     // launch protocol controller
     let (
         protocol_command_sender,
@@ -134,7 +123,6 @@ async fn launch(
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
-            storage_command_sender.clone(),
             boot_pos,
             boot_graph,
             clock_compensation,
@@ -170,7 +158,6 @@ async fn launch(
         cfg.api,
         cfg.consensus,
         pool_command_sender.clone(),
-        storage_command_sender.clone(),
         cfg.network,
         cfg.version,
         network_command_sender.clone(),
@@ -188,7 +175,6 @@ async fn launch(
         consensus_manager,
         pool_manager,
         protocol_manager,
-        storage_manager,
         network_manager,
         api_private_stop_rx,
         api_private_handle,
@@ -208,7 +194,6 @@ async fn run(cfg: node_config::Config) {
             consensus_manager,
             pool_manager,
             protocol_manager,
-            storage_manager,
             network_manager,
             mut api_private_stop_rx,
             api_private_handle,
@@ -254,7 +239,6 @@ async fn run(cfg: node_config::Config) {
             consensus_event_receiver,
             pool_manager,
             protocol_manager,
-            storage_manager,
             network_manager,
             api_private_handle,
             api_public_handle,
@@ -272,7 +256,6 @@ async fn stop(
     consensus_event_receiver: ConsensusEventReceiver,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
-    storage_manager: Option<StorageManager>,
     network_manager: NetworkManager,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -305,14 +288,6 @@ async fn stop(
         .stop(protocol_event_receiver, protocol_pool_event_receiver)
         .await
         .expect("protocol shutdown failed");
-
-    // stop storage controller
-    if let Some(storage_manager) = storage_manager {
-        storage_manager
-            .stop()
-            .await
-            .expect("storage shutdown failed");
-    }
 
     // stop network controller
     network_manager

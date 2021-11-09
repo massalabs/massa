@@ -34,7 +34,6 @@ async fn test_unsorted_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_period = 3;
             let genesis_hashes = consensus_command_sender
@@ -173,7 +172,6 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             // create test blocks
             let genesis_hashes = consensus_command_sender
@@ -277,7 +275,6 @@ async fn test_too_many_blocks_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             // get genesis block hashes
             let genesis_hashes = consensus_command_sender
@@ -384,7 +381,6 @@ async fn test_dep_in_back_order() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -560,7 +556,6 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -697,7 +692,6 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
