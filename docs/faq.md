@@ -71,10 +71,10 @@ connectivity stats.
 If you have rolls, you also need to register the key used to buy rolls
 to start staking again (see [Staking](staking.md)).
 
-### Why are the balance in the client and the explorer different?
+### Why are the balances in the client and the explorer different ?
 
 It may mean that your node is desynchronized.
-Check that your node  is stable, that the computer meets hardware requirements, and try restarting your node.
+Check that your node is running, that the computer meets hardware requirements, and try restarting your node.
 
 ### Does the command `cargo run -- --wallet wallet.dat` override my existing wallet?
 
