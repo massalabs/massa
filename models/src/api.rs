@@ -349,4 +349,5 @@ pub struct APIConfig {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
+    pub max_arguments: u64,
 }

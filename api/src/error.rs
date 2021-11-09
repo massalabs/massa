@@ -14,6 +14,8 @@ use time::TimeError;
 pub enum ApiError {
     /// pool error: {0}
     PoolError(#[from] PoolError),
+    /// too many arguments error: {0}
+    TooManyArguments(String),
     /// send channel error: {0}
     SendChannelError(String),
     /// receive channel error: {0}
