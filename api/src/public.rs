@@ -171,9 +171,14 @@ impl Endpoints for API<Public> {
         &self,
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
+        let api_cfg = self.0.api_config;
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
+            if ops.len() as u64 > api_cfg.max_arguments {
+                return Err(ApiError::TooManyArguments("too many arguments".into()));
+            }
+
             let operation_ids: OperationHashSet = ops.iter().cloned().collect();
 
             // simultaneously ask pool and consensus
@@ -338,6 +343,10 @@ impl Endpoints for API<Public> {
         let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;
         let closure = async move || {
+            if addresses.len() as u64 > api_cfg.max_arguments {
+                return Err(ApiError::TooManyArguments("too many arguments".into()));
+            }
+
             let mut res = Vec::with_capacity(addresses.len());
 
             // next draws info
@@ -452,7 +461,11 @@ impl Endpoints for API<Public> {
         ops: Vec<Operation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
+        let api_cfg = self.0.api_config;
         let closure = async move || {
+            if ops.len() as u64 > api_cfg.max_arguments {
+                return Err(ApiError::TooManyArguments("too many arguments".into()));
+            }
             let to_send = ops
                 .into_iter()
                 .map(|op| Ok((op.verify_integrity()?, op)))
