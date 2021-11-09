@@ -34,11 +34,10 @@ async fn test_unsorted_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_period = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -173,11 +172,10 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             // create test blocks
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -235,7 +233,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
             // Check that the block has been silently dropped and not discarded for being too much in the future.
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             assert!(!block_graph.active_blocks.contains_key(&hash3));
@@ -277,11 +275,10 @@ async fn test_too_many_blocks_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             // get genesis block hashes
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -338,7 +335,7 @@ async fn test_too_many_blocks_in_the_future() {
             {}
             // ensure that the graph contains only what we expect
             let graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             expected_clone.extend(graph.genesis_blocks);
@@ -384,10 +381,9 @@ async fn test_dep_in_back_order() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -560,10 +556,9 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -697,10 +692,9 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;

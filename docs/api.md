@@ -195,28 +195,27 @@ Get endorsements (not yet implemented)
  }]
 ```
 
-### `get_blocks`
+### `get_block`
 
 Get information on a block given its hash.
 
 - Parameters:
 
 ```javascript
-[String] // Block ids
+String // Block id
 ```
 
 - Return:
 
 ```javascript
-[
-  {
-    "content": {
-      "block": {
-        "header": {
-          "content": {
-            "creator": String, // Public key
-            "endorsements": [ // At most endorsement_count items
-              {
+{
+    "id": String // BlockId,
+    "content": Null or {
+        "is_final": bool,
+        "is_stale": bool,
+        "is_in_blockclique": bool,
+        "block": {
+            "header": {
                 "content": {
                   "endorsed_block": String, // Block id
                   "index": Number,
@@ -267,10 +266,7 @@ Get information on a block given its hash.
       "is_in_blockclique": Boolean,
       "is_stale": Boolean
     },
-    "id": String // Block id
-  }
-]
-
+}
 ```
 
 ### `get_graph_interval`

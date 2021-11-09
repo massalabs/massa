@@ -53,9 +53,11 @@ You should be selected to create blocks in the different threads.
 
 To check when your address is selected to stake, run this command:
 
-    next_draws <your_address>
+    get_addresses <your_address>
 
-Check that your balance increase, for each block or endorsement that you
+and look at the "next draws" section.
+
+Also check that your balance increases, for each block or endorsement that you
 create you should get a small reward.
 
 ## Selling rolls

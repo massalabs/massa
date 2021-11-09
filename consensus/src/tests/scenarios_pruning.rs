@@ -25,10 +25,9 @@ async fn test_pruning_of_discarded_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -52,7 +51,7 @@ async fn test_pruning_of_discarded_blocks() {
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert!(status.discarded_blocks.len() <= cfg.max_discarded_blocks);
@@ -87,10 +86,9 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -114,7 +112,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert!(status.discarded_blocks.len() <= cfg.max_future_processing_blocks);
@@ -149,10 +147,9 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -195,7 +192,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             // Note the parent too much in the future will not be discarded, but ignored.
             loop {
                 let status = consensus_command_sender
-                    .get_block_graph_status()
+                    .get_block_graph_status(None, None)
                     .await
                     .expect("could not get block graph status");
                 if status.discarded_blocks.len() == 3 {

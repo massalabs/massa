@@ -24,7 +24,6 @@ use pool::PoolCommandSender;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 use std::thread::JoinHandle;
-use storage::StorageAccess;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
@@ -35,7 +34,6 @@ mod public;
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     pub pool_command_sender: PoolCommandSender,
-    pub storage_command_sender: Option<StorageAccess>,
     pub consensus_config: ConsensusConfig,
     pub api_config: APIConfig,
     pub network_config: NetworkConfig,
@@ -156,7 +154,7 @@ pub trait Endpoints {
 
     /// Get information on a block given its hash.
     #[rpc(name = "get_blocks")]
-    fn get_blocks(&self, _: Vec<BlockId>) -> BoxFuture<Result<Vec<BlockInfo>, ApiError>>;
+    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>>;
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp

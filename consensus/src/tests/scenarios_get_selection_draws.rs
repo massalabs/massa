@@ -71,7 +71,6 @@ async fn test_get_selection_draws_high_end_slot() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let draws = consensus_command_sender
                 .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))

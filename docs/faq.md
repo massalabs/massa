@@ -18,7 +18,7 @@ availability and are easy to configure. Cons are that nodes running on a
 VPS can lead to centralization if a lot of nodes running on the same
 provider (e.g. AWS).
 
-### How to run a node in the background?
+### How to keep the node running when I close the terminal?
 
 You can run the following command in the terminal:
 
@@ -44,11 +44,11 @@ engine.
 We are planning some exciting features, such as self-wakeup, a bit like
 what is introduced here: https://arxiv.org/pdf/2102.10784.pdf
 
-### What ports does the MASSA use?
+### What ports does Massa use?
 
 By default, Massa uses TCP port 31244 for protocol communication with
 other nodes, and 31245 to bootstrap other nodes. Massa also uses TCP
-port 33033 for local API listening (API v1), 33034 for the new private
+port 33034 for the new private
 API, and 33035 for the new public API (API v2).
 
 ### How to restart the Node?
@@ -71,9 +71,10 @@ connectivity stats.
 If you have rolls, you also need to register the key used to buy rolls
 to start staking again (see [Staking](staking.md)).
 
-### Why are a balance in the client and the explorer different?
+### Why are the balances in the client and the explorer different ?
 
-It may mean that your node is desynchronized. Try restarting your node.
+It may mean that your node is desynchronized.
+Check that your node is running, that the computer meets hardware requirements, and try restarting your node.
 
 ### Does the command `cargo run -- --wallet wallet.dat` override my existing wallet?
 
@@ -103,6 +104,16 @@ selected to do so. Most frequent reasons:
     addresses in your wallet_info that have active rolls) 100% of the
     time during which you had active_rolls \> 0
 
+Diagnostic process:
+* make sure the node is running on a computer that matches hardware requirements and that no other software is hogging ressources
+* type `wallet_info` and make sure that at least one address has active rolls > 0
+  * if there are no addresses listed, create a new one by calling `wallet_generate_private_key` and try the diagnostic process again
+  * if none of the listed addresses has non-zero active rolls, perform a new roll buy (see tutorials) and try the diagnostic process again
+* type `node_get_staking_addresses` in the client:
+  * if the list is empty or if none of the addresses listed matches addresses that have active rolls in `wallet_info`:
+    * call `node_add_staking_private_keys` with the private key matching an address that has non-zero active rolls in `wallet_info`
+* check your address with the online explorer: if there is a mismatch between the number of active rolls displayed in the online interface and what is returned by `wallet_info`, it might be that your node is desynchronized. Try restarting it.
+
 ### Why are rolls automatically sold? Is it some kind of penalty/slashing?
 
 It is not slashing because the funds are reimbursed fully. It's more
@@ -114,18 +125,6 @@ so. If an address misses more than 70% of its block creation
 opportunities during cycle C, all its rolls are implicitly sold at the
 beginning of cycle C+3.
 
-### I have bought rolls but the command `next_draws` doesn't show anything.
-
-Our Proof-of-Stake implementation is made of cycles. Each cycle lasts
-for 128 periods, which correspond to 4096 blocks, or 2048 seconds. The
-`next_draws` command in the client outputs the next block creation
-opportunity for the provided address. Currently, if the address is not
-selected for a block creation in this cycle the command does not output
-anything. Try again in a few minutes and this time you might be selected
-for block creation in the current cycle! In a future version of the API,
-we will provide clearer messages to make it clear that everything is
-working as intended.
-
 ### Do I need to register the keys after subsequent purchases of ROLLs, or do they get staked automatically?
 
 For now, they don't stake automatically. In the future, we will add a
@@ -133,7 +132,7 @@ feature allowing auto compounding. That being said, some people appear
 to have done that very early in the project. Feel free to ask on the
 link:https://discord.com/invite/TnsJQzXkRN\[Discord\] server :).
 
-### I can buy, send, sell ROLLs and MAS without fees. When should I increase the fee \>0?
+### I can buy, send, sell ROLLs and coins without fees. When should I increase the fee \>0?
 
 For the moment, there are only a few transactions at the same time and
 so most created blocks are empty. This means that your operation will be
@@ -183,7 +182,7 @@ change your score.
 Check the quality of your internet connection. Try increasing the
 "max_ping" setting in your config file:
 
--   create/edit file `massa-node/config/config.toml` with the following
+-   edit file `massa-node/config/config.toml` (create if it is absent) with the following
     content:
 
 ```toml
@@ -195,19 +194,23 @@ Check the quality of your internet connection. Try increasing the
 
 -   If your API can't start, e.g. with
     `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`,
-    it's probably because the default API port 33033 is already in use
+    it's probably because the default API ports 33034/33035 are already in use
     on your computer. You should change the port in the config files,
     both in the API and Client: \*\* create/edit file
     `massa-node/config/config.toml` to change the port used by the API:
 
 ```toml
 [api]
-    bind = "127.0.0.1:33033" # change port here
+    bind_private = "127.0.0.1:33034"  # change port here from 33034 to something else
+    bind_public = "0.0.0.0:33035"  # change port here from 33035 to something else
 ```
 
 \*\* create/edit file `massa-client/config/config.toml` and put the same
 port:
 
 ```toml
-default_node = "127.0.0.1:33033" # change port here as well
+[default_node]
+    ip = "127.0.0.1"
+    private_port = 33034  # change port here from 33034 to the port chosen in node's bind_private
+    public_port = 33035  # change port here from 33035 to the port chosen in node's bind_public
 ```

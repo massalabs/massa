@@ -5,8 +5,9 @@ version = "DEVE.0.0"
 
 [api]
     draw_lookahead_period_count = 10
-    bind_private = "[::1]:33034"
-    bind_public = "[::]:33035"
+    bind_private = "127.0.0.1:33034"
+    bind_public = "0.0.0.0:33035"
+    max_arguments = 128
 
 [consensus]
     genesis_timestamp = 1626440641000
@@ -14,7 +15,7 @@ version = "DEVE.0.0"
     t0 = 16000
     thread_count = 32
     genesis_key = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
-    max_discarded_blocks = 500
+    max_discarded_blocks = 100
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 400
     max_dependency_blocks = 2048
@@ -83,14 +84,6 @@ version = "DEVE.0.0"
     max_endorsements_per_message = 1024
     max_send_wait = 500
     ban_timeout = 3600000
-
-[storage]
-    max_stored_blocks= 1000
-    path = "storage/block_store"
-    cache_capacity = 10000
-    reset_at_startup = true
-    max_item_return_count = 1000
-    disable_storage = false
 
 [bootstrap]
     bootstrap_list = [
